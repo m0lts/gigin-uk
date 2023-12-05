@@ -1,0 +1,33 @@
+/* All buttons */
+.btn {
+    font-family: var(--default-font);
+}
+
+/* MyGigin Button */
+.my-gigin-button {
+    display: flex;
+    align-items: center;
+    border:1px solid var(--light-medium-grey);
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    background-color: var(--light-grey);
+}
+.my-gigin-button:hover {
+    box-shadow: 2px 2px 5px var(--medium-dark-grey);
+    cursor: pointer;
+    transition: 200ms linear;
+}
+.my-gigin-button.active {
+    box-shadow: 2px 2px 5px var(--medium-dark-grey);
+}
+.my-gigin-button .text {
+    font-weight: 300;
+    font-size: 1rem;
+    border-right: 1px solid var(--light-medium-grey);
+    padding-right: 0.5rem;
+}
+.my-gigin-button .menu-icon {
+    color: var(--medium-dark-grey);
+    font-size: 1.25rem;
+    padding-left: 0.5rem;
+}

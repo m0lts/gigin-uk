@@ -1,0 +1,16 @@
+.logo {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.25rem;
+    text-decoration: none;
+}
+.logo-img {
+    width:2rem;
+    height:2rem;
+}
+.logo-text {
+    font-size: 2rem;
+    color: var(--gigin-orange);
+    font-weight: 500;
+    font-family: var(--quicksand-font);
+}

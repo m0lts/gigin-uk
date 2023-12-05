@@ -1,12 +1,27 @@
 import { Routes, Route } from 'react-router-dom'
-import HomePage from './components/Global/homePage/HomePage'
-import '../src/assets/global.css'
+import { Index } from './pages/Index/Index'
+import { Homepage } from './pages/Global/Home/Homepage'
+import { Login } from './pages/Global/Account/Login/Login'
+import { Signup } from './pages/Global/Account/Signup/Signup'
+import { HostWithGigin } from './pages/Hosts/HostWithGigin/HostWithGigin'
+import { Help } from './pages/Global/Help/Help'
+import { ContactUs } from './pages/Global/ContactUs/ContactUs'
+import { GigGoersHome } from './pages/GigGoers/GigGoersHome/GigGoersHome'
+import '../src/assets/global.styles.css'
 
 export default function App() {
 
   return (
       <Routes>
-        <Route path='/' element={<HomePage />} />
+        <Route path='/' element={<Index />}>
+          <Route index element={<Homepage />} />
+          <Route path='help' element={<Help />} />
+          <Route path='contact-us' element={<ContactUs />} />
+        </Route>
+        <Route path='/login' element={<Login />} />
+        <Route path='/signup' element={<Signup />} />
+        <Route path='/host-with-gigin' element={<HostWithGigin />} />
+        <Route path='/gig-goers' element={<GigGoersHome />} />
       </Routes>
   )
 }

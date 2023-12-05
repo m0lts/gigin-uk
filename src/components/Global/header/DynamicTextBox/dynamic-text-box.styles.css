@@ -1,0 +1,15 @@
+.dynamic-text-box {
+    background-color: var(--light-grey);
+    box-shadow: inset 2px 2px 5px var(--light-medium-grey);
+    border-radius: 2rem;
+    width:50%;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.dynamic-text-box .dynamic-text {
+    color: var(--dark-grey);
+    font-weight: 500;
+}
