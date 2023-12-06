@@ -10,7 +10,7 @@
     border-radius: 2rem;
     box-shadow: 1px 1px 5px var(--light-medium-grey);
     padding:1.25rem 0;
-    width:10rem;
+    width:15rem;
 }
 .default-menu .menu-list {
     list-style: none;

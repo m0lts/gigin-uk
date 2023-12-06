@@ -10,7 +10,7 @@
     border:1px solid var(--light-medium-grey);
     padding: 0.5rem 1rem;
     border-radius: 2rem;
-    background-color: var(--light-grey);
+    background-color: var(--white);
 }
 .my-gigin-button:hover {
     box-shadow: 2px 2px 5px var(--medium-dark-grey);

@@ -62,5 +62,59 @@ export const DefaultMenu = ({ buttonStatus }) => {
     } else {
         return null
     }
-    
+}
+
+export const LoggedInMenu = ({ buttonStatus }) => {
+    if (buttonStatus) {
+        return (
+            <nav className='default-menu'>
+                <ul className='menu-list'>
+                    <li className='menu-item'>
+                        <NavLink 
+                            to={'/'} 
+                            className='link menu-link'
+                        >
+                            Control Centre
+                        </NavLink>
+                    </li>
+                    <li className='menu-item'>
+                        <NavLink 
+                            to={'/'} 
+                            className='link menu-link'
+                        >
+                            Account
+                        </NavLink>
+                    </li>
+                    <hr />
+                    <li className='menu-item'>
+                        <NavLink 
+                            to={'/help'} 
+                            className='link menu-link'
+                        >
+                            Help
+                        </NavLink>
+                    </li>
+                    <li className='menu-item'>
+                        <NavLink 
+                            to={'/contact-us'} 
+                            className='link menu-link'
+                        >
+                            Contact us
+                        </NavLink>
+                    </li>
+                    <hr />
+                    <li className='menu-item'>
+                        <NavLink 
+                            to={'/'} 
+                            className='link menu-link'
+                        >
+                            Log out
+                        </NavLink>
+                    </li>
+                </ul>
+            </nav>
+        )
+    } else {
+        return null
+    }
 }

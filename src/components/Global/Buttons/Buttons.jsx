@@ -2,7 +2,7 @@ import { MenuIcon } from "../Icons/Icons"
 import { useRef, useEffect } from "react"
 import './buttons.styles.css'
 
-export const MyGiginButton = ({ setButtonClicked, buttonStatus}) => {
+export const MyGiginButton = ({ setButtonClicked, buttonStatus, userName }) => {
 
     // Show menu when buttonStatus is truthy and vice versa.
     const handleShowMenu = () => {
@@ -28,7 +28,11 @@ export const MyGiginButton = ({ setButtonClicked, buttonStatus}) => {
             className={`btn my-gigin-button ${buttonStatus ? 'active' : ''}`}
             onClick={handleShowMenu}
         >
-            <span className='text'>My Gigin</span>
+            {userName ? (
+                <span className='text'>{userName}</span>
+            ) : (
+                <span className='text'>My Gigin</span>
+            )}
             <MenuIcon />
         </button>
     )
