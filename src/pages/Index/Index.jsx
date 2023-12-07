@@ -6,7 +6,7 @@ export const Index = () => {
     return (
         <>
             <Header />
-            <main>
+            <main className='app-body'>
                 <Outlet />
             </main>
         </>

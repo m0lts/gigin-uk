@@ -1,5 +1,5 @@
-import { MenuIcon } from "../Icons/Icons"
-import { useRef, useEffect } from "react"
+import { MapIcon, MenuIcon, ListIcon } from "../Icons/Icons"
+import { useRef, useEffect, useState } from "react"
 import './buttons.styles.css'
 
 export const MyGiginButton = ({ setButtonClicked, buttonStatus, userName }) => {
@@ -34,6 +34,36 @@ export const MyGiginButton = ({ setButtonClicked, buttonStatus, userName }) => {
                 <span className='text'>My Gigin</span>
             )}
             <MenuIcon />
+        </button>
+    )
+}
+
+export const ChangeViewTypeButton = ({ showMap, setShowMap }) => {
+
+    const handleViewChange = () => {
+        if (showMap) {
+            setShowMap(false);
+        } else {
+            setShowMap(true);
+        }
+    }
+
+    return (
+        <button 
+            className='btn change-view-btn'
+            onClick={handleViewChange}
+        >
+            {showMap ? (
+                <>
+                    <ListIcon />
+                    <span>List View</span>
+                </>
+            ) : (
+                <>
+                    <MapIcon />
+                    <span>Map View</span>
+                </>
+            )}
         </button>
     )
 }

@@ -31,3 +31,23 @@
     font-size: 1.25rem;
     padding-left: 0.5rem;
 }
+
+/* Change view button */
+.change-view-btn {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    border:none;
+    padding: 0.5rem 1rem;
+    background-color: var(--white);
+    border-radius: 25px;
+    font-weight: 300;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px var(--light-medium-grey);
+    display: flex;
+    gap:0.5rem;
+}
+.change-view-btn:hover {
+    box-shadow: 2px 2px 5px var(--medium-dark-grey);
+}

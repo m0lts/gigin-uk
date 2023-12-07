@@ -1,7 +1,8 @@
 /* Default header menu */
-.default-menu {
+.header-menu {
     display: block;
     position: absolute;
+    z-index: 1000;
     right:2rem;
     top:5rem;
     list-style: none;
@@ -12,18 +13,18 @@
     padding:1.25rem 0;
     width:15rem;
 }
-.default-menu .menu-list {
+.header-menu .menu-list {
     list-style: none;
 }
-.default-menu .menu-item {
+.header-menu .menu-item {
     padding:0.5rem 2rem;
     cursor: pointer;
     font-weight: 300;
 }
-.default-menu hr {
+.header-menu hr {
     margin: 1.25rem;
 }
-.default-menu .menu-item:hover {
+.header-menu .menu-item:hover {
     font-weight: 400;
     background-color: var(--light-medium-grey);
 }

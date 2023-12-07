@@ -4,7 +4,7 @@ import './menus.styles.css'
 export const DefaultMenu = ({ buttonStatus }) => {
     if (buttonStatus) {
         return (
-            <nav className='default-menu'>
+            <nav className='header-menu'>
                 <ul className='menu-list'>
                     <li className='menu-item'>
                         <NavLink 
@@ -67,7 +67,7 @@ export const DefaultMenu = ({ buttonStatus }) => {
 export const LoggedInMenu = ({ buttonStatus }) => {
     if (buttonStatus) {
         return (
-            <nav className='default-menu'>
+            <nav className='header-menu'>
                 <ul className='menu-list'>
                     <li className='menu-item'>
                         <NavLink 
