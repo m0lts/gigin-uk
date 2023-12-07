@@ -3,6 +3,41 @@
     font-family: var(--default-font);
 }
 
+/* UNIVERSAL BUTTONS */
+/* Search buttons */
+.search-button-small {
+    border: none;
+    padding:0.5rem 0.6rem;
+    border-radius: 50%;
+    background-color: var(--gigin-orange);
+    color: var(--white);
+}
+.search-button-small:hover {
+    background-color: var(--light-grey);
+    cursor: pointer;
+    color: var(--black);
+    transition: 200ms linear;
+}
+.search-button-big {
+    border: none;
+    border-radius: 2rem;
+    padding: 0.5rem;
+    background-color: var(--gigin-orange);
+    color: var(--white);
+    font-family: var(--default-font);
+    font-weight: 300;
+}
+.search-button-big span {
+    margin-right: 0.5rem;
+}
+.search-button-big:hover {
+    background-color: var(--light-grey);
+    cursor: pointer;
+    color: var(--black);
+    transition: 200ms linear;
+}
+
+/* HEADER BUTTONS */
 /* MyGigin Button */
 .my-gigin-button {
     display: flex;
@@ -31,6 +66,42 @@
     font-size: 1.25rem;
     padding-left: 0.5rem;
 }
+/* Mobile view header */
+.my-gigin-button-mobile,
+.header-saved-button-mobile {
+    display: flex;
+    flex-direction: column;
+    padding:1rem 1rem;
+    align-items: center;
+    gap:0.5rem;
+    border:none;
+    background-color: var(--white);
+    font-family: var(--default-font);
+    font-weight: 300;
+    font-size: 1rem;
+    width:50%;
+}
+.header-saved-button-mobile {
+    border-radius: 1rem 0 0 0;
+}
+.my-gigin-button-mobile {
+    border-radius: 0 1rem 0 0;
+}
+.header-saved-button-mobile .bookmark-icon {
+    font-size: 1.5rem;
+}
+.my-gigin-button-mobile .menu-icon {
+    font-size: 1.5rem;
+}
+.my-gigin-button-mobile:active,
+.header-saved-button-mobile:active {
+    color: var(--gigin-orange);
+}
+
+
+
+
+/* HOMEPAGE BUTTONS */
 
 /* Change view button */
 .change-view-btn {
@@ -41,7 +112,7 @@
     border:none;
     padding: 0.5rem 1rem;
     background-color: var(--white);
-    border-radius: 25px;
+    border-radius: 2rem;
     font-weight: 300;
     cursor: pointer;
     box-shadow: 2px 2px 5px var(--light-medium-grey);
@@ -50,4 +121,45 @@
 }
 .change-view-btn:hover {
     box-shadow: 2px 2px 5px var(--medium-dark-grey);
+}
+
+/* FILTER BUTTONS */
+.filter-button {
+    padding:0.5rem 1rem;
+    border-radius: 2rem;
+    border:1px solid var(--light-grey);
+    background:none;
+    font-weight: 300;
+    margin: auto 0;
+}
+.filter-button:hover {
+    background-color: var(--light-grey);
+    cursor: pointer;
+}
+.filter-button.active {
+    background-color: var(--light-grey);
+}
+.filter-button-with-cross {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+/* SAVE BUTTON */
+.save-button {
+    padding:0.5rem 1rem;
+    background-color: var(--gigin-orange);
+    border: none;
+    color: var(--white);
+    border-radius: 1rem;
+}
+.save-button:hover {
+    background-color: var(--light-grey);
+    cursor: pointer;
+    color: var(--black);
+    box-shadow: 2px 2px 5px var(--light-medium-grey);
+    transition: 200ms linear;
+}
+.save-button:active {
+    box-shadow: inset 2px 2px 5px var(--light-medium-grey);
 }

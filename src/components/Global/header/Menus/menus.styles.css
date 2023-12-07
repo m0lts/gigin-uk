@@ -28,3 +28,35 @@
     font-weight: 400;
     background-color: var(--light-medium-grey);
 }
+/* Mobile header menu */
+.header-menu-mobile-hide {
+    height: 0%;
+    transition: 250ms linear;
+}
+.header-menu-mobile {
+    display: block;
+    position: absolute;
+    z-index: -1;
+    bottom:0rem;
+    width:100%;
+    height:500%;
+    padding:1.5rem 0;
+    background-color: var(--light-grey);
+    border-radius: 1rem 1rem 0 0;
+    transition: all 250ms linear;
+}
+.header-menu-mobile .menu-list {
+    list-style: none;
+}
+.header-menu-mobile .menu-item {
+    padding:0.5rem 2rem;
+    cursor: pointer;
+    font-weight: 300;
+}
+.header-menu-mobile hr {
+    margin: 1.25rem;
+}
+.header-menu-mobile .menu-item:active {
+    font-weight: 400;
+    background-color: var(--light-medium-grey);
+}

@@ -1,8 +1,7 @@
 .dynamic-text-box {
-    background-color: var(--light-grey);
-    box-shadow: inset 2px 2px 5px var(--light-medium-grey);
+    border: 3px solid var(--light-grey);
     border-radius: 2rem;
-    width:50%;
+    width:30%;
     height: 2.5rem;
     display: flex;
     align-items: center;
@@ -10,6 +9,6 @@
     overflow: hidden;
 }
 .dynamic-text-box .dynamic-text {
-    color: var(--dark-grey);
-    font-weight: 500;
+    color: black;
+    font-weight: 200;
 }

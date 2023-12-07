@@ -7,3 +7,14 @@
     position: relative;
     border-bottom: 1px solid var(--light-grey);
 }
+/* Mobile */
+.header-mobile {
+    position: absolute;
+    width:100%;
+    background-color: var(--white);
+    z-index: 1000;
+    bottom:0rem;
+    border-top: 1px solid var(--light-grey);
+    display: flex;
+    justify-content: center;
+}

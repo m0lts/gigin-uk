@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { FilterBar } from '../FilterBar/FilterBar'
 import mapboxgl from "mapbox-gl"
 import 'mapbox-gl/dist/mapbox-gl.css'
 import './map-view.styles.css'
@@ -26,6 +27,7 @@ export const MapView = () => {
 
     return (
         <div ref={mapContainer} className='map'>
+            <FilterBar />
         </div>
     )
 }
