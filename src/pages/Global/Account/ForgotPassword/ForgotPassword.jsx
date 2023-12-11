@@ -1,36 +1,33 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
 import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/EmailInputs"
-import { DefaultPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
-import { NextButtonLogin, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
+import { NextButtonLogin, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons"
 import { Link } from "react-router-dom";
+import { OneTimePasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
 
-export const Login = () => {
+export const ForgotPassword = () => {
 
     const [emailData, setEmailData] = useState('');
     const [emailError, setEmailError] = useState('');
     const [showPasswordSection, setShowPasswordSection] = useState(false);
-    const [passwordData, setPasswordData] = useState('');
-    const [passwordError, setPasswordError] = useState('');
-    const [loginFormData, setLoginFormData] = useState({
+    const [oneTimePasswordData, setOneTimePasswordData] = useState('');
+    const [oneTimePasswordError, setOneTimePasswordError] = useState('');
+    const [resetPasswordFormData, setResetPasswordFormData] = useState({
         userEmail: emailData,
-        userPassword: passwordData,
     });
     const [submitForm, setSubmitForm] = useState(false);
 
     useEffect(() => {
-        setLoginFormData({
+        setResetPasswordFormData({
             userEmail: emailData,
-            userPassword: passwordData,
         })
-    }, [emailData, passwordData])
+    }, [emailData])
 
     useEffect(() => {
         if (submitForm) {
-            console.log(loginFormData)
+            console.log(resetPasswordFormData)
         }
     }, [submitForm])
-
 
     return (
         <main className='accounts'>
@@ -54,23 +51,23 @@ export const Login = () => {
                     )}
                     {showPasswordSection && (
                         <>
-                            <DefaultPasswordInput 
-                                passwordData={passwordData}
-                                setPasswordData={setPasswordData}
-                                passwordError={passwordError}
-                                setPasswordError={setPasswordError}
+                            <OneTimePasswordInput 
+                                oneTimePasswordData={oneTimePasswordData}
+                                setOneTimePasswordData={setOneTimePasswordData}
+                                passwordError={oneTimePasswordError}
+                                setPasswordError={oneTimePasswordError}
                             />
                             <SubmitFormButton 
-                                passwordData={passwordData}
-                                passwordError={passwordError}
+                                passwordData={oneTimePasswordData}
+                                passwordError={oneTimePasswordError}
                                 setSubmitForm={setSubmitForm}
                             />
                         </>
                     )}
                 </form>
                 <div>
-                    <Link to={'/forgotpassword'}>
-                        Forgotten your password?
+                    <Link to={'/login'}>
+                        Remembered your password?
                     </Link>
                 </div>
                 <div>

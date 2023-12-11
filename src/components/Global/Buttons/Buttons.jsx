@@ -226,11 +226,13 @@ export const NextButtonLogin = ({ emailData, setEmailError, setShowPasswordSecti
 }
 
 // Submit button
-export const SubmitFormButton = ({ passwordData, setPasswordError, setSubmitForm }) => {
+export const SubmitFormButton = ({ passwordData, passwordError, setSubmitForm, verifyPasswordStatus }) => {
 
     const handleSubmit = (event) => {
         event.preventDefault();
-        setSubmitForm(true);
+        if (!passwordError || !verifyPasswordStatus) {
+            setSubmitForm(true);
+        }
     }
 
     return (

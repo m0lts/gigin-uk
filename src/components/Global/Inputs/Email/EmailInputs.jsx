@@ -1,10 +1,10 @@
 import { useState } from "react"
 
-export const DefaultEmailInput = ({ emailData = '', setEmailData, emailError, setEmailError, disableInput, setDisableInput }) => {
+export const DefaultEmailInput = ({ emailData, setEmailData, emailError, setEmailError, disableInput, setDisableInput }) => {
 
     const handleEmailChange = (event) => {
         setEmailData(event.target.value);
-        setEmailError('');
+        setEmailError('')
     }
 
     const handleEditEmail = () => {
@@ -12,17 +12,17 @@ export const DefaultEmailInput = ({ emailData = '', setEmailData, emailError, se
     }
 
     return (
-        <div className="email-cont">
+        <div className='email-cont'>
             {disableInput ? (
                 <p onClick={handleEditEmail}>{emailData}</p>
             ) : (
                 <>
-                    <label htmlFor="email">Email Address:</label>
+                    <label htmlFor='email'>Email Address:</label>
                     <input
-                        type="text" 
+                        type='text' 
                         className='email-input' 
-                        id="email" 
-                        name="email" 
+                        id='email' 
+                        name='email' 
                         required
                         value={emailData}
                         onChange={handleEmailChange}

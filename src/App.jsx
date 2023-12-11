@@ -8,6 +8,7 @@ import { Help } from './pages/Global/Help/Help'
 import { ContactUs } from './pages/Global/ContactUs/ContactUs'
 import { GigGoersHome } from './pages/GigGoers/GigGoersHome/GigGoersHome'
 import '../src/assets/global.styles.css'
+import { ForgotPassword } from './pages/Global/Account/ForgotPassword/ForgotPassword'
 
 export default function App() {
 
@@ -20,6 +21,7 @@ export default function App() {
         </Route>
         <Route path='/login' element={<Login />} />
         <Route path='/signup' element={<Signup />} />
+        <Route path='/forgotpassword' element={<ForgotPassword />} />
         <Route path='/host-with-gigin' element={<HostWithGigin />} />
         <Route path='/gig-goers' element={<GigGoersHome />} />
       </Routes>
