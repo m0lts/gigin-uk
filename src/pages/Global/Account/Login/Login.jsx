@@ -36,6 +36,7 @@ export const Login = () => {
         <main className='accounts'>
             <section className='accounts-left'>
                 <GiginLogo />
+                <h1 className='title'>Login</h1>
                 <form className="login">
                     <DefaultEmailInput 
                         emailData={emailData}

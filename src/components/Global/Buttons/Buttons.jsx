@@ -1,5 +1,6 @@
 import { MapIcon, MenuIcon, ListIcon, BookmarkIcon, SearchIcon, XIcon } from "../Icons/Icons"
 import { useRef, useEffect, useState } from "react"
+import { queryDatabase } from "../../../utils/queryDatabase"
 import './buttons.styles.css'
 
 // *************************** //
@@ -226,13 +227,29 @@ export const NextButtonLogin = ({ emailData, setEmailError, setShowPasswordSecti
 }
 
 // Submit button
-export const SubmitFormButton = ({ passwordData, passwordError, setSubmitForm, verifyPasswordStatus }) => {
+export const SubmitFormButton = ({ passwordError, verifyPasswordStatus, dataPayload, apiRoute, setResponse }) => {
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
         if (!passwordError || !verifyPasswordStatus) {
-            setSubmitForm(true);
-        }
+            try {
+                const response = await queryDatabase(apiRoute, dataPayload);
+                const responseData = await response.json();
+                if (response.ok) {
+                    setResponse({
+                        data: responseData,
+                        status: response.status
+                    })
+                } else {
+                    setResponse({
+                        status: response.status,
+                        message: responseData.error
+                    })
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        };
     }
 
     return (

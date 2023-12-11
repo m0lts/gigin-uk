@@ -5,10 +5,12 @@ import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/Em
 import { DefaultAddressInput, DefaultNameInput, DefaultPhoneNumberInput } from "../../../../components/Global/Inputs/UserDetails/UserDetails";
 import { DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
 import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
 
 export const Signup = () => {
 
+    // States for form
     const [userType, setUserType] = useState('');
     const [nameData, setNameData] = useState({
         firstName: '',
@@ -34,7 +36,11 @@ export const Signup = () => {
         userAddress: addressData,
         userPassword: passwordData
     });
-    const [submitForm, setSubmitForm] = useState(false);
+
+    // States for response
+    const [apiRoute, setApiRoute] = useState('/api/Accounts/SignUpUser.js');
+    const [signupResponse, setSignupResponse] = useState();
+    const navigate = useNavigate();
 
     useEffect(() => {
         setSignupFormData({
@@ -48,16 +54,22 @@ export const Signup = () => {
     }, [userType, nameData, emailData, phoneNumberData, addressData, passwordData])
 
     useEffect(() => {
-        if (submitForm) {
-            console.log(signupFormData)
+        if (signupResponse) {
+            if (signupResponse.status === 201) {
+                AddUserDataToSessionStorage(signupResponse.data.dataReceived);
+                navigate('/');
+            } else {
+                console.log(signupResponse.status);
+            }
         }
-    }, [submitForm])
+    }, [signupResponse])
 
 
     return (
         <main className='accounts'>
             <section className='accounts-left'>
                 <GiginLogo />
+                <h1 className='title'>Signup</h1>
                 <form className="signup">
                     <DefaultUserType 
                         userType={userType}
@@ -94,7 +106,9 @@ export const Signup = () => {
                         setVerifyPasswordStatus={setVerifyPasswordStatus}
                     />
                     <SubmitFormButton
-                        setSubmitForm={setSubmitForm}
+                        apiRoute={apiRoute}
+                        dataPayload={signupFormData}
+                        setResponse={setSignupResponse}
                         passwordError={passwordError}
                         verifyPasswordStatus={verifyPasswordStatus}
                     />
