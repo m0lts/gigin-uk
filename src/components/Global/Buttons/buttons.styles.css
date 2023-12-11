@@ -163,3 +163,43 @@
 .save-button:active {
     box-shadow: inset 2px 2px 5px var(--light-medium-grey);
 }
+
+
+/* FORM BUTTONS */
+/* Next button */
+.next-button {
+    padding:0.5rem 1rem;
+    background-color: var(--gigin-orange);
+    border: none;
+    color: var(--white);
+    border-radius: 1rem;
+}
+.next-button:hover {
+    background-color: var(--light-grey);
+    cursor: pointer;
+    color: var(--black);
+    box-shadow: 2px 2px 5px var(--light-medium-grey);
+    transition: 200ms linear;
+}
+.next-button:active {
+    box-shadow: inset 2px 2px 5px var(--light-medium-grey);
+}
+
+/* Submit button */
+.submit-button {
+    padding:0.5rem 1rem;
+    background-color: var(--gigin-orange);
+    border: none;
+    color: var(--white);
+    border-radius: 1rem;
+}
+.submit-button:hover {
+    background-color: var(--light-grey);
+    cursor: pointer;
+    color: var(--black);
+    box-shadow: 2px 2px 5px var(--light-medium-grey);
+    transition: 200ms linear;
+}
+.submit-button:active {
+    box-shadow: inset 2px 2px 5px var(--light-medium-grey);
+}

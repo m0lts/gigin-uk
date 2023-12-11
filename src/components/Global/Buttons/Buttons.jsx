@@ -197,3 +197,48 @@ export const SaveButton = ({ saveItem }) => {
         </button>
     )
 }
+
+
+// *************************** //
+// FORM BUTTONS //
+
+// Next button login
+export const NextButtonLogin = ({ emailData, setEmailError, setShowPasswordSection }) => {
+
+    const handleNext = (event) => {
+        event.preventDefault();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailData)) {
+            setEmailError('* Please enter a valid email address. Example: johndoe@gmail.com');
+        } else {
+            setShowPasswordSection(true);
+        }
+    }
+
+    return (
+        <button 
+            className='btn next-button'
+            onClick={handleNext}
+        >
+            Next
+        </button>
+    )
+}
+
+// Submit button
+export const SubmitFormButton = ({ passwordData, setPasswordError, setSubmitForm }) => {
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        setSubmitForm(true);
+    }
+
+    return (
+        <button 
+            className='btn submit-button'
+            onClick={handleSubmit}
+        >
+            Submit
+        </button>
+    )
+}
