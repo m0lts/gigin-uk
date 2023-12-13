@@ -17,10 +17,37 @@
     align-items: center;
 }
 .filter-bar.active {
-    padding:1rem 3rem;
+    width:100%;
+    height:100%;
+    border-radius: 0;
+    top:0;
+    justify-content: flex-start;
+    padding-top: 1rem;
+    background-color: var(--trans-grey);
+    transition: 100ms linear;
 }
 .filter-bar.active .filters {
     margin-bottom: 1rem;
+}
+.filter-bar .filters-box {
+    background-color: var(--white);
+    border-radius: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: 100ms linear;
+}
+.filter-bar .filters-box.active {
+    padding:1.5rem;
+}
+.filter-bar .filters {
+    min-width: 250px;
+    display: flex;
+    align-items: center;
+}
+.filter-bar.active {
+    padding:1rem 3rem;
 }
 .filter-bar .filter-break {
     border:1px solid var(--light-medium-grey);

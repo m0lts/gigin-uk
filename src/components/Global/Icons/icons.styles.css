@@ -1,5 +1,5 @@
 .x-icon {
-    font-size: 0.75rem;
-    color: red;
+    font-size: 0.5rem;
+    color: var(--gigin-orange);
     cursor: pointer;
 }

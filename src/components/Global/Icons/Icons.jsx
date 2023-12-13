@@ -32,11 +32,8 @@ export const SearchIcon = () => {
     )
 }
 
-export const XIcon = ({ clearItem }) => {
-    const handleClearItem = () => {
-        clearItem(null)
-    }
+export const XIcon = () => {
     return (
-        <FontAwesomeIcon icon={faX} className='x-icon' onClick={handleClearItem} />
+        <FontAwesomeIcon icon={faX} className='x-icon'/>
     )
 }

@@ -1,6 +1,7 @@
 /* All buttons */
 .btn {
     font-family: var(--default-font);
+    color: var(--black);
 }
 
 /* UNIVERSAL BUTTONS */
@@ -46,14 +47,15 @@
     padding: 0.5rem 1rem;
     border-radius: 2rem;
     background-color: var(--white);
+    transition: 200ms linear;
 }
 .my-gigin-button:hover {
-    box-shadow: 2px 2px 5px var(--medium-dark-grey);
+    box-shadow: 2px 2px 5px var(--light-medium-grey);
     cursor: pointer;
     transition: 200ms linear;
 }
 .my-gigin-button.active {
-    box-shadow: 2px 2px 5px var(--medium-dark-grey);
+    box-shadow: 2px 2px 5px var(--light-medium-grey);
 }
 .my-gigin-button .text {
     font-weight: 300;
@@ -132,35 +134,52 @@
     font-weight: 300;
     margin: auto 0;
 }
-.filter-button:hover {
+.filter-button-name {
+    font-size: 0.8rem;
+    transition: 100ms linear;
+}
+.filter-button-name.filled {
+    font-size: 0.7rem;
+    transition: 100ms linear;
+}
+.filter-button-filled {
+    margin-top: 0.2rem;
+    display: flex;
+    align-items: center;
+    gap:0.2rem;
     background-color: var(--light-grey);
+    border: 1px solid var(--light-grey);
+    border-radius: 1rem;
+    padding:0.5rem;
+}
+.filter-button-filled:hover {
+    border: 1px solid var(--dark-grey);
+}
+.filter-button:hover {
+    border: 1px solid var(--light-medium-grey);
     cursor: pointer;
 }
 .filter-button.active {
-    background-color: var(--light-grey);
-}
-.filter-button-with-cross {
-    display: flex;
-    align-items: center;
-    gap:5px;
+    border: 1px solid var(--light-medium-grey);
 }
 
-/* SAVE BUTTON */
-.save-button {
+/* Apply filter button */
+.apply-button {
     padding:0.5rem 1rem;
-    background-color: var(--gigin-orange);
+    background-color: var(--dark-grey);
     border: none;
     color: var(--white);
     border-radius: 1rem;
+    margin-top: 1rem;
 }
-.save-button:hover {
+.apply-button:hover {
     background-color: var(--light-grey);
     cursor: pointer;
     color: var(--black);
     box-shadow: 2px 2px 5px var(--light-medium-grey);
     transition: 200ms linear;
 }
-.save-button:active {
+.apply-button:active {
     box-shadow: inset 2px 2px 5px var(--light-medium-grey);
 }
 

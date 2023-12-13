@@ -1,13 +1,20 @@
 import { MapIcon, MenuIcon, ListIcon, BookmarkIcon, SearchIcon, XIcon } from "../Icons/Icons"
 import { useRef, useEffect, useState } from "react"
 import { queryDatabase } from "../../../utils/queryDatabase"
+import { formatSelectedDate } from "../../../utils/dateFormatting"
 import './buttons.styles.css'
 
 // *************************** //
 // UNIVERSAL BUTTONS //
-export const SearchButtonSmall = () => {
+export const SearchButtonSmall = ({ clearItemOne, clearItemTwo }) => {
+
+    const handleClearItems = () => {
+        clearItemOne(null);
+        clearItemTwo(null);
+    }
+
     return (
-        <button className='btn search-button-small'>
+        <button className='btn search-button-small' onClick={handleClearItems}>
             <SearchIcon />
         </button>
     )
@@ -149,52 +156,61 @@ export const ChangeViewTypeButton = ({ showMap, setShowMap }) => {
 // FILTER BUTTONS //
 
 // Universal filter button
-export const FilterButton = ({ filterName, showFilter, setShowFilter, filterFilled, setFilterFilled }) => {
+export const FilterButton = ({ filterName, showFilter, setShowFilter, filterFilled, setFilterFilled, otherFilter, setOtherFilter }) => {
 
     const handleShowFilter = () => {
         if (showFilter) {
             setShowFilter(false);
         } else {
             setShowFilter(true);
+            setOtherFilter(false);
         }
     }
+
+    const handleClearFilter = () => {
+        setFilterFilled(false);
+    }
+
+    const isDate = (date) => {
+        return Object.prototype.toString.call(date) === '[object Date]' && !isNaN(date.getTime());
+    };
 
     return (
         <button 
             className={`btn filter-button ${showFilter && 'active'}`}
             onClick={handleShowFilter}
         >   
-            {filterFilled ? (
-                <span 
-                    className='filter-button-with-cross'
-                >
-                        {filterName} 
-                        <XIcon 
-                            clearItem={setFilterFilled}
-                        />
-                </span>
-            ) : (
-                <>{filterName}</>
+            <span className={`filter-button-name ${filterFilled && 'filled'}`}>{filterName}</span>
+            {filterFilled && (
+                // If filterFilled is a date, then return the date formatted to desire.
+                // If not a date, just render fitlerFilled.
+                <div className='filter-button-filled' onClick={handleClearFilter}>
+                    {isDate(new Date(filterFilled)) ? (
+                        formatSelectedDate(filterFilled)
+                    ) : (
+                        filterFilled
+                    )}
+                </div>
             )}
         </button>
     )
 }
 
 // *************************** //
-// SAVE BUTTON //
-export const SaveButton = ({ saveItem }) => {
+// APPLY FILTER BUTTON //
+export const ApplyFilterButton = ({ applyFilter }) => {
 
     // See FilterBar save button for reference
-    const handleSave = () => {
-        saveItem(false);
+    const handleApply = () => {
+        applyFilter(false);
     }
 
     return (
         <button 
-            className='btn save-button'
-            onClick={handleSave}
+            className='btn apply-button'
+            onClick={handleApply}
         >
-            Save
+            Apply
         </button>
     )
 }

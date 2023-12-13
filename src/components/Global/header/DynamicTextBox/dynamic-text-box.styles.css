@@ -1,4 +1,7 @@
 .dynamic-text-box {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     border: 3px solid var(--light-grey);
     border-radius: 2rem;
     width:30%;
