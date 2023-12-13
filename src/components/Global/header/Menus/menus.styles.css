@@ -17,9 +17,13 @@
     list-style: none;
 }
 .header-menu .menu-item {
-    padding:0.5rem 2rem;
     cursor: pointer;
     font-weight: 300;
+    display: flex;
+}
+.header-menu .menu-link {
+    padding:0.5rem 2rem;
+    width:100%;
 }
 .header-menu hr {
     margin: 1.25rem;
@@ -49,9 +53,13 @@
     list-style: none;
 }
 .header-menu-mobile .menu-item {
-    padding:0.5rem 2rem;
+    display: flex;
     cursor: pointer;
     font-weight: 300;
+}
+.header-menu-mobile .menu-link {
+    padding:0.5rem 2rem;
+    width:100%;
 }
 .header-menu-mobile hr {
     margin: 1.25rem;

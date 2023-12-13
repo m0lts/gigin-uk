@@ -226,6 +226,36 @@ export const NextButtonLogin = ({ emailData, setEmailError, setShowPasswordSecti
     )
 }
 
+// Next button forgot password
+export const NextButtonForgotPassword = ({ emailData, setEmailError, setShowPasswordSection, dataPayload, apiRoute }) => {
+
+    const handleNext = async (event) => {
+        event.preventDefault();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailData)) {
+            setEmailError('* Please enter a valid email address. Example: johndoe@gmail.com');
+        } else {
+            try {
+                const response = await queryDatabase(apiRoute, dataPayload);
+                if (response.ok) {
+                    setShowPasswordSection(true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+
+    return (
+        <button 
+            className='btn next-button'
+            onClick={handleNext}
+        >
+            Next
+        </button>
+    )
+}
+
 // Submit button
 export const SubmitFormButton = ({ passwordError, verifyPasswordStatus, dataPayload, apiRoute, setResponse }) => {
 

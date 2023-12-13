@@ -1,14 +1,16 @@
 import { useState } from "react"
 
-export const DefaultEmailInput = ({ emailData, setEmailData, emailError, setEmailError, disableInput, setDisableInput }) => {
+export const DefaultEmailInput = ({ emailData, setEmailData, emailError, setEmailError, disableInput, setDisableInput, setPasswordData }) => {
 
     const handleEmailChange = (event) => {
         setEmailData(event.target.value);
-        setEmailError('')
+        setEmailError('');
     }
 
     const handleEditEmail = () => {
         setDisableInput(false);
+        setEmailData('');
+        setPasswordData('');
     }
 
     return (

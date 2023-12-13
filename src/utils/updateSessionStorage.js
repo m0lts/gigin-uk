@@ -11,3 +11,37 @@ export const AddUserDataToSessionStorage = (payload) => {
     const userLoggedIn = true;
     return userLoggedIn;
 }
+
+export const GetInfoFromSessionStorage = () => {
+    const userFirstName = sessionStorage.getItem('userFirstName');
+    const userSecondName = sessionStorage.getItem('userSecondName');
+    const userEmail = sessionStorage.getItem('userEmail');
+    const userType = sessionStorage.getItem('userType');
+    const userAddressLine1 = sessionStorage.getItem('userAddressLine1');
+    const userAddressCity = sessionStorage.getItem('userAddressCity');
+    const userAddressPostCode = sessionStorage.getItem('userAddressPostCode');
+    const userAddressCountry = sessionStorage.getItem('userAddressCountry');
+
+    return {
+        userFirstName,
+        userSecondName,
+        userEmail,
+        userType,
+        userAddressLine1,
+        userAddressCity,
+        userAddressPostCode,
+        userAddressCountry
+    }
+}
+
+export const RemoveInfoFromSessionStorage = () => {
+    sessionStorage.removeItem('userFirstName');
+    sessionStorage.removeItem('userSecondName');
+    sessionStorage.removeItem('userEmail');
+    sessionStorage.removeItem('userType');
+    sessionStorage.removeItem('userAddressLine1');
+    sessionStorage.removeItem('userAddressCity');
+    sessionStorage.removeItem('userAddressPostCode');
+    sessionStorage.removeItem('userAddressCountry');
+    window.location.reload();
+}

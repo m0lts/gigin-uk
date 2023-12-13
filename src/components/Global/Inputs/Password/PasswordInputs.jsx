@@ -1,11 +1,13 @@
-import { useState } from 'react'
 
 export const DefaultPasswordInput = ({ passwordData, setPasswordData, passwordError, setPasswordError, setVerifyPasswordStatus }) => {
 
     const handlePasswordChange = (event) => {
         setPasswordData(event.target.value);
         setPasswordError('');
-        setVerifyPasswordStatus(false);
+        if (setVerifyPasswordStatus) {
+            
+            setVerifyPasswordStatus(false);
+        }
     }
 
     return (

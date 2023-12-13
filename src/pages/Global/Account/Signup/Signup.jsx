@@ -59,7 +59,7 @@ export const Signup = () => {
                 AddUserDataToSessionStorage(signupResponse.data.dataReceived);
                 navigate('/');
             } else {
-                console.log(signupResponse.status);
+                console.log(`Error code: ${signupResponse.status} + Error reason: ${signupResponse.message}`);
             }
         }
     }, [signupResponse])

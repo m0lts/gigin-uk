@@ -1,33 +1,71 @@
 import { useState, useEffect } from "react";
 import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
 import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/EmailInputs"
-import { NextButtonLogin, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons"
-import { Link } from "react-router-dom";
-import { OneTimePasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
+import { NextButtonForgotPassword, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons"
+import { Link, useNavigate } from "react-router-dom";
+import { OneTimePasswordInput, DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
 
 export const ForgotPassword = () => {
 
+    // States for forgot password form
     const [emailData, setEmailData] = useState('');
     const [emailError, setEmailError] = useState('');
+    const [emailSentMessage, setEmailSentMessage] = useState('If there is an account associated with that email address, you will recieve an email with a 6-digit one time passcode. Please enter the passcode below.')
     const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [oneTimePasswordData, setOneTimePasswordData] = useState('');
     const [oneTimePasswordError, setOneTimePasswordError] = useState('');
-    const [resetPasswordFormData, setResetPasswordFormData] = useState({
+    // States for reset password form
+    const [passwordData, setPasswordData] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [verifyPasswordStatus, setVerifyPasswordStatus] = useState();
+    const [forgotPasswordFormData, setForgotPasswordFormData] = useState({
         userEmail: emailData,
+        userOTP: oneTimePasswordData,
+        userPassword: passwordData,
     });
-    const [submitForm, setSubmitForm] = useState(false);
+    // States for forgot password response
+    const [apiRoute, setApiRoute] = useState('/api/Accounts/UserForgotPassword.js');
+    const [forgotPasswordResponse, setForgotPasswordResponse] = useState();
+    const [showResetPasswordSection, setShowResetPasswordSection] = useState(false);
+    // States for reset password response
+    const [resetPasswordResponse, setResetPasswordResponse] = useState();
+    const navigate = useNavigate();
+
 
     useEffect(() => {
-        setResetPasswordFormData({
+        setForgotPasswordFormData({
             userEmail: emailData,
+            userOTP: oneTimePasswordData,
+            userPassword: passwordData,
         })
-    }, [emailData])
+    }, [emailData, oneTimePasswordData, passwordData])
 
     useEffect(() => {
-        if (submitForm) {
-            console.log(resetPasswordFormData)
+        if (showPasswordSection) {
+            setApiRoute('/api/Accounts/VerifyUserOTP.js');
         }
-    }, [submitForm])
+    }, [showPasswordSection])
+
+    useEffect(() => {
+        if (forgotPasswordResponse) {
+            if (forgotPasswordResponse.status === 201) {
+                setShowResetPasswordSection(true);
+                setApiRoute('/api/Accounts/ResetUserPassword.js');
+            }
+        }
+    }, [forgotPasswordResponse])
+
+    useEffect(() => {
+        if (resetPasswordResponse) {
+            if (resetPasswordResponse.status === 201) {
+                navigate('/login');
+            } else {
+                console.log(resetPasswordResponse);
+            }
+        }
+    }, [resetPasswordResponse])
+
+
 
     return (
         <main className='accounts'>
@@ -44,24 +82,54 @@ export const ForgotPassword = () => {
                         setDisableInput={setShowPasswordSection}
                     />
                     {emailData && !showPasswordSection && !emailError && (
-                        <NextButtonLogin 
+                        <NextButtonForgotPassword 
                             emailData={emailData}
                             setEmailError={setEmailError}
                             setShowPasswordSection={setShowPasswordSection}
+                            dataPayload={forgotPasswordFormData}
+                            apiRoute={apiRoute}
                         />
                     )}
                     {showPasswordSection && (
-                        <>
+                        <>  
+                            <p>{emailSentMessage}</p>
                             <OneTimePasswordInput 
                                 oneTimePasswordData={oneTimePasswordData}
                                 setOneTimePasswordData={setOneTimePasswordData}
                                 passwordError={oneTimePasswordError}
-                                setPasswordError={oneTimePasswordError}
+                                setPasswordError={setOneTimePasswordError}
                             />
-                            <SubmitFormButton 
-                                passwordData={oneTimePasswordData}
-                                passwordError={oneTimePasswordError}
-                                setSubmitForm={setSubmitForm}
+                            {!showResetPasswordSection && (
+                                <SubmitFormButton 
+                                    passwordData={oneTimePasswordData}
+                                    passwordError={oneTimePasswordError}
+                                    apiRoute={apiRoute}
+                                    dataPayload={forgotPasswordFormData}
+                                    setResponse={setForgotPasswordResponse}
+                                />
+                            )}
+                        </>
+                    )}
+                    {showResetPasswordSection && (
+                        <>
+                            <DefaultPasswordInput 
+                                passwordData={passwordData}
+                                setPasswordData={setPasswordData}
+                                passwordError={passwordError}
+                                setPasswordError={setPasswordError}
+                                setVerifyPasswordStatus={setVerifyPasswordStatus}
+                            />
+                            <VerifyPasswordInput 
+                                passwordData={passwordData}
+                                verifyPasswordStatus={verifyPasswordStatus}
+                                setVerifyPasswordStatus={setVerifyPasswordStatus}
+                            />
+                            <SubmitFormButton
+                                apiRoute={apiRoute}
+                                dataPayload={forgotPasswordFormData}
+                                setResponse={setResetPasswordResponse}
+                                passwordError={passwordError}
+                                verifyPasswordStatus={verifyPasswordStatus}
                             />
                         </>
                     )}

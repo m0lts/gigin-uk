@@ -3,10 +3,12 @@ import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
 import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/EmailInputs"
 import { DefaultPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
 import { NextButtonLogin, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
 
 export const Login = () => {
 
+    // States for form
     const [emailData, setEmailData] = useState('');
     const [emailError, setEmailError] = useState('');
     const [showPasswordSection, setShowPasswordSection] = useState(false);
@@ -16,7 +18,11 @@ export const Login = () => {
         userEmail: emailData,
         userPassword: passwordData,
     });
-    const [submitForm, setSubmitForm] = useState(false);
+
+    // States for response
+    const [apiRoute, setApiRoute] = useState('/api/Accounts/LoginUser.js');
+    const [loginResponse, setLoginResponse] = useState();
+    const navigate = useNavigate();
 
     useEffect(() => {
         setLoginFormData({
@@ -26,10 +32,15 @@ export const Login = () => {
     }, [emailData, passwordData])
 
     useEffect(() => {
-        if (submitForm) {
-            console.log(loginFormData)
+        if (loginResponse) {
+            if (loginResponse.status === 200) {
+                AddUserDataToSessionStorage(loginResponse.data.userAccount);
+                navigate('/');
+            } else {
+                console.log(`Error code: ${loginResponse.status} + Error reason: ${loginResponse.message}`);
+            }
         }
-    }, [submitForm])
+    }, [loginResponse])
 
 
     return (
@@ -45,6 +56,7 @@ export const Login = () => {
                         setEmailError={setEmailError}
                         disableInput={showPasswordSection}
                         setDisableInput={setShowPasswordSection}
+                        setPasswordData={setPasswordData}
                     />
                     {emailData && !showPasswordSection && !emailError && (
                         <NextButtonLogin 
@@ -64,7 +76,9 @@ export const Login = () => {
                             <SubmitFormButton 
                                 passwordData={passwordData}
                                 passwordError={passwordError}
-                                setSubmitForm={setSubmitForm}
+                                apiRoute={apiRoute}
+                                dataPayload={loginFormData}
+                                setResponse={setLoginResponse}
                             />
                         </>
                     )}

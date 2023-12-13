@@ -1,5 +1,6 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import './menus.styles.css'
+import { RemoveInfoFromSessionStorage } from '../../../../utils/updateSessionStorage'
 
 export const DefaultMenu = ({ buttonStatus }) => {
     if (buttonStatus) {
@@ -65,6 +66,14 @@ export const DefaultMenu = ({ buttonStatus }) => {
 }
 
 export const LoggedInMenu = ({ buttonStatus }) => {
+
+    const navigate = useNavigate();
+
+    const handleLogOut = () => {
+        RemoveInfoFromSessionStorage();
+        navigate('/');
+    }
+
     if (buttonStatus) {
         return (
             <nav className='header-menu'>
@@ -107,6 +116,7 @@ export const LoggedInMenu = ({ buttonStatus }) => {
                         <NavLink 
                             to={'/'} 
                             className='link menu-link'
+                            onClick={handleLogOut}
                         >
                             Log out
                         </NavLink>
@@ -185,6 +195,12 @@ export const DefaultMenuMobile = ({ buttonStatus }) => {
 }
 
 export const LoggedInMenuMobile = ({ buttonStatus }) => {
+
+    const handleLogOut = () => {
+        RemoveInfoFromSessionStorage();
+        navigate('/');
+    }
+
     if (buttonStatus) {
         return (
             <nav className='header-menu-mobile'>
@@ -227,6 +243,7 @@ export const LoggedInMenuMobile = ({ buttonStatus }) => {
                         <NavLink 
                             to={'/'} 
                             className='link menu-link'
+                            onClick={handleLogOut}
                         >
                             Log out
                         </NavLink>

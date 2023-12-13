@@ -3,6 +3,7 @@ import { GiginLogo } from '../Logo/GiginLogo'
 import { DynamicTextBox } from './DynamicTextBox/DynamicTextBox'
 import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton } from '../Buttons/Buttons'
 import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from './Menus/Menus'
+import { GetInfoFromSessionStorage } from '../../../utils/updateSessionStorage'
 import './header.styles.css'
 
 export const Header = () => {
@@ -11,8 +12,7 @@ export const Header = () => {
     const [myGiginButtonClicked, setMyGiginButtonClicked] = useState(false);
 
     // User logged in - fill with session storage when possible
-    const userName = '';
-
+    const sessionStorageInfo = GetInfoFromSessionStorage();
 
     // Mobile screen 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
@@ -34,9 +34,9 @@ export const Header = () => {
                     <MobileHeaderMyGiginButton 
                         setButtonClicked={setMyGiginButtonClicked}
                         buttonStatus={myGiginButtonClicked}
-                        userName={userName}
+                        userName={sessionStorageInfo.userFirstName}
                     />
-                    {userName ? (
+                    {sessionStorageInfo.userFirstName ? (
                         <LoggedInMenuMobile 
                             buttonStatus={myGiginButtonClicked}
                         />
@@ -53,9 +53,9 @@ export const Header = () => {
                     <MyGiginButton
                         setButtonClicked={setMyGiginButtonClicked}
                         buttonStatus={myGiginButtonClicked}
-                        userName={userName}
+                        userName={sessionStorageInfo.userFirstName}
                     />
-                    {userName ? (
+                    {sessionStorageInfo.userFirstName ? (
                         <LoggedInMenu 
                             buttonStatus={myGiginButtonClicked}
                         />
