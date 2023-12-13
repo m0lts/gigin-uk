@@ -7,6 +7,8 @@ import { DefaultPasswordInput, VerifyPasswordInput } from "../../../../component
 import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
 import { Link, useNavigate } from "react-router-dom";
 import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
+import { InfoBox } from "../InfoBox/InfoBox";
+import '../accounts.styles.css'
 
 export const Signup = () => {
 
@@ -120,7 +122,7 @@ export const Signup = () => {
                 </form>
             </section>
             <section className='accounts-right'>
-
+                <InfoBox />
             </section>
         </main>
     )

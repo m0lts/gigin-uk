@@ -5,6 +5,8 @@ import { DefaultPasswordInput } from "../../../../components/Global/Inputs/Passw
 import { NextButtonLogin, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
 import { Link, useNavigate } from "react-router-dom";
 import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
+import { InfoBox } from "../InfoBox/InfoBox";
+import '../accounts.styles.css'
 
 export const Login = () => {
 
@@ -95,7 +97,7 @@ export const Login = () => {
                 </div>
             </section>
             <section className='accounts-right'>
-
+                <InfoBox />
             </section>
         </main>
     )

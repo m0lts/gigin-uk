@@ -184,6 +184,15 @@ export const DefaultMenuMobile = ({ buttonStatus }) => {
                             Contact us
                         </NavLink>
                     </li>
+                    <hr />
+                    <li className='menu-item'>
+                        <NavLink 
+                            to={'/'} 
+                            className='link menu-link'
+                        >
+                            Home
+                        </NavLink>
+                    </li>
                 </ul>
             </nav>
         )
@@ -203,8 +212,17 @@ export const LoggedInMenuMobile = ({ buttonStatus }) => {
 
     if (buttonStatus) {
         return (
-            <nav className='header-menu-mobile'>
+            <nav className='header-menu-mobile logged-in'>
                 <ul className='menu-list'>
+                    <li className='menu-item'>
+                        <NavLink 
+                            to={'/'} 
+                            className='link menu-link'
+                        >
+                            Home
+                        </NavLink>
+                    </li>
+                    <hr />
                     <li className='menu-item'>
                         <NavLink 
                             to={'/'} 
