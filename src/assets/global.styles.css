@@ -23,6 +23,8 @@
     --dark-grey: #565656;
     --black: black;
     --trans-grey:rgba(128, 128, 128, 0.345);
+    --red: red;
+    --trans-red: rgba(255, 0, 0, 0.037);
     font-family: var(--default-font);
     font-size: 16px;
 }

@@ -3,6 +3,9 @@
     font-family: var(--default-font);
     color: var(--black);
 }
+.btn.loading {
+    background-color: var(--light-medium-grey) !important;
+}
 
 /* UNIVERSAL BUTTONS */
 /* Search buttons */

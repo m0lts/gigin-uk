@@ -49,52 +49,50 @@ export const Login = () => {
     return (
         <main className='accounts'>
             <section className='accounts-left'>
-                <GiginLogo />
-                <h1 className='title'>Login</h1>
-                <form className="login">
-                    <DefaultEmailInput 
-                        emailData={emailData}
-                        setEmailData={setEmailData}
-                        emailError={emailError}
-                        setEmailError={setEmailError}
-                        disableInput={showPasswordSection}
-                        setDisableInput={setShowPasswordSection}
-                        setPasswordData={setPasswordData}
-                    />
-                    {emailData && !showPasswordSection && !emailError && (
-                        <NextButtonLogin 
-                            emailData={emailData}
-                            setEmailError={setEmailError}
-                            setShowPasswordSection={setShowPasswordSection}
-                        />
-                    )}
-                    {showPasswordSection && (
-                        <>
-                            <DefaultPasswordInput 
-                                passwordData={passwordData}
-                                setPasswordData={setPasswordData}
-                                passwordError={passwordError}
-                                setPasswordError={setPasswordError}
-                            />
-                            <SubmitFormButton 
-                                passwordData={passwordData}
-                                passwordError={passwordError}
-                                apiRoute={apiRoute}
-                                dataPayload={loginFormData}
-                                setResponse={setLoginResponse}
-                            />
-                        </>
-                    )}
-                </form>
-                <div>
-                    <Link to={'/forgotpassword'}>
-                        Forgotten your password?
-                    </Link>
+                <div className='accounts-logo'>
+                    <GiginLogo />
                 </div>
-                <div>
-                    <Link to={'/signup'}>
-                        New to Gigin? Create an account here.
-                    </Link>
+                <div className='accounts-box'>
+                    <h1 className='title'>Log in</h1>
+                    {loginResponse && loginResponse.status !== 200 && (
+                        <div className='error-box'>
+                            <p className='message'>* {loginResponse.message}</p>
+                        </div>
+                    )}
+                    <form className='accounts-form'>
+                        <DefaultEmailInput 
+                            emailData={emailData}
+                            setEmailData={setEmailData}
+                            emailError={emailError}
+                            setEmailError={setEmailError}
+                            disableInput={showPasswordSection}
+                            setDisableInput={setShowPasswordSection}
+                            setPasswordData={setPasswordData}
+                        />
+                        <DefaultPasswordInput 
+                            passwordData={passwordData}
+                            setPasswordData={setPasswordData}
+                            passwordError={passwordError}
+                            setPasswordError={setPasswordError}
+                        />
+                        <SubmitFormButton 
+                            passwordData={passwordData}
+                            passwordError={passwordError}
+                            apiRoute={apiRoute}
+                            dataPayload={loginFormData}
+                            setResponse={setLoginResponse}
+                        />
+                    </form>
+                    <div className='external-link'>
+                        <Link to={'/forgotpassword'} className='link'>
+                            Forgotten your password?
+                        </Link>
+                    </div>
+                    <div className='external-link'>
+                        <Link to={'/signup'} className='link'>
+                            New to Gigin? Create an account here.
+                        </Link>
+                    </div>
                 </div>
             </section>
             <section className='accounts-right'>

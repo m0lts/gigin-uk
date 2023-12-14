@@ -30,10 +30,10 @@ export default async function handler(request, response) {
                 if (resetPasswordDetails.userEmail === email) {
                     response.status(201).json({ message: 'One time passcode correct'})
                 } else {
-                    response.status(401).json({ message: 'One time passcode incorrect.'})
+                    response.status(401).json({ error: 'One-time passcode incorrect.'})
                 }
             } else {
-                response.status(401).json({ message: 'One time passcode incorrect.'})
+                response.status(401).json({ error: 'One-time passcode incorrect.'})
             }
 
         } else {

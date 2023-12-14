@@ -1,0 +1,43 @@
+.loading-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 1rem;
+  }
+  
+.loading-dots .dot {
+    width: 5px;
+    height: 5px;
+    background-color: var(--dark-grey);
+    border-radius: 50%;
+    margin: 0 2px;
+    animation: dot-animation 1s infinite;
+    opacity: 0;
+}
+
+.loading-dots .dot1 {
+    animation-delay: 0s;
+}
+
+.loading-dots .dot2 {
+    animation-delay: 0.2s;
+}
+
+.loading-dots .dot3 {
+    animation-delay: 0.4s;
+}
+
+@keyframes dot-animation {
+    0% {
+        opacity: 0.3;
+        transform: translateY(0);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-5px); /* Adjust vertical movement */
+    }
+    100% {
+        opacity: 0.3;
+        transform: translateY(0);
+    }
+}

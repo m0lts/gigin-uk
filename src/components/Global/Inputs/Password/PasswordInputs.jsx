@@ -1,3 +1,4 @@
+import './password-inputs.styles.css'
 
 export const DefaultPasswordInput = ({ passwordData, setPasswordData, passwordError, setPasswordError, setVerifyPasswordStatus }) => {
 
@@ -63,11 +64,10 @@ export const OneTimePasswordInput = ({ oneTimePasswordData, setOneTimePasswordDa
     }
 
     return (
-        <div className='password-cont'>
-            <label htmlFor="one-time-password">One Time Password</label>
+        <div className='password-cont otp'>
             <input
-                type='password' 
-                className={`password-input`} 
+                type='text' 
+                className={`password-input otp`} 
                 id='one-time-password' 
                 name='one-time-password' 
                 required

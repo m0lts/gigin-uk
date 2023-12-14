@@ -3,6 +3,7 @@ import { useRef, useEffect, useState } from "react"
 import { queryDatabase } from "../../../utils/queryDatabase"
 import { formatSelectedDate } from "../../../utils/dateFormatting"
 import './buttons.styles.css'
+import { LoadingDots } from "../Loading/LoadingEffects"
 
 // *************************** //
 // UNIVERSAL BUTTONS //
@@ -245,29 +246,38 @@ export const NextButtonLogin = ({ emailData, setEmailError, setShowPasswordSecti
 // Next button forgot password
 export const NextButtonForgotPassword = ({ emailData, setEmailError, setShowPasswordSection, dataPayload, apiRoute }) => {
 
+    const [isLoading, setIsLoading] = useState(false);
+
     const handleNext = async (event) => {
+        setIsLoading(true);
         event.preventDefault();
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(emailData)) {
-            setEmailError('* Please enter a valid email address. Example: johndoe@gmail.com');
+            setEmailError('Please enter a valid email address. Example: johndoe@gmail.com');
         } else {
             try {
                 const response = await queryDatabase(apiRoute, dataPayload);
                 if (response.ok) {
                     setShowPasswordSection(true);
+                    setIsLoading(false);
                 }
             } catch (error) {
                 console.error('Error:', error);
+                setIsLoading(false);
             }
         }
     }
 
     return (
         <button 
-            className='btn next-button'
+            className={`btn next-button ${isLoading && 'loading'}`}
             onClick={handleNext}
         >
-            Next
+            {isLoading ? (
+                <LoadingDots />
+            ) : (
+                <p>Next</p>
+            )}
         </button>
     )
 }
@@ -275,18 +285,23 @@ export const NextButtonForgotPassword = ({ emailData, setEmailError, setShowPass
 // Submit button
 export const SubmitFormButton = ({ passwordError, verifyPasswordStatus, dataPayload, apiRoute, setResponse }) => {
 
+    const [isLoading, setIsLoading] = useState(false);
+
     const handleSubmit = async (event) => {
+        setIsLoading(true);
         event.preventDefault();
         if (!passwordError || !verifyPasswordStatus) {
             try {
                 const response = await queryDatabase(apiRoute, dataPayload);
                 const responseData = await response.json();
                 if (response.ok) {
+                    setIsLoading(false);
                     setResponse({
                         data: responseData,
                         status: response.status
                     })
                 } else {
+                    setIsLoading(false);
                     setResponse({
                         status: response.status,
                         message: responseData.error
@@ -300,10 +315,14 @@ export const SubmitFormButton = ({ passwordError, verifyPasswordStatus, dataPayl
 
     return (
         <button 
-            className='btn submit-button'
+            className={`btn submit-button ${isLoading && 'loading'}`}
             onClick={handleSubmit}
         >
-            Submit
+            {isLoading ? (
+                <LoadingDots />
+            ) : (
+                <p>Submit</p>
+            )}
         </button>
     )
 }

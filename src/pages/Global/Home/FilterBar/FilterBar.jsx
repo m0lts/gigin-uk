@@ -32,7 +32,6 @@ export const FilterBar = () => {
                         otherFilter={showFilterTwo}
                         setOtherFilter={setShowFilterTwo}
                     />
-                    <span className='filter-break'></span>
                     <FilterButton 
                         filterName={'Min Fee'}
                         showFilter={showFilterTwo}

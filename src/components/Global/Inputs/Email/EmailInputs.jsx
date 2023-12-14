@@ -15,25 +15,16 @@ export const DefaultEmailInput = ({ emailData, setEmailData, emailError, setEmai
 
     return (
         <div className={`input-cont ${disableInput && 'disabled'}`}>
-            {/* {disableInput ? (
-                <p onClick={handleEditEmail} className='email-passive'>{emailData}</p>
-            ) : ( */}
-                <>
-                    <label htmlFor='email' className={`input-label ${emailData && 'active'}`}>Email Address</label>
-                    <input
-                        type='text' 
-                        className={`input ${emailError && 'error'}`} 
-                        id='email' 
-                        name='email' 
-                        required
-                        value={emailData}
-                        onChange={handleEmailChange}
-                    />
-                    {emailError && (
-                        <p className='form-error'>{emailError}</p>
-                    )}
-                </>
-            {/* )} */}
+            <label htmlFor='email' className={`input-label ${emailData && 'active'}`}>Email Address</label>
+            <input
+                type='text' 
+                className={`input ${emailError && 'error'}`} 
+                id='email' 
+                name='email' 
+                required
+                value={emailData}
+                onChange={handleEmailChange}
+            />
         </div>
     )
 }

@@ -42,9 +42,11 @@
     padding:1.5rem;
 }
 .filter-bar .filters {
-    min-width: 250px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap:1rem;
+    margin:0 0.25rem;
 }
 .filter-bar.active {
     padding:1rem 3rem;
@@ -52,9 +54,6 @@
 .filter-bar .filter-break {
     border:1px solid var(--light-medium-grey);
     margin:0 1rem;
-}
-.filter-bar .search-button-small {
-    margin-left: 2rem;
 }
 .filter-bar .save-button {
     margin-top:1rem;
