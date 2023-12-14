@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
 import { InfoBox } from "../InfoBox/InfoBox";
 import '../accounts.styles.css'
+import './login.styles.css'
 
 export const Login = () => {
 

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import '../inputs.styles.css'
 
 export const DefaultEmailInput = ({ emailData, setEmailData, emailError, setEmailError, disableInput, setDisableInput, setPasswordData }) => {
 
@@ -14,15 +14,15 @@ export const DefaultEmailInput = ({ emailData, setEmailData, emailError, setEmai
     }
 
     return (
-        <div className='email-cont'>
-            {disableInput ? (
-                <p onClick={handleEditEmail}>{emailData}</p>
-            ) : (
+        <div className={`input-cont ${disableInput && 'disabled'}`}>
+            {/* {disableInput ? (
+                <p onClick={handleEditEmail} className='email-passive'>{emailData}</p>
+            ) : ( */}
                 <>
-                    <label htmlFor='email'>Email Address:</label>
+                    <label htmlFor='email' className={`input-label ${emailData && 'active'}`}>Email Address</label>
                     <input
                         type='text' 
-                        className='email-input' 
+                        className={`input ${emailError && 'error'}`} 
                         id='email' 
                         name='email' 
                         required
@@ -30,10 +30,10 @@ export const DefaultEmailInput = ({ emailData, setEmailData, emailError, setEmai
                         onChange={handleEmailChange}
                     />
                     {emailError && (
-                        <p>{emailError}</p>
+                        <p className='form-error'>{emailError}</p>
                     )}
                 </>
-            )}
+            {/* )} */}
         </div>
     )
 }

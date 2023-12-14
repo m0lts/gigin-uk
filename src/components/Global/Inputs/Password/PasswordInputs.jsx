@@ -11,18 +11,18 @@ export const DefaultPasswordInput = ({ passwordData, setPasswordData, passwordEr
     }
 
     return (
-        <div className='password-cont'>
-            <label htmlFor="password">Password:</label>
+        <div className='input-cont'>
+            <label htmlFor="password" className={`input-label ${passwordData && 'active'}`}>Password</label>
             <input
                 type='password' 
-                className='password-input' 
+                className={`input ${passwordError && 'error'}`} 
                 id='password' 
                 name='password' 
                 required
                 onChange={handlePasswordChange}
             />
             {passwordError && (
-                <p>{passwordError}</p>
+                <p className='form-error'>{passwordError}</p>
             )}
         </div>
     )
@@ -39,18 +39,18 @@ export const VerifyPasswordInput = ({ passwordData, verifyPasswordStatus, setVer
     }
 
     return (
-        <div className='password-cont'>
-            <label htmlFor="verify-password">Verify Password:</label>
+        <div className='input-cont'>
+            <label htmlFor="verify-password" className={`input-label ${passwordData && 'active'}`}>Verify Password</label>
             <input
                 type='password' 
-                className={`password-input ${!verifyPasswordStatus && 'error'}`} 
+                className={`input ${verifyPasswordStatus && 'error'}`} 
                 id='verify-password' 
                 name='verify-password' 
                 required
                 onChange={handlePasswordChange}
             />
             {verifyPasswordStatus === false && (
-                <p>* Passwords do not match.</p>
+                <p className='form-error'>* Passwords do not match.</p>
             )}
         </div>
     )
@@ -64,7 +64,7 @@ export const OneTimePasswordInput = ({ oneTimePasswordData, setOneTimePasswordDa
 
     return (
         <div className='password-cont'>
-            <label htmlFor="one-time-password">One Time Password:</label>
+            <label htmlFor="one-time-password">One Time Password</label>
             <input
                 type='password' 
                 className={`password-input`} 
