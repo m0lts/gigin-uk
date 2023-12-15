@@ -42,7 +42,7 @@
     font-size: 2rem;
 }
 .selections .selections-card .info {
-    font-size: 0.8rem;
+    font-size: 1rem;
     color: var(--dark-grey);
     width:80%;
 }
