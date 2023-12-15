@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react"
-import { DefaultUserType } from "../../../../components/Global/Inputs/UserType/UserTypeInputs"
 import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
 import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/EmailInputs";
-import { DefaultAddressInput, DefaultNameInput, DefaultPhoneNumberInput } from "../../../../components/Global/Inputs/UserDetails/UserDetails";
+import { DefaultNameInput, DefaultPhoneNumberInput } from "../../../../components/Global/Inputs/UserDetails/UserDetails";
 import { DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
 import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
 import { Link, useNavigate } from "react-router-dom";
 import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
-import { InfoBox } from "../InfoBox/InfoBox";
+// import { InfoBox } from "../InfoBox/InfoBox";
 import '../accounts.styles.css'
 
 export const Signup = () => {
 
     // States for form
-    const [userType, setUserType] = useState('');
     const [nameData, setNameData] = useState({
         firstName: '',
         secondName: ''
@@ -21,21 +19,13 @@ export const Signup = () => {
     const [emailData, setEmailData] = useState('');
     const [emailError, setEmailError] = useState('');
     const [phoneNumberData, setPhoneNumberData] = useState('');
-    const [addressData, setAddressData] = useState({
-        line1: '',
-        city: '',
-        postCode: '',
-        country: ''
-    });
     const [passwordData, setPasswordData] = useState('');
     const [passwordError, setPasswordError] = useState('');
-    const [verifyPasswordStatus, setVerifyPasswordStatus] = useState();
+    const [verifyPasswordStatus, setVerifyPasswordStatus] = useState(true);
     const [signupFormData, setSignupFormData] = useState({
-        userType: userType,
         userName: nameData,
         userEmail: emailData,
         userPhoneNumber: phoneNumberData,
-        userAddress: addressData,
         userPassword: passwordData
     });
 
@@ -46,19 +36,17 @@ export const Signup = () => {
 
     useEffect(() => {
         setSignupFormData({
-            userType: userType,
             userName: nameData,
             userEmail: emailData,
             userPhoneNumber: phoneNumberData,
-            userAddress: addressData,
             userPassword: passwordData
         })
-    }, [userType, nameData, emailData, phoneNumberData, addressData, passwordData])
+    }, [nameData, emailData, phoneNumberData, passwordData])
 
     useEffect(() => {
         if (signupResponse) {
             if (signupResponse.status === 201) {
-                AddUserDataToSessionStorage(signupResponse.data.dataReceived);
+                AddUserDataToSessionStorage(signupResponse.data.userAccount);
                 navigate('/');
             } else {
                 console.log(`Error code: ${signupResponse.status} + Error reason: ${signupResponse.message}`);
@@ -71,59 +59,69 @@ export const Signup = () => {
         <main className='accounts'>
             <section className='accounts-left'>
                 <GiginLogo />
-                <h1 className='title'>Signup</h1>
-                <form className="signup">
-                    <DefaultUserType 
-                        userType={userType}
-                        setUserType={setUserType}
-                    />
-                    <DefaultNameInput 
-                        nameData={nameData}
-                        setNameData={setNameData}
-                    />
-                    <DefaultEmailInput 
-                        emailData={emailData}
-                        setEmailData={setEmailData}
-                        emailError={emailError}
-                        setEmailError={setEmailError}
-                    />
-                    <DefaultPhoneNumberInput
-                        phoneNumberData={phoneNumberData}
-                        setPhoneNumberData={setPhoneNumberData}
-                    />
-                    <DefaultAddressInput
-                        addressData={addressData}
-                        setAddressData={setAddressData}
-                    />
-                    <DefaultPasswordInput 
-                        passwordData={passwordData}
-                        setPasswordData={setPasswordData}
-                        passwordError={passwordError}
-                        setPasswordError={setPasswordError}
-                        setVerifyPasswordStatus={setVerifyPasswordStatus}
-                    />
-                    <VerifyPasswordInput 
-                        passwordData={passwordData}
-                        verifyPasswordStatus={verifyPasswordStatus}
-                        setVerifyPasswordStatus={setVerifyPasswordStatus}
-                    />
-                    <SubmitFormButton
-                        apiRoute={apiRoute}
-                        dataPayload={signupFormData}
-                        setResponse={setSignupResponse}
-                        passwordError={passwordError}
-                        verifyPasswordStatus={verifyPasswordStatus}
-                    />
-                    <div>
-                        <Link to={'/login'}>
-                            Already made an account? Login here.
+                <div className='accounts-box'>
+                    <h1 className='title'>Sign up</h1>
+                    {signupResponse && signupResponse.status !== 200 && (
+                        <div className='error-box'>
+                            <p className='message'>* {signupResponse.message}</p>
+                        </div>
+                    )}
+                    {passwordError && (
+                        <div className='error-box'>
+                            <p className='message'>* {passwordError}</p>
+                        </div>
+                    )}
+                    {!verifyPasswordStatus && (
+                        <div className='error-box'>
+                            <p className='message'>* Passwords do not match.</p>
+                        </div>
+                    )}
+                    <form className='accounts-form'>
+                        <DefaultNameInput 
+                            nameData={nameData}
+                            setNameData={setNameData}
+                        />
+                        <DefaultEmailInput 
+                            emailData={emailData}
+                            setEmailData={setEmailData}
+                            emailError={emailError}
+                            setEmailError={setEmailError}
+                        />
+                        <DefaultPhoneNumberInput
+                            phoneNumberData={phoneNumberData}
+                            setPhoneNumberData={setPhoneNumberData}
+                        />
+                        <DefaultPasswordInput 
+                            passwordData={passwordData}
+                            setPasswordData={setPasswordData}
+                            passwordError={passwordError}
+                            setPasswordError={setPasswordError}
+                            setVerifyPasswordStatus={setVerifyPasswordStatus}
+                        />
+                        <VerifyPasswordInput 
+                            passwordData={passwordData}
+                            verifyPasswordStatus={verifyPasswordStatus}
+                            setVerifyPasswordStatus={setVerifyPasswordStatus}
+                        />
+                        <SubmitFormButton
+                            apiRoute={apiRoute}
+                            dataPayload={signupFormData}
+                            setResponse={setSignupResponse}
+                            passwordError={passwordError}
+                            setPasswordError={setPasswordError}
+                            verifyPasswordStatus={verifyPasswordStatus}
+                        />
+                    </form>
+                    <div className='external-link'>
+                        <Link to={'/login'} className='link'>
+                            Already made an account?
                         </Link>
                     </div>
-                </form>
+                </div>
             </section>
-            <section className='accounts-right'>
+            {/* <section className='accounts-right'>
                 <InfoBox />
-            </section>
+            </section> */}
         </main>
     )
 }

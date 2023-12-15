@@ -220,25 +220,45 @@ export const ApplyFilterButton = ({ applyFilter }) => {
 // *************************** //
 // FORM BUTTONS //
 
-// Next button login
-export const NextButtonLogin = ({ emailData, setEmailError, setShowPasswordSection }) => {
 
-    const handleNext = (event) => {
+export const NextButtonResetPassword = ({ dataPayload, apiRoute, setResponse }) => {
+
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleResetPassword = async (event) => {
         event.preventDefault();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(emailData)) {
-            setEmailError('* Please enter a valid email address. Example: johndoe@gmail.com');
-        } else {
-            setShowPasswordSection(true);
+        setIsLoading(true);
+        try {
+            const response = await queryDatabase(apiRoute, dataPayload);
+            const responseData = await response.json();
+            if (response.ok) {
+                setIsLoading(false);
+                setResponse({
+                    data: responseData,
+                    status: response.status
+                })
+            } else {
+                setIsLoading(false);
+                setResponse({
+                    status: response.status,
+                    message: responseData.error
+                })
+            }
+        } catch (error) {
+            console.error('Error:', error);
         }
     }
 
     return (
         <button 
-            className='btn next-button'
-            onClick={handleNext}
+            className={`btn submit-button ${isLoading && 'loading'}`}
+            onClick={handleResetPassword}
         >
-            Next
+            {isLoading ? (
+                <LoadingDots />
+            ) : (
+                <p>Reset Password</p>
+            )}
         </button>
     )
 }
@@ -283,14 +303,18 @@ export const NextButtonForgotPassword = ({ emailData, setEmailError, setShowPass
 }
 
 // Submit button
-export const SubmitFormButton = ({ passwordError, verifyPasswordStatus, dataPayload, apiRoute, setResponse }) => {
+export const SubmitFormButton = ({ passwordError, verifyPasswordStatus, dataPayload, apiRoute, setResponse, setPasswordError }) => {
 
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (event) => {
-        setIsLoading(true);
         event.preventDefault();
-        if (!passwordError || !verifyPasswordStatus) {
+        setPasswordError('');
+        const passwordPattern = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordPattern.test(dataPayload.userPassword)) {
+            setPasswordError('Password must contain at least 8 characters, a capital letter and number.');
+        } else {
+            setIsLoading(true);
             try {
                 const response = await queryDatabase(apiRoute, dataPayload);
                 const responseData = await response.json();
@@ -310,7 +334,8 @@ export const SubmitFormButton = ({ passwordError, verifyPasswordStatus, dataPayl
             } catch (error) {
                 console.error('Error:', error);
             }
-        };
+        }
+        
     }
 
     return (

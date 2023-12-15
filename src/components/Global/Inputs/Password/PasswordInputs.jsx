@@ -1,4 +1,3 @@
-import './password-inputs.styles.css'
 
 export const DefaultPasswordInput = ({ passwordData, setPasswordData, passwordError, setPasswordError, setVerifyPasswordStatus }) => {
 
@@ -6,7 +5,6 @@ export const DefaultPasswordInput = ({ passwordData, setPasswordData, passwordEr
         setPasswordData(event.target.value);
         setPasswordError('');
         if (setVerifyPasswordStatus) {
-            
             setVerifyPasswordStatus(false);
         }
     }
@@ -22,9 +20,6 @@ export const DefaultPasswordInput = ({ passwordData, setPasswordData, passwordEr
                 required
                 onChange={handlePasswordChange}
             />
-            {passwordError && (
-                <p className='form-error'>{passwordError}</p>
-            )}
         </div>
     )
 }
@@ -44,15 +39,12 @@ export const VerifyPasswordInput = ({ passwordData, verifyPasswordStatus, setVer
             <label htmlFor="verify-password" className={`input-label ${passwordData && 'active'}`}>Verify Password</label>
             <input
                 type='password' 
-                className={`input ${verifyPasswordStatus && 'error'}`} 
+                className='input'
                 id='verify-password' 
                 name='verify-password' 
                 required
                 onChange={handlePasswordChange}
             />
-            {verifyPasswordStatus === false && (
-                <p className='form-error'>* Passwords do not match.</p>
-            )}
         </div>
     )
 }
@@ -64,10 +56,11 @@ export const OneTimePasswordInput = ({ oneTimePasswordData, setOneTimePasswordDa
     }
 
     return (
-        <div className='password-cont otp'>
+        <div className='input-cont'>
+            <label htmlFor="one-time-password" className={`input-label ${oneTimePasswordData && 'active'}`}>One-Time Password</label>
             <input
                 type='text' 
-                className={`password-input otp`} 
+                className='input' 
                 id='one-time-password' 
                 name='one-time-password' 
                 required

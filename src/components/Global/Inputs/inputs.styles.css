@@ -37,7 +37,6 @@
     padding:0.5rem 1rem;
     border:1px solid var(--light-medium-grey);
     border-radius: 2rem;
-    min-width: 250px;
 }
 .input-cont .input:focus {
     outline: none;
@@ -52,4 +51,18 @@
     text-align: center;
     margin: 0.5rem auto;
     width:250px;
+}
+
+/* Name inputs */
+.name-cont {
+    display: flex;
+    justify-content: space-between;
+    gap:0.5rem;
+}
+
+@media screen and (max-width: 540px) {
+    .name-cont {
+        flex-direction: column;
+        gap:0.5rem;
+    }
 }

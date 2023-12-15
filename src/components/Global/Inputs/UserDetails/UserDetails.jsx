@@ -1,3 +1,5 @@
+import '../inputs.styles.css'
+
 export const DefaultNameInput = ({ nameData, setNameData }) => {
 
     const handleNameChange = (event) => {
@@ -9,7 +11,7 @@ export const DefaultNameInput = ({ nameData, setNameData }) => {
     }
 
     return (
-        <>
+        <div className='name-cont'>
             <div className='input-cont'>
                 <label htmlFor='first-name' className={`input-label ${nameData.firstName && 'active'}`}>First Name</label>
                 <input
@@ -34,7 +36,7 @@ export const DefaultNameInput = ({ nameData, setNameData }) => {
                     onChange={handleNameChange}
                 />
             </div>
-        </>
+        </div>
     )
 }
 

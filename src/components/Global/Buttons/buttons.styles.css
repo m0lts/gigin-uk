@@ -214,6 +214,7 @@
     border: none;
     color: var(--white);
     border-radius: 1rem;
+    margin-top: 0.5rem;
 }
 .submit-button:hover {
     background-color: var(--light-grey);

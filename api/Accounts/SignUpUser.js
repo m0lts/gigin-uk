@@ -26,7 +26,7 @@ export default async function handler(request, response) {
 
             // Return error if email already taken
             if (emailTaken) {
-                response.status(400).json({ error: 'Email address taken.' });
+                response.status(400).json({ error: 'Email address taken' });
                 return;
             } else {
                 // Hash password
@@ -35,8 +35,11 @@ export default async function handler(request, response) {
                 
                 // Upload account to musicians collection
                 await accountsCollection.insertOne(dataReceived);
+
+                // Get account details including userID
+                const userAccount = await accountsCollection.findOne({ userEmail: email});
                 
-                response.status(201).json({ dataReceived });
+                response.status(201).json({ userAccount });
             }
 
             } else {

@@ -1,4 +1,5 @@
 import { faBars, faBookmark, faX, faList, faMap, faSearch } from "@fortawesome/free-solid-svg-icons"
+import { faAddressCard } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import './icons.styles.css'
 
@@ -35,5 +36,11 @@ export const SearchIcon = () => {
 export const XIcon = () => {
     return (
         <FontAwesomeIcon icon={faX} className='x-icon'/>
+    )
+}
+
+export const ProfileIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faAddressCard} className='profile-icon'/>
     )
 }

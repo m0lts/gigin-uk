@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
 import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/EmailInputs"
-import { NextButtonForgotPassword, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons"
+import { NextButtonForgotPassword, NextButtonResetPassword, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons"
 import { Link, useNavigate } from "react-router-dom";
 import { OneTimePasswordInput, DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
-import { InfoBox } from "../InfoBox/InfoBox";
+// import { InfoBox } from "../InfoBox/InfoBox";
 import '../accounts.styles.css'
 import './forgot-password.styles.css'
 
@@ -19,7 +19,7 @@ export const ForgotPassword = () => {
     // States for reset password form
     const [passwordData, setPasswordData] = useState('');
     const [passwordError, setPasswordError] = useState('');
-    const [verifyPasswordStatus, setVerifyPasswordStatus] = useState();
+    const [verifyPasswordStatus, setVerifyPasswordStatus] = useState(true);
     const [forgotPasswordFormData, setForgotPasswordFormData] = useState({
         userEmail: emailData,
         userOTP: oneTimePasswordData,
@@ -81,14 +81,24 @@ export const ForgotPassword = () => {
                             <p className='message'>* {emailError}</p>
                         </div>
                     )}
-                    {forgotPasswordResponse && forgotPasswordResponse.status !== 200 && (
+                    {forgotPasswordResponse && forgotPasswordResponse.status !== 201 && (
                         <div className='error-box'>
                             <p className='message'>* {forgotPasswordResponse.message}</p>
                         </div>
                     )}
-                    {resetPasswordResponse && resetPasswordResponse.status !== 200 && (
+                    {resetPasswordResponse && resetPasswordResponse.status !== 201 && (
                         <div className='error-box'>
                             <p className='message'>* {resetPasswordResponse.message}</p>
+                        </div>
+                    )}
+                    {passwordError && (
+                        <div className='error-box'>
+                            <p className='message'>* {passwordError}</p>
+                        </div>
+                    )}
+                    {!verifyPasswordStatus && (
+                        <div className='error-box'>
+                            <p className='message'>* Passwords do not match.</p>
                         </div>
                     )}
                     <form className='accounts-form forgot-password'>
@@ -119,11 +129,9 @@ export const ForgotPassword = () => {
                                     setPasswordError={setOneTimePasswordError}
                                 />
                                 {!showResetPasswordSection && (
-                                    <SubmitFormButton 
-                                        passwordData={oneTimePasswordData}
-                                        passwordError={oneTimePasswordError}
-                                        apiRoute={apiRoute}
+                                    <NextButtonResetPassword 
                                         dataPayload={forgotPasswordFormData}
+                                        apiRoute={apiRoute}
                                         setResponse={setForgotPasswordResponse}
                                     />
                                 )}
@@ -148,6 +156,7 @@ export const ForgotPassword = () => {
                                     dataPayload={forgotPasswordFormData}
                                     setResponse={setResetPasswordResponse}
                                     passwordError={passwordError}
+                                    setPasswordError={setPasswordError}
                                     verifyPasswordStatus={verifyPasswordStatus}
                                 />
                             </>
@@ -160,9 +169,9 @@ export const ForgotPassword = () => {
                 </div>
             </div>
             </section>
-            <section className='accounts-right'>
+            {/* <section className='accounts-right'>
                 <InfoBox />
-            </section>
+            </section> */}
         </main>
     )
 }

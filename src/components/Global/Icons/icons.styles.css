@@ -3,3 +3,7 @@
     color: var(--gigin-orange);
     cursor: pointer;
 }
+.profile-icon {
+    font-size: 2rem;
+    transition: 200ms ease-in-out;
+}

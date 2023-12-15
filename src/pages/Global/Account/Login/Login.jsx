@@ -2,10 +2,10 @@ import { useState, useEffect } from "react"
 import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
 import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/EmailInputs"
 import { DefaultPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
-import { NextButtonLogin, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
+import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
 import { Link, useNavigate } from "react-router-dom";
 import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
-import { InfoBox } from "../InfoBox/InfoBox";
+// import { InfoBox } from "../InfoBox/InfoBox";
 import '../accounts.styles.css'
 import './login.styles.css'
 
@@ -59,6 +59,11 @@ export const Login = () => {
                             <p className='message'>* {loginResponse.message}</p>
                         </div>
                     )}
+                    {passwordError && (
+                        <div className='error-box'>
+                            <p className='message'>* {passwordError}</p>
+                        </div>
+                    )}
                     <form className='accounts-form'>
                         <DefaultEmailInput 
                             emailData={emailData}
@@ -81,6 +86,7 @@ export const Login = () => {
                             apiRoute={apiRoute}
                             dataPayload={loginFormData}
                             setResponse={setLoginResponse}
+                            setPasswordError={setPasswordError}
                         />
                     </form>
                     <div className='external-link'>
@@ -95,9 +101,9 @@ export const Login = () => {
                     </div>
                 </div>
             </section>
-            <section className='accounts-right'>
+            {/* <section className='accounts-right'>
                 <InfoBox />
-            </section>
+            </section> */}
         </main>
     )
 }

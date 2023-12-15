@@ -80,7 +80,7 @@ export const LoggedInMenu = ({ buttonStatus }) => {
                 <ul className='menu-list'>
                     <li className='menu-item'>
                         <NavLink 
-                            to={'/'} 
+                            to={'/control-centre'} 
                             className='link menu-link'
                         >
                             Control Centre
@@ -225,7 +225,7 @@ export const LoggedInMenuMobile = ({ buttonStatus }) => {
                     <hr />
                     <li className='menu-item'>
                         <NavLink 
-                            to={'/'} 
+                            to={'/control-centre'} 
                             className='link menu-link'
                         >
                             Control Centre
