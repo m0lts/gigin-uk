@@ -16,6 +16,7 @@ export default async function handler(request, response) {
 
         const db = mongoClient.db('gigin-users');
         const accountsCollection = db.collection('accounts');
+        const profilesCollection = db.collection('profiles');
 
         if (request.method === "POST") {
             const dataReceived = request.body;
@@ -31,7 +32,7 @@ export default async function handler(request, response) {
     
     
                 if (passwordMatch) {
-                    response.status(200).json({ userAccount });
+                    response.status(201).json({ userAccount });
                 } else {
                     response.status(401).json({ error: 'Incorrect password' });
                 }

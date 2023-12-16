@@ -3,7 +3,7 @@ import { GiginLogo } from '../Logo/GiginLogo'
 import { DynamicTextBox } from './DynamicTextBox/DynamicTextBox'
 import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton } from '../Buttons/Buttons'
 import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from './Menus/Menus'
-import { GetInfoFromSessionStorage } from '../../../utils/updateSessionStorage'
+import { GetInfoFromLocalStorage } from '../../../utils/updateLocalStorage'
 import './header.styles.css'
 
 export const Header = () => {
@@ -11,8 +11,8 @@ export const Header = () => {
     // MyGiginButton Clicked - Toggle show DefaultMenu
     const [myGiginButtonClicked, setMyGiginButtonClicked] = useState(false);
 
-    // User logged in - fill with session storage when possible
-    const sessionStorageInfo = GetInfoFromSessionStorage();
+    // User logged in - fill with local storage when possible
+    const localStorageInfo = GetInfoFromLocalStorage();
 
     // Mobile screen 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
@@ -34,9 +34,9 @@ export const Header = () => {
                     <MobileHeaderMyGiginButton 
                         setButtonClicked={setMyGiginButtonClicked}
                         buttonStatus={myGiginButtonClicked}
-                        userName={sessionStorageInfo.userFirstName}
+                        userName={localStorageInfo.userFirstName}
                     />
-                    {sessionStorageInfo.userFirstName ? (
+                    {localStorageInfo.userFirstName ? (
                         <LoggedInMenuMobile 
                             buttonStatus={myGiginButtonClicked}
                         />
@@ -53,9 +53,9 @@ export const Header = () => {
                     <MyGiginButton
                         setButtonClicked={setMyGiginButtonClicked}
                         buttonStatus={myGiginButtonClicked}
-                        userName={sessionStorageInfo.userFirstName}
+                        userName={localStorageInfo.userFirstName}
                     />
-                    {sessionStorageInfo.userFirstName ? (
+                    {localStorageInfo.userFirstName ? (
                         <LoggedInMenu 
                             buttonStatus={myGiginButtonClicked}
                         />

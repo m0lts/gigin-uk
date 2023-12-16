@@ -4,7 +4,7 @@ import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/Em
 import { DefaultPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
 import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
 import { Link, useNavigate } from "react-router-dom";
-import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
+import { AddUserDataToLocalStorage } from "../../../../utils/updateLocalStorage";
 // import { InfoBox } from "../InfoBox/InfoBox";
 import '../accounts.styles.css'
 import './login.styles.css'
@@ -36,8 +36,8 @@ export const Login = () => {
 
     useEffect(() => {
         if (loginResponse) {
-            if (loginResponse.status === 200) {
-                AddUserDataToSessionStorage(loginResponse.data.userAccount);
+            if (loginResponse.status === 201) {
+                AddUserDataToLocalStorage(loginResponse.data.userAccount);
                 navigate('/');
             } else {
                 console.log(`Error code: ${loginResponse.status} + Error reason: ${loginResponse.message}`);

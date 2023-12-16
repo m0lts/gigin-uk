@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import './menus.styles.css'
-import { RemoveInfoFromSessionStorage } from '../../../../utils/updateSessionStorage'
+import { RemoveInfoFromLocalStorage } from '../../../../utils/updateLocalStorage'
 
 export const DefaultMenu = ({ buttonStatus }) => {
     if (buttonStatus) {
@@ -70,7 +70,7 @@ export const LoggedInMenu = ({ buttonStatus }) => {
     const navigate = useNavigate();
 
     const handleLogOut = () => {
-        RemoveInfoFromSessionStorage();
+        RemoveInfoFromLocalStorage();
         navigate('/');
     }
 
@@ -206,7 +206,7 @@ export const DefaultMenuMobile = ({ buttonStatus }) => {
 export const LoggedInMenuMobile = ({ buttonStatus }) => {
 
     const handleLogOut = () => {
-        RemoveInfoFromSessionStorage();
+        RemoveInfoFromLocalStorage();
         navigate('/');
     }
 

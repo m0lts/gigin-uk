@@ -5,7 +5,7 @@ import { DefaultNameInput, DefaultPhoneNumberInput } from "../../../../component
 import { DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
 import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
 import { Link, useNavigate } from "react-router-dom";
-import { AddUserDataToSessionStorage } from "../../../../utils/updateSessionStorage";
+import { AddUserDataToLocalStorage } from "../../../../utils/updateLocalStorage";
 // import { InfoBox } from "../InfoBox/InfoBox";
 import '../accounts.styles.css'
 
@@ -46,8 +46,8 @@ export const Signup = () => {
     useEffect(() => {
         if (signupResponse) {
             if (signupResponse.status === 201) {
-                AddUserDataToSessionStorage(signupResponse.data.userAccount);
-                navigate('/');
+                AddUserDataToLocalStorage(signupResponse.data.userAccount);
+                navigate('/control-centre/profile-creator');
             } else {
                 console.log(`Error code: ${signupResponse.status} + Error reason: ${signupResponse.message}`);
             }

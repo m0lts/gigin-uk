@@ -9,8 +9,9 @@ import { ContactUs } from './pages/Global/ContactUs/ContactUs'
 import { GigGoersHome } from './pages/GigGoers/GigGoersHome/GigGoersHome'
 import '../src/assets/global.styles.css'
 import { ForgotPassword } from './pages/Global/Account/ForgotPassword/ForgotPassword'
-import { ControlCentre } from './pages/Global/ControlCentre/ControlCentre'
+import { ControlCentreIndex } from './pages/Global/ControlCentre/ControlCentreIndex'
 import { ProfileCreator } from './components/Global/ControlCentre/Selections/ProfileCreator.jsx/ProfileCreator'
+import { ControlCentre } from './pages/Global/ControlCentre/Outlets/ControlCentre'
 
 export default function App() {
 
@@ -20,7 +21,10 @@ export default function App() {
           <Route index element={<Homepage />} />
           <Route path='help' element={<Help />} />
           <Route path='contact-us' element={<ContactUs />} />
-          <Route path='control-centre' element={<ControlCentre />} />
+          <Route path='control-centre' element={<ControlCentreIndex />}>
+            <Route index element={<ControlCentre />}/>
+            <Route path='profile-creator' element={<ProfileCreator />}/>
+          </Route>
         </Route>
         <Route path='/login' element={<Login />} />
         <Route path='/signup' element={<Signup />} />
