@@ -1,0 +1,85 @@
+.profile-creator-stage {
+    min-height: 82vh;
+}
+.profile-creator-stage .options {
+    display: flex;
+}
+.profile-creator-stage .card {
+    padding:3rem;
+    min-width: 250px;
+    height: 200px;
+    border:1px solid var(--light-medium-grey);
+    border-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+.profile-creator-stage .card:hover {
+    box-shadow: 2px 2px 5px var(--light-grey);
+    transition: 200ms ease-in-out;
+    cursor: pointer;
+}
+.profile-creator-stage .card:hover > .icon {
+    font-size: 2.5rem;
+    transition: 200ms ease-in-out;
+}
+.profile-creator-stage .card .icon {
+    font-size: 1.5rem;
+    transition: 200ms ease-in-out;
+}
+.profile-creator-stage .card .text {
+    font-weight: 500;
+}
+/* Card clicked */
+.profile-creator-stage .card.active {
+    background-color: var(--light-grey);
+    box-shadow: 2px 2px 5px var(--light-grey);
+}
+.profile-creator-stage .card.active > .icon {
+    font-size: 2.5rem;
+}
+
+/* User Type Stage */
+.user-type {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5rem;
+    transition: 200ms linear;
+}
+.user-type .title {
+    transition: 200ms linear;
+}
+.user-type .options {
+    align-items: center;
+    justify-content: center;
+    gap:5rem;
+}
+
+/* Establishment Type Stage */
+.establishment-type {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5rem;
+    transition: 200ms linear;
+}
+.establishment-type .title {
+    transition: 200ms linear;
+}
+.establishment-type .options {
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+    width:100%;
+    padding: 0 2rem;
+}
+.establishment-type .card {
+    margin:1rem;
+    max-width: 100px;
+    height: 150px;
+    text-align: center;
+}

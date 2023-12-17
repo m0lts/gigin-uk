@@ -8,7 +8,7 @@ export const ControlCentre = () => {
         <>
             <Notifications />
             <div className='selections'>
-                <Link to={'/control-centre/profile-creator'} className='link selections-card'>
+                <Link to={'/profile-creator'} className='link selections-card'>
                     <ProfileIcon />
                     <h5 className='title'>Profile Creator</h5>
                     <p className='info'>Whether you're a musician, host or gig-goer, you can create your profile here.</p>

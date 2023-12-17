@@ -1,0 +1,13 @@
+.opening-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding:5rem;
+    gap:2rem;
+}
+.opening-text .text {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 300;
+}

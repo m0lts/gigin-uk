@@ -6,6 +6,10 @@
 .btn.loading {
     background-color: var(--light-medium-grey) !important;
 }
+.btn.disabled {
+    cursor:not-allowed !important;
+    opacity: 0.5;
+}
 
 /* UNIVERSAL BUTTONS */
 /* Search buttons */
@@ -101,6 +105,19 @@
 .my-gigin-button-mobile:active,
 .header-saved-button-mobile:active {
     color: var(--gigin-orange);
+}
+/* Save and Exit button */
+.save-and-exit-button {
+    padding:0.5rem 1rem;
+    background-color: var(--white);
+    border: 1px solid var(--light-medium-grey);
+    border-radius: 0.5rem;
+    font-weight: 300;
+    transition: 200ms linear;
+}
+.save-and-exit-button:hover {
+    background-color: var(--light-grey);
+    cursor: pointer;
 }
 
 
@@ -225,4 +242,34 @@
 }
 .submit-button:active {
     box-shadow: inset 2px 2px 5px var(--light-medium-grey);
+}
+
+/* FOOTER BUTTONS */
+/* Back button */
+.back-footer-button {
+    padding:0.5rem 1rem;
+    background-color: var(--white);
+    border: 1px solid var(--light-medium-grey);
+    border-radius: 0.5rem;
+    font-weight: 300;
+    transition: 200ms linear;
+}
+.back-footer-button:hover {
+    background-color: var(--light-grey);
+    cursor: pointer;
+}
+/* Next button */
+.next-footer-button {
+    padding:0.5rem 1rem;
+    background-color: var(--dark-grey);
+    color: var(--white);
+    border: 1px solid var(--dark-grey);
+    border-radius: 0.5rem;
+    font-weight: 400;
+    transition: 200ms linear;
+}
+.next-footer-button:hover {
+    background-color: var(--medium-dark-grey);
+    border: 1px solid var(--white);
+    cursor: pointer;
 }

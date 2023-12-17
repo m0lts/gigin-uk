@@ -1,0 +1,12 @@
+.footer-bar {
+    position: absolute;
+    bottom: 0;
+    left:0;
+    width:100%;
+    border:1px solid var(--light-grey);
+    padding: 2rem;
+    background-color: var(--white);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

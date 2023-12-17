@@ -4,6 +4,8 @@ import { queryDatabase } from "../../../utils/queryDatabase"
 import { formatSelectedDate } from "../../../utils/dateFormatting"
 import './buttons.styles.css'
 import { LoadingDots } from "../Loading/LoadingEffects"
+import { GetInfoFromLocalStorage } from "../../../utils/updateLocalStorage"
+import { useNavigate } from "react-router-dom"
 
 // *************************** //
 // UNIVERSAL BUTTONS //
@@ -112,6 +114,51 @@ export const MobileHeaderMyGiginButton = ({ setButtonClicked, buttonStatus, user
                 <span className='text'>{userName}</span>
             ) : (
                 <span className='text'>My Gigin</span>
+            )}
+        </button>
+    )
+}
+
+// Profile creator save and exit button
+export const SaveAndExitButton = ({ userProfile }) => {
+    
+    const [isLoading, setIsLoading] = useState(false);
+    const userInfo = GetInfoFromLocalStorage();
+    const userID = userInfo.userID;
+
+    const navigate = useNavigate();
+
+    const handleSaveAndExit = async (event) => {
+        event.preventDefault();
+        setIsLoading(true);
+        const dataPayload = {
+            userID,
+            userProfile,
+        }
+        try {
+            const response = await queryDatabase('/api/Profile/SaveProfileEntry.js', dataPayload);
+            const responseData = await response.json();
+            if (response.ok) {
+                setIsLoading(false);
+                navigate('/control-centre');
+            } else {
+                setIsLoading(false);
+                console.log('error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    return (
+        <button 
+            className={`btn save-and-exit-button ${isLoading && 'loading'}`} 
+            onClick={handleSaveAndExit}
+        >
+            {isLoading ? (
+                <LoadingDots />
+            ) : (
+                <p>Save and Exit</p>
             )}
         </button>
     )
@@ -348,6 +395,40 @@ export const SubmitFormButton = ({ passwordError, verifyPasswordStatus, dataPayl
             ) : (
                 <p>Submit</p>
             )}
+        </button>
+    )
+}
+
+
+// *************************** //
+// FOOTER BUTTONS //
+
+// Back and next footer buttons
+export const BackFooterButton = ({ stageNumber, setStageNumber }) => {
+
+    const handleBackClick = () => {
+        setStageNumber(stageNumber - 1);
+    }
+
+    return (
+        <button className='btn back-footer-button' onClick={handleBackClick}>
+            Back
+        </button>
+    )
+}
+export const NextFooterButton = ({ stageNumber, setStageNumber, profileType, establishmentType }) => {
+
+    const handleNextClick = () => {
+        setStageNumber(stageNumber + 1);
+    }
+
+    return (
+        <button
+            className={`btn next-footer-button ${((stageNumber === 1 && !profileType) || (stageNumber === 2 && !establishmentType)) ? 'disabled' : ''}`}
+            onClick={((stageNumber === 1 && !profileType) || (stageNumber === 2 && !establishmentType)) ? undefined : handleNextClick}
+            disabled={(stageNumber === 1 && !profileType) || (stageNumber === 2 && !establishmentType)}
+        >
+            Next
         </button>
     )
 }

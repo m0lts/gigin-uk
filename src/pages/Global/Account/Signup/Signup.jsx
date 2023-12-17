@@ -47,7 +47,7 @@ export const Signup = () => {
         if (signupResponse) {
             if (signupResponse.status === 201) {
                 AddUserDataToLocalStorage(signupResponse.data.userAccount);
-                navigate('/control-centre/profile-creator');
+                navigate('/profile-creator');
             } else {
                 console.log(`Error code: ${signupResponse.status} + Error reason: ${signupResponse.message}`);
             }

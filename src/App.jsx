@@ -10,7 +10,7 @@ import { GigGoersHome } from './pages/GigGoers/GigGoersHome/GigGoersHome'
 import '../src/assets/global.styles.css'
 import { ForgotPassword } from './pages/Global/Account/ForgotPassword/ForgotPassword'
 import { ControlCentreIndex } from './pages/Global/ControlCentre/ControlCentreIndex'
-import { ProfileCreator } from './components/Global/ControlCentre/Selections/ProfileCreator.jsx/ProfileCreator'
+import { ProfileCreator } from './pages/Global/ProfileCreator/ProfileCreator'
 import { ControlCentre } from './pages/Global/ControlCentre/Outlets/ControlCentre'
 
 export default function App() {
@@ -23,7 +23,6 @@ export default function App() {
           <Route path='contact-us' element={<ContactUs />} />
           <Route path='control-centre' element={<ControlCentreIndex />}>
             <Route index element={<ControlCentre />}/>
-            <Route path='profile-creator' element={<ProfileCreator />}/>
           </Route>
         </Route>
         <Route path='/login' element={<Login />} />
@@ -31,6 +30,7 @@ export default function App() {
         <Route path='/forgotpassword' element={<ForgotPassword />} />
         <Route path='/host-with-gigin' element={<HostWithGigin />} />
         <Route path='/gig-goers' element={<GigGoersHome />} />
+        <Route path='/profile-creator' element={<ProfileCreator />}/>
       </Routes>
   )
 }
