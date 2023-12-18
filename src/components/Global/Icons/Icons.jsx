@@ -1,5 +1,5 @@
 import { faBars, faBookmark, faX, faList, faMap, faSearch } from "@fortawesome/free-solid-svg-icons"
-import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation } from "@fortawesome/pro-light-svg-icons"
+import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import './icons.styles.css'
 
@@ -35,10 +35,42 @@ export const SearchIcon = () => {
 
 export const XIcon = () => {
     return (
-        <FontAwesomeIcon icon={faX} className='x-icon'/>
+        <FontAwesomeIcon icon={faX} className='x-icon icon'/>
     )
 }
 
+export const InsertImageIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faImage} className='insert-image-icon icon'/>
+    )
+}
+
+export const BackIcon = ({ setStageNumber, stageNumber }) => {
+
+    const handlePrevImage = () => {
+        setStageNumber(stageNumber - 1);
+    }
+
+    return (
+        <FontAwesomeIcon icon={faSquareCaretLeft} className='back-icon icon' onClick={handlePrevImage}/>
+    )
+}
+
+export const NextIcon = ({ setStageNumber, stageNumber }) => {
+
+    const handleNextImage = () => {
+        setStageNumber(stageNumber + 1);
+    }
+
+
+
+    return (
+        <FontAwesomeIcon icon={faSquareCaretRight} className='next-icon icon' onClick={handleNextImage}/>
+    )
+}
+
+
+// PROFILE ICONS
 export const ProfileIcon = () => {
     return (
         <FontAwesomeIcon icon={faAddressCard} className='profile-icon'/>

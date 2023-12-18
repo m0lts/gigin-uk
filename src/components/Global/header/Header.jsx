@@ -7,7 +7,7 @@ import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from
 import { GetInfoFromLocalStorage } from '../../../utils/updateLocalStorage'
 import './header.styles.css'
 
-export const Header = ({ userProfile }) => {
+export const Header = ({ userProfile, stageNumber }) => {
 
     // MyGiginButton Clicked - Toggle show DefaultMenu
     const [myGiginButtonClicked, setMyGiginButtonClicked] = useState(false);
@@ -66,7 +66,7 @@ export const Header = ({ userProfile }) => {
                 <header className='header'>
                     <GiginLogo />
                     <DynamicTextBox />
-                    {profileCreatorPage ? (
+                    {profileCreatorPage && stageNumber > 0 ? (
                         <>
                             <SaveAndExitButton 
                                 userProfile={userProfile}

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
-import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/EmailInputs"
+import { DefaultEmailInput } from "../../../../components/Global/AccountInputs/Email/EmailInputs"
 import { NextButtonForgotPassword, NextButtonResetPassword, SubmitFormButton } from "../../../../components/Global/Buttons/Buttons"
 import { Link, useNavigate } from "react-router-dom";
-import { OneTimePasswordInput, DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
+import { OneTimePasswordInput, DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/AccountInputs/Password/PasswordInputs";
 // import { InfoBox } from "../InfoBox/InfoBox";
 import '../accounts.styles.css'
 import './forgot-password.styles.css'

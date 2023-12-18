@@ -2,6 +2,7 @@ import { useState } from "react"
 import { MapView } from "./MapView/MapView"
 import { ListView } from "./ListView/ListView"
 import { ChangeViewTypeButton } from "../../../components/Global/Buttons/Buttons"
+import './homepage.styles.css'
 
 export const Homepage = () => {
 

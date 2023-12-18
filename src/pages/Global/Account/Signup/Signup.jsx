@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
 import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
-import { DefaultEmailInput } from "../../../../components/Global/Inputs/Email/EmailInputs";
-import { DefaultNameInput, DefaultPhoneNumberInput } from "../../../../components/Global/Inputs/UserDetails/UserDetails";
-import { DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/Inputs/Password/PasswordInputs";
+import { DefaultEmailInput } from "../../../../components/Global/AccountInputs/Email/EmailInputs";
+import { DefaultNameInput, DefaultPhoneNumberInput } from "../../../../components/Global/AccountInputs/UserDetails/UserDetails";
+import { DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/AccountInputs/Password/PasswordInputs";
 import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
 import { Link, useNavigate } from "react-router-dom";
 import { AddUserDataToLocalStorage } from "../../../../utils/updateLocalStorage";
