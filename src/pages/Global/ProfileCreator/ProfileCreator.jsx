@@ -43,7 +43,6 @@ export const ProfileCreator = () => {
         setUserProfile(updatedUserProfile);
     }, [profileType, establishmentType, establishmentName, profileImages, inHouseEquipment, hostAddress])
 
-    console.log(userProfile)
 
     return (
         <section className='profile-creator'>

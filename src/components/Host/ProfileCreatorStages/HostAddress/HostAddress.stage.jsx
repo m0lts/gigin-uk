@@ -24,7 +24,7 @@ export const HostAddressStage = ({ hostAddress, setHostAddress }) => {
     const [feature, setFeature] = useState();
 
     useEffect(() => {
-      if (hostAddress.coordinates) {
+      if (hostAddress) {
         const featureDetails = {
           type: 'Feature',
           geometry: {
@@ -34,7 +34,7 @@ export const HostAddressStage = ({ hostAddress, setHostAddress }) => {
         };
         setFeature(featureDetails);
       }
-    }, [hostAddress.coordinates])
+    }, [])
 
     const handleGeocodeCoordinates = async (coordinates) => {
         try {
