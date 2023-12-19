@@ -19,18 +19,6 @@ export default async function handler(request, response) {
         if (request.method === "POST") {
             const dataReceived = request.body;
 
-            const profileID = dataReceived._id;
-
-            if (!profileID) {
-                await profilesCollection.insertOne(dataReceived);
-            }
-
-            // Work on profile ID's?
-            // If the profile hasnt been previously saved, then create a new document
-            // If the profile has been previously saved, update with new entries
-            // BARE IN MIND THAT THE USER CAN CREATE MORE THAN ONE PROFILE!!!
-            // Possible structure: userID: 43rnj34rb4321lf, profiles: [3]
-            // profile[0]: profileID: 42r432hbr432hjb, profileType: musician etc.
 
 
             response.status(201).json({ message: "Profile saved."})

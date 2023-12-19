@@ -31,6 +31,13 @@ export const SearchButtonBig = () => {
     )
 }
 
+export const EmptySubmitButton = () => {
+    return (
+        <button type="submit" className="next-footer-button btn">
+            Submit
+        </button>
+    )
+}
 
 
 
@@ -416,7 +423,7 @@ export const BackFooterButton = ({ stageNumber, setStageNumber }) => {
         </button>
     )
 }
-export const NextFooterButton = ({ stageNumber, setStageNumber, profileType, establishmentType }) => {
+export const NextFooterButton = ({ stageNumber, setStageNumber, profileType, establishmentType, establishmentName, profileImages, inHouseEquipment, hostAddress }) => {
 
     const handleNextClick = () => {
         setStageNumber(stageNumber + 1);
@@ -424,9 +431,26 @@ export const NextFooterButton = ({ stageNumber, setStageNumber, profileType, est
 
     return (
         <button
-            className={`btn next-footer-button ${((stageNumber === 1 && !profileType) || (stageNumber === 2 && !establishmentType)) ? 'disabled' : ''}`}
-            onClick={((stageNumber === 1 && !profileType) || (stageNumber === 2 && !establishmentType)) ? undefined : handleNextClick}
-            disabled={(stageNumber === 1 && !profileType) || (stageNumber === 2 && !establishmentType)}
+        className={`btn next-footer-button ${
+            (stageNumber === 1 && !profileType) ||
+            (stageNumber === 2 && !establishmentType) ||
+            (stageNumber === 3 && !establishmentName) ||
+            (stageNumber === 4 && (!profileImages || (profileImages.length === 0 || profileImages[0] === null)))
+            ? 'disabled' : ''
+        }`}
+        onClick={
+            (stageNumber === 1 && !profileType) ||
+            (stageNumber === 2 && !establishmentType) ||
+            (stageNumber === 3 && !establishmentName) ||
+            (stageNumber === 4 && (!profileImages || (profileImages.length === 0 || profileImages[0] === null)))
+            ? undefined : handleNextClick
+        }
+        disabled={
+            (stageNumber === 1 && !profileType) ||
+            (stageNumber === 2 && !establishmentType) ||
+            (stageNumber === 3 && !establishmentName) ||
+            (stageNumber === 4 && (!profileImages || (profileImages.length === 0 || profileImages[0] === null)))
+        }
         >
             Next
         </button>

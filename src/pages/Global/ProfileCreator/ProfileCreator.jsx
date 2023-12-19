@@ -5,8 +5,14 @@ import { OpeningText } from '../../../components/Global/ProfileCreatorStages/Ope
 import { UserTypeSelection } from '../../../components/Global/ProfileCreatorStages/UserType/UserType'
 import { EstablishmentType } from '../../../components/Host/ProfileCreatorStages/EstablishmentType/EstablishmentType'
 import { EstablishmentName } from '../../../components/Host/ProfileCreatorStages/EstablishmentName/EstablishmentName'
-import { ImageInputs } from '../../../components/Global/ProfileCreatorStages/Images/ImageInputs'
+import { MultipleImagesInput } from '../../../components/Global/Images/ImageInputs'
 import './profile-creator.styles.css'
+import { InHouseEquipment } from '../../../components/Host/ProfileCreatorStages/InHouseEquipment/InHouseEquipment'
+import { InHouseEquipmentImages } from '../../../components/Host/ProfileCreatorStages/InHouseEquipment/InHouseEquipmentImages'
+import { ImagesOfVenue } from '../../../components/Host/ProfileCreatorStages/VenueImages/ImagesOfVenue'
+import { HostAddressStage } from '../../../components/Host/ProfileCreatorStages/HostAddress/HostAddress.stage'
+import { HostExtraInfoStage } from '../../../components/Host/ProfileCreatorStages/HostExtraInfo/HostExtraInfo.stage'
+import { HostProfilePreview } from '../../../components/Host/ProfileCreatorStages/ProfilePreview/HostProfilePreview.stages'
 
 export const ProfileCreator = () => {
 
@@ -18,10 +24,12 @@ export const ProfileCreator = () => {
     const [userProfile, setUserProfile] = useState({
         profileType: profileType,
     });
-    const [profileImages, setProfileImages] = useState([]);
+    const [profileImages, setProfileImages] = useState();
     // Host specific states
     const [establishmentType, setEstablishmentType] = useState();
     const [establishmentName, setEstablishmentName] = useState('');
+    const [inHouseEquipment, setInHouseEquipment] = useState();
+    const [hostAddress, setHostAddress] = useState();
 
     useEffect(() => {
         const updatedUserProfile = {
@@ -29,9 +37,11 @@ export const ProfileCreator = () => {
             ...(establishmentType && { establishmentType: establishmentType }), // Add establishmentType if it exists
             ...(establishmentName && { establishmentName: establishmentName }), // Add establishmentName if it exists
             ...(profileImages && { profileImages: profileImages }), // Add establishmentName if it exists
+            ...(inHouseEquipment && { inHouseEquipment: inHouseEquipment }), // Add inHouseEquipment if it exists
+            ...(hostAddress && { hostAddress: hostAddress }), // Add inHouseEquipment if it exists
         };
         setUserProfile(updatedUserProfile);
-    }, [profileType, establishmentType, establishmentName, profileImages])
+    }, [profileType, establishmentType, establishmentName, profileImages, inHouseEquipment, hostAddress])
 
     console.log(userProfile)
 
@@ -71,14 +81,81 @@ export const ProfileCreator = () => {
                 ) : (
                     <h1>Gig-goer</h1>
                 )
-            ) : stageNumber === 4 && (
+            ) : stageNumber === 4 ? (
                 profileType === 'Musician' ? (
                     <h1>Musician</h1>
                 ) : profileType === 'Host' ? (
-                    <ImageInputs 
+                    <ImagesOfVenue 
                         images={profileImages}
                         setImages={setProfileImages}
+                        numberOfImages={5}
                     />
+                ) : (
+                    <h1>Gig-goer</h1>
+                )
+            ) : stageNumber === 5 ? (
+                profileType === 'Musician' ? (
+                    <h1>Musician</h1>
+                ) : profileType === 'Host' ? (
+                    <InHouseEquipment
+                        inHouseEquipment={inHouseEquipment}
+                        setInHouseEquipment={setInHouseEquipment}
+                    />
+                ) : (
+                    <h1>Gig-goer</h1>
+                )
+            ) : stageNumber === 6 ? (
+                profileType === 'Musician' ? (
+                    <h1>Musician</h1>
+                ) : profileType === 'Host' ? (
+                    inHouseEquipment.length > 0 ? (
+                        <InHouseEquipmentImages 
+                            inHouseEquipment={inHouseEquipment}
+                            setInHouseEquipment={setInHouseEquipment}
+                        />
+                    ) : (
+                        <HostAddressStage 
+                            hostAddress={hostAddress}
+                            setHostAddress={setHostAddress}
+                        />
+                    )
+                ) : (
+                    <h1>Gig-goer</h1>
+                )
+            ) : stageNumber === 7 ? (
+                profileType === 'Musician' ? (
+                    <h1>Musician</h1>
+                ) : profileType === 'Host' ? (
+                    inHouseEquipment.length > 0 ? (
+                        <HostAddressStage
+                            hostAddress={hostAddress}
+                            setHostAddress={setHostAddress}
+                        />
+                    ) : (
+                        <HostExtraInfoStage />
+                    )
+                ) : (
+                    <h1>Gig-goer</h1>
+                )
+            ) : stageNumber === 8 ? (
+                profileType === 'Musician' ? (
+                    <h1>Musician</h1>
+                ) : profileType === 'Host' ? (
+                    inHouseEquipment.length > 0 ? (
+                        <HostExtraInfoStage />
+                    ) : (
+                        <HostProfilePreview />
+                    )
+                ) : (
+                    <h1>Gig-goer</h1>
+                )
+            ) : stageNumber === 9 && (
+                profileType === 'Musician' ? (
+                    <h1>Musician</h1>
+                ) : profileType === 'Host' ? (
+                    inHouseEquipment.length > 0 && (
+                        <HostProfilePreview />
+                    )
                 ) : (
                     <h1>Gig-goer</h1>
                 )
@@ -86,6 +163,10 @@ export const ProfileCreator = () => {
             <BackAndNextFooterBar 
                 profileType={profileType}
                 establishmentType={establishmentType}
+                establishmentName={establishmentName}
+                profileImages={profileImages}
+                inHouseEquipment={inHouseEquipment}
+                hostAddress={hostAddress}
                 setStageNumber={setStageNumber}
                 stageNumber={stageNumber}
             />

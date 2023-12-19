@@ -1,5 +1,5 @@
 import { faBars, faBookmark, faX, faList, faMap, faSearch } from "@fortawesome/free-solid-svg-icons"
-import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight } from "@fortawesome/pro-light-svg-icons"
+import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import './icons.styles.css'
 
@@ -11,7 +11,7 @@ export const MenuIcon = () => {
 
 export const MapIcon = () => {
     return (
-        <FontAwesomeIcon icon={faMap} className='map-icon' />
+        <FontAwesomeIcon icon={faMap} className='map-icon icon' />
     )
 }
 
@@ -48,24 +48,24 @@ export const InsertImageIcon = () => {
 export const BackIcon = ({ setStageNumber, stageNumber }) => {
 
     const handlePrevImage = () => {
-        setStageNumber(stageNumber - 1);
+        if (stageNumber > 0) {
+            setStageNumber(stageNumber - 1);
+        }
     }
 
     return (
-        <FontAwesomeIcon icon={faSquareCaretLeft} className='back-icon icon' onClick={handlePrevImage}/>
+        <FontAwesomeIcon icon={faChevronLeft} className={`back-icon icon ${stageNumber === 0 && 'disabled'}`} onClick={handlePrevImage}/>
     )
 }
 
-export const NextIcon = ({ setStageNumber, stageNumber }) => {
-
+export const NextIcon = ({ setStageNumber, stageNumber, maxNumber }) => {
     const handleNextImage = () => {
-        setStageNumber(stageNumber + 1);
+        if (stageNumber < maxNumber - 1) {
+            setStageNumber(stageNumber + 1);
+        }
     }
-
-
-
     return (
-        <FontAwesomeIcon icon={faSquareCaretRight} className='next-icon icon' onClick={handleNextImage}/>
+        <FontAwesomeIcon icon={faChevronRight} className={`next-icon icon ${stageNumber === 4 && 'disabled'}`} onClick={handleNextImage}/>
     )
 }
 
@@ -95,6 +95,7 @@ export const GigGoerIcon = () => {
     )
 }
 
+// Establishment type icons
 export const PubIcon = () => {
     return (
         <FontAwesomeIcon icon={faMartiniGlassCitrus} className="pub-icon icon" />
@@ -158,5 +159,32 @@ export const PublicSpaceIcon = () => {
 export const OtherIcon = () => {
     return (
         <FontAwesomeIcon icon={faHouseCircleExclamation} className="other-icon icon" />
+    )
+}
+
+// In house equipment icons
+export const PianoIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faPianoKeyboard} className="piano-icon icon" />
+    )
+}
+export const SoundSystemIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faWaveformLines} className="sound-system-icon icon" />
+    )
+}
+export const MicrophoneIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faMicrophone} className="microphone-icon icon" />
+    )
+}
+export const AmpIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faAmpGuitar} className="microphone-icon icon" />
+    )
+}
+export const MixingDeckIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faTurntable} className="microphone-icon icon" />
     )
 }
