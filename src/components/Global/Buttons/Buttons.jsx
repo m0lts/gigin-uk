@@ -423,19 +423,18 @@ export const BackFooterButton = ({ stageNumber, setStageNumber }) => {
         </button>
     )
 }
-export const NextFooterButton = ({ stageNumber, setStageNumber }) => {
+export const NextFooterButton = ({ stageNumber, setStageNumber, setNextButtonAvailable, nextButtonAvailable }) => {
 
     const handleNextClick = () => {
         setStageNumber(stageNumber + 1);
+        setNextButtonAvailable(false);
     }
 
     return (
         <button
-            // className={`btn next-footer-button ${!nextButtonAvailable ? 'disabled' : ''}`}
-            className={`btn next-footer-button`}
-            // onClick={!nextButtonAvailable ? undefined : handleNextClick}
-            onClick={handleNextClick}
-            // disabled={!nextButtonAvailable}
+            className={`btn next-footer-button ${!nextButtonAvailable ? 'disabled' : ''}`}
+            onClick={!nextButtonAvailable ? undefined : handleNextClick}
+            disabled={!nextButtonAvailable}
         >
             Next
         </button>

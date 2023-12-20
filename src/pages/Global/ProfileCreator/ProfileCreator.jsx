@@ -18,6 +18,8 @@ export const ProfileCreator = () => {
 
     // Stage number processing
     const [stageNumber, setStageNumber] = useState(0);
+    // Next button availability
+    const [nextButtonAvailable, setNextButtonAvailable] = useState(false);
 
     // Profile object states
     const [profileType, setProfileType] = useState();
@@ -33,6 +35,9 @@ export const ProfileCreator = () => {
     const [hostExtraInfo, setHostExtraInfo] = useState();
 
     useEffect(() => {
+        if (profileType) {
+            setNextButtonAvailable(true);
+        }
         const updatedUserProfile = {
             profileType: profileType,
             ...(establishmentType && { establishmentType: establishmentType }), // Add establishmentType if it exists
@@ -55,11 +60,13 @@ export const ProfileCreator = () => {
             />
             {stageNumber === 0 ? (
                 <OpeningText 
+                    setNextButtonAvailable={setNextButtonAvailable}
                 />
             ) : stageNumber === 1 ? (
                 <UserTypeSelection 
                     profileType={profileType}
                     setProfileType={setProfileType}
+                    setNextButtonAvailable={setNextButtonAvailable}
                 />
             ) : stageNumber === 2 ? (
                 profileType === 'Musician' ? (
@@ -176,6 +183,8 @@ export const ProfileCreator = () => {
             <BackAndNextFooterBar 
                 setStageNumber={setStageNumber}
                 stageNumber={stageNumber}
+                setNextButtonAvailable={setNextButtonAvailable}
+                nextButtonAvailable={nextButtonAvailable}
             />
         </section>
     )

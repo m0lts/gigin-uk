@@ -1,7 +1,7 @@
 import { BackFooterButton, EmptySubmitButton, NextFooterButton } from "../Buttons/Buttons"
 import './footer-bars.styles.css'
 
-export const BackAndNextFooterBar = ({ stageNumber, setStageNumber }) => {
+export const BackAndNextFooterBar = ({ stageNumber, setStageNumber, setNextButtonAvailable, nextButtonAvailable }) => {
 
     return (
         <footer className={`footer-bar ${stageNumber < 1 ? 'right-flex' : ''}`}>
@@ -14,6 +14,8 @@ export const BackAndNextFooterBar = ({ stageNumber, setStageNumber }) => {
             <NextFooterButton 
                 stageNumber={stageNumber}
                 setStageNumber={setStageNumber}
+                setNextButtonAvailable={setNextButtonAvailable}
+                nextButtonAvailable={nextButtonAvailable}
             />
         </footer>
     )

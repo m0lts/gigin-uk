@@ -2,13 +2,15 @@ import { useEffect } from "react"
 import { GigGoerIcon, HostIcon, MusicianIcon } from "../../Icons/Icons"
 import './user-type.styles.css'
 
-export const UserTypeSelection = ({ profileType, setProfileType }) => {
+export const UserTypeSelection = ({ profileType, setProfileType, setNextButtonAvailable }) => {
 
     const handleProfileTypeClick = (selectedProfile) => {
         if (profileType === selectedProfile) {
             setProfileType(undefined);
+            setNextButtonAvailable(false);
         } else {
             setProfileType(selectedProfile);
+            setNextButtonAvailable(true);
         }
     }
 

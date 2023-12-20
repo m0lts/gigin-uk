@@ -2,8 +2,12 @@ import { useEffect } from 'react'
 import { ProfileIcon } from '../../Icons/Icons'
 import './opening-text.styles.css'
 
-export const OpeningText = () => {
+export const OpeningText = ({ setNextButtonAvailable }) => {
     
+    useEffect(() => {
+        setNextButtonAvailable(true);
+    }, [])
+
     return (
         <div className='opening-text profile-creator-stage'>
             <ProfileIcon />
