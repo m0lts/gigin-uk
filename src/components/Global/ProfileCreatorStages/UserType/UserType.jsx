@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { GigGoerIcon, HostIcon, MusicianIcon } from "../../Icons/Icons"
 import './user-type.styles.css'
 

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ApartmentIcon, ClubIcon, HouseIcon, HouseOfWorshipIcon, MusicVenueIcon, OtherIcon, PubIcon, PublicSpaceIcon, RestaurantIcon, SchoolIcon, VillageHallIcon } from "../../../Global/Icons/Icons";
 
 export const EstablishmentType = ({ establishmentType, setEstablishmentType }) => {

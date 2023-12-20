@@ -95,7 +95,6 @@ export const SingleImageInput = ({ image, setImage }) => {
 
     const removeImage = () => {
         setImage(null);
-
         const input = document.getElementById(`image-input`);
         if (input) {
             input.value = '';

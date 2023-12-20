@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
-import { AmpIcon, MicrophoneIcon, MixingDeckIcon, PianoIcon, SoundSystemIcon } from "../../../Global/Icons/Icons";
+import { AmpIcon, DrumIcon, ElectricGuitarIcon, GuitarIcon, KeyboardIcon, MicrophoneIcon, MicrophoneStandIcon, MixingDeckIcon, MusicVenueIcon, PianoIcon, PlugIcon, SoundSystemIcon } from "../../../Global/Icons/Icons";
 
 export const InHouseEquipment = ({ inHouseEquipment = [], setInHouseEquipment }) => {
 
     // In House Equipment structure = [{equipment, image}, {equipment: image}]
     const [selectedEquipment, setSelectedEquipment] = useState([]);
+
+    // Ensure selectedEquipment is updated with equipment that has already been selected
+    useEffect(() => {
+        if (inHouseEquipment && inHouseEquipment.length > 0) {
+            const equipmentValues = inHouseEquipment.map(equipment => equipment.equipment);
+            setSelectedEquipment(equipmentValues);
+        }
+    }, [])
+
     const handleEquipmentClick = (item) => {
         const updatedEquipment = [...selectedEquipment];
         const index = updatedEquipment.findIndex(equip => equip === item);
@@ -55,11 +64,67 @@ export const InHouseEquipment = ({ inHouseEquipment = [], setInHouseEquipment })
                     <h2 className="text">Amp</h2>
                 </div>
                 <div 
-                    className={`card ${selectedEquipment.includes('Mixing Deck') && 'active'}`}
-                    onClick={() => handleEquipmentClick('Mixing Deck')}
+                    className={`card ${selectedEquipment.includes('DJ Turntable') && 'active'}`}
+                    onClick={() => handleEquipmentClick('DJ Turntable')}
                 >
                     <MixingDeckIcon />
-                    <h2 className="text">Mixing Deck</h2>
+                    <h2 className="text">DJ Turntable</h2>
+                </div>
+                <div 
+                    className={`card ${selectedEquipment.includes('XLR Cables') && 'active'}`}
+                    onClick={() => handleEquipmentClick('XLR Cables')}
+                >
+                    <PlugIcon />
+                    <h2 className="text">XLR Cables</h2>
+                </div>
+                <div 
+                    className={`card ${selectedEquipment.includes('Jack Leads') && 'active'}`}
+                    onClick={() => handleEquipmentClick('Jack Leads')}
+                >
+                    <PlugIcon />
+                    <h2 className="text">Jack Leads</h2>
+                </div>
+                <div 
+                    className={`card ${selectedEquipment.includes('Acoustic Guitar') && 'active'}`}
+                    onClick={() => handleEquipmentClick('Acoustic Guitar')}
+                >
+                    <GuitarIcon />
+                    <h2 className="text">Acoustic Guitar</h2>
+                </div>
+                <div 
+                    className={`card ${selectedEquipment.includes('Electric Guitar') && 'active'}`}
+                    onClick={() => handleEquipmentClick('Electric Guitar')}
+                >
+                    <ElectricGuitarIcon />
+                    <h2 className="text">Electric Guitar</h2>
+                </div>
+                <div 
+                    className={`card ${selectedEquipment.includes('Mic Stands') && 'active'}`}
+                    onClick={() => handleEquipmentClick('Mic Stands')}
+                >
+                    <MicrophoneStandIcon />
+                    <h2 className="text">Mic Stands</h2>
+                </div>
+                <div 
+                    className={`card ${selectedEquipment.includes('Drum Kit') && 'active'}`}
+                    onClick={() => handleEquipmentClick('Drum Kit')}
+                >
+                    <DrumIcon />
+                    <h2 className="text">Drum Kit</h2>
+                </div>
+                <div 
+                    className={`card ${selectedEquipment.includes('Electric Keyboard') && 'active'}`}
+                    onClick={() => handleEquipmentClick('Electric Keyboard')}
+                >
+                    <KeyboardIcon />
+                    <h2 className="text">Electric Keyboard</h2>
+                </div>
+                <div 
+                    className={`card ${selectedEquipment.includes('Foldback Speakers') && 'active'}`}
+                    onClick={() => handleEquipmentClick('Foldback Speakers')}
+                >
+                    <MusicVenueIcon />
+                    <h2 className="text">Foldback Speakers</h2>
                 </div>
             </div>
         </div>

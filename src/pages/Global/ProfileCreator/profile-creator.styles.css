@@ -54,6 +54,10 @@
 .profile-creator-stage .card .text {
     font-weight: 500;
 }
+.profile-creator-stage .subtitle {
+    font-weight: 400;
+    text-align: center;
+}
 /* Card clicked */
 .profile-creator-stage .card.active {
     background-color: var(--light-grey);
@@ -163,7 +167,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap:2rem;
     transition: 200ms linear;
 }
@@ -208,10 +212,7 @@
     justify-content: space-evenly;
     gap: 1rem;
 }
-.in-house-equipment-images .equipment h3 {
-    font-weight: 400;
-    text-align: center;
-}
+
 
 /* Host address stage */
 .host-address {
@@ -252,9 +253,202 @@
     color: var(--light-medium-grey);
 }
 
+/* Host extra info */
 .extra-information {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:2rem;
+}
+.extra-information .options {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap:2rem;
+}
+/* Text areas */
+.extra-information .details {
+    margin-top: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
 }
+.extra-information .details textarea {
+    border:1px solid var(--light-medium-grey);
+    border-radius: 1rem;
+    padding:1rem;
+    font-family: var(--default-font);
+}
+.extra-information .details textarea:focus {
+    outline:1px solid var(--gigin-orange);
+}
+/* Parking */
+.extra-information .parking-inputs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:3rem;
+}
+.extra-information .parking-inputs h3 {
+    font-size: 400;
+}
+.extra-information .parking-inputs .radio-options {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:2rem;
+}
+.extra-information .parking-inputs input {
+    display: none;
+}
+.extra-information .parking-inputs .labels {
+    text-align: center;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 1rem 2rem ;
+    position: relative;
+    background-color: var(--light-grey);
+    border-radius: 0.5rem;
+    font-weight: 300;
+    transition: all 100ms linear;
+}
+.extra-information .parking-inputs .labels:hover {
+    transition: all 100ms linear;
+}
+.extra-information .parking-inputs .labels.clicked {
+    background-color: var(--dark-grey);
+    box-shadow: inset 2px 2px 2px 0 rgba(0, 0, 0, 0.1);
+    color: var(--white);
+    transition: all 100ms linear;
+}
+/* Venue Description */
+.extra-information .venue-description {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:3rem;
+}
 
+
+/* Profile Previews */
+.profile-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2rem;
+}
+/* Host */
+.host-preview {
+    width:90%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--light-grey);
+    padding:1rem;
+    border-radius: 1rem;
+}
+.host-preview .images {
+    width:100%;
+    height:75%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    border-radius: 2rem;
+    gap:0.5rem;
+}
+.host-preview .images .image1 {
+    width:50%;
+    height:100%;
+    max-height:500px;
+    overflow: hidden;
+}
+.host-preview .images .image1.full-width {
+    border-radius: 2rem;
+    width:100%;
+    height:100%;
+    overflow: hidden;
+}
+.host-preview .images .image1 img {
+    width:100%;
+    height:100%;
+}
+.host-preview .images .other-images {
+    display: grid;
+    grid-template-columns: 50% 50%;
+    grid-template-rows: 50% 50%;
+    width:50%;
+    height:100%;
+    max-height:500px;
+    gap:0.5rem;
+}
+/* If there are 2 images, make the second take up half the area */
+.host-preview .images .other-images.imgs-2 {
+    grid-template-columns: 100%;
+    grid-template-rows: 100%;
+}
+/* If there are 3 images, make it so there's only one row */
+.host-preview .images .other-images.imgs-3 {
+    grid-template-columns: 50% 50%;
+    grid-template-rows: 100%;
+}
+.host-preview .images .other-images .imgs-4 {
+    grid-column-start: 1;
+    grid-column-end: 4;
+}
+.host-preview .images .other-images img {
+    width:100%;
+    height: 100%;
+}
+.host-preview .title-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap:0.5rem;
+    padding:1rem;
+}
+.host-preview .title-bar .subtitle {
+    color: var(--dark-grey);
+    font-weight: 300;
+}
+.host-preview .other-information-section {
+    border-top:1px solid var(--light-medium-grey);
+    padding:1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    gap:1rem;
+}
+.host-preview .other-information-section .equipment-box, .extra-info-box {
+    width:50%;
+    background-color: var(--white);
+    border-radius: 1rem;
+    padding:1rem;
+    margin:1rem 0;
+}
+.host-preview .other-information-section .equipment-box .equipment {
+    margin-top:1rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+.host-preview .other-information-section .equipment-box .equipment p {
+    margin: 0.5rem;
+}
+.host-preview .other-information-section .extra-info-box .info {
+    margin-top:1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.host-preview .other-information-section .extra-info-box .info p {
+    border-bottom:1px solid var(--light-grey);
+    width:100%;
+    padding:0.75rem 0.5rem;
+}
+.host-preview .other-information-section .extra-info-box .info p:last-of-type {
+    border:none;
+}

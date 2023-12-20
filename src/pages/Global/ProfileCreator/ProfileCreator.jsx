@@ -12,7 +12,7 @@ import { InHouseEquipmentImages } from '../../../components/Host/ProfileCreatorS
 import { ImagesOfVenue } from '../../../components/Host/ProfileCreatorStages/VenueImages/ImagesOfVenue'
 import { HostAddressStage } from '../../../components/Host/ProfileCreatorStages/HostAddress/HostAddress.stage'
 import { HostExtraInfoStage } from '../../../components/Host/ProfileCreatorStages/HostExtraInfo/HostExtraInfo.stage'
-import { HostProfilePreview } from '../../../components/Host/ProfileCreatorStages/ProfilePreview/HostProfilePreview.stages'
+import { HostProfilePreview } from '../../../components/Global/ProfileCreatorStages/ProfilePreview/HostProfilePreview.stages'
 
 export const ProfileCreator = () => {
 
@@ -30,6 +30,7 @@ export const ProfileCreator = () => {
     const [establishmentName, setEstablishmentName] = useState('');
     const [inHouseEquipment, setInHouseEquipment] = useState();
     const [hostAddress, setHostAddress] = useState();
+    const [hostExtraInfo, setHostExtraInfo] = useState();
 
     useEffect(() => {
         const updatedUserProfile = {
@@ -38,11 +39,13 @@ export const ProfileCreator = () => {
             ...(establishmentName && { establishmentName: establishmentName }), // Add establishmentName if it exists
             ...(profileImages && { profileImages: profileImages }), // Add establishmentName if it exists
             ...(inHouseEquipment && { inHouseEquipment: inHouseEquipment }), // Add inHouseEquipment if it exists
-            ...(hostAddress && { hostAddress: hostAddress }), // Add inHouseEquipment if it exists
+            ...(hostAddress && { hostAddress: hostAddress }), // Add hostAddress if it exists
+            ...(hostExtraInfo && { hostExtraInfo: hostExtraInfo }), // Add hostExtraInfo if it exists
         };
         setUserProfile(updatedUserProfile);
-    }, [profileType, establishmentType, establishmentName, profileImages, inHouseEquipment, hostAddress])
+    }, [profileType, establishmentType, establishmentName, profileImages, inHouseEquipment, hostAddress, hostExtraInfo])
 
+    console.log(userProfile)
 
     return (
         <section className='profile-creator'>
@@ -51,7 +54,8 @@ export const ProfileCreator = () => {
                 stageNumber={stageNumber}
             />
             {stageNumber === 0 ? (
-                <OpeningText />
+                <OpeningText 
+                />
             ) : stageNumber === 1 ? (
                 <UserTypeSelection 
                     profileType={profileType}
@@ -131,7 +135,10 @@ export const ProfileCreator = () => {
                             setHostAddress={setHostAddress}
                         />
                     ) : (
-                        <HostExtraInfoStage />
+                        <HostExtraInfoStage 
+                            hostExtraInfo={hostExtraInfo}
+                            setHostExtraInfo={setHostExtraInfo}
+                        />
                     )
                 ) : (
                     <h1>Gig-goer</h1>
@@ -141,9 +148,14 @@ export const ProfileCreator = () => {
                     <h1>Musician</h1>
                 ) : profileType === 'Host' ? (
                     inHouseEquipment.length > 0 ? (
-                        <HostExtraInfoStage />
+                        <HostExtraInfoStage 
+                            hostExtraInfo={hostExtraInfo}
+                            setHostExtraInfo={setHostExtraInfo}
+                        />
                     ) : (
-                        <HostProfilePreview />
+                        <HostProfilePreview 
+                            userProfile={userProfile}
+                        />
                     )
                 ) : (
                     <h1>Gig-goer</h1>
@@ -153,19 +165,15 @@ export const ProfileCreator = () => {
                     <h1>Musician</h1>
                 ) : profileType === 'Host' ? (
                     inHouseEquipment.length > 0 && (
-                        <HostProfilePreview />
+                        <HostProfilePreview
+                            userProfile={userProfile}
+                        />
                     )
                 ) : (
                     <h1>Gig-goer</h1>
                 )
             )}
             <BackAndNextFooterBar 
-                profileType={profileType}
-                establishmentType={establishmentType}
-                establishmentName={establishmentName}
-                profileImages={profileImages}
-                inHouseEquipment={inHouseEquipment}
-                hostAddress={hostAddress}
                 setStageNumber={setStageNumber}
                 stageNumber={stageNumber}
             />

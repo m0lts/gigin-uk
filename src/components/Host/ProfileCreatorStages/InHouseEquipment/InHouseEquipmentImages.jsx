@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { SingleImageInput } from "../../../Global/Images/ImageInputs"
 
 
 export const InHouseEquipmentImages = ({ inHouseEquipment, setInHouseEquipment }) => {
+
     const handleImageChange = (index, imageData) => {
         const updatedEquipment = [...inHouseEquipment];
         updatedEquipment[index].image = imageData;
@@ -15,7 +17,7 @@ export const InHouseEquipmentImages = ({ inHouseEquipment, setInHouseEquipment }
             <div className="equipment-images">
                 {inHouseEquipment && inHouseEquipment.map((equipment, index) => (
                     <div className="equipment" key={index}>
-                        <h3>{equipment.equipment}:</h3>
+                        <h3 className="subtitle">{equipment.equipment}:</h3>
                         <SingleImageInput
                             image={equipment.image}
                             setImage={(imageData) => handleImageChange(index, imageData)}

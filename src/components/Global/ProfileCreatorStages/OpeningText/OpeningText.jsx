@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { ProfileIcon } from '../../Icons/Icons'
 import './opening-text.styles.css'
 
 export const OpeningText = () => {
+    
     return (
         <div className='opening-text profile-creator-stage'>
             <ProfileIcon />

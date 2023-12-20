@@ -1,5 +1,5 @@
-import { faBars, faBookmark, faX, faList, faMap, faSearch } from "@fortawesome/free-solid-svg-icons"
-import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable } from "@fortawesome/pro-light-svg-icons"
+import { faBars, faBookmark, faX, faList, faMap, faSearch, faCircle } from "@fortawesome/free-solid-svg-icons"
+import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable, faPlug, faGuitar, faGuitarElectric, faMicrophoneStand, faDrum, faPiano } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import './icons.styles.css'
 
@@ -66,6 +66,12 @@ export const NextIcon = ({ setStageNumber, stageNumber, maxNumber }) => {
     }
     return (
         <FontAwesomeIcon icon={faChevronRight} className={`next-icon icon ${stageNumber === 4 && 'disabled'}`} onClick={handleNextImage}/>
+    )
+}
+
+export const CircleIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCircle} className="circle-icon icon" />
     )
 }
 
@@ -165,7 +171,7 @@ export const OtherIcon = () => {
 // In house equipment icons
 export const PianoIcon = () => {
     return (
-        <FontAwesomeIcon icon={faPianoKeyboard} className="piano-icon icon" />
+        <FontAwesomeIcon icon={faPiano} className="piano-icon icon" />
     )
 }
 export const SoundSystemIcon = () => {
@@ -186,5 +192,35 @@ export const AmpIcon = () => {
 export const MixingDeckIcon = () => {
     return (
         <FontAwesomeIcon icon={faTurntable} className="microphone-icon icon" />
+    )
+}
+export const PlugIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faPlug} className="plug-icon icon" />
+    )
+}
+export const GuitarIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faGuitar} className="guitar-icon icon" />
+    )
+}
+export const ElectricGuitarIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faGuitarElectric} className="guitar-icon icon" />
+    )
+}
+export const MicrophoneStandIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faMicrophoneStand} className="microphone-stand-icon icon" />
+    )
+}
+export const DrumIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faDrum} className="drum-icon icon" />
+    )
+}
+export const KeyboardIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faPianoKeyboard} className="microphone-icon icon" />
     )
 }
