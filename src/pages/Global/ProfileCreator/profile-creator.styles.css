@@ -66,6 +66,17 @@
 .profile-creator-stage .card.active > .icon {
     font-size: 2rem;
 }
+/* card inactive */
+.profile-creator-stage .card.inactive {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.profile-creator-stage .card.inactive:hover {
+    box-shadow: none;
+}
+.profile-creator-stage .card.inactive:hover > .icon {
+    font-size: 1.5rem;
+}
 .profile-creator-stage .text {
     text-align: center;
     font-size: 1rem;

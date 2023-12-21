@@ -1,40 +1,58 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { GigGoerIcon, HostIcon, MusicianIcon } from "../../Icons/Icons"
-import './user-type.styles.css'
 
-export const UserTypeSelection = ({ profileType, setProfileType, setNextButtonAvailable }) => {
+export const UserTypeSelection = ({ profileType, setProfileType, existingUserProfiles }) => {
+
+    const [isMusicianInactive, setIsMusicianInactive] = useState(false);
+    const [isGigGoerInactive, setIsGigGoerInactive] = useState(false);
 
     const handleProfileTypeClick = (selectedProfile) => {
         if (profileType === selectedProfile) {
             setProfileType(undefined);
-            setNextButtonAvailable(false);
         } else {
             setProfileType(selectedProfile);
-            setNextButtonAvailable(true);
         }
     }
+
+    useEffect(() => {
+        if (existingUserProfiles) {
+            const musicianInactive = existingUserProfiles.some(
+                (profile) => profile.profileType === 'Musician'
+            )
+            const gigGoerInactive = existingUserProfiles.some(
+            (profile) => profile.profileType === 'Gig-goer'
+            );
+            if (musicianInactive) {
+                setIsMusicianInactive(true);
+            }
+            if (gigGoerInactive) {
+                setIsGigGoerInactive(true);
+            }
+        }
+    }, [existingUserProfiles])
+
 
     return (
         <div className='user-type profile-creator-stage'>
             <h1 className='title'>What type of profile do you want to create?</h1>
             <div className="options">
                 <div 
-                    className={`card ${profileType === 'Musician' && 'active'}`}
-                    onClick={() => handleProfileTypeClick('Musician')}
+                    className={`card ${profileType === 'Musician' ? 'active' : ''} ${isMusicianInactive ? 'inactive' : ''}`}
+                    onClick={isMusicianInactive ? null : () => handleProfileTypeClick('Musician')}
                 >
                     <MusicianIcon />
                     <h2 className="text">Musician</h2>
                 </div>
                 <div 
-                    className={`card ${profileType === 'Host' && 'active'}`}
+                    className={`card ${profileType === 'Host' ? 'active' : ''}`}
                     onClick={() => handleProfileTypeClick('Host')}
                 >
                     <HostIcon />
                     <h2 className="text">Host</h2>
                 </div>
                 <div 
-                    className={`card ${profileType === 'Gig-Goer' && 'active'}`}
-                    onClick={() => handleProfileTypeClick('Gig-Goer')}
+                    className={`card ${profileType === 'Gig-goer' ? 'active' : ''} ${isGigGoerInactive ? 'inactive' : ''}`}
+                    onClick={isGigGoerInactive ? null : () => handleProfileTypeClick('Gig-Goer')}
                 >
                     <GigGoerIcon />
                     <h2 className="text">Gig-Goer</h2>

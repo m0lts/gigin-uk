@@ -26,13 +26,14 @@ export default async function handler(request, response) {
             const userAccount = await accountsCollection.findOne({ userEmail: email });
 
             if (userAccount) {
+                const userID = userAccount._id.toString();
                 const accountPassword = userAccount.userPassword;
                 const enteredPassword = dataReceived.userPassword;
                 const passwordMatch = await bcrypt.compare(enteredPassword, accountPassword);
     
-    
                 if (passwordMatch) {
-                    response.status(201).json({ userAccount });
+                    const userProfile = await profilesCollection.findOne({ userID: userID });
+                    response.status(201).json({ userAccount, userProfile });
                 } else {
                     response.status(401).json({ error: 'Incorrect password' });
                 }

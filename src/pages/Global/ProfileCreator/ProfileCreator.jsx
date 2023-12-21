@@ -13,33 +13,54 @@ import { ImagesOfVenue } from '../../../components/Host/ProfileCreatorStages/Ven
 import { HostAddressStage } from '../../../components/Host/ProfileCreatorStages/HostAddress/HostAddress.stage'
 import { HostExtraInfoStage } from '../../../components/Host/ProfileCreatorStages/HostExtraInfo/HostExtraInfo.stage'
 import { HostProfilePreview } from '../../../components/Global/ProfileCreatorStages/ProfilePreview/HostProfilePreview.stages'
+import { GetProfileDataFromLocalStorage } from '../../../utils/updateLocalStorage'
+import { useLocation } from 'react-router-dom'
 
 export const ProfileCreator = () => {
+
+    const location = useLocation();
+
+    // Get existing userProfile data from localStorage
+    const existingUserProfiles = GetProfileDataFromLocalStorage();
 
     // Stage number processing
     const [stageNumber, setStageNumber] = useState(0);
     // Next button availability
-    const [nextButtonAvailable, setNextButtonAvailable] = useState(false);
+    const [nextButtonAvailable, setNextButtonAvailable] = useState(true);
 
-    // Profile object states
-    const [profileType, setProfileType] = useState();
-    const [userProfile, setUserProfile] = useState({
-        profileType: profileType,
-    });
-    const [profileImages, setProfileImages] = useState();
+    // Generate profile ID
+    const generateRandomId = (length) => {
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+        let randomId = '';
+      
+        for (let i = 0; i < length; i++) {
+          randomId += characters.charAt(Math.floor(Math.random() * charactersLength));
+        }
+      
+        return randomId;
+    }
+
+    // Profile object states, if location.state is true (user is editing profile), set userProfile and all states to that. Otherwise set to null.
+    const [profileID, setProfileID] = useState(location.state ? location.state.profileID : generateRandomId(25))
+    const [profileType, setProfileType] = useState(location.state ? location.state.profileType : null);
+    const [userProfile, setUserProfile] = useState(location.state || {});
+    const [profileImages, setProfileImages] = useState(location.state ? location.state.profileImages : []);
     // Host specific states
-    const [establishmentType, setEstablishmentType] = useState();
-    const [establishmentName, setEstablishmentName] = useState('');
-    const [inHouseEquipment, setInHouseEquipment] = useState();
-    const [hostAddress, setHostAddress] = useState();
-    const [hostExtraInfo, setHostExtraInfo] = useState();
+    const [establishmentType, setEstablishmentType] = useState(location.state ? location.state.establishmentType : null);
+    const [establishmentName, setEstablishmentName] = useState(location.state ? location.state.establishmentName : '');
+    const [inHouseEquipment, setInHouseEquipment] = useState(location.state ? location.state.inHouseEquipment : null);
+    const [hostAddress, setHostAddress] = useState(location.state ? location.state.hostAddress : null);
+    const [hostExtraInfo, setHostExtraInfo] = useState(location.state ? location.state.hostExtraInfo : null);
 
     useEffect(() => {
         if (profileType) {
             setNextButtonAvailable(true);
         }
         const updatedUserProfile = {
-            profileType: profileType,
+            ...userProfile,
+            ...(profileID && { profileID: profileID }), // Add profileID
+            ...(profileType && { profileType: profileType }), // Add profileType if it exists
             ...(establishmentType && { establishmentType: establishmentType }), // Add establishmentType if it exists
             ...(establishmentName && { establishmentName: establishmentName }), // Add establishmentName if it exists
             ...(profileImages && { profileImages: profileImages }), // Add establishmentName if it exists
@@ -48,9 +69,8 @@ export const ProfileCreator = () => {
             ...(hostExtraInfo && { hostExtraInfo: hostExtraInfo }), // Add hostExtraInfo if it exists
         };
         setUserProfile(updatedUserProfile);
-    }, [profileType, establishmentType, establishmentName, profileImages, inHouseEquipment, hostAddress, hostExtraInfo])
+    }, [profileID, profileType, establishmentType, establishmentName, profileImages, inHouseEquipment, hostAddress, hostExtraInfo])
 
-    console.log(userProfile)
 
     return (
         <section className='profile-creator'>
@@ -66,7 +86,7 @@ export const ProfileCreator = () => {
                 <UserTypeSelection 
                     profileType={profileType}
                     setProfileType={setProfileType}
-                    setNextButtonAvailable={setNextButtonAvailable}
+                    existingUserProfiles={existingUserProfiles}
                 />
             ) : stageNumber === 2 ? (
                 profileType === 'Musician' ? (

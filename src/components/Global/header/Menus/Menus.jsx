@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import './menus.styles.css'
-import { RemoveInfoFromLocalStorage } from '../../../../utils/updateLocalStorage'
+import { GetInfoFromLocalStorage, RemoveInfoFromLocalStorage } from '../../../../utils/updateLocalStorage'
+import { useEffect, useState } from 'react'
 
 export const DefaultMenu = ({ buttonStatus }) => {
     if (buttonStatus) {
@@ -65,13 +66,14 @@ export const DefaultMenu = ({ buttonStatus }) => {
     }
 }
 
-export const LoggedInMenu = ({ buttonStatus }) => {
+export const LoggedInMenu = ({ buttonStatus, profileCreated }) => {
 
     const navigate = useNavigate();
 
     const handleLogOut = () => {
         RemoveInfoFromLocalStorage();
         navigate('/');
+        window.location.reload();
     }
 
     if (buttonStatus) {
@@ -80,10 +82,10 @@ export const LoggedInMenu = ({ buttonStatus }) => {
                 <ul className='menu-list'>
                     <li className='menu-item'>
                         <NavLink 
-                            to={'/control-centre'} 
+                            to={`${profileCreated ? '/control-centre' : 'profile-creator'}`} 
                             className='link menu-link'
                         >
-                            Control Centre
+                            {profileCreated ? 'Control Centre' : 'Create your profile'}
                         </NavLink>
                     </li>
                     <li className='menu-item'>
@@ -203,11 +205,14 @@ export const DefaultMenuMobile = ({ buttonStatus }) => {
     }
 }
 
-export const LoggedInMenuMobile = ({ buttonStatus }) => {
+export const LoggedInMenuMobile = ({ buttonStatus, profileCreated }) => {
+
+    const navigate = useNavigate();
 
     const handleLogOut = () => {
         RemoveInfoFromLocalStorage();
         navigate('/');
+        window.location.reload();
     }
 
     if (buttonStatus) {
@@ -225,10 +230,10 @@ export const LoggedInMenuMobile = ({ buttonStatus }) => {
                     <hr />
                     <li className='menu-item'>
                         <NavLink 
-                            to={'/control-centre'} 
+                            to={`${profileCreated ? '/control-centre' : 'profile-creator'}`} 
                             className='link menu-link'
                         >
-                            Control Centre
+                            {profileCreated ? 'Control Centre' : 'Create your profile'}
                         </NavLink>
                     </li>
                     <li className='menu-item'>

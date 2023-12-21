@@ -79,7 +79,7 @@ export const CircleIcon = () => {
 // PROFILE ICONS
 export const ProfileIcon = () => {
     return (
-        <FontAwesomeIcon icon={faAddressCard} className='profile-icon'/>
+        <FontAwesomeIcon icon={faAddressCard} className='profile-icon icon'/>
     )
 }
 

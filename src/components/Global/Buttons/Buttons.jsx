@@ -4,7 +4,7 @@ import { queryDatabase } from "../../../utils/queryDatabase"
 import { formatSelectedDate } from "../../../utils/dateFormatting"
 import './buttons.styles.css'
 import { LoadingDots } from "../Loading/LoadingEffects"
-import { GetInfoFromLocalStorage } from "../../../utils/updateLocalStorage"
+import { AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage, GetInfoFromLocalStorage } from "../../../utils/updateLocalStorage"
 import { useNavigate } from "react-router-dom"
 
 // *************************** //
@@ -143,10 +143,12 @@ export const SaveAndExitButton = ({ userProfile }) => {
             userProfile,
         }
         try {
-            const response = await queryDatabase('/api/Profile/SaveProfileEntry.js', dataPayload);
+            const response = await queryDatabase('/api/Profile/SaveProfileEntry.js', dataPayload); 
             const responseData = await response.json();
             if (response.ok) {
                 setIsLoading(false);
+                AddProfileCreatedToLocalStorage(true);
+                AddProfileDataToLocalStorage(responseData.updatedProfileDocument.profiles)
                 navigate('/control-centre');
             } else {
                 setIsLoading(false);
@@ -427,7 +429,6 @@ export const NextFooterButton = ({ stageNumber, setStageNumber, setNextButtonAva
 
     const handleNextClick = () => {
         setStageNumber(stageNumber + 1);
-        setNextButtonAvailable(false);
     }
 
     return (
