@@ -7,6 +7,20 @@
     position: relative;
     border-bottom: 1px solid var(--light-grey);
 }
+.header .right {
+    display: flex;
+    align-items: center;
+    gap:2rem;
+}
+.header .right p {
+    font-size: 0.8rem;
+    font-weight: 300;
+}
+.header .right p:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 /* Mobile */
 .header-mobile {
     position: absolute;

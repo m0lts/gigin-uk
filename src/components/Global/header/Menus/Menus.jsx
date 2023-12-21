@@ -66,7 +66,7 @@ export const DefaultMenu = ({ buttonStatus }) => {
     }
 }
 
-export const LoggedInMenu = ({ buttonStatus, profileCreated }) => {
+export const LoggedInMenu = ({ buttonStatus, profileInfo }) => {
 
     const navigate = useNavigate();
 
@@ -82,10 +82,10 @@ export const LoggedInMenu = ({ buttonStatus, profileCreated }) => {
                 <ul className='menu-list'>
                     <li className='menu-item'>
                         <NavLink 
-                            to={`${profileCreated ? '/control-centre' : 'profile-creator'}`} 
+                            to={`${profileInfo ? '/control-centre' : 'profile-creator'}`} 
                             className='link menu-link'
                         >
-                            {profileCreated ? 'Control Centre' : 'Create your profile'}
+                            {profileInfo ? 'Control Centre' : 'Create your profile'}
                         </NavLink>
                     </li>
                     <li className='menu-item'>
@@ -205,7 +205,7 @@ export const DefaultMenuMobile = ({ buttonStatus }) => {
     }
 }
 
-export const LoggedInMenuMobile = ({ buttonStatus, profileCreated }) => {
+export const LoggedInMenuMobile = ({ buttonStatus, profileInfo }) => {
 
     const navigate = useNavigate();
 
@@ -230,10 +230,10 @@ export const LoggedInMenuMobile = ({ buttonStatus, profileCreated }) => {
                     <hr />
                     <li className='menu-item'>
                         <NavLink 
-                            to={`${profileCreated ? '/control-centre' : 'profile-creator'}`} 
+                            to={`${profileInfo ? '/control-centre' : 'profile-creator'}`} 
                             className='link menu-link'
                         >
-                            {profileCreated ? 'Control Centre' : 'Create your profile'}
+                            {profileInfo ? 'Control Centre' : 'Create your profile'}
                         </NavLink>
                     </li>
                     <li className='menu-item'>

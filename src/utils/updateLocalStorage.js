@@ -37,6 +37,7 @@ export const AddProfileCreatedToLocalStorage = (payload) => {
     localStorage.setItem('profileCreated', payload);
 }
 
+
 export const AddProfileDataToLocalStorage = (payload) => {
     localStorage.setItem('profiles', JSON.stringify(payload));
 }

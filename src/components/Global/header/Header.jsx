@@ -4,7 +4,7 @@ import { GiginLogo } from '../Logo/GiginLogo'
 import { DynamicTextBox } from './DynamicTextBox/DynamicTextBox'
 import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, SaveAndExitButton } from '../Buttons/Buttons'
 import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from './Menus/Menus'
-import { GetInfoFromLocalStorage } from '../../../utils/updateLocalStorage'
+import { GetInfoFromLocalStorage, GetProfileDataFromLocalStorage } from '../../../utils/updateLocalStorage'
 import './header.styles.css'
 
 export const Header = ({ userProfile, stageNumber }) => {
@@ -29,6 +29,7 @@ export const Header = ({ userProfile, stageNumber }) => {
 
     // User logged in - fill with local storage when possible
     const localStorageInfo = GetInfoFromLocalStorage();
+    const profileInfo = GetProfileDataFromLocalStorage();
 
     // Mobile screen 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
@@ -55,7 +56,7 @@ export const Header = ({ userProfile, stageNumber }) => {
                     {localStorageInfo.userFirstName ? (
                         <LoggedInMenuMobile 
                             buttonStatus={myGiginButtonClicked}
-                            profileCreated={localStorageInfo.profileCreated}
+                            profileInfo={profileInfo}
                         />
                     ) : (
                         <DefaultMenuMobile 
@@ -67,6 +68,8 @@ export const Header = ({ userProfile, stageNumber }) => {
                 <header className='header'>
                     <GiginLogo />
                     <DynamicTextBox />
+                    <div className='right'>
+                    <p>Host with Gigin</p>
                     {profileCreatorPage && stageNumber > 1 ? (
                         <>
                             <SaveAndExitButton 
@@ -83,7 +86,7 @@ export const Header = ({ userProfile, stageNumber }) => {
                             {localStorageInfo.userFirstName ? (
                                 <LoggedInMenu 
                                     buttonStatus={myGiginButtonClicked}
-                                    profileCreated={localStorageInfo.profileCreated}
+                                    profileInfo={profileInfo}
                                 />
                             ) : (
                                 <DefaultMenu 
@@ -92,6 +95,7 @@ export const Header = ({ userProfile, stageNumber }) => {
                             )}
                         </>
                     )}
+                    </div>
                 </header>
             )}
         </>
