@@ -1,0 +1,21 @@
+.gig-fee-filter {
+    list-style: none;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap:1rem;
+}
+.gig-fee-filter li {
+    padding:0.5rem;
+    border:1px solid var(--light-grey);
+    border-radius: 1rem;
+    width:auto;
+    text-align: center;
+    cursor: pointer;
+}
+.gig-fee-filter li:hover {
+    box-shadow: 2px 2px 5px var(--light-grey);
+}
+.gig-fee-filter li:active {
+    background-color: var(--light-grey);
+}

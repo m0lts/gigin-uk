@@ -1,0 +1,48 @@
+import { Link } from 'react-router-dom'
+import { Notifications } from '../../../../components/Global/ControlCentre/Notifications/Notifications'
+import { GigGoerIcon, HostIcon, MusicianIcon, ProfileIcon } from '../../../../components/Global/Icons/Icons'
+import '../control-centre.styles.css'
+import { GetProfileDataFromLocalStorage } from '../../../../utils/updateLocalStorage'
+
+export const ControlCentre = () => {
+
+    const existingUserProfiles = GetProfileDataFromLocalStorage();
+
+    return (
+        <>
+            <Notifications />
+            <div className='selections'>
+                <Link to={'/profile-creator'} className='link selections-card'>
+                    <ProfileIcon />
+                    <h5 className='title'>Profile Creator</h5>
+                    <p className='info'>Whether you're a musician, host or gig-goer, you can create your profile here.</p>
+                </Link>
+                {existingUserProfiles && (
+                    existingUserProfiles.map((profile, index) => (
+                        <Link to={'/profile-creator'} state={profile} key={index} className='link selections-card'>
+                            {profile.profileType === 'Host' ? (
+                                <>
+                                    <HostIcon />
+                                    <h5 className='title'>{profile.establishmentName} Profile</h5>
+                                    <p className='info'>Edit your profile here.</p>
+                                </>
+                            ) : profile.profileType === 'Musician' ? (
+                                <>
+                                    <MusicianIcon />
+                                    <h5 className='title'>Musician Profile</h5>
+                                    <p className='info'>Edit your profile here.</p>
+                                </>
+                            ) : profile.profileType === 'Gig-goer' && (
+                                <>
+                                    <GigGoerIcon />
+                                    <h5 className='title'>Gig-goer Profile</h5>
+                                    <p className='info'>Edit your profile here.</p>
+                                </>
+                            )}
+                        </Link>
+                    ))
+                )}
+            </div>
+        </>
+    )
+}

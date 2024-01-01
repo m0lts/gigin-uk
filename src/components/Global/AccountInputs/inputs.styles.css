@@ -1,0 +1,68 @@
+.input-cont {
+    position: relative;
+    margin: 0.25rem auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+}
+.input-passive {
+    background-color: var(--white);
+    width:fit-content;
+    padding:0.5rem 1rem;
+    color: var(--medium-dark-grey);
+    border-radius: 2rem;
+    border:1px solid var(--light-medium-grey);
+    font-size: 0.8rem;
+}
+.input-cont.disabled {
+    color: var(--medium-dark-grey);
+}
+.input-cont .input-label {
+    position: absolute;
+    top:50%;
+    transform: translateY(-50%);
+    left:1rem;
+    color: var(--medium-dark-grey);
+    font-size: 0.8rem;
+}
+.input-cont .input-label.active {
+    top:-20%;
+    font-size: 0.5rem;
+    transition: 100ms linear;
+    color: var(--black);
+}
+.input-cont .input {
+    padding:0.5rem 1rem;
+    border:1px solid var(--light-medium-grey);
+    border-radius: 2rem;
+}
+.input-cont .input:focus {
+    outline: none;
+    border-color: var(--gigin-orange);
+}
+.input-cont .input.error {
+    border-color: red;
+}
+.form-error {
+    font-size: 0.6rem;
+    color: red;
+    text-align: center;
+    margin: 0.5rem auto;
+    width:250px;
+}
+
+/* Name inputs */
+.name-cont {
+    display: flex;
+    justify-content: space-between;
+    gap:0.5rem;
+}
+
+@media screen and (max-width: 540px) {
+    .name-cont {
+        flex-direction: column;
+        gap:0.5rem;
+    }
+}

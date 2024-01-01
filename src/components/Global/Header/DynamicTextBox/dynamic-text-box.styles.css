@@ -1,0 +1,17 @@
+.dynamic-text-box {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 1px solid var(--light-grey);
+    border-radius: 2rem;
+    width:30%;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.dynamic-text-box .dynamic-text {
+    color: black;
+    font-weight: 200;
+}
