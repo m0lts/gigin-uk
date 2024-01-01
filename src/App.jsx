@@ -32,10 +32,6 @@ export default function App() {
         <Route path='/host-with-gigin' element={<HostWithGigin />} />
         <Route path='/gig-goers' element={<GigGoersHome />} />
         <Route path='/profile-creator' element={<ProfileCreator />}/>
-        <Route path='/profile-creator-test' element={<ProfileCreatorTest />} >
-          <Route index element={<OpeningText />} />
-          <Route path=':page' />
-        </Route>
       </Routes>
   )
 }
