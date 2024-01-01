@@ -1,0 +1,55 @@
+.control-centre .header h1 {
+    font-weight: 400;
+}
+.control-centre .body {
+    width: 95%;
+    margin: 2rem auto;
+}
+.control-centre .notifications h3 {
+    margin: 1rem 0.5rem;
+}
+.control-centre .notifications-box {
+    height:300px;
+    background-color: var(--light-grey);
+}
+.control-centre .selections {
+    margin: 2rem 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+.selections .selections-card {
+    border:1px solid var(--light-medium-grey);
+    width:30%;
+    min-width: 300px;
+    height:200px;
+    border-radius: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap:1rem;
+    padding:2rem;
+    transition: 200ms ease-in-out;
+    margin:1rem;
+}
+.selections .selections-card .icon {
+    font-size: 1.5rem;
+    transition: 200ms ease-in-out;
+}
+.selections .selections-card:hover {
+    box-shadow: 2px 2px 5px var(--light-grey);
+    transition: 200ms ease-in-out;
+}
+.selections .selections-card:hover > .icon {
+    font-size: 2rem;
+    transition: 200ms ease-in-out;
+}
+.selections .selections-card .title {
+    font-size: 1.5rem;
+}
+.selections .selections-card .info {
+    font-size: 1rem;
+    color: var(--dark-grey);
+    width:80%;
+}
