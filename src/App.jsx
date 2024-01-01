@@ -12,7 +12,6 @@ import { ForgotPassword } from './pages/Global/Account/ForgotPassword/ForgotPass
 import { ControlCentreIndex } from './pages/Global/ControlCentre/ControlCentreIndex'
 import { ProfileCreator } from './pages/Global/ProfileCreator/ProfileCreator'
 import { ControlCentre } from './pages/Global/ControlCentre/Outlets/ControlCentre'
-import { ProfileCreatorTest } from './pages/Global/ProfileCreator/Test'
 import { OpeningText } from './components/Global/ProfileCreatorStages/OpeningText/OpeningText'
 
 export default function App() {
