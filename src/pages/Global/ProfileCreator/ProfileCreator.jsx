@@ -31,6 +31,8 @@ export const ProfileCreator = () => {
     const [stageNumber, setStageNumber] = useState(0);
     // Next button availability
     const [nextButtonAvailable, setNextButtonAvailable] = useState(true);
+    // Save button availability
+    const [saveButtonAvailable, setSaveButtonAvailable] = useState(false);
 
     // Generate profile ID
     const generateRandomId = (length) => {
@@ -123,6 +125,7 @@ export const ProfileCreator = () => {
                     <MusicianType 
                         musicianType={musicianType}
                         setMusicianType={setMusicianType}
+                        setMusicianInstruments={setMusicianInstruments}
                     />
                 ) : profileType === 'Host' ? (
                     <ProfileName 
@@ -167,6 +170,8 @@ export const ProfileCreator = () => {
                             userProfile={userProfile}
                             profileImages={profileImages}
                             setProfileImages={setProfileImages}
+                            saveButtonAvailable={saveButtonAvailable}
+                            setSaveButtonAvailable={setSaveButtonAvailable}
                         />
                     )
                 ) : profileType === 'Host' ? (
@@ -184,6 +189,8 @@ export const ProfileCreator = () => {
                             userProfile={userProfile}
                             profileImages={profileImages}
                             setProfileImages={setProfileImages}
+                            saveButtonAvailable={saveButtonAvailable}
+                            setSaveButtonAvailable={setSaveButtonAvailable}
                         />
                     ) : (
                         <h1>wrong page</h1>
@@ -233,6 +240,8 @@ export const ProfileCreator = () => {
                     ) : (
                         <HostProfilePreview 
                             userProfile={userProfile}
+                            saveButtonAvailable={saveButtonAvailable}
+                            setSaveButtonAvailable={setSaveButtonAvailable}
                         />
                     )
                 ) : (
@@ -245,6 +254,8 @@ export const ProfileCreator = () => {
                     inHouseEquipment.length > 0 && (
                         <HostProfilePreview
                             userProfile={userProfile}
+                            saveButtonAvailable={saveButtonAvailable}
+                            setSaveButtonAvailable={setSaveButtonAvailable}
                         />
                     )
                 ) : (
@@ -256,6 +267,9 @@ export const ProfileCreator = () => {
                 stageNumber={stageNumber}
                 setNextButtonAvailable={setNextButtonAvailable}
                 nextButtonAvailable={nextButtonAvailable}
+                saveButtonAvailable={saveButtonAvailable}
+                setSaveButtonAvailable={setSaveButtonAvailable}
+                userProfile={userProfile}
             />
         </section>
     )

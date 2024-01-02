@@ -290,3 +290,18 @@
     border: 1px solid var(--white);
     cursor: pointer;
 }
+/* Save button */
+.save-footer-button {
+    padding:0.5rem 1rem;
+    background-color: var(--gigin-orange);
+    color: var(--white);
+    border: 1px solid var(--gigin-orange);
+    border-radius: 0.5rem;
+    font-weight: 400;
+    transition: 200ms linear;
+}
+.save-footer-button:hover {
+    opacity: 0.8;
+    border: 1px solid var(--white);
+    cursor: pointer;
+}

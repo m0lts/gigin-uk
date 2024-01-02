@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AmpIcon, CircleIcon, DrumIcon, ElectricGuitarIcon, GuitarIcon, HostIcon, KeyboardIcon, MicrophoneIcon, MicrophoneStandIcon, MixingDeckIcon, MusicVenueIcon, PianoIcon, PlugIcon, SoundSystemIcon } from "../../Icons/Icons";
 
-export const HostProfilePreview = ({ userProfile }) => {
+export const HostProfilePreview = ({ userProfile, setSaveButtonAvailable }) => {
 
     const [images, setImages] = useState(userProfile.profileImages);
     const [venueName, setVenueName] = useState(userProfile.establishmentName);
@@ -41,6 +41,10 @@ export const HostProfilePreview = ({ userProfile }) => {
             return <MusicVenueIcon />
         }
     }
+
+    useEffect(() => {
+        setSaveButtonAvailable(true);
+    }, [])
 
 
     return (

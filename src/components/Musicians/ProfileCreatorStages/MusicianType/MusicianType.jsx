@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AlbumIcon, GuitarIcon, MicrophoneIcon, MicrophoneStandIcon, MixingDeckIcon } from "../../../Global/Icons/Icons";
 
-export const MusicianType = ({ musicianType = [], setMusicianType }) => {
+export const MusicianType = ({ musicianType = [], setMusicianType, setMusicianInstruments }) => {
 
     const [selectedCards, setSelectedCards] = useState([]);
 
@@ -14,6 +14,12 @@ export const MusicianType = ({ musicianType = [], setMusicianType }) => {
         } else {
             updatedSelection.splice(index, 1);
         }
+
+        if (updatedSelection.includes('Singer / Songwriter')) {
+            setMusicianInstruments(['Voice']);
+          } else {
+            setMusicianInstruments(null);
+          }
 
         setSelectedCards(updatedSelection);
     };

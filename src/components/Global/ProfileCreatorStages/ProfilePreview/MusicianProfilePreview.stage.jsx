@@ -1,34 +1,25 @@
 import { useState, useEffect } from "react";
 import { CircleIcon, InsertImageIcon, XIcon } from "../../Icons/Icons"
 import { SingleImageInput } from "../../Images/ImageInputs"
+import { CoverImage, ProfileImage } from "../../../Musicians/ProfileCreatorStages/MusicianImages/MusicianImages";
 
-export const MusicianProfilePreview = ({ userProfile, profileImages, setProfileImages }) => {
+export const MusicianProfilePreview = ({ userProfile, profileImages, setProfileImages, setSaveButtonAvailable }) => {
 
-    const [image, setImage] = useState(profileImages && profileImages.length > 0 ? profileImages[0] : null);
+    const [profileImage, setProfileImage] = useState(userProfile.profileImages.profileImage ? userProfile.profileImages.profileImage : null);
+    const [coverImage, setCoverImage] = useState(userProfile.profileImages.coverImage ? userProfile.profileImages.coverImage : null);
 
     useEffect(() => {
-        setProfileImages([image]);
-    }, [image])
+        setProfileImages(
+            {
+                profileImage: profileImage,
+                coverImage: coverImage
+            }
+        )
+    }, [profileImage, coverImage])
 
-    // Image addition and removal
-    const handleImageChange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImage(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const removeImage = () => {
-        setImage(null);
-        const input = document.getElementById(`image-input`);
-        if (input) {
-            input.value = '';
-        }
-    };
+    useEffect(() => {
+        setSaveButtonAvailable(true);
+    }, [])
 
     return (
         <div className='profile-preview profile-creator-stage'>
@@ -36,7 +27,19 @@ export const MusicianProfilePreview = ({ userProfile, profileImages, setProfileI
             <p className="text">This is a rough overview of how your profile will look to hosts.</p>
             <div className="musician-preview flex-column">
                 <div className="top relative">
+                    <div className="cover-photo">
+                        <CoverImage
+                            coverImage={coverImage}
+                            setCoverImage={setCoverImage}
+                        />
+                    </div>
                     <div className="profile-photo">
+                        <ProfileImage
+                            profileImage={profileImage}
+                            setProfileImage={setProfileImage}
+                        />
+                    </div>
+                    {/* <div className="profile-photo">
                     <div className="single-image-input-cont">
                         <label htmlFor='image-input' className="insert-image-label">
                             {image ? (
@@ -67,7 +70,7 @@ export const MusicianProfilePreview = ({ userProfile, profileImages, setProfileI
                             onChange={(event) => handleImageChange(event)}
                         />
                     </div>
-                    </div>
+                    </div> */}
                 </div>
                 <div className="title-cont">
                     <h1>{userProfile.profileName}</h1>

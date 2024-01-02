@@ -58,16 +58,6 @@ export default async function handler(request, response) {
                 response.status(201).json({ updatedProfileDocument });
             }
             
-
-            // Work on profile ID's?
-            // If the profile hasnt been previously saved, then create a new document
-            // If the profile has been previously saved, update with new entries
-            // BARE IN MIND THAT THE USER CAN CREATE MORE THAN ONE PROFILE!!!
-            // Possible structure: userID: 43rnj34rb4321lf, profiles: [3]
-            // profile[0]: profileID: 42r432hbr432hjb, profileType: musician etc.
-
-
-            
         }
 
     } catch (error) {

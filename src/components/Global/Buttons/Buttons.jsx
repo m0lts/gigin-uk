@@ -432,10 +432,11 @@ export const SelectExistingNameButton = ({ userName, setProfileName }) => {
 // FOOTER BUTTONS //
 
 // Back and next footer buttons
-export const BackFooterButton = ({ stageNumber, setStageNumber }) => {
+export const BackFooterButton = ({ stageNumber, setStageNumber, setSaveButtonAvailable }) => {
 
     const handleBackClick = () => {
         setStageNumber(stageNumber - 1);
+        setSaveButtonAvailable(false);
     }
 
     return (
@@ -444,7 +445,7 @@ export const BackFooterButton = ({ stageNumber, setStageNumber }) => {
         </button>
     )
 }
-export const NextFooterButton = ({ stageNumber, setStageNumber, setNextButtonAvailable, nextButtonAvailable }) => {
+export const NextFooterButton = ({ stageNumber, setStageNumber, setNextButtonAvailable, nextButtonAvailable, saveButtonAvailable }) => {
 
     const handleNextClick = () => {
         setStageNumber(stageNumber + 1);
@@ -453,10 +454,76 @@ export const NextFooterButton = ({ stageNumber, setStageNumber, setNextButtonAva
     return (
         <button
             className={`btn next-footer-button ${!nextButtonAvailable ? 'disabled' : ''}`}
+            style={{ display: !saveButtonAvailable ? 'block' : 'none' }}
             onClick={!nextButtonAvailable ? undefined : handleNextClick}
             disabled={!nextButtonAvailable}
         >
             Next
+        </button>
+    )
+}
+export const SaveFooterButton = ({ setSaveButtonAvailable, saveButtonAvailable, userProfile }) => {
+    
+    const [isLoading, setIsLoading] = useState(false);
+    const userInfo = GetInfoFromLocalStorage();
+    const userID = userInfo.userID;
+
+    const navigate = useNavigate();
+
+    const handleSaveClick = async (event) => {
+        event.preventDefault();
+        setIsLoading(true);
+        const dataPayload = {
+            userID,
+            userProfile,
+        }
+        try {
+            const response = await queryDatabase('/api/Profile/SaveProfileEntry.js', dataPayload); 
+            const responseData = await response.json();
+            if (response.ok) {
+                setIsLoading(false);
+                AddProfileCreatedToLocalStorage(true);
+                AddProfileDataToLocalStorage(responseData.updatedProfileDocument.profiles);
+                navigate('/control-centre');
+            } else {
+                setIsLoading(false);
+                console.log('error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    return (
+        <button 
+            className={`btn save-footer-button ${isLoading && 'loading'}`}
+            style={{ display: saveButtonAvailable ? 'block' : 'none' }}
+            onClick={handleSaveClick}
+        >
+            {isLoading ? (
+                <LoadingDots />
+            ) : (
+                <p>Save Profile</p>
+            )}
+        </button>
+    )
+
+
+
+
+    const handleSaveAndExit = async (event) => {
+    }
+
+    return (
+        <button 
+            className={`btn save-and-exit-button ${isLoading && 'loading'}`} 
+            onClick={handleSaveAndExit}
+        >
+            {isLoading ? (
+                <LoadingDots />
+            ) : (
+                <p>Save and Exit</p>
+            )}
         </button>
     )
 }

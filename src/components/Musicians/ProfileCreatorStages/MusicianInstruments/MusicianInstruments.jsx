@@ -44,11 +44,11 @@ export const MusicianInstruments = ({ musicianInstruments, setMusicianInstrument
                     <h2 className="text">Piano</h2>
                 </div>
                 <div 
-                    className={`card ${selectedInstruments.includes('Sing') && 'active'}`}
-                    onClick={() => handleCardClick('Sing')}
+                    className={`card ${selectedInstruments.includes('Voice') && 'active'}`}
+                    onClick={() => handleCardClick('Voice')}
                 >
                     <MicrophoneIcon />
-                    <h2 className="text">Sing</h2>
+                    <h2 className="text">Voice</h2>
                 </div>
                 <div 
                     className={`card ${selectedInstruments.includes('Acoustic Guitar') && 'active'}`}
