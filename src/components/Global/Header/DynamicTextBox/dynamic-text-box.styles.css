@@ -1,4 +1,4 @@
-.dynamic-text-box {
+.dynamic-bar {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
@@ -11,7 +11,33 @@
     justify-content: center;
     overflow: hidden;
 }
-.dynamic-text-box .dynamic-text {
+.dynamic-bar .text {
     color: black;
     font-weight: 200;
+}
+
+/* Progress */
+.dynamic-bar .progress {
+    width:100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap:0.25rem;
+    align-items: center;
+}
+.dynamic-bar .progress .text {
+    font-size:0.7rem;
+}
+.dynamic-bar .progress .bar {
+    width:80%;
+    height:5px;
+    border-radius: 1rem;
+    background-color: var(--light-grey);
+}
+.dynamic-bar .progress .bar .fill {
+    width:0%;
+    height:100%;
+    background-color: var(--gigin-orange);
+    border-radius: 1rem;
+    transition: 500ms linear;
 }

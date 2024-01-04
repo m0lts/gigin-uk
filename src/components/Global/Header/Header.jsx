@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { GiginLogo } from '../Logo/GiginLogo'
-import { DynamicTextBox } from './DynamicTextBox/DynamicTextBox'
+import { DynamicBar} from './DynamicTextBox/DynamicBar'
 import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, SaveAndExitButton } from '../Buttons/Buttons'
 import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from './Menus/Menus'
 import { GetInfoFromLocalStorage, GetProfileDataFromLocalStorage } from '../../../utils/updateLocalStorage'
@@ -67,7 +67,10 @@ export const Header = ({ userProfile, stageNumber }) => {
             ) : (
                 <header className='header'>
                     <GiginLogo />
-                    <DynamicTextBox />
+                    <DynamicBar
+                        userProfile={userProfile}
+                        stageNumber={stageNumber}
+                    />
                     <div className='right'>
                     <p>Host with Gigin</p>
                     {profileCreatorPage && stageNumber > 1 ? (

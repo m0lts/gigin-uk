@@ -44,8 +44,8 @@ export const MusicianProfilePreview = ({ userProfile, profileImages, setProfileI
                     <h1>{userProfile.profileName}</h1>
                 </div>
                 <ul className="middle flex">
-                    <li>{userProfile.musicianType.map((type) => (
-                        <span className="list-of-items">{type}</span>
+                    <li>{userProfile.musicianType.map((type, index) => (
+                        <span key={index} className="list-of-items">{type}</span>
                     ))}</li>
                     <li><CircleIcon /></li>
                     <li>{userProfile.musicianExtraInfo.musicType}</li>
