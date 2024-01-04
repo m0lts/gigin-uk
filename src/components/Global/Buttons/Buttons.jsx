@@ -432,11 +432,12 @@ export const SelectExistingNameButton = ({ userName, setProfileName }) => {
 // FOOTER BUTTONS //
 
 // Back and next footer buttons
-export const BackFooterButton = ({ stageNumber, setStageNumber, setSaveButtonAvailable }) => {
+export const BackFooterButton = ({ stageNumber, setStageNumber, setSaveButtonAvailable, setNextButtonAvailable }) => {
 
     const handleBackClick = () => {
         setStageNumber(stageNumber - 1);
         setSaveButtonAvailable(false);
+        setNextButtonAvailable(false);
     }
 
     return (
@@ -445,10 +446,11 @@ export const BackFooterButton = ({ stageNumber, setStageNumber, setSaveButtonAva
         </button>
     )
 }
-export const NextFooterButton = ({ stageNumber, setStageNumber, setNextButtonAvailable, nextButtonAvailable, saveButtonAvailable }) => {
+export const NextFooterButton = ({ stageNumber, setStageNumber, setNextButtonAvailable, nextButtonAvailable, saveButtonAvailable, userProfile }) => {
 
     const handleNextClick = () => {
         setStageNumber(stageNumber + 1);
+        setNextButtonAvailable(false);
     }
 
     return (

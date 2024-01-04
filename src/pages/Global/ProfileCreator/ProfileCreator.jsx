@@ -14,11 +14,13 @@ import { HostAddressStage } from '../../../components/Host/ProfileCreatorStages/
 import { HostExtraInfoStage } from '../../../components/Host/ProfileCreatorStages/HostExtraInfo/HostExtraInfo.stage'
 import { HostProfilePreview } from '../../../components/Global/ProfileCreatorStages/ProfilePreview/HostProfilePreview.stages'
 import { GetProfileDataFromLocalStorage } from '../../../utils/updateLocalStorage'
+import { Outlet } from 'react-router-dom'
 import { useLocation } from 'react-router-dom'
 import { MusicianType } from '../../../components/Musicians/ProfileCreatorStages/MusicianType/MusicianType'
 import { MusicianInstruments } from '../../../components/Musicians/ProfileCreatorStages/MusicianInstruments/MusicianInstruments'
 import { MusicianExtraInfo } from '../../../components/Musicians/ProfileCreatorStages/MusicianExtraInfo/MusicianExtraInfo.stage'
 import { MusicianProfilePreview } from '../../../components/Global/ProfileCreatorStages/ProfilePreview/MusicianProfilePreview.stage'
+import { SaveFooterButton, NextFooterButton, BackFooterButton } from '../../../components/Global/Buttons/Buttons'
 
 export const ProfileCreator = () => {
 
@@ -49,7 +51,7 @@ export const ProfileCreator = () => {
 
     // Profile object states, if location.state is true (user is editing profile), set userProfile and all states to that. Otherwise set to null.
     const [profileID, setProfileID] = useState(location.state ? location.state.profileID : generateRandomId(25))
-    const [profileType, setProfileType] = useState(location.state ? location.state.profileType : null);
+    const [profileType, setProfileType] = useState(location.state ? location.state.profileType : undefined);
     const [userProfile, setUserProfile] = useState(location.state || {});
     const [profileImages, setProfileImages] = useState(location.state ? location.state.profileImages : []);
     const [profileName, setProfileName] = useState(location.state ? location.state.profileName : '');
@@ -64,16 +66,14 @@ export const ProfileCreator = () => {
     const [hostExtraInfo, setHostExtraInfo] = useState(location.state ? location.state.hostExtraInfo : null);
 
     useEffect(() => {
-        if (profileType) {
-            setNextButtonAvailable(true);
-        }
         const updatedUserProfile = {
             ...userProfile,
-            // Only add value below if they exist
-            ...(profileID && { profileID: profileID }),
-            ...(profileType && { profileType: profileType }),
-            ...(profileName && { profileName: profileName }),
-            ...(profileImages && { profileImages: profileImages }),
+            profileID: profileID,
+            profileType: profileType,
+            profileName: profileName,
+            profileImages: profileImages,
+            
+            // Only add value below if they exist or don't equal null
             // Musician specific values
             ...(musicianType && { musicianType: musicianType }),
             ...(musicianInstruments && { musicianInstruments: musicianInstruments }),
@@ -86,8 +86,6 @@ export const ProfileCreator = () => {
         };
         setUserProfile(updatedUserProfile);
     }, [profileID, profileType, establishmentType, profileName, profileImages, inHouseEquipment, hostAddress, hostExtraInfo, musicianType, musicianInstruments, musicianExtraInfo])
-
-    console.log(userProfile)
 
     return (
         <section className='profile-creator'>
@@ -104,6 +102,7 @@ export const ProfileCreator = () => {
                     profileType={profileType}
                     setProfileType={setProfileType}
                     existingUserProfiles={existingUserProfiles}
+                    setNextButtonAvailable={setNextButtonAvailable}
                 />
             ) : stageNumber === 2 ? (
                 profileType === 'Musician' ? (
@@ -111,11 +110,13 @@ export const ProfileCreator = () => {
                         establishmentType={establishmentType}
                         profileName={profileName}
                         setProfileName={setProfileName}
+                        setNextButtonAvailable={setNextButtonAvailable}
                     />
                 ) : profileType === 'Host' ? (
                     <EstablishmentType 
                         establishmentType={establishmentType}
                         setEstablishmentType={setEstablishmentType}
+                        setNextButtonAvailable={setNextButtonAvailable}
                     />
                 ) : (
                     <h1>Gig-goer</h1>
@@ -126,12 +127,14 @@ export const ProfileCreator = () => {
                         musicianType={musicianType}
                         setMusicianType={setMusicianType}
                         setMusicianInstruments={setMusicianInstruments}
+                        setNextButtonAvailable={setNextButtonAvailable}
                     />
                 ) : profileType === 'Host' ? (
                     <ProfileName 
                         establishmentType={establishmentType}
                         profileName={profileName}
                         setProfileName={setProfileName}
+                        setNextButtonAvailable={setNextButtonAvailable}
                     />
                 ) : (
                     <h1>Gig-goer</h1>
@@ -142,11 +145,13 @@ export const ProfileCreator = () => {
                         <MusicianInstruments 
                             musicianInstruments={musicianInstruments}
                             setMusicianInstruments={setMusicianInstruments}
+                            setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
                         <MusicianExtraInfo 
                             musicianExtraInfo={musicianExtraInfo}
                             setMusicianExtraInfo={setMusicianExtraInfo}
+                            setNextButtonAvailable={setNextButtonAvailable}
                         />
                     )
                 ) : profileType === 'Host' ? (
@@ -154,6 +159,7 @@ export const ProfileCreator = () => {
                         images={profileImages}
                         setImages={setProfileImages}
                         numberOfImages={5}
+                        setNextButtonAvailable={setNextButtonAvailable}
                     />
                 ) : (
                     <h1>Gig-goer</h1>
@@ -164,6 +170,7 @@ export const ProfileCreator = () => {
                         <MusicianExtraInfo 
                             musicianExtraInfo={musicianExtraInfo}
                             setMusicianExtraInfo={setMusicianExtraInfo}
+                            setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
                         <MusicianProfilePreview
@@ -178,6 +185,7 @@ export const ProfileCreator = () => {
                     <InHouseEquipment
                         inHouseEquipment={inHouseEquipment}
                         setInHouseEquipment={setInHouseEquipment}
+                        setNextButtonAvailable={setNextButtonAvailable}
                     />
                 ) : (
                     <h1>Gig-goer</h1>
@@ -200,11 +208,13 @@ export const ProfileCreator = () => {
                         <InHouseEquipmentImages 
                             inHouseEquipment={inHouseEquipment}
                             setInHouseEquipment={setInHouseEquipment}
+                            setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
                         <HostAddressStage 
                             hostAddress={hostAddress}
                             setHostAddress={setHostAddress}
+                            setNextButtonAvailable={setNextButtonAvailable}
                         />
                     )
                 ) : (
@@ -218,11 +228,13 @@ export const ProfileCreator = () => {
                         <HostAddressStage
                             hostAddress={hostAddress}
                             setHostAddress={setHostAddress}
+                            setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
                         <HostExtraInfoStage 
                             hostExtraInfo={hostExtraInfo}
                             setHostExtraInfo={setHostExtraInfo}
+                            setNextButtonAvailable={setNextButtonAvailable}
                         />
                     )
                 ) : (
@@ -236,6 +248,7 @@ export const ProfileCreator = () => {
                         <HostExtraInfoStage 
                             hostExtraInfo={hostExtraInfo}
                             setHostExtraInfo={setHostExtraInfo}
+                            setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
                         <HostProfilePreview 
@@ -262,15 +275,29 @@ export const ProfileCreator = () => {
                     <h1>Gig-goer</h1>
                 )
             )}
-            <BackAndNextFooterBar 
-                setStageNumber={setStageNumber}
+            <footer className={`footer-bar ${stageNumber < 1 ? 'right-flex' : ''}`}>
+            {stageNumber > 0 && (
+                <BackFooterButton 
+                    stageNumber={stageNumber}
+                    setStageNumber={setStageNumber}
+                    setSaveButtonAvailable={setSaveButtonAvailable}
+                    setNextButtonAvailable={setNextButtonAvailable}
+                />
+            )}
+            <NextFooterButton 
                 stageNumber={stageNumber}
+                setStageNumber={setStageNumber}
                 setNextButtonAvailable={setNextButtonAvailable}
                 nextButtonAvailable={nextButtonAvailable}
                 saveButtonAvailable={saveButtonAvailable}
-                setSaveButtonAvailable={setSaveButtonAvailable}
                 userProfile={userProfile}
             />
+            <SaveFooterButton
+                setSaveButtonAvailable={setSaveButtonAvailable}
+                saveButtonAvailable={saveButtonAvailable}
+                userProfile={userProfile}
+            />
+        </footer>
         </section>
     )
 }

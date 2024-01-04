@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AlbumIcon, GuitarIcon, MicrophoneIcon, MicrophoneStandIcon, MixingDeckIcon } from "../../../Global/Icons/Icons";
 
-export const MusicianType = ({ musicianType = [], setMusicianType, setMusicianInstruments }) => {
+export const MusicianType = ({ musicianType = [], setMusicianType, setMusicianInstruments, setNextButtonAvailable }) => {
 
     const [selectedCards, setSelectedCards] = useState([]);
 
@@ -35,6 +35,14 @@ export const MusicianType = ({ musicianType = [], setMusicianType, setMusicianIn
             setSelectedCards(musicianTypes);
         }
     }, [])
+
+    useEffect(() => {
+        if (musicianType && musicianType.length > 0) {
+            setNextButtonAvailable(true);
+        } else {
+            setNextButtonAvailable(false);
+        }
+      }, [musicianType]);
 
     return (
         <div className='musician-type profile-creator-stage'>

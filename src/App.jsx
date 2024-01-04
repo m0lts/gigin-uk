@@ -12,7 +12,6 @@ import { ForgotPassword } from './pages/Global/Account/ForgotPassword/ForgotPass
 import { ControlCentreIndex } from './pages/Global/ControlCentre/ControlCentreIndex'
 import { ProfileCreator } from './pages/Global/ProfileCreator/ProfileCreator'
 import { ControlCentre } from './pages/Global/ControlCentre/Outlets/ControlCentre'
-import { OpeningText } from './components/Global/ProfileCreatorStages/OpeningText/OpeningText'
 
 export default function App() {
 
@@ -31,7 +30,7 @@ export default function App() {
         <Route path='/forgotpassword' element={<ForgotPassword />} />
         <Route path='/host-with-gigin' element={<HostWithGigin />} />
         <Route path='/gig-goers' element={<GigGoersHome />} />
-        <Route path='/profile-creator' element={<ProfileCreator />}/>
+        <Route path='/profile-creator' element={<ProfileCreator />} />
       </Routes>
   )
 }

@@ -3,7 +3,7 @@ import { AddressInputAutofill } from "../../../Global/Addresses/Addresses"
 import { useState, useEffect, useCallback } from "react";
 import { MapIcon } from "../../../Global/Icons/Icons";
 
-export const HostAddressStage = ({ hostAddress, setHostAddress }) => {
+export const HostAddressStage = ({ hostAddress, setHostAddress, setNextButtonAvailable }) => {
 
     // Updating hostAddress state
     const [locationCoordinates, setLocationCoordinates] = useState();
@@ -63,6 +63,13 @@ export const HostAddressStage = ({ hostAddress, setHostAddress }) => {
         handleGeocodeCoordinates(coordinate)
     }
 
+    useEffect(() => {
+      if (hostAddress) {
+          setNextButtonAvailable(true);
+      } else {
+          setNextButtonAvailable(false);
+      }
+    }, [hostAddress]);
 
     return (
         <div className='host-address profile-creator-stage'>

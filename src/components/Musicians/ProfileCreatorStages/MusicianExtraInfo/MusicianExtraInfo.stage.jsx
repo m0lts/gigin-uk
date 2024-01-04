@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MusicianType, MusicianBio, MusicianGenres } from './MusicianExtraInfo.inputs';
 
-export const MusicianExtraInfo = ({ musicianExtraInfo, setMusicianExtraInfo }) => {
+export const MusicianExtraInfo = ({ musicianExtraInfo, setMusicianExtraInfo, setNextButtonAvailable }) => {
 
     const [genres, setGenres] = useState([]);
     const [musicType, setMusicType] = useState('');
@@ -15,6 +15,14 @@ export const MusicianExtraInfo = ({ musicianExtraInfo, setMusicianExtraInfo }) =
             bio: bio,
         }));
       }, [genres, musicType, bio])
+
+    useEffect(() => {
+    if (musicianExtraInfo && musicianExtraInfo.musicType && musicianExtraInfo.genres.length > 0) {
+        setNextButtonAvailable(true);
+    } else {
+        setNextButtonAvailable(false);
+    }
+    }, [musicianExtraInfo]);
 
 
     return (

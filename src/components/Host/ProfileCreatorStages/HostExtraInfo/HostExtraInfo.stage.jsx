@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { MaxStageCapacity, MaxVenueCapacity, ParkingInput, VenueDescription } from "./HostExtraInfo.inputs"
 
-export const HostExtraInfoStage = ({ hostExtraInfo, setHostExtraInfo}) => {
+export const HostExtraInfoStage = ({ hostExtraInfo, setHostExtraInfo, setNextButtonAvailable }) => {
 
     const [parkingInfo, setParkingInfo] = useState('');
     const [maxStageCapacity, setMaxStageCapacity] = useState('');
@@ -17,6 +17,10 @@ export const HostExtraInfoStage = ({ hostExtraInfo, setHostExtraInfo}) => {
             venueDescription: venueDescription,
         }));
       }, [parkingInfo, maxStageCapacity, maxVenueCapacity, venueDescription])
+
+    useEffect(() => {
+        setNextButtonAvailable(true);
+    }, []);
 
     return (
         <div className='extra-information profile-creator-stage'>

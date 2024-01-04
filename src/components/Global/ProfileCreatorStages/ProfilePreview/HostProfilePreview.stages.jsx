@@ -4,7 +4,7 @@ import { AmpIcon, CircleIcon, DrumIcon, ElectricGuitarIcon, GuitarIcon, HostIcon
 export const HostProfilePreview = ({ userProfile, setSaveButtonAvailable }) => {
 
     const [images, setImages] = useState(userProfile.profileImages);
-    const [venueName, setVenueName] = useState(userProfile.establishmentName);
+    const [venueName, setVenueName] = useState(userProfile.profileName);
     const [venueType, setVenueType] = useState(userProfile.establishmentType);
     const [inHouseEquipment, setInHouseEquipment] = useState(userProfile.inHouseEquipment);
     const [extraInfo, setExtraInfo] = useState(userProfile.hostExtraInfo);

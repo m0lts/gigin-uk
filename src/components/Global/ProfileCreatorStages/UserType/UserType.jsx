@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { GigGoerIcon, HostIcon, MusicianIcon } from "../../Icons/Icons"
 
-export const UserTypeSelection = ({ profileType, setProfileType, existingUserProfiles }) => {
+export const UserTypeSelection = ({ profileType, setProfileType, existingUserProfiles, setNextButtonAvailable }) => {
 
     const [isMusicianInactive, setIsMusicianInactive] = useState(false);
     const [isGigGoerInactive, setIsGigGoerInactive] = useState(false);
@@ -13,6 +13,7 @@ export const UserTypeSelection = ({ profileType, setProfileType, existingUserPro
             setProfileType(selectedProfile);
         }
     }
+
 
     useEffect(() => {
         if (existingUserProfiles) {
@@ -30,6 +31,14 @@ export const UserTypeSelection = ({ profileType, setProfileType, existingUserPro
             }
         }
     }, [existingUserProfiles])
+
+    useEffect(() => {
+        if (profileType) {
+            setNextButtonAvailable(true);
+        } else {
+            setNextButtonAvailable(false);
+        }
+    }, [profileType]);
 
 
     return (
@@ -51,7 +60,7 @@ export const UserTypeSelection = ({ profileType, setProfileType, existingUserPro
                     <h2 className="text">Host</h2>
                 </div>
                 <div 
-                    className={`card ${profileType === 'Gig-goer' ? 'active' : ''} ${isGigGoerInactive ? 'inactive' : ''}`}
+                    className={`card ${profileType === 'Gig-Goer' ? 'active' : ''} ${isGigGoerInactive ? 'inactive' : ''}`}
                     onClick={isGigGoerInactive ? null : () => handleProfileTypeClick('Gig-Goer')}
                 >
                     <GigGoerIcon />

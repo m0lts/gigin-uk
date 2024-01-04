@@ -1,10 +1,10 @@
+import { useEffect } from "react";
 import { GetInfoFromLocalStorage } from "../../../../utils/updateLocalStorage";
 import { SelectExistingNameButton } from "../../Buttons/Buttons";
 
-export const ProfileName = ({ profileName, setProfileName, establishmentType }) => {
+export const ProfileName = ({ profileName, setProfileName, establishmentType, setNextButtonAvailable }) => {
 
     // Set profileName to userName if button clicked
-
     // Get user name
     const userData = GetInfoFromLocalStorage();
     const userName = userData.userFirstName + ' ' + userData.userSecondName;
@@ -12,6 +12,14 @@ export const ProfileName = ({ profileName, setProfileName, establishmentType }) 
     const handleInputChange = (event) => {
         setProfileName(event.target.value);
     }
+
+    useEffect(() => {
+        if (profileName) {
+            setNextButtonAvailable(true);
+        } else {
+            setNextButtonAvailable(false);
+        }
+    }, [profileName]);
 
     return (
         <div className='establishment-name profile-creator-stage'>

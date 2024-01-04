@@ -42,7 +42,7 @@ export const CoverImage = ({ coverImage, setCoverImage }) => {
                 ) : (
                     <>
                         <InsertImageIcon />
-                        <span>Insert Profile Photo</span>
+                        <span>Insert Cover Photo</span>
                     </>
                 )}
             </label>

@@ -1,7 +1,18 @@
+import { useEffect } from "react"
 import { MultipleImagesInput } from "../../../Global/Images/ImageInputs"
 
 
-export const ImagesOfVenue = ({ images = [], setImages, numberOfImages }) => {
+export const ImagesOfVenue = ({ images = [], setImages, numberOfImages, setNextButtonAvailable }) => {
+
+    useEffect(() => {
+        const containsNonNullImage = images.some((image) => image !== null && image !== undefined);
+        if (images.length > 0 && containsNonNullImage) {
+            setNextButtonAvailable(true);
+        } else {
+            setNextButtonAvailable(false);
+        }
+    }, [images]);
+
     return (
         <div className='image-inputs profile-creator-stage'>
             <h1 className='title'>Let's spruce it up.</h1>

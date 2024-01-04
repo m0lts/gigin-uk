@@ -1,14 +1,23 @@
+import { useEffect } from "react";
 import { ApartmentIcon, ClubIcon, HouseIcon, HouseOfWorshipIcon, MusicVenueIcon, OtherIcon, PubIcon, PublicSpaceIcon, RestaurantIcon, SchoolIcon, VillageHallIcon } from "../../../Global/Icons/Icons";
 
-export const EstablishmentType = ({ establishmentType, setEstablishmentType }) => {
+export const EstablishmentType = ({ establishmentType, setEstablishmentType, setNextButtonAvailable }) => {
 
     const handleEstablishmentTypeClick = (place) => {
         if (establishmentType === place) {
-            setEstablishmentType(undefined);
+            setEstablishmentType(null);
         } else {
             setEstablishmentType(place);
         }
     }
+
+    useEffect(() => {
+        if (establishmentType) {
+            setNextButtonAvailable(true);
+        } else {
+            setNextButtonAvailable(false);
+        }
+    }, [establishmentType]);
 
     return (
         <div className='establishment-type profile-creator-stage'>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { DrumIcon, ElectricGuitarIcon, GuitarIcon, KeyboardIcon, MicrophoneIcon, PianoIcon } from "../../../Global/Icons/Icons";
 
-export const MusicianInstruments = ({ musicianInstruments, setMusicianInstruments }) => {
+export const MusicianInstruments = ({ musicianInstruments, setMusicianInstruments, setNextButtonAvailable }) => {
 
     // Musician instruments structure = [{instrument, canTakeToGigs}, {instrument, canTakeToGigs}]
     const [selectedInstruments, setSelectedInstruments] = useState([]);
@@ -29,6 +29,14 @@ export const MusicianInstruments = ({ musicianInstruments, setMusicianInstrument
     useEffect(() => {
         setMusicianInstruments(selectedInstruments);
     }, [selectedInstruments, setMusicianInstruments]);
+
+    useEffect(() => {
+        if (musicianInstruments && musicianInstruments.length > 0) {
+            setNextButtonAvailable(true);
+        } else {
+            setNextButtonAvailable(false);
+        }
+      }, [musicianInstruments]);
 
 
     return (

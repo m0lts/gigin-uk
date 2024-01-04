@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AmpIcon, DrumIcon, ElectricGuitarIcon, GuitarIcon, KeyboardIcon, MicrophoneIcon, MicrophoneStandIcon, MixingDeckIcon, MusicVenueIcon, PianoIcon, PlugIcon, SoundSystemIcon } from "../../../Global/Icons/Icons";
 
-export const InHouseEquipment = ({ inHouseEquipment = [], setInHouseEquipment }) => {
+export const InHouseEquipment = ({ inHouseEquipment = [], setInHouseEquipment, setNextButtonAvailable }) => {
 
     // In House Equipment structure = [{equipment, image}, {equipment, image}]
     const [selectedEquipment, setSelectedEquipment] = useState([]);
@@ -31,10 +31,14 @@ export const InHouseEquipment = ({ inHouseEquipment = [], setInHouseEquipment })
         setInHouseEquipment(selectedEquipment.map(equip => ({ equipment: equip })));
     }, [selectedEquipment, setInHouseEquipment]);
 
+    useEffect(() => {
+        setNextButtonAvailable(true);
+    }, []);
+
     return (
         <div className='in-house-equipment profile-creator-stage'>
             <h1 className='title'>In House Equipment</h1>
-            <p className="text">Please select any equipment at the venue available to the musicians.</p>
+            <p className="text">Please select any equipment at the venue available to the musicians. You can skip this step.</p>
             <div className="options">
                 <div 
                     className={`card ${selectedEquipment.includes('Piano') && 'active'}`}

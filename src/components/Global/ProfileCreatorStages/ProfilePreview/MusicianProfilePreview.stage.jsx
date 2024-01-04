@@ -39,38 +39,6 @@ export const MusicianProfilePreview = ({ userProfile, profileImages, setProfileI
                             setProfileImage={setProfileImage}
                         />
                     </div>
-                    {/* <div className="profile-photo">
-                    <div className="single-image-input-cont">
-                        <label htmlFor='image-input' className="insert-image-label">
-                            {image ? (
-                                <>
-                                    <img
-                                        src={image}
-                                        alt='Preview'
-                                        className="preview-image"
-                                        
-                                    />
-                                    <div className="remove-image" onClick={removeImage}>
-                                        <XIcon />
-                                        <span>Remove Image</span>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <InsertImageIcon />
-                                    <span>Insert Image</span>
-                                </>
-                            )}
-                        </label>
-                        <input
-                            type="file"
-                            id='image-input'
-                            accept="image/*"
-                            className="image-input"
-                            onChange={(event) => handleImageChange(event)}
-                        />
-                    </div>
-                    </div> */}
                 </div>
                 <div className="title-cont">
                     <h1>{userProfile.profileName}</h1>
@@ -94,8 +62,8 @@ export const MusicianProfilePreview = ({ userProfile, profileImages, setProfileI
                     <div className="instruments">
                         <h3 className="subtitle">Instruments</h3>
                         <ul className="list-of-instruments">
-                            {userProfile.musicianInstruments.map((instrument) => (
-                                <li>{instrument}</li>
+                            {userProfile.musicianInstruments.map((instrument, index) => (
+                                <li key={index}>{instrument}</li>
                             ))}
                         </ul>
                     </div>
