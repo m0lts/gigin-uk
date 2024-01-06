@@ -21,6 +21,8 @@ export default async function handler(request, response) {
             const userID = dataReceived.userID;
             const profileID = dataReceived.userProfile.profileID;
             const userProfile = dataReceived.userProfile;
+            const profileImages = dataReceived.userProfile.profileImages;
+        
 
             const userProfileDocument = await profilesCollection.findOne({ userID: userID});
 

@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react"
-import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
-import { DefaultEmailInput } from "../../../../components/Global/AccountInputs/Email/EmailInputs";
-import { DefaultNameInput, DefaultPhoneNumberInput } from "../../../../components/Global/AccountInputs/UserDetails/UserDetails";
-import { DefaultPasswordInput, VerifyPasswordInput } from "../../../../components/Global/AccountInputs/Password/PasswordInputs";
-import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
-import { Link, useNavigate } from "react-router-dom";
-import { AddProfileCreatedToLocalStorage, AddUserDataToLocalStorage } from "../../../../utils/updateLocalStorage";
+import { Link, useNavigate } from "react-router-dom"
+import { GiginLogo } from "/components/Global/Logo/GiginLogo"
+import { DefaultEmailInput, DefaultNameInput, DefaultPhoneNumberInput, DefaultPasswordInput, VerifyPasswordInput } from "/components/Inputs/Text/text.inputs"
+import { SubmitFormButton } from "/components/Global/Buttons/Buttons"
+import { AddProfileCreatedToLocalStorage, AddUserDataToLocalStorage } from "/utils/updateLocalStorage"
 // import { InfoBox } from "../InfoBox/InfoBox";
-import '../accounts.styles.css'
+
 
 export const Signup = () => {
 

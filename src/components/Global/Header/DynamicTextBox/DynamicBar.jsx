@@ -23,7 +23,6 @@ export const DynamicBar = ({ userProfile, stageNumber }) => {
         return () => clearInterval(interval);
     }, [messages.length]);
 
-    console.log(stageNumber, userProfile)
 
     const DynamicBarOutput = (location) => {
         if (location === '/profile-creator') {

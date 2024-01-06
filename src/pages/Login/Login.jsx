@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react"
-import { GiginLogo } from "../../../../components/Global/Logo/GiginLogo"
-import { DefaultEmailInput } from "../../../../components/Global/AccountInputs/Email/EmailInputs"
-import { DefaultPasswordInput } from "../../../../components/Global/AccountInputs/Password/PasswordInputs";
-import { SubmitFormButton } from "../../../../components/Global/Buttons/Buttons";
 import { Link, useNavigate } from "react-router-dom";
-import { AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage, AddUserDataToLocalStorage } from "../../../../utils/updateLocalStorage";
+import { GiginLogo } from "/components/Global/Logo/GiginLogo"
+import { DefaultEmailInput, DefaultPasswordInput } from "/components/Inputs/Text/text.inputs"
+import { SubmitFormButton } from "/components/Global/Buttons/Buttons";
+import { AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage, AddUserDataToLocalStorage } from "/utils/updateLocalStorage";
 // import { InfoBox } from "../InfoBox/InfoBox";
-import '../accounts.styles.css'
 import './login.styles.css'
 
 export const Login = () => {
