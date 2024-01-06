@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom";
-import { GiginLogo } from "/components/Global/Logo/GiginLogo"
+import { GiginLogo } from "/components/Logo/GiginLogo"
 import { DefaultEmailInput, DefaultPasswordInput } from "/components/Inputs/Text/text.inputs"
-import { SubmitFormButton } from "/components/Global/Buttons/Buttons";
+import { SubmitFormButton } from "/components/Buttons/Buttons";
 import { AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage, AddUserDataToLocalStorage } from "/utils/updateLocalStorage";
 // import { InfoBox } from "../InfoBox/InfoBox";
 import './login.styles.css'

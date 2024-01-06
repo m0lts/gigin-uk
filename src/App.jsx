@@ -7,9 +7,9 @@ import { Help } from '/pages/Help/Help'
 import { ContactUs } from './pages/ContactUs/ContactUs'
 import '../src/assets/global.styles.css'
 import { ForgotPassword } from '/pages/ForgotPassword/ForgotPassword'
-import { ControlCentreIndex } from './pages/Global/ControlCentre/ControlCentreIndex'
-import { ProfileCreator } from './pages/Global/ProfileCreator/ProfileCreator'
-import { ControlCentre } from './pages/Global/ControlCentre/Outlets/ControlCentre'
+import { ControlCentreIndex } from './pages/ControlCentre/ControlCentreIndex'
+import { ProfileCreator } from './pages/ProfileCreator/ProfileCreator'
+import { ControlCentre } from './pages/ControlCentre/Outlets/ControlCentre'
 
 export default function App() {
 
@@ -22,16 +22,9 @@ export default function App() {
         <Route path='/login' element={<Login />} />
         <Route path='/signup' element={<Signup />} />
         <Route path='/forgotpassword' element={<ForgotPassword />} />
-
-
-        {/* <Route path='/' element={<Index />}>
-          <Route index element={<Homepage />} />
-          <Route path='help' element={<Help />} />
-          <Route path='contact-us' element={<ContactUs />} />
-          <Route path='control-centre' element={<ControlCentreIndex />}>
-            <Route index element={<ControlCentre />}/>
-          </Route>
-        </Route> */}
+        <Route path='control-centre' element={<ControlCentreIndex />}>
+          <Route index element={<ControlCentre />}/>
+        </Route>
         <Route path='/profile-creator' element={<ProfileCreator />} />
       </Routes>
   )

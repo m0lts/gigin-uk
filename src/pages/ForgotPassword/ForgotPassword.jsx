@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { GiginLogo } from "/components/Global/Logo/GiginLogo"
-import { NextButtonForgotPassword, NextButtonResetPassword, SubmitFormButton } from "/components/Global/Buttons/Buttons"
+import { GiginLogo } from "/components/Logo/GiginLogo"
+import { NextButtonForgotPassword, NextButtonResetPassword, SubmitFormButton } from "/components/Buttons/Buttons"
 import { DefaultEmailInput, OneTimePasswordInput, DefaultPasswordInput, VerifyPasswordInput } from "/components/Inputs/Text/text.inputs"
 // import { InfoBox } from "../InfoBox/InfoBox";
 import './forgot-password.styles.css'

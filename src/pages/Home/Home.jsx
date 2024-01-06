@@ -1,8 +1,8 @@
 import { useState } from "react"
-import { MapView } from "/pages/Home/Features/MapView/MapView"
-import { ListView } from "/pages/Home/Features/ListView/ListView"
-import { ChangeViewTypeButton } from "/components/Global/Buttons/Buttons"
-import { Header } from "/components/Global/Header/Header"
+import { MapView } from "/pages/Home/MapView/home.map-view.jsx"
+import { ListView } from "/pages/Home/ListView/home.list-view.jsx"
+import { ChangeViewTypeButton } from "/pages/Home/Buttons/home.buttons.jsx"
+import { Header } from "/components/Header/Header"
 import './home.styles.css'
 
 export const Home = () => {
