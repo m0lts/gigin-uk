@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { MapView } from "/pages/Home/MapView/MapView.jsx"
 import { ListView } from "/pages/Home/ListView/ListView.jsx"
-import { ChangeViewTypeButton } from "/pages/Home/Buttons/Home.buttons.jsx"
+import { ChangeViewTypeButton } from "/pages/Home/Buttons/Home.buttons"
 import { Header } from "/components/Header/Header"
 import './home.styles.css'
 
