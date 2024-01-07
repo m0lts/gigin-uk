@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom";
 import { GiginLogo } from "/components/Logo/GiginLogo"
-import { DefaultEmailInput, DefaultPasswordInput } from "/components/Inputs/Text/text.inputs"
-import { SubmitFormButton } from "/components/Buttons/Buttons";
+import { DefaultEmailInput, DefaultPasswordInput } from "/pages/Login/Inputs/Login.inputs.jsx"
+import { SubmitFormButton } from "/pages/Login/Buttons/Login.buttons.jsx"
 import { AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage, AddUserDataToLocalStorage } from "/utils/updateLocalStorage";
-// import { InfoBox } from "../InfoBox/InfoBox";
 import './login.styles.css'
 
 export const Login = () => {
@@ -105,9 +104,6 @@ export const Login = () => {
                     </div>
                 </div>
             </section>
-            {/* <section className='accounts-right'>
-                <InfoBox />
-            </section> */}
         </main>
     )
 }

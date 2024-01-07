@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { GiginLogo } from "/components/Logo/GiginLogo"
-import { NextButtonForgotPassword, NextButtonResetPassword, SubmitFormButton } from "/components/Buttons/Buttons"
-import { DefaultEmailInput, OneTimePasswordInput, DefaultPasswordInput, VerifyPasswordInput } from "/components/Inputs/Text/text.inputs"
-// import { InfoBox } from "../InfoBox/InfoBox";
+import { NextButtonForgotPassword, NextButtonResetPassword, SubmitFormButton } from "/pages/ForgotPassword/Buttons/ForgotPassword.buttons.jsx"
+import { DefaultEmailInput, OneTimePasswordInput, DefaultPasswordInput, VerifyPasswordInput } from "/pages/ForgotPassword/Inputs/ForgotPassword.inputs.jsx"
 import './forgot-password.styles.css'
 
 export const ForgotPassword = () => {
@@ -167,9 +166,6 @@ export const ForgotPassword = () => {
                 </div>
             </div>
             </section>
-            {/* <section className='accounts-right'>
-                <InfoBox />
-            </section> */}
         </main>
     )
 }

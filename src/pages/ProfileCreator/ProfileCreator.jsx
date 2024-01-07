@@ -2,24 +2,24 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Header } from '/components/Header/Header'
 import { GetProfileDataFromLocalStorage } from '/utils/updateLocalStorage'
-import { SaveFooterButton, NextFooterButton, BackFooterButton } from '/components/Buttons/Buttons'
+import { SaveFooterButton, NextFooterButton, BackFooterButton } from '/pages/ProfileCreator/Buttons/ProfileCreator.buttons.jsx'
 // Shared components
-import { OpeningText } from '/pages/ProfileCreator/OpeningText/OpeningText'
-import { UserTypeSelection } from '/pages/ProfileCreator/UserType/UserType'
-import { ProfileName } from '/pages/ProfileCreator/ProfileName/ProfileName'
-import { HostProfilePreview } from '/pages/ProfileCreator/ProfilePreview/HostProfilePreview.stages'
-import { MusicianProfilePreview } from '/pages/ProfileCreator/ProfilePreview/MusicianProfilePreview.stage'
+import { OpeningText } from '/pages/ProfileCreator/Shared/OpeningText/OpeningText'
+import { ProfileType } from '/pages/ProfileCreator/Shared/ProfileType/ProfileType'
+import { ProfileName } from '/pages/ProfileCreator/Shared/ProfileName/ProfileName'
 // Host specific components
-import { EstablishmentType } from '/pages/ProfileCreator/Host/EstablishmentType/EstablishmentType'
-import { InHouseEquipment } from '/pages/ProfileCreator/Host/InHouseEquipment/InHouseEquipment'
-import { InHouseEquipmentImages } from '/pages/ProfileCreator/Host/InHouseEquipment/InHouseEquipmentImages'
-import { ImagesOfVenue } from '/pages/ProfileCreator/Host/VenueImages/ImagesOfVenue'
-import { HostAddressStage } from '/pages/ProfileCreator/Host/HostAddress/HostAddress.stage'
-import { HostExtraInfoStage } from '/pages/ProfileCreator/Host/HostExtraInfo/HostExtraInfo.stage'
+import { HostType } from '/pages/ProfileCreator/Host/Type/Type'
+import { HostEquipment } from '/pages/ProfileCreator/Host/Equipment/Equipment'
+import { HostEquipmentImages } from '/pages/ProfileCreator/Host/Equipment/EquipmentImages'
+import { HostImages } from '/pages/ProfileCreator/Host/Images/Images'
+import { HostAddress } from '/pages/ProfileCreator/Host/Address/Address'
+import { HostInformation } from '/pages/ProfileCreator/Host/Information/Information'
+import { HostPreview } from '/pages/ProfileCreator/Host/Preview/Preview'
 // Musician specific components
-import { MusicianType } from '/pages/ProfileCreator/Musician/MusicianType/MusicianType'
-import { MusicianInstruments } from '/pages/ProfileCreator/Musician/MusicianInstruments/MusicianInstruments'
-import { MusicianExtraInfo } from '/pages/ProfileCreator/Musician/MusicianExtraInfo/MusicianExtraInfo.stage'
+import { MusicianType } from '/pages/ProfileCreator/Musician/Type/Type'
+import { MusicianInstruments } from '/pages/ProfileCreator/Musician/Instruments/Instruments'
+import { MusicianInformation } from '/pages/ProfileCreator/Musician/Information/Information'
+import { MusicianPreview } from '/pages/ProfileCreator/Musician/Preview/Preview'
 import './profile-creator.styles.css'
 
 export const ProfileCreator = () => {
@@ -98,7 +98,7 @@ export const ProfileCreator = () => {
                     setNextButtonAvailable={setNextButtonAvailable}
                 />
             ) : stageNumber === 1 ? (
-                <UserTypeSelection 
+                <ProfileType 
                     profileType={profileType}
                     setProfileType={setProfileType}
                     existingUserProfiles={existingUserProfiles}
@@ -113,7 +113,7 @@ export const ProfileCreator = () => {
                         setNextButtonAvailable={setNextButtonAvailable}
                     />
                 ) : profileType === 'Host' ? (
-                    <EstablishmentType 
+                    <HostType 
                         establishmentType={establishmentType}
                         setEstablishmentType={setEstablishmentType}
                         setNextButtonAvailable={setNextButtonAvailable}
@@ -148,14 +148,14 @@ export const ProfileCreator = () => {
                             setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
-                        <MusicianExtraInfo 
+                        <MusicianInformation 
                             musicianExtraInfo={musicianExtraInfo}
                             setMusicianExtraInfo={setMusicianExtraInfo}
                             setNextButtonAvailable={setNextButtonAvailable}
                         />
                     )
                 ) : profileType === 'Host' ? (
-                    <ImagesOfVenue 
+                    <HostImages 
                         images={profileImages}
                         setImages={setProfileImages}
                         numberOfImages={5}
@@ -167,13 +167,13 @@ export const ProfileCreator = () => {
             ) : stageNumber === 5 ? (
                 profileType === 'Musician' ? (
                     musicianType.includes('Instrumentalist / Vocalist') || musicianType.includes('Singer / Songwriter') ? (
-                        <MusicianExtraInfo 
+                        <MusicianInformation 
                             musicianExtraInfo={musicianExtraInfo}
                             setMusicianExtraInfo={setMusicianExtraInfo}
                             setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
-                        <MusicianProfilePreview
+                        <MusicianPreview
                             userProfile={userProfile}
                             profileImages={profileImages}
                             setProfileImages={setProfileImages}
@@ -182,7 +182,7 @@ export const ProfileCreator = () => {
                         />
                     )
                 ) : profileType === 'Host' ? (
-                    <InHouseEquipment
+                    <HostEquipment
                         inHouseEquipment={inHouseEquipment}
                         setInHouseEquipment={setInHouseEquipment}
                         setNextButtonAvailable={setNextButtonAvailable}
@@ -193,7 +193,7 @@ export const ProfileCreator = () => {
             ) : stageNumber === 6 ? (
                 profileType === 'Musician' ? (
                     musicianType.includes('Instrumentalist / Vocalist') || musicianType.includes('Singer / Songwriter') ? (
-                        <MusicianProfilePreview 
+                        <MusicianPreview 
                             userProfile={userProfile}
                             profileImages={profileImages}
                             setProfileImages={setProfileImages}
@@ -205,13 +205,13 @@ export const ProfileCreator = () => {
                     )
                 ) : profileType === 'Host' ? (
                     inHouseEquipment.length > 0 ? (
-                        <InHouseEquipmentImages 
+                        <HostEquipmentImages 
                             inHouseEquipment={inHouseEquipment}
                             setInHouseEquipment={setInHouseEquipment}
                             setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
-                        <HostAddressStage 
+                        <HostAddress 
                             hostAddress={hostAddress}
                             setHostAddress={setHostAddress}
                             setNextButtonAvailable={setNextButtonAvailable}
@@ -225,13 +225,13 @@ export const ProfileCreator = () => {
                     <h1>Musician</h1>
                 ) : profileType === 'Host' ? (
                     inHouseEquipment.length > 0 ? (
-                        <HostAddressStage
+                        <HostAddress
                             hostAddress={hostAddress}
                             setHostAddress={setHostAddress}
                             setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
-                        <HostExtraInfoStage 
+                        <HostInformation 
                             hostExtraInfo={hostExtraInfo}
                             setHostExtraInfo={setHostExtraInfo}
                             setNextButtonAvailable={setNextButtonAvailable}
@@ -245,13 +245,13 @@ export const ProfileCreator = () => {
                     <h1>Musician</h1>
                 ) : profileType === 'Host' ? (
                     inHouseEquipment.length > 0 ? (
-                        <HostExtraInfoStage 
+                        <HostInformation 
                             hostExtraInfo={hostExtraInfo}
                             setHostExtraInfo={setHostExtraInfo}
                             setNextButtonAvailable={setNextButtonAvailable}
                         />
                     ) : (
-                        <HostProfilePreview 
+                        <HostPreview
                             userProfile={userProfile}
                             saveButtonAvailable={saveButtonAvailable}
                             setSaveButtonAvailable={setSaveButtonAvailable}
@@ -265,7 +265,7 @@ export const ProfileCreator = () => {
                     <h1>Musician</h1>
                 ) : profileType === 'Host' ? (
                     inHouseEquipment.length > 0 && (
-                        <HostProfilePreview
+                        <HostPreview
                             userProfile={userProfile}
                             saveButtonAvailable={saveButtonAvailable}
                             setSaveButtonAvailable={setSaveButtonAvailable}

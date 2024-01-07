@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { GiginLogo } from "/components/Logo/GiginLogo"
-import { DefaultEmailInput, DefaultNameInput, DefaultPhoneNumberInput, DefaultPasswordInput, VerifyPasswordInput } from "/components/Inputs/Text/text.inputs"
-import { SubmitFormButton } from "/components/Buttons/Buttons"
+import { DefaultEmailInput, DefaultNameInput, DefaultPhoneNumberInput, DefaultPasswordInput, VerifyPasswordInput } from "/pages/Signup/Inputs/Signup.inputs.jsx"
+import { SubmitFormButton } from "/pages/Signup/Buttons/Signup.buttons.jsx"
 import { AddProfileCreatedToLocalStorage, AddUserDataToLocalStorage } from "/utils/updateLocalStorage"
-// import { InfoBox } from "../InfoBox/InfoBox";
 
 
 export const Signup = () => {
@@ -118,9 +117,6 @@ export const Signup = () => {
                     </div>
                 </div>
             </section>
-            {/* <section className='accounts-right'>
-                <InfoBox />
-            </section> */}
         </main>
     )
 }

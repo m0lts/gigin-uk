@@ -58,16 +58,3 @@
 .header-saved-button-mobile:active {
     color: var(--gigin-orange);
 }
-/* Save and Exit button */
-.save-and-exit-button {
-    padding:0.5rem 1rem;
-    background-color: var(--white);
-    border: 1px solid var(--light-medium-grey);
-    border-radius: 0.5rem;
-    font-weight: 300;
-    transition: 200ms linear;
-}
-.save-and-exit-button:hover {
-    background-color: var(--light-grey);
-    cursor: pointer;
-}

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { GiginLogo } from '/components/Logo/GiginLogo'
-import { DynamicBox } from '/components/Header/DynamicBox/header.dynamic-box.jsx'
-import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, SaveAndExitButton } from '/components/Header/Buttons/header.buttons.jsx'
-import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from '/components/Header/Menus/header.menus.jsx'
+import { DynamicBox } from '/components/Header/DynamicBox/DynamicBox.jsx'
+import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, SaveAndExitButton } from '/components/Header/Buttons/Header.buttons.jsx'
+import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from '/components/Header/Menus/Menus.jsx'
 import { GetInfoFromLocalStorage, GetProfileDataFromLocalStorage } from '/utils/updateLocalStorage'
 import './header.styles.css'
 

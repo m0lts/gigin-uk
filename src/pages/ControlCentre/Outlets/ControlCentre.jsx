@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { Notifications } from '/components/ControlCentre/Notifications/Notifications'
 import { GigGoerIcon, HostIcon, MusicianIcon, ProfileIcon } from '/components/Icons/Icons'
 import { GetProfileDataFromLocalStorage } from '/utils/updateLocalStorage'
 import '../control-centre.styles.css'
@@ -10,7 +9,6 @@ export const ControlCentre = () => {
 
     return (
         <>
-            <Notifications />
             <div className='selections'>
                 <Link to={'/profile-creator'} className='link selections-card'>
                     <ProfileIcon />

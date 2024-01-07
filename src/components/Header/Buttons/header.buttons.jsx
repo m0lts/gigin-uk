@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { queryDatabase } from '/utils/queryDatabase'
-import { GetInfoFromLocalStorage } from '/utils/updateLocalStorage'
+import { GetInfoFromLocalStorage, AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage } from '/utils/updateLocalStorage'
 import { LoadingDots } from '/components/Loading/LoadingEffects'
 import { MenuIcon, BookmarkIcon } from '/components/Icons/Icons'
 import './header.buttons.styles.css'
@@ -122,13 +122,13 @@ export const SaveAndExitButton = ({ userProfile }) => {
 
     return (
         <button 
-            className={`btn save-and-exit-button ${isLoading && 'loading'}`} 
+            className={`btn white-button ${isLoading && 'loading'}`} 
             onClick={handleSaveAndExit}
         >
             {isLoading ? (
                 <LoadingDots />
             ) : (
-                <p>Save and Exit</p>
+                <>Save and Exit</>
             )}
         </button>
     )
