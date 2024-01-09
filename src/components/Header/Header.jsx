@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { GiginLogo } from '/components/Logo/GiginLogo'
 import { DynamicBox } from '/components/Header/DynamicBox/DynamicBox.jsx'
 import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, SaveAndExitButton } from '/components/Header/Buttons/Header.buttons.jsx'
@@ -13,11 +13,11 @@ export const Header = ({ userProfile, stageNumber }) => {
     const [myGiginButtonClicked, setMyGiginButtonClicked] = useState(false);
     // User at profile creator page
     const [profileCreatorPage, setProfileCreatorPage] = useState(false);
-    const { page } = useParams();
+    const location = useLocation();
 
     useEffect(() => {
         // Get the current URL path
-        const currentPath = window.location.pathname;
+        const currentPath = location.pathname;
 
         // Check if the user is at /profile-creator
         if (currentPath === '/profile-creator') {
@@ -65,14 +65,14 @@ export const Header = ({ userProfile, stageNumber }) => {
                     )}
                 </header>
             ) : (
-                <header className='header'>
+                <header className={`header ${profileCreatorPage && 'no-border'}`}>
                     <GiginLogo />
                     <DynamicBox
                         userProfile={userProfile}
                         stageNumber={stageNumber}
                     />
                     <div className='right'>
-                    <p>Host with Gigin</p>
+                    {!profileCreatorPage && <p>Host with Gigin</p>}
                     {profileCreatorPage && stageNumber > 1 ? (
                         <>
                             <SaveAndExitButton 

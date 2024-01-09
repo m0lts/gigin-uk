@@ -6,3 +6,9 @@
 .home .body {
     height:100%;
 }
+
+@media (max-width: 768px) {
+    .home {
+        grid-template-rows: 1fr min-content;
+    }
+}

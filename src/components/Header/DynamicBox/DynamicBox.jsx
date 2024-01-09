@@ -23,6 +23,18 @@ export const DynamicBox = ({ userProfile, stageNumber }) => {
         return () => clearInterval(interval);
     }, [messages.length]);
 
+    // Mobile screen 
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
+
 
     const DynamicBarOutput = (location) => {
         if (location === '/profile-creator') {
@@ -104,7 +116,7 @@ export const DynamicBox = ({ userProfile, stageNumber }) => {
 
 
     return (
-        <section className='dynamic-bar'>
+        <section className={`dynamic-bar ${location.pathname === '/profile-creator' && 'magnified'} ${isMobile && 'mobile'}`}>
             {DynamicBarOutput(location.pathname)}
         </section>
     )

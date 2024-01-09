@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { queryDatabase } from '/utils/queryDatabase'
 import { AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage, GetInfoFromLocalStorage } from '/utils/updateLocalStorage'
 import { LoadingDots } from '/components/Loading/LoadingEffects'
 
 // Back and next footer buttons
-export const BackFooterButton = ({ stageNumber, setStageNumber, setSaveButtonAvailable, setNextButtonAvailable }) => {
+export const BackFooterButton = ({ stageNumber, setStageNumber, setSaveButtonAvailable, setNextButtonAvailable, setBackButtonAvailable, editingProfile, backButtonAvailable }) => {
 
     const handleBackClick = () => {
         setStageNumber(stageNumber - 1);
@@ -13,8 +13,21 @@ export const BackFooterButton = ({ stageNumber, setStageNumber, setSaveButtonAva
         setNextButtonAvailable(false);
     }
 
+    // Prevent user from accessing stage 1 if they are editing their profile
+    useEffect(() => {
+        if (editingProfile && stageNumber === 2) {
+            setBackButtonAvailable(false);
+        } else {
+            setBackButtonAvailable(true);
+        }
+    }, [editingProfile, stageNumber])
+
     return (
-        <button className='btn white-button' onClick={handleBackClick}>
+        <button
+            className={`btn white-button ${!backButtonAvailable ? 'disabled' : ''}`}
+            onClick={!backButtonAvailable ? undefined : handleBackClick}
+            disabled={!backButtonAvailable}
+        >
             Back
         </button>
     )

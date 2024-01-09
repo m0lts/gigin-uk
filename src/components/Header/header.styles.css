@@ -6,6 +6,7 @@
     align-items: center;
     position: relative;
     border-bottom: 1px solid var(--light-grey);
+    transition: 200ms linear;
 }
 .header .right {
     display: flex;
@@ -20,10 +21,16 @@
     text-decoration: underline;
     cursor: pointer;
 }
+/* When dynamic bar magnified: */
+.header.no-border {
+    border-bottom: none;
+    padding: 2rem;
+    transition: 500ms linear;
+}
 
 /* Mobile */
 .header-mobile {
-    position: absolute;
+    position: fixed;
     width:100%;
     background-color: var(--white);
     z-index: 1000;

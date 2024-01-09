@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Header } from '/components/Header/Header'
+import { DynamicBox } from '/components/Header/DynamicBox/DynamicBox'
 import { GetProfileDataFromLocalStorage } from '/utils/updateLocalStorage'
 import { SaveFooterButton, NextFooterButton, BackFooterButton } from '/pages/ProfileCreator/Buttons/ProfileCreator.buttons.jsx'
 // Shared components
@@ -35,6 +36,8 @@ export const ProfileCreator = () => {
     const [nextButtonAvailable, setNextButtonAvailable] = useState(true);
     // Save button availability
     const [saveButtonAvailable, setSaveButtonAvailable] = useState(false);
+    // Back button availability
+    const [backButtonAvailable, setBackButtonAvailable] = useState(true);
 
     // Generate profile ID
     const generateRandomId = (length) => {
@@ -87,8 +90,34 @@ export const ProfileCreator = () => {
         setUserProfile(updatedUserProfile);
     }, [profileID, profileType, establishmentType, profileName, profileImages, inHouseEquipment, hostAddress, hostExtraInfo, musicianType, musicianInstruments, musicianExtraInfo])
 
+    // Take user to stage 2 if they are editing profile
+    useEffect(() => {
+        if (location.state) {
+            setStageNumber(2);
+        }
+    }, [location.state])
+
+    // Mobile screen 
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
+
+
     return (
-        <section className='profile-creator'>
+        <section className={`profile-creator ${isMobile && 'mobile'}`}>
+            {isMobile && (
+                <DynamicBox
+                    userProfile={userProfile}
+                    stageNumber={stageNumber}
+                />
+            )}
             <Header 
                 userProfile={userProfile}
                 stageNumber={stageNumber}
@@ -282,6 +311,9 @@ export const ProfileCreator = () => {
                     setStageNumber={setStageNumber}
                     setSaveButtonAvailable={setSaveButtonAvailable}
                     setNextButtonAvailable={setNextButtonAvailable}
+                    setBackButtonAvailable={setBackButtonAvailable}
+                    backButtonAvailable={backButtonAvailable}
+                    editingProfile={location.state}
                 />
             )}
             <NextFooterButton 

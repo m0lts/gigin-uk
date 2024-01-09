@@ -7,6 +7,114 @@
 .profile-creator .header {
     grid-row: 1 / 2;
 }
+
+/* Mobile */
+.profile-creator.mobile {
+    height:90vh;
+}
+.profile-creator.mobile .profile-creator-stage {
+    padding: 1rem 1.5rem 4rem 1.5rem;
+}
+.profile-creator.mobile .title {
+    text-align: center;
+    font-size: 1.5rem;
+    padding:0 1.5rem;
+}
+/* HOST */
+.profile-creator.mobile .user-type {
+    justify-content: flex-start;
+    gap:2rem;
+}
+.profile-creator.mobile .user-type .options {
+    flex-direction: column;
+    gap:1rem;
+}
+.profile-creator.mobile .establishment-type {
+    justify-content: flex-start;
+    gap:2rem;
+}
+.profile-creator.mobile .host-address {
+    justify-content: flex-start;
+}
+.profile-creator.mobile .host-address .address-cont {
+    flex-direction: column;
+    width:100%;
+    gap:2rem;
+}
+.profile-creator.mobile .host-address .address-form {
+    padding:0 1rem;
+    width:100%;
+}
+.profile-creator.mobile .host-address .minimap {
+    width:80%;
+    margin-bottom: 7rem;
+}
+.profile-creator.mobile .extra-information {
+    justify-content: flex-start;
+}
+.profile-creator.mobile .extra-information .parking-inputs {
+    flex-direction: column;
+    gap:2rem;
+}
+.profile-creator.mobile .extra-information .parking-inputs .radio-options {
+    flex-direction: column;
+    gap:1rem;
+}
+.profile-creator.mobile .extra-information .venue-description {
+    flex-direction: column;
+    gap:1rem;
+}
+/* MUSICIAN */
+.profile-creator.mobile .musician-type {
+    justify-content: flex-start;
+    gap:2rem;
+}
+.profile-creator.mobile .musician-type .options {
+    flex-direction: column;
+}
+.profile-creator.mobile .musician-info .radio-options {
+    flex-direction: column;
+    align-items: center;
+    gap:0.5rem;
+}
+.profile-creator.mobile .musician-info #musician-bio {
+    width:80%;
+}
+.profile-creator.mobile .musician-info .sections .musician-genres .options {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap:0.5rem;
+}
+.profile-creator.mobile .musician-preview .profile-photo {
+    text-align: center;
+    width:125px;
+    height:125px;
+}
+.profile-creator.mobile .musician-preview .title-cont {
+    padding:1rem;
+}
+.profile-creator.mobile .musician-preview .middle {
+    padding:1rem;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.profile-creator.mobile .musician-preview .bio {
+    padding:1rem;
+}
+.profile-creator.mobile .musician-preview .instruments {
+    padding: 1rem;
+}
+.profile-creator.mobile .footer-bar {
+    position: absolute;
+    bottom:5rem;
+    padding:1rem;
+    background-color: #ffffff00;
+}
+
+
 .profile-creator-stage {
     height:100%;
     grid-row: 2 / 3;
@@ -19,6 +127,9 @@
 /* Hide scrollbar for Chrome, Safari, and Opera */
 .profile-creator-stage::-webkit-scrollbar {
     display: none;
+}
+.profile-creator-stage .title {
+    font-size:1.75rem;
 }
 .profile-creator .footer-bar {
     grid-row: 3 / 4;
@@ -52,11 +163,13 @@
     transition: 200ms ease-in-out;
 }
 .profile-creator-stage .card .text {
-    font-weight: 500;
+    font-weight: 400;
+    font-size: 1.25rem;
 }
 .profile-creator-stage .subtitle {
     font-weight: 400;
     text-align: center;
+
 }
 /* Card clicked */
 .profile-creator-stage .card.active {
@@ -615,6 +728,8 @@
 .musician-preview .profile-photo .profile-image input {
     display: none;
 }
+
+/* Text */
 .musician-preview .title-cont {
     padding: 1rem 2rem;
     font-size: 2rem;
@@ -770,7 +885,6 @@
 /* Footer */
 .footer-bar {
     width:100%;
-    border:1px solid var(--light-grey);
     padding: 2rem;
     background-color: var(--white);
     display: flex;

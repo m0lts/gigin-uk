@@ -140,7 +140,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, feature, setFe
                         autoComplete="postal-code"
                     />
                 </div>
-                <button type="submit">
+                <button type="submit" className="btn white-button">
                     Submit
                 </button>
             </div>
