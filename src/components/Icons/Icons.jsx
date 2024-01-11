@@ -284,3 +284,8 @@ export const NumberFourIcon = () => {
         <FontAwesomeIcon icon={faCircle4} className="icon" />
     )
 }
+export const BandIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faPeopleGroup} className="band-icon icon" />
+    )
+}

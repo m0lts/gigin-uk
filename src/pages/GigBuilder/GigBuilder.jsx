@@ -4,6 +4,8 @@ import { Calendar } from '/components/Calendar/Calendar';
 import { NumberOneIcon, NumberTwoIcon, NumberThreeIcon, NumberFourIcon } from '/components/Icons/Icons';
 import './gig-builder.styles.css'
 import { VenueSelection } from '/pages/GigBuilder/VenueSelection/VenueSelection';
+import { GigDetails } from '/pages/GigBuilder/GigDetails/GigDetails';
+import { SideBar } from './SideBar/SideBar';
 
 
 export const GigBuilder = () => {
@@ -12,18 +14,34 @@ export const GigBuilder = () => {
     
     const [gigProfile, setGigProfile] = useState();
     const [gigDate, setGigDate] = useState();
+    const [gigDetails, setGigDetails] = useState();
+
+    const [postButtonAvailable, setPostButtonAvailable] = useState(false);
 
     useEffect(() => {
         const updatedGigInformation = {
             ...gigInformation,
-            gigProfile: gigProfile,
-            gigDate: gigDate,
+            gigDate,
+            gigProfile,
+            gigDetails
         }
         setGigInformation(updatedGigInformation);
-    }, [gigProfile, gigDate])
+    }, [gigProfile, gigDate, gigDetails])
 
     useEffect(() => {
-        console.log(gigInformation);
+        if (gigInformation.gigProfile && 
+            gigInformation.gigDate && 
+            gigInformation.gigDetails.musicianType && 
+            gigInformation.gigDetails.musicianType.length > 0 &&
+            gigInformation.gigDetails.musicType && 
+            gigInformation.gigDetails.genres && 
+            gigInformation.gigDetails.genres.length > 0 &&
+            gigInformation.gigDetails.gigStartTime && 
+            gigInformation.gigDetails.gigDuration) {
+            setPostButtonAvailable(true);
+        } else {
+            setPostButtonAvailable(false);
+        }
     }, [gigInformation])
 
 
@@ -41,36 +59,37 @@ export const GigBuilder = () => {
                     </div>
                     <div className="main">
                         <div className="stage venue-select">
-                            <h2 className="subtitle"><NumberOneIcon /> Which venue is hosting this gig?</h2>
+                            <h2 className="subtitle"><NumberOneIcon /> Which venue is hosting this gig? *</h2>
                             <VenueSelection
                                 gigProfile={gigProfile}
                                 setGigProfile={setGigProfile}
                             />
                         </div>
                         <div className="stage calendar">
-                            <h2 className="subtitle"><NumberTwoIcon /> Select a date for your gig:</h2>
-                            <Calendar />
+                            {!gigInformation.gigProfile && (<div className='grey-out'></div>)}
+                            <h2 className="subtitle"><NumberTwoIcon /> Select a date for your gig: *</h2>
+                            <Calendar
+                                dateSelected={gigDate}
+                                setDateSelected={setGigDate}
+                            />
                         </div>
-                        <div className="stage information">
-                            <h2 className="subtitle"><NumberThreeIcon /> Fill in the following fields:</h2>
-                            
-                        </div>
-                        <div className="stage information">
-                            <h2 className="subtitle"><NumberFourIcon /> Fill in the following fields:</h2>
-                            
+                        <div className="stage gig-information">
+                            {(!gigInformation.gigProfile || !gigInformation.gigDate) && (
+                                <div className='grey-out'></div>
+                            )}                            
+                            <h2 className="subtitle"><NumberThreeIcon /> Let's get some more details:</h2>
+                            <GigDetails
+                                gigDetails={gigDetails}
+                                setGigDetails={setGigDetails}
+                            />
                         </div>
                     </div>
                 </div>
-                <aside className="current-selections">
-                    <h3 className='subtitle'>Gig Information:</h3>
-                    {!gigInformation.gigProfile && <p className='text'>No information yet.</p>}
-                    {gigInformation.gigProfile && (
-                        <>
-                            <p className='text'>Venue: {gigInformation.gigProfile.profileName}</p>
-                            <p className='text'>Address: {gigInformation.gigProfile.hostAddress.address}</p>
-                        </>
-                    )}
-                </aside>
+                <SideBar
+                    gigInformation={gigInformation}
+                    postButtonAvailable={postButtonAvailable}
+                    setPostButtonAvailable={setPostButtonAvailable}
+                />
             </div>
         </section>
     );

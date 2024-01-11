@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { HostIcon } from "/components/Icons/Icons"
+import { HostIcon, PubIcon, MusicVenueIcon, RestaurantIcon, ClubIcon, ApartmentIcon, VillageHallIcon, HouseOfWorshipIcon, SchoolIcon, PublicSpaceIcon, OtherIcon } from "/components/Icons/Icons"
 import { queryDatabase } from '/utils/queryDatabase'
 import { GetInfoFromLocalStorage } from '/utils/updateLocalStorage'
 import { LoadingSkeletonText, LoadingSkeletonIcon } from "/components/Loading/LoadingEffects"
@@ -55,6 +55,33 @@ export const VenueSelection = ({ gigProfile, setGigProfile }) => {
         }
     }
 
+    // Find correct icon for establishment type
+    const findIcon = (type) => {
+        if (type === 'Pub/Bar') {
+            return <PubIcon />
+        } else if (type === 'Music Venue') {
+            return <MusicVenueIcon />
+        } else if (type === 'Restaurant') {
+            return <RestaurantIcon />
+        } else if (type === 'Club') {
+            return <ClubIcon />
+        } else if (type === 'Apartment/Flat') {
+            return <ApartmentIcon />
+        } else if (type === 'House') {
+            return <HostIcon />
+        } else if (type === 'Village Hall') {
+            return <VillageHallIcon />
+        } else if (type === 'House of Worship') {
+            return <HouseOfWorshipIcon />
+        } else if (type === 'Place of Education') {
+            return <SchoolIcon />
+        } else if (type === 'Public Space') {
+            return <PublicSpaceIcon />
+        } else if (type === 'Other') {
+            return <OtherIcon />
+        }
+    }
+
     return (
         <div className="venue-selection">
             {loadingProfiles ? (
@@ -71,7 +98,7 @@ export const VenueSelection = ({ gigProfile, setGigProfile }) => {
                         onClick={() => handleProfileClick(hostProfile)}
                         key={index}
                     >
-                        <HostIcon />
+                        {findIcon(hostProfile.establishmentType)}
                         <h2 className="text">{hostProfile.profileName}</h2>
                     </div>
                 ))

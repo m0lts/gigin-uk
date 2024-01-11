@@ -4,50 +4,5 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 1rem;
-}
-.venue-selection .card {
-    padding:3rem;
-    width: 200px;
-    height: 150px;
-    border:1px solid var(--light-medium-grey);
-    border-radius: 1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-}
-.venue-selection .card:hover {
-    box-shadow: 2px 2px 5px var(--light-grey);
-    transition: 200ms ease-in-out;
-    cursor: pointer;
-}
-.venue-selection .card:hover > .icon {
-    font-size: 2rem;
-    transition: 200ms ease-in-out;
-}
-.venue-selection .card .icon {
-    font-size: 1.5rem;
-    transition: 200ms ease-in-out;
-}
-
-/* Card clicked */
-.venue-selection .card.active {
-    background-color: var(--light-grey);
-    box-shadow: 2px 2px 5px var(--light-grey);
-}
-.venue-selection .card.active > .icon {
-    font-size: 2rem;
-}
-
-/* Card inactive */
-.venue-selection .card.inactive {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-.venue-selection .card.inactive:hover {
-    box-shadow: none;
-}
-.venue-selection .card.inactive:hover > .icon {
-    font-size: 1.5rem;
+    margin:1rem 2rem;
 }

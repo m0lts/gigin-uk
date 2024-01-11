@@ -64,6 +64,9 @@
     border: 1px solid var(--white);
     cursor: pointer;
 }
+.black-button.loading {
+    border: none;
+}
 /* White button */
 .white-button {
     padding:0.5rem 1rem;

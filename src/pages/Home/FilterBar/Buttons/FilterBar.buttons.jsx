@@ -1,4 +1,5 @@
 import { SearchIcon } from '/components/Icons/Icons'
+import { formatSelectedDate } from '/utils/dateFormatting';
 import './filter-bar.buttons.styles.css'
 
 // Universal filter button
