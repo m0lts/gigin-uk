@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { GiginLogo } from '/components/Logo/GiginLogo'
 import { DynamicBox } from '/components/Header/DynamicBox/DynamicBox.jsx'
-import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, SaveAndExitButton } from '/components/Header/Buttons/header.buttons.jsx'
+import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, SaveAndExitButton, MobileHeaderSaveAndExitButton } from '/components/Header/Buttons/header.buttons.jsx'
 import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from '/components/Header/Menus/Menus.jsx'
 import { GetInfoFromLocalStorage, GetProfileDataFromLocalStorage } from '/utils/updateLocalStorage'
 import './header.styles.css'
-import { MobileHeaderSaveAndExitButton } from './Buttons/Header.buttons'
 
 export const Header = ({ userProfile, stageNumber }) => {
 
