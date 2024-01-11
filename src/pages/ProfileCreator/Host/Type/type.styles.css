@@ -1,0 +1,30 @@
+/* Establishment Type Stage */
+.establishment-type {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap:5rem;
+    transition: 200ms linear;
+}
+.establishment-type .title {
+    transition: 200ms linear;
+}
+.establishment-type .options {
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+    width:100%;
+    padding: 0 2rem;
+}
+.establishment-type .card {
+    margin:1rem;
+    max-width: 100px;
+    height: 150px;
+    text-align: center;
+}
+
+/* Mobile */
+.profile-creator.mobile .establishment-type {
+    justify-content: flex-start;
+    gap:2rem;
+}

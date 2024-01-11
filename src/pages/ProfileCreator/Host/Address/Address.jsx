@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { AddressMinimap } from "@mapbox/search-js-react"
 import { AddressInputAutofill } from "/pages/ProfileCreator/Host/Address/Inputs/Address.inputs"
 import { MapIcon } from "/components/Icons/Icons"
+import "./address.styles.css"
 
 export const HostAddress = ({ hostAddress, setHostAddress, setNextButtonAvailable }) => {
 
@@ -73,34 +74,34 @@ export const HostAddress = ({ hostAddress, setHostAddress, setNextButtonAvailabl
 
     return (
         <div className='host-address profile-creator-stage'>
-            <h1 className='title'>Address and Location</h1>
-            <p className="text">Please enter the venue's address.</p>
-            <div className="address-cont">
-                <AddressInputAutofill 
-                    expandForm={expandForm}
-                    setExpandForm={setExpandForm}
+          <h1 className='title'>Address and Location</h1>
+          <p className="text">Please enter the venue's address.</p>
+          <div className="address-cont">
+            <AddressInputAutofill 
+                expandForm={expandForm}
+                setExpandForm={setExpandForm}
+                feature={feature}
+                setFeature={setFeature}
+                locationAddress={locationAddress}
+                locationCoordinates={locationCoordinates}
+                setLocationAddress={setLocationAddress}
+                setLocationCoordinates={setLocationCoordinates}
+            />
+            <div className="minimap">
+              {feature ? (
+                <AddressMinimap 
+                    canAdjustMarker={true}
+                    satelliteToggle={true}
+                    show={true}
                     feature={feature}
-                    setFeature={setFeature}
-                    locationAddress={locationAddress}
-                    locationCoordinates={locationCoordinates}
-                    setLocationAddress={setLocationAddress}
-                    setLocationCoordinates={setLocationCoordinates}
+                    accessToken="pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg"
+                    onSaveMarkerLocation={handleSaveMarkerLocation}
                 />
-                <div className="minimap">
-                  {feature ? (
-                    <AddressMinimap 
-                        canAdjustMarker={true}
-                        satelliteToggle={true}
-                        show={true}
-                        feature={feature}
-                        accessToken="pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg"
-                        onSaveMarkerLocation={handleSaveMarkerLocation}
-                    />
-                  ) : (
-                    <MapIcon />
-                  )}
-                </div>
+              ) : (
+                <MapIcon />
+              )}
             </div>
+          </div>
         </div>
-    )
+   )
 }

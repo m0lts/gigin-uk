@@ -1,0 +1,28 @@
+.in-house-equipment-images {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap:2rem;
+    transition: 200ms linear;
+}
+.in-house-equipment-images .equipment-images {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap:1rem;
+    width:50%;
+}
+.in-house-equipment-images .equipment {
+    padding:1rem;
+    width:100%;
+    min-width: 400px;
+    height: 200px;
+    border:1px solid var(--light-medium-grey);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    gap: 1rem;
+}

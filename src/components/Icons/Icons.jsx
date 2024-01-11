@@ -1,11 +1,17 @@
 import { faBars, faBookmark, faX, faList, faMap, faSearch, faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable, faPlug, faGuitar, faGuitarElectric, faMicrophoneStand, faDrum, faPiano, faAlbum, faViolin, faBanjo, faSaxophone, faHeadphones } from "@fortawesome/pro-light-svg-icons"
+import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable, faPlug, faGuitar, faGuitarElectric, faMicrophoneStand, faDrum, faPiano, faAlbum, faViolin, faBanjo, faSaxophone, faHeadphones, faArrowRightFromBracket, faListDots, faLightCeiling, faCircleEllipsis, faCircleEllipsisVertical, faCircle1, faCircle2, faCircle3, faCircle4 } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import './icons.styles.css'
 
 export const MenuIcon = () => {
     return (
-        <FontAwesomeIcon icon={faBars} className='menu-icon' />
+        <FontAwesomeIcon icon={faCircleEllipsisVertical} className='menu-icon' />
+    )
+}
+
+export const ExitIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faArrowRightFromBracket} className='exit-icon icon' />
     )
 }
 
@@ -72,6 +78,13 @@ export const NextIcon = ({ setStageNumber, stageNumber, maxNumber }) => {
 export const CircleIcon = () => {
     return (
         <FontAwesomeIcon icon={faCircle} className="circle-icon icon" />
+    )
+}
+
+// Gig builder icons
+export const CeilingLightIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faLightCeiling} className="ceiling-light-icon icon" />
     )
 }
 
@@ -247,5 +260,27 @@ export const SaxophoneIcon = () => {
 export const HeadphonesIcon = () => {
     return (
         <FontAwesomeIcon icon={faHeadphones} className="headphones-icon icon" />
+    )
+}
+
+// Gig builder
+export const NumberOneIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCircle1} className="icon" />
+    )
+}
+export const NumberTwoIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCircle2} className="icon" />
+    )
+}
+export const NumberThreeIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCircle3} className="icon" />
+    )
+}
+export const NumberFourIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCircle4} className="icon" />
     )
 }

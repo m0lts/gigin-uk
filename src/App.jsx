@@ -10,6 +10,7 @@ import { ForgotPassword } from '/pages/ForgotPassword/ForgotPassword'
 import { ControlCentreIndex } from './pages/ControlCentre/ControlCentreIndex'
 import { ProfileCreator } from './pages/ProfileCreator/ProfileCreator'
 import { ControlCentre } from './pages/ControlCentre/Outlets/ControlCentre'
+import { GigBuilder } from './pages/GigBuilder/GigBuilder'
 
 export default function App() {
 
@@ -25,6 +26,7 @@ export default function App() {
         <Route path='control-centre' element={<ControlCentreIndex />}>
           <Route index element={<ControlCentre />}/>
         </Route>
+        <Route path='/gig-builder' element={<GigBuilder />} />
         <Route path='/profile-creator' element={<ProfileCreator />} />
       </Routes>
   )

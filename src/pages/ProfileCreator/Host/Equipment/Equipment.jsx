@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { AmpIcon, DrumIcon, ElectricGuitarIcon, GuitarIcon, KeyboardIcon, MicrophoneIcon, MicrophoneStandIcon, MixingDeckIcon, MusicVenueIcon, PianoIcon, PlugIcon, SoundSystemIcon } from "/components/Icons/Icons"
+import './equipment.styles.css'
+
 
 export const HostEquipment = ({ inHouseEquipment = [], setInHouseEquipment, setNextButtonAvailable }) => {
 

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 import { AmpIcon, DrumIcon, ElectricGuitarIcon, GuitarIcon, KeyboardIcon, MicrophoneIcon, MicrophoneStandIcon, MixingDeckIcon, MusicVenueIcon, PianoIcon, PlugIcon, SoundSystemIcon } from "/components/Icons/Icons"
+import './preview.styles.css'
+
 
 export const HostPreview = ({ userProfile, setSaveButtonAvailable }) => {
 

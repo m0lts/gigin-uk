@@ -1,6 +1,8 @@
 import { useEffect } from "react"
 import { GetInfoFromLocalStorage } from "/utils/updateLocalStorage"
 import { SelectExistingNameButton } from "/pages/ProfileCreator/Shared/ProfileName/Buttons/ProfileName.buttons.jsx"
+import './profile-name.styles.css'
+
 
 export const ProfileName = ({ profileName, setProfileName, establishmentType, setNextButtonAvailable }) => {
 
@@ -22,7 +24,7 @@ export const ProfileName = ({ profileName, setProfileName, establishmentType, se
     }, [profileName]);
 
     return (
-        <div className='establishment-name profile-creator-stage'>
+        <div className='profile-name profile-creator-stage'>
             <h1 className='title'>{establishmentType ? `What's the name of this ${establishmentType}?` : `What's your stage name?`}</h1>
             {!establishmentType && (
                 <p className="text">Click the button below if your stage name is the same as your real name: {userName}.</p>

@@ -4,6 +4,7 @@ import { queryDatabase } from '/utils/queryDatabase'
 import { GetInfoFromLocalStorage, AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage } from '/utils/updateLocalStorage'
 import { LoadingDots } from '/components/Loading/LoadingEffects'
 import { MenuIcon, BookmarkIcon } from '/components/Icons/Icons'
+import { ExitIcon } from '../../Icons/Icons'
 import './header.buttons.styles.css'
 
 // Desktop header My Gigin button
@@ -49,6 +50,59 @@ export const MobileHeaderSavedButton = () => {
         <button className='btn header-saved-button-mobile'>
             <BookmarkIcon />
             <span>Saved</span>
+        </button>
+    )
+}
+export const MobileHeaderSaveAndExitButton = ({ userProfile }) => {
+
+    const [isLoading, setIsLoading] = useState(false);
+    const userInfo = GetInfoFromLocalStorage();
+    const userID = userInfo.userID;
+
+    const navigate = useNavigate();
+
+    const handleSaveAndExit = async (event) => {
+        event.preventDefault();
+        setIsLoading(true);
+        const dataPayload = {
+            userID,
+            userProfile,
+        }
+        if (userProfile.profileType) {
+            try {
+                const response = await queryDatabase('/api/Profile/SaveProfileEntry.js', dataPayload); 
+                const responseData = await response.json();
+                if (response.ok) {
+                    setIsLoading(false);
+                    AddProfileCreatedToLocalStorage(true);
+                    AddProfileDataToLocalStorage(responseData.updatedProfileDocument.profiles)
+                    navigate('/control-centre');
+                } else {
+                    setIsLoading(false);
+                    console.log('error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }    
+        } else {
+            setIsLoading(false);
+            navigate('/control-centre');
+        }
+    }
+
+    return (
+        <button 
+            className={`btn header-save-and-exit-button-mobile ${isLoading && 'loading'}`} 
+            onClick={handleSaveAndExit}
+        >
+            {isLoading ? (
+                <LoadingDots />
+            ) : (
+                <>
+                    <ExitIcon />
+                    <span>Save and Exit</span>
+                </>
+            )}
         </button>
     )
 }
@@ -103,20 +157,25 @@ export const SaveAndExitButton = ({ userProfile }) => {
             userID,
             userProfile,
         }
-        try {
-            const response = await queryDatabase('/api/Profile/SaveProfileEntry.js', dataPayload); 
-            const responseData = await response.json();
-            if (response.ok) {
-                setIsLoading(false);
-                AddProfileCreatedToLocalStorage(true);
-                AddProfileDataToLocalStorage(responseData.updatedProfileDocument.profiles)
-                navigate('/control-centre');
-            } else {
-                setIsLoading(false);
-                console.log('error');
-            }
-        } catch (error) {
-            console.error('Error:', error);
+        if (userProfile.profileType) {
+            try {
+                const response = await queryDatabase('/api/Profile/SaveProfileEntry.js', dataPayload); 
+                const responseData = await response.json();
+                if (response.ok) {
+                    setIsLoading(false);
+                    AddProfileCreatedToLocalStorage(true);
+                    AddProfileDataToLocalStorage(responseData.updatedProfileDocument.profiles)
+                    navigate('/control-centre');
+                } else {
+                    setIsLoading(false);
+                    console.log('error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }    
+        } else {
+            setIsLoading(false);
+            navigate('/control-centre');
         }
     }
 

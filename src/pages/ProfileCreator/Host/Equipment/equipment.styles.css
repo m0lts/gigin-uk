@@ -1,0 +1,21 @@
+/* In house-equipment */
+.in-house-equipment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap:2rem;
+    transition: 200ms linear;
+}
+.in-house-equipment .options {
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+    width:100%;
+    padding: 0 2rem;
+}
+.in-house-equipment .card {
+    margin:1rem;
+    max-width: 100px;
+    height: 150px;
+    text-align: center;
+}

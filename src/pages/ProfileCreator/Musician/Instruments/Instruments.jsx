@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { DrumIcon, ElectricGuitarIcon, GuitarIcon, KeyboardIcon, MicrophoneIcon, PianoIcon } from "/components/Icons/Icons"
+import './instruments.styles.css'
+
 
 export const MusicianInstruments = ({ musicianInstruments, setMusicianInstruments, setNextButtonAvailable }) => {
 

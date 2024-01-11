@@ -53,9 +53,9 @@ export const ProfileCreator = () => {
     }
 
     // Profile object states, if location.state is true (user is editing profile), set userProfile and all states to that. Otherwise set to null.
+    const [userProfile, setUserProfile] = useState(location.state || {});
     const [profileID, setProfileID] = useState(location.state ? location.state.profileID : generateRandomId(25))
     const [profileType, setProfileType] = useState(location.state ? location.state.profileType : undefined);
-    const [userProfile, setUserProfile] = useState(location.state || {});
     const [profileImages, setProfileImages] = useState(location.state ? location.state.profileImages : []);
     const [profileName, setProfileName] = useState(location.state ? location.state.profileName : '');
     // Musician specific states

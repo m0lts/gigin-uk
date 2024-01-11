@@ -58,3 +58,18 @@
 .header-saved-button-mobile:active {
     color: var(--gigin-orange);
 }
+.header-save-and-exit-button-mobile {
+    border: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap:0.75rem;
+    background-color: var(--white);
+    font-weight: 300;
+    font-size: 1rem;
+    width:50%;
+}
+.header-save-and-exit-button-mobile:active {
+    font-weight: 400;
+}

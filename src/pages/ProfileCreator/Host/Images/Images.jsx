@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import { MultipleImagesInput } from "/pages/ProfileCreator/Host/Images/Inputs/Images.inputs.jsx"
-
+import './images.styles.css'
 
 export const HostImages = ({ images = [], setImages, numberOfImages, setNextButtonAvailable }) => {
 

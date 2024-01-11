@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { GigGoerIcon, HostIcon, MusicianIcon, ProfileIcon } from '/components/Icons/Icons'
 import { GetProfileDataFromLocalStorage } from '/utils/updateLocalStorage'
 import '../control-centre.styles.css'
+import { CeilingLightIcon } from '../../../components/Icons/Icons'
 
 export const ControlCentre = () => {
 
@@ -10,6 +11,11 @@ export const ControlCentre = () => {
     return (
         <>
             <div className='selections'>
+                <Link to={'/gig-builder'} className='link selections-card'>
+                    <CeilingLightIcon />
+                    <h5 className='title'>Gig Builder</h5>
+                    <p className='info'>Let's get you on the map! Build a gig here.</p>
+                </Link>
                 <Link to={'/profile-creator'} className='link selections-card'>
                     <ProfileIcon />
                     <h5 className='title'>Profile Creator</h5>

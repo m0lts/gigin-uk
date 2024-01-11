@@ -1,5 +1,7 @@
 import { useEffect } from "react"
 import { ApartmentIcon, ClubIcon, HouseIcon, HouseOfWorshipIcon, MusicVenueIcon, OtherIcon, PubIcon, PublicSpaceIcon, RestaurantIcon, SchoolIcon, VillageHallIcon } from "/components/Icons/Icons"
+import './type.styles.css'
+
 
 export const HostType = ({ establishmentType, setEstablishmentType, setNextButtonAvailable }) => {
 

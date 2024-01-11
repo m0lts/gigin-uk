@@ -6,6 +6,7 @@ import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, Save
 import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from '/components/Header/Menus/Menus.jsx'
 import { GetInfoFromLocalStorage, GetProfileDataFromLocalStorage } from '/utils/updateLocalStorage'
 import './header.styles.css'
+import { MobileHeaderSaveAndExitButton } from './Buttons/Header.buttons'
 
 export const Header = ({ userProfile, stageNumber }) => {
 
@@ -47,7 +48,13 @@ export const Header = ({ userProfile, stageNumber }) => {
         <>
             {isMobile ? (
                 <header className='header-mobile'>
-                    <MobileHeaderSavedButton />
+                    {profileCreatorPage ? (
+                        <MobileHeaderSaveAndExitButton
+                            userProfile={userProfile}
+                        />
+                    ) : (
+                        <MobileHeaderSavedButton />
+                    )}
                     <MobileHeaderMyGiginButton 
                         setButtonClicked={setMyGiginButtonClicked}
                         buttonStatus={myGiginButtonClicked}

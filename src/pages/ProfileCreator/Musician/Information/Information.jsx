@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MusicianTypeInput, MusicianBioInput, MusicianGenresInput } from '/pages/ProfileCreator/Musician/Information/Inputs/Information.inputs';
+import './information.styles.css';
+
 
 export const MusicianInformation = ({ musicianExtraInfo, setMusicianExtraInfo, setNextButtonAvailable }) => {
 

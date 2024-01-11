@@ -1,0 +1,59 @@
+.gig-builder .body {
+    padding:1rem;
+    display: grid;
+    grid-template-columns: 80% 20%;
+}
+.gig-builder .selections-area {
+    padding:1rem;
+}
+.gig-builder .heading {
+    margin-bottom:1rem;
+}
+.gig-builder .title {
+    margin-bottom: 1rem;
+}
+.gig-builder .subtitle {
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+}
+.gig-builder .text {
+    text-align: left;
+}
+.gig-builder .current-selections {
+    position: sticky;
+    top: 1rem;
+    height: 50vh;
+    max-height: 90vh;
+    border:1px solid var(--light-medium-grey);
+    background-color: var(--light-grey);
+    border-radius: 1rem;
+    padding: 1rem;
+    margin: 1rem;
+}
+
+/* Main content */
+.gig-builder .main {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap:2rem;
+}
+.gig-builder .main .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+
+}
+
+/* Calendar */
+.gig-builder .calendar {
+    width:50%;
+    height: 500px;
+}
+.gig-builder .calendar .fc {
+    height:100%;
+    width:100%;
+}
+
+/* Venue-select */

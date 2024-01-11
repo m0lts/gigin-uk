@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { ProfileIcon } from '/components/Icons/Icons'
-
+import './opening-text.styles.css'
 
 export const OpeningText = ({ setNextButtonAvailable }) => {
     

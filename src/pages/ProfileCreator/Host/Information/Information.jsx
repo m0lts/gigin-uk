@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { HostStageCapacityInput, HostVenueCapacityInput, HostParkingInput, HostDescriptionInput } from "/pages/ProfileCreator/Host/Information/Inputs/Information.inputs"
+import './information.styles.css'
+
 
 export const HostInformation = ({ hostExtraInfo, setHostExtraInfo, setNextButtonAvailable }) => {
 

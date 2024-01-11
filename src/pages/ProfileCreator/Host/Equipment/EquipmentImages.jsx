@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 import { EquipmentImageInput } from "/pages/ProfileCreator/Host/Equipment/Inputs/Equipment.inputs"
+import './equipment-images.styles.css'
 
 
 export const HostEquipmentImages = ({ inHouseEquipment, setInHouseEquipment, setNextButtonAvailable }) => {
