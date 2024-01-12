@@ -2,3 +2,68 @@
     width:100%;
     height:100%;
 }
+.map .marker {
+    padding:0.25rem 1rem;
+    background-color: var(--light-grey);
+    border-radius: 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: var(--default-font);
+    box-shadow: 2px 2px 5px var(--light-medium-grey);
+    transition: background-color 200ms linear;
+}
+.map .marker:hover {
+    cursor: pointer;
+    background-color: var(--medium-dark-grey);
+    color: var(--white);
+}
+
+
+.map .preview-marker {
+    background-color: var(--white);
+    border-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+    height: 150px;
+    width: 200px;
+    font-family: var(--default-font);
+    cursor: pointer;
+    box-shadow: 2px 2px 5px var(--light-medium-grey);
+    transition: all 200ms linear;
+}
+
+.map .preview-marker:hover {
+    height: 200px;
+    width: 250px;
+}
+.map .preview-marker .profile-picture {
+    width:100%;
+    height:65%;
+    overflow: hidden;
+    border-radius: 1rem 1rem 0 0;
+}
+.map .preview-marker .profile-picture .img {
+    width:100%;
+    height:100%;
+    object-fit: cover;
+}
+.map .preview-marker .gig-information {
+    height:35%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: flex-start;
+    padding:0.5rem 1rem;
+}
+.map .preview-marker .gig-information .title {
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+.map .preview-marker .other {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1rem;
+    width:100%;
+}

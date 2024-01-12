@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from "react"
 import { FilterBar } from '/pages/Home/FilterBar/FilterBar.jsx'
+import { formatSelectedDate } from '/utils/dateFormatting'
+import { CalendarIcon, GuitarIcon, PoundIcon } from '/components/Icons/Icons'
 import mapboxgl from "mapbox-gl"
 import 'mapbox-gl/dist/mapbox-gl.css'
 import './map-view.styles.css'
+import { GigPreview } from "../GigPreview/GigPreview"
+
 
 mapboxgl.accessToken = "pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg";
 
-export const MapView = () => {
+export const MapView = ({ gigs }) => {
 
     const mapContainer = useRef(null);
     const map = useRef(null);
@@ -23,11 +27,62 @@ export const MapView = () => {
                 zoom: zoom
             });
         }
-    }, []);
+        // Add markers for each gig
+        gigs.forEach((gig) => {
+            const coordinates = gig.gigInformation.gigProfile.hostAddress.coordinates;
+            const latCoordinates = gig.gigInformation.gigProfile.hostAddress.coordinates[1];
+
+            const profileName = gig.gigInformation.gigProfile.profileName;
+
+            // Create a marker
+            const customMarker = document.createElement('div');
+            customMarker.className = 'marker';
+            customMarker.innerHTML = `<p>£${gig.gigInformation.gigDetails.gigFee}</p>`;
+
+            // Add the custom marker to the map
+            const marker = new mapboxgl.Marker({ element: customMarker })
+                .setLngLat(coordinates)
+                .addTo(map.current);
+
+            marker.getElement().addEventListener('mouseover', () => {
+
+                // Create a preview marker
+                const customMarker = document.createElement('div');
+                customMarker.className = 'preview-marker';
+                customMarker.innerHTML = `
+                    <div class="profile-picture">
+                        <img class="img" src="${gig.gigInformation.gigProfile.profileImages[0]}" alt="Profile picture" />
+                    </div>
+                    <div class="gig-information">
+                        <h1 class="title">${gig.gigInformation.gigProfile.profileName}</h1>
+                        <div class="other">
+                            <p class="date">
+                                ${formatSelectedDate(gig.gigInformation.gigDate)}
+                            </p>
+                            <p class="fee">
+                                £${gig.gigInformation.gigDetails.gigFee}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                const previewMarker = new mapboxgl.Marker({ element: customMarker })
+                .setLngLat(coordinates)
+                .addTo(map.current);
+
+                previewMarker.getElement().addEventListener('mouseout', () => {
+                    previewMarker.remove();
+                });
+
+            });          
+            
+        });
+        
+    }, [gigs, lng, lat, zoom]);
 
     return (
         <div ref={mapContainer} className='map'>
             <FilterBar />
+            
         </div>
     )
 }

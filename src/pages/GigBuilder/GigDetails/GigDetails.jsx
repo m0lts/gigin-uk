@@ -5,16 +5,16 @@ import './gig-details.styles.css'
 
 export const GigDetails = ({ gigDetails, setGigDetails }) => {
 
-    const [musicianType, setMusicianType] = useState(gigDetails.musicianType ? gigDetails.musicianType : undefined);
-    const [musicType, setMusicType] = useState(gigDetails.musicType ? gigDetails.musicType : undefined);
-    const [genres, setGenres] = useState(gigDetails.genres ? gigDetails.genres : undefined);
-    const [gigStartTime, setGigStartTime] = useState(gigDetails.gigStartTime ? gigDetails.gigStartTime : undefined);
-    const [gigDuration, setGigDuration] = useState(gigDetails.gigDuration ? gigDetails.gigDuration : undefined);
-    const [musicianArrivalTime, setMusicianArrivalTime] = useState(gigDetails.musicianArrivalTime ? gigDetails.musicianArrivalTime : undefined);
-    const [gigFee, setGigFee] = useState(gigDetails.gigFee ? gigDetails.gigFee : undefined);
-    const [extraInformation, setExtraInformation] = useState(gigDetails.extraInformation ? gigDetails.extraInformation : undefined);
+    const [musicianType, setMusicianType] = useState();
+    const [musicType, setMusicType] = useState();
+    const [genres, setGenres] = useState();
+    const [gigStartTime, setGigStartTime] = useState();
+    const [gigDuration, setGigDuration] = useState();
+    const [musicianArrivalTime, setMusicianArrivalTime] = useState();
+    const [gigFee, setGigFee] = useState();
+    const [extraInformation, setExtraInformation] = useState();
 
-    useEffect(() => {
+    useEffect(() => {      
         const updatedGigDetails = {
             ...gigDetails,
             ...(musicianType && { musicianType: musicianType }),
@@ -29,41 +29,48 @@ export const GigDetails = ({ gigDetails, setGigDetails }) => {
         setGigDetails(updatedGigDetails);
     }, [musicianType, musicType, genres, gigStartTime, gigDuration, musicianArrivalTime, gigFee, extraInformation])
 
-    console.log(gigDetails)
 
     return (
         <div className="fields">
             <MusicianTypeInput
                 musicianType={musicianType}
                 setMusicianType={setMusicianType}
+                gigDetails={gigDetails}
             />
             <MusicTypeInput
                 musicType={musicType}
                 setMusicType={setMusicType}
+                gigDetails={gigDetails}
             />
             <GenresInput
                 genres={genres}
                 setGenres={setGenres}
+                gigDetails={gigDetails}
             />
             <GigStartTimeInput
                 gigStartTime={gigStartTime}
                 setGigStartTime={setGigStartTime}
+                gigDetails={gigDetails}
             />
             <GigDurationInput
                 gigDuration={gigDuration}
                 setGigDuration={setGigDuration}
+                gigDetails={gigDetails}
             />
             <MusicianArrivalTimeInput
                 musicianArrivalTime={musicianArrivalTime}
                 setMusicianArrivalTime={setMusicianArrivalTime}
+                gigDetails={gigDetails}
             />
             <GigFeeInput 
                 gigFee={gigFee}
                 setGigFee={setGigFee}
+                gigDetails={gigDetails}
             />
             <GigExtraInformation
                 extraInformation={extraInformation}
                 setExtraInformation={setExtraInformation}
+                gigDetails={gigDetails}
             />
         </div>
     )

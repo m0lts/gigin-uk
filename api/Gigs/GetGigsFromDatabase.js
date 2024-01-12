@@ -13,16 +13,11 @@ export default async function handler(request, response) {
     try {
         mongoClient = await (new MongoClient(uri, options)).connect();
 
-        const db = mongoClient.db('gigin-users');
-        const profilesCollection = db.collection('profiles');
+        const db = mongoClient.db('gigin-gigs');
+        const gigsCollection = db.collection('gigs');
 
-        if (request.method === "POST") {
-            const dataReceived = request.body;
-
-
-
-            response.status(201).json({ message: "Profile saved."})
-        }
+        const gigs = await gigsCollection.find({}).toArray();
+        response.status(200).json({ gigs });
 
     } catch (error) {
         console.error(error);

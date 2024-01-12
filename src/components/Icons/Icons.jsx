@@ -1,5 +1,5 @@
 import { faBars, faBookmark, faX, faList, faMap, faSearch, faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable, faPlug, faGuitar, faGuitarElectric, faMicrophoneStand, faDrum, faPiano, faAlbum, faViolin, faBanjo, faSaxophone, faHeadphones, faArrowRightFromBracket, faListDots, faLightCeiling, faCircleEllipsis, faCircleEllipsisVertical, faCircle1, faCircle2, faCircle3, faCircle4 } from "@fortawesome/pro-light-svg-icons"
+import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable, faPlug, faGuitar, faGuitarElectric, faMicrophoneStand, faDrum, faPiano, faAlbum, faViolin, faBanjo, faSaxophone, faHeadphones, faArrowRightFromBracket, faListDots, faLightCeiling, faCircleEllipsis, faCircleEllipsisVertical, faCircle1, faCircle2, faCircle3, faCircle4, faSterlingSign, faCalendar } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import './icons.styles.css'
 
@@ -287,5 +287,15 @@ export const NumberFourIcon = () => {
 export const BandIcon = () => {
     return (
         <FontAwesomeIcon icon={faPeopleGroup} className="band-icon icon" />
+    )
+}
+export const PoundIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faSterlingSign} className="pound-icon icon" />
+    )
+}
+export const CalendarIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCalendar} className="calendar-icon icon" />
     )
 }

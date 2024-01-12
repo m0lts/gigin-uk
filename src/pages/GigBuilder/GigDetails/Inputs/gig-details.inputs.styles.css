@@ -62,6 +62,10 @@
     align-items: center;
     gap:0.5rem;
 }
+.gig-fee .input-cont input {
+    font-size: 1.5rem;
+    font-weight: 300;
+}
 
 /* Gig extra info */
 .gig-extra-information textarea {

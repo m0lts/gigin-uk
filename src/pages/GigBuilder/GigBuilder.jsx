@@ -18,21 +18,32 @@ export const GigBuilder = () => {
 
     const [gigInformation, setGigInformation] = useState({});
     
-    const [gigProfile, setGigProfile] = useState(gigInformation.gigProfile ? gigInformation.gigProfile : undefined);
-    const [gigDate, setGigDate] = useState(gigInformation.gigDate ? gigInformation.gigDate : undefined);
-    const [gigDetails, setGigDetails] = useState(gigInformation.gigDetails ? gigInformation.gigDetails : {});
-
-    const [postButtonAvailable, setPostButtonAvailable] = useState(false);
-
+    const [gigProfile, setGigProfile] = useState();
+    const [gigDate, setGigDate] = useState();
+    // Gig Details states
+    const [gigDetails, setGigDetails] = useState({
+        musicianType: [],
+        musicType: '',
+        genres: [],
+        gigStartTime: '',
+        gigDuration: '',
+        musicianArrivalTime: '',
+        gigFee: '',
+        extraInformation: ''
+    });
+    
+    // Update gigInformation state when gigProfile, gigDate or gigDetails change
     useEffect(() => {
-        const updatedGigInformation = {
-            ...gigInformation,
+        setGigInformation((prevGigInformation) => ({
+            ...prevGigInformation,
             gigDate,
             gigProfile,
             gigDetails
-        }
-        setGigInformation(updatedGigInformation);
-    }, [gigProfile, gigDate, gigDetails])
+        }));
+    }, [gigProfile, gigDate, gigDetails]);
+    
+    // Allow user to post gig if all fields are filled in
+    const [postButtonAvailable, setPostButtonAvailable] = useState(false);
 
     useEffect(() => {
         if (gigInformation.gigProfile && 
@@ -48,8 +59,9 @@ export const GigBuilder = () => {
         } else {
             setPostButtonAvailable(false);
         }
-        console.log(gigInformation)
     }, [gigInformation])
+
+    
 
 
     return (
@@ -105,6 +117,12 @@ export const GigBuilder = () => {
                     setGigInformation={setGigInformation}
                     postButtonAvailable={postButtonAvailable}
                     setPostButtonAvailable={setPostButtonAvailable}
+                    gigDate={gigDate}
+                    gigProfile={gigProfile}
+                    gigDetails={gigDetails}
+                    setGigDate={setGigDate}
+                    setGigProfile={setGigProfile}
+                    setGigDetails={setGigDetails}
                 />
             </div>
         </section>

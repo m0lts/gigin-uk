@@ -1,8 +1,9 @@
 import { ListIcon, MapIcon } from "/components/Icons/Icons"
+import { LoadingDots } from "/components/Loading/LoadingEffects"
 import './home.buttons.styles.css'
 
 // Map and list view type toggle
-export const ChangeViewTypeButton = ({ showMap, setShowMap }) => {
+export const ChangeViewTypeButton = ({ showMap, setShowMap, isLoading }) => {
 
     const handleViewChange = () => {
         if (showMap) {
@@ -14,19 +15,27 @@ export const ChangeViewTypeButton = ({ showMap, setShowMap }) => {
 
     return (
         <button 
-            className='btn change-view-btn'
+            className={`btn white-button ${isLoading ? 'loading' : ''}`}
             onClick={handleViewChange}
         >
             {showMap ? (
-                <>
-                    <ListIcon />
-                    <span>List View</span>
-                </>
+                isLoading ? (
+                    <LoadingDots />
+                ) : (
+                    <>
+                        <ListIcon />
+                        <span>List View</span>
+                    </>
+                )
             ) : (
-                <>
-                    <MapIcon />
-                    <span>Map View</span>
-                </>
+                isLoading ? (
+                    <LoadingDots />
+                ) : (
+                    <>
+                        <MapIcon />
+                        <span>Map View</span>
+                    </>
+                )
             )}
         </button>
     )

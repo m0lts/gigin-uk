@@ -1,4 +1,12 @@
 .list-view {
-    min-height:91vh;
     position: relative;
 }
+.list-view .gig-list {
+    padding-top: 6rem;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    width:100vw;
+    padding: 6rem 2rem 2rem 2rem;
+    gap:2rem;
+}
+

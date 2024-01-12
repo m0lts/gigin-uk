@@ -10,7 +10,6 @@ export const VenueSelection = ({ gigProfile, setGigProfile }) => {
     const userInfo = GetInfoFromLocalStorage();
     const userID = userInfo.userID;
 
-
     // Get user profiles from database
     const [loadingProfiles, setLoadingProfiles] = useState(false);
     const [hostProfiles, setHostProfiles] = useState([]);

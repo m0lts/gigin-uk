@@ -7,7 +7,7 @@ import { LoadingSkeletonText } from '/components/Loading/LoadingEffects';
 import './side-bar.styles.css'
 import { DeleteTemplateButton } from '../Buttons/GigBuilder.buttons';
 
-export const SideBar = ({ gigInformation, setGigInformation, postButtonAvailable, setPostButtonAvailable }) => {
+export const SideBar = ({ gigInformation, setGigInformation, postButtonAvailable, setPostButtonAvailable, setGigDate, setGigDetails, setGigProfile }) => {
 
     const [error, setError] = useState();
 
@@ -147,7 +147,16 @@ export const SideBar = ({ gigInformation, setGigInformation, postButtonAvailable
                         ) : (
                             <ul className="templates-list">
                                 {templates.map((template, index) => (
-                                    <li key={index} className="template">
+                                    <li 
+                                        key={index} 
+                                        className="template"
+                                        onClick={() => {
+                                            setGigInformation(template); 
+                                            setGigProfile(template.gigProfile); 
+                                            setGigDate(template.gigDate); 
+                                            setGigDetails(template.gigDetails)
+                                        }}
+                                    >
                                         <p className="text">{template.templateName}</p>
                                         <div className="buttons">
                                             <DeleteTemplateButton 
@@ -156,7 +165,6 @@ export const SideBar = ({ gigInformation, setGigInformation, postButtonAvailable
                                                 setTemplates={setTemplates}
                                                 setError={setError}
                                             />
-                                            <button className="btn black-button" onClick={() => setGigInformation(template)}>Load</button>
                                         </div>
                                     </li>
                                 ))}

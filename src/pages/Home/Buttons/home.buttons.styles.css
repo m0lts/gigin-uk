@@ -1,19 +1,17 @@
 /* Change view button */
-.change-view-btn {
+.home .white-button {
     position: absolute;
     bottom: 1rem;
     left: 50%;
     transform: translateX(-50%);
     border:none;
-    padding: 0.5rem 1rem;
+    padding: 1rem 2rem;
     background-color: var(--white);
     border-radius: 2rem;
     font-weight: 300;
     cursor: pointer;
     box-shadow: 2px 2px 5px var(--light-medium-grey);
     display: flex;
+    align-items: center;
     gap:0.5rem;
-}
-.change-view-btn:hover {
-    box-shadow: 2px 2px 5px var(--medium-dark-grey);
 }
