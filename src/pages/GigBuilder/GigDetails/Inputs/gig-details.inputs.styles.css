@@ -52,6 +52,17 @@
     font-weight: 300;
 }
 
+/* Gig fee */
+.gig-fee .text {
+    font-size: 1.5rem;
+}
+.gig-fee .input-cont {
+    margin: 0;
+    flex-direction: row;
+    align-items: center;
+    gap:0.5rem;
+}
+
 /* Gig extra info */
 .gig-extra-information textarea {
     border:1px solid var(--light-medium-grey);

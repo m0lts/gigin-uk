@@ -220,6 +220,23 @@ export const MusicianArrivalTimeInput = ({ musicianArrivalTime, setMusicianArriv
         </div>
     )
 }
+export const GigFeeInput = ({ gigFee, setGigFee }) => {
+    return (
+        <div className="gig-fee field">
+            <h3 className="subtitle">Gig Fee: *</h3>
+            <div className="input-cont">
+                <label htmlFor="gig-fee" className="text">£</label>
+                <input
+                    type="number"
+                    className="input"
+                    value={gigFee || ''}
+                    placeholder="e.g. 100"
+                    onChange={(e) => setGigFee(e.target.value)}
+                />
+            </div>
+        </div>
+    )
+}
 
 export const GigExtraInformation = ({ extraInformation, setExtraInformation }) => {
     return (

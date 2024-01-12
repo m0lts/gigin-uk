@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Header } from '/components/Header/Header';
 import { Calendar } from '/components/Calendar/Calendar';
 import { NumberOneIcon, NumberTwoIcon, NumberThreeIcon, NumberFourIcon } from '/components/Icons/Icons';
-import './gig-builder.styles.css'
 import { VenueSelection } from '/pages/GigBuilder/VenueSelection/VenueSelection';
 import { GigDetails } from '/pages/GigBuilder/GigDetails/GigDetails';
-import { SideBar } from './SideBar/SideBar';
+import { SideBar } from '/pages/GigBuilder/SideBar/SideBar';
+import { GetInfoFromLocalStorage } from '/utils/updateLocalStorage';
+import { DefaultOverlay } from '/components/Overlays/Overlays';
+import './gig-builder.styles.css'
 
 
 export const GigBuilder = () => {
 
+    // If user hasnt created a profile, don't allow them to access this page
+    const { profileCreated } = GetInfoFromLocalStorage();
+
     const [gigInformation, setGigInformation] = useState({});
     
-    const [gigProfile, setGigProfile] = useState();
-    const [gigDate, setGigDate] = useState();
-    const [gigDetails, setGigDetails] = useState();
+    const [gigProfile, setGigProfile] = useState(gigInformation.gigProfile ? gigInformation.gigProfile : undefined);
+    const [gigDate, setGigDate] = useState(gigInformation.gigDate ? gigInformation.gigDate : undefined);
+    const [gigDetails, setGigDetails] = useState(gigInformation.gigDetails ? gigInformation.gigDetails : {});
 
     const [postButtonAvailable, setPostButtonAvailable] = useState(false);
 
@@ -42,6 +48,7 @@ export const GigBuilder = () => {
         } else {
             setPostButtonAvailable(false);
         }
+        console.log(gigInformation)
     }, [gigInformation])
 
 
@@ -49,6 +56,14 @@ export const GigBuilder = () => {
         <section className="gig-builder">
             <Header />
             <div className="body">
+                {!profileCreated && (
+                    <DefaultOverlay 
+                        title="You haven't created a profile yet!"
+                        text="Please create a profile before trying to create a gig."
+                        link="/profile-creator"
+                        linkText="Create Profile"
+                    />
+                )}
                 <div className="selections-area">
                     <div className="heading">
                         <h1 className="title">Gig Builder</h1>
@@ -87,6 +102,7 @@ export const GigBuilder = () => {
                 </div>
                 <SideBar
                     gigInformation={gigInformation}
+                    setGigInformation={setGigInformation}
                     postButtonAvailable={postButtonAvailable}
                     setPostButtonAvailable={setPostButtonAvailable}
                 />

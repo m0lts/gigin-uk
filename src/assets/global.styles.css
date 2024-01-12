@@ -25,6 +25,7 @@
     --trans-grey:rgba(128, 128, 128, 0.345);
     --red: red;
     --trans-red: rgba(255, 0, 0, 0.037);
+    --overlay: rgba(255, 255, 255, 0.5);
     font-family: var(--default-font);
     font-size: 16px;
 }
@@ -102,6 +103,7 @@
     padding:1rem;
     border:1px solid var(--light-medium-grey);
     border-radius: 0.5rem;
+    font-family: var(--default-font);
 }
 .input-cont .input.large {
     font-size: 1.25rem;
@@ -137,3 +139,4 @@
     font-size: 1rem;
     font-weight: 300;
 }
+

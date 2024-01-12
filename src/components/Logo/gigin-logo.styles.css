@@ -1,16 +1,16 @@
 .logo {
     display: flex;
-    align-items: flex-end;
-    gap: 0.25rem;
+    align-items: center;
+    gap: 0.75rem;
     text-decoration: none;
 }
 .logo-img {
-    width:2rem;
-    height:2rem;
+    width:40px;
+    height:40px;
 }
 .logo-text {
-    font-size: 2rem;
-    color: var(--gigin-orange);
+    font-size: 1.75rem;
+    color: var(--black);
     font-weight: 500;
     font-family: var(--quicksand-font);
 }

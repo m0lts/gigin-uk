@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
-import { MusicianTypeInput, GenresInput, GigDurationInput, GigExtraInformation, GigStartTimeInput, MusicTypeInput, MusicianArrivalTimeInput } from "./Inputs/GigDetails.inputs"
+import { MusicianTypeInput, GenresInput, GigDurationInput, GigExtraInformation, GigStartTimeInput, MusicTypeInput, MusicianArrivalTimeInput, GigFeeInput } from "/pages/GigBuilder/GigDetails/Inputs/GigDetails.inputs"
 import './gig-details.styles.css'
 
 
 export const GigDetails = ({ gigDetails, setGigDetails }) => {
 
-    const [musicianType, setMusicianType] = useState();
-    const [musicType, setMusicType] = useState();
-    const [genres, setGenres] = useState();
-    const [gigStartTime, setGigStartTime] = useState();
-    const [gigDuration, setGigDuration] = useState();
-    const [musicianArrivalTime, setMusicianArrivalTime] = useState();
-    const [extraInformation, setExtraInformation] = useState();
+    const [musicianType, setMusicianType] = useState(gigDetails.musicianType ? gigDetails.musicianType : undefined);
+    const [musicType, setMusicType] = useState(gigDetails.musicType ? gigDetails.musicType : undefined);
+    const [genres, setGenres] = useState(gigDetails.genres ? gigDetails.genres : undefined);
+    const [gigStartTime, setGigStartTime] = useState(gigDetails.gigStartTime ? gigDetails.gigStartTime : undefined);
+    const [gigDuration, setGigDuration] = useState(gigDetails.gigDuration ? gigDetails.gigDuration : undefined);
+    const [musicianArrivalTime, setMusicianArrivalTime] = useState(gigDetails.musicianArrivalTime ? gigDetails.musicianArrivalTime : undefined);
+    const [gigFee, setGigFee] = useState(gigDetails.gigFee ? gigDetails.gigFee : undefined);
+    const [extraInformation, setExtraInformation] = useState(gigDetails.extraInformation ? gigDetails.extraInformation : undefined);
 
     useEffect(() => {
         const updatedGigDetails = {
@@ -22,10 +23,13 @@ export const GigDetails = ({ gigDetails, setGigDetails }) => {
             ...(gigStartTime && { gigStartTime: gigStartTime }),
             ...(gigDuration && { gigDuration: gigDuration }),
             ...(musicianArrivalTime && { musicianArrivalTime: musicianArrivalTime }),
+            ...(gigFee && { gigFee: gigFee }),
             ...(extraInformation && { extraInformation: extraInformation })
         }
         setGigDetails(updatedGigDetails);
-    }, [musicianType, musicType, genres, gigStartTime, gigDuration, musicianArrivalTime, extraInformation])
+    }, [musicianType, musicType, genres, gigStartTime, gigDuration, musicianArrivalTime, gigFee, extraInformation])
+
+    console.log(gigDetails)
 
     return (
         <div className="fields">
@@ -52,6 +56,10 @@ export const GigDetails = ({ gigDetails, setGigDetails }) => {
             <MusicianArrivalTimeInput
                 musicianArrivalTime={musicianArrivalTime}
                 setMusicianArrivalTime={setMusicianArrivalTime}
+            />
+            <GigFeeInput 
+                gigFee={gigFee}
+                setGigFee={setGigFee}
             />
             <GigExtraInformation
                 extraInformation={extraInformation}
