@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import { FilterBar } from '/pages/Home/FilterBar/FilterBar.jsx'
 import { formatSelectedDate } from '/utils/dateFormatting'
-import { CalendarIcon, GuitarIcon, PoundIcon } from '/components/Icons/Icons'
 import mapboxgl from "mapbox-gl"
 import 'mapbox-gl/dist/mapbox-gl.css'
 import './map-view.styles.css'
-import { GigPreview } from "../GigPreview/GigPreview"
 
 
 mapboxgl.accessToken = "pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg";
 
 export const MapView = ({ gigs }) => {
+
+    const navigate = useNavigate();
 
     const mapContainer = useRef(null);
     const map = useRef(null);
@@ -47,9 +48,9 @@ export const MapView = ({ gigs }) => {
             marker.getElement().addEventListener('mouseover', () => {
 
                 // Create a preview marker
-                const customMarker = document.createElement('div');
-                customMarker.className = 'preview-marker';
-                customMarker.innerHTML = `
+                const fullMarker = document.createElement('div');
+                fullMarker.className = 'preview-marker';
+                fullMarker.innerHTML = `
                     <div class="profile-picture">
                         <img class="img" src="${gig.gigInformation.gigProfile.profileImages[0]}" alt="Profile picture" />
                     </div>
@@ -65,9 +66,14 @@ export const MapView = ({ gigs }) => {
                         </div>
                     </div>
                 `;
-                const previewMarker = new mapboxgl.Marker({ element: customMarker })
+                const previewMarker = new mapboxgl.Marker({ element: fullMarker })
                 .setLngLat(coordinates)
                 .addTo(map.current);
+
+                fullMarker.addEventListener('click', () => {
+                    // Navigate to the target page using React Router
+                    navigate(`/${gig._id}`, { state: gig });
+                });
 
                 previewMarker.getElement().addEventListener('mouseout', () => {
                     previewMarker.remove();
@@ -82,7 +88,6 @@ export const MapView = ({ gigs }) => {
     return (
         <div ref={mapContainer} className='map'>
             <FilterBar />
-            
         </div>
     )
 }

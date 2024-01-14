@@ -19,15 +19,29 @@ export const Home = () => {
     useEffect(() => {
         const fetchGigData = async () => {
             setIsLoading(true);
+
+            // Check if gig data is cached in session storage
+            let cachedGigs;
+            const cachedData = sessionStorage.getItem('cachedGigs');
+            if (cachedData) {
+                cachedGigs = JSON.parse(cachedData);
+                setGigs(cachedGigs);
+                setIsLoading(false);
+                return;
+            }
+
             const dataPayload = {
                 userLocation: 'Cambridge'
             }
+
             try {
                 const response = await queryDatabase('/api/Gigs/GetGigsFromDatabase.js', dataPayload);
                 const responseData = await response.json();
                 if (response.ok) {
                     setIsLoading(false);
                     setGigs(responseData.gigs);
+                    // Save data to session storage
+                    sessionStorage.setItem('cachedGigs', JSON.stringify(responseData.gigs));
                 } else {
                     setIsLoading(false);
                     setError(responseData.message);

@@ -11,12 +11,14 @@ import { ControlCentreIndex } from './pages/ControlCentre/ControlCentreIndex'
 import { ProfileCreator } from './pages/ProfileCreator/ProfileCreator'
 import { ControlCentre } from './pages/ControlCentre/Outlets/ControlCentre'
 import { GigBuilder } from './pages/GigBuilder/GigBuilder'
+import { GigInformation } from './pages/GigInformation/GigInformation'
 
 export default function App() {
 
   return (
       <Routes>
         <Route path='/' element={<Home />} />
+        <Route path=':id' element={<GigInformation />} />
         <Route path='/help' element={<Help />} />
         <Route path='/contact-us' element={<ContactUs />} />
         <Route path='/hosting' element={<HostWithGigin />} />
