@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { handleMediaUpload } from '/utils/uploadMedia'
 import { queryDatabase } from '/utils/queryDatabase'
 import { AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage, GetInfoFromLocalStorage } from '/utils/updateLocalStorage'
 import { LoadingDots } from '/components/Loading/LoadingEffects'
@@ -50,6 +51,8 @@ export const NextFooterButton = ({ stageNumber, setStageNumber, setNextButtonAva
         </button>
     )
 }
+
+
 export const SaveFooterButton = ({ setSaveButtonAvailable, saveButtonAvailable, userProfile }) => {
     
     const [isLoading, setIsLoading] = useState(false);
@@ -61,10 +64,54 @@ export const SaveFooterButton = ({ setSaveButtonAvailable, saveButtonAvailable, 
     const handleSaveClick = async (event) => {
         event.preventDefault();
         setIsLoading(true);
+
+        if (userProfile.profileImages) {
+            if (Array.isArray(userProfile.profileImages)) {
+                // If profileImages is an array, process each image
+                const userImages = userProfile.profileImages;
+                const updatedProfileImages = [];
+    
+                await Promise.all(userImages.map(async (image) => {
+                    if (typeof image === 'string') {
+                        // If the item is already a URL, no need to reprocess
+                        updatedProfileImages.push(image);
+                    } else {
+                        // Convert raw image to S3 URL
+                        const s3Url = await handleMediaUpload(image);
+                        updatedProfileImages.push(s3Url);
+                    }
+                }));
+                userProfile.profileImages = updatedProfileImages;
+            } else if (typeof userProfile.profileImages === 'object') {
+                // If profileImages is an object, process profileImage and coverImage
+                const userProfileImage = userProfile.profileImages.profileImage;
+                const userCoverImage = userProfile.profileImages.coverImage;
+    
+                if (userProfileImage && typeof userProfileImage === 'string') {
+                    // If profileImage is already a URL, no need to reprocess
+                    userProfile.profileImages.profileImage = userProfileImage;
+                } else if (userProfileImage) {
+                    // Convert raw profileImage to S3 URL
+                    const updatedProfileImage = await handleMediaUpload(userProfileImage);
+                    userProfile.profileImages.profileImage = updatedProfileImage;
+                }
+    
+                if (userCoverImage && typeof userCoverImage === 'string') {
+                    // If coverImage is already a URL, no need to reprocess
+                    userProfile.profileImages.coverImage = userCoverImage;
+                } else if (userCoverImage) {
+                    // Convert raw coverImage to S3 URL
+                    const updatedCoverImage = await handleMediaUpload(userCoverImage);
+                    userProfile.profileImages.coverImage = updatedCoverImage;
+                }
+            }
+        }
+
         const dataPayload = {
             userID,
             userProfile,
         }
+
         try {
             const response = await queryDatabase('/api/Profile/SaveProfileEntry.js', dataPayload); 
             const responseData = await response.json();

@@ -10,14 +10,10 @@ export const MultipleImagesInput = ({ images, setImages, numberOfImages }) => {
     const handleImageChange = (event) => {
         const file = event.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const updatedImages = [...images];
-                updatedImages[imageNumber] = reader.result;
-                setImages(updatedImages);
-            };
-            reader.readAsDataURL(file);
-        }
+            const updatedImages = [...images];
+            updatedImages[imageNumber] = file;
+            setImages(updatedImages);
+          }
     };
 
     const removeImage = () => {
@@ -38,7 +34,7 @@ export const MultipleImagesInput = ({ images, setImages, numberOfImages }) => {
                     {images[imageNumber] ? (
                         <>
                             <img
-                                src={images[imageNumber]}
+                                src={typeof images[imageNumber] === 'string' ? images[imageNumber] : URL.createObjectURL(images[imageNumber])}
                                 alt={`Preview ${imageNumber}`}
                                 className="preview-image"
                                 

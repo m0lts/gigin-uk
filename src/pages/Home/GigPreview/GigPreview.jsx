@@ -3,6 +3,7 @@ import { CalendarIcon, GuitarIcon, PoundIcon } from '/components/Icons/Icons'
 import './gig-preview.styles.css'
 
 export const GigPreview = ({ gig }) => {
+
     return (
         <>
             <div className="profile-picture">

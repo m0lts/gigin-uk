@@ -57,33 +57,33 @@ export const HostPreview = ({ userProfile, setSaveButtonAvailable }) => {
                 <div className="images">
                     <div className={`image1 ${images.length === 1 && 'full-width'}`}>
                         <img 
-                            src={images[0]} 
+                            src={typeof images[0] === 'string' ? images[0] : URL.createObjectURL(images[0])}
                             alt="Image 1"
                         />
                     </div>
                     <div className={`other-images ${images.length === 2 && 'imgs-2'} ${images.length === 3 && 'imgs-3'}`}>
                         {images[1] && (
                             <img 
-                                src={images[1]} 
+                                src={typeof images[1] === 'string' ? images[1] : URL.createObjectURL(images[1])}
                                 alt="Image 2"
                             />
                         )}
                         {images[2] && (
                             <img 
-                                src={images[2]} 
+                                src={typeof images[2] === 'string' ? images[2] : URL.createObjectURL(images[2])}
                                 alt="Image 3"
                             />
                         )}
                         {images[3] && (
                             <img 
-                                src={images[3]} 
+                                src={typeof images[3] === 'string' ? images[3] : URL.createObjectURL(images[3])}
                                 alt="Image 4"
                                 className={`${images.length === 4 && 'imgs-4'}`}
                             />
                         )}
                         {images[4] && (
                             <img 
-                                src={images[4]} 
+                                src={typeof images[4] === 'string' ? images[4] : URL.createObjectURL(images[4])}
                                 alt="Image 5"
                             />
                         )}

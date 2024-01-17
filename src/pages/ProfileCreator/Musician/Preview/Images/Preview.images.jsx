@@ -5,11 +5,7 @@ export const CoverImage = ({ coverImage, setCoverImage }) => {
     const handleImageChange = (event) => {
         const file = event.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setCoverImage(reader.result);
-            };
-            reader.readAsDataURL(file);
+            setCoverImage(file);
         }
     };
 
@@ -28,8 +24,8 @@ export const CoverImage = ({ coverImage, setCoverImage }) => {
                 {coverImage ? (
                     <>
                         <img
-                            src={coverImage}
-                            alt='Profile Photo Preview'
+                            src={typeof coverImage === 'string' ? coverImage : URL.createObjectURL(coverImage)}
+                            alt='Cover Photo Preview'
                             className="preview-image"
                             
                         />
@@ -62,12 +58,8 @@ export const ProfileImage = ({ profileImage, setProfileImage }) => {
     const handleImageChange = (event) => {
         const file = event.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setProfileImage(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
+            setProfileImage(file);
+          }
     };
 
     const removeImage = () => {
@@ -85,7 +77,7 @@ export const ProfileImage = ({ profileImage, setProfileImage }) => {
                 {profileImage ? (
                     <>
                         <img
-                            src={profileImage}
+                            src={typeof profileImage === 'string' ? profileImage : URL.createObjectURL(profileImage)}
                             alt='Profile Photo Preview'
                             className="preview-image"
                             

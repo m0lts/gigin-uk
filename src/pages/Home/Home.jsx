@@ -21,14 +21,14 @@ export const Home = () => {
             setIsLoading(true);
 
             // Check if gig data is cached in session storage
-            let cachedGigs;
-            const cachedData = sessionStorage.getItem('cachedGigs');
-            if (cachedData) {
-                cachedGigs = JSON.parse(cachedData);
-                setGigs(cachedGigs);
-                setIsLoading(false);
-                return;
-            }
+            // let cachedGigs;
+            // const cachedData = sessionStorage.getItem('cachedGigs');
+            // if (cachedData) {
+            //     cachedGigs = JSON.parse(cachedData);
+            //     setGigs(cachedGigs);
+            //     setIsLoading(false);
+            //     return;
+            // }
 
             const dataPayload = {
                 userLocation: 'Cambridge'
@@ -52,6 +52,9 @@ export const Home = () => {
         }
         fetchGigData();
     }, [])
+
+
+    
 
     return (
         <div className="home">

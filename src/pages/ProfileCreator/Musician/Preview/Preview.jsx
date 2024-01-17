@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { CircleIcon } from "/components/Icons/Icons"
 import { CoverImage, ProfileImage } from "/pages/ProfileCreator/Musician/Preview/Images/Preview.images"
+import './preview.styles.css'
 
 export const MusicianPreview = ({ userProfile, profileImages, setProfileImages, setSaveButtonAvailable }) => {
 
