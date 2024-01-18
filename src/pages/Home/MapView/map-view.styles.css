@@ -29,7 +29,7 @@
     font-family: var(--default-font);
     cursor: pointer;
     box-shadow: 2px 2px 5px var(--light-medium-grey);
-    transition: all 200ms linear;
+    transition: height 200ms linear, width 200ms linear;
 }
 
 .map .preview-marker:hover {

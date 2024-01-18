@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { queryDatabase } from '/utils/queryDatabase'
 import { GetInfoFromLocalStorage, AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage } from '/utils/updateLocalStorage'
 import { LoadingDots } from '/components/Loading/LoadingEffects'
 import { MenuIcon, BookmarkIcon } from '/components/Icons/Icons'
-import { ExitIcon } from '../../Icons/Icons'
+import { ExitIcon, HostIcon } from '../../Icons/Icons'
 import './header.buttons.styles.css'
 
 // Desktop header My Gigin button
@@ -233,6 +233,40 @@ export const SaveAndExitButton = ({ userProfile }) => {
             ) : (
                 <>Save and Exit</>
             )}
+        </button>
+    )
+}
+
+// Host live music button
+export const HostLiveMusicButton = () => {
+    return (
+        <button className='btn text-only-button'>
+            <Link to={'/host'} className='link'>
+                Host live music with Gigin
+            </Link>
+        </button>
+    )
+}
+
+// Host create account button
+export const HostCreateAccountButton = () => {
+    return (
+        <button className='btn host-with-gigin-button background-gradient'>
+            <Link to={'/sign-up'} className='link'>
+                <HostIcon />
+                Start Hosting
+            </Link>
+        </button>
+    )
+}
+
+// Host login button
+export const HostLoginButton = () => {
+    return (
+        <button className='btn text-only-button'>
+            <Link to={'/login'} className='link'>
+                Log In
+            </Link>
         </button>
     )
 }

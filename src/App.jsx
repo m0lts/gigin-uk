@@ -21,7 +21,7 @@ export default function App() {
         <Route path=':id' element={<GigInformation />} />
         <Route path='/help' element={<Help />} />
         <Route path='/contact-us' element={<ContactUs />} />
-        <Route path='/hosting' element={<HostWithGigin />} />
+        <Route path='/host' element={<HostWithGigin />} />
         <Route path='/login' element={<Login />} />
         <Route path='/signup' element={<Signup />} />
         <Route path='/forgotpassword' element={<ForgotPassword />} />

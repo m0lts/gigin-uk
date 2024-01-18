@@ -6,6 +6,7 @@ import { MobileHeaderMyGiginButton, MobileHeaderSavedButton, MyGiginButton, Save
 import { DefaultMenu, LoggedInMenu, DefaultMenuMobile, LoggedInMenuMobile } from '/components/Header/Menus/Menus.jsx'
 import { GetInfoFromLocalStorage, GetProfileDataFromLocalStorage } from '/utils/updateLocalStorage'
 import './header.styles.css'
+import { HostCreateAccountButton, HostLiveMusicButton, HostLoginButton } from './Buttons/header.buttons'
 
 export const Header = ({ userProfile, stageNumber }) => {
 
@@ -78,7 +79,7 @@ export const Header = ({ userProfile, stageNumber }) => {
                         stageNumber={stageNumber}
                     />
                     <div className='right'>
-                    {!profileCreatorPage && <p>Host with Gigin</p>}
+                    {!profileCreatorPage && <HostLiveMusicButton />}
                     {profileCreatorPage && stageNumber > 1 ? (
                         <>
                             <SaveAndExitButton 
@@ -108,5 +109,17 @@ export const Header = ({ userProfile, stageNumber }) => {
                 </header>
             )}
         </>
+    )
+}
+
+export const HostLiveMusicHeader = () => {
+    return (
+        <header className='header'>
+            <GiginLogo />
+            <div className='right'>
+                <HostLoginButton />
+                <HostCreateAccountButton />
+            </div>
+        </header>
     )
 }
