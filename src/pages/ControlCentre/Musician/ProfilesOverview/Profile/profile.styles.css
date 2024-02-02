@@ -1,0 +1,11 @@
+.profiles-tile .profile {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width:fit-content;
+    gap:0.5rem;
+}
+.profiles-tile .profile h3 {
+    font-weight: 300;
+}

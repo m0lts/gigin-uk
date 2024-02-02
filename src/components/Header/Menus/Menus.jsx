@@ -79,12 +79,20 @@ export const LoggedInMenu = ({ buttonStatus, profileInfo }) => {
         return (
             <nav className='header-menu'>
                 <ul className='menu-list'>
-                    <li className='menu-item'>
+                    {/* <li className='menu-item'>
                         <NavLink 
                             to={`${profileInfo ? '/control-centre' : 'profile-creator'}`} 
                             className='link menu-link'
                         >
                             {profileInfo ? 'Control Centre' : 'Create your profile'}
+                        </NavLink>
+                    </li> */}
+                    <li className='menu-item'>
+                        <NavLink 
+                            to={'/control-centre'} 
+                            className='link menu-link'
+                        >
+                            Control Centre
                         </NavLink>
                     </li>
                     <li className='menu-item'>

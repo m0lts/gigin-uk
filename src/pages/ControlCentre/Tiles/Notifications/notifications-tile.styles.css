@@ -1,0 +1,31 @@
+.notifications-tile {
+    background-color: var(--light-grey);
+    grid-column: span 7;
+}
+.notifications {
+    padding:1rem 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap:0.5rem;
+}
+.notification {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--light-medium-grey);
+    padding:0.5rem 1rem;
+    border-radius: 1rem;
+}
+.notification .dot {
+    width:0.5rem;
+    height:0.5rem;
+    background-color: var(--gigin-orange);
+    border-radius: 50%;
+}
+.notification .date {
+    font-weight: 600;
+}
+.notification .description {
+    font-weight: 300;
+}

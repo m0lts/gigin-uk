@@ -1,55 +1,70 @@
+.control-centre .body {
+    padding: 2rem 5%;
+}
+.control-centre .banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
 .control-centre .banner h1 {
     font-weight: 400;
+    font-size: 2rem;
 }
-.control-centre .body {
-    width: 95%;
-    margin: 2rem auto;
-}
-.control-centre .notifications h3 {
-    margin: 1rem 0.5rem;
-}
-.control-centre .notifications-box {
-    height:300px;
-    background-color: var(--light-grey);
-}
-.control-centre .selections {
-    margin: 2rem 0;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-}
-.selections .selections-card {
-    border:1px solid var(--light-medium-grey);
-    width:30%;
-    min-width: 300px;
-    height:200px;
-    border-radius: 2rem;
+.control-centre .main {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     gap:1rem;
-    padding:2rem;
-    transition: 200ms ease-in-out;
-    margin:1rem;
 }
-.selections .selections-card .icon {
-    font-size: 1.5rem;
-    transition: 200ms ease-in-out;
-}
-.selections .selections-card:hover {
-    box-shadow: 2px 2px 5px var(--light-grey);
-    transition: 200ms ease-in-out;
-}
-.selections .selections-card:hover > .icon {
-    font-size: 2rem;
-    transition: 200ms ease-in-out;
-}
-.selections .selections-card .title {
+
+/* All tiles */
+.control-centre .title {
+    font-weight: 400;
     font-size: 1.5rem;
 }
-.selections .selections-card .info {
-    font-size: 1rem;
-    color: var(--dark-grey);
-    width:80%;
+.control-centre .subtitle {
+    font-weight: 400;
+    font-size: 1.2rem;
+    text-align: left;
+    margin-bottom: 1rem;
 }
+.control-centre .tile {
+    border-radius: 1rem;
+    padding:1.5rem;
+}
+.control-centre .tile.bckgrd-grey {
+    background-color: var(--light-grey);
+}
+.control-centre .tile.bckgrd-white {
+    background-color: var(--white);
+}
+
+/* Constant tiles */
+.control-centre .main .constants {
+    width:100%;
+    height:fit-content;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap:1rem;
+}
+
+/* Variable tiles */
+.control-centre .main .variables {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap:1rem;
+}
+
+/* General tiles */
+.control-centre .general .options {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: space-between;
+    gap:1rem;
+}
+.control-centre .general .options p {
+    font-weight: 300;
+}
+

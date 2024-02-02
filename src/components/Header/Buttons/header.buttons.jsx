@@ -1,11 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { queryDatabase } from '/utils/queryDatabase'
-import { GetInfoFromLocalStorage, AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage } from '/utils/updateLocalStorage'
-import { LoadingDots } from '/components/Loading/LoadingEffects'
-import { MenuIcon, BookmarkIcon } from '/components/Icons/Icons'
-import { ExitIcon, HostIcon } from '../../Icons/Icons'
-import './header.buttons.styles.css'
+// Dependencies
+    import { useState, useEffect, useRef } from 'react'
+    import { Link, useNavigate } from 'react-router-dom'
+
+// Utils
+    import { queryDatabase } from '/utils/queryDatabase'
+    import { GetInfoFromLocalStorage, AddProfileCreatedToLocalStorage, AddProfileDataToLocalStorage } from '/utils/updateLocalStorage'
+
+// Icons and effects
+    import { LoadingDots } from '/components/Loading/LoadingEffects'
+    import { MenuIcon, BookmarkIcon, ExitIcon, HostIcon } from '/components/Icons/Icons'
+
+// Styles
+    import './header.buttons.styles.css'
 
 // Desktop header My Gigin button
 export const MyGiginButton = ({ setButtonClicked, buttonStatus, userName }) => {
@@ -250,9 +256,17 @@ export const HostLiveMusicButton = () => {
 
 // Host create account button
 export const HostCreateAccountButton = () => {
+
+    const handleSaveUrl = () => {
+        localStorage.setItem('redirectUrl', '/host');
+    }
+
+    // User logged in - fill with local storage when possible
+    const localStorageInfo = GetInfoFromLocalStorage();
+
     return (
         <button className='btn host-with-gigin-button background-gradient'>
-            <Link to={'/sign-up'} className='link'>
+            <Link to={`${localStorageInfo.userFirstName ? ('/host/venue-creator') : ('/login')}`} className='link' onClick={handleSaveUrl}>
                 <HostIcon />
                 Start Hosting
             </Link>

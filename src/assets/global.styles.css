@@ -81,6 +81,20 @@
     background-color: var(--light-grey);
     cursor: pointer;
 }
+/* Red button */
+.red-button {
+    padding:0.5rem 1rem;
+    color: var(--red);
+    border: none;
+    background-color: var(--transparent);
+    font-weight: 400;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: 200ms linear;
+}
+.red-button:hover {
+    opacity: 0.8;
+}
 
 /* Text only button */
 .text-only-button {
@@ -97,51 +111,7 @@
     cursor: pointer;
 }
 
-/* Orange button */
-.host-with-gigin-button {
-    padding:0.5rem 1rem;
-    border: none;
-    border-radius: 0.5rem;
-    font-weight: 300;
-    font-size: 1.25rem;
-    transition: 200ms linear;
-}
-.host-with-gigin-button .link {
-    color: var(--white);
-    display: flex;
-    align-items: center;
-    gap:0.5rem;
-}
-.host-with-gigin-button:hover {
-    cursor: pointer;
-    opacity: 0.9;
-}
 
-/* Gradient background */
-.background-gradient {
-    background: linear-gradient(-45deg, var(--gigin-orange), var(--red));
-    background-size: 400% 400%;
-    color: var(--white) !important;
-    animation: gradient 10s ease infinite;
-}
-.text-gradient {
-    background: linear-gradient(-45deg, var(--gigin-orange), var(--red));
-    background-size: 400% 400%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: gradient 10s ease infinite;
-}
-@keyframes gradient {
-	0% {
-		background-position: 0% 50%;
-	}
-	50% {
-		background-position: 100% 50%;
-	}
-	100% {
-		background-position: 0% 50%;
-	}
-}
 
 /* All inputs */
 /* Text inputs */

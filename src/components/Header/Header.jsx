@@ -21,7 +21,7 @@ export const Header = ({ userProfile, stageNumber }) => {
         const currentPath = location.pathname;
 
         // Check if the user is at /profile-creator
-        if (currentPath === '/profile-creator') {
+        if (currentPath === '/profile-creator' || currentPath === '/host/venue-creator') {
             setProfileCreatorPage(true);
         } else {
             setProfileCreatorPage(false);
@@ -113,12 +113,25 @@ export const Header = ({ userProfile, stageNumber }) => {
 }
 
 export const HostLiveMusicHeader = () => {
+
+    // User logged in - fill with local storage when possible
+    const localStorageInfo = GetInfoFromLocalStorage();
+    const profileInfo = GetProfileDataFromLocalStorage();
+
     return (
         <header className='header'>
             <GiginLogo />
             <div className='right'>
-                <HostLoginButton />
-                <HostCreateAccountButton />
+                {localStorageInfo.userFirstName ? (
+                    <>
+                        <HostCreateAccountButton />
+                    </>
+                ) : (
+                    <>
+                        <HostLoginButton />
+                        <HostCreateAccountButton />
+                    </>
+                )}
             </div>
         </header>
     )
