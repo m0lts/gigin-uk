@@ -47,7 +47,6 @@ export const ControlCentre = () => {
                             </>
                         ) : (
                             <h1>Host</h1>
-                        
                         )}
                     </div>
                     <div className="general tile bckgrd-grey">
