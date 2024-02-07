@@ -3,7 +3,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
 /* Inter */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
-
+/* Montserrat */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 
 *, *::after, *::before {
     box-sizing: border-box;
@@ -15,6 +16,7 @@
     /* Fonts */
     --default-font: 'Inter', sans-serif;
     --quicksand-font: 'Quicksand', sans-serif;
+    --montserrat-font: 'Montserrat', sans-serif;
     --gigin-orange: #FD6A00;
     --white: white;
     --light-grey: #f1f1f1;
@@ -36,9 +38,13 @@
     text-decoration: none;
     color: black;
 }
+
+/* BUTTONS */
+
 /* All buttons */
 .btn {
     font-family: var(--default-font);
+    cursor: pointer;
 }
 .btn:hover {
     text-decoration: none;
@@ -50,8 +56,40 @@
     cursor:not-allowed !important;
     opacity: 0.5;
 }
+
 /* Black button */
-.black-button {
+.btn.black {
+    background-color: var(--dark-grey);
+    color: var(--white);
+    padding:0.5rem 1rem;
+    border:none;
+    border-radius: 2rem;
+    transition: all 200ms linear;
+}
+.btn.black:hover {
+    background-color: var(--medium-dark-grey);
+}
+.btn.white {
+    background-color: var(--white);
+    color: var(--black);
+    padding:0.5rem 1rem;
+    border:1px solid var(--light-medium-grey);
+    border-radius: 2rem;
+    transition: all 200ms linear;
+}
+.btn.white:hover {
+    background-color: var(--light-grey);
+    border:1px solid transparent;
+}
+
+
+
+
+
+
+/* OLD CODE  ************************** */
+/* Black button */
+/* .black-button {
     padding:0.5rem 1rem;
     background-color: var(--dark-grey);
     color: var(--white);
@@ -67,9 +105,9 @@
 }
 .black-button.loading {
     border: none;
-}
+} */
 /* White button */
-.white-button {
+/* .white-button {
     padding:0.5rem 1rem;
     background-color: var(--white);
     border: 1px solid var(--light-medium-grey);
@@ -80,9 +118,9 @@
 .white-button:hover {
     background-color: var(--light-grey);
     cursor: pointer;
-}
+} */
 /* Red button */
-.red-button {
+/* .red-button {
     padding:0.5rem 1rem;
     color: var(--red);
     border: none;
@@ -94,10 +132,10 @@
 }
 .red-button:hover {
     opacity: 0.8;
-}
+} */
 
 /* Text only button */
-.text-only-button {
+/* .text-only-button {
     border: none;
     background-color: transparent;
     color: var(--dark-grey);
@@ -109,13 +147,13 @@
 .text-only-button:hover {
     background-color: var(--light-grey);
     cursor: pointer;
-}
+} */
 
 
 
 /* All inputs */
 /* Text inputs */
-.input-cont {
+/* .input-cont {
     margin: 0.5rem 0;
     display: flex;
     flex-direction: column;
@@ -155,10 +193,10 @@
     text-align: center;
     margin: 0.5rem auto;
     width:250px;
-}
+} */
 
 /* Typography */
-.title {
+/* .title {
     font-size:1.75rem;
 }
 .subtitle {
@@ -170,4 +208,4 @@
     font-size: 1rem;
     font-weight: 300;
 }
-
+ */
