@@ -88,7 +88,7 @@ export const AddEventModal = ({ showModal, setShowModal }) => {
     return (
         <div className={`add-event-modal shadow ${showModal && 'open'}`}>
             <div className="heading">
-                <h1>Add Gig</h1>
+                <h1>Add Event</h1>
                 <p>Tell us what's happening!</p>
             </div>
             <form onSubmit={handleGigUpload}>

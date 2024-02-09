@@ -16,6 +16,11 @@
     border:1px solid var(--dark-grey);
     border-radius: 5px;
     color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:0.5rem;
+    margin: 0 auto;
     transition: all 0.3s linear;
 }
 .gig-goer .primary-btn:hover {
@@ -28,10 +33,17 @@
     border:1px solid var(--light-medium-grey);
     border-radius: 5px;
     color: var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:0.5rem;
     transition: all 0.3s linear;
 }
 .gig-goer .secondary-btn:hover {
     background-color: var(--light-grey);
+}
+.gig-goer .btn .icon {
+    font-size: 1rem;
 }
 
 /* MAP */
@@ -77,6 +89,12 @@
     justify-content: space-between;
     align-items: center;
     background-color: var(--white);
+}
+.gig-goer .header .buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
 }
 
 /* ADD EVENT MODAL */
