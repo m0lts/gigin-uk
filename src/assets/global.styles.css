@@ -16,7 +16,7 @@
     /* Fonts */
     --default-font: 'Inter', sans-serif;
     --quicksand-font: 'Quicksand', sans-serif;
-    --montserrat-font: 'Montserrat', sans-serif;
+    --headings-font: 'Montserrat', sans-serif;
     --gigin-orange: #FD6A00;
     --white: white;
     --light-grey: #f1f1f1;
@@ -80,6 +80,18 @@
 .btn.white:hover {
     background-color: var(--light-grey);
     border:1px solid transparent;
+}
+
+/* TYPOGRAPHY */
+h1 {
+    font-family: var(--headings-font);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+p {
+    font-family: var(--default-font);
+    font-size: 1rem;
+    font-weight: 300;
 }
 
 

@@ -5,35 +5,9 @@
     position: relative;
 }
 
-/* BUTTONS */
-/* Add event and menu buttons */
-.gig-goer .add-event-btn, .menu-btn {
-    display: flex;
-    align-items: center;
-    gap:0.5rem;
-    font-size: 1rem;
-    font-weight: 300;
-}
-.gig-goer .add-event-btn .icon, .menu-btn .icon {
-    font-size: 1.5rem;
-}
-
-
-/* HEADER */
-.gig-goer .header {
-    position: absolute;
-    top:1rem;
-    left:1rem;
-    right:1rem;
-    z-index: 2;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.gig-goer .header .buttons {
-    display: flex;
-    gap:1.5rem;
-    align-items: center;
+/* COMMON STYLES */
+.gig-goer .shadow {
+    box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
 }
 
 /* MAP */
@@ -47,25 +21,147 @@
     height: 100%;
     z-index:1;
 }
-.gig-goer .side-bar {
+.gig-goer .map-overlay {
     position: absolute;
-    bottom:5%;
-    right:2%;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    background-color: rgba(102, 102, 102, 0.235);
+    transition: all 0.3s linear;
+}
+.gig-goer .map .marker {
+    width:35px;
+    height:35px;
+}
+
+
+
+
+/* HEADER */
+.gig-goer .header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 4;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--white);
+}
+
+/* ADD EVENT MODAL */
+.gig-goer .add-event-modal {
+    position: absolute;
+    opacity: 0;
+    top: 0;
+    z-index: -1;
+    background-color: var(--white);
+    border-radius: 1rem;
+}
+.gig-goer .add-event-modal.open {
+    position: absolute;
+    opacity: 1;
+    top: 50%;
+    left: 50%;
+    width:50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    padding: 2rem;
     display: flex;
     flex-direction: column;
-    gap:1rem;
-    z-index: 1;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: opacity 0.2s ease-in;
 }
-.gig-goer .side-bar .icon {
-    font-size: 1.5rem;
-    background-color: var(--white);
-    color: var(--dark-grey);
-    border-radius: 50%;
-    padding:10px;
+.gig-goer .add-event-modal .heading {
+    margin-bottom: 2rem;
+}
+.gig-goer .add-event-modal .heading p {
+    margin-top:0.5rem;
+}
+/* Add event form */
+.gig-goer .add-event-modal form {
+    width:100%;
+    max-height:50vh;
+    overflow: auto;
+    scrollbar-width: none;
+}
+.gig-goer .add-event-modal form::-webkit-scrollbar {
+    display: none;
+}
+/* All inputs */
+.gig-goer .add-event-modal .input-group {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:0.5rem;
+}
+.gig-goer .add-event-modal .input-group label {
+    font-family: var(--default-font);
+    font-size: 1rem;
+    font-weight: 300;
+    opacity: 0.9;
+}
+.gig-goer .add-event-modal .input-group input {
+    padding:0.5rem 1rem;
+    text-align: center;
+    border:1px solid var(--light-medium-grey);
+    border-radius: 5px;
+    font-family: var(--default-font);
+}
+.gig-goer .add-event-modal .input-group input:focus {
+    outline-color: var(--gigin-orange);
+}
+/* Text to show extra options */
+.gig-goer .add-event-modal .manual-entry-option p {
+    font-size: 0.75rem;
+    text-decoration: underline;
+    margin-bottom: 1rem;
     cursor: pointer;
-    transition: all 200ms linear;
 }
-.gig-goer .side-bar .icon:hover {
-    color: var(--gigin-orange);
-    background-color: transparent;
+/* Address autofill */
+.gig-goer #autofill {
+    min-width: 75%;
+}
+/* Genres */
+.gig-goer .add-event-modal .checkboxes {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap:0.5rem;
+    justify-content: center;
+}
+.gig-goer .add-event-modal .checkbox {
+    border:1px solid var(--light-medium-grey);
+    padding:0.5rem 1rem;
+    border-radius: 5px;
+}
+.gig-goer .add-event-modal .checkbox.active {
+    background-color: var(--gigin-orange);
+    color: var(--white);
+
+}
+.gig-goer .add-event-modal .checkbox-input {
+    display: none;
+}
+/* Gig description */
+.gig-goer #gigDescription {
+    min-height: 50px;
+    max-height: 200px;
+    resize: vertical;
+    font-family: var(--default-font);
+    padding:0.5rem;
+    border:1px solid var(--light-medium-grey);
+    border-radius: 5px;
+}
+.gig-goer #gigDescription:focus {
+    outline-color: var(--gigin-orange);
 }

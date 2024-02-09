@@ -1,7 +1,7 @@
 // Dependencies
   import { Routes, Route } from 'react-router-dom'
 import { GigGoerIndex } from './sections/gig-goer/Index'
-import { Map } from './sections/gig-goer/components/map/Map';
+import { Map } from './sections/gig-goer/components/Map';
 import '../src/assets/global.styles.css'
 
 // Gig-goer section

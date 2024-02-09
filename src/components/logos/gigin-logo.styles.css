@@ -3,10 +3,6 @@
     align-items: center;
     gap: 0.25rem;
     text-decoration: none;
-    background-color: var(--white);
-    border-radius: 40px;
-    padding:0.25rem;
-    padding-right: 0.75rem;
 }
 .logo-img {
     width:40px;
@@ -16,6 +12,6 @@
     font-size: 1.25rem;
     color: var(--gigin-orange);
     font-weight: 500;
-    font-family: var(--montserrat-font);
+    font-family: var(--headings-font);
     text-transform: uppercase;
 }
