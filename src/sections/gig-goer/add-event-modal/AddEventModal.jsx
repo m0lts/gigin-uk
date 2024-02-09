@@ -230,7 +230,7 @@ export const AddEventModal = ({ showModal, setShowModal }) => {
                     <div className="manual-entry-option" onClick={() => handleAddMore("gigLinks")}>
                         <p>Add More</p>
                     </div>                </div>
-                <button className="btn" type="submit">Add Gig</button>
+                <button className="btn primary-btn" type="submit">Post Gig</button>
             </form>
         </div>
     );

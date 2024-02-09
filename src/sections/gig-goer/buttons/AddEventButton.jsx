@@ -6,7 +6,7 @@ export const AddEventButton = ({ showModal, setShowModal }) => {
 
     return (
         <button 
-            className="btn"
+            className="btn primary-btn"
             onClick={() => setShowModal(!showModal)}
         >
             {showModal ? (

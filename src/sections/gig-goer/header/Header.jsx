@@ -7,11 +7,11 @@ export const Header = ({ showModal, setShowModal }) => {
         <div className="header shadow">
             <GiginLogo />
             <div className="buttons">
-                <MenuButton />
                 <AddEventButton
                     showModal={showModal}
                     setShowModal={setShowModal}
                 />
+                <MenuButton />
             </div>
         </div>
     )

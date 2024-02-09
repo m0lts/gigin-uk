@@ -9,6 +9,30 @@
 .gig-goer .shadow {
     box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
 }
+/* Buttons */
+.gig-goer .primary-btn {
+    background-color: var(--dark-grey);
+    padding: 0.5rem 1rem;
+    border:1px solid var(--dark-grey);
+    border-radius: 5px;
+    color: var(--white);
+    transition: all 0.3s linear;
+}
+.gig-goer .primary-btn:hover {
+    background-color: var(--medium-dark-grey);
+    border:1px solid var(--white);
+}
+.gig-goer .secondary-btn {
+    background-color: var(--white);
+    padding: 0.5rem 1rem;
+    border:1px solid var(--light-medium-grey);
+    border-radius: 5px;
+    color: var(--black);
+    transition: all 0.3s linear;
+}
+.gig-goer .secondary-btn:hover {
+    background-color: var(--light-grey);
+}
 
 /* MAP */
 .gig-goer .map {
@@ -48,7 +72,7 @@
     left: 0;
     right: 0;
     z-index: 4;
-    padding: 1rem;
+    padding: 1rem 2.5%;
     display: flex;
     justify-content: space-between;
     align-items: center;
