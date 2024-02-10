@@ -1,4 +1,4 @@
-import { faBars, faBookmark, faX, faList, faMap, faSearch, faCircle, faPlus, faMinusCircle, faLocationCrosshairs } from "@fortawesome/free-solid-svg-icons"
+import { faBars, faBookmark, faX, faList, faMap, faSearch, faCircle, faPlus, faMinusCircle, faLocationCrosshairs, faLocationArrow } from "@fortawesome/free-solid-svg-icons"
 import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable, faPlug, faGuitar, faGuitarElectric, faMicrophoneStand, faDrum, faPiano, faAlbum, faViolin, faBanjo, faSaxophone, faHeadphones, faArrowRightFromBracket, faListDots, faLightCeiling, faCircleEllipsis, faCircleEllipsisVertical, faCircle1, faCircle2, faCircle3, faCircle4, faSterlingSign, faCalendar } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import './icons.styles.css'
@@ -78,6 +78,12 @@ export const NextIcon = ({ setStageNumber, stageNumber, maxNumber }) => {
 export const CircleIcon = () => {
     return (
         <FontAwesomeIcon icon={faCircle} className="circle-icon icon" />
+    )
+}
+
+export const LocationIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faLocationArrow} className="location-icon icon" />
     )
 }
 

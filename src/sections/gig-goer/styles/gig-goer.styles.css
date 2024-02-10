@@ -9,6 +9,17 @@
 .gig-goer .shadow {
     box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
 }
+.gig-goer .loading-overlay {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--light-medium-grey);
+    padding: 0.5rem;
+    border-radius: 5px;
+    z-index:4;
+}
+
 /* Buttons */
 .gig-goer .primary-btn {
     background-color: var(--dark-grey);
@@ -39,6 +50,9 @@
     gap:0.5rem;
     transition: all 0.3s linear;
 }
+.gig-goer .secondary-btn.active {
+    background-color: var(--light-grey);
+}
 .gig-goer .secondary-btn:hover {
     background-color: var(--light-grey);
 }
@@ -66,12 +80,32 @@
     width: 100%;
     height: 100%;
     z-index: 2;
-    background-color: rgba(102, 102, 102, 0.235);
+    background-color: rgba(105, 105, 105, 0.339);
     transition: all 0.3s linear;
 }
 .gig-goer .map .marker {
     width:35px;
     height:35px;
+}
+.gig-goer .get-location-btn {
+    position: absolute;
+    bottom:2rem;
+    right:2rem;
+    z-index: 2;
+    border-radius: 50%;
+    padding:12px 15px;
+    background-color: var(--white);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.gig-goer .get-location-btn .icon {
+    font-size: 1.5rem;
+    color: var(--dark-grey);
+}
+.gig-goer .get-location-btn:hover > .icon {
+    color: var(--gigin-orange);
 }
 
 
@@ -104,15 +138,15 @@
     top: 0;
     z-index: -1;
     background-color: var(--white);
-    border-radius: 1rem;
+    border-radius: 5px;
+    transition: opacity 0.2s ease-in, top 0.2s ease-in;
 }
 .gig-goer .add-event-modal.open {
     position: absolute;
     opacity: 1;
-    top: 50%;
-    left: 50%;
+    top: 5.5rem;
+    right:1rem;
     width:50%;
-    transform: translate(-50%, -50%);
     z-index: 3;
     padding: 2rem;
     display: flex;
@@ -120,13 +154,41 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    transition: opacity 0.2s ease-in;
 }
+/* Close button */
+.gig-goer .add-event-modal .exit-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:0.5rem;
+    cursor: pointer;
+}
+.gig-goer .add-event-modal .exit-button .btn {
+    background-color: transparent;
+    padding: 0.5rem;
+    border:none;
+    border-radius: 5px;
+    color: var(--dark-grey);
+}
+/* Heading */
 .gig-goer .add-event-modal .heading {
     margin-bottom: 2rem;
 }
 .gig-goer .add-event-modal .heading p {
     margin-top:0.5rem;
+}
+/* Error message */
+.gig-goer .add-event-modal .error-message {
+    background-color: rgba(255, 0, 0, 0.11);
+    color: var(--black);
+    border:1px solid var(--red);
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    margin-bottom: 2rem;
 }
 /* Add event form */
 .gig-goer .add-event-modal form {
@@ -171,7 +233,8 @@
 }
 /* Address autofill */
 .gig-goer #autofill {
-    min-width: 75%;
+    width: 75%;
+    max-width:350px;
 }
 /* Genres */
 .gig-goer .add-event-modal .checkboxes {
