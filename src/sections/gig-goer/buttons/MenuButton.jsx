@@ -1,7 +1,10 @@
 import { useRef, useEffect } from "react"
 import { MenuIcon } from "/components/Icons/Icons"
+import { useAuth0 } from '@auth0/auth0-react'
 
 export const MenuButton = ({ showMenu, setShowMenu }) => {
+
+    const { user, isAuthenticated } = useAuth0();
 
     // Show menu when showMenu is truthy and vice versa.
     const handleShowMenu = () => {
@@ -28,7 +31,13 @@ export const MenuButton = ({ showMenu, setShowMenu }) => {
             className={`btn secondary-btn ${showMenu ? 'active shadow' : ''}`}
             onClick={handleShowMenu}
         >
-            <span>Menu</span>
+            <span>
+                {user && isAuthenticated ? (
+                    user.given_name
+                ) : (
+                    'Menu'
+                )}
+            </span>
             <MenuIcon />
         </button>
     )
