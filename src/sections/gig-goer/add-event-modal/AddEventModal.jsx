@@ -3,8 +3,11 @@ import { AddressAutofill } from "@mapbox/search-js-react";
 import { queryDatabase } from "/utils/queryDatabase";
 import { XIcon } from "../../../components/Icons/Icons";
 import { LoadingDots } from "/components/Loading/LoadingEffects";
+import { useAuth0 } from '@auth0/auth0-react';
 
-export const AddEventModal = ({ showModal, setShowModal }) => {
+export const AddEventModal = ({ showModal, setShowModal, user }) => {
+
+    const { loginWithRedirect } = useAuth0();
 
     const [gigData, setGigData] = useState({
         gigName: '',
@@ -28,8 +31,6 @@ export const AddEventModal = ({ showModal, setShowModal }) => {
     const [expandForm, setExpandForm] = useState(false);
     const [error, setError] = useState('');
     const [postingGig, setPostingGig] = useState(false);
-
-    const userId = "12345";
 
     useEffect(() => {
         if (!showModal) {
@@ -129,7 +130,8 @@ export const AddEventModal = ({ showModal, setShowModal }) => {
                     setGigData(prevState => ({ ...prevState, gigLocation: enteredAddress, gigCoordinates: coordinates }));
 
                     const dataPayload = {
-                        userId: userId,
+                        userId: user.sub,
+                        userEmail: user.email,
                         gigInformation: {
                             ...gigData,
                             gigLocation: enteredAddress,
@@ -171,7 +173,8 @@ export const AddEventModal = ({ showModal, setShowModal }) => {
             }
 
             const dataPayload = {
-                userId: userId,
+                userId: user.sub,
+                userEmail: user.email,
                 gigInformation: gigData
             };
     
@@ -222,6 +225,15 @@ export const AddEventModal = ({ showModal, setShowModal }) => {
             {postingGig ? (
                 <div className="loading">
                     <LoadingDots />
+                </div>
+            ) : !user ? (
+                <div className="login-prompt">
+                    <button 
+                        className="btn primary-btn"
+                        onClick={() => loginWithRedirect()}
+                    >
+                        Please log in to add an event
+                    </button>
                 </div>
             ) : (
                 <form onSubmit={handleGigUpload}>

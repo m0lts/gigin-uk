@@ -16,8 +16,12 @@ import { LoadingDots } from "../../../components/Loading/LoadingEffects";
 // Mapbox access token
 mapboxgl.accessToken = "pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ5bjE1MDg2dDJrcW5yOHV1Z2t6bSJ9.Sk502nZET2-W6vLvCDwSEg";
 
+import { useAuth0 } from '@auth0/auth0-react'
+
 
 export const Map = () => {
+
+    const { user, isAuthenticated } = useAuth0();
 
     const [showModal, setShowModal] = useState(false);
     const [gigs, setGigs] = useState([]);
@@ -107,6 +111,7 @@ export const Map = () => {
             <AddEventModal 
                 showModal={showModal}
                 setShowModal={setShowModal}
+                user={user}
             />
             <button onClick={handleGetUserLocation} className='btn get-location-btn shadow'>
                 <LocationIcon />

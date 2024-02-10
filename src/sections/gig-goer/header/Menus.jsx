@@ -1,26 +1,22 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth0 } from '@auth0/auth0-react'
 import './menus.styles.css'
 
 export const DefaultMenu = ({ showMenu }) => {
+
+    const { loginWithRedirect } = useAuth0();
+
     if (showMenu) {
         return (
             <nav className='header-menu'>
                 <ul className='menu-list'>
                     <li className='menu-item'>
-                        <NavLink 
-                            to={'/login'} 
+                        <p 
+                            onClick={() => loginWithRedirect()}
                             className='link menu-link'
                         >
-                            Log in
-                        </NavLink>
-                    </li>
-                    <li className='menu-item'>
-                        <NavLink 
-                            to={'/signup'} 
-                            className='link menu-link'
-                        >
-                            Sign up
-                        </NavLink>
+                            Log in or Sign up
+                        </p>
                     </li>
                     <hr />
                     <li className='menu-item'>
@@ -65,6 +61,8 @@ export const DefaultMenu = ({ showMenu }) => {
 }
 
 export const LoggedInMenu = ({ showMenu }) => {
+
+    const { logout } = useAuth0();
 
     if (showMenu) {
         return (
@@ -113,13 +111,12 @@ export const LoggedInMenu = ({ showMenu }) => {
                     </li>
                     <hr />
                     <li className='menu-item'>
-                        <NavLink 
-                            to={'/'} 
+                        <p 
                             className='link menu-link'
-                            onClick={handleLogOut}
+                            onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
                         >
                             Log out
-                        </NavLink>
+                        </p>
                     </li>
                 </ul>
             </nav>
