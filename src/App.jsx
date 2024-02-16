@@ -3,6 +3,8 @@
 import { GigGoerIndex } from './sections/gig-goer/Index'
 import { Map } from './sections/gig-goer/components/Map';
 import '../src/assets/global.styles.css'
+import { HostIndex } from './sections/hosts/Index';
+import { HostControlCentre } from './sections/hosts/ControlCentre/HostControlCentre';
 
 // Gig-goer section
 
@@ -13,6 +15,9 @@ export default function App() {
     <Routes>
       <Route path="/" element={<GigGoerIndex />}>
         <Route index element={<Map />} />
+      </Route>
+      <Route path="/host" element={<HostIndex />}>
+        <Route path='control-centre' element={<HostControlCentre />} />
       </Route>
     </Routes>
   );

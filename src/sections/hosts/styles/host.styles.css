@@ -1,0 +1,188 @@
+/* Buttons */
+.host .btn-text {
+    font-size: 0.9rem;
+    font-weight: 300;
+    border:none;
+    background-color: transparent;
+    padding:0.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.host .btn-text:hover {
+    background-color: var(--light-grey);
+}
+.host .btn-border {
+    font-size: 0.9rem;
+    font-weight: 300;
+    border:1px solid var(--light-medium-grey);
+    padding:0.5rem;
+    border-radius: 5px;
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.host .btn-border:hover {
+    background-color: var(--light-grey);
+}
+.host .btn-black {
+    font-size: 0.9rem;
+    font-weight: 300;
+    border:none;
+    padding:0.5rem;
+    border-radius: 5px;
+    background-color: var(--black);
+    color: var(--white);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.host .btn-black:hover {
+    background-color: var(--dark-grey);
+}
+.host .btn-icon {
+    font-size: 1rem;
+    color: var(--black);
+    border:none;
+    background-color: transparent;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+.host .btn-icon:hover {
+    color: var(--gigin-orange);
+}
+
+
+.host .control-centre .header {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    width:100%;
+}
+.host .control-centre .header .top {
+    padding:1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.host .control-centre .header .top .left {
+    display: flex;
+    align-items: center;
+    gap:0.5rem;
+}
+.host .control-centre .header .slash {
+    opacity: 0.25;
+}
+.host .control-centre .header .title {
+    font-weight: 300;
+    font-size: 1rem;
+}
+.host .control-centre .header .top .right {
+    display: flex;
+    align-items: center;
+    gap:2.5rem;
+}
+.host .control-centre .header .top .right .buttons {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+.host .control-centre .header .top .right .icons {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+.host .control-centre .header .top .icon {
+    font-size: 1.5rem;
+    color: var(--dark-grey);
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+.host .control-centre .header .top .icon:hover {
+    color: var(--gigin-orange);
+}
+.host .control-centre .header .bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--light-medium-grey);
+}
+
+.host .control-centre .nav {
+    display: flex;
+    padding-left: 1rem;
+    list-style: none;
+    align-items: center;
+    gap:5px;
+}
+.host .control-centre .nav-item {
+    border-bottom: 2px solid transparent;
+    padding-top:0.5rem;
+    padding-bottom:0.75rem;
+    cursor: pointer;
+    transition: border-bottom 0.3s ease;
+}
+.host .control-centre .nav-item:hover {
+    border-bottom: 2px solid var(--black);
+}
+.host .control-centre .nav-item .link {
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--dark-grey);
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+.host .control-centre .nav-item .link:hover {
+    background-color: var(--light-grey);
+}
+.host .control-centre .nav-item .nav-item:hover > .link {
+    background-color: var(--light-grey);
+}
+
+
+/* Venue tab */
+
+.host .control-centre .tab-banner {
+    padding:2.5% 10%;
+    font-size: 1.5rem;
+    font-weight: 400;
+    border-bottom: 1px solid var(--light-grey);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.host .control-centre .tab-banner .title {
+    font-size: 1.5rem;
+    font-weight: 400;
+}
+
+.host .control-centre .tab-content {
+    margin:2.5% 10%;
+    border-radius: 5px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+.host .control-centre .tab-content .card {
+    padding:1rem;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    cursor: pointer;
+    border:1px solid var(--light-medium-grey);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    transition: box-shadow 0.3s ease;
+}
+.host .control-centre .tab-content .card:hover {
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+.host .control-centre .tab-content .card .left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap:0.5rem;
+}

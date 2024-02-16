@@ -10,3 +10,11 @@ export const GiginLogo = () => {
         </Link>
     )
 }
+
+export const GiginLogoNoText = () => {
+    return (
+        <Link to={'/'} className='logo'>
+            <img src={GiginLogoIcon} alt='Gigin Logo' className='logo-img'/>
+        </Link>
+    )
+}

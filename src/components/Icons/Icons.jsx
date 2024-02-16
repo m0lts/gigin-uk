@@ -1,5 +1,5 @@
 import { faBars, faBookmark, faX, faList, faMap, faSearch, faCircle, faPlus, faMinusCircle, faLocationCrosshairs, faLocationArrow } from "@fortawesome/free-solid-svg-icons"
-import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable, faPlug, faGuitar, faGuitarElectric, faMicrophoneStand, faDrum, faPiano, faAlbum, faViolin, faBanjo, faSaxophone, faHeadphones, faArrowRightFromBracket, faListDots, faLightCeiling, faCircleEllipsis, faCircleEllipsisVertical, faCircle1, faCircle2, faCircle3, faCircle4, faSterlingSign, faCalendar } from "@fortawesome/pro-light-svg-icons"
+import { faAddressCard, faApartment, faGuitars, faHouse, faMartiniGlassCitrus, faPeopleRoof, faSpeakers, faUtensils, faCompactDisc, faHouseFlag, faPlaceOfWorship, faSchool, faPeopleGroup, faHouseCircleExclamation, faImage, faSquareCaretLeft, faSquareCaretRight, faChevronRight, faChevronLeft, faPianoKeyboard, faWaveformLines, faMicrophone, faAmpGuitar, faTurntable, faPlug, faGuitar, faGuitarElectric, faMicrophoneStand, faDrum, faPiano, faAlbum, faViolin, faBanjo, faSaxophone, faHeadphones, faArrowRightFromBracket, faListDots, faLightCeiling, faCircleEllipsis, faCircleEllipsisVertical, faCircle1, faCircle2, faCircle3, faCircle4, faSterlingSign, faCalendar, faUserCircle, faBell } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import './icons.styles.css'
 
@@ -48,6 +48,18 @@ export const XIcon = () => {
 export const InsertImageIcon = () => {
     return (
         <FontAwesomeIcon icon={faImage} className='insert-image-icon icon'/>
+    )
+}
+
+export const UserIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faUserCircle} className='user-icon icon'/>
+    )
+}
+
+export const NotificationsIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faBell} className='notifications-icon icon'/>
     )
 }
 

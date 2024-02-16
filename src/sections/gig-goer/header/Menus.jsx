@@ -21,7 +21,7 @@ export const DefaultMenu = ({ showMenu }) => {
                     <hr />
                     <li className='menu-item'>
                         <NavLink 
-                            to={'/host-with-gigin'} 
+                            to={'/host/control-centre'} 
                             className='link menu-link'
                         >
                             Hosts
