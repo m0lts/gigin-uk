@@ -4,6 +4,8 @@ import { AddEventButton } from '../buttons/AddEventButton'
 import { useState } from 'react'
 import { DefaultMenu, LoggedInMenu } from './Menus'
 import { useAuth0 } from '@auth0/auth0-react'
+import { UserIcon } from '../../../components/Icons/Icons'
+import { Link } from 'react-router-dom'
 
 export const Header = ({ showModal, setShowModal }) => {
 
@@ -16,16 +18,22 @@ export const Header = ({ showModal, setShowModal }) => {
         <div className="header shadow">
             <GiginLogo />
             <div className="buttons">
-                <AddEventButton
-                    showModal={showModal}
-                    setShowModal={setShowModal}
-                />
-                <MenuButton
+                <Link to='/control-centre' className='btn btn-text link'>
+                    Control Centre
+                </Link>
+                {/* <MenuButton
                     showMenu={showMenu}
                     setShowMenu={setShowMenu}
-                />
+                /> */}
+                <button className={`btn btn-icon ${showMenu && 'active'}`} onClick={() => setShowMenu(!showMenu)}>
+                    <UserIcon />
+                </button>
             </div>
-            {isAuthenticated && user ? (
+            <DefaultMenu 
+                showMenu={showMenu}
+                setShowMenu={setShowMenu}
+            />
+            {/* {isAuthenticated && user ? (
                 <LoggedInMenu 
                     showMenu={showMenu}
                     user={user}
@@ -34,7 +42,7 @@ export const Header = ({ showModal, setShowModal }) => {
                 <DefaultMenu 
                     showMenu={showMenu}
                 />
-            )}
+            )} */}
         </div>
     )
 }

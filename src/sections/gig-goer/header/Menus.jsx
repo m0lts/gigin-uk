@@ -2,13 +2,13 @@ import { NavLink } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import './menus.styles.css'
 
-export const DefaultMenu = ({ showMenu }) => {
+export const DefaultMenu = ({ showMenu, setShowMenu }) => {
 
     const { loginWithRedirect } = useAuth0();
 
     if (showMenu) {
         return (
-            <nav className='header-menu'>
+            <nav className='header-menu shadow'>
                 <ul className='menu-list'>
                     <li className='menu-item'>
                         <p 
@@ -21,7 +21,7 @@ export const DefaultMenu = ({ showMenu }) => {
                     <hr />
                     <li className='menu-item'>
                         <NavLink 
-                            to={'/host/control-centre'} 
+                            to={'/control-centre'} 
                             className='link menu-link'
                         >
                             Hosts

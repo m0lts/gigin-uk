@@ -6,10 +6,8 @@
     right:2rem;
     top:5rem;
     list-style: none;
-    border:1px solid var(--light-medium-grey);
-    background-color: var(--light-grey);
-    border-radius: 5px;
-    box-shadow: 1px 1px 5px var(--light-medium-grey);
+    background-color: var(--white);
+    border-radius: 1rem;
     padding:1rem 0;
     width:15rem;
 }
@@ -23,16 +21,16 @@
     display: flex;
 }
 .header-menu .menu-link {
-    font-family: var(--defaul-font);
+    font-family: var(--default-font);
     padding:0.5rem 2rem;
     width:100%;
 }
 .header-menu hr {
     margin: 1.25rem;
+    border-color: var(--white);
 }
 .header-menu .menu-item:hover {
-    font-weight: 400;
-    background-color: var(--white);
+    background-color: var(--off-white);
 }
 
 /* Mobile header menu */
