@@ -1,8 +1,0 @@
-.venue-selection {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin:1rem 2rem;
-}

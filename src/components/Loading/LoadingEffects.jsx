@@ -12,12 +12,25 @@ export const LoadingDots = () => {
     )
 }
 
-export const LoadingSkeletonText = ({ count = 1, height }) => {
+export const LoadingSkeletonCard = ({ count = 1, height, width }) => {
     return (
         <div className="loading-skeleton">
             <Skeleton
                 count={count}
                 height={height}
+                width={width}
+            />
+        </div>
+    )
+}
+
+export const LoadingSkeletonText = ({ count = 1, height, width }) => {
+    return (
+        <div className="loading-skeleton">
+            <Skeleton
+                count={count}
+                height={height}
+                width={width}
             />
         </div>
     )

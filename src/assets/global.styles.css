@@ -1,6 +1,4 @@
 /* FONTS */
-/* Quicksand */
-@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
 /* Inter */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 /* Montserrat */
@@ -15,9 +13,9 @@
 :root {
     /* Fonts */
     --default-font: 'Inter', sans-serif;
-    --quicksand-font: 'Quicksand', sans-serif;
-    --headings-font: 'Montserrat', sans-serif;
+    --h1-font: 'Montserrat', sans-serif;
     --gigin-orange: #FD6A00;
+    --background-black: #131313;
     --white: white;
     --off-white: #f8f8f8;
     --light-grey: #f1f1f1;
@@ -29,196 +27,194 @@
     --red: red;
     --trans-red: rgba(255, 0, 0, 0.037);
     --overlay: rgba(255, 255, 255, 0.5);
-    font-family: var(--default-font);
     font-size: 16px;
 }
 
-/* Global styles */
-/* Make link element neutral */
+
+/* ********************** LINKS ************************** */
 .link {
     text-decoration: none;
     color: black;
+    cursor: pointer;
 }
 
-/* BUTTONS */
-
-/* All buttons */
+/* ********************** BUTTONS ************************** */
 .btn {
     font-family: var(--default-font);
     cursor: pointer;
 }
+.btn.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
 .btn:hover {
     text-decoration: none;
 }
-.btn.loading {
-    background-color: var(--light-medium-grey) !important;
-}
-.btn.disabled {
-    cursor:not-allowed !important;
-    opacity: 0.5;
-}
-
-/* Black button */
-.btn.black {
-    background-color: var(--dark-grey);
+.btn-text {
     color: var(--white);
-    padding:0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 300;
     border:none;
-    border-radius: 2rem;
-    transition: all 200ms linear;
+    background-color: transparent;
+    padding:0.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
-.btn.black:hover {
-    background-color: var(--medium-dark-grey);
+.btn-text.red {
+    color: var(--red);
 }
-.btn.white {
-    background-color: var(--white);
+.btn-text:hover {
+    background-color: var(--dark-grey);
+}
+.btn-text.red:hover {
+    background-color: transparent;
+}
+.btn-border {
+    color: var(--white);
+    font-size: 0.9rem;
+    font-weight: 300;
+    border:1px solid var(--white);
+    padding:0.5rem;
+    border-radius: 5px;
+    background-color: var(--background-black);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.btn-border:hover {
+    background-color: var(--dark-grey);
+}
+.btn-border.active {
+    background-color: var(--dark-grey);
+}
+.btn-black {
+    font-size: 0.9rem;
+    font-weight: 300;
+    border:none;
+    padding:0.5rem;
+    border-radius: 5px;
+    background-color: var(--black);
+    color: var(--white);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.btn-black:hover {
+    background-color: var(--dark-grey);
+}
+.btn-icon {
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+    color: var(--white);
+    border-radius: 5px;
+    border:none;
+    background-color: transparent;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+.btn-icon.black {
     color: var(--black);
-    padding:0.5rem 1rem;
-    border:1px solid var(--light-medium-grey);
-    border-radius: 2rem;
-    transition: all 200ms linear;
 }
-.btn.white:hover {
-    background-color: var(--light-grey);
-    border:1px solid transparent;
+.btn-icon:hover {
+    color: var(--gigin-orange);
+}
+.btn-icon.active {
+    color: var(--gigin-orange);
 }
 
-/* TYPOGRAPHY */
+
+/* ********************** TYPOGRAPHY  ************************** */
 h1 {
-    font-family: var(--headings-font);
+    font-family: var(--h1-font);
     font-size: 1.5rem;
-    font-weight: 700;
+}
+h2, h3, h4, h5, h6 {
+    font-family: var(--default-font);
+}
+p, a, span, label, input, button, select, option, textarea, li {
+    font-family: var(--default-font);
+}
+h2 {
+    font-size: 2rem;
+    font-weight: 500;
+}
+h3 {
+    font-size: 1.75rem;
+    font-weight: 400;
+}
+h4 {
+    font-size: 1.5rem;
+    font-weight: 400;
+}
+h5 {
+    font-size: 1.25rem;
+    font-weight: 400;
+}
+h6 {
+    font-size: 1rem;
+    font-weight: 400;
 }
 p {
-    font-family: var(--default-font);
     font-size: 1rem;
+    font-weight: 300;
+}
+a, .link, li {
+    font-size: 1rem;
+    font-weight: 300;
+}
+button {
+    font-size: 0.9rem;
     font-weight: 300;
 }
 
 
 
+/* ********************** GRADIENT EFFECTS ************************** */
+@keyframes gradientAnimation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
 
+.text-effect {
+    font-weight: bold;
+    background: linear-gradient(45deg, var(--gigin-orange), purple, var(--gigin-orange));
+    background-size: 400% 400%;
+    animation: gradientAnimation 60s ease infinite;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
 
+.background-effect {
+    background: linear-gradient(45deg, var(--gigin-orange), purple, var(--gigin-orange));
+    background-size: 400% 400%;
+    animation: gradientAnimation 60s ease infinite;
+}
 
-/* OLD CODE  ************************** */
-/* Black button */
-/* .black-button {
-    padding:0.5rem 1rem;
+.skeleton-card {
+    height:200px;
     background-color: var(--dark-grey);
-    color: var(--white);
-    border: 1px solid var(--dark-grey);
-    border-radius: 0.5rem;
-    font-weight: 400;
-    transition: 200ms linear;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
 }
-.black-button:hover {
-    background-color: var(--medium-dark-grey);
-    border: 1px solid var(--white);
-    cursor: pointer;
-}
-.black-button.loading {
-    border: none;
-} */
-/* White button */
-/* .white-button {
-    padding:0.5rem 1rem;
-    background-color: var(--white);
-    border: 1px solid var(--light-medium-grey);
-    border-radius: 0.5rem;
-    font-weight: 300;
-    transition: 200ms linear;
-}
-.white-button:hover {
-    background-color: var(--light-grey);
-    cursor: pointer;
-} */
-/* Red button */
-/* .red-button {
-    padding:0.5rem 1rem;
-    color: var(--red);
-    border: none;
-    background-color: var(--transparent);
-    font-weight: 400;
-    cursor: pointer;
-    border-radius: 0.5rem;
-    transition: 200ms linear;
-}
-.red-button:hover {
-    opacity: 0.8;
-} */
 
-/* Text only button */
-/* .text-only-button {
-    border: none;
-    background-color: transparent;
-    color: var(--dark-grey);
-    font-weight: 400;
-    padding:0.5rem;
-    border-radius: 0.5rem;
-    transition: 200ms linear;
+.skeleton-animation {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(80deg, transparent 25%, #e0e0e024 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite linear;
 }
-.text-only-button:hover {
-    background-color: var(--light-grey);
-    cursor: pointer;
-} */
 
-
-
-/* All inputs */
-/* Text inputs */
-/* .input-cont {
-    margin: 0.5rem 0;
-    display: flex;
-    flex-direction: column;
+@keyframes skeleton-loading {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
 }
-.input-cont.disabled {
-    color: var(--medium-dark-grey);
-}
-.input-cont .input-label {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--dark-grey);
-}
-.input-cont .input {
-    margin-top:0.25rem;
-    min-width: 200px;
-    padding:1rem;
-    border:1px solid var(--light-medium-grey);
-    border-radius: 0.5rem;
-    font-family: var(--default-font);
-}
-.input-cont .input.large {
-    font-size: 1.25rem;
-    text-align: center;
-}
-.input-cont .input:hover {
-    border-color: var(--dark-grey);
-}
-.input-cont .input:focus {
-    outline: 1px solid var(--dark-grey);
-}
-.input-cont .input.error {
-    border-color: red;
-}
-.form-error {
-    font-size: 0.6rem;
-    color: red;
-    text-align: center;
-    margin: 0.5rem auto;
-    width:250px;
-} */
-
-/* Typography */
-/* .title {
-    font-size:1.75rem;
-}
-.subtitle {
-    font-weight: 400;
-    text-align: center;
-}
-.text {
-    text-align: center;
-    font-size: 1rem;
-    font-weight: 300;
-}
- */
