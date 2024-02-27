@@ -4,7 +4,7 @@ import { useState } from "react"
 
 // Components
 import { PrimaryLogo } from '/components/logos/PrimaryLogo'
-import { LoadingDots } from "/components/loading/LoadingEffects";
+import { LoadingDots } from '/components/loading/LoadingEffects';
 
 
 
