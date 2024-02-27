@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { AddressAutofill } from "@mapbox/search-js-react";
-import { LoadingDots } from "../../components/loading/LoadingEffects";
+import { LoadingDots } from "/components/loading/LoadingEffects";
 
 export const AddVenueModal = ({ addVenueModal, setAddVenueModal }) => {
 

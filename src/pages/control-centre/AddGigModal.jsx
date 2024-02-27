@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LoadingDots } from '../../components/loading/LoadingEffects';
+import { LoadingDots } from '/components/loading/LoadingEffects';
 
 export const AddGigModal = ({ addGigModal, setAddGigModal, venues, userId }) => {
 
