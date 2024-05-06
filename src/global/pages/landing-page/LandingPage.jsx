@@ -1,50 +1,31 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
-export const LandingPage = () => {
+export const LandingPage = ({ user, setUser }) => {
 
-    const [password, setPassword] = useState("");
-    const [allowEntry, setAllowEntry] = useState(false);
-
-    const navigate = useNavigate();
-
-    const handleFormSubmission = async (event) => {
-        event.preventDefault();
+    const handleSignOut = async () => {
         try {
-            const response = await fetch("/api/passwordEntry", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ password })
+            const response = await fetch('/api/auth/SignOut', {
+                method: 'POST',
             });
-
-            if (response.ok) {
-                setAllowEntry(true);
+            if (response.status === 200) {
+                window.location.reload();
+                setUser(null)
             } else {
-                navigate("/");
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
         } catch (error) {
-            console.log(error);
+            console.error('Sign out failed:', error);
+            return null;
         }
     }
 
     return (
         <div>
-            {allowEntry ? (
-                <>
-                    <h1>Landing Page</h1>
-                    <h2>Welcome Tom or Toby!</h2>
-                </>
-            ) : (
-                <form onSubmit={handleFormSubmission}>
-                    <div className="input-group">
-                        <label htmlFor="password">Password:</label>
-                        <input type="password" name="password" id="password" onChange={(event) => setPassword(event.target.value)} />
-                    </div>
-                    <button type="submit">Enter</button>
-                </form>
+            {user && (
+                <h1>Welcome, {user.name}</h1>
             )}
+            <button onClick={handleSignOut}>
+                sign out
+            </button>
         </div>
     )
 }
