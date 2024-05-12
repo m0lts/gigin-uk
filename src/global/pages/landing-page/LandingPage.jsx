@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 
 export const LandingPage = ({ user, setUser }) => {
 
@@ -23,6 +24,17 @@ export const LandingPage = ({ user, setUser }) => {
             {user && (
                 <h1>Welcome, {user.name}</h1>
             )}
+            <div className="options" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <Link to={'/musicians'} className="link">
+                    Musicians
+                </Link>
+                <Link to={'/hosts'} className="link">
+                    Hosts
+                </Link>
+                <Link to={'/gig-goers'} className="link">
+                    Gig-goers
+                </Link>
+            </div>
             <button onClick={handleSignOut}>
                 sign out
             </button>
