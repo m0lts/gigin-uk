@@ -1,14 +1,23 @@
-import { Link } from "react-router-dom"
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom"
 
-export const HostInfo = () => {
+export const HostInfo = ({ user, setAuthModal }) => {
+
+    const [isUserLoggedIn, setIsUserLoggedIn] = useState();
+    const navigate = useNavigate();
+
+    const checkUserAuth = () => {
+        if (!user) {
+            setAuthModal(true);
+        }
+    }
+
     return (
         <div>
             <h1>This is the Host info page</h1>
-            <Link to={'/host/venue-builder'}>
-                <button>
-                    Let's get started
-                </button>
-            </Link>
+            <button onClick={checkUserAuth}>
+                Let's get started
+            </button>
         </div>
     )
 }

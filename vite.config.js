@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '/components': '/src/components',
+      '/logos': '/src/components/ui/logos',
+      '/styles': '/src/assets/styles',
       '/pages': '/src/pages',
       '/assets': '/src/assets',
       '/utils': '/src/utils',

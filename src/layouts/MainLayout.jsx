@@ -1,12 +1,15 @@
 import { Footer } from "../components/common/Footer"
 import { Header } from "../components/common/Header"
+import '/styles/common/layouts.styles.css'
 
-export const MainLayout = ({ children }) => {
+export const MainLayout = ({ children, setAuthModal }) => {
     return (
-        <>
-            <Header />
-            <main>{children}</main>
+        <section className="layout-main">
+            <Header
+                setAuthModal={setAuthModal}
+            />
+            <main className="body">{children}</main>
             <Footer />
-        </>
+        </section>
     )
 }

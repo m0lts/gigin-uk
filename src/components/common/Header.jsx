@@ -1,14 +1,27 @@
-export const Header = () => {
+import { NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
+import '/styles/common/header.styles.css'
+
+export const Header = ({ setAuthModal }) => {
+
+    const showAuthModal = () => {
+        setAuthModal(true)
+    }
+
     return (
-        <header>
-            <h1>HEADER</h1>
+        <header className="header default">
+            <TextLogo />
+            <nav className="nav-list">
+                <button className="item btn primary" onClick={showAuthModal}>
+                    Sign Up
+                </button>
+            </nav>
         </header>
     )
 }
 
 export const HostHeader = () => {
     return (
-        <header>
+        <header className="header host">
             <h1>HOST HEADER</h1>
         </header>
     )
@@ -16,7 +29,7 @@ export const HostHeader = () => {
 
 export const MusicianHeader = () => {
     return (
-        <header>
+        <header className="header musician">
             <h1>MUSICIAN HEADER</h1>
         </header>
     )
@@ -24,7 +37,7 @@ export const MusicianHeader = () => {
 
 export const GigGoerHeader = () => {
     return (
-        <header>
+        <header className="header gig-goer">
             <h1>GIGGOER HEADER</h1>
         </header>
     )
