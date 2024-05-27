@@ -25,7 +25,7 @@ import { LoadingThreeDots } from './components/ui/loading/Loading';
 
 export default function App() {
 
-  const { user, loading, login, signup, logout } = useAuth();
+  const { user, loading, checkCredentials, login, checkUser, signup, requestOtp, verifyOtp, logout } = useAuth();
   const [authModal, setAuthModal] = useState(false);
   const [authType, setAuthType] = useState('login');
 
@@ -36,7 +36,7 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} ><LandingPage /></MainLayout>} />
+        <Route path="/" element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><LandingPage /></MainLayout>} />
         <Route path="/host" element={<HostLayout />}>
           <Route index element={<HostInfo user={user} setAuthModal={setAuthModal} />} />
         </Route>
@@ -45,7 +45,7 @@ export default function App() {
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>
       
-      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} login={login} signup={signup} /> }
+      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} login={login} signup={signup} requestOtp={requestOtp} verifyOtp={verifyOtp} checkUser={checkUser} checkCredentials={checkCredentials} /> }
     </>
   );
 }

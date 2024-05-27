@@ -7,7 +7,7 @@ import { SignupForm } from "/forms/Signup";
 import '/styles/common/modals.styles.css'
 
 
-export const AuthModal = ({ setAuthModal, login, signup, authType, setAuthType }) => {
+export const AuthModal = ({ setAuthModal, login, signup, authType, setAuthType, requestOtp, verifyOtp, checkUser, checkCredentials }) => {
 
   const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
   const [error, setError] = useState({ status: false, input: '', message: '' });
@@ -43,6 +43,9 @@ export const AuthModal = ({ setAuthModal, login, signup, authType, setAuthType }
           setAuthModal={setAuthModal}
           loading={loading}
           setLoading={setLoading}
+          requestOtp={requestOtp}
+          verifyOtp={verifyOtp}
+          checkCredentials={checkCredentials}
         />
       ) : (
         <SignupForm
@@ -57,6 +60,9 @@ export const AuthModal = ({ setAuthModal, login, signup, authType, setAuthType }
           setAuthModal={setAuthModal}
           loading={loading}
           setLoading={setLoading}
+          requestOtp={requestOtp}
+          verifyOtp={verifyOtp}
+          checkUser={checkUser}
         />
       )}
     </div>

@@ -1,6 +1,5 @@
 import { MongoClient } from "mongodb";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 
 const uri = process.env.MONGODB_URI;
 const options = {};
@@ -47,14 +46,7 @@ export default async function handler(req, res) {
             return;
         }
 
-        // Create JWT token
-        const token = jwt.sign(
-            { userId: user._id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: '1h' }
-        );
 
-        res.setHeader('Set-Cookie', `jwt=${token}; HttpOnly; Secure; Path=/; Max-Age=3600`);
         res.status(200).json({ user: { userId: user.userId, email: user.email, name: user.name, phoneNumber: user.phoneNumber } });
 
     } catch (error) {
@@ -66,4 +58,3 @@ export default async function handler(req, res) {
         }
     }
 }
-
