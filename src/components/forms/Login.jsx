@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 // Components
 import { NoTextLogo } from "/ui/logos/Logos";
 import { SeeIcon, CloseIcon } from "../ui/Icons/Icons";
-import { LoadingThreeDots } from '../ui/loading/Loading';
+import { LoadingThreeDots } from '../ui/Loading/Loading';
 // Styles
 import '/styles/forms/forms.styles.css'
 
