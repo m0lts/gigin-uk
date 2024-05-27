@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 // Components
 import { NoTextLogo } from "/ui/logos/Logos";
-import { SeeIcon, CloseIcon } from "/ui/icons/Icons";
-import { LoadingThreeDots } from '/ui/loading/Loading';
+import { SeeIcon, CloseIcon } from "../ui/icons/Icons";
+import { LoadingThreeDots } from '../ui/loading/Loading';
 // Styles
 import '/styles/forms/forms.styles.css'
 

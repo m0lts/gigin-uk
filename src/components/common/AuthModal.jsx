@@ -1,8 +1,8 @@
 // Dependencies
 import { useState } from "react";
 // Components
-import { LoginForm } from "/forms/Login";
-import { SignupForm } from "/forms/Signup";
+import { LoginForm } from "../forms/Login";
+import { SignupForm } from "../forms/Signup";
 // Styles
 import '/styles/common/modals.styles.css'
 
