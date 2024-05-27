@@ -9,6 +9,8 @@ export default defineConfig({
       '/components': '/src/components',
       '/logos': '/src/components/ui/logos',
       '/styles': '/src/assets/styles',
+      '/forms': '/src/components/forms',
+      '/ui': '/src/components/ui',
       '/pages': '/src/pages',
       '/assets': '/src/assets',
       '/utils': '/src/utils',

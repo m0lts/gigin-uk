@@ -18,14 +18,16 @@ import { NoHeaderFooterLayout } from './layouts/NoHeaderFooterLayout';
 import { VenueBuilder } from './pages/Host/VenueBuilder';
 import { useAuth } from './hooks/useAuth';
 import { AuthModal } from './components/common/AuthModal';
+import { LoadingThreeDots } from './components/ui/loading/Loading';
 
 
 
 
 export default function App() {
 
-  const { user, loading, login, logout } = useAuth();
+  const { user, loading, login, signup, logout } = useAuth();
   const [authModal, setAuthModal] = useState(false);
+  const [authType, setAuthType] = useState('login');
 
   if (loading) {
     return <div><h1>Loading...</h1></div>;
@@ -34,7 +36,7 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<MainLayout setAuthModal={setAuthModal}><LandingPage /></MainLayout>} />
+        <Route path="/" element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} ><LandingPage /></MainLayout>} />
         <Route path="/host" element={<HostLayout />}>
           <Route index element={<HostInfo user={user} setAuthModal={setAuthModal} />} />
         </Route>
@@ -43,7 +45,7 @@ export default function App() {
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>
       
-      {authModal && <AuthModal setAuthModal={setAuthModal} login={login} /> }
+      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} login={login} signup={signup} /> }
     </>
   );
 }

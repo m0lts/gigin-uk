@@ -1,17 +1,21 @@
 import { NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
 
-export const Header = ({ setAuthModal }) => {
+export const Header = ({ setAuthModal, setAuthType }) => {
 
-    const showAuthModal = () => {
-        setAuthModal(true)
+    const showAuthModal = (type) => {
+        setAuthModal(true);
+        setAuthType(type);
     }
 
     return (
         <header className="header default">
             <TextLogo />
             <nav className="nav-list">
-                <button className="item btn primary" onClick={showAuthModal}>
+                <button className="item btn tertiary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
+                    Log In
+                </button>
+                <button className="item btn primary" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
                     Sign Up
                 </button>
             </nav>

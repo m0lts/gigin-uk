@@ -1,0 +1,167 @@
+// Dependencies
+import { useState } from 'react';
+// Components
+import { NoTextLogo } from "/ui/logos/Logos";
+import { SeeIcon, QuestionCircleIcon, CloseIcon } from "/ui/icons/Icons";
+import { LoadingThreeDots } from '/ui/loading/Loading';
+// Styles
+import '/styles/forms/forms.styles.css'
+
+
+export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, signup, setAuthModal, loading, setLoading }) => {
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordInfo, setShowPasswordInfo] = useState(false);
+
+  const handleChange = (e) => {
+    if (loading) return;
+    const { name, value } = e.target;
+    const cleanedValue = name === 'phoneNumber' ? value.replace(/\s+/g, '') : value;
+    setCredentials((prev) => ({ ...prev, [name]: cleanedValue }));
+  };
+
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const validatePhoneNumber = (phoneNumber) => /^[0-9]{10,15}$/.test(phoneNumber);
+
+  const validatePassword = (password) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(password);
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    if (loading) return;
+
+    if (!validateEmail(credentials.email)) {
+      setError({ status: true, input: 'email', message: '* Please enter a valid email address' });
+      return;
+    }
+
+    if (!validatePhoneNumber(credentials.phoneNumber)) {
+      setError({ status: true, input: 'phoneNumber', message: '* Please enter a valid phone number' });
+      return;
+    }
+
+    if (!validatePassword(credentials.password)) {
+      setError({ status: true, input: 'password', message: '* Please enter a secure password.' });
+      setShowPasswordInfo(true);
+      return;
+    }
+
+    setError({ status: false, input: '', message: '' });
+    setLoading(true);
+
+    try {
+      await signup(credentials);
+      setAuthModal(false);
+    } catch (err) {
+      setError({ status: true, input: '', message: 'Signup failed. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+
+  };
+
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const togglePasswordInfo = () => {
+    setShowPasswordInfo(!showPasswordInfo);
+  };
+
+  return (
+    <div className="modal-content auth" onClick={(e) => e.stopPropagation()}>
+      <div className="head">
+        <NoTextLogo />
+        <h2>Signup</h2>
+      </div>
+      <form className="auth-form" onSubmit={handleSignup}>
+        <div className="input-group">
+          <label htmlFor="name">Name</label>
+          <input
+            type="text"
+            name="name"
+            value={credentials.name}
+            onChange={(e) => { handleChange(e); clearError(); }}
+            placeholder="Your Name"
+            required
+          />
+        </div>
+        <div className="input-group">
+          <label htmlFor="email">Email</label>
+          <input
+            type="text"
+            name="email"
+            value={credentials.email}
+            onChange={(e) => { handleChange(e); clearError(); }}
+            placeholder="e.g. johnsmith@gigin.com"
+            required
+            className={`${error.input === 'email' && 'error'}`}
+          />
+        </div>
+        <div className="input-group">
+          <label htmlFor="phoneNumber">Phone Number</label>
+          <input
+            type="text"
+            name="phoneNumber"
+            value={credentials.phoneNumber}
+            onChange={(e) => { handleChange(e); clearError(); }}
+            placeholder="e.g. 07362 876514"
+            required
+            className={`${error.input === 'phoneNumber' && 'error'}`}
+          />
+        </div>
+        <div className="input-group">
+          <label htmlFor="password">
+            Password
+            <button className="btn text" type="button" onClick={togglePasswordInfo}>
+              <QuestionCircleIcon />
+            </button>
+          </label>
+          <div className="password">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={credentials.password}
+              onChange={(e) => { handleChange(e); clearError(); }}
+              placeholder="Password"
+              required
+              className={`${error.input === 'password' && 'error'}`}
+            />
+            <button type="button" className="btn tertiary" onClick={toggleShowPassword}>
+              <SeeIcon />
+            </button>
+          </div>
+          {showPasswordInfo && <p className="password-info">
+            <QuestionCircleIcon /> Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character.
+          </p>}
+        </div>
+        {error.status && (
+          <div className="error-box">
+            <p className="error-msg">{error.message}</p>
+          </div>
+        )}
+        {loading ? (
+          <LoadingThreeDots />
+        ) : (
+          <>
+            <button
+              type="submit"
+              className="btn primary"
+              disabled={error.status || !credentials.name || !credentials.email || !credentials.phoneNumber || !credentials.password}
+            >
+              Sign Up
+            </button>
+            <div className="change-auth-type">
+                <p>Already a member? <button className="btn text" type='button' onClick={() => { setAuthType('login'); clearCredentials(); clearError(); }}>Login</button></p>
+            </div>
+          </>
+        )}
+      </form>
+      {!loading && (
+        <button className="btn close tertiary" onClick={() => setAuthModal(false)}>
+          <CloseIcon />
+        </button>
+      )}
+    </div>
+  );
+};

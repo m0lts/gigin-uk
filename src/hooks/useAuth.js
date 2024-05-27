@@ -30,6 +30,16 @@ export const useAuth = () => {
     }
   };
 
+  const signup = async (credentials) => {
+    try {
+      const response = await axios.post('/api/auth/signup', credentials, { withCredentials: true });
+      setUser(response.data.user);
+    } catch (error) {
+      console.error('Signup failed', error);
+      setUser(null);
+    }
+  };
+
   const logout = async () => {
     try {
       await axios.post('/api/auth/logout', {}, { withCredentials: true });
@@ -43,6 +53,7 @@ export const useAuth = () => {
     user,
     loading,
     login,
+    signup,
     logout,
   };
 };

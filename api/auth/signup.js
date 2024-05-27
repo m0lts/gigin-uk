@@ -16,10 +16,10 @@ export default async function handler(req, res) {
         return;
     }
 
-    const { email, password } = req.body;
+    const { name, email, phoneNumber, password } = req.body;
 
-    if (!email || !password) {
-        res.status(400).json({ error: 'Missing email or password' });
+    if (!name || !email || !phoneNumber || !password) {
+        res.status(400).json({ error: 'Missing required fields' });
         return;
     }
 
@@ -31,31 +31,31 @@ export default async function handler(req, res) {
         const db = mongoClient.db("gigin-v1");
         const accounts = db.collection("accounts");
 
-        // Find the user by email
-        const user = await accounts.findOne({ email });
-
-        if (!user) {
-            res.status(401).json({ error: 'Invalid email or password' });
+        const existingUser = await accounts.findOne({ $or: [{ email }, { phoneNumber }] });
+        if (existingUser) {
+            res.status(400).json({ error: 'User already exists' });
             return;
         }
 
-        // Compare the hashed password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        if (!isPasswordValid) {
-            res.status(401).json({ error: 'Invalid email or password' });
-            return;
-        }
+        const newUser = {
+            name,
+            email,
+            phoneNumber,
+            password: hashedPassword,
+            createdAt: new Date(),
+        };
 
-        // Create JWT token
+        const result = await accounts.insertOne(newUser);
+
         const token = jwt.sign(
-            { userId: user._id, email: user.email },
+            { userId: result.insertedId, email: newUser.email },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        res.setHeader('Set-Cookie', `jwt=${token}; HttpOnly; Secure; Path=/; Max-Age=3600`);
-        res.status(200).json({ user: { id: user._id, email: user.email, name: user.name } });
+        res.status(201).json({ token });
 
     } catch (error) {
         console.error(error);
@@ -66,4 +66,3 @@ export default async function handler(req, res) {
         }
     }
 }
-
