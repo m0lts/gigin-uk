@@ -1,5 +1,5 @@
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faCheckCircle, faCoin, faGlassesRound, faGraduationCap, faGuitars, faMicrophoneLines, faPeopleGroup, faPeopleRoof, faQuestionCircle, faShield, faShieldCheck, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faArrowLeftFromArc, faCheckCircle, faChevronLeft, faCoin, faGlassesRound, faGraduationCap, faGuitars, faMicrophoneLines, faPeopleGroup, faPeopleRoof, faQuestionCircle, faShield, faShieldCheck, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
 // General icons
@@ -66,5 +66,15 @@ export const SeeIcon = () => {
 export const QuestionCircleIcon = () => {
     return (
         <FontAwesomeIcon icon={faQuestionCircle} className="icon" />
+    )
+}
+export const LeftChevronIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faChevronLeft} className="icon" />
+    )
+}
+export const ExitIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faArrowLeftFromArc} className="icon" />
     )
 }

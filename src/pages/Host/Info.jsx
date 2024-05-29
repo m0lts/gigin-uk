@@ -9,6 +9,8 @@ export const HostInfo = ({ user, setAuthModal }) => {
     const checkUserAuth = () => {
         if (!user) {
             setAuthModal(true);
+        } else {
+            navigate('/host/venue-builder');
         }
     }
 

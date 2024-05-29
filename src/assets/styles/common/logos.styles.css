@@ -6,3 +6,12 @@
 .logo .orange-txt {
     color: var(--gigin-orange);
 }
+.logo.bckgrd-white {
+    background-color: var(--white);
+    border-radius: 50%;
+    width:45px;
+    padding-bottom: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

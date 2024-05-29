@@ -15,7 +15,7 @@ import { HostLayout } from './layouts/HostLayout';
 import { MusicianLayout } from './layouts/MusicianLayout';
 import { GigGoerLayout } from './layouts/GigGoerLayout';
 import { NoHeaderFooterLayout } from './layouts/NoHeaderFooterLayout';
-import { VenueBuilder } from './pages/Host/VenueBuilder';
+import { VenueBuilder } from './pages/Host/VenueBuilder/VenueBuilder';
 import { useAuth } from './hooks/useAuth';
 import { AuthModal } from './components/common/AuthModal';
 import { LoadingThreeDots } from './components/ui/loading/Loading';
@@ -40,7 +40,7 @@ export default function App() {
         <Route path="/host" element={<HostLayout />}>
           <Route index element={<HostInfo user={user} setAuthModal={setAuthModal} />} />
         </Route>
-        <Route path='/host/venue-builder' element={<NoHeaderFooterLayout><VenueBuilder /></NoHeaderFooterLayout>} />
+        <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder /></NoHeaderFooterLayout>} />
         <Route path="/musician" element={<MusicianLayout><MusicianInfo /></MusicianLayout>} />
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>

@@ -173,22 +173,24 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
           {loading ? (
             <LoadingThreeDots />
           ) : (
-            <button
-              type="submit"
-              className="btn primary"
-              disabled={loading || error.status || otp.length !== 6}
-            >
-              Submit
-            </button>
+            <>
+              <button
+                type="submit"
+                className="btn primary"
+                disabled={loading || error.status || otp.length !== 6}
+              >
+                Submit
+              </button>
+              <button
+                type="button"
+                className="btn text re-send"
+                onClick={handleResendOtp}
+                disabled={resendingOtp}
+              >
+                {resendingOtp ? 'Resending...' : "Haven't received a code? Resend verification code"}
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            className="btn text re-send"
-            onClick={handleResendOtp}
-            disabled={resendingOtp}
-          >
-            {resendingOtp ? 'Resending...' : "Haven't received a code? Resend verification code"}
-          </button>
         </form>
       )}
       {!loading && (

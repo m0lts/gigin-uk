@@ -29,3 +29,14 @@ export const NoTextLogoLink = () => {
         </h1>
     )
 }
+export const WhiteBckgrdLogo = () => {
+    return (
+        <div className="bckgrd-white logo">
+            <h1>
+                <Link className="link" to={'/'}>
+                    g<span className="orange-txt">.</span>
+                </Link>
+            </h1>
+        </div>
+    )
+}
