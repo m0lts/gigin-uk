@@ -1,0 +1,170 @@
+import React, { useCallback } from 'react';
+import { AddressAutofill } from '@mapbox/search-js-react';
+
+export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress }) => {
+
+    const handleRetrieve = useCallback(
+        (res) => {
+            const feature = res.features[0];
+            setFeature(feature);
+
+            console.log(feature)
+
+            const address = feature.properties.full_address;
+            const coordinates = feature.geometry.coordinates;
+
+            setLocationAddress(address);
+            setLocationCoordinates(coordinates);
+        },
+        [setFeature, setLocationAddress, setLocationCoordinates]
+    );
+
+    const handleGeocodeAddress = async (address) => {
+        setLocationAddress(address);
+        try {
+            const response = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ5bjE1MDg2dDJrcW5yOHV1Z2t6bSJ9.Sk502nZET2-W6vLvCDwSEg`
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.features && data.features.length > 0) {
+                    const coordinates = data.features[0].geometry.coordinates;
+                    setLocationCoordinates(coordinates);
+                    const addressDetails = {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: coordinates,
+                        },
+                        properties: {
+                            address: address,
+                        },
+                    };
+                    setFeature(addressDetails);
+                } else {
+                    console.error('No coordinates found for the provided address.');
+                }
+            } else {
+                console.error('Failed to fetch coordinates.');
+            }
+        } catch (error) {
+            console.error('Error fetching coordinates:', error);
+        }
+    };
+
+    const handleAddressSubmission = (e) => {
+        e.preventDefault();
+
+        const address1 = e.target.address1.value;
+        const apartment = e.target.apartment.value;
+        const city = e.target.city.value;
+        const country = e.target.country.value;
+        const postcode = e.target.postcode.value;
+
+        const enteredAddress = `${address1}${apartment ? `, ${apartment}` : ''}, ${city}, ${postcode}, ${country}`;
+
+        handleGeocodeAddress(enteredAddress);
+    };
+
+    return (
+        <>
+            {!expandForm ? ( 
+                <>
+                {locationAddress ? (
+                    <div className="input-group">
+                        <label htmlFor="autofill" className="label">Venue Address</label>
+                        <input
+                            className="input"
+                            type="text"
+                            value={locationAddress}
+                            disabled
+                        />
+                        <button className="btn secondary" style={{ width: 'fit-content' }} onClick={() => {setLocationAddress(''); setLocationCoordinates(null)}}>
+                            Change Address
+                        </button>
+                    </div>
+                
+                ) : (
+
+                    <AddressAutofill accessToken="pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ5bjE1MDg2dDJrcW5yOHV1Z2t6bSJ9.Sk502nZET2-W6vLvCDwSEg" onRetrieve={handleRetrieve}>
+                        <div className="input-group">
+                            <label htmlFor="autofill" className="label">Venue Address</label>
+                            <input
+                                className="input"
+                                type="text"
+                                name="autofill"
+                                id="autofill"
+                                placeholder="Start typing your address, e.g. 72 High Street..."
+                                autoComplete='off'
+                            />
+                        </div>
+                    </AddressAutofill>
+                )}
+                    <button className="btn text" onClick={() => {setExpandForm(true); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
+                        Or enter the address manually
+                    </button>
+                </>
+            ) : (
+                <>
+                    <div className="input-group">
+                        <label htmlFor="address1" className="label">Address Line 1:</label>
+                        <input
+                            className="input"
+                            type="text"
+                            name="address1"
+                            placeholder="Address Line 1"
+                            autoComplete="address-line1"
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="address2" className="label">Address Line 2:</label>
+                        <input
+                            className="input"
+                            type="text"
+                            name="address2"
+                            placeholder="Address Line 2"
+                            autoComplete="address-line2"
+                        />    
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="city" className="label">City:</label>
+                        <input
+                            className="input"
+                            type="text"
+                            name="city"
+                            placeholder="City"
+                            autoComplete="address-level2"
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="country" className="label">Country:</label>
+                        <input
+                            className="input"
+                            type="text"
+                            name="country"
+                            placeholder="Country"
+                            autoComplete="country"
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="postcode" className="label">Postcode:</label>
+                        <input
+                            className="input"
+                            type="text"
+                            name="postcode"
+                            placeholder="Postcode"
+                            autoComplete="postal-code"
+                        />
+                    </div>
+                    <button className="btn secondary" onClick={handleAddressSubmission} style={{ width: 'fit-content' }}>
+                        Submit
+                    </button>
+                    <button className="btn text" onClick={() => {setExpandForm(false); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
+                        Use automatic address entry
+                    </button>
+                </>
+            )}
+        </>
+    );
+};

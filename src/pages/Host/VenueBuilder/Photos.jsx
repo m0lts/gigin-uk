@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LeftChevronIcon } from '/components/ui/Icons/Icons';
 
@@ -13,6 +14,12 @@ export const Photos = ({ formData, handleInputChange }) => {
     const handleFileChange = (e) => {
         handleInputChange('photos', [...formData.photos, ...Array.from(e.target.files)]);
     };
+
+    useEffect(() => {
+        if (formData.venueType === '') {
+            navigate('/host/venue-builder');
+        }
+    }, [formData])
 
     return (
         <div>

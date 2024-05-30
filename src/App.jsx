@@ -40,7 +40,7 @@ export default function App() {
         <Route path="/host" element={<HostLayout />}>
           <Route index element={<HostInfo user={user} setAuthModal={setAuthModal} />} />
         </Route>
-        <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder /></NoHeaderFooterLayout>} />
+        <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} /></NoHeaderFooterLayout>} />
         <Route path="/musician" element={<MusicianLayout><MusicianInfo /></MusicianLayout>} />
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>

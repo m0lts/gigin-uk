@@ -33,7 +33,7 @@
     text-decoration: none;
 }
 
-
+/* Progress list */
 .progress ul {
     list-style-type: none;
     padding: 0;
@@ -41,7 +41,6 @@
     display: flex;
     flex-direction: column;
 }
-
 .progress ul li {
     display: flex;
     align-items: center;
@@ -52,7 +51,6 @@
     font-weight: 300;
     transition: font-weight 200ms linear, color 200ms linear;
 }
-
 .progress ul li::before,
 .progress ul li::after {
     content: '';
@@ -61,34 +59,27 @@
     width: 2px;
     background-color: white;
 }
-
 .progress ul li::before {
     top: 0;
     bottom: 50%;
 }
-
 .progress ul li::after {
     top: 50%;
     bottom: 0;
 }
-
 .progress ul li:first-child::before {
     display: none;
 }
-
 .progress ul li:last-child::after {
     display: none;
 }
-
 .progress ul li.completed {
     font-weight: bold;
     color: white;
 }
-
 .progress ul li.active {
     font-weight: bold;
 }
-
 .progress ul li .circle {
     display: flex;
     align-items: center;
@@ -105,7 +96,6 @@
     font-size: 0.75rem;
     transition: background-color 200ms linear, color 200ms linear;
 }
-
 .progress ul li.active .circle,
 .progress ul li.completed .circle {
     background-color: white;
@@ -114,9 +104,130 @@
 
 
 
-
 /* Right side */
 .venue-builder .right {
     background-color: var(--off-white);
     border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.venue-builder .stage {
+    width:90%;
+    height:80%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:1rem;
+    position: relative;
+}
+.venue-builder .stage .orange-title {
+    font-size: 1rem;
+    color: var(--gigin-orange);
+    font-weight: 400;
+}
+.venue-builder .stage .subtitle {
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+/* Cards */
+.venue-builder .stage .selections {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    min-height: 50%;
+}
+.venue-builder .stage .card {
+    position: relative;
+    border:1px solid var(--light-medium-grey);
+    background-color: var(--white);
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+    padding: 0 1rem;
+    transition: background-color 200ms linear, border-color 200ms linear;
+}
+.venue-builder .stage .card:hover {
+    border-color: var(--gigin-orange);
+}
+.venue-builder .stage .card:hover > .status-dot {
+    border-color: var(--gigin-orange);
+}
+.venue-builder .stage .card.large {
+    width: 275px;
+    height: 200px;
+}
+.venue-builder .stage .card.selected {
+    background-color: var(--trans-gigin-orange);
+    border-color: var(--gigin-orange);
+}
+.venue-builder .stage .card .status-dot {
+    border: 1px solid var(--light-medium-grey);
+    background-color: var(--white);
+    width:15px;
+    height:15px;
+    border-radius: 50%;
+    position: absolute;
+    top:0.5rem;
+    left:0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 200ms linear, border-color 200ms linear;
+}
+.venue-builder .stage .card.selected > .status-dot {
+    background-color: var(--gigin-orange);
+    border-color: var(--gigin-orange);
+}
+.venue-builder .stage .card .status-dot .inner {
+    background-color: var(--white);
+    width:6px;
+    height:6px;
+    border-radius: 50%;
+    transition: background-color 200ms linear;
+}
+.venue-builder .stage .card .icon {
+    font-size: 2rem;
+}
+.venue-builder .stage .card .title {
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+/* Forms, inputs and labels */
+.venue-builder .stage .form {
+    width:50%;
+    margin-top:1rem;
+}
+/* Map and address */
+/* .venue-builder .stage .map {
+    border:1px solid red;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    height:300px;
+    margin-bottom: 0;
+    width: 50%;
+    position: relative;
+} */
+
+
+
+
+/* Control buttons */
+.venue-builder .stage .controls {
+    position: absolute;
+    bottom:0;
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.venue-builder .stage .controls.single {
+    justify-content: flex-end;
 }

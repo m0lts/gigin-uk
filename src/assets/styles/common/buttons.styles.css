@@ -15,6 +15,18 @@
     opacity: 0.9;
 }
 
+.btn.secondary {
+    background-color: var(--white);
+    border:1px solid var(--light-medium-grey);
+    padding:0.5rem 1rem;
+    border-radius: 5px;
+    transition: background-color 200ms linear, border-color 200ms linear;
+}
+.btn.secondary:hover {
+    background-color: var(--off-white);
+    border-color: transparent;
+}
+
 
 .btn.tertiary {
     background-color: transparent;

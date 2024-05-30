@@ -1,4 +1,5 @@
 /* Authentication form */
+.form,
 .auth-form {
     display: flex;
     flex-direction: column;
@@ -7,18 +8,24 @@
 }
 
 /* Common field styles */
+.form .input-group, 
 .auth-form .input-group {
     display: flex;
     flex-direction: column;
     gap:5px;
 }
+.form .input-group label, 
 .auth-form .input-group label {
     font-size: 0.75rem;
     font-weight: 500;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    color: var(--dark-grey);
 }
+.form .input-group input,
+.form .input-group .password,
+.form .input-group select, 
 .auth-form .input-group input,
 .auth-form .input-group .password,
 .auth-form .input-group select {
@@ -26,13 +33,52 @@
     border: 1px solid var(--light-medium-grey);
     border-radius: 5px;
 }
+.form .input-group input:focus, 
 .auth-form .input-group input:focus {
     outline:none;
 }
+.form .input-group input.error, 
 .auth-form .input-group input.error {
     border:1px solid red;
 }
+.form .error-box, 
 .auth-form .error-box {
+    border:1px solid red;
+    padding:5px;
+    background-color: rgba(255, 0, 0, 0.028);
+    border-radius: 5px;
+}
+.auth-form .error-msg {
+    font-size: 0.75rem;
+}
+/* Common field styles */
+.form .input-group {
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+}
+.form .input-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--dark-grey);
+}
+.form .input-group input,
+.form .input-group .password,
+.form .input-group select {
+    padding:10px 5px;
+    border: 1px solid var(--light-medium-grey);
+    border-radius: 5px;
+}
+.form .input-group input:focus {
+    outline:none;
+}
+.form .input-group input.error {
+    border:1px solid red;
+}
+.form .error-box {
     border:1px solid red;
     padding:5px;
     background-color: rgba(255, 0, 0, 0.028);

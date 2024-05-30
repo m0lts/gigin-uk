@@ -1,26 +1,46 @@
 import { useNavigate } from 'react-router-dom';
+import { PeopleRoofIcon, HouseIcon } from '/components/ui/Icons/Icons';
 
 export const VenueType = ({ formData, handleInputChange }) => {
 
     const navigate = useNavigate();
 
     const handleNext = () => {
-        if (formData.venueType === '') return;
+        if (formData.type === '') return;
         navigate('/host/venue-builder/venue-details');
     };
 
     return (
-        <div>
-            <h1>Tell us what type of venue you are.</h1>
-            <button onClick={() => handleInputChange('venueType', 'Public Establishment')}>
-                Public Establishment
-            </button>
-            <button onClick={() => handleInputChange('venueType', 'Personal Space')}>
-                Personal Space
-            </button>
-            <button onClick={handleNext}>
-                Continue
-            </button>
+        <div className='stage'>
+            <h2 className='orange-title'>Venue Type</h2>
+            <h3 className='subtitle'>Tell us what type of venue you are.</h3>
+            <div className="selections">
+                <button className={`card large ${formData.type === 'Public Establishment' && 'selected'}`} onClick={() => handleInputChange('type', 'Public Establishment')}>
+                    <div className="status-dot">
+                        {formData.type === 'Public Establishment' && (
+                            <div className="inner"></div>
+                        )}
+                    </div>
+                    <PeopleRoofIcon />
+                    <span className="title">Public Establishment</span>
+                    e.g. Pub, Music venue, Restaurant, Church
+                </button>
+                <button className={`card large ${formData.type === 'Personal Space' && 'selected'}`} onClick={() => handleInputChange('type', 'Personal Space')}>
+                    <div className="status-dot">
+                        {formData.type === 'Personal Space' && (
+                            <div className="inner"></div>
+                        )}
+                    </div>
+                    <HouseIcon />
+                    <span className="title">Personal Space</span>
+                    e.g. House, Wedding, Private party
+                </button>
+            </div>
+            <div className="controls single">
+                <button className='btn primary' onClick={handleNext}>
+                    Continue
+                </button>
+            </div>
         </div>
     );
 };

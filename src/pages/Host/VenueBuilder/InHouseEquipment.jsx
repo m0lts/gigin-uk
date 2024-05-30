@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LeftChevronIcon } from '/components/ui/Icons/Icons';
 
@@ -12,6 +12,12 @@ export const InHouseEquipment = ({ formData, handleInputChange }) => {
         if (formData.equipmentAvailable === '') return;
         navigate('/host/venue-builder/photos');
     };
+
+    useEffect(() => {
+        if (formData.venueType === '') {
+            navigate('/host/venue-builder');
+        }
+    }, [formData])
 
     return (
         <div>

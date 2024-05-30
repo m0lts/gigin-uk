@@ -9,14 +9,16 @@ import { AdditionalDetails } from "./AdditionalDetails";
 import '/styles/host/venue-builder.styles.css'
 import { ExitIcon } from "../../../components/ui/Icons/Icons";
 
-export const VenueBuilder = () => {
+export const VenueBuilder = ({ user, setAuthModal, authModal }) => {
 
     const [formData, setFormData] = useState({
-        venueType: '',
-        venueName: '',
-        venueAddress: '',
+        type: '',
+        name: '',
+        address: '',
+        coordinates: null,
+        establishment: '',
         equipmentAvailable: '',
-        equipmentType: [],
+        equipment: [],
         photos: [],
         additionalDetails: ''
     });
@@ -31,8 +33,12 @@ export const VenueBuilder = () => {
     };
 
     useEffect(() => {
-        console.log(formData)
-    }, [formData])
+        if (!user) {
+            setAuthModal(true);
+        }
+    }, [user, authModal])
+
+    console.log(formData);
 
     const handleSaveAndExit = () => {
         navigate('/host')
@@ -43,10 +49,10 @@ export const VenueBuilder = () => {
         if (location.pathname.includes('venue-details')) return 2;
         if (location.pathname.includes('equipment')) return 3;
         if (location.pathname.includes('photos')) {
-            return formData.venueType === 'Public Establishment' ? 4 : 3;
+            return formData.type === 'Public Establishment' ? 4 : 3;
         }
         if (location.pathname.includes('additional-details')) {
-            return formData.venueType === 'Public Establishment' ? 5 : 4;
+            return formData.type === 'Public Establishment' ? 5 : 4;
         }        return 1;
     };
 
@@ -65,21 +71,21 @@ export const VenueBuilder = () => {
                         <li className={`step ${currentStep >= 1 ? 'completed' : ''} ${currentStep === 1 ? 'active' : ''}`}>
                             <div className="circle">1</div>Venue type
                         </li>
-                        {formData.venueType !== '' && (
+                        {formData.type !== '' && (
                             <>
                                 <li className={`step ${currentStep >= 2 ? 'completed' : ''} ${currentStep === 2 ? 'active' : ''}`}>
                                     <div className="circle">2</div>Venue Details
                                 </li>
-                                {formData.venueType === 'Public Establishment' && (
+                                {formData.type === 'Public Establishment' && (
                                     <li className={`step ${currentStep >= 3 ? 'completed' : ''} ${currentStep === 3 ? 'active' : ''}`}>
                                         <div className="circle">3</div>In House Equipment
                                     </li>
                                 )}
-                                <li className={`step ${currentStep >= (formData.venueType === 'Public Establishment' ? 4 : 3) ? 'completed' : ''} ${currentStep === (formData.venueType === 'Public Establishment' ? 4 : 3) ? 'active' : ''}`}>
-                                    <div className="circle">{formData.venueType === 'Public Establishment' ? 4 : 3}</div>Photos of performing space
+                                <li className={`step ${currentStep >= (formData.type === 'Public Establishment' ? 4 : 3) ? 'completed' : ''} ${currentStep === (formData.type === 'Public Establishment' ? 4 : 3) ? 'active' : ''}`}>
+                                    <div className="circle">{formData.type === 'Public Establishment' ? 4 : 3}</div>Photos of performing space
                                 </li>
-                                <li className={`step ${currentStep >= (formData.venueType === 'Public Establishment' ? 5 : 4) ? 'completed' : ''} ${currentStep === (formData.venueType === 'Public Establishment' ? 5 : 4) ? 'active' : ''}`}>
-                                    <div className="circle">{formData.venueType === 'Public Establishment' ? 5 : 4}</div>Additional details
+                                <li className={`step ${currentStep >= (formData.type === 'Public Establishment' ? 5 : 4) ? 'completed' : ''} ${currentStep === (formData.type === 'Public Establishment' ? 5 : 4) ? 'active' : ''}`}>
+                                    <div className="circle">{formData.type === 'Public Establishment' ? 5 : 4}</div>Additional details
                                 </li>
                             </>
                         )}

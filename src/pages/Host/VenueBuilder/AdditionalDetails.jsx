@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LeftChevronIcon } from '/components/ui/Icons/Icons';
 
@@ -9,6 +10,12 @@ export const AdditionalDetails = ({ formData, handleInputChange }) => {
         // Here you would send the formData to your database
         console.log(formData);
     };
+
+    useEffect(() => {
+        if (formData.venueType === '') {
+            navigate('/host/venue-builder');
+        }
+    }, [formData])
 
     return (
         <div>
