@@ -158,7 +158,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         />
                     </div>
                     <button className="btn secondary" onClick={handleAddressSubmission} style={{ width: 'fit-content' }}>
-                        Submit
+                        Save
                     </button>
                     <button className="btn text" onClick={() => {setExpandForm(false); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
                         Use automatic address entry
