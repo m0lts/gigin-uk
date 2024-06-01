@@ -1,5 +1,5 @@
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faArrowLeftFromArc, faBeerFoam, faCheckCircle, faChevronLeft, faCoin, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faMapLocation, faMicrophoneLines, faPeopleGroup, faPeopleRoof, faQuestionCircle, faShield, faShieldCheck, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faArrowLeftFromArc, faBeerFoam, faCastle, faCheckCircle, faChevronLeft, faCoin, faCutlery, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPeopleGroup, faPeopleRoof, faPlaceOfWorship, faQuestionCircle, faShield, faShieldCheck, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
 // General icons
@@ -91,5 +91,35 @@ export const BeerIcon = () => {
 export const MapIcon = () => {
     return (
         <FontAwesomeIcon icon={faMapLocation} className="icon" />
+    )
+}
+export const MicrophoneIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faMicrophoneStand} className="icon" />
+    )
+}
+export const RestaurantIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCutlery} className="icon" />
+    )
+}
+export const PlaceOfWorshipIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faPlaceOfWorship} className="icon" />
+    )
+}
+export const VillageHallIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faMuseum} className="icon" />
+    )
+}
+export const ClubIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faTurntable} className="icon" />
+    )
+}
+export const OtherIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCastle} className="icon" />
     )
 }

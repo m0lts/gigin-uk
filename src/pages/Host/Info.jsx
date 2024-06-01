@@ -1,18 +1,26 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom"
 
 export const HostInfo = ({ user, setAuthModal }) => {
 
-    const [isUserLoggedIn, setIsUserLoggedIn] = useState();
     const navigate = useNavigate();
 
     const checkUserAuth = () => {
         if (!user) {
             setAuthModal(true);
+            sessionStorage.setItem('redirect', '/host/venue-builder');
         } else {
             navigate('/host/venue-builder');
         }
     }
+
+    useEffect(() => {
+        const redirect = sessionStorage.getItem('redirect');
+        if (redirect) {
+            navigate(redirect);
+            sessionStorage.removeItem('redirect');
+        }
+    }, [user])
 
     return (
         <div>

@@ -11,7 +11,7 @@ export const VenueType = ({ formData, handleInputChange }) => {
     };
 
     return (
-        <div className='stage'>
+        <div className='stage type'>
             <h2 className='orange-title'>Venue Type</h2>
             <h3 className='subtitle'>Tell us what type of venue you are.</h3>
             <div className="selections">

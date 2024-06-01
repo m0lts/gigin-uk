@@ -1,14 +1,12 @@
 import React, { useCallback } from 'react';
 import { AddressAutofill } from '@mapbox/search-js-react';
 
-export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress }) => {
+export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange }) => {
 
     const handleRetrieve = useCallback(
         (res) => {
             const feature = res.features[0];
             setFeature(feature);
-
-            console.log(feature)
 
             const address = feature.properties.full_address;
             const coordinates = feature.geometry.coordinates;
@@ -55,16 +53,19 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
 
     const handleAddressSubmission = (e) => {
         e.preventDefault();
+        const formData = new FormData(e.target);
 
-        const address1 = e.target.address1.value;
-        const apartment = e.target.apartment.value;
-        const city = e.target.city.value;
-        const country = e.target.country.value;
-        const postcode = e.target.postcode.value;
+        const address1 = formData.get('address1');
+        const address2 = formData.get('address2');
+        const city = formData.get('city');
+        const country = formData.get('country');
+        const postcode = formData.get('postcode');
 
-        const enteredAddress = `${address1}${apartment ? `, ${apartment}` : ''}, ${city}, ${postcode}, ${country}`;
+        const enteredAddress = `${address1}${address2 ? `, ${address2}` : ''}, ${city}, ${postcode}, ${country}`;
 
         handleGeocodeAddress(enteredAddress);
+        handleInputChange('address', enteredAddress);
+        setExpandForm(false);
     };
 
     return (
@@ -107,6 +108,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                 </>
             ) : (
                 <>
+                <form onSubmit={handleAddressSubmission} className='form' style={{ width: '100%', marginTop: 0 }}>
                     <div className="input-group">
                         <label htmlFor="address1" className="label">Address Line 1:</label>
                         <input
@@ -115,6 +117,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                             name="address1"
                             placeholder="Address Line 1"
                             autoComplete="address-line1"
+                            id='address1'
                         />
                     </div>
                     <div className="input-group">
@@ -125,6 +128,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                             name="address2"
                             placeholder="Address Line 2"
                             autoComplete="address-line2"
+                            id='address2'
                         />    
                     </div>
                     <div className="input-group">
@@ -135,6 +139,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                             name="city"
                             placeholder="City"
                             autoComplete="address-level2"
+                            id='city'
                         />
                     </div>
                     <div className="input-group">
@@ -145,6 +150,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                             name="country"
                             placeholder="Country"
                             autoComplete="country"
+                            id='country'
                         />
                     </div>
                     <div className="input-group">
@@ -155,14 +161,16 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                             name="postcode"
                             placeholder="Postcode"
                             autoComplete="postal-code"
+                            id='postcode'
                         />
                     </div>
-                    <button className="btn secondary" onClick={handleAddressSubmission} style={{ width: 'fit-content' }}>
+                    <button className="btn secondary" type='submit' style={{ width: 'fit-content' }}>
                         Save
                     </button>
-                    <button className="btn text" onClick={() => {setExpandForm(false); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
-                        Use automatic address entry
-                    </button>
+                </form>
+                <button className="btn text" onClick={() => {setExpandForm(false); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
+                    Use automatic address entry
+                </button>
                 </>
             )}
         </>
