@@ -109,8 +109,8 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
             </div>
             {!expandForm && (
                 <>
-                    <div className="map">
-                        {feature && locationCoordinates ? (
+                    {(feature && locationCoordinates) && (
+                        <div className="map">
                             <Map
                                 initialViewState={{
                                     longitude: locationCoordinates[0],
@@ -122,10 +122,8 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
                             >
                                 <Marker longitude={locationCoordinates[0]} latitude={locationCoordinates[1]} />
                             </Map>
-                        ) : (
-                            <MapIcon />
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {formData.type === 'Public Establishment' && (
                         <div className="establishment-type">
