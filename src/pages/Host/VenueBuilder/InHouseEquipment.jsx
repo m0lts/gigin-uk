@@ -7,7 +7,7 @@ export const InHouseEquipment = ({ formData, handleInputChange }) => {
 
     const navigate = useNavigate();
     const [equipmentAvailable, setEquipmentAvailable] = useState(formData.equipmentAvailable || '');
-    const [equipmentType, setEquipmentType] = useState(formData.equipmentType || []);
+    const [equipmentType, setEquipmentType] = useState(formData.equipment || []);
 
     const handleNext = () => {
         if (formData.equipmentAvailable === '') return;
@@ -15,7 +15,7 @@ export const InHouseEquipment = ({ formData, handleInputChange }) => {
     };
 
     useEffect(() => {
-        if (formData.venueType === '') {
+        if (formData.type === '') {
             navigate('/host/venue-builder');
         }
     }, [formData])
@@ -26,12 +26,11 @@ export const InHouseEquipment = ({ formData, handleInputChange }) => {
             : [...equipmentType, type];
 
         setEquipmentType(newEquipmentType);
-        handleInputChange('equipmentType', newEquipmentType);
+        handleInputChange('equipment', newEquipmentType);
     };
 
     return (
         <div className='stage equipment'>
-            <h2 className='orange-title'>In House Equipment</h2>
             <h3 className='subtitle'>Have you any equipment available to musicians?</h3>
             <div className='selections'>
                 <button 

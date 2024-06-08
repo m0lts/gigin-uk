@@ -83,7 +83,6 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
 
     return (
         <div className='stage details'>
-            <h2 className='orange-title'>Venue Details</h2>
             <h3 className='subtitle'>Tell us about the venue.</h3>
             <div className="form">
                 <div className="input-group">

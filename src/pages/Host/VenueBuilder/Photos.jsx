@@ -83,7 +83,7 @@ export const Photos = ({ formData, handleInputChange }) => {
     };
 
     useEffect(() => {
-        if (formData.venueType === '') {
+        if (formData.type === '') {
             navigate('/host/venue-builder');
         }
     }, [formData])
@@ -91,7 +91,6 @@ export const Photos = ({ formData, handleInputChange }) => {
     return (
         <DndProvider backend={HTML5Backend}>
             <div className="stage photos">
-                <h2 className='orange-title'>Photos</h2>
                 <h3 className='subtitle'>Let's spruce it up. Add some images of your space.</h3>
                 <div className="photo-space">
                     <div
