@@ -15,7 +15,7 @@ export const AdditionalDetails = ({ formData, handleInputChange, handleSubmit })
 
     return (
         <div className='stage extra-details'>
-            <h3 className='subtitle'>Finally, provide some details of the venue.</h3>
+            <h3>Finally, provide some details of the venue.</h3>
             <div className="input-group">
                 <label htmlFor="information">Provide as much information that would be beneficial to musicians.</label>
                 <textarea

@@ -23,28 +23,19 @@ export default async function handler(req, res) {
         const accounts = db.collection("accounts");
         const venueProfiles = db.collection("venueProfiles");
 
-        const { userId, venueData } = req.body;
+        const { venueId, userId } = req.body;
 
-        const existingVenueProfile = await venueProfiles.findOne({ venueId: venueData.venueId });
+        const deleteVenueProfile = await venueProfiles.deleteOne({ venueId: venueId });
 
-        if (existingVenueProfile) {
-            await venueProfiles.updateOne(
-                { venueId: venueData.venueId },
-                { $set: venueData }
-            );
-        } else {
+        if (deleteVenueProfile) {
             await accounts.updateOne(
                 { userId: userId },
-                { $addToSet: { venueProfiles: venueData.venueId } }
+                { $pull: { venueProfiles: venueId } }
             );
-
-            venueData.userId = userId;
-
-            await venueProfiles.insertOne(venueData);
+            res.status(200).json({ message: 'Venue profile deleted successfully' });
+        } else {
+            res.status(404).json({ error: 'Venue profile not found' });
         }
-
-        res.status(200).json({ message: 'Venue profile processed successfully' });
-
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });

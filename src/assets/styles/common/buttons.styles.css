@@ -1,3 +1,10 @@
+.two-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
 .btn {
     font-family: var(--default-font);
     cursor: pointer;
@@ -44,8 +51,10 @@
 .btn.text {
     background-color: transparent;
     border:none;
-    transition: text-decoration 200ms linear;
+    font-weight: 400;
+    cursor: pointer;
+    transition: font-weight 200ms linear;
 }
 .btn.text:hover {
-    text-decoration: underline;
+    font-weight: 500;
 }

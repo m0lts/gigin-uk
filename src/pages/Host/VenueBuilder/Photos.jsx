@@ -91,7 +91,7 @@ export const Photos = ({ formData, handleInputChange }) => {
     return (
         <DndProvider backend={HTML5Backend}>
             <div className="stage photos">
-                <h3 className='subtitle'>Let's spruce it up. Add some images of your space.</h3>
+                <h3>Let's spruce it up! Add some images of your space.</h3>
                 <div className="photo-space">
                     <div
                         className="upload"
@@ -110,7 +110,7 @@ export const Photos = ({ formData, handleInputChange }) => {
                             <span>Click or drag images here to upload. Add at least 3 images.</span>
                         </label>
                     </div>
-                    <h4>Drag the photos in order of their importance.</h4>
+                    <h4>Drag the photos to rearrange in order of their importance.</h4>
                     <div className="preview">
                         {images.map((image, index) => (
                             <DraggableImage

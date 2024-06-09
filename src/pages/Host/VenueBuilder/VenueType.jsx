@@ -12,24 +12,14 @@ export const VenueType = ({ formData, handleInputChange }) => {
 
     return (
         <div className='stage type'>
-            <h3 className='subtitle'>Tell us what type of venue you are.</h3>
+            <h3>Tell us what type of venue you are.</h3>
             <div className="selections">
                 <button className={`card large ${formData.type === 'Public Establishment' && 'selected'}`} onClick={() => handleInputChange('type', 'Public Establishment')}>
-                    <div className="status-dot">
-                        {formData.type === 'Public Establishment' && (
-                            <div className="inner"></div>
-                        )}
-                    </div>
                     <PeopleRoofIcon />
                     <span className="title">Public Establishment</span>
                     e.g. Pub, Music venue, Restaurant, Church
                 </button>
                 <button className={`card large ${formData.type === 'Personal Space' && 'selected'}`} onClick={() => handleInputChange('type', 'Personal Space')}>
-                    <div className="status-dot">
-                        {formData.type === 'Personal Space' && (
-                            <div className="inner"></div>
-                        )}
-                    </div>
                     <HouseIcon />
                     <span className="title">Personal Space</span>
                     e.g. House, Wedding, Private party

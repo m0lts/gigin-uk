@@ -1,5 +1,5 @@
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAmpGuitar, faArrowLeftFromArc, faBeerFoam, faCameraViewfinder, faCastle, faCheckCircle, faChevronLeft, faCoin, faCutlery, faDrum, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faShield, faShieldCheck, faSpeakers, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faAmpGuitar, faArrowLeftFromArc, faBeerFoam, faCameraViewfinder, faCastle, faCheckCircle, faChevronLeft, faCoin, faCutlery, faDrum, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLocationPin, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faShield, faShieldCheck, faSpeakers, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
 // General icons
@@ -83,6 +83,7 @@ export const HouseIcon = () => {
         <FontAwesomeIcon icon={faHouseWindow} className="icon" />
     )
 }
+
 export const BeerIcon = () => {
     return (
         <FontAwesomeIcon icon={faBeerFoam} className="icon" />
@@ -146,5 +147,15 @@ export const DrumsIcon = () => {
 export const CameraIcon = () => {
     return (
         <FontAwesomeIcon icon={faCameraViewfinder} className="icon" />
+    )
+}
+export const LocationPinIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faLocationPin} className="icon" />
+    )
+}
+export const DashboardIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faRectanglesMixed} className="icon" />
     )
 }
