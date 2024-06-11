@@ -44,9 +44,12 @@
     font-weight: normal;
     color: #ffcccb;
     position: relative;
-    padding:15px 0;
+    padding:30px 0;
     font-weight: 300;
     transition: font-weight 200ms linear, color 200ms linear;
+}
+.progress ul li:first-of-type {
+    padding-top:0;
 }
 .progress ul li::before,
 .progress ul li::after {
@@ -119,6 +122,13 @@
     justify-content: center;
     gap:2rem;
 }
+.venue-builder .input-label {
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    color: var(--medium-grey) !important;
+}
+
+/* Details stage */
 .venue-builder .stage.details {
     height:100%;
     justify-content: flex-start;
@@ -129,6 +139,9 @@
 }
 .venue-builder .stage.details::-webkit-scrollbar {
     display: none;  /* Chrome, Safari, and Opera */
+}
+.venue-builder .stage.details .manual-address {
+    font-size: 0.8rem !important;
 }
 /* Cards */
 .venue-builder .stage .selections {
@@ -146,11 +159,15 @@
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap:1rem;
-    padding: 0 1rem;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap:10px;
+    padding: 1.5rem;
+    text-align: left;
     transition: background-color 200ms linear, border-color 200ms linear;
+}
+.venue-builder .stage .card .icon {
+    margin-bottom: 10px;
 }
 .venue-builder .stage .card:hover {
     border-color: var(--gigin-orange);
@@ -160,16 +177,26 @@
 }
 .venue-builder .stage .card.large {
     width: 275px;
-    height: 200px;
+    min-height:175px;
 }
 .venue-builder .stage .card.small {
-    width:22.5%;
+    justify-content: center;
+    padding-top: 2rem;
+    width:30%;
     min-width: 115px;
     height: 100px;
     gap:10px;
 }
+.venue-builder .stage .card.small.centered {
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    width: 75px;
+    max-height: 50px;
+}
 .venue-builder .stage .card.small .icon {
     font-size: 1.25rem;
+    margin-bottom: 0;
 }
 .venue-builder .stage .card.small .title {
     font-size: 0.9rem;
@@ -227,13 +254,15 @@
     position: relative;
 }
 /* Stage-specific styling */
+.venue-builder .stage .equipment-type {
+    max-width: 80%;
+}
 .venue-builder .stage.equipment .selections {
     justify-content: center;
     gap:5vw;
 }
-.venue-builder .stage.equipment .card.small {
-    max-width: 100px;
-    max-height: 75px;
+.venue-builder .stage.equipment .selections .card.small {
+    min-width: 130px;
 }
 .venue-builder .stage .establishment-type {
     width:40vw;
@@ -340,7 +369,7 @@
 .venue-builder .extra-details .input-group {
     display: flex;
     flex-direction: column;
-    width:75%;
+    width:60%;
     min-width: 300px;
     gap:5px;
 }
@@ -351,8 +380,8 @@
     margin-bottom: 5px;
 }
 .venue-builder .extra-details .input-group textarea {
-    min-height: 150px;
-    border:1px solid var(--light-grey);
+    min-height: 200px;
+    border:1px solid var(--light-medium-grey);
     border-radius: 5px;
     padding:10px;
     max-width: 100%;

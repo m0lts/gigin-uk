@@ -86,9 +86,10 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
             <h3>Tell us about the venue.</h3>
             <div className="form">
                 <div className="input-group">
-                    <label htmlFor="name">Venue Name</label>
+                    <label htmlFor="name" className='input-label'>Venue Name</label>
                     <input
                         type="text"
+                        className='input-box'
                         placeholder="e.g. The Plough"
                         value={formData.name}
                         id='name'
@@ -126,7 +127,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
 
                     {formData.type === 'Public Establishment' && (
                         <div className="establishment-type">
-                            <h4>Type of establishment</h4>
+                            <h4 className='input-label'>Type of establishment</h4>
                             <div className="selections">
                                 <button className={`card small ${formData.establishment === 'Pub/Bar' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Pub/Bar')}>
                                     <div className="status-dot">

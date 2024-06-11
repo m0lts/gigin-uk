@@ -1,10 +1,13 @@
-import { useNavigate } from "react-router-dom"
-import { NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
+import { useNavigate, useLocation } from "react-router-dom"
+import { HostLogoLink, NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
+import { useAuth } from "../../hooks/useAuth"
 
-export const Header = ({ setAuthModal, setAuthType, user, logout }) => {
+export const Header = ({ setAuthModal, setAuthType }) => {
     
+    const { user, logout, checkAuthStatus } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const showAuthModal = (type) => {
         setAuthModal(true);
@@ -22,9 +25,17 @@ export const Header = ({ setAuthModal, setAuthType, user, logout }) => {
         }
     }
 
+    const getLocation = () => {
+        if (location.pathname.includes('host/dashboard')) {
+            return <HostLogoLink />;
+        } else {
+            return <TextLogo />;
+        }
+    }
+
     return (
         <header className="header default">
-            <TextLogo />
+            {getLocation()}
             {user ? (
                 <nav className="nav-list">
                     <button className="item btn tertiary" onClick={handleLogout}>

@@ -3,14 +3,24 @@ import '/styles/common/logos.styles.css'
 
 export const TextLogo = () => {
     return (
-        <h1 className="logo">Gigin<span className="orange-txt">.</span></h1>
+        <h1 className="logo">gigin<span className="orange-txt">.</span></h1>
     )
 }
 export const TextLogoLink = () => {
     return (
         <h1 className="logo">
             <Link className="link" to={'/'}>
-                Gigin<span className="orange-txt">.</span>
+                gigin<span className="orange-txt">.</span>
+            </Link>
+        </h1>
+    )
+}
+export const HostLogoLink = () => {
+    return (
+        <h1 className="logo">
+            <Link className="link" to={'/'}>
+                gigin<span className="orange-txt">.</span>
+                <span className="user-type">HOSTS</span>
             </Link>
         </h1>
     )

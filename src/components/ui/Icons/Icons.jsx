@@ -1,5 +1,5 @@
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAmpGuitar, faArrowLeftFromArc, faBeerFoam, faCameraViewfinder, faCastle, faCheckCircle, faChevronLeft, faCoin, faCutlery, faDrum, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLocationPin, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faShield, faShieldCheck, faSpeakers, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faAmpGuitar, faArrowLeftFromArc, faBeerFoam, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faCircleArrowLeft, faCirclePlus, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faFileInvoice, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faShield, faShieldCheck, faSpeakers, faTelescope, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
 // General icons
@@ -73,6 +73,11 @@ export const LeftChevronIcon = () => {
         <FontAwesomeIcon icon={faChevronLeft} className="icon" />
     )
 }
+export const DownChevronIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faChevronDown} className="icon" />
+    )
+}
 export const ExitIcon = () => {
     return (
         <FontAwesomeIcon icon={faArrowLeftFromArc} className="icon" />
@@ -83,7 +88,6 @@ export const HouseIcon = () => {
         <FontAwesomeIcon icon={faHouseWindow} className="icon" />
     )
 }
-
 export const BeerIcon = () => {
     return (
         <FontAwesomeIcon icon={faBeerFoam} className="icon" />
@@ -157,5 +161,60 @@ export const LocationPinIcon = () => {
 export const DashboardIcon = () => {
     return (
         <FontAwesomeIcon icon={faRectanglesMixed} className="icon" />
+    )
+}
+export const CalendarIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCalendar} className="icon" />
+    )
+}
+export const TickIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCheck} className="icon" />
+    )
+}
+export const ClockIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faClock} className="icon" />
+    )
+}
+export const PreviousIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCircleArrowLeft} className="icon" />
+    )
+}
+export const DoorIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faDoorOpen} className="icon" />
+    )
+}
+export const PlusIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCirclePlus} className="icon" />
+    )
+}
+export const TelescopeIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faTelescope} className="icon" />
+    )
+}
+export const CoinsIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCoins} className="icon" />
+    )
+}
+export const CardIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCreditCard} className="icon" />
+    )
+}
+export const InvoiceIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFileInvoice} className="icon" />
+    )
+}
+export const LightBulbIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faLightbulb} className="icon" />
     )
 }

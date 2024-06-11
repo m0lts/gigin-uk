@@ -74,9 +74,9 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                 <>
                 {locationAddress ? (
                     <div className="input-group">
-                        <label htmlFor="autofill" className="label">Venue Address</label>
+                        <label htmlFor="autofill" className="input-label">Venue Address</label>
                         <input
-                            className="input"
+                            className="input-box"
                             type="text"
                             value={locationAddress}
                             disabled
@@ -90,9 +90,9 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
 
                     <AddressAutofill accessToken="pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ5bjE1MDg2dDJrcW5yOHV1Z2t6bSJ9.Sk502nZET2-W6vLvCDwSEg" onRetrieve={handleRetrieve}>
                         <div className="input-group">
-                            <label htmlFor="autofill" className="label">Venue Address</label>
+                            <label htmlFor="autofill" className="input-label">Venue Address</label>
                             <input
-                                className="input"
+                                className="input-box"
                                 type="text"
                                 name="autofill"
                                 id="autofill"
@@ -102,17 +102,17 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         </div>
                     </AddressAutofill>
                 )}
-                    <button className="btn text" onClick={() => {setExpandForm(true); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
-                        Or enter the address manually
+                    <button className="btn text manual-address" onClick={() => {setExpandForm(true); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
+                        Or enter your address manually
                     </button>
                 </>
             ) : (
                 <>
                 <form onSubmit={handleAddressSubmission} className='form' style={{ width: '100%', marginTop: 0 }}>
                     <div className="input-group">
-                        <label htmlFor="address1" className="label">Address Line 1:</label>
+                        <label htmlFor="address1" className="input-label">Address Line 1</label>
                         <input
-                            className="input"
+                            className="input-box"
                             type="text"
                             name="address1"
                             placeholder="Address Line 1"
@@ -121,9 +121,9 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         />
                     </div>
                     <div className="input-group">
-                        <label htmlFor="address2" className="label">Address Line 2:</label>
+                        <label htmlFor="address2" className="input-label">Address Line 2</label>
                         <input
-                            className="input"
+                            className="input-box"
                             type="text"
                             name="address2"
                             placeholder="Address Line 2"
@@ -132,9 +132,9 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         />    
                     </div>
                     <div className="input-group">
-                        <label htmlFor="city" className="label">City:</label>
+                        <label htmlFor="city" className="input-label">City</label>
                         <input
-                            className="input"
+                            className="input-box"
                             type="text"
                             name="city"
                             placeholder="City"
@@ -143,9 +143,9 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         />
                     </div>
                     <div className="input-group">
-                        <label htmlFor="country" className="label">Country:</label>
+                        <label htmlFor="country" className="input-label">Country</label>
                         <input
-                            className="input"
+                            className="input-box"
                             type="text"
                             name="country"
                             placeholder="Country"
@@ -154,9 +154,9 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         />
                     </div>
                     <div className="input-group">
-                        <label htmlFor="postcode" className="label">Postcode:</label>
+                        <label htmlFor="postcode" className="input-label">Postcode</label>
                         <input
-                            className="input"
+                            className="input-box"
                             type="text"
                             name="postcode"
                             placeholder="Postcode"
@@ -168,7 +168,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         Save
                     </button>
                 </form>
-                <button className="btn text" onClick={() => {setExpandForm(false); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
+                <button className="btn text manual-address" onClick={() => {setExpandForm(false); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
                     Use automatic address entry
                 </button>
                 </>

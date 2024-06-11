@@ -34,13 +34,13 @@ export const InHouseEquipment = ({ formData, handleInputChange }) => {
             <h3>Do you have any equipment available to musicians?</h3>
             <div className='selections'>
                 <button 
-                    className={`card small ${equipmentAvailable === 'yes' ? 'selected' : ''}`}
+                    className={`card small centered ${equipmentAvailable === 'yes' ? 'selected' : ''}`}
                     onClick={() => {setEquipmentAvailable('yes'); handleInputChange('equipmentAvailable', 'yes')}}
                 >
                     <span className="title">Yes</span>
                 </button>
                 <button 
-                    className={`card small ${equipmentAvailable === 'no' ? 'selected' : ''}`}
+                    className={`card small centered ${equipmentAvailable === 'no' ? 'selected' : ''}`}
                     onClick={() => {setEquipmentAvailable('no'); handleInputChange('equipmentAvailable', 'no')}}
                 >
                     <span className="title">No</span>
@@ -48,7 +48,7 @@ export const InHouseEquipment = ({ formData, handleInputChange }) => {
             </div>
             {equipmentAvailable === 'yes' && (
                 <div className='equipment-type'>
-                    <h4>What equipment do you have?</h4>
+                    <h4 className='input-label'>What equipment do you have?</h4>
                     <div className="selections">
                         {['Speakers', 'Microphone', 'Piano', 'Amp', 'Drums'].map(type => (
                             <button 
