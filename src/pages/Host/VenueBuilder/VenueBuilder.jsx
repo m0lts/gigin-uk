@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { v4 as uuidv4 } from 'uuid';
-import { NoTextLogo, WhiteBckgrdLogo } from "../../../components/ui/logos/Logos"
+import { NoTextLogo, WhiteBckgrdLogo } from "/components/ui/logos/Logos"
 import { VenueDetails } from "./VenueDetails";
 import { VenueType } from "./VenueType";
 import { InHouseEquipment } from "./InHouseEquipment";
 import { Photos } from "./Photos";
 import { AdditionalDetails } from "./AdditionalDetails";
 import '/styles/host/venue-builder.styles.css'
-import { CameraIcon, ExitIcon, HouseIcon } from "../../../components/ui/Icons/Icons";
+import { CameraIcon, ExitIcon, HouseIcon } from "/components/ui/Icons/Icons";
 import axios from "axios";
 import { UploadingProfile } from "./UploadingProfile";
 

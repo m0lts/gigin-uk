@@ -25,6 +25,16 @@ export const HostLogoLink = () => {
         </h1>
     )
 }
+export const MusicianLogoLink = () => {
+    return (
+        <h1 className="logo">
+            <Link className="link" to={'/'}>
+                gigin<span className="orange-txt">.</span>
+                <span className="user-type">MUSICIANS</span>
+            </Link>
+        </h1>
+    )
+}
 export const NoTextLogo = () => {
     return (
         <h1 className="logo">g<span className="orange-txt">.</span></h1>

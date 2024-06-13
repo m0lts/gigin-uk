@@ -75,7 +75,7 @@ export default async function handler(req, res) {
         const result = await accounts.insertOne(newUser);
 
         const token = jwt.sign(
-            { userId: result.insertedId, email: newUser.email },
+            { userId: result.insertedId, email: newUser.email, name: newUser.name, phoneNumber: newUser.phoneNumber },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );

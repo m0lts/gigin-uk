@@ -58,6 +58,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
       await verifyOtp(otpId, otp);
       await login(credentials);
       setAuthModal(false);
+      window.location.reload();
     } catch (err) {
       setError({ status: true, input: '', message: '* Incorrect verification code. Please try again.' });
     } finally {

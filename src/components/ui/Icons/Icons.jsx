@@ -1,5 +1,5 @@
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAmpGuitar, faArrowLeftFromArc, faBeerFoam, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faCircleArrowLeft, faCirclePlus, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faFileInvoice, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faShield, faShieldCheck, faSpeakers, faTelescope, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faAmpGuitar, faArrowLeftFromArc, faBeerFoam, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faFileInvoice, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faShield, faShieldCheck, faSpeakers, faTelescope, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
 // General icons
@@ -71,6 +71,11 @@ export const QuestionCircleIcon = () => {
 export const LeftChevronIcon = () => {
     return (
         <FontAwesomeIcon icon={faChevronLeft} className="icon" />
+    )
+}
+export const RightChevronIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faChevronRight} className="icon" />
     )
 }
 export const DownChevronIcon = () => {
@@ -216,5 +221,15 @@ export const InvoiceIcon = () => {
 export const LightBulbIcon = () => {
     return (
         <FontAwesomeIcon icon={faLightbulb} className="icon" />
+    )
+}
+export const MailboxEmptyIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faMailbox} className="icon" />
+    )
+}
+export const MailboxFullIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faMailboxFlagUp} className="icon" />
     )
 }

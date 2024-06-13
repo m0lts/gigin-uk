@@ -41,7 +41,7 @@ export default function App() {
         <Route path="/" element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><LandingPage /></MainLayout>} />
         <Route path="/host">
           <Route index element={<HostInfo user={user} setAuthModal={setAuthModal} />} />
-          <Route path='dashboard' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType}><HostDashboard /></DashboardLayout>} />
+          <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType}><HostDashboard /></DashboardLayout>} />
         </Route>
         <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} /></NoHeaderFooterLayout>} />
         <Route path="/musician" element={<MusicianLayout><MusicianInfo /></MusicianLayout>} />

@@ -1,12 +1,76 @@
 .header {
-    padding: 10px 2.5%;
+    padding: 10px 1rem;
 }
-.header.default {
+.header {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-.header.default .nav-list {
+.header .left,
+.header .right,
+.header .right .buttons,
+.header .right .btn {
+    display: flex;
+    align-items: center;
+}
+.header .left {
+    gap:138px;
+}
+.header .right {
+    gap:2rem;
+}
+.header .right .buttons {
+    gap:1rem;
+}
+.header .right .btn {
+    gap:10px
+}
+.header .left .breadcrumbs {
+    display: flex;
+    align-items: center;
+}
+.header .left .breadcrumbs .icon {
+    margin: 0 5px;
+    font-size: 0.5rem;
+}
+.header .left .breadcrumbs .item {
+    font-weight: 300;
+}
+.header .left .breadcrumbs .item.active {
+    font-weight: 400;
+}
+.header .nav-list {
     display: flex;
     gap:1rem;
+}
+
+
+/* Account menu */
+.header .account-menu {
+    position: absolute;
+    min-width: 200px;
+    right:1rem;
+    top:4rem;
+    background-color: var(--white);
+    padding:1rem;
+    border: 1px solid var(--light-grey);
+    border-radius: 5px;
+}
+.header .account-menu .item {
+    margin:1rem 0;
+    padding:5px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 300;
+}
+.header .account-menu .item:first-of-type {
+    margin:0;
+}
+.header .account-menu .item:hover {
+    background-color: var(--off-white);
+
+}
+.header .account-menu .item.btn {
+    margin-top:1rem;
+    width:100%;
 }

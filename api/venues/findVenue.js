@@ -46,14 +46,37 @@ export default async function handler(req, res) {
         }
 
         if (requestType === 'Complete profiles') {
-            console.log(requestType);
+            const userAccount = await accounts.findOne({ userId });
+            if (!userAccount) {
+                res.status(201).json({ error: 'User not found' });
+                return;
+            }
+
+            const userVenueProfiles = userAccount.venueProfiles;
+            let completeProfiles = [];
+
+            console.log(userVenueProfiles)
+
+            for (const venueId of userVenueProfiles) {
+                const profiles = await venueProfiles.find({
+                    venueId: venueId,
+                    completed: true,
+                }).toArray();
+
+                if (profiles) {
+                    completeProfiles = completeProfiles.concat(profiles);
+                }
+
+            }
+
+            console.log(completeProfiles)
+            res.status(200).json({ completeProfiles });
+
         }
 
         if (requestType === 'Venue Id') {
             console.log(requestType);
         }
-
-        res.status(200).json({ message: 'Venue profile created successfully' });
 
     } catch (error) {
         console.error(error);

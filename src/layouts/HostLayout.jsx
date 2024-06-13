@@ -1,11 +1,11 @@
 import { Outlet } from "react-router-dom"
 import { Footer } from "../components/common/Footer"
-import { HostHeader } from "../components/common/Header"
+import { Header } from "../components/common/Header"
 
 export const HostLayout = () => {
     return (
         <>
-            <HostHeader />
+            <Header />
             <main><Outlet /></main>
             <Footer />
         </>

@@ -1,13 +1,16 @@
 import { useNavigate, useLocation } from "react-router-dom"
-import { HostLogoLink, NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
+import { HostLogoLink, MusicianLogoLink, NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
+import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "../ui/icons/Icons"
+import { useState } from "react"
 
 export const Header = ({ setAuthModal, setAuthType }) => {
     
-    const { user, logout, checkAuthStatus } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const [accountMenu, setAccountMenu] = useState(false);
 
     const showAuthModal = (type) => {
         setAuthModal(true);
@@ -26,8 +29,10 @@ export const Header = ({ setAuthModal, setAuthType }) => {
     }
 
     const getLocation = () => {
-        if (location.pathname.includes('host/dashboard')) {
+        if (location.pathname.includes('host')) {
             return <HostLogoLink />;
+        } else if (location.pathname.includes('musician')) {
+            return <MusicianLogoLink />;
         } else {
             return <TextLogo />;
         }
@@ -35,47 +40,90 @@ export const Header = ({ setAuthModal, setAuthType }) => {
 
     return (
         <header className="header default">
-            {getLocation()}
             {user ? (
-                <nav className="nav-list">
-                    <button className="item btn tertiary" onClick={handleLogout}>
-                        Log Out
-                    </button>
-                </nav>
+                <>
+                    <div className="left">
+                        { getLocation() }
+                        {location.pathname.includes('dashboard') && (
+                            <div className="breadcrumbs">
+                                <span className="item">Dashboard</span>
+                                {location.pathname === ('/host/dashboard') && (
+                                    <>
+                                        <RightChevronIcon />
+                                        <span className="item active">Overview</span>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div className="right">
+                        {location.pathname.includes('host') ? (
+                            <div className="buttons">
+                                <button className="btn secondary">
+                                    <DashboardIcon />
+                                    Dashboard
+                                </button>
+                                <button className="btn secondary">
+                                    <MailboxEmptyIcon />
+                                    Messages
+                                </button>
+                            </div>
+                        ) : location.pathname.includes('musician') ? (
+                            <div className="buttons">
+                                <button className="btn secondary">
+                                    <DashboardIcon />
+                                    Dashboard
+                                </button>
+                                <button className="btn secondary">
+                                    <MailboxEmptyIcon />
+                                    Messages
+                                </button>
+                            </div>
+                        ) : (
+                            <button className="btn text">
+                                What is Gigin?
+                            </button>
+                        )}
+                        <button className="btn secondary" onClick={() => setAccountMenu(!accountMenu)}>
+                            {user.name}
+                            <DownChevronIcon />
+                        </button>
+                    </div>
+                    {accountMenu && (
+                        <nav className="account-menu">
+                            <div className="item">
+                                Option 1
+                            </div>
+                            <div className="item">
+                                Option 2
+                            </div>
+                            <hr className="break" />
+                            <div className="item">
+                                Option 3
+                            </div>
+                            <div className="item">
+                                Option 4
+                            </div>
+                            <hr className="break" />
+                            <button className="item btn text" onClick={handleLogout}>
+                                Log Out
+                            </button>
+                        </nav>
+                    )}
+                </>
             ) : (
-                <nav className="nav-list">
-                    <button className="item btn tertiary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
-                        Log In
-                    </button>
-                    <button className="item btn primary" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
-                        Sign Up
-                    </button>
-                </nav>
+                <>
+                    { getLocation() }
+                    <nav className="nav-list">
+                        <button className="item btn tertiary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
+                            Log In
+                        </button>
+                        <button className="item btn primary" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
+                            Sign Up
+                        </button>
+                    </nav>
+                </>
             )}
-        </header>
-    )
-}
-
-export const HostHeader = () => {
-    return (
-        <header className="header host">
-            <h1>HOST HEADER</h1>
-        </header>
-    )
-}
-
-export const MusicianHeader = () => {
-    return (
-        <header className="header musician">
-            <h1>MUSICIAN HEADER</h1>
-        </header>
-    )
-}
-
-export const GigGoerHeader = () => {
-    return (
-        <header className="header gig-goer">
-            <h1>GIGGOER HEADER</h1>
         </header>
     )
 }

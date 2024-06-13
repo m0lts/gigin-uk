@@ -1,10 +1,10 @@
 import { Footer } from "../components/common/Footer"
-import { GigGoerHeader } from "../components/common/Header"
+import { Header } from "../components/common/Header"
 
 export const GigGoerLayout = ({ children }) => {
     return (
         <>
-            <GigGoerHeader />
+            <Header />
             <main>{children}</main>
             <Footer />
         </>

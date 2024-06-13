@@ -1,15 +1,16 @@
 .dashboard {
     height: 100vh;
     width: 100vw;
+    position: relative;
 }
 .dashboard .main {
     display: grid;
     width:100%;
-    grid-template-columns: 20% 80%;
+    grid-template-columns: minmax(0, 250px) auto;
 }
 .dashboard .sidebar {
     height:100%;
-    padding: 1rem;
+    padding: 0 1rem;
 }
 .dashboard .sidebar .btn {
     margin-bottom: 1rem;
@@ -27,7 +28,7 @@
     list-style: none;
 }
 .dashboard .sidebar .menu .break {
-    color: var(--medium-grey);
+    color: var(--off-white);
 }
 .dashboard .sidebar .menu .title {
     text-transform: uppercase;
@@ -37,7 +38,8 @@
     margin-bottom: 10px;
 }
 .dashboard .sidebar .menu-item {
-    margin: 0 5px;
+    position: relative;
+    margin: 2px 5px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -46,18 +48,48 @@
     font-weight: 300;
     padding:7px 10px;
     border-radius: 5px;
-    border:2px solid transparent;
-    transition: border 0.2s linear;
+    transition: background-color 0.2s linear;
 }
 .dashboard .sidebar .menu-item:hover {
-    border:2px solid var(--light-grey);
+    background-color: var(--off-white);
 }
 .dashboard .sidebar .menu-item.sub {
     margin-left: 15px;
 }
-.dashboard .sidebar .menu-item.sub:hover {
-    border:2px solid transparent;
-}
 .dashboard .sidebar .menu-item .sub .icon {
     font-size: 1rem;
+}
+.dashboard .sidebar .menu-item.expandable .sub {
+    transition: all 0.2s linear;
+    position: absolute;
+    right:5px;
+    padding:0 5px;
+}
+.dashboard .sidebar .menu-item.active {
+    border-left: 3px solid var(--gigin-orange);
+    border-radius: 0px 5px 5px 0;
+    font-weight: 400;
+}
+.dashboard .sidebar .feedback-box {
+    background-color: var(--off-white);
+    border-radius: 10px;
+    padding:10px;
+    padding-top: 15px;
+    margin-top:1rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap:10px;
+    align-items: flex-start;
+}
+.dashboard .sidebar .feedback-box:hover {
+    background-color: var(--trans-gigin-orange);
+}
+.dashboard .sidebar .feedback-box p {
+    font-size: 0.9rem;
+}
+
+
+.dashboard .window {
+    background-color: var(--off-white);
 }
