@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate, useLocation, Link } from "react-router-dom"
 import { HostLogoLink, MusicianLogoLink, NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
@@ -57,33 +57,18 @@ export const Header = ({ setAuthModal, setAuthType }) => {
                         )}
                     </div>
                     <div className="right">
-                        {location.pathname.includes('host') ? (
-                            <div className="buttons">
+                        <div className="buttons">
+                            <Link className="link" to={'/host/dashboard'}>
                                 <button className="btn secondary">
                                     <DashboardIcon />
                                     Dashboard
                                 </button>
-                                <button className="btn secondary">
-                                    <MailboxEmptyIcon />
-                                    Messages
-                                </button>
-                            </div>
-                        ) : location.pathname.includes('musician') ? (
-                            <div className="buttons">
-                                <button className="btn secondary">
-                                    <DashboardIcon />
-                                    Dashboard
-                                </button>
-                                <button className="btn secondary">
-                                    <MailboxEmptyIcon />
-                                    Messages
-                                </button>
-                            </div>
-                        ) : (
-                            <button className="btn text">
-                                What is Gigin?
+                            </Link>
+                            <button className="btn secondary">
+                                <MailboxEmptyIcon />
+                                Messages
                             </button>
-                        )}
+                        </div>
                         <button className="btn secondary" onClick={() => setAccountMenu(!accountMenu)}>
                             {user.name}
                             <DownChevronIcon />

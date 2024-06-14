@@ -27,10 +27,12 @@ export const GigDate = ({ formData, handleInputChange }) => {
     }, [formData.dateUndecided])
 
     return (
-        <>
-            <h1 className="title">When is the Gig?</h1>
+        <>  
+            <div className="head">
+                <h1 className="title">When is the Gig?</h1>
+            </div>
             <div className="body date">
-                <div className="date-undecided">
+                <div className="toggle-container">
                     <label htmlFor="date-undecided">Date undecided?</label>
                     <label className="switch">
                         <input

@@ -5,11 +5,13 @@ import { GigDate } from './Stage1_Date';
 import { GigLocation } from './Stage2_Location';
 import { GigPrivacy } from './Stage3_Privacy';
 import { GigMusic } from './Stage4_Music';
-import { GigTimings } from './Stage5_Timings';
-import { GigBudget } from './Stage6_Budget';
-import { GigReview } from './Stage7_Review';
+import { GigTimings } from './Stage7_Timings';
+import { GigBudget } from './Stage8_Budget';
+import { GigReview } from './Stage9_Review';
 import { v4 as uuidv4 } from 'uuid';
 import '/styles/host/gig-post.styles.css'
+import { GigGenre } from './Stage5_Genre';
+import { GigExtraDetails } from './Stage6_ExtraDetails';
 
 export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
 
@@ -28,12 +30,15 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
         gigType: '',
         genre: '',
         musicType: '',
-        startTime: null,
-        duration: null,
+        noMusicPreference: false,
+        startTime: '',
+        duration: 0,
         budget: '',
         extraInformation: '',
         privateApplications: false,
     });
+
+    console.log(formData)
 
     const handleInputChange = (updates) => {
         setFormData((prevFormData) => ({
@@ -49,7 +54,25 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
     };
 
     const nextStage = () => {
-        setStage(prevStage => prevStage + 1);
+        // if (stage === 1 && formData.date !== null && formData.dateUndecided === false) {
+        //     setStage(prevStage => prevStage + 1);
+        // } else if (stage === 1 && formData.date === null && formData.dateUndecided === true){
+        //     setStage(prevStage => prevStage + 1);
+        // } else {
+        //     return;
+        // }
+        // if (stage === 2 && formData.venueId !== '') {
+        //     setStage(prevStage => prevStage + 1);
+        // } else {
+        //     return;
+        // }
+        // if (stage === 3 && formData.privacy !== '' && formData.kind !== '') {
+        //     setStage(prevStage => prevStage + 1);
+        // } else {
+        //     return;
+        // }
+                    setStage(prevStage => prevStage + 1);
+
     };
 
     const prevStage = () => {
@@ -64,6 +87,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
                     <GigDate
                         formData={formData}
                         handleInputChange={handleInputChange}
+                        setStage={setStage}
                     />
                 );
             case 2:
@@ -72,6 +96,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
                         formData={formData}
                         handleInputChange={handleInputChange}
                         venueProfiles={venueProfiles}
+                        setStage={setStage}
                     />
                 );
             case 3:
@@ -79,6 +104,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
                     <GigPrivacy
                         formData={formData}
                         handleInputChange={handleInputChange}
+                        setStage={setStage}
                     />
                 );
             case 4:
@@ -86,23 +112,42 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
                     <GigMusic
                         formData={formData}
                         handleInputChange={handleInputChange}
+                        setStage={setStage}
                     />
                 );
             case 5:
                 return (
-                    <GigTimings
+                    <GigGenre
                         formData={formData}
                         handleInputChange={handleInputChange}
+                        setStage={setStage}
                     />
                 );
             case 6:
                 return (
-                    <GigBudget
+                    <GigExtraDetails
                         formData={formData}
                         handleInputChange={handleInputChange}
+                        setStage={setStage}
                     />
                 );
             case 7:
+                return (
+                    <GigTimings
+                        formData={formData}
+                        handleInputChange={handleInputChange}
+                        setStage={setStage}
+                    />
+                );
+            case 8:
+                return (
+                    <GigBudget
+                        formData={formData}
+                        handleInputChange={handleInputChange}
+                        setStage={setStage}
+                    />
+                );
+            case 9:
                 return (
                     <GigReview
                         formData={formData}
@@ -117,7 +162,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
     return (
         <div className="modal gig-post" onClick={handleModalClick}>
             <div className="modal-content">
-                {(stage !== 1 && stage !== 7) ? (
+                {(stage !== 1 && stage !== 9) ? (
                     <button className="btn secondary close" onClick={() => setGigPostModal(false)}>
                         Save and Exit
                     </button>
@@ -135,7 +180,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
                 <div className={`control-buttons ${stage === 1 && 'single'}`}>
                     {stage === 1 ? (
                         <button className='btn primary' onClick={nextStage}>Next</button>
-                    ) : stage === 7 ? (
+                    ) : stage === 9 ? (
                         <>
                             <button className='btn secondary' onClick={prevStage}>Back</button>
                             <button className='btn primary' onClick={() => setGigPostModal(false)}>Post the Gig</button>

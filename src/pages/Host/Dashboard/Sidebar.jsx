@@ -22,7 +22,6 @@ export const Sidebar = ({ setGigPostModal }) => {
                     Overview
                 </li>
             </ul>
-            <hr className="break" />
             <ul className="menu">
                 <li className="title">gigs</li>
                 <li className={`menu-item expandable ${location.pathname === '/host/dashboard/gigs' && 'active'}`} onClick={() => navigate('/host/dashboard/gigs')}>
@@ -47,7 +46,6 @@ export const Sidebar = ({ setGigPostModal }) => {
                     </>
                 )}
             </ul>
-            <hr className="break" />
             <ul className="menu">
                 <li className="title">venues</li>
                 <li className={`menu-item ${location.pathname === '/host/dashboard/venues' && 'active'}`} onClick={() => navigate('/host/dashboard/venues')}>
@@ -59,7 +57,6 @@ export const Sidebar = ({ setGigPostModal }) => {
                     New Venue
                 </li>
             </ul>
-            <hr className="break" />
             <ul className="menu">
                 <li className="title">musicians</li>
                 <li className={`menu-item ${location.pathname === '/host/dashboard/musicians' && 'active'}`} onClick={() => navigate('/host/dashboard/musicians')}>
@@ -71,7 +68,6 @@ export const Sidebar = ({ setGigPostModal }) => {
                     Find Musicians
                 </li>
             </ul>
-            <hr className="break" />
             <ul className="menu">
                 <li className="title">finances</li>
                 <li className={`menu-item ${location.pathname === '/host/dashboard/finances' && 'active'}`} onClick={() => navigate('/host/dashboard/finances')}>
@@ -87,7 +83,6 @@ export const Sidebar = ({ setGigPostModal }) => {
                     Invoices
                 </li>
             </ul>
-            <hr className="break" />
                 <div className="feedback-box">
                     <LightBulbIcon />
                     <h5>Tell us your ideas!</h5>

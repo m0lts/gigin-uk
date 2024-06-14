@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { BeerIcon, ClubIcon, HouseIcon, MicrophoneIcon, OtherIcon, PlaceOfWorshipIcon, RestaurantIcon, VillageHallIcon } from "../../../../components/ui/icons/Icons";
+import { BeerIcon, ClubIcon, HouseIcon, MicrophoneIcon, OtherIcon, PlaceOfWorshipIcon, RestaurantIcon, VillageHallIcon } from "/components/ui/icons/Icons";
 
-export const GigLocation = ({ formData, handleInputChange, venueProfiles }) => {
+export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage }) => {
 
 
     const handleLocationSelect = (venue) => {
@@ -11,6 +11,7 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles }) => {
             address: venue.address,
             venueName: venue.name,
         });
+        setStage(prevStage => prevStage + 1);
     }
 
     const getIcon = (type, establishment) => {
@@ -37,13 +38,16 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles }) => {
 
     return (
         <>
-            <h1 className="title">Where is the Gig?</h1>
+            <div className="head">
+                <h1 className="title">Where is the Gig?</h1>
+                
+            </div>
             <div className="body location">
                 <div className="selections">
                     {venueProfiles.map((venue, index) => (
                         <div className={`card ${formData.venueName === venue.name && 'selected'}`} key={index} onClick={() => handleLocationSelect(venue)}>
                             { getIcon(venue.type, venue.establishment) }
-                            <p className="text">{venue.name}</p>
+                            <h4 className="text">{venue.name}</h4>
                         </div>
                     ))}
                 </div>
