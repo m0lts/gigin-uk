@@ -7,3 +7,9 @@
 
 # Profiles in database:
 - each user has one profile document, labelled with their userID. in the document the key 'profiles' is an array and has the value of all the profiles the user has created. Each profile has a unique ID - if the user edits a profile, then the profile with the matching ID in the database gets updated.
+
+{
+    "rewrites": [
+        {"source": "/(.*)", "destination": "/"}
+    ]
+}

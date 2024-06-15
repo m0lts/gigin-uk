@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BeerIcon, ClubIcon, HouseIcon, MicrophoneIcon, OtherIcon, PlaceOfWorshipIcon, RestaurantIcon, VillageHallIcon } from "/components/ui/icons/Icons";
+import { BeerIcon, ClubIcon, HouseIcon, MicrophoneIcon, OtherIcon, PlaceOfWorshipIcon, RestaurantIcon, VillageHallIcon } from "/components/ui/Icons/Icons";
 
 export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage }) => {
 

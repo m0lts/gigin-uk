@@ -2,7 +2,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom"
 import { HostLogoLink, MusicianLogoLink, NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
-import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "../ui/icons/Icons"
+import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "../ui/Icons/Icons"
 import { useState } from "react"
 
 export const Header = ({ setAuthModal, setAuthType }) => {
