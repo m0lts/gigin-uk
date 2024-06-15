@@ -9,8 +9,11 @@ export const HostDashboard = () => {
 
     const { user } = useAuth();
 
-    const [venueProfiles, setVenueProfiles] = useState([]);
     const [gigPostModal, setGigPostModal] = useState(false);
+    const [venueProfiles, setVenueProfiles] = useState([]);
+    const [gigs, setGigs] = useState([]);
+    const [incompleteGigs, setIncompleteGigs] = useState([]);
+    const [templates, setTemplates] = useState([]);
 
     useEffect(() => {
         const fetchHostData = async () => {
@@ -22,6 +25,8 @@ export const HostDashboard = () => {
 
                 if (response.data.completeProfiles) {
                     setVenueProfiles(response.data.completeProfiles)
+                    console.log(response.data.completeProfiles);
+
                 }
                 
             } catch (error) {
@@ -33,6 +38,31 @@ export const HostDashboard = () => {
             fetchHostData()
         }
     }, [user])
+
+    useEffect(() => {
+        const fetchVenueData = async () => {
+            if (venueProfiles.length > 0) {
+                const venueIds = venueProfiles.map(profile => profile.venueId);
+                try {
+                    const response = await axios.post('/api/venues/getVenueData', { venueIds });
+                    if (response.data) {
+                        const fetchedGigs = response.data.gigs;
+                        const completeGigs = fetchedGigs.filter(gig => gig.complete !== false);
+                        const incompleteGigs = fetchedGigs.filter(gig => gig.complete === false);
+
+                        setGigs(completeGigs);
+                        setIncompleteGigs(incompleteGigs);
+
+                        setTemplates(response.data.templates);
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        };
+
+        fetchVenueData();
+    }, [venueProfiles]);
 
     return (
         <>
@@ -48,7 +78,7 @@ export const HostDashboard = () => {
                     <Route path="finances" element={<h1>financials</h1>} />
                 </Routes>
             </div>
-            {gigPostModal && <GigPostModal setGigPostModal={setGigPostModal} venueProfiles={venueProfiles} user={user} />}
+            {gigPostModal && <GigPostModal setGigPostModal={setGigPostModal} venueProfiles={venueProfiles} user={user} templates={templates} incompleteGigs={incompleteGigs} />}
         </>
     )
 }

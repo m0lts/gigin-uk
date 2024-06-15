@@ -24,6 +24,12 @@
     text-align: left;
     transition: background-color 200ms linear, border-color 200ms linear;
 }
+.gig-post .stage .card.small {
+    min-width:fit-content;
+    padding-right: 1rem;
+    align-items: center;
+    min-height:fit-content;
+}
 .gig-post .stage .card .text {
     font-size: 1rem;
     font-weight: 400;
@@ -69,7 +75,10 @@
 .gig-post .modal-content .stage::-webkit-scrollbar {
     display: none;  /* Chrome, Safari, and Opera */
 }
-
+.gig-post .stage .head .title {
+    font-size: 2rem;
+    font-weight: 600;
+}
 .gig-post .stage .head .text {
     margin:5px auto;
     min-width:75%;
@@ -91,6 +100,7 @@
     display: flex;
     gap:10px;
     font-weight: 300;
+    margin: 10px 0;
 }
 .gig-post .stage .switch {
     position: relative;
@@ -145,8 +155,7 @@
 .gig-post .stage .calendar .react-datepicker__header,
 .gig-post .stage .calendar .react-datepicker__current-month,
 .gig-post .stage .calendar .react-datepicker__day-name {
-    background-color: var(--dark-grey);
-    color: var(--white);
+    background-color: var(--light-grey);
 }
 .gig-post .stage .calendar .react-datepicker__day--selected,
 .gig-post .stage .calendar .react-datepicker__day--in-range,
@@ -230,8 +239,8 @@
     border:1px solid var(--light-medium-grey);
     border-radius: 5px;
     padding:10px;
-    min-width:300px;
-    max-width: 350px;
+    min-width:450px;
+    max-width: 500px;
     max-height: 250px;
 }
 
@@ -286,10 +295,21 @@
 /* Timeline */
 .gig-post .stage .timings .timeline {
     position: relative;
-    padding-left: 40px;
+    padding-left: 20px;
     margin-top: 20px;
     width:50%;
 }
+.gig-post .stage .timings .timeline .subtitle {
+    margin-bottom: 20px;
+    text-align: left;
+}
+.gig-post .stage .timings .timeline .subtitle .label {
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--dark-grey);
+    margin-bottom: 10px;
+}
+
 .gig-post .stage .timings .timeline-event {
     display: flex;
     align-items: center;
@@ -307,10 +327,19 @@
     padding:5px 10px;
     border-radius: 5px;
 }
+.gig-post .stage .timings .timeline-time.orange {
+    background-color: var(--gigin-orange);
+    color: var(--white);
+    border:1px solid var(--white);
+}
 .gig-post .stage .timings .timeline-line {
     width:25px;
     height:1px;
     border:1px solid var(--light-medium-grey);
+}
+.gig-post .stage .timings .timeline-context p {
+    font-size: 0.8rem;
+    text-align: left;
 }
 .gig-post .stage .timings .timeline-details {
     background-color: var(--white);
@@ -318,6 +347,7 @@
     border-radius: 4px;
     padding: 10px;
     box-shadow: 0 2px 4px var(--light-medium-grey);
+    width:100%;
 }
 .gig-post .stage .timings .timeline-details h4 {
     margin: 0;
@@ -359,20 +389,21 @@
     padding-top: 0;
 }
 .gig-post .stage .review-box {
-    width:75%;
+    width:fit-content;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap:5px;
     position: relative;
+}
+.gig-post .stage .review-box .icon {
+    position: absolute;
+    top:0;
+    color: var(--dark-grey);
 }
 .gig-post .stage .review .value {
     font-size: 1.25rem;
     font-weight: 500;
-}
-.gig-post .stage .review .label {
-    font-weight: 400;
-    font-size: 1rem;
-    color: var(--dark-grey);
 }
 .gig-post .stage .review .review-grid {
     width:100%;
@@ -388,20 +419,105 @@
     align-items: center;
     justify-content: space-around;
 }
+.gig-post .stage .review .review-right {
+    align-items: flex-start;
+}
 .gig-post .stage .review .review-left {
     border-right: 1px solid var(--light-medium-grey);
+}
+.gig-post .stage .review .review-extra-option .label {
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--dark-grey);
+    text-align: left;
+}
+.gig-post .stage .review .review-extra-option .repeat-group {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap:5px;
+    margin-top: 0.5rem;
+}
+.gig-post .stage .review #gigRepeat,
+.gig-post .stage .review #repeatEnd,
+.gig-post .stage .review #endRepeatAfter,
+.gig-post .stage .review #endRepeatDate {
+    padding:0.5rem;
+    border: 1px solid var(--light-medium-grey);
+    border-radius: 5px;
+    font-size: 0.8rem;
+}
+.gig-post .stage .review .end-repeat-after-cont {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+.gig-post .stage .review #endRepeatAfter {
+    width:60px;
+}
+.gig-post .stage .review .review-extra-option {
+    width:100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.gig-post .stage .review .review-extra-option .input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.gig-post .stage .review .review-extra-option .input-group .input {
+    margin: 5px 0;
+    min-width: 200px;
+    padding:0.5rem;
+    border: 1px solid var(--light-medium-grey);
+    border-radius: 5px;
+    font-size: 0.8rem;
+}
+.gig-post .stage .review .review-extra-option .toggle-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 5px;
+}
+.gig-post .stage .review .review-extra-option .text {
+    text-align: left;
+    font-size: 0.9rem;
+}
+.gig-post .stage .review .review-extra-option .private-link {
+    border:1px solid var(--light-grey);
+    padding: 5px;
+    margin-top:5px;
+    display: flex;
+    align-items: center;
+    max-width: 300px;
+}
+.gig-post .stage .review .review-extra-option .private-link .text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+.gig-post .stage .review .review-extra-option .private-link .icon {
+    cursor: pointer;
 }
 
 
 
 
 
-
-.gig-post .progress-bar {
-    width:100%;
-    height:5px;
-    background-color: var(--black);
+.gig-post .progress-bar-container {
+    width: 90%;
+    background-color: var(--light-grey);
+    height: 5px;
+    border-radius: 5px;
+    overflow: hidden;
     margin-bottom: 1rem;
+}
+.gig-post .progress-bar {
+    height: 100%;
+    background-color: var(--black);
+    transition: width 1s ease;
 }
 .gig-post .control-buttons {
     position: absolute;

@@ -83,6 +83,12 @@ export const GigTimings = ({ formData, handleInputChange }) => {
                     </div>
                 </div>
                 <div className="timeline">
+                    <div className="subtitle">
+                        <h4 className="label">Gig Timeline</h4>
+                        {formData.startTime === '' && (
+                            <p>Fill out your timings to see a rough timeline of the evening.</p>
+                        )}
+                    </div>
                     {formData.startTime !== '' && (
                         <>
                             <div className="timeline-event">
@@ -91,17 +97,15 @@ export const GigTimings = ({ formData, handleInputChange }) => {
                                 <div className="timeline-content">
                                     <div className="timeline-details">
                                         <h4>Musicians Arrive</h4>
-                                        <p>Setting up and soundchecking usually takes around 1 hour.</p>
                                     </div>
                                 </div>
                             </div>
                             <div className="timeline-event">
-                                <div className="timeline-time">{formData.startTime ? formatTime(formData.startTime) : '00:00'}</div>
+                                <div className="timeline-time orange">{formData.startTime ? formatTime(formData.startTime) : '00:00'}</div>
                                 <div className="timeline-line"></div>
                                 <div className="timeline-content">
                                     <div className="timeline-details">
                                         <h4>Performance Starts</h4>
-                                        <p>Musicians will typically need a small break after an hour of performing.</p>
                                     </div>
                                 </div>
                             </div>
@@ -109,13 +113,21 @@ export const GigTimings = ({ formData, handleInputChange }) => {
                     )}
                     {(formData.startTime !== '' && formData.duration !== 0) && (
                         <>
+                            {formData.duration > 60 && (
+                                <div className="timeline-event">
+                                    <div className="timeline-content">
+                                        <div className="timeline-context">
+                                            <p>* Musicians usually require a short break after an hour of performing.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             <div className="timeline-event">
-                                <div className="timeline-time">{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
+                                <div className="timeline-time orange">{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
                                 <div className="timeline-line"></div>
                                 <div className="timeline-content">
                                     <div className="timeline-details">
                                         <h4>Performance Ends</h4>
-                                        <p>Packing down and loading out usually takes around 1 hour.</p>
                                     </div>
                                 </div>
                             </div>
@@ -125,7 +137,6 @@ export const GigTimings = ({ formData, handleInputChange }) => {
                                 <div className="timeline-content">
                                     <div className="timeline-details">
                                         <h4>Musicians Leave</h4>
-                                        <p>The musicians will be paid when the gig is complete.</p>
                                     </div>
                                 </div>
                             </div>

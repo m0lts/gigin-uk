@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CloseIcon } from '/components/ui/Icons/Icons'
 import '/styles/common/modals.styles.css'
 import { GigDate } from './Stage1_Date';
@@ -12,33 +12,36 @@ import { v4 as uuidv4 } from 'uuid';
 import '/styles/host/gig-post.styles.css'
 import { GigGenre } from './Stage5_Genre';
 import { GigExtraDetails } from './Stage6_ExtraDetails';
+import { GigTemplates } from './Stage0_Templates';
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs }) => {
 
-    const [stage, setStage] = useState(1);
+    const [stage, setStage] = useState(0);
     const [formData, setFormData] = useState({
         gigId: uuidv4(),
-        venueId: '',
-        userId: user.userId,
+        venue: {
+            venueId: '',
+            venueName: '',
+            address: '',
+        },
         date: null,
         dateUndecided: false,
         coordinates: null,
-        venueName: '',
-        address: '',
         privacy: '',
         kind: '',
         gigType: '',
         genre: '',
-        musicType: '',
         noMusicPreference: false,
         startTime: '',
         duration: 0,
-        budget: '',
+        budget: '£',
         extraInformation: '',
         privateApplications: false,
+        applicants: [],
+        createdAt: new Date(),
     });
-
-    console.log(formData)
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     const handleInputChange = (updates) => {
         setFormData((prevFormData) => ({
@@ -47,6 +50,10 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
         }));
     };
 
+    useEffect(() => {
+        console.log(formData)
+    }, [formData])
+
     const handleModalClick = (e) => {
         if (e.target.className === 'modal') {
           setGigPostModal(false);
@@ -54,26 +61,65 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
     };
 
     const nextStage = () => {
-        // if (stage === 1 && formData.date !== null && formData.dateUndecided === false) {
-        //     setStage(prevStage => prevStage + 1);
-        // } else if (stage === 1 && formData.date === null && formData.dateUndecided === true){
-        //     setStage(prevStage => prevStage + 1);
-        // } else {
-        //     return;
-        // }
-        // if (stage === 2 && formData.venueId !== '') {
-        //     setStage(prevStage => prevStage + 1);
-        // } else {
-        //     return;
-        // }
-        // if (stage === 3 && formData.privacy !== '' && formData.kind !== '') {
-        //     setStage(prevStage => prevStage + 1);
-        // } else {
-        //     return;
-        // }
-                    setStage(prevStage => prevStage + 1);
+        if (stage === 0) {
+            setStage(prevStage => prevStage + 1)
+        }
 
+        if (stage === 1) {
+            if ((formData.date !== null && !formData.dateUndecided) || (formData.date === null && formData.dateUndecided)) {
+                setStage(prevStage => prevStage + 1);
+            }
+            return;
+        }
+    
+        if (stage === 2) {
+            if (formData.venue.venueId !== '') {
+                setStage(prevStage => prevStage + 1);
+            }
+            return;
+        }
+    
+        if (stage === 3) {
+            if (formData.privacy !== '' && formData.kind !== '') {
+                setStage(prevStage => prevStage + 1);
+            }
+            return;
+        }
+    
+        if (stage === 4) {
+            if (formData.gigType !== '') {
+                setStage(prevStage => prevStage + 1);
+            }
+            return;
+        }
+    
+        if (stage === 5) {
+            if (formData.noMusicPreference || (Array.isArray(formData.genre) && formData.genre.length > 0)) {
+                setStage(prevStage => prevStage + 1);
+            }
+            return;
+        }
+    
+        if (stage === 6) {
+            setStage(prevStage => prevStage + 1);
+            return;
+        }
+    
+        if (stage === 7) {
+            if (formData.startTime !== '' && formData.duration !== 0) {
+                setStage(prevStage => prevStage + 1);
+            }
+            return;
+        }
+    
+        if (stage === 8) {
+            if (formData.budget !== '£') {
+                setStage(prevStage => prevStage + 1);
+            }
+            return;
+        }
     };
+    
 
     const prevStage = () => {
         setStage(prevStage => prevStage - 1);
@@ -82,6 +128,14 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
 
     const renderStageContent = () => {
         switch(stage) {
+            case 0:
+                return (
+                    <GigTemplates
+                        templates={templates}
+                        incompleteGigs={incompleteGigs}
+                        setFormData={setFormData}
+                    />
+                )
             case 1:
                 return (
                     <GigDate
@@ -152,6 +206,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
                     <GigReview
                         formData={formData}
                         handleInputChange={handleInputChange}
+                        setStage={setStage}
                     />
                 );
             default:
@@ -159,31 +214,97 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, user }) => {
         }
     };
 
+    const getProgressPercentage = () => {
+        return ((stage) / 9) * 100;
+    };
+
+    const handlePostGig = async () => {
+        setLoading(true);
+        const gigDataPacket = {
+            ...formData,
+            complete: true,
+        }
+
+        
+        const response = await fetch('/api/gigs/postGig', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                gigDataPacket
+            }),
+        });
+    
+        if (!response.ok) {
+            setLoading(false);
+            throw new Error('Failed to post gig');
+        } else {
+            setLoading(false);
+            setGigPostModal(false);
+        }
+
+    }    
+
+
+    const handleSaveAndExit = async () => {
+        setSaving(true);
+        const gigDataPacket = {
+            ...formData,
+            complete: false,
+        }    
+
+        const response = await fetch('/api/gigs/postGig', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                gigDataPacket
+            }),
+        });
+    
+        if (!response.ok) {
+            setSaving(false);
+            throw new Error('Failed to post gig');
+        } else {
+            setSaving(false);
+            setGigPostModal(false);
+        }
+    }
+
+
     return (
         <div className="modal gig-post" onClick={handleModalClick}>
             <div className="modal-content">
-                {(stage !== 1 && stage !== 9) ? (
-                    <button className="btn secondary close" onClick={() => setGigPostModal(false)}>
-                        Save and Exit
+                {(stage !== 1 && stage !== 9 && stage !== 0) ? (
+                    <button className="btn secondary close" onClick={handleSaveAndExit}>
+                        {saving ? 'Saving...' : 'Save and Exit'}
                     </button>
-                ) : stage === 1 && (
+                ) : (stage === 1 || stage === 0) && (
                     <button className="btn secondary close" onClick={() => setGigPostModal(false)}>
                         Close
                     </button>
                 )}
                 <div className="stage">
-                    {renderStageContent()}
+                    {loading ? (
+                        <div className="head">
+                            <h1 className="title">Posting Gig...</h1>
+                        </div>
+                    ) : (
+                        renderStageContent()
+                    )}
                 </div>
-                <div className="progress-bar">
-
+                <div className="progress-bar-container">
+                    <div className="progress-bar" style={{ width: `${getProgressPercentage()}%` }}></div>
                 </div>
-                <div className={`control-buttons ${stage === 1 && 'single'}`}>
-                    {stage === 1 ? (
+                <div className={`control-buttons ${(stage === 1 || stage === 0) && 'single'}`}>
+                    {(stage === 1 || stage === 0) ? (
                         <button className='btn primary' onClick={nextStage}>Next</button>
                     ) : stage === 9 ? (
                         <>
                             <button className='btn secondary' onClick={prevStage}>Back</button>
-                            <button className='btn primary' onClick={() => setGigPostModal(false)}>Post the Gig</button>
+                            <button className='btn primary' onClick={handlePostGig}>Post the Gig</button>
                         </>
                     ) : (
                         <>

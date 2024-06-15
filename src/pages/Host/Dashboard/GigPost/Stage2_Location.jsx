@@ -6,10 +6,12 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
 
     const handleLocationSelect = (venue) => {
         handleInputChange({
-            venueId: venue.venueId,
+            venue: {
+                venueId: venue.venueId,
+                venueName: venue.name,                
+                address: venue.address,
+            },
             coordinates: venue.coordinates,
-            address: venue.address,
-            venueName: venue.name,
         });
         setStage(prevStage => prevStage + 1);
     }
@@ -45,7 +47,7 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
             <div className="body location">
                 <div className="selections">
                     {venueProfiles.map((venue, index) => (
-                        <div className={`card ${formData.venueName === venue.name && 'selected'}`} key={index} onClick={() => handleLocationSelect(venue)}>
+                        <div className={`card ${formData.venue.venueName === venue.name && 'selected'}`} key={index} onClick={() => handleLocationSelect(venue)}>
                             { getIcon(venue.type, venue.establishment) }
                             <h4 className="text">{venue.name}</h4>
                         </div>
