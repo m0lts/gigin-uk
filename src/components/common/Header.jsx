@@ -27,6 +27,7 @@ export const Header = ({ setAuthModal, setAuthType }) => {
             window.location.reload();
         }
     }
+    
 
     const getLocation = () => {
         if (location.pathname.includes('host')) {
