@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LeftChevronIcon } from '/components/ui/Icons/Icons';
+import { LeftChevronIcon } from '/components/ui/Extras/Icons';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Map, { Marker } from 'react-map-gl';
 import { AddressInputAutofill } from './AddressInputAutofill';
