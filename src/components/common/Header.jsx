@@ -1,5 +1,5 @@
 import { useNavigate, useLocation, Link } from "react-router-dom"
-import { HostLogoLink, MusicianLogoLink, NoTextLogo, NoTextLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
+import { HostLogoLink, MusicianLogoLink, TextLogo } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
 import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "../ui/Icons/Icons"
