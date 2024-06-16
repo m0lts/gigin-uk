@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { PeopleRoofIcon, HouseIcon } from '/components/ui/Icons/Icons';
+import { PeopleRoofIcon, HouseIcon } from '/components/ui/Extras/Icons';
 
 export const VenueType = ({ formData, handleInputChange }) => {
 

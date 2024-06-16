@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LeftChevronIcon } from '/components/ui/Icons/Icons';
+import { LeftChevronIcon } from '/components/ui/Extras/Icons';
 
 export const AdditionalDetails = ({ formData, handleInputChange, handleSubmit }) => {
 

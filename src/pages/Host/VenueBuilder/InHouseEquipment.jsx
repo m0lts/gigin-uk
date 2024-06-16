@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LeftChevronIcon, AmpIcon, DrumsIcon, MicrophoneIcon, PianoIcon, SpeakersIcon } from '/components/ui/Icons/Icons';
+import { LeftChevronIcon, AmpIcon, DrumsIcon, MicrophoneIcon, PianoIcon, SpeakersIcon } from '/components/ui/Extras/Icons';
 
 export const InHouseEquipment = ({ formData, handleInputChange }) => {
 

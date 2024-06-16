@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LeftChevronIcon, CameraIcon, CloseIcon } from '/components/ui/Icons/Icons';
+import { LeftChevronIcon, CameraIcon, CloseIcon } from '/components/ui/Extras/Icons';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
