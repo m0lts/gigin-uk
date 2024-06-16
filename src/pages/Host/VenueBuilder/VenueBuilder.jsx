@@ -8,7 +8,7 @@ import { InHouseEquipment } from "./InHouseEquipment";
 import { Photos } from "./Photos";
 import { AdditionalDetails } from "./AdditionalDetails";
 import '/styles/host/venue-builder.styles.css'
-import { CameraIcon, ExitIcon, HouseIcon } from "/components/ui/Icons/Icons";
+import { CameraIcon, ExitIcon } from "/components/ui/Icons/Icons";
 import axios from "axios";
 import { UploadingProfile } from "./UploadingProfile";
 
