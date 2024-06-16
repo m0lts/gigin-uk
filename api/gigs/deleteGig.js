@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import { MongoClient } from 'mongodb';
 
 const uri = process.env.MONGODB_URI;
 const options = {};
@@ -14,30 +14,24 @@ export default async function handler(req, res) {
         return;
     }
 
+    const { gigId, venueId } = req.body;
+
     let mongoClient;
 
     try {
         mongoClient = await (new MongoClient(uri, options)).connect();
-
         const db = mongoClient.db("gigin-v1");
-        const accounts = db.collection("accounts");
-        const venueProfiles = db.collection("venueProfiles");
         const gigs = db.collection("gigs");
+        const venueProfiles = db.collection("venueProfiles");
 
-        const { venueId, userId } = req.body;
+        await gigs.deleteOne({ gigId });
 
-        const deleteVenueProfile = await venueProfiles.deleteOne({ venueId: venueId });
+        await venueProfiles.updateOne(
+            { venueId },
+            { $pull: { gigs: gigId } }
+        );
 
-        if (deleteVenueProfile) {
-            await accounts.updateOne(
-                { userId: userId },
-                { $pull: { venueProfiles: venueId } }
-            );
-            await gigs.deleteMany({ "venue.venueId": venueId });
-            res.status(200).json({ message: 'Venue profile deleted successfully' });
-        } else {
-            res.status(404).json({ error: 'Venue profile not found' });
-        }
+        res.status(200).json({ message: 'Gig deleted successfully.' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });

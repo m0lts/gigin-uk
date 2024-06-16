@@ -14,10 +14,10 @@ import { GigGenre } from './Stage5_Genre';
 import { GigExtraDetails } from './Stage6_ExtraDetails';
 import { GigTemplates } from './Stage0_Templates';
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData }) => {
 
-    const [stage, setStage] = useState(0);
-    const [formData, setFormData] = useState({
+    const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
+    const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
         venue: {
             venueId: '',
@@ -49,10 +49,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
             ...updates,
         }));
     };
-
-    useEffect(() => {
-        console.log(formData)
-    }, [formData])
 
     const handleModalClick = (e) => {
         if (e.target.className === 'modal') {
@@ -129,13 +125,17 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
     const renderStageContent = () => {
         switch(stage) {
             case 0:
-                return (
-                    <GigTemplates
-                        templates={templates}
-                        incompleteGigs={incompleteGigs}
-                        setFormData={setFormData}
-                    />
-                )
+                if (!editGigData) {
+                    return (
+                        <GigTemplates
+                            templates={templates}
+                            incompleteGigs={incompleteGigs}
+                            setFormData={setFormData}
+                        />
+                    )
+                } else {
+                    setStage(1);
+                }
             case 1:
                 return (
                     <GigDate
@@ -215,7 +215,11 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
     };
 
     const getProgressPercentage = () => {
-        return ((stage) / 9) * 100;
+        if (templates.length > 0 || incompleteGigs.length > 0) {
+            return ((stage) / 9) * 100;
+        } else {
+            return ((stage) / 8) * 100;
+        }
     };
 
     const handlePostGig = async () => {
@@ -242,6 +246,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         } else {
             setLoading(false);
             setGigPostModal(false);
+            window.location.reload();
         }
 
     }    
@@ -249,10 +254,18 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
 
     const handleSaveAndExit = async () => {
         setSaving(true);
-        const gigDataPacket = {
-            ...formData,
-            complete: false,
-        }    
+
+        let gigDataPacket;
+        if (formData.complete) {
+            gigDataPacket = {
+                ...formData,
+            } 
+        } else {
+            gigDataPacket = {
+                ...formData,
+                complete: false,
+            } 
+        }
 
         const response = await fetch('/api/gigs/postGig', { 
             method: 'POST',
@@ -270,6 +283,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         } else {
             setSaving(false);
             setGigPostModal(false);
+            window.location.reload();
         }
     }
 

@@ -1,46 +1,67 @@
+.loading-screen {
+  position: absolute;
+  z-index: 1;
+  width:100%;
+  height:100%;
+  top:0;
+  left:0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.loading-screen .loading-body {
+  position: relative;
+  min-width: 500px;
+  padding:2.5rem 5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap:1rem;
+}
+.loading.dot-flashing {
+  margin: 10px auto;
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 5px;
+  background-color: var(--dark-grey);
+  color: var(--dark-grey);
+  animation: dot-flashing 750ms infinite linear alternate;
+  animation-delay: 0.5s;
+}
+.loading.dot-flashing::before, .dot-flashing::after {
+  content: "";
+  display: inline-block;
+  position: absolute;
+  top: 0;
+}
+.loading.dot-flashing::before {
+  left: -12px;
+  width: 8px;
+  height: 8px;    border-radius: 5px;
+  background-color: var(--dark-grey);
+  color: var(--dark-grey);
+  animation: dot-flashing 750ms infinite alternate;
+  animation-delay: 0s;
+}
+.loading.dot-flashing::after {
+  left: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 5px;
+  background-color: var(--dark-grey);
+  color: var(--dark-grey);
+  animation: dot-flashing 750ms infinite alternate;
+  animation-delay: 1s;
+}
 
-.dot-flashing {
-    margin: 10px auto;
-    position: relative;
-    width: 8px;
-    height: 8px;
-    border-radius: 5px;
+@keyframes dot-flashing {
+  0% {
     background-color: var(--dark-grey);
-    color: var(--dark-grey);
-    animation: dot-flashing 750ms infinite linear alternate;
-    animation-delay: 0.5s;
   }
-  .dot-flashing::before, .dot-flashing::after {
-    content: "";
-    display: inline-block;
-    position: absolute;
-    top: 0;
+  50%, 100% {
+    background-color: var(--light-grey);
   }
-  .dot-flashing::before {
-    left: -12px;
-    width: 8px;
-    height: 8px;    border-radius: 5px;
-    background-color: var(--dark-grey);
-    color: var(--dark-grey);
-    animation: dot-flashing 750ms infinite alternate;
-    animation-delay: 0s;
-  }
-  .dot-flashing::after {
-    left: 12px;
-    width: 8px;
-    height: 8px;
-    border-radius: 5px;
-    background-color: var(--dark-grey);
-    color: var(--dark-grey);
-    animation: dot-flashing 750ms infinite alternate;
-    animation-delay: 1s;
-  }
-  
-  @keyframes dot-flashing {
-    0% {
-      background-color: var(--dark-grey);
-    }
-    50%, 100% {
-      background-color: var(--light-grey);
-    }
-  }
+}

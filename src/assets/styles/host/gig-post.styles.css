@@ -30,6 +30,10 @@
     align-items: center;
     min-height:fit-content;
 }
+.gig-post .stage .card.template {
+    width:fit-content;
+    min-height: fit-content;
+}
 .gig-post .stage .card .text {
     font-size: 1rem;
     font-weight: 400;
@@ -75,9 +79,16 @@
 .gig-post .modal-content .stage::-webkit-scrollbar {
     display: none;  /* Chrome, Safari, and Opera */
 }
+.gig-post .stage .head {
+    width:100%;
+}
 .gig-post .stage .head .title {
     font-size: 2rem;
     font-weight: 600;
+}
+.gig-post .stage .head .title.templates {
+    max-width: 75%;
+    margin: 0 auto;
 }
 .gig-post .stage .head .text {
     margin:5px auto;
@@ -87,6 +98,27 @@
     color: var(--dark-grey);
 }
 
+/* Templates and saved posts */
+.gig-post .stage .templates {
+    width:75%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:1rem;
+}
+.gig-post .stage .templates .subtitle {
+    margin: 10px 0;
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--dark-grey);
+}
+.gig-post .stage .templates .templates-cont .selections,
+.gig-post .stage .templates .saved-cont .selections {
+    display: flex;
+    align-items: center;
+    gap:5px;
+    flex-wrap: wrap;
+}
 
 
 /* When? */

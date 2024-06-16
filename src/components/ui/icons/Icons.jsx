@@ -1,5 +1,5 @@
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAmpGuitar, faArrowLeftFromArc, faBeerFoam, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEnvelope, faFileInvoice, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faShield, faShieldCheck, faSpeakers, faTelescope, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faAmpGuitar, faArrowLeftFromArc, faBeerFoam, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTurntable, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
 // General icons
@@ -246,5 +246,15 @@ export const CopyIcon = () => {
 export const EditIcon = () => {
     return (
         <FontAwesomeIcon icon={faPencilSquare} className="icon" />
+    )
+}
+export const OptionsIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faEllipsis} className="icon" />
+    )
+}
+export const SortIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faSort} className="icon" />
     )
 }

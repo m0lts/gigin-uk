@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LeftChevronIcon } from '/components/ui/Icons/Icons';
-import { CameraIcon } from "../../../components/ui/Icons/Icons";
+import { LeftChevronIcon, CameraIcon, CloseIcon } from '/components/ui/Icons/Icons';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { CloseIcon } from "../../../components/ui/Icons/Icons";
 
 const ItemType = 'IMAGE';
 
@@ -30,7 +28,7 @@ const DraggableImage = ({ image, index, moveImage, removeImage }) => {
             className="preview-image-container"
         >
             <img
-                src={URL.createObjectURL(image)}
+                src={typeof image === 'string' ? image : URL.createObjectURL(image)}
                 alt={`Preview ${index}`}
                 className="preview-image"
             />
@@ -42,9 +40,7 @@ const DraggableImage = ({ image, index, moveImage, removeImage }) => {
 };
 
 export const Photos = ({ formData, handleInputChange }) => {
-
     const navigate = useNavigate();
-
     const [images, setImages] = useState(formData.photos || []);
 
     useEffect(() => {
@@ -67,7 +63,7 @@ export const Photos = ({ formData, handleInputChange }) => {
     };
 
     const handleNext = () => {
-        if (formData.photos.length < 3) return;
+        if (images.length < 3) return;
         navigate('/host/venue-builder/additional-details');
     };
 
@@ -86,7 +82,7 @@ export const Photos = ({ formData, handleInputChange }) => {
         if (formData.type === '') {
             navigate('/host/venue-builder');
         }
-    }, [formData])
+    }, [formData]);
 
     return (
         <DndProvider backend={HTML5Backend}>
@@ -133,3 +129,4 @@ export const Photos = ({ formData, handleInputChange }) => {
         </DndProvider>
     );
 };
+

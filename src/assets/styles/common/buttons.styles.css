@@ -58,3 +58,25 @@
 .btn.text:hover {
     font-weight: 500;
 }
+
+.btn.icon {
+    background-color: var(--white);
+    border: 1px solid var(--light-grey);
+    padding:5px 7px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: border-color 0.2s linear;
+}
+.btn.icon:hover {
+    border: 1px solid var(--dark-grey);
+}
+
+.btn.danger {
+    background-color: transparent;
+    border:none;
+    color: var(--red);
+    padding:5px;
+}
+.btn.danger:hover {
+    text-decoration: underline;
+}

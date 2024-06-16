@@ -51,10 +51,10 @@ export default async function handler(req, res) {
         const token = jwt.sign(
             { userId: user.userId, email: user.email, name: user.name, phoneNumber: user.phoneNumber },
             process.env.JWT_SECRET,
-            { expiresIn: '1h' }
+            { expiresIn: '24h' }
         );
 
-        res.setHeader('Set-Cookie', `jwt=${token}; HttpOnly; Secure; Path=/; Max-Age=3600`);
+        res.setHeader('Set-Cookie', `jwt=${token}; HttpOnly; Secure; Path=/; Max-Age=86400`);
         res.status(200).json({ user: { userId: user.userId, email: user.email, name: user.name, phoneNumber: user.phoneNumber } });
 
     } catch (error) {

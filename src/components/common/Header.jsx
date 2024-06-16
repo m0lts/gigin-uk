@@ -53,6 +53,24 @@ export const Header = ({ setAuthModal, setAuthType }) => {
                                         <span className="item active">Overview</span>
                                     </>
                                 )}
+                                {location.pathname === ('/host/dashboard/gigs') && (
+                                    <>
+                                        <RightChevronIcon />
+                                        <span className="item active">Gigs</span>
+                                    </>
+                                )}
+                                {location.pathname === ('/host/dashboard/venues') && (
+                                    <>
+                                        <RightChevronIcon />
+                                        <span className="item active">Venues</span>
+                                    </>
+                                )}
+                                {location.pathname === ('/host/dashboard/musicians') && (
+                                    <>
+                                        <RightChevronIcon />
+                                        <span className="item active">Musicians</span>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>

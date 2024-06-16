@@ -21,6 +21,7 @@ import { AuthModal } from './components/common/AuthModal';
 import { LoadingThreeDots } from './components/ui/loading/Loading';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { HostDashboard } from './pages/Host/Dashboard/Dashboard';
+import { LoadingScreen } from './components/ui/loading/LoadingScreen';
 
 
 
@@ -32,7 +33,7 @@ export default function App() {
   const [authType, setAuthType] = useState('login');
 
   if (loading) {
-    return <div><h1>Loading...</h1></div>;
+    return <LoadingScreen />;
   }
 
   return (

@@ -31,15 +31,15 @@ export const Sidebar = ({ setGigPostModal }) => {
                 </li>
                 {showSubOptions && (
                     <>
-                        <li className="menu-item sub">
+                        <li className="menu-item sub" onClick={() => navigate('/host/dashboard/gigs?status=confirmed')}>
                             <span className="sub" style={{ color: 'green' }}><TickIcon /></span>
                             Confirmed
                         </li>
-                        <li className="menu-item sub ">
-                            <span className="sub" style={{ color: 'var(--gigin-orange)' }}><ClockIcon /></span>
+                        <li className="menu-item sub" onClick={() => navigate('/host/dashboard/gigs?status=upcoming')}>
+                            <span className="sub" style={{ color: 'orange' }}><ClockIcon /></span>
                             Upcoming
                         </li>
-                        <li className="menu-item sub">
+                        <li className="menu-item sub" onClick={() => navigate('/host/dashboard/gigs?status=previous')}>
                             <span className="sub" style={{ color: 'var(--medium-grey)' }}><PreviousIcon /></span>
                             Previous
                         </li>
@@ -52,7 +52,7 @@ export const Sidebar = ({ setGigPostModal }) => {
                     <DoorIcon />
                     My Venues
                 </li>
-                <li className={`menu-item ${location.pathname === '/host/dashboard/venues' && 'active'}`} onClick={() => navigate('/host/dashboard/venues')}>
+                <li className={`menu-item`} onClick={() => navigate('/host/venue-builder')}>
                     <PlusIcon />
                     New Venue
                 </li>

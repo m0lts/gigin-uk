@@ -17,6 +17,10 @@ const region = "eu-west-2";
 
 export const VenueBuilder = ({ user, setAuthModal }) => {
 
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { venue } = location.state || {};
+
     const [formData, setFormData] = useState({
         venueId: uuidv4(),
         type: '',
@@ -30,13 +34,30 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
         extraInformation: '',
         description: '',
     });
+
+    useEffect(() => {
+        if (venue) {
+            setFormData({
+                venueId: venue.venueId || uuidv4(),
+                type: venue.type || '',
+                name: venue.name || '',
+                address: venue.address || '',
+                coordinates: venue.coordinates || null,
+                establishment: venue.establishment || '',
+                equipmentAvailable: venue.equipmentAvailable || '',
+                equipment: venue.equipment || [],
+                photos: venue.photos || [],
+                extraInformation: venue.extraInformation || '',
+                description: venue.description || '',
+            });
+        }
+    }, [venue])
+
     const [uploadingProfile, setUploadingProfile] = useState(false);
     const [uploadText, setUploadText] = useState('Uploading your images...');
     const [progress, setProgress] = useState(1);
     const [completeSavedProfileModal, setCompleteSavedProfileModal] = useState(false);
     const [savedProfile, setSavedProfile] = useState();
-    const navigate = useNavigate();
-    const location = useLocation();
 
     const handleInputChange = (field, value) => {
         setFormData({
@@ -72,25 +93,33 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
         }
     }, [user, setAuthModal, formData]);
 
-    const uploadImagesToS3 = async (files, venueId) => {
-        const response = await fetch('/api/s3-functions/getSignedUrls', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ files: files.map(file => file.name), venueId }),
-        });
+    const uploadImagesToS3 = async (images, venueId) => {
+        const files = images.filter(image => typeof image !== 'string'); // Filter out URLs
+        const urls = images.filter(image => typeof image === 'string'); // Extract URLs
     
-        const { signedUrls } = await response.json();
+        if (files.length > 0) {
+            const response = await fetch('/api/s3-functions/getSignedUrls', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ files: files.map(file => file.name), venueId }),
+            });
     
-        const uploadPromises = signedUrls.map(({ url, imageName }, index) => {
-            return fetch(url, {
-                method: 'PUT',
-                body: files[index],
-            }).then(() => `https://${bucketName}.s3.${region}.amazonaws.com/${imageName}`);
-        });
+            const { signedUrls } = await response.json();
     
-        return Promise.all(uploadPromises);
+            const uploadPromises = signedUrls.map(({ url, imageName }, index) => {
+                return fetch(url, {
+                    method: 'PUT',
+                    body: files[index],
+                }).then(() => `https://${bucketName}.s3.${region}.amazonaws.com/${imageName}`);
+            });
+    
+            const uploadedUrls = await Promise.all(uploadPromises);
+            return [...urls, ...uploadedUrls]; // Combine original URLs with newly uploaded URLs
+        }
+    
+        return urls; // Return the original URLs if there are no new files to upload
     };
 
     const handleSubmit = async () => {
@@ -139,7 +168,7 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
 
     const handleSaveAndExit = async () => {
         if (formData.name === '') {
-            navigate('/host');
+            navigate(-1);
             return;
         }
         try {
@@ -169,7 +198,7 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
                 throw new Error('Failed to create venue profile');
             }
 
-            navigate('/host');
+            navigate(-1);
 
         } catch (error) {
             console.error('Error uploading images or creating venue profile: ', error);
