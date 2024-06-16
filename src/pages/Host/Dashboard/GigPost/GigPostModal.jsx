@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { CloseIcon } from '/components/ui/Icons/Icons'
 import '/styles/common/modals.styles.css'
 import { GigDate } from './Stage1_Date';
 import { GigLocation } from './Stage2_Location';

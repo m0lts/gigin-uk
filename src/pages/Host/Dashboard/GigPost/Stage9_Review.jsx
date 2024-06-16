@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { v4 as uuidv4 } from 'uuid';
-import { CopyIcon, EditIcon } from "../../../../components/ui/Icons/Icons";
+import { CopyIcon, EditIcon } from "/components/ui/Icons/Icons";
 
 export const GigReview = ({ formData, handleInputChange, setStage }) => {
 

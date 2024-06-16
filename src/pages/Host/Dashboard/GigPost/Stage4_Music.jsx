@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ClubIcon, MicrophoneIcon } from "../../../../components/ui/Icons/Icons";
+import { ClubIcon, MicrophoneIcon } from "/components/ui/Icons/Icons";
 
 export const GigMusic = ({ formData, handleInputChange, setStage }) => {
     

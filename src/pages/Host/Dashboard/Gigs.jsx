@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '../../../components/ui/Icons/Icons';
+import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '/components/ui/Icons/Icons';
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
     const location = useLocation();

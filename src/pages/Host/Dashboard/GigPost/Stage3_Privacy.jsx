@@ -1,4 +1,4 @@
-import { InviteIcon, PeopleGroupIcon } from "../../../../components/ui/Icons/Icons";
+import { InviteIcon, PeopleGroupIcon } from "/components/ui/Icons/Icons";
 
 export const GigPrivacy = ({ formData, handleInputChange }) => {
 

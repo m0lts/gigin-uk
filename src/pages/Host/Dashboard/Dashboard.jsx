@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { GigPostModal } from "./GigPost/GigPostModal";
 import { useAuth } from '../../../hooks/useAuth';
 import axios from "axios";
-import { LoadingScreen } from "../../../components/ui/loading/LoadingScreen";
+import { LoadingScreen } from "/components/ui/loading/LoadingScreen";
 import { Gigs } from "./Gigs";
 import '/styles/host/host-dashboard.styles.css'
 import { Venues } from "./Venues";

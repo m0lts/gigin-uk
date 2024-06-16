@@ -1,5 +1,5 @@
-import { NoTextLogo } from "../../../components/ui/logos/Logos"
-import { CameraIcon, DashboardIcon, ExitIcon, HouseIcon, LocationPinIcon } from "../../../components/ui/Icons/Icons";
+import { NoTextLogo } from "/components/ui/logos/Logos"
+import { CameraIcon, DashboardIcon, ExitIcon, HouseIcon, LocationPinIcon } from "/components/ui/Icons/Icons";
 import '/styles/host/venue-builder.styles.css'
 
 

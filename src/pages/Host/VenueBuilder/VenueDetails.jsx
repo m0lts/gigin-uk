@@ -3,7 +3,7 @@ import { LeftChevronIcon } from '/components/ui/Icons/Icons';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Map, { Marker } from 'react-map-gl';
 import { AddressInputAutofill } from './AddressInputAutofill';
-import { BeerIcon, ClubIcon, MapIcon, MicrophoneIcon, OtherIcon, PlaceOfWorshipIcon, RestaurantIcon, VillageHallIcon } from '../../../components/ui/Icons/Icons';
+import { BeerIcon, ClubIcon, MapIcon, MicrophoneIcon, OtherIcon, PlaceOfWorshipIcon, RestaurantIcon, VillageHallIcon } from '/components/ui/Icons/Icons';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 export const VenueDetails = ({ formData, handleInputChange }) => {
