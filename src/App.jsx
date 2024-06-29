@@ -22,6 +22,8 @@ import { LoadingThreeDots } from './components/ui/loading/Loading';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { HostDashboard } from './pages/Host/Dashboard/Dashboard';
 import { LoadingScreen } from './components/ui/loading/LoadingScreen';
+import { GigFinder } from './pages/Musician/GigFinder/GigFinder';
+import { GigInfo } from './pages/Musician/GigInfo';
 
 
 
@@ -45,7 +47,10 @@ export default function App() {
           <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType}><HostDashboard /></DashboardLayout>} />
         </Route>
         <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} /></NoHeaderFooterLayout>} />
-        <Route path="/musician" element={<MusicianLayout><MusicianInfo /></MusicianLayout>} />
+        <Route path="/musician">
+          <Route index element={<GigFinder />} />
+          <Route path=':gigId' element={<GigInfo />} />
+        </Route>
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>
       

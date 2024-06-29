@@ -3,13 +3,13 @@ import { BeerIcon, ClubIcon, HouseIcon, MicrophoneIcon, OtherIcon, PlaceOfWorshi
 
 export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage }) => {
 
-
     const handleLocationSelect = (venue) => {
         handleInputChange({
             venue: {
                 venueId: venue.venueId,
                 venueName: venue.name,                
                 address: venue.address,
+                photo: venue.photos[0],
             },
             coordinates: venue.coordinates,
         });

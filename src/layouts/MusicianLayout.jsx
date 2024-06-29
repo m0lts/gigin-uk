@@ -1,12 +1,10 @@
-import { Footer } from "../components/common/Footer"
 import { Header } from "../components/common/Header"
 
 export const MusicianLayout = ({ children }) => {
     return (
-        <>
+        <section className="musician-layout" style={{ minHeight: '100vh' }}>
             <Header />
-            <main>{children}</main>
-            <Footer />
-        </>
+            <main style={{ height: '100%' }}>{children}</main>
+        </section>
     )
 }
