@@ -10,7 +10,7 @@ import '/styles/forms/forms.styles.css'
 
 
 
-export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, requestOtp, verifyOtp, checkCredentials }) => {
+export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [resendingOtp, setResendingOtp] = useState(false);
@@ -40,11 +40,20 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
     setLoading(true);
 
     try {
-      const response = await checkCredentials(credentials);
-      const otpId = await requestOtp(response.email, response.name);
-      setOtpId(otpId);
+      await login(credentials);
+      setAuthModal(false);
     } catch (err) {
-      setError({ status: true, input: '', message: '* Invalid credentials. Please try again.' });
+      switch (err.error.code) {
+        case 'auth/invalid-credential':
+          setError({ status: true, input: '', message: '* Invalid Credentials.' });
+          break;
+        case 'auth/too-many-requests':
+          setError({ status: true, input: '', message: '* Too many unsuccessful login attempts. Please reset your password or try again later.' });
+          break;
+        default:
+          setError({ status: true, input: '', message: err.message });
+          break;
+      }
     } finally {
       setLoading(false);
     }
@@ -113,7 +122,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
           </div>
           <div className="input-group">
             <label htmlFor="password">
-              Password <Link className="fp-link" to={'/'}>Forgot password?</Link>
+              Password <button className="fp-link btn text" onClick={() => setAuthType('forgot-password')}>Forgot password?</button>
             </label>
             <div className="password">
               <input

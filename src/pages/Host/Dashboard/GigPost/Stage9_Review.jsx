@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { doc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { firestore } from "../../../../firebase";
 import { v4 as uuidv4 } from 'uuid';
 import { CopyIcon, EditIcon } from "/components/ui/Extras/Icons";
 
@@ -127,33 +129,30 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
 
     const handleSaveTemplate = async () => {
         setSaving(true);
+        const templateId = uuidv4();
         const templateDataPacket = {
-            ...formData,
-            gigId: null,
-            date: null,
-            templateName: templateName,
-            templateId: uuidv4(),
-
-        }    
-
-        const response = await fetch('/api/templates/postTemplate', { 
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                templateDataPacket
-            }),
-        });
-    
-        if (!response.ok) {
-            setSaving(false);
-            throw new Error('Failed to post gig');
-        } else {
-            setSaving(false);
+          ...formData,
+          gigId: null,
+          date: null,
+          templateName: templateName,
+          templateId: templateId,
+        };
+      
+        try {
+          const templateRef = doc(firestore, 'templates', templateId);
+          await setDoc(templateRef, templateDataPacket, {merge: true});
+      
+          const venueRef = doc(firestore, 'venueProfiles', formData.venueId);
+          await updateDoc(venueRef, {
+            templates: arrayUnion(templateId),
+          });
+      
+          setSaving(false);
+        } catch (error) {
+          setSaving(false);
+          console.error('Failed to save template:', error);
         }
-
-    }
+      };
 
     return (
         <>

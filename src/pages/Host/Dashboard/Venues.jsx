@@ -1,5 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom";
+import { collection, deleteDoc, doc, getDocs, query, updateDoc, where, arrayRemove } from "firebase/firestore";
+import { firestore } from '../../../firebase';
 
 export const Venues = ({ venues }) => {
 
@@ -16,30 +18,43 @@ export const Venues = ({ venues }) => {
         setShowDeleteModal(true);
     };
 
+    // ADD GOOGLE CLOUD STORAGE DELETION TOO
     const confirmDeleteVenue = async () => {
         if (!venueToDelete) return;
-
+      
+        const { user, venueId } = venueToDelete;
+      
         try {
-            const response = await fetch('/api/venues/deleteVenue', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ userId: venueToDelete.userId, venueId: venueToDelete.venueId }),
-            });
-
-            if (response.ok) {
-                navigate(0);
-            } else {
-                console.error('Failed to delete venue');
-            }
+          // Delete the venue document from the venueProfiles collection
+          const venueRef = doc(firestore, 'venueProfiles', venueId);
+          await deleteDoc(venueRef);
+      
+          // Remove the venue ID from the user's venueProfiles array
+          const userRef = doc(firestore, 'users', user);
+          await updateDoc(userRef, {
+            venueProfiles: arrayRemove(venueId)
+          });
+      
+          // Delete all gigs associated with the venue
+          const gigsQuery = query(collection(firestore, 'gigs'), where('venueId', '==', venueId));
+          const gigsSnapshot = await getDocs(gigsQuery);
+          const gigDeletionPromises = gigsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+          await Promise.all(gigDeletionPromises);
+      
+          // Delete all templates associated with the venue
+          const templatesQuery = query(collection(firestore, 'templates'), where('venueId', '==', venueId));
+          const templatesSnapshot = await getDocs(templatesQuery);
+          const templateDeletionPromises = templatesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+          await Promise.all(templateDeletionPromises);
+      
+          navigate(0);
         } catch (error) {
-            console.error('An error occurred while deleting the venue:', error);
+          console.error('An error occurred while deleting the venue:', error);
         } finally {
-            setShowDeleteModal(false);
-            setVenueToDelete(null);
+          setShowDeleteModal(false);
+          setVenueToDelete(null);
         }
-    };
+      };
 
     return (
         <>

@@ -30,7 +30,7 @@ import { GigInfo } from './pages/Musician/GigInfo';
 
 export default function App() {
 
-  const { user, loading, checkCredentials, login, checkUser, signup, requestOtp, verifyOtp, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [authModal, setAuthModal] = useState(false);
   const [authType, setAuthType] = useState('login');
 
@@ -54,7 +54,7 @@ export default function App() {
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>
       
-      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} login={login} signup={signup} requestOtp={requestOtp} verifyOtp={verifyOtp} checkUser={checkUser} checkCredentials={checkCredentials} /> }
+      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} /> }
     </>
   );
 }

@@ -1,14 +1,17 @@
 // Dependencies
 import { useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
 // Components
 import { LoginForm } from "../forms/Login";
 import { SignupForm } from "../forms/Signup";
 // Styles
 import '/styles/common/modals.styles.css'
+import { ForgotPasswordForm } from "../forms/ForgotPassword";
 
 
-export const AuthModal = ({ setAuthModal, login, signup, authType, setAuthType, requestOtp, verifyOtp, checkUser, checkCredentials }) => {
+export const AuthModal = ({ setAuthModal, authType, setAuthType }) => {
 
+  const { login, signup, resetPassword, checkUser } = useAuth();
   const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
   const [error, setError] = useState({ status: false, input: '', message: '' });
   const [loading, setLoading] = useState(false);
@@ -43,11 +46,8 @@ export const AuthModal = ({ setAuthModal, login, signup, authType, setAuthType, 
           setAuthModal={setAuthModal}
           loading={loading}
           setLoading={setLoading}
-          requestOtp={requestOtp}
-          verifyOtp={verifyOtp}
-          checkCredentials={checkCredentials}
         />
-      ) : (
+      ) : authType === 'signup' ? (
         <SignupForm
           credentials={credentials}
           setCredentials={setCredentials}
@@ -60,8 +60,21 @@ export const AuthModal = ({ setAuthModal, login, signup, authType, setAuthType, 
           setAuthModal={setAuthModal}
           loading={loading}
           setLoading={setLoading}
-          requestOtp={requestOtp}
-          verifyOtp={verifyOtp}
+          checkUser={checkUser}
+        />
+      ) : authType === 'forgot-password' && (
+        <ForgotPasswordForm 
+          credentials={credentials}
+          setCredentials={setCredentials}
+          error={error}
+          setError={setError}
+          clearCredentials={clearCredentials}
+          clearError={clearError}
+          setAuthType={setAuthType}
+          resetPassword={resetPassword}
+          setAuthModal={setAuthModal}
+          loading={loading}
+          setLoading={setLoading}
           checkUser={checkUser}
         />
       )}

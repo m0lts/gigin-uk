@@ -10,9 +10,9 @@ import { AdditionalDetails } from "./AdditionalDetails";
 import '/styles/host/venue-builder.styles.css'
 import axios from "axios";
 import { UploadingProfile } from "./UploadingProfile";
-
-const bucketName = "gigin-users-media";
-const region = "eu-west-2";
+import { storage, firestore } from "../../../firebase";
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, arrayUnion, deleteDoc, arrayRemove } from 'firebase/firestore';
 
 export const VenueBuilder = ({ user, setAuthModal }) => {
 
@@ -68,19 +68,17 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
     useEffect(() => {
         const checkForSavedProfile = async () => {
             try {
-                const response = await axios.post('/api/venues/findVenue', {
-                    userId: user.userId,
-                    requestType: 'Incomplete',
-                });
-
-                if (response.data.incompleteProfile) {
-                    delete response.data.incompleteProfile._id;
-                    setSavedProfile(response.data.incompleteProfile);
-                    setCompleteSavedProfileModal(true);
-                }
-
+              const venuesRef = collection(firestore, 'venueProfiles');
+              const q = query(venuesRef, where('userId', '==', user.uid), where('completed', '==', false));
+              const querySnapshot = await getDocs(q);
+          
+              if (!querySnapshot.empty) {
+                const incompleteProfile = querySnapshot.docs[0].data();
+                setSavedProfile(incompleteProfile);
+                setCompleteSavedProfileModal(true);
+              }
             } catch (error) {
-                console.error('Error checking for saved profile:', error);
+              console.error('Error checking for saved profile:', error);
             }
         };
 
@@ -92,40 +90,29 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
         }
     }, [user, setAuthModal, formData]);
 
-    const uploadImagesToS3 = async (images, venueId) => {
+    const uploadImagesToFirebaseStorage = async (images, venueId) => {
         const files = images.filter(image => typeof image !== 'string'); // Filter out URLs
         const urls = images.filter(image => typeof image === 'string'); // Extract URLs
-    
+      
         if (files.length > 0) {
-            const response = await fetch('/api/s3-functions/getSignedUrls', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ files: files.map(file => file.name), venueId }),
-            });
-    
-            const { signedUrls } = await response.json();
-    
-            const uploadPromises = signedUrls.map(({ url, imageName }, index) => {
-                return fetch(url, {
-                    method: 'PUT',
-                    body: files[index],
-                }).then(() => `https://${bucketName}.s3.${region}.amazonaws.com/${imageName}`);
-            });
-    
-            const uploadedUrls = await Promise.all(uploadPromises);
-            return [...urls, ...uploadedUrls]; // Combine original URLs with newly uploaded URLs
+          const uploadPromises = files.map(async (file) => {
+            const storageRef = ref(storage, `venues/${venueId}/${file.name}`);
+            await uploadBytes(storageRef, file);
+            return getDownloadURL(storageRef);
+          });
+      
+          const uploadedUrls = await Promise.all(uploadPromises);
+          return [...urls, ...uploadedUrls]; // Combine original URLs with newly uploaded URLs
         }
-    
+      
         return urls; // Return the original URLs if there are no new files to upload
-    };
+      };
 
     const handleSubmit = async () => {
         setUploadingProfile(true);
         try {
             const imageFiles = formData.photos;
-            const imageUrls = await uploadImagesToS3(imageFiles, formData.venueId);
+            const imageUrls = await uploadImagesToFirebaseStorage(imageFiles, formData.venueId);
 
             const updatedFormData = {
                 ...formData,
@@ -133,21 +120,16 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
                 completed: true,
             };
 
-            const response = await fetch('/api/venues/uploadVenue', { 
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userId: user.userId,
-                    venueData: updatedFormData,
-                }),
-            });
+            const venueRef = doc(firestore, 'venueProfiles', formData.venueId);
+            await setDoc(venueRef, {
+                ...updatedFormData,
+                user: user.uid,
+            }, {merge: true});
 
-            if (!response.ok) {
-                setUploadingProfile(false);
-                throw new Error('Failed to create venue profile');
-            }
+            const userRef = doc(firestore, 'users', user.uid);
+                await updateDoc(userRef, {
+                    venueProfiles: arrayUnion(formData.venueId),
+            });
 
             // Update the loading text and progress at intervals
             setTimeout(() => setUploadText('Building your profile...'), 3000);
@@ -179,25 +161,18 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
 
             if (formData.photos.length > 0) {
                 const imageFiles = formData.photos;
-                const imageUrls = await uploadImagesToS3(imageFiles, formData.venueId);
+                const imageUrls = await uploadImagesToFirebaseStorage(imageFiles, formData.venueId);
 
                 updatedFormData.photos = imageUrls;
             }
 
-            const response = await axios.post('/api/venues/uploadVenue', {
-                userId: user.userId,
-                venueData: updatedFormData,
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
+            const venueRef = doc(firestore, 'venueProfiles', formData.venueId);
+            await setDoc(venueRef, {
+                ...updatedFormData,
+                userId: user.uid,
+            }, {merge:true});
 
-            if (response.status !== 200) {
-                throw new Error('Failed to create venue profile');
-            }
-
-            navigate(-1);
+            navigate('/');
 
         } catch (error) {
             console.error('Error uploading images or creating venue profile: ', error);
@@ -206,23 +181,19 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
 
     const handleDeleteSavedProfile = async () => {
         try {
-            const response = await axios.post('/api/venues/deleteVenue', {
-                venueId: savedProfile.venueId,
-                userId: user.userId,
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+            
+            const venueRef = doc(firestore, 'venueProfiles', savedProfile.venueId);
+            await deleteDoc(venueRef);
+            
+            // Update user's document to remove the venue profile ID
+            const userRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userRef, {
+                venueProfiles: arrayRemove(savedProfile.venueId),
             });
 
-            if (response.status !== 200) {
-                throw new Error('Failed to delete venue profile');
-            }
+            setCompleteSavedProfileModal(false);
+            setSavedProfile();
 
-            if (response.status === 200) {
-                setCompleteSavedProfileModal(false);
-                setSavedProfile();
-            }
         } catch (error) {
             console.error(error);
         }

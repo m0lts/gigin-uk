@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { doc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { firestore } from "../../../../firebase";
 import '/styles/common/modals.styles.css'
 import { GigDate } from './Stage1_Date';
 import { GigLocation } from './Stage2_Location';
@@ -18,8 +20,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
     const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
+        venueId: '',
         venue: {
-            venueId: '',
             venueName: '',
             address: '',
             photo: null,
@@ -229,26 +231,20 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
             complete: true,
         }
 
-        
-        const response = await fetch('/api/gigs/postGig', { 
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                gigDataPacket
-            }),
-        });
-    
-        if (!response.ok) {
-            setLoading(false);
-            throw new Error('Failed to post gig');
-        } else {
+        try {
+            const gigRef = doc(firestore, 'gigs', formData.gigId);
+            await setDoc(gigRef, gigDataPacket, {merge: true});
+            const venueRef = doc(firestore, 'venueProfiles', formData.venueId);
+            await updateDoc(venueRef, {
+                gigs: arrayUnion(formData.gigId)
+            });
             setLoading(false);
             setGigPostModal(false);
             window.location.reload();
-        }
-
+          } catch (error) {
+            setLoading(false);
+            console.error('Failed to post gig:', error);
+          }
     }    
 
 
@@ -267,24 +263,21 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
             } 
         }
 
-        const response = await fetch('/api/gigs/postGig', { 
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                gigDataPacket
-            }),
-        });
-    
-        if (!response.ok) {
-            setSaving(false);
-            throw new Error('Failed to post gig');
-        } else {
+        try {
+            const gigRef = doc(firestore, 'gigs', formData.gigId);
+            await setDoc(gigRef, gigDataPacket, {merge: true});
+            const venueRef = doc(firestore, 'venueProfiles', formData.venueId);
+            await updateDoc(venueRef, {
+                gigs: arrayUnion(formData.gigId)
+            });
             setSaving(false);
             setGigPostModal(false);
             window.location.reload();
-        }
+          } catch (error) {
+            setSaving(false);
+            console.error('Failed to post gig:', error);
+          }
+        
     }
 
 

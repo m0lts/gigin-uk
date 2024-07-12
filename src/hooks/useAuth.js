@@ -1,109 +1,74 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { auth, firestore } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
+import { doc, getDoc, setDoc, collection, where, getDocs, query } from 'firebase/firestore';
 
 export const useAuth = () => {
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const response = await axios.get('/api/auth/status', { withCredentials: true });
-        setUser(response.data.user);
-      } catch (error) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        setUser({ uid: firebaseUser.uid });
+      } else {
         setUser(null);
-      } finally {
-        setLoading(false);
       }
-    };
+      setLoading(false);
+    });
 
-    checkAuthStatus();
+    return () => unsubscribe();
   }, []);
 
   const checkCredentials = async (credentials) => {
     try {
-      const response = await axios.post('/api/auth/checkCredentials', credentials, { withCredentials: true });
-      return response.data.user;
-    } catch (error) {
-      if (error.response) {
-        throw { message: '* Email or phone number already in use.', status: error.response.status, data: error.response.data };
-      } else {
-        throw { message: 'Check failed', status: 500, data: { error: 'Internal server error' } };
+      const userDoc = await getDoc(doc(firestore, 'users', credentials.email));
+      if (userDoc.exists()) {
+        throw { message: '* Email or phone number already in use.', status: 400 };
       }
+      return null;
+    } catch (error) {
+      throw { error }
     }
   };
 
   const login = async (credentials) => {
     try {
-      const response = await axios.post('/api/auth/login', credentials, { withCredentials: true });
-      setUser(response.data.user);
+      const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+      const userDoc = await getDoc(doc(firestore, 'users', userCredential.user.uid));
+      setUser({ uid: userCredential.user.uid, ...userDoc.data() });
     } catch (error) {
       setUser(null);
-      if (error.response) {
-        throw { message: 'Login failed', status: error.response.status, data: error.response.data };
-      } else {
-        throw { message: 'Login failed', status: 500, data: { error: 'Internal server error' } };
-      }
+      throw { error };
     }
   };
 
-  const checkUser = async (email, phoneNumber) => {
+  const signup = async (credentials, marketingConsent) => {
     try {
-      const response = await axios.post('/api/auth/checkUser', { email, phoneNumber });
-      return response.data.message;
-    } catch (error) {
-      if (error.response) {
-        throw { message: '* Email or phone number already in use.', status: error.response.status, data: error.response.data };
-      } else {
-        throw { message: 'Check failed', status: 500, data: { error: 'Internal server error' } };
-      }
-    }
-  };
-
-  const signup = async (credentials) => {
-    try {
-      const response = await axios.post('/api/auth/signup', credentials, { withCredentials: true });
-      setUser(response.data.user);
+      const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+      await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+        name: credentials.name,
+        marketingConsent: marketingConsent,
+      });
+      setUser({ uid: userCredential.user.uid, ...credentials });
     } catch (error) {
       setUser(null);
-      if (error.response) {
-        throw { message: '* Sorry, we are experiencing an issue. If this issue persists, please contact us.', status: error.response.status, data: error.response.data };
-      } else {
-        throw { message: '* Sorry, we are experiencing an issue. If this issue persists, please contact us.', status: 500, data: { error: 'Internal server error' } };
-      }
+      throw { error }
     }
   };
 
-  const requestOtp = async (email, name) => {
+  const resetPassword = async (email) => {
     try {
-      const response = await axios.post('/api/auth/sendOtp', { email, name });
-      return response.data.otpId;
+      await sendPasswordResetEmail(auth, email);
     } catch (error) {
-      if (error.response) {
-        throw { message: 'Failed to send OTP', status: error.response.status, data: error.response.data };
-      } else {
-        throw { message: 'Failed to send OTP', status: 500, data: { error: 'Internal server error' } };
-      }
-    }
-  };
-
-  const verifyOtp = async (otpId, otp) => {
-    try {
-      const response = await axios.post('/api/auth/verifyOtp', { otpId, otp });
-      return response.data; // Return any relevant data from the verification
-    } catch (error) {
-      if (error.response) {
-        throw { message: '* Incorrect verification code.', status: error.response.status, data: error.response.data };
-      } else {
-        throw { message: 'Failed to verify OTP', status: 500, data: { error: 'Internal server error' } };
-      }
+      throw { message: error.message, status: error.status || 500 };
     }
   };
 
   const logout = async () => {
     try {
-      await axios.post('/api/auth/logout', {}, { withCredentials: true });
+      await signOut(auth);
       setUser(null);
     } catch (error) {
       console.error('Logout failed', error);
@@ -115,10 +80,8 @@ export const useAuth = () => {
     loading,
     checkCredentials,
     login,
-    checkUser,
     signup,
-    requestOtp,
-    verifyOtp,
     logout,
+    resetPassword,
   };
 };

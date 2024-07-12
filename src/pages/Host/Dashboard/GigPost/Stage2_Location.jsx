@@ -5,8 +5,8 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
 
     const handleLocationSelect = (venue) => {
         handleInputChange({
+            venueId: venue.venueId,
             venue: {
-                venueId: venue.venueId,
                 venueName: venue.name,                
                 address: venue.address,
                 photo: venue.photos[0],

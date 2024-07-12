@@ -8,6 +8,8 @@ import { LoadingScreen } from "/components/ui/loading/LoadingScreen";
 import { Gigs } from "./Gigs";
 import '/styles/host/host-dashboard.styles.css'
 import { Venues } from "./Venues";
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { firestore } from "../../../firebase";
 
 export const HostDashboard = () => {
 
@@ -21,60 +23,74 @@ export const HostDashboard = () => {
     const [templates, setTemplates] = useState([]);
     const [editGigData, setEditGigData] = useState();
 
+
     useEffect(() => {
         const fetchHostData = async () => {
-            try {
-                const response = await axios.post('/api/venues/findVenue', {
-                    userId: user.userId,
-                    requestType: 'Complete profiles',
-                });
-
-                if (response.data.completeProfiles) {
-                    setVenueProfiles(response.data.completeProfiles)
-                    setLoadingData(false)
-                }
-                
-            } catch (error) {
-                console.error(error)
-                setLoadingData(false)
-            }
-        }
-
-        if (user) {
-            fetchHostData()
-            setLoadingData(true);
-        }
-    }, [user])
+          if (!user) return;
+          setLoadingData(true);
+    
+          try {
+            const venuesRef = collection(firestore, 'venueProfiles');
+            const q = query(venuesRef, where('user', '==', user.uid), where('completed', '==', true));
+            const querySnapshot = await getDocs(q);
+    
+            const completeProfiles = querySnapshot.docs.map(doc => doc.data());
+            setVenueProfiles(completeProfiles);
+            setLoadingData(false);
+          } catch (error) {
+            console.error('Error fetching venue profiles:', error);
+            setLoadingData(false);
+          }
+        };
+    
+        fetchHostData();
+    }, [user]);
 
     useEffect(() => {
-        const fetchVenueData = async () => {
-            setLoadingData(true);
-            if (venueProfiles.length > 0) {
-                const venueIds = venueProfiles.map(profile => profile.venueId);
-                try {
-                    const response = await axios.post('/api/venues/getVenueData', { venueIds });
-                    if (response.data) {
-                        const fetchedGigs = response.data.gigs;
-                        const completeGigs = fetchedGigs.filter(gig => gig.complete !== false);
-                        const incompleteGigs = fetchedGigs.filter(gig => gig.complete === false);
-
-                        setGigs(completeGigs);
-                        setIncompleteGigs(incompleteGigs);
-
-                        setTemplates(response.data.templates);
-                        setLoadingData(false)
-
-                    }
-                } catch (error) {
-                    console.error(error);
-                    setLoadingData(false)
-
-                }
-            }
-        };
-
-        fetchVenueData();
+      const fetchVenueData = async () => {
+        if (venueProfiles.length === 0) return;
+        setLoadingData(true);
+    
+        const venueIds = venueProfiles.map(profile => profile.venueId);
+    
+        try {
+          const gigsRef = collection(firestore, 'gigs');
+          const templatesRef = collection(firestore, 'templates');
+    
+          // Query gigs based on top-level venueId
+          const gigsQuery = query(gigsRef, where('venueId', 'in', venueIds));
+          const gigsSnapshot = await getDocs(gigsQuery);
+          const fetchedGigs = gigsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              ...data,
+              date: data.date.toDate(), // Convert Firestore Timestamp to JS Date
+              createdAt: data.createdAt.toDate() // Convert Firestore Timestamp to JS Date
+            };
+          });
+    
+          const completeGigs = fetchedGigs.filter(gig => gig.complete !== false);
+          const incompleteGigs = fetchedGigs.filter(gig => gig.complete === false);
+    
+          setGigs(completeGigs);
+          setIncompleteGigs(incompleteGigs);
+    
+          // Query templates based on top-level venueId
+          const templatesQuery = query(templatesRef, where('venueId', 'in', venueIds));
+          const templatesSnapshot = await getDocs(templatesQuery);
+          const fetchedTemplates = templatesSnapshot.docs.map(doc => doc.data());
+    
+          setTemplates(fetchedTemplates);
+          setLoadingData(false);
+        } catch (error) {
+          console.error('Error fetching venue data:', error);
+          setLoadingData(false);
+        }
+      };
+    
+      fetchVenueData();
     }, [venueProfiles]);
+
 
     return (
         <>  
