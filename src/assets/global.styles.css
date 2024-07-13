@@ -7,6 +7,7 @@
 
 :root {
     --gigin-orange: #FF6C4B;
+    --light-gigin-orange: rgba(255, 108, 75, 0.1);
     --trans-gigin-orange: #ff6c4b0c;
     --background-black: #131313;
     --white: white;
@@ -37,6 +38,7 @@
 h1 {
     font-family: var(--h1-font);
     font-size: 1.5rem;
+    font-weight: 600;
 }
 h2, h3, h4, h5, h6 {
     font-family: var(--default-font);
@@ -45,24 +47,26 @@ p, a, span, label, input, button, select, option, textarea, li {
     font-family: var(--default-font);
 }
 h2 {
-    font-size: 2rem;
+    font-size: 1.25rem;
     font-weight: 500;
 }
 h3 {
-    font-size: 1.75rem;
-    font-weight: 400;
+    font-size: 1.1rem;
+    font-weight: 500;
 }
 h4 {
-    font-size: 1.5rem;
-    font-weight: 400;
+    font-size: 1rem;
+    font-weight: 500;
 }
 h5 {
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 400;
 }
 h6 {
-    font-size: 1rem;
-    font-weight: 400;
+    text-transform: uppercase;
+    color: var(--dark-grey);
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 p {
     font-size: 1rem;

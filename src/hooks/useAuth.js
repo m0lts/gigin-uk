@@ -11,7 +11,7 @@ export const useAuth = () => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-        setUser({ uid: firebaseUser.uid });
+        setUser({ uid: firebaseUser.uid, ...userDoc.data() });
       } else {
         setUser(null);
       }

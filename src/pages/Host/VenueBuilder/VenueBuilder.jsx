@@ -48,6 +48,7 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
                 photos: venue.photos || [],
                 extraInformation: venue.extraInformation || '',
                 description: venue.description || '',
+                completed: venue.completed || false,
             });
         }
     }, [venue])
@@ -153,11 +154,21 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
             return;
         }
         try {
-            let updatedFormData = {
-                ...formData,
-                currentStep: currentStep,
-                completed: false,
-            };
+            let updatedFormData;
+
+            if (formData.completed) {
+                updatedFormData = {
+                    ...formData,
+                    completed: true,
+                };
+                delete formData.currentStep;
+            } else {
+                updatedFormData = {
+                    ...formData,
+                    currentStep: currentStep,
+                    completed: false,
+                };
+            }
 
             if (formData.photos.length > 0) {
                 const imageFiles = formData.photos;

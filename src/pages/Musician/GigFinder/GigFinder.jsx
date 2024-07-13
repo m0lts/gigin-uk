@@ -2,7 +2,8 @@ import { useState, useEffect } from "react"
 import { MapView } from "./MapView";
 import { ListView } from "./ListView";
 import { Header } from "../../../components/common/Header";
-import axios from "axios";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { firestore } from "../../../firebase";
 import '/styles/musician/gig-finder.styles.css';
 
 export const GigFinder = () => {
@@ -12,12 +13,12 @@ export const GigFinder = () => {
     useEffect(() => {
         const fetchGigs = async () => {
             try {
-                const response = await axios.post('/api/gigs/getGigs');
-                if (response.status === 200) {
-                    setUpcomingGigs(response.data.upcomingGigs);
-                } else {
-                    throw new Error('Failed to fetch gigs');
-                }
+                const gigsRef = collection(firestore, 'gigs');
+                const currentDate = new Date();
+                const gigsQuery = query(gigsRef, where('date', '>=', currentDate));
+                const gigsSnapshot = await getDocs(gigsQuery);
+                const gigsList = gigsSnapshot.docs.map(doc => doc.data());
+                setUpcomingGigs(gigsList);
             } catch (error) {
                 console.error('Error fetching gigs:', error.message);
             }
@@ -31,9 +32,9 @@ export const GigFinder = () => {
         <section className="gig-finder">
             <Header />
             {viewType === 'map' ? (
-                <MapView upcomingGigs={upcomingGigs} /> // Pass gigs data to MapView component
+                <MapView upcomingGigs={upcomingGigs} />
             ) : (
-                <ListView upcomingGigs={upcomingGigs} /> // Pass gigs data to ListView component
+                <ListView upcomingGigs={upcomingGigs} />
             )}
             <button className="btn secondary view-type" onClick={() => setViewType(viewType === 'map' ? 'list' : 'map')}>
                 {viewType === 'map' ? (

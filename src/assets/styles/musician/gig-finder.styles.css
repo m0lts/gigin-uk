@@ -8,7 +8,83 @@
 .gig-finder .map-view {
     position: relative;
 }
-.gig-finder .map-view .filter-box,
+.gig-finder .preview-gig-list {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width:375px;
+    overflow: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    height: 90%;
+    display: flex;
+    flex-direction: column;
+    gap:10px;
+    padding: 1rem;
+}
+.gig-finder .preview-gig-list::-webkit-scrollbar {
+    display: none;
+}
+.gig-finder .preview-gig-list .preview-gig-item {
+    position: relative;
+    background-color: var(--white);
+    border: 1px solid var(--light-medium-grey);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    height: 75px;
+    padding: 0.5rem;
+    padding-right: 1rem;
+    cursor: pointer;
+    transition: box-shadow 0.1s linear, border-color 0.05s linear;
+    font-family: var(--h1-font);
+}
+.gig-finder .preview-gig-item .btn {
+    position: absolute;
+    right:5px;
+    top: 0;
+    font-size: 0.75rem;
+}
+.gig-finder .preview-gig-list .preview-gig-item:hover {
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-color: var(--white);
+}
+.gig-finder .preview-gig-list .preview-gig-item-venue {
+    display: flex;
+    align-items: center;
+    gap:10px;
+    height: 100%;
+    width: 80%;
+    border-right:1px solid var(--light-grey);
+}
+.gig-finder .preview-gig-list .preview-gig-img {
+    width:25%;
+    height:100%;
+    overflow: hidden;
+    border-radius: 5px;
+}
+.gig-finder .preview-gig-list .preview-gig-img img {
+    width: 100%;
+    height:100%;
+    object-fit: cover;
+}
+.gig-finder .preview-gig-list .preview-gig-info p {
+    font-size: 0.9rem;
+}
+.gig-finder .preview-gig-list .preview-gig-budget {
+    height: 100%;
+    width: 20%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+
+/* .gig-finder .map-view .filter-box,
 .gig-finder .map-view .preview-box {
     position: absolute;
     left:1rem;
@@ -23,7 +99,7 @@
 }
 .gig-finder .map-view .preview-box {
     bottom: 1rem;
-    max-width: 25vw;
+    width: 35vw;
 }
 .gig-finder .map-view .preview-box .preview-gig {
     display: flex;
@@ -106,6 +182,7 @@
     cursor: pointer;
     font-weight: 300;
 }
+*/
 
 
 

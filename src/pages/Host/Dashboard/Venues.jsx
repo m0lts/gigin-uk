@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom";
 import { collection, deleteDoc, doc, getDocs, query, updateDoc, where, arrayRemove } from "firebase/firestore";
-import { firestore } from '../../../firebase';
+import { ref, listAll, deleteObject } from "firebase/storage";
+import { firestore, storage } from '../../../firebase';
 
 export const Venues = ({ venues }) => {
 
@@ -18,7 +19,6 @@ export const Venues = ({ venues }) => {
         setShowDeleteModal(true);
     };
 
-    // ADD GOOGLE CLOUD STORAGE DELETION TOO
     const confirmDeleteVenue = async () => {
         if (!venueToDelete) return;
       
@@ -46,6 +46,12 @@ export const Venues = ({ venues }) => {
           const templatesSnapshot = await getDocs(templatesQuery);
           const templateDeletionPromises = templatesSnapshot.docs.map(doc => deleteDoc(doc.ref));
           await Promise.all(templateDeletionPromises);
+
+          // Delete all files in Google Cloud Storage associated with the venue
+          const storageRef = ref(storage, `venues/${venueId}`);
+          const listResults = await listAll(storageRef);
+          const deletePromises = listResults.items.map(itemRef => deleteObject(itemRef));
+          await Promise.all(deletePromises);
       
           navigate(0);
         } catch (error) {

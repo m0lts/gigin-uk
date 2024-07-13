@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import useMapboxAccessToken from "../../../hooks/useAccessTokens";
-import { LeftChevronIcon, NewTabIcon, RightChevronIcon } from "../../../components/ui/Extras/Icons";
+import { CloseIcon, LeftChevronIcon, NewTabIcon, RightChevronIcon } from "../../../components/ui/Extras/Icons";
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
@@ -115,20 +115,7 @@ export const MapView = ({ upcomingGigs }) => {
         markerElement.querySelector('span').style.color = 'black';
     };
 
-    // Function to navigate to previous gig
-    const navigateToPreviousGig = () => {
-        if (currentGigIndex > 0) {
-            setCurrentGigIndex(currentGigIndex - 1);
-        }
-    };
-
-    // Function to navigate to next gig
-    const navigateToNextGig = () => {
-        if (currentGigIndex < clickedGigs.length - 1) {
-            setCurrentGigIndex(currentGigIndex + 1);
-        }
-    };
-
+    
     // Function to clear existing markers
     const clearMarkers = () => {
         Object.values(markers).forEach(markerElement => {
@@ -137,7 +124,7 @@ export const MapView = ({ upcomingGigs }) => {
         });
         setMarkers({});
     };
-
+    
     const getOrdinalSuffix = (day) => {
         if (day > 3 && day < 21) return 'th';
         switch (day % 10) {
@@ -147,31 +134,23 @@ export const MapView = ({ upcomingGigs }) => {
             default: return 'th';
         }
     };
-
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
+    
+    const formatDate = (timestamp) => {
+        const date = timestamp.toDate();
         const day = date.getDate();
         const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
         const month = date.toLocaleDateString('en-GB', { month: 'long' });
         return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
     };
-
-    const formatDuration = (duration) => {
-        if (duration < 60) return `${duration}mins`;
-        if (duration === 60) return `1 hour`;
-        if (duration > 60 && duration < 120) return `1 hour ${duration - 60}mins`;
-        if (duration === 120) return `2 hours`;
-        if (duration > 120 && duration < 180) return `2 hour ${duration - 120}mins`;
-        if (duration === 180) return `3 hours`;
-        if (duration > 180 && duration < 240) return `3 hour ${duration - 180}mins`;
-        if (duration === 240) return `4 hours`;
-        if (duration > 240 && duration < 300) return `4 hour ${duration - 240}mins`;
-        if (duration === 300) return `5 hours`;
-    }
     
     const openMusicianGig = (gigId) => {
         const url = `/musician/${gigId}`;
         window.open(url, '_blank');
+    };
+        
+    const handleCloseGig = (gig, e) => {
+        e.stopPropagation();
+        setClickedGigs(prevGigs => prevGigs.filter(g => g.gigId !== gig.gigId));
     };
 
     return (
@@ -181,7 +160,36 @@ export const MapView = ({ upcomingGigs }) => {
                 className="map"
                 style={{ width: "100%", height: "100%" }}
             />
-            <div className="filter-box">
+            <>
+            {clickedGigs.length > 0 && (
+                <ul className="preview-gig-list">
+                    {clickedGigs.map((gig, index) => (
+                        <li className="preview-gig-item" key={index} onClick={() => openMusicianGig(gig.gigId)}>
+                            <button className="btn danger" onClick={(e) => handleCloseGig(gig, e)}>
+                                <CloseIcon />
+                            </button>
+                            <div className="preview-gig-item-venue">
+                                <figure className="preview-gig-img">
+                                    <img src={gig.venue.photo} alt={gig.venue.venueName} />
+                                </figure>
+                                <div className="preview-gig-info">
+                                    <h4>{gig.venue.venueName}</h4>
+                                    <p>{formatDate(gig.date)}</p>
+                                </div>
+                            </div>
+                            <div className="preview-gig-budget">
+                                <h3>{gig.budget}</h3>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            </>
+        </div>
+    );
+};
+
+            {/* <div className="filter-box">
                 <ul className="filter-list">
                     <li className="filter">
                         Date: 
@@ -189,67 +197,80 @@ export const MapView = ({ upcomingGigs }) => {
                     </li>
                     <li className="filter">
                         Budget:
-                        {/* Budget slider */}
                         <input type="range" name="budget" id="budget" />
                     </li>
                     <li className="filter">
                         Distance:
-                        {/* Distance slider */}
                         <input type="range" name="distance" id="distance" />
                     </li>
                     <button className="btn secondary">
                         Apply Filters
                     </button>
                 </ul>
-            </div>
-            {clickedGigs.length > 0 && (
-                <div className="preview-box">
-                    <div className="preview-gig">
-                        <figure className="img-cont">
-                            <img src={clickedGigs[currentGigIndex].venue.photo} alt={clickedGigs[currentGigIndex].venue.venueName} />
-                        </figure>
-                        <h2 className="title">{clickedGigs[currentGigIndex].venue.venueName}</h2>
-                        <p className="date">{formatDate(clickedGigs[currentGigIndex].date)}</p>
-                        <p className="address">{clickedGigs[currentGigIndex].venue.address}</p>
-                        <div className="details">
-                            <p className="start-time">{clickedGigs[currentGigIndex].startTime}</p>
-                            <FontAwesomeIcon icon={faCircle} className="icon" />
-                            <p className="duration">{formatDuration(clickedGigs[currentGigIndex].duration)}</p>
-                            <FontAwesomeIcon icon={faCircle} className="icon" />
-                            <p className="budget">{clickedGigs[currentGigIndex].budget}</p>
-                        </div>
-                        <div className="action-buttons">
-                            <button className="btn primary">
-                                Quick Apply
-                            </button>
-                            <button className="btn secondary" onClick={() => openMusicianGig(clickedGigs[currentGigIndex].gigId)}>
-                                Open <NewTabIcon />
-                            </button>
-                        </div>
-                    </div>
-                    {clickedGigs.length > 1 && (
-                        <div className="navigation-buttons">
-                            <button className="btn text" onClick={navigateToPreviousGig} disabled={currentGigIndex === 0}>
-                                <LeftChevronIcon />
-                            </button>
-                            <div className="navigation-dots">
-                                {clickedGigs.map((gig, index) => (
-                                    <FontAwesomeIcon
-                                        key={index}
-                                        icon={faCircle}
-                                        className="icon"
-                                        style={{ color: currentGigIndex === index ? 'var(--dark-grey)' : 'var(--light-grey)' }}
-                                    />
-                                ))}
-                            </div>
-                            <button className="btn text" onClick={navigateToNextGig} disabled={currentGigIndex === clickedGigs.length - 1}>
-                                <RightChevronIcon />
-                            </button>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-};
+            </div> */}
 
+    // const formatDuration = (duration) => {
+        //     if (duration < 60) return `${duration}mins`;
+        //     if (duration === 60) return `1 hour`;
+        //     if (duration > 60 && duration < 120) return `1 hour ${duration - 60}mins`;
+        //     if (duration === 120) return `2 hours`;
+        //     if (duration > 120 && duration < 180) return `2 hour ${duration - 120}mins`;
+        //     if (duration === 180) return `3 hours`;
+        //     if (duration > 180 && duration < 240) return `3 hour ${duration - 180}mins`;
+        //     if (duration === 240) return `4 hours`;
+        //     if (duration > 240 && duration < 300) return `4 hour ${duration - 240}mins`;
+        //     if (duration === 300) return `5 hours`;
+        // }
+        
+        // // Function to navigate to previous gig
+        // const navigateToPreviousGig = () => {
+        //     if (currentGigIndex > 0) {
+        //         setCurrentGigIndex(currentGigIndex - 1);
+        //     }
+        // };
+    
+        // // Function to navigate to next gig
+        // const navigateToNextGig = () => {
+        //     if (currentGigIndex < clickedGigs.length - 1) {
+        //         setCurrentGigIndex(currentGigIndex + 1);
+        //     }
+        // };
+
+// <div className="preview-box">
+//     <div className="preview-gig">
+//         <figure className="img-cont">
+//             <img src={clickedGigs[currentGigIndex].venue.photo} alt={clickedGigs[currentGigIndex].venue.venueName} />
+//         </figure>
+//         <h2 className="title">{clickedGigs[currentGigIndex].venue.venueName}</h2>
+//         <p className="date">{formatDate(clickedGigs[currentGigIndex].date)}</p>
+//         <p className="budget">{clickedGigs[currentGigIndex].budget}</p>
+//         <div className="action-buttons">
+//             <button className="btn primary">
+//                 Quick Apply
+//             </button>
+//             <button className="btn secondary" onClick={() => openMusicianGig(clickedGigs[currentGigIndex].gigId)}>
+//                 Open <NewTabIcon />
+//             </button>
+//         </div>
+//     </div>
+//     {clickedGigs.length > 1 && (
+//         <div className="navigation-buttons">
+//             <button className="btn text" onClick={navigateToPreviousGig} disabled={currentGigIndex === 0}>
+//                 <LeftChevronIcon />
+//             </button>
+//             <div className="navigation-dots">
+//                 {clickedGigs.map((gig, index) => (
+//                     <FontAwesomeIcon
+//                         key={index}
+//                         icon={faCircle}
+//                         className="icon"
+//                         style={{ color: currentGigIndex === index ? 'var(--dark-grey)' : 'var(--light-grey)' }}
+//                     />
+//                 ))}
+//             </div>
+//             <button className="btn text" onClick={navigateToNextGig} disabled={currentGigIndex === clickedGigs.length - 1}>
+//                 <RightChevronIcon />
+//             </button>
+//         </div>
+//     )}
+// </div>

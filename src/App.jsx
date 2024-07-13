@@ -23,7 +23,7 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { HostDashboard } from './pages/Host/Dashboard/Dashboard';
 import { LoadingScreen } from './components/ui/loading/LoadingScreen';
 import { GigFinder } from './pages/Musician/GigFinder/GigFinder';
-import { GigInfo } from './pages/Musician/GigInfo';
+import { GigPage } from './pages/Musician/GigPage';
 
 
 
@@ -49,7 +49,7 @@ export default function App() {
         <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} /></NoHeaderFooterLayout>} />
         <Route path="/musician">
           <Route index element={<GigFinder />} />
-          <Route path=':gigId' element={<GigInfo />} />
+          <Route path=':gigId' element={<GigPage />} />
         </Route>
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>

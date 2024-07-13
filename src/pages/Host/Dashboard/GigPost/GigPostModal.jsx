@@ -14,6 +14,7 @@ import '/styles/host/gig-post.styles.css'
 import { GigGenre } from './Stage5_Genre';
 import { GigExtraDetails } from './Stage6_ExtraDetails';
 import { GigTemplates } from './Stage0_Templates';
+import { formatISO, addDays, addWeeks, addMonths } from 'date-fns';
 
 export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData }) => {
 
@@ -226,60 +227,184 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
 
     const handlePostGig = async () => {
         setLoading(true);
-        const gigDataPacket = {
-            ...formData,
-            complete: true,
-        }
-
         try {
-            const gigRef = doc(firestore, 'gigs', formData.gigId);
-            await setDoc(gigRef, gigDataPacket, {merge: true});
-            const venueRef = doc(firestore, 'venueProfiles', formData.venueId);
-            await updateDoc(venueRef, {
-                gigs: arrayUnion(formData.gigId)
-            });
-            setLoading(false);
-            setGigPostModal(false);
-            window.location.reload();
-          } catch (error) {
-            setLoading(false);
-            console.error('Failed to post gig:', error);
+          const startDate = new Date(formData.date);
+          let gigDocuments = [];
+      
+          if (formData.repeatData.repeat !== 'no') {
+            const repeatType = formData.repeatData.repeat;
+            const endAfter = parseInt(formData.repeatData.endAfter, 10);
+            const endDate = formData.repeatData.endDate ? new Date(formData.repeatData.endDate) : null;
+      
+            let i = 0;
+      
+            while (true) {
+              let newDate;
+              switch (repeatType) {
+                case 'daily':
+                  newDate = addDays(startDate, i);
+                  break;
+                case 'weekly':
+                  newDate = addWeeks(startDate, i);
+                  break;
+                case 'monthly':
+                  newDate = addMonths(startDate, i);
+                  break;
+                default:
+                  newDate = startDate;
+              }
+      
+              const localDate = new Date(newDate.toLocaleString("en-US", { timeZone: "Europe/London" }));
+      
+              if (endDate && localDate > endDate) {
+                break;
+              }
+      
+              const newGig = {
+                ...formData,
+                gigId: uuidv4(),
+                date: localDate,
+                createdAt: new Date(),
+                complete: true,
+              };
+      
+              delete newGig.repeatData;
+      
+              gigDocuments.push(newGig);
+      
+              i++;
+              if (endAfter && i >= endAfter) {
+                break;
+              }
+            }
+          } else {
+            const singleGig = {
+              ...formData,
+              createdAt: new Date(),
+              complete: true,
+            };
+            delete singleGig.repeatData;
+            gigDocuments.push(singleGig);
           }
-    }    
+      
+          const gigIds = gigDocuments.map(gig => gig.gigId);
+          const gigWritePromises = gigDocuments.map(gig => {
+            const gigRef = doc(firestore, 'gigs', gig.gigId);
+            return setDoc(gigRef, gig, { merge: true });
+          });
+      
+          await Promise.all(gigWritePromises);
+      
+          const venueRef = doc(firestore, 'venueProfiles', formData.venueId);
+          await updateDoc(venueRef, {
+            gigs: arrayUnion(...gigIds)
+          });
+      
+          setLoading(false);
+          setGigPostModal(false);
+          window.location.reload();
+        } catch (error) {
+          setLoading(false);
+          console.error('Failed to post gig:', error);
+        }
+      };
 
 
     const handleSaveAndExit = async () => {
         setSaving(true);
-
+      
         let gigDataPacket;
         if (formData.complete) {
-            gigDataPacket = {
-                ...formData,
-            } 
+          gigDataPacket = {
+            ...formData,
+          };
         } else {
-            gigDataPacket = {
-                ...formData,
-                complete: false,
-            } 
+          gigDataPacket = {
+            ...formData,
+            complete: false,
+          };
         }
-
+      
         try {
-            const gigRef = doc(firestore, 'gigs', formData.gigId);
-            await setDoc(gigRef, gigDataPacket, {merge: true});
-            const venueRef = doc(firestore, 'venueProfiles', formData.venueId);
-            await updateDoc(venueRef, {
-                gigs: arrayUnion(formData.gigId)
-            });
-            setSaving(false);
-            setGigPostModal(false);
-            window.location.reload();
-          } catch (error) {
-            setSaving(false);
-            console.error('Failed to post gig:', error);
+          const startDate = new Date(gigDataPacket.date);
+          let gigDocuments = [];
+      
+          if (gigDataPacket.repeatData.repeat !== 'no') {
+            const repeatType = gigDataPacket.repeatData.repeat;
+            const endAfter = parseInt(gigDataPacket.repeatData.endAfter, 10);
+            const endDate = gigDataPacket.repeatData.endDate ? new Date(gigDataPacket.repeatData.endDate) : null;
+      
+            let i = 0;
+      
+            while (true) {
+              let newDate;
+              switch (repeatType) {
+                case 'daily':
+                  newDate = addDays(startDate, i);
+                  break;
+                case 'weekly':
+                  newDate = addWeeks(startDate, i);
+                  break;
+                case 'monthly':
+                  newDate = addMonths(startDate, i);
+                  break;
+                default:
+                  newDate = startDate;
+              }
+      
+              const localDate = new Date(newDate.toLocaleString("en-US", { timeZone: "Europe/London" }));
+      
+              if (endDate && localDate > endDate) {
+                break;
+              }
+      
+              const newGig = {
+                ...gigDataPacket,
+                gigId: uuidv4(),
+                date: localDate,
+                complete: false,
+                createdAt: new Date(),
+              };
+      
+              delete newGig.repeatData;
+      
+              gigDocuments.push(newGig);
+      
+              i++;
+              if (endAfter && i >= endAfter) {
+                break;
+              }
+            }
+          } else {
+            const singleGig = {
+              ...gigDataPacket,
+              createdAt: new Date(),
+            };
+            delete singleGig.repeatData;
+            gigDocuments.push(singleGig);
           }
-        
-    }
-
+      
+          const gigIds = gigDocuments.map(gig => gig.gigId);
+          const gigWritePromises = gigDocuments.map(gig => {
+            const gigRef = doc(firestore, 'gigs', gig.gigId);
+            return setDoc(gigRef, gig, { merge: true });
+          });
+      
+          await Promise.all(gigWritePromises);
+      
+          const venueRef = doc(firestore, 'venueProfiles', gigDataPacket.venueId);
+          await updateDoc(venueRef, {
+            gigs: arrayUnion(...gigIds)
+          });
+      
+          setSaving(false);
+          setGigPostModal(false);
+          window.location.reload();
+        } catch (error) {
+          setSaving(false);
+          console.error('Failed to save gig:', error);
+        }
+      };
 
     return (
         <div className="modal gig-post" onClick={handleModalClick}>
