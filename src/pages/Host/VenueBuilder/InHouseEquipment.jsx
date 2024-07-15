@@ -47,7 +47,7 @@ export const InHouseEquipment = ({ formData, handleInputChange }) => {
             </div>
             {equipmentAvailable === 'yes' && (
                 <div className='equipment-type'>
-                    <h4 className='input-label'>What equipment do you have?</h4>
+                    <h6>What equipment do you have?</h6>
                     <div className="selections">
                         {['Speakers', 'Microphone', 'Piano', 'Amp', 'Drums'].map(type => (
                             <button 

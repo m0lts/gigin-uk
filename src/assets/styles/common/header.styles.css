@@ -1,7 +1,6 @@
 .header {
-    padding: 10px 1rem;
-}
-.header {
+    height: 60px;
+    padding: 0 5%;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -48,29 +47,60 @@
 /* Account menu */
 .header .account-menu {
     position: absolute;
-    min-width: 200px;
-    right:1rem;
-    top:4rem;
+    min-width: 225px;
+    right:5%;
+    top:60px;
     background-color: var(--white);
     padding:1rem;
-    border: 1px solid var(--light-grey);
-    border-radius: 5px;
+    border: 1px solid var(--primary-grey);
+    border-radius: 1rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    z-index: 100;
 }
 .header .account-menu .item {
-    margin:1rem 0;
-    padding:5px;
+    margin-bottom:10px;
+    padding:5px 10px;
     border-radius: 5px;
     cursor: pointer;
     font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s linear;
 }
-.header .account-menu .item:first-of-type {
-    margin:0;
+.header .account-menu .item.no-margin {
+    margin-bottom:5px;
 }
 .header .account-menu .item:hover {
-    background-color: var(--off-white);
-
+    background-color: var(--primary-grey);
 }
-.header .account-menu .item.btn {
-    margin-top:1rem;
+.header .account-menu .btn.danger {
     width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding:5px 10px;
+    border-radius: 5px;
+}
+.header .account-menu .break {
+    width: 100%;
+    height:1px;
+    background-color: var(--secondary-grey);
+    margin: 5px 0;
+}
+/* Individual menu items */
+.header .account-menu .name-and-email {
+    flex-direction: column;
+    align-items: flex-start;
+}
+.header .account-menu .name-and-email:hover {
+    background-color: transparent;
+}
+.header .account-menu .name-and-email p {
+    font-size: 0.9rem;
+    color: var(--tertiary-grey);
+}
+/* Menu Section titles */
+.header .account-menu .title {
+    padding: 5px 10px;
 }

@@ -122,12 +122,13 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
           </div>
           <div className="input-group">
             <label htmlFor="password">
-              Password <button className="fp-link btn text" onClick={() => setAuthType('forgot-password')}>Forgot password?</button>
+              Password <button type='button' className="fp-link btn text" onClick={() => setAuthType('forgot-password')} tabIndex="-1">Forgot password?</button>
             </label>
             <div className="password">
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
+                id="password"
                 value={credentials.password}
                 onChange={(e) => { handleChange(e); clearError(); }}
                 placeholder="Password"

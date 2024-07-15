@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { v4 as uuidv4 } from 'uuid';
 import { NoTextLogo, WhiteBckgrdLogo } from "/components/ui/logos/Logos"
+import { ExitIcon } from "/components/ui/Extras/Icons"
 import { VenueDetails } from "./VenueDetails";
 import { VenueType } from "./VenueType";
 import { InHouseEquipment } from "./InHouseEquipment";
@@ -133,14 +134,14 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
             });
 
             // Update the loading text and progress at intervals
-            setTimeout(() => setUploadText('Building your profile...'), 3000);
-            setTimeout(() => setProgress(33), 3000);
-            setTimeout(() => setUploadText('Creating your dashboard...'), 9000);
-            setTimeout(() => setProgress(66), 9000);
+            setTimeout(() => setUploadText('Building your profile...'), 2000);
+            setTimeout(() => setProgress(33), 2000);
+            setTimeout(() => setUploadText('Creating your dashboard...'), 6000);
+            setTimeout(() => setProgress(66), 6000);
             setTimeout(() => {
                 setProgress(100);
                 navigate('/host/dashboard');
-            }, 12000);
+            }, 9000);
 
         } catch (error) {
             setUploadingProfile(false);
@@ -275,7 +276,7 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
                                             </li>
                                         )}
                                         <li className={`step ${currentStep >= (formData.type === 'Public Establishment' ? 4 : 3) ? 'completed' : ''} ${currentStep === (formData.type === 'Public Establishment' ? 4 : 3) ? 'active' : ''}`}>
-                                            <div className="circle">{formData.type === 'Public Establishment' ? 4 : 3}</div>Photos of performing space
+                                            <div className="circle">{formData.type === 'Public Establishment' ? 4 : 3}</div>Photos
                                         </li>
                                         <li className={`step ${currentStep >= (formData.type === 'Public Establishment' ? 5 : 4) ? 'completed' : ''} ${currentStep === (formData.type === 'Public Establishment' ? 5 : 4) ? 'active' : ''}`}>
                                             <div className="circle">{formData.type === 'Public Establishment' ? 5 : 4}</div>Additional details
@@ -285,6 +286,7 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
                             </ul>
                         </div>
                         <button className="btn text" onClick={handleSaveAndExit}>
+                            <ExitIcon />
                             Save and Exit
                         </button>
                     </aside>

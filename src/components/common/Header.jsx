@@ -4,10 +4,11 @@ import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
 import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "/components/ui/Extras/Icons"
 import { useState } from "react"
+import { ExitIcon, HouseIcon, LogOutIcon, MapIcon, NewTabIcon, SettingsIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
 
-export const Header = ({ setAuthModal, setAuthType }) => {
+export const Header = ({ setAuthModal, setAuthType, user }) => {
     
-    const { user, logout } = useAuth();
+    const { logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [accountMenu, setAccountMenu] = useState(false);
@@ -39,8 +40,114 @@ export const Header = ({ setAuthModal, setAuthType }) => {
         }
     }
 
+    const headerStyle = {
+        padding: location.pathname.includes('dashboard') ? '0 1rem' : '0 5%',
+      };
+
+    const menuStyle = {
+        right: location.pathname.includes('dashboard') ? '1rem' : '5%',
+      };
+
+
+    if (location.pathname === '/') {
+        return (
+            user ? (
+                <header className="header default" style={headerStyle}>
+                    <TextLogo />
+                    <div className="left">
+
+                    </div>
+                    <div className="right">
+                        <div className="buttons">
+                            <Link className="link" to={'/musician'}>
+                                <button className="btn primary-alt">
+                                    Musicians
+                                    <NewTabIcon />
+                                </button>
+                            </Link>
+                            <Link className="link" to={'/host/dashboard'}>
+                                <button className="btn primary-alt">
+                                    Hosts
+                                    <NewTabIcon />
+                                </button>
+                            </Link>
+                            <Link className="link" to={'/host/dashboard'}>
+                                <button className="btn primary-alt">
+                                    Gig-Goers
+                                    <NewTabIcon />
+                                </button>
+                            </Link>
+                        </div>
+                        <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
+                            <UserIcon />
+                        </button>
+                    </div>
+                    {accountMenu && (
+                        <nav className="account-menu" style={menuStyle}>
+                            <div className="item name-and-email no-margin">
+                                <h6>{user.name}</h6>
+                                <p>{user.email}</p>
+                            </div>
+                            <div className="item">
+                                Messages
+                                <MailboxEmptyIcon />
+                            </div>
+                            <div className="break" />
+                            <h6 className="title">musicians</h6>
+                            <div className="item no-margin">
+                                Dashboard
+                                <DashboardIcon />
+                            </div>
+                            <div className="item">
+                                Map
+                                <MapIcon />
+                            </div>
+                            <div className="break" />
+                            <h6 className="title">hosts</h6>
+                            <div className="item no-margin">
+                                Dashboard
+                                <DashboardIcon />
+                            </div>
+                            <div className="item">
+                                Venue Builder
+                                <VenueBuilderIcon />
+                            </div>
+                            <div className="break" />
+                            <h6 className="title">gig-goers</h6>
+                            <div className="item no-margin">
+                                Map
+                                <MapIcon />
+                            </div>
+                            <div className="break" />
+                            <div className="item no-margin">
+                                Settings
+                                <SettingsIcon />
+                            </div>
+                            <button className="btn danger no-margin" onClick={handleLogout}>
+                                Log Out
+                                <LogOutIcon />
+                            </button>
+                        </nav>
+                    )}
+                </header>
+            ) : (
+                <header className="header default" style={headerStyle}>
+                    <TextLogo />
+                    <nav className="nav-list">
+                        <button className="item btn secondary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
+                            Log In
+                        </button>
+                        <button className="item btn primary-alt" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
+                            Sign Up
+                        </button>
+                    </nav>
+                </header>
+            )
+        )
+    }
+
     return (
-        <header className="header default">
+        <header className="header default" style={headerStyle}>
             {user ? (
                 <>
                     <div className="left">
@@ -94,23 +201,49 @@ export const Header = ({ setAuthModal, setAuthType }) => {
                         </button>
                     </div>
                     {accountMenu && (
-                        <nav className="account-menu">
-                            <div className="item">
-                                Option 1
+                        <nav className="account-menu" style={menuStyle}>
+                            <div className="item name-and-email no-margin">
+                                <h6>{user.name}</h6>
+                                <p>{user.email}</p>
                             </div>
                             <div className="item">
-                                Option 2
+                                Messages
+                                <MailboxEmptyIcon />
                             </div>
-                            <hr className="break" />
+                            <div className="break" />
+                            <h6 className="title">musicians</h6>
+                            <div className="item no-margin">
+                                Dashboard
+                                <DashboardIcon />
+                            </div>
                             <div className="item">
-                                Option 3
+                                Map
+                                <MapIcon />
+                            </div>
+                            <div className="break" />
+                            <h6 className="title">hosts</h6>
+                            <div className="item no-margin">
+                                Dashboard
+                                <DashboardIcon />
                             </div>
                             <div className="item">
-                                Option 4
+                                Venue Builder
+                                <VenueBuilderIcon />
                             </div>
-                            <hr className="break" />
-                            <button className="item btn text" onClick={handleLogout}>
+                            <div className="break" />
+                            <h6 className="title">gig-goers</h6>
+                            <div className="item no-margin">
+                                Map
+                                <MapIcon />
+                            </div>
+                            <div className="break" />
+                            <div className="item no-margin">
+                                Settings
+                                <SettingsIcon />
+                            </div>
+                            <button className="btn danger no-margin" onClick={handleLogout}>
                                 Log Out
+                                <LogOutIcon />
                             </button>
                         </nav>
                     )}
@@ -119,10 +252,10 @@ export const Header = ({ setAuthModal, setAuthType }) => {
                 <>
                     { getLocation() }
                     <nav className="nav-list">
-                        <button className="item btn tertiary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
+                        <button className="item btn secondary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
                             Log In
                         </button>
-                        <button className="item btn primary" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
+                        <button className="item btn primary-alt" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
                             Sign Up
                         </button>
                     </nav>

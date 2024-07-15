@@ -5,7 +5,7 @@
     font-size: 24px;
 }
 .logo .orange-txt {
-    color: var(--gigin-orange);
+    color: var(--gigin-colour);
 }
 .logo.bckgrd-white {
     background-color: var(--white);
@@ -18,5 +18,5 @@
 }
 .logo .user-type {
     font-size: 0.75rem;
-    color: var(--medium-grey);
+    color: var(--secondary-grey);
 }

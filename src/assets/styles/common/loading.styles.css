@@ -26,8 +26,8 @@
   width: 8px;
   height: 8px;
   border-radius: 5px;
-  background-color: var(--dark-grey);
-  color: var(--dark-grey);
+  background-color: var(--tertiary-grey);
+  color: var(--tertiary-grey);
   animation: dot-flashing 750ms infinite linear alternate;
   animation-delay: 0.5s;
 }
@@ -40,9 +40,10 @@
 .loading.dot-flashing::before {
   left: -12px;
   width: 8px;
-  height: 8px;    border-radius: 5px;
-  background-color: var(--dark-grey);
-  color: var(--dark-grey);
+  height: 8px;    
+  border-radius: 5px;
+  background-color: var(--tertiary-grey);
+  color: var(--tertiary-grey);
   animation: dot-flashing 750ms infinite alternate;
   animation-delay: 0s;
 }
@@ -51,17 +52,17 @@
   width: 8px;
   height: 8px;
   border-radius: 5px;
-  background-color: var(--dark-grey);
-  color: var(--dark-grey);
+  background-color: var(--tertiary-grey);
+  color: var(--tertiary-grey);
   animation: dot-flashing 750ms infinite alternate;
   animation-delay: 1s;
 }
 
 @keyframes dot-flashing {
   0% {
-    background-color: var(--dark-grey);
+    background-color: var(--tertiary-grey);
   }
   50%, 100% {
-    background-color: var(--light-grey);
+    background-color: var(--primary-grey);
   }
 }

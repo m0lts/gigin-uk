@@ -1,6 +1,6 @@
 .venue-builder {
     height:100vh;
-    padding:2.5%;
+    padding:2.5% 5%;
     display: grid;
     grid-template-columns: 30% 70%;
     gap:1rem;
@@ -8,7 +8,7 @@
 
 /* Left side */
 .venue-builder .left {
-    background-color: var(--gigin-orange);
+    background-color: var(--gigin-colour);
     border-radius: 10px;
     padding:2rem 1.5rem;
     position: relative;
@@ -31,14 +31,14 @@
 }
 
 /* Progress list */
-.progress ul {
+.venue-builder .progress ul {
     list-style-type: none;
     padding: 0;
     position: relative;
     display: flex;
     flex-direction: column;
 }
-.progress ul li {
+.venue-builder .progress ul li {
     display: flex;
     align-items: center;
     font-weight: normal;
@@ -48,65 +48,66 @@
     font-weight: 300;
     transition: font-weight 200ms linear, color 200ms linear;
 }
-.progress ul li:first-of-type {
+.venue-builder .progress ul li:first-of-type {
     padding-top:0;
 }
-.progress ul li::before,
-.progress ul li::after {
+.venue-builder .progress ul li::before,
+.venue-builder .progress ul li::after {
     content: '';
     position: absolute;
     left: 15px;
-    width: 2px;
-    background-color: white;
+    width: 1px;
+    background-color: var(--white);
 }
-.progress ul li::before {
+.venue-builder .progress ul li::before {
     top: 0;
     bottom: 50%;
 }
-.progress ul li::after {
+.venue-builder .progress ul li::after {
     top: 50%;
     bottom: 0;
 }
-.progress ul li:first-child::before {
+.venue-builder .progress ul li:first-child::before {
     display: none;
 }
-.progress ul li:last-child::after {
+.venue-builder .progress ul li:last-child::after {
     display: none;
 }
-.progress ul li.completed {
-    font-weight: bold;
-    color: white;
+.venue-builder .progress ul li.completed {
+    font-weight: 500;
+    color: var(--white);
 }
-.progress ul li.active {
-    font-weight: bold;
+.venue-builder .progress ul li.active {
+    font-weight: 500;
 }
-.progress ul li .circle {
+.venue-builder .progress ul li .circle {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    border: 2px solid white;
+    border: 1px solid var(--white);
     margin-right: 10px;
     font-weight: bold;
     z-index: 1;
-    background-color: var(--gigin-orange);
-    color: white;
+    background-color: var(--gigin-colour);
+    color: var(--white);
     font-size: 0.75rem;
     transition: background-color 200ms linear, color 200ms linear;
 }
-.progress ul li.active .circle,
-.progress ul li.completed .circle {
-    background-color: white;
-    color: var(--gigin-orange);
+.venue-builder .progress ul li.active .circle,
+.venue-builder .progress ul li.completed .circle {
+    background-color: var(--white);
+    color: var(--gigin-colour);
 }
 
 
 
 /* Right side */
 .venue-builder .right {
-    background-color: var(--off-white);
+    border:1px solid var(--primary-grey);
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -122,10 +123,9 @@
     justify-content: center;
     gap:2rem;
 }
-.venue-builder .input-label {
-    font-size: 0.9rem !important;
-    font-weight: 500 !important;
-    color: var(--medium-grey) !important;
+.venue-builder .stage h6 {
+    color: var(--tertiary-grey);
+    margin-bottom: 5px;
 }
 
 /* Details stage */
@@ -141,8 +141,9 @@
     display: none;  /* Chrome, Safari, and Opera */
 }
 .venue-builder .stage.details .manual-address {
-    font-size: 0.8rem !important;
+    font-size: 0.75rem !important;
 }
+
 /* Cards */
 .venue-builder .stage .selections {
     width:100%;
@@ -153,7 +154,7 @@
 }
 .venue-builder .stage .card {
     position: relative;
-    border:1px solid var(--light-medium-grey);
+    border:1px solid var(--secondary-grey);
     background-color: var(--white);
     border-radius: 5px;
     cursor: pointer;
@@ -170,10 +171,10 @@
     margin-bottom: 10px;
 }
 .venue-builder .stage .card:hover {
-    border-color: var(--gigin-orange);
+    border-color: var(--gigin-colour);
 }
 .venue-builder .stage .card:hover > .status-dot {
-    border-color: var(--gigin-orange);
+    border-color: var(--gigin-colour);
 }
 .venue-builder .stage .card.large {
     width: 275px;
@@ -203,11 +204,11 @@
     font-weight: 400;
 }
 .venue-builder .stage .card.selected {
-    background-color: var(--trans-gigin-orange);
-    border-color: var(--gigin-orange);
+    background-color: var(--secondary-gigin-colour);
+    border-color: var(--gigin-colour);
 }
 .venue-builder .stage .card .status-dot {
-    border: 1px solid var(--light-medium-grey);
+    border: 1px solid var(--secondary-grey);
     background-color: var(--white);
     width:15px;
     height:15px;
@@ -221,8 +222,8 @@
     transition: background-color 200ms linear, border-color 200ms linear;
 }
 .venue-builder .stage .card.selected > .status-dot {
-    background-color: var(--gigin-orange);
-    border-color: var(--gigin-orange);
+    background-color: var(--gigin-colour);
+    border-color: var(--gigin-colour);
 }
 .venue-builder .stage .card .status-dot .inner {
     background-color: var(--white);
@@ -272,7 +273,7 @@
 .venue-builder .stage .photo-space h4 {
     font-size: 0.75rem;
     font-weight: 500;
-    color: var(--dark-grey);
+    color: var(--tertiary-grey);
     margin-bottom: 10px;
 }
 .venue-builder .stage .establishment-type .selections,
@@ -293,8 +294,8 @@
     flex-direction: column;
 }
 .venue-builder .stage.photos .upload {
-    border:1px dashed var(--light-medium-grey);
-    background-color: var(--trans-gigin-orange);
+    border:1px dashed var(--gigin-colour);
+    background-color: var(--secondary-gigin-colour);
     border-radius: 5px;
     min-height: 20%;
     cursor: pointer;
@@ -306,7 +307,7 @@
     height: 100%;
     gap:1rem;
     font-size: 0.9rem;
-    color: var(--dark-grey);
+    color: var(--black);
 }
 .venue-builder .stage.photos .upload-label .icon {
     font-size: 3rem;
@@ -350,21 +351,24 @@
     right: 5px;
     padding:5px;
     border: none;
-    background-color: var(--white);
-    border-radius: 5px;
+    border-radius: 0.5rem;
     cursor: pointer;
     display: none;
+    background-color: transparent;
 }
 .venue-builder .stage.photos .remove-button .icon {
-    color: var(--red);
-    font-size: 1rem;
+    color: var(--white);
+    font-size: 1.5rem;
 }
-
 .venue-builder .stage.photos .preview-image-container:hover .remove-button {
     display: flex;
     align-items: center;
     justify-content: center;
 }
+.venue-builder .stage.photos .input-label {
+    margin-top: 10px;
+}
+
 /* Additional details */
 .venue-builder .extra-details .input-group {
     display: flex;
@@ -374,21 +378,22 @@
     gap:5px;
 }
 .venue-builder .extra-details .input-group label {
+    text-transform: uppercase;
+    color: var(--tertiary-grey);
     font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--dark-grey);
+    font-weight: 600;
     margin-bottom: 5px;
 }
 .venue-builder .extra-details .input-group textarea {
     min-height: 200px;
-    border:1px solid var(--light-medium-grey);
+    border:1px solid var(--secondary-grey);
     border-radius: 5px;
     padding:10px;
     max-width: 100%;
     max-height: 200px;
 }
 .venue-builder .extra-details .input-group textarea:focus {
-    outline-color: var(--gigin-orange);
+    outline-color: var(--gigin-colour);
 }
 
 
@@ -436,19 +441,19 @@
 
 .progress-bar-container {
     width: 20%;
-    background-color: var(--light-grey);
+    background-color: var(--primary-grey);
     border-radius: 5px;
     overflow: hidden;
 }
 
 .progress-bar {
     height: 5px;
-    background-color: var(--gigin-orange);
+    background-color: var(--gigin-colour);
     border-radius: 5px;
     transition: width 3s;
 }
 .venue-builder .uploading-profile .warning {
-    color: var(--dark-grey);
+    color: var(--tertiary-grey);
     position: absolute;
     bottom:3rem;
 }

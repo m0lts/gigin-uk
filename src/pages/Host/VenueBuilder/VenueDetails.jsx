@@ -127,7 +127,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
 
                     {formData.type === 'Public Establishment' && (
                         <div className="establishment-type">
-                            <h4 className='input-label'>Type of establishment</h4>
+                            <h6 className='input-label'>Type of establishment</h6>
                             <div className="selections">
                                 <button className={`card small ${formData.establishment === 'Pub/Bar' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Pub/Bar')}>
                                     <div className="status-dot">

@@ -106,7 +106,7 @@ export const Photos = ({ formData, handleInputChange }) => {
                             <span>Click or drag images here to upload. Add at least 3 images.</span>
                         </label>
                     </div>
-                    <h4 className="input-label">Drag the photos to rearrange in order of their importance.</h4>
+                    <h6 className="input-label">Drag the photos to rearrange in order of their importance.</h6>
                     <div className="preview">
                         {images.map((image, index) => (
                             <DraggableImage

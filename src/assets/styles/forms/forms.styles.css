@@ -8,6 +8,12 @@
 }
 
 /* Common field styles */
+input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px rgba(255, 108, 75, 0.054) inset !important;
+    box-shadow: 0 0 0 1000px rgba(255, 108, 75, 0.054) inset !important;
+    -webkit-text-fill-color: black !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
 .form .input-group, 
 .auth-form .input-group {
     display: flex;
@@ -16,12 +22,13 @@
 }
 .form .input-group label, 
 .auth-form .input-group label {
+    text-transform: uppercase;
+    color: var(--tertiary-grey);
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: var(--dark-grey);
 }
 .form .input-group input,
 .form .input-group .password,
@@ -30,8 +37,9 @@
 .auth-form .input-group .password,
 .auth-form .input-group select {
     padding:10px 5px;
-    border: 1px solid var(--light-medium-grey);
+    border: 1px solid var(--secondary-grey);
     border-radius: 5px;
+    background-color: var(--white);
 }
 .form .input-group input:focus, 
 .auth-form .input-group input:focus {
@@ -58,18 +66,19 @@
     gap:5px;
 }
 .form .input-group label {
+    text-transform: uppercase;
+    color: var(--tertiary-grey);
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: var(--dark-grey);
 }
 .form .input-group input,
 .form .input-group .password,
 .form .input-group select {
     padding:10px 5px;
-    border: 1px solid var(--light-medium-grey);
+    border: 1px solid var(--secondary-grey);
     border-radius: 5px;
 }
 .form .input-group input:focus {
@@ -89,9 +98,21 @@
 }
 
 /* Field specific styles */
+.auth-form #password {
+    background-color: var(--white);
+}
+.auth-form #password:focus {
+    outline: none;
+}
+.auth-form #password:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px white inset !important;
+    box-shadow: 0 0 0 1000px white inset !important;
+    -webkit-text-fill-color: black !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
 .auth-form .input-group .btn {
     font-size: 0.75rem;
-    color: var(--dark-grey);
+    color: var(--tertiary-grey);
 }
 .auth-form .input-group label .fp-link {
     font-size: 0.75rem;
@@ -111,11 +132,11 @@
     outline: none;
 }
 .auth-form .input-group .password input:focus > .password {
-    outline: 2px solid var(--gigin-orange);
+    outline: 2px solid var(--gigin-colour);
 }
 .auth-form .input-group .password .btn {
     padding:0 5px;
-    color:var(--dark-grey);
+    color:var(--tertiary-grey);
 }
 .auth-form .input-group .password .btn:hover {
     background-color: transparent;
@@ -154,6 +175,7 @@
 }
 .auth-form .tick-boxes .input-group label {
     font-weight: 400;
+    text-transform: none;
 }
 .auth-form .tick-boxes .input-group .tc-link {
     font-size: 0.75rem;
@@ -168,5 +190,5 @@
     text-align: center;
 }
 .auth-form .change-auth-type .btn {
-    color: var(--gigin-orange);
+    color: var(--gigin-colour);
 }

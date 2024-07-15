@@ -3,9 +3,9 @@ import { Header } from "../components/common/Header"
 import { useAuth } from "../hooks/useAuth"
 import '/styles/common/dashboard.styles.css'
 
-export const DashboardLayout = ({ children, setAuthModal, setAuthType }) => {
+export const DashboardLayout = ({ children, setAuthModal, setAuthType, user }) => {
 
-    const { user, loading } = useAuth();
+    const { loading } = useAuth();
 
     useEffect(() => {
         if (!loading && !user) {
@@ -18,6 +18,7 @@ export const DashboardLayout = ({ children, setAuthModal, setAuthType }) => {
             <Header 
                 setAuthType={setAuthType}
                 setAuthModal={setAuthModal}
+                user={user}
             />
             <main className="main">
                 { children }

@@ -1,8 +1,28 @@
-import { faCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAmpGuitar, faArrowLeftFromArc, faArrowUpFromBracket, faArrowUpRightFromSquare, faBeerFoam, faBookmark, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faRingsWedding, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faCircle, faUserCircle } from "@fortawesome/free-solid-svg-icons"
+import { faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faArrowUpFromBracket, faArrowUpRightFromSquare, faBeerFoam, faBookmark, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faGear, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPencil, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faRingsWedding, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
 // General icons
+export const UserIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faUserCircle} className="icon" />
+    )
+}
+export const LogOutIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faArrowRightFromBracket} className="icon" />
+    )
+}
+export const VenueBuilderIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faPencil} className="icon" />
+    )
+}
+export const SettingsIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faGear} className="icon" />
+    )
+}
 export const DotIcon = () => {
     return (
         <FontAwesomeIcon icon={faCircle} className="icon" />
