@@ -13,7 +13,7 @@ import { LoadingThreeDots } from '../ui/loading/Loading';
 // Styles
 import '/styles/forms/forms.styles.css';
 
-export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading }) => {
+export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable }) => {
 
   const { signup } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
@@ -65,6 +65,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     try {
       await signup(credentials, marketingConsent);
       setAuthModal(false);
+      setAuthClosable(true);
     } catch (err) {
       switch (err.error.code) {
         case 'auth/email-already-in-use':
@@ -203,8 +204,8 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           </>
         )}
       </form>
-      {!loading && (
-        <button className="btn close tertiary" onClick={() => setAuthModal(false)}>
+      {(!loading && authClosable) && (
+        <button className="btn close tertiary" onClick={() => {if (!authClosable) return; setAuthModal(false)}}>
           <CloseIcon />
         </button>
       )}

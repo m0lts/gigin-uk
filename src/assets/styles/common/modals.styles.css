@@ -29,6 +29,7 @@
 /* Auth modal */
 .modal-content.auth {
     padding-bottom: 5rem;
+    width:500px;
 }
 .modal-content.auth .head {
     text-align: center;

@@ -15,7 +15,7 @@ import { storage, firestore } from "../../../firebase";
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, arrayUnion, deleteDoc, arrayRemove } from 'firebase/firestore';
 
-export const VenueBuilder = ({ user, setAuthModal }) => {
+export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -86,6 +86,7 @@ export const VenueBuilder = ({ user, setAuthModal }) => {
 
         if (!user) {
             setAuthModal(true);
+            setAuthClosable(false);
         }
         if (user && formData.name === '') {
             checkForSavedProfile();

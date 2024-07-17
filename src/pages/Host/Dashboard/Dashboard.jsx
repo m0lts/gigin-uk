@@ -11,7 +11,7 @@ import { Venues } from "./Venues";
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { firestore } from "../../../firebase";
 
-export const HostDashboard = () => {
+export const HostDashboard = ({  }) => {
 
     const { user } = useAuth();
 
@@ -96,7 +96,7 @@ export const HostDashboard = () => {
         <>  
             {loadingData && <LoadingScreen />}
             <Sidebar
-                setGigPostModal={setGigPostModal}
+              setGigPostModal={setGigPostModal}
             />
             <div className="window">
                 <Routes>
@@ -107,7 +107,16 @@ export const HostDashboard = () => {
                     <Route path="finances" element={<h1>financials</h1>} />
                 </Routes>
             </div>
-            {gigPostModal && <GigPostModal setGigPostModal={setGigPostModal} venueProfiles={venueProfiles} user={user} templates={templates} incompleteGigs={incompleteGigs} editGigData={editGigData} />}
+            {gigPostModal && 
+              <GigPostModal 
+                setGigPostModal={setGigPostModal} 
+                venueProfiles={venueProfiles} 
+                user={user} 
+                templates={templates} 
+                incompleteGigs={incompleteGigs} 
+                editGigData={editGigData}
+              />
+            }
         </>
     )
 }

@@ -1,5 +1,5 @@
 // Dependencies
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 
 // Styles and extras
 import "/assets/global.styles.css"
@@ -31,12 +31,23 @@ import { GigPage } from './pages/Musician/GigPage';
 export default function App() {
 
   const { user, loading, logout } = useAuth();
+  const location = useLocation();
   const [authModal, setAuthModal] = useState(false);
   const [authType, setAuthType] = useState('login');
+  const [authClosable, setAuthClosable] = useState(true);
+
+  useEffect(() => {
+    if (location.pathname.includes('dashboard') || location.pathname.includes('venue-builder')) {
+      setAuthClosable(false);
+    } else {
+      setAuthClosable(true);
+    }
+  }, [location.pathname]);
 
   if (loading) {
     return <LoadingScreen />;
   }
+
 
   return (
     <>
@@ -44,9 +55,9 @@ export default function App() {
         <Route path="/" element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><LandingPage /></MainLayout>} />
         <Route path="/host">
           <Route index element={<HostInfo user={user} setAuthModal={setAuthModal} />} />
-          <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user}><HostDashboard /></DashboardLayout>} />
+          <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><HostDashboard /></DashboardLayout>} />
         </Route>
-        <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} /></NoHeaderFooterLayout>} />
+        <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
         <Route path="/musician">
           <Route index element={<GigFinder />} />
           <Route path=':gigId' element={<GigPage />} />
@@ -54,7 +65,7 @@ export default function App() {
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>
       
-      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} /> }
+      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} /> }
     </>
   );
 }

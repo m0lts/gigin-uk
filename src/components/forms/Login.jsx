@@ -10,7 +10,7 @@ import '/styles/forms/forms.styles.css'
 
 
 
-export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, }) => {
+export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [resendingOtp, setResendingOtp] = useState(false);
@@ -42,6 +42,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
     try {
       await login(credentials);
       setAuthModal(false);
+      setAuthClosable(true);
     } catch (err) {
       switch (err.error.code) {
         case 'auth/invalid-credential':
@@ -204,8 +205,8 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
           )}
         </form>
       )}
-      {!loading && (
-        <button className="btn close tertiary" onClick={() => setAuthModal(false)}>
+      {(!loading && authClosable) && (
+        <button className="btn close tertiary" onClick={() => {if (!authClosable) return; setAuthModal(false)}}>
           <CloseIcon />
         </button>
       )}

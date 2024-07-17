@@ -34,9 +34,10 @@
 }
 .header .left .breadcrumbs .item {
     font-weight: 300;
+    font-size: 0.8rem;
 }
 .header .left .breadcrumbs .item.active {
-    font-weight: 400;
+    font-weight: 600;
 }
 .header .nav-list {
     display: flex;

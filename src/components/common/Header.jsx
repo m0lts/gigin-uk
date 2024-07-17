@@ -62,19 +62,16 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             <Link className="link" to={'/musician'}>
                                 <button className="btn primary-alt">
                                     Musicians
-                                    <NewTabIcon />
                                 </button>
                             </Link>
                             <Link className="link" to={'/host/dashboard'}>
                                 <button className="btn primary-alt">
                                     Hosts
-                                    <NewTabIcon />
                                 </button>
                             </Link>
                             <Link className="link" to={'/host/dashboard'}>
                                 <button className="btn primary-alt">
                                     Gig-Goers
-                                    <NewTabIcon />
                                 </button>
                             </Link>
                         </div>
@@ -195,9 +192,8 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 Messages
                             </button>
                         </div>
-                        <button className="btn secondary" onClick={() => setAccountMenu(!accountMenu)}>
-                            {user.name}
-                            <DownChevronIcon />
+                        <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
+                            <UserIcon />
                         </button>
                     </div>
                     {accountMenu && (
