@@ -83,7 +83,7 @@ export const GigTimings = ({ formData, handleInputChange }) => {
                 </div>
                 <div className="timeline">
                     <div className="subtitle">
-                        <h4 className="label">Gig Timeline</h4>
+                        <h5 className="label">Gig Timeline</h5>
                         {formData.startTime === '' && (
                             <p>Fill out your timings to see a rough timeline of the evening.</p>
                         )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { firestore } from '../../firebase';
 import { Header } from '../../components/common/Header';
@@ -6,14 +6,18 @@ import { getDoc, doc, getDocs, collection } from 'firebase/firestore';
 import '/styles/musician/gig-page.styles.css';
 import { BackgroundMusicIcon, ClubIcon, GuitarsIcon, HouseIcon, InviteIcon, MicrophoneIcon, MicrophoneLinesIcon, PeopleGroupIcon, SaveIcon, ShareIcon, SpeakersIcon, TicketIcon, WeddingIcon } from '../../components/ui/Extras/Icons';
 import Skeleton from 'react-loading-skeleton';
+import mapboxgl from 'mapbox-gl';
+import useMapboxAccessToken from "../../hooks/useAccessTokens";
 import 'react-loading-skeleton/dist/skeleton.css';
 
-export const GigPage = () => {
-    const { gigId } = useParams(); // Extract gigId from URL params
+export const GigPage = ({ user, setAuthModal, setAuthType }) => {
+    const { gigId } = useParams();
     const [gigData, setGigData] = useState(null);
     const [venueProfile, setVenueProfile] = useState(null);
     const [similarGigs, setSimilarGigs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const mapboxToken = useMapboxAccessToken();
+    const mapContainerRef = useRef(null);
     const [padding, setPadding] = useState('5%');
     const [fullscreenImage, setFullscreenImage] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -79,6 +83,25 @@ export const GigPage = () => {
             window.removeEventListener('resize', handleResize);
         };
     }, []);
+
+    useEffect(() => {
+        if (venueProfile && venueProfile.coordinates && mapboxToken) {
+            mapboxgl.accessToken = mapboxToken;
+
+            const map = new mapboxgl.Map({
+                container: mapContainerRef.current,
+                style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
+                center: [venueProfile.coordinates[0], venueProfile.coordinates[1]],
+                zoom: 15
+            });
+
+            new mapboxgl.Marker()
+                .setLngLat([venueProfile.coordinates[0], venueProfile.coordinates[1]])
+                .addTo(map);
+
+            return () => map.remove();
+        }
+    }, [venueProfile, mapboxToken]);
 
     if (!gigData) {
         return <div>No gig data found.</div>;
@@ -180,10 +203,15 @@ export const GigPage = () => {
     const formatDuration = (duration) => {
         const hours = Math.floor(duration / 60);
         const minutes = duration % 60;
+        const hourStr = hours === 1 ? 'hr' : 'hrs';
+        const minuteStr = minutes === 1 ? 'min' : 'mins';
+    
         if (minutes === 0) {
-            return `${hours} hours`;
+            return `${hours} ${hourStr}`;
+        } else if (hours === 0) {
+            return `${minutes} ${minuteStr}`;
         } else {
-            return `${hours} hours and ${minutes} minutes`;
+            return `${hours} ${hourStr} and ${minutes} ${minuteStr}`;
         }
     };
 
@@ -234,7 +262,11 @@ export const GigPage = () => {
 
     return (
         <div className='gig-page' style={{ padding: `0 ${padding}` }}>
-            <Header />
+            <Header
+                user={user}
+                setAuthModal={setAuthModal}
+                setAuthType={setAuthType}
+            />
             <section className="gig-page-body">
                 {loading ? (
                     <>
@@ -358,6 +390,10 @@ export const GigPage = () => {
                                         <p>* The host expects musicians to take a break after each hour of performing.</p>
                                         <p>* You can discuss adjustments to the timings with the host in your messages.</p>
                                     </div>
+                                </div>
+                                <div className="location">
+                                    <h4>Location</h4>
+                                    <div ref={mapContainerRef} className="map-container" style={{ height: '300px', width: '75%', borderRadius: '5px' }} />
                                 </div>
                                 <div className="extra-info">
                                     <h4 className="subtitle">Extra Info</h4>

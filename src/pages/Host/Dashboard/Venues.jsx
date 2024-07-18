@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { collection, deleteDoc, doc, getDocs, query, updateDoc, where, arrayRemove } from "firebase/firestore";
 import { ref, listAll, deleteObject } from "firebase/storage";
 import { firestore, storage } from '../../../firebase';
+import { EditIcon } from "../../../components/ui/Extras/Icons";
 
 export const Venues = ({ venues }) => {
 
@@ -62,6 +63,10 @@ export const Venues = ({ venues }) => {
         }
       };
 
+    const removeTrailingComma = (str) => {
+        return str.replace(/[\s,]+$/, '');
+    };
+
     return (
         <>
             <div className="head">
@@ -77,11 +82,10 @@ export const Venues = ({ venues }) => {
                             <img src={venue.photos[0]} alt={venue.name} />
                         </div>
                         <h2 className="venue-name">{venue.name}</h2>
-                        <h3 className="venue-address">{venue.address}</h3>
-                        <p className="venue-description">{venue.description}</p>
+                        <h4 className="venue-address">{removeTrailingComma(venue.address)}</h4>
                         <div className="two-buttons">
-                            <button className="btn secondary" onClick={() => handleEditVenue(venue)}>
-                                Edit
+                            <button className="btn icon" onClick={() => handleEditVenue(venue)}>
+                                <EditIcon />
                             </button>
                             <button className="btn danger" onClick={() => handleDeleteVenue(venue)}>
                                 Delete

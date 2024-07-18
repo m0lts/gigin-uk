@@ -68,9 +68,8 @@ export const MapView = ({ upcomingGigs }) => {
     const createCustomMarker = (gig) => {
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-marker';
-        markerElement.style.background = 'var(--off-white)';
-        markerElement.style.border = '1px solid var(--light-medium-grey)';
-        markerElement.style.boxShadow = '1px 5px 5px var(--light-medium-grey)';
+        markerElement.style.background = 'var(--gn-grey-100)';
+        markerElement.style.boxShadow = '0px 0px 10px var(--gn-shadow)';
         markerElement.style.width = '50px';
         markerElement.style.height = '30px';
         markerElement.style.borderRadius = '25px';
@@ -84,9 +83,8 @@ export const MapView = ({ upcomingGigs }) => {
 
         const tooltip = document.createElement('span');
         tooltip.textContent = `${gig.budget}`;
-        tooltip.style.color = 'black';
+        tooltip.style.color = 'var(--gn-black)';
         tooltip.style.fontWeight = '600';
-        tooltip.style.fontFamily = 'var(--h1-font)';
         tooltip.style.fontSize = '1rem';
         markerElement.appendChild(tooltip);
 
@@ -105,13 +103,13 @@ export const MapView = ({ upcomingGigs }) => {
     };
 
     const handleMarkerMouseEnter = (markerElement) => {
-        markerElement.style.background = 'var(--dark-grey)';
+        markerElement.style.background = 'var(--gn-grey-600)';
         markerElement.querySelector('span').style.color = 'white';
     };
 
     // Function to handle marker mouse leave
     const handleMarkerMouseLeave = (markerElement) => {
-        markerElement.style.background = 'var(--off-white)';
+        markerElement.style.background = 'var(--gn-grey-100)';
         markerElement.querySelector('span').style.color = 'black';
     };
 

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 // Components
-import { NoTextLogo } from "/ui/logos/Logos";
+import { NoTextLogoLink } from "/ui/logos/Logos";
 import { SeeIcon, CloseIcon } from "/components/ui/Extras/Icons";
 import { LoadingThreeDots } from '../ui/loading/Loading';
 // Styles
@@ -16,6 +16,15 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   const [resendingOtp, setResendingOtp] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpId, setOtpId] = useState(null);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
+  const handleFocus = () => {
+    setPasswordFocused(true);
+  };
+
+  const handleBlur = () => {
+    setPasswordFocused(false);
+  };
 
   const handleChange = (e) => {
     if (loading) return;
@@ -97,7 +106,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   return (
     <div className="modal-content auth" onClick={(e) => e.stopPropagation()}>
       <div className="head">
-        <NoTextLogo />
+        <NoTextLogoLink />
         <h2>{!otpId ? 'Login' : 'Two-Factor Authentication (2FA)'}</h2>
         {otpId && (
           <div className="text">
@@ -125,7 +134,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
             <label htmlFor="password">
               Password <button type='button' className="fp-link btn text" onClick={() => setAuthType('forgot-password')} tabIndex="-1">Forgot password?</button>
             </label>
-            <div className="password">
+            <div className={`password ${passwordFocused ? 'focused' : ''}`}>
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
@@ -135,6 +144,8 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                 placeholder="Password"
                 required
                 className={`${error.input === 'password' && 'error'}`}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
               <button type="button" className="btn tertiary" onClick={toggleShowPassword}>
                 <SeeIcon />

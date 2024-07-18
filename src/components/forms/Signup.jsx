@@ -7,7 +7,7 @@ import { auth, firestore } from '../../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 // Components
-import { NoTextLogo } from "../ui/logos/Logos";
+import { NoTextLogoLink } from "../ui/logos/Logos";
 import { SeeIcon, QuestionCircleIcon, CloseIcon } from "/components/ui/Extras/Icons";
 import { LoadingThreeDots } from '../ui/loading/Loading';
 // Styles
@@ -20,6 +20,15 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
   const [showPasswordInfo, setShowPasswordInfo] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
+  const handleFocus = () => {
+    setPasswordFocused(true);
+  };
+
+  const handleBlur = () => {
+    setPasswordFocused(false);
+  };
 
   const handleChange = (e) => {
   if (loading) return;
@@ -91,7 +100,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
   return (
     <div className="modal-content auth" onClick={(e) => e.stopPropagation()}>
       <div className="head">
-        <NoTextLogo />
+        <NoTextLogoLink />
         <h2>Signup</h2>
       </div>
       <form className="auth-form" onSubmit={handleSignup}>
@@ -140,21 +149,23 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
               <QuestionCircleIcon />
             </button>
           </label>
-          <div className="password">
-            <input
-              type={showPassword ? "text" : "password"}
-              id="password"
-              name="password"
-              value={credentials.password}
-              onChange={(e) => { handleChange(e); clearError(); }}
-              placeholder="Password"
-              required
-              className={`${error.input === 'password' && 'error'}`}
-            />
-            <button type="button" className="btn tertiary" onClick={toggleShowPassword}>
-              <SeeIcon />
-            </button>
-          </div>
+          <div className={`password ${passwordFocused ? 'focused' : ''}`}>
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                id="password"
+                value={credentials.password}
+                onChange={(e) => { handleChange(e); clearError(); }}
+                placeholder="Password"
+                required
+                className={`${error.input === 'password' && 'error'}`}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+              />
+              <button type="button" className="btn tertiary" onClick={toggleShowPassword}>
+                <SeeIcon />
+              </button>
+            </div>
           {showPasswordInfo && <p className="password-info">
             <QuestionCircleIcon /> Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character.
           </p>}

@@ -1,81 +1,116 @@
+
 .window .head {
     margin: 20px 3rem;
     padding-bottom: 20px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--gn-grey-400);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-.window .head .title {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 600;
-}
-
 
 .window .body {
     margin: 0 3rem;
     padding-top: 10px;
 }
 
-/* Gigs */
-.window .body.gigs .filter-bar {
+
+/* GIGS */
+
+.window .body.gigs .filters {
     display: flex;
-    justify-content: space-between;
-    gap:1rem;
+    justify-content: flex-start;
+    gap:2%;
     align-items: center;
+    width:100%;
 }
-.window .body.gigs .filter-bar .filters {
+
+.window .body.gigs .filters .search-bar {
+    width:50%;
+    padding: 8px 1rem;
+    background-color: var(--gn-white);
+    border-radius: 5px;
+    border:1px solid var(--gn-grey-400);
     display: flex;
-    gap:10px;
+    align-items: center;
+    gap:0.5rem;
 }
-.window .body.gigs .filter-bar .subtitle {
-    font-weight: 500;
-}
-.window .body.gigs .filter-bar select,
-.window .body.gigs .filter-bar input {
+
+.window .body.gigs .filters select,
+.window .body.gigs .filters input {
     padding:7px;
-    border:1px solid var(--light-medium-grey);
+    border:1px solid var(--gn-grey-400);
     border-radius: 5px;
     cursor: pointer;
-    font-weight: 300;
+    width:15%;
 }
-.window .body.gigs .filter-bar #statusSelect {
-    width:100px;
+
+.window .body.gigs .filters select:focus,
+.window .body.gigs .filters input:focus {
+    outline:none;
+    border:1px solid var(--gn-orange);
 }
-.window .body.gigs .filter-bar .sort {
-    text-transform: capitalize;
+
+.window .body.gigs .filters .sort {
+    text-transform: capitalize;    
 }
-.window .body.gigs .filter-bar .sort .icon {
-    margin-left: 5px;
+
+.window .body.gigs .filters .sort:hover {
+    background-color: var(--gn-white);    
 }
+
+
 .window .body.gigs table {
     width: 100%;
-    border-collapse: collapse;
     margin: 20px 0;
     font-size: 16px;
+    border:1px solid var(--gn-grey-400);
+    overflow: hidden;
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    border-collapse: separate;
+    border-spacing: 0;
 }
+.window .body.gigs table thead {
+    background-color: var(--gn-grey-300);
+}
+
 .window .body.gigs table thead tr {
     text-align: left;
-    font-family: var(--h1-font);
 }
+
 .window .body.gigs table thead tr th {
-    font-weight: 600;
-    color: var(--dark-grey);
+    font-weight: 500;
+    color: var(--gn-black);
+    border: none;
 }
+
 .window .body.gigs table th,
 .window .body.gigs table td {
     padding: 12px 15px;
     border: none;
 }
+
+.window .body.gigs table tbody td {
+    font-weight: var(--gn-semi-bold);
+}
+
+.window .body.gigs table #date {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 .window .body.gigs table .centre {
     text-align: center;
 }
+
 .window .body.gigs table .status-box {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
 }
+
 .window .body.gigs table .status {
     font-size: 0.8rem;
     display: flex;
@@ -86,95 +121,67 @@
     width:fit-content;
     border-radius: 5px;
 }
+
 .window .body.gigs table .status.confirmed {
     border:1px solid rgb(0, 219, 0);
     background-color: rgba(0, 239, 0, 0.1);
     color: rgb(0, 219, 0);
 }
+
 .window .body.gigs table .status.upcoming {
     border:1px solid orange;
     background-color: rgba(255, 166, 0, 0.1);
     color: orange;
 }
+
 .window .body.gigs table .status.previous {
     border:1px solid gray;
     background-color: rgba(128, 128, 128, 0.1);
     color: gray;
 }
-.window .body.gigs table tbody tr {
-    border-top: 1px solid var(--light-grey);
-}
+
 .window .body.gigs table tbody tr:hover {
-    background-color: var(--light-grey);
+    background-color: var(--gn-grey-200);
     cursor: pointer;
 }
-.window .body.gigs table .options-btn {
-    position: relative;
-}
-.window .body.gigs table .options-btn .btn.icon.active {
-    border:1px solid var(--dark-grey);
-}
-.window .body.gigs table .gig-options {
-    position: absolute;
-    right:5rem;
-    top:0;
-    z-index: 2;
-    padding:0.5rem 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap:10px;
-    border-radius: 5px;
-}
 
 
-/* Venues */
+/* VENUES */
+
 .window .body.venues {
     display: grid;
     max-width:100%;
     grid-template-columns: repeat(3, 1fr);
     gap:10px;
+    padding-bottom: 2rem;
 }
+
 .window .body.venues .card.venue {
-    border:1px solid var(--light-medium-grey);
-    background-color: var(--white);
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
     border-radius: 5px;
     padding: 1rem;
-    padding-bottom: 4rem;
     display: flex;
     flex-direction: column;
-    gap:10px;
-    position: relative;
+    gap:5px;
 }
+
 .window .body.venues .venue-image {
     width:100%;
     height:150px;
     overflow: hidden;
     border-radius: 5px;
 }
+
 .window .body.venues .venue-image img {
     width:100%;
     height:100%;
     object-fit: cover;
 }
-.window .body.venues .venue-name {
-    font-size: 1.5rem;
-    font-family: var(--h1-font);
-    font-weight: 600;
-}
-.window .body.venues .venue-address {
-    font-size: 1.15rem;
-    font-family: var(--h1-font);
-    font-weight: 500;
-}
-.window .body.venues .venue-description {
-    font-family: var(--h1-font);
-    font-weight: 400;
-}
+
 .window .body.venues .card.venue .two-buttons {
-    position: absolute;
-    bottom:1rem;
-    margin: 0 auto;
-    width:90%;
+    margin-top: 1rem;
+    width:100%;
     justify-content: space-between;
 }

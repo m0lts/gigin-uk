@@ -1,36 +1,42 @@
+
 .venue-builder {
     height:100vh;
-    padding:2.5% 5%;
+    padding:2.5%;
     display: grid;
     grid-template-columns: 30% 70%;
     gap:1rem;
 }
 
-/* Left side */
+/* SIDEBAR LEFT */
+
 .venue-builder .left {
-    background-color: var(--gigin-colour);
+    background-color: var(--gn-orange);
     border-radius: 10px;
     padding:2rem 1.5rem;
     position: relative;
 }
+
 .venue-builder .left .intro-text {
     margin:2.5rem 0;
     display: flex;
     flex-direction: column;
     gap:0.5rem;
-    color: var(--white);
+    color: var(--gn-white);
 }
+
 .venue-builder .left .btn {
     position: absolute;
     bottom: 1.5rem;
-    left:1.5rem;
-    color: var(--white);
+    left: 1.5rem;
+    color: var(--gn-white);
     display: flex;
     align-items: center;
     gap:5px;
 }
 
+
 /* Progress list */
+
 .venue-builder .progress ul {
     list-style-type: none;
     padding: 0;
@@ -38,48 +44,58 @@
     display: flex;
     flex-direction: column;
 }
+
 .venue-builder .progress ul li {
     display: flex;
     align-items: center;
     font-weight: normal;
-    color: #ffcccb;
+    color: var(--gn-grey-200);
     position: relative;
     padding:30px 0;
-    font-weight: 300;
+    font-weight: 400;
     transition: font-weight 200ms linear, color 200ms linear;
 }
+
 .venue-builder .progress ul li:first-of-type {
     padding-top:0;
 }
+
 .venue-builder .progress ul li::before,
 .venue-builder .progress ul li::after {
     content: '';
     position: absolute;
     left: 15px;
     width: 1px;
-    background-color: var(--white);
+    background-color: var(--gn-white);
 }
+
 .venue-builder .progress ul li::before {
     top: 0;
     bottom: 50%;
 }
+
 .venue-builder .progress ul li::after {
     top: 50%;
     bottom: 0;
 }
+
 .venue-builder .progress ul li:first-child::before {
     display: none;
 }
+
 .venue-builder .progress ul li:last-child::after {
     display: none;
 }
+
 .venue-builder .progress ul li.completed {
     font-weight: 500;
-    color: var(--white);
+    color: var(--gn-white);
 }
+
 .venue-builder .progress ul li.active {
     font-weight: 500;
 }
+
 .venue-builder .progress ul li .circle {
     display: flex;
     align-items: center;
@@ -87,33 +103,35 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    border: 1px solid var(--white);
+    border: 1px solid var(--gn-white);
     margin-right: 10px;
     font-weight: bold;
     z-index: 1;
-    background-color: var(--gigin-colour);
-    color: var(--white);
-    font-size: 0.75rem;
+    background-color: var(--gn-orange);
+    color: var(--gn-white);
+    font-size: 0.9rem;
     transition: background-color 200ms linear, color 200ms linear;
 }
+
 .venue-builder .progress ul li.active .circle,
 .venue-builder .progress ul li.completed .circle {
-    background-color: var(--white);
-    color: var(--gigin-colour);
+    background-color: var(--gn-white);
+    color: var(--gn-orange);
 }
 
 
+/* WINDOW RIGHT */
 
-/* Right side */
 .venue-builder .right {
-    border:1px solid var(--primary-grey);
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border:1px solid var(--gn-grey-300);
+    box-shadow: 0 0 10px var(--gn-shadow);
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
 }
+
 .venue-builder .stage {
     width:90%;
     max-height:90vh;
@@ -123,28 +141,33 @@
     justify-content: center;
     gap:2rem;
 }
+
 .venue-builder .stage h6 {
-    color: var(--tertiary-grey);
+    color: var(--gn-grey-600);
     margin-bottom: 5px;
 }
 
 /* Details stage */
+
 .venue-builder .stage.details {
     height:100%;
     justify-content: flex-start;
     padding:2rem 0;
     overflow: scroll;
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
+
 .venue-builder .stage.details::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari, and Opera */
+    display: none;
 }
+
 .venue-builder .stage.details .manual-address {
     font-size: 0.75rem !important;
 }
 
 /* Cards */
+
 .venue-builder .stage .selections {
     width:100%;
     display: flex;
@@ -152,10 +175,11 @@
     justify-content: space-evenly;
     min-height: 50%;
 }
+
 .venue-builder .stage .card {
     position: relative;
-    border:1px solid var(--secondary-grey);
-    background-color: var(--white);
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
     border-radius: 5px;
     cursor: pointer;
     display: flex;
@@ -167,19 +191,24 @@
     text-align: left;
     transition: background-color 200ms linear, border-color 200ms linear;
 }
+
 .venue-builder .stage .card .icon {
     margin-bottom: 10px;
 }
+
 .venue-builder .stage .card:hover {
-    border-color: var(--gigin-colour);
+    border-color: var(--gn-orange);
 }
+
 .venue-builder .stage .card:hover > .status-dot {
-    border-color: var(--gigin-colour);
+    border-color: var(--gn-orange);
 }
+
 .venue-builder .stage .card.large {
     width: 275px;
     min-height:175px;
 }
+
 .venue-builder .stage .card.small {
     justify-content: center;
     padding-top: 2rem;
@@ -188,6 +217,7 @@
     height: 100px;
     gap:10px;
 }
+
 .venue-builder .stage .card.small.centered {
     justify-content: center;
     align-items: center;
@@ -195,21 +225,25 @@
     width: 75px;
     max-height: 50px;
 }
+
 .venue-builder .stage .card.small .icon {
     font-size: 1.25rem;
     margin-bottom: 0;
 }
+
 .venue-builder .stage .card.small .title {
     font-size: 0.9rem;
     font-weight: 400;
 }
+
 .venue-builder .stage .card.selected {
-    background-color: var(--secondary-gigin-colour);
-    border-color: var(--gigin-colour);
+    background-color: var(--gn-offset-orange);
+    border-color: var(--gn-orange);
 }
+
 .venue-builder .stage .card .status-dot {
-    border: 1px solid var(--secondary-grey);
-    background-color: var(--white);
+    border: 1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
     width:15px;
     height:15px;
     border-radius: 50%;
@@ -221,29 +255,37 @@
     justify-content: center;
     transition: background-color 200ms linear, border-color 200ms linear;
 }
+
 .venue-builder .stage .card.selected > .status-dot {
-    background-color: var(--gigin-colour);
-    border-color: var(--gigin-colour);
+    background-color: var(--gn-orange);
+    border-color: var(--gn-orange);
 }
+
 .venue-builder .stage .card .status-dot .inner {
-    background-color: var(--white);
+    background-color: var(--gn-white);
     width:6px;
     height:6px;
     border-radius: 50%;
     transition: background-color 200ms linear;
 }
+
 .venue-builder .stage .card .icon {
     font-size: 2rem;
 }
+
 .venue-builder .stage .card .title {
     font-size: 1.25rem;
     font-weight: 500;
 }
+
 /* Forms, inputs and labels */
+
 .venue-builder .stage .form {
     width:40vw;
 }
+
 /* Map and address */
+
 .venue-builder .stage .map {
     display: flex;
     align-items: center;
@@ -254,38 +296,48 @@
     width: 40vw;
     position: relative;
 }
+
 /* Stage-specific styling */
+
 .venue-builder .stage .equipment-type {
     max-width: 80%;
 }
+
 .venue-builder .stage.equipment .selections {
     justify-content: center;
     gap:5vw;
 }
+
 .venue-builder .stage.equipment .selections .card.small {
     min-width: 130px;
 }
+
 .venue-builder .stage .establishment-type {
     width:40vw;
 }
+
 .venue-builder .stage .establishment-type h4,
 .venue-builder .stage .equipment-type h4,
 .venue-builder .stage .photo-space h4 {
     font-size: 0.75rem;
     font-weight: 500;
-    color: var(--tertiary-grey);
+    color: var(--gn-grey-600);
     margin-bottom: 10px;
 }
+
 .venue-builder .stage .establishment-type .selections,
 .venue-builder .stage .equipment-type .selections {
     flex-wrap: wrap;
     justify-content: flex-start;
     gap:1rem;
 }
+
 .venue-builder .stage .equipment-type .selections .card {
     max-width: 100px;
 }
+
 /* Photos */
+
 .venue-builder .stage.photos .photo-space {
     margin-top: 1rem;
     width:90%;
@@ -293,13 +345,15 @@
     display: flex;
     flex-direction: column;
 }
+
 .venue-builder .stage.photos .upload {
-    border:1px dashed var(--gigin-colour);
-    background-color: var(--secondary-gigin-colour);
+    border:1px dashed var(--gn-orange);
+    background-color: var(--gn-offset-orange);
     border-radius: 5px;
     min-height: 20%;
     cursor: pointer;
 }
+
 .venue-builder .stage.photos .upload-label {
     display: flex;
     align-items: center;
@@ -307,14 +361,17 @@
     height: 100%;
     gap:1rem;
     font-size: 0.9rem;
-    color: var(--black);
+    color: var(--gn-black);
 }
+
 .venue-builder .stage.photos .upload-label .icon {
     font-size: 3rem;
 }
+
 .venue-builder .stage.photos .photo-space h4 {
     margin-top:1rem;
 }
+
 .venue-builder .stage.photos .preview {
     width:100%;
     height: 80%;
@@ -325,12 +382,14 @@
     overflow: scroll;
     padding:5px;
     padding-bottom: 1rem;
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
+
 .venue-builder .stage.photos .preview::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari, and Opera */
+    display: none;
 }
+
 .venue-builder .stage.photos .preview .preview-image-container {
     position: relative;
     display: inline-block;
@@ -338,6 +397,7 @@
     height:50%;
     margin:5px 0;
 }
+
 .venue-builder .stage.photos .preview .preview-image {
     width:100%;
     height:100%;
@@ -345,6 +405,7 @@
     border-radius: 5px;
     cursor: move;
 }
+
 .venue-builder .stage.photos .remove-button {
     position: absolute;
     top: 5px;
@@ -356,20 +417,24 @@
     display: none;
     background-color: transparent;
 }
+
 .venue-builder .stage.photos .remove-button .icon {
-    color: var(--white);
+    color: var(--gn-white);
     font-size: 1.5rem;
 }
+
 .venue-builder .stage.photos .preview-image-container:hover .remove-button {
     display: flex;
     align-items: center;
     justify-content: center;
 }
+
 .venue-builder .stage.photos .input-label {
     margin-top: 10px;
 }
 
 /* Additional details */
+
 .venue-builder .extra-details .input-group {
     display: flex;
     flex-direction: column;
@@ -377,31 +442,33 @@
     min-width: 300px;
     gap:5px;
 }
+
 .venue-builder .extra-details .input-group label {
     text-transform: uppercase;
-    color: var(--tertiary-grey);
+    color: var(--gn-grey-600);
     font-size: 0.75rem;
     font-weight: 600;
     margin-bottom: 5px;
 }
+
 .venue-builder .extra-details .input-group textarea {
     min-height: 200px;
-    border:1px solid var(--secondary-grey);
+    border:1px solid var(--gn-grey-400);
     border-radius: 5px;
     padding:10px;
     max-width: 100%;
     max-height: 200px;
+    transition: border 200ms linear;
 }
+
 .venue-builder .extra-details .input-group textarea:focus {
-    outline-color: var(--gigin-colour);
+    outline: none;
+    border:1px solid var(--gn-orange);
 }
 
 
+/* CONTROL BUTTONS */
 
-
-
-
-/* Control buttons */
 .venue-builder .stage .controls {
     position: absolute;
     padding: 1rem;
@@ -411,12 +478,14 @@
     align-items: center;
     justify-content: space-between;
 }
+
 .venue-builder .stage .controls.single {
     justify-content: flex-end;
 }
 
 
-/* Uploading profile */
+/* UPLOADING PROFILE */
+
 .venue-builder .uploading-profile {
     grid-column: span 2;
     display: flex;
@@ -426,34 +495,37 @@
     gap:2rem;
     position: relative;
 }
+
 .venue-builder .uploading-profile .text {
     font-weight: 500;
 }
+
 .venue-builder .uploading-profile .icons {
     font-size: 1rem;
     display: flex;
     align-items: center;
     gap:1rem;
 }
+
 .venue-builder .uploading-profile .icons .active {
     font-size: 2rem;
 }
 
-.progress-bar-container {
+.venue-builder .uploading-profile .progress-bar-container {
     width: 20%;
-    background-color: var(--primary-grey);
+    background-color: var(--gn-grey-300);
     border-radius: 5px;
     overflow: hidden;
 }
 
-.progress-bar {
+.venue-builder .uploading-profile .progress-bar {
     height: 5px;
-    background-color: var(--gigin-colour);
+    background-color: var(--gn-orange);
     border-radius: 5px;
     transition: width 3s;
 }
 .venue-builder .uploading-profile .warning {
-    color: var(--tertiary-grey);
+    color: var(--gn-grey-600);
     position: absolute;
     bottom:3rem;
 }

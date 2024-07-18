@@ -4,6 +4,7 @@
     height:100%;
     grid-template-columns: repeat(3, 1fr);
 }
+
 .landing-page .link {
     display: flex;
     align-items: center;
@@ -11,6 +12,7 @@
     font-size: 3rem;
     transition: all 200ms linear;
 }
+
 .landing-page .link:hover {
-    background-color: var(--trans-gigin-orange);
+    background-color: var(--gn-offset-orange);
 }

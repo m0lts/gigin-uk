@@ -1,5 +1,6 @@
 import { faCircle, faUserCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faArrowUpFromBracket, faArrowUpRightFromSquare, faBeerFoam, faBookmark, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faGear, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPencil, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faRingsWedding, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faArrowUpFromBracket, faArrowUpRightFromSquare, faBeerFoam, faBookmark, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faGear, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMagnifyingGlass, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPencil, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faRingsWedding, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faFaceFrown, faFaceMeh, faFaceSmile, faFaceSmileHearts } from "@fortawesome/pro-regular-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
 // General icons
@@ -7,6 +8,12 @@ export const UserIcon = () => {
     return (
         <FontAwesomeIcon icon={faUserCircle} className="icon" />
     )
+}
+export const SearcIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faMagnifyingGlass} className="icon" />
+    )
+
 }
 export const LogOutIcon = () => {
     return (
@@ -253,6 +260,11 @@ export const MailboxFullIcon = () => {
         <FontAwesomeIcon icon={faMailboxFlagUp} className="icon" />
     )
 }
+export const ProfileIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faAddressCard} className="icon" />
+    )
+}
 export const InviteIcon = () => {
     return (
         <FontAwesomeIcon icon={faEnvelope} className="icon" />
@@ -306,5 +318,25 @@ export const TicketIcon = () => {
 export const WeddingIcon = () => {
     return (
         <FontAwesomeIcon icon={faRingsWedding} className="icon" />
+    )
+}
+export const FaceHeartsIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFaceSmileHearts} className="icon" />
+    )
+}
+export const FaceSmileIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFaceSmile} className="icon" />
+    )
+}
+export const FaceMehIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFaceMeh} className="icon" />
+    )
+}
+export const FaceFrownIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFaceFrown} className="icon" />
     )
 }

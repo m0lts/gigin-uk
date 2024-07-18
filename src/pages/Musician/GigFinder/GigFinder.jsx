@@ -6,7 +6,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { firestore } from "../../../firebase";
 import '/styles/musician/gig-finder.styles.css';
 
-export const GigFinder = () => {
+export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
     const [viewType, setViewType] = useState('map');
     const [upcomingGigs, setUpcomingGigs] = useState([]);
 
@@ -30,7 +30,11 @@ export const GigFinder = () => {
 
     return (
         <section className="gig-finder">
-            <Header />
+            <Header
+                setAuthType={setAuthType}
+                setAuthModal={setAuthModal}
+                user={user}
+            />
             {viewType === 'map' ? (
                 <MapView upcomingGigs={upcomingGigs} />
             ) : (

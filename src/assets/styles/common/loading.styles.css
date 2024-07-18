@@ -1,3 +1,4 @@
+
 .loading-screen {
   position: absolute;
   z-index: 1;
@@ -10,6 +11,7 @@
   justify-content: center;
   backdrop-filter: blur(2px);
 }
+
 .loading-screen .loading-body {
   position: relative;
   min-width: 500px;
@@ -20,49 +22,53 @@
   justify-content: flex-start;
   gap:1rem;
 }
+
 .loading.dot-flashing {
   margin: 10px auto;
   position: relative;
   width: 8px;
   height: 8px;
-  border-radius: 5px;
-  background-color: var(--tertiary-grey);
-  color: var(--tertiary-grey);
+  border-radius: var(--gn-btn-border-radius);
+  background-color: var(--gn-grey-600);
+  color: var(--gn-grey-600);
   animation: dot-flashing 750ms infinite linear alternate;
   animation-delay: 0.5s;
 }
+
 .loading.dot-flashing::before, .dot-flashing::after {
   content: "";
   display: inline-block;
   position: absolute;
   top: 0;
 }
+
 .loading.dot-flashing::before {
   left: -12px;
   width: 8px;
   height: 8px;    
-  border-radius: 5px;
-  background-color: var(--tertiary-grey);
-  color: var(--tertiary-grey);
+  border-radius: var(--gn-btn-border-radius);
+  background-color: var(--gn-grey-600);
+  color: var(--gn-grey-600);
   animation: dot-flashing 750ms infinite alternate;
   animation-delay: 0s;
 }
+
 .loading.dot-flashing::after {
   left: 12px;
   width: 8px;
   height: 8px;
-  border-radius: 5px;
-  background-color: var(--tertiary-grey);
-  color: var(--tertiary-grey);
+  border-radius: var(--gn-btn-border-radius);
+  background-color: var(--gn-grey-600);
+  color: var(--gn-grey-600);
   animation: dot-flashing 750ms infinite alternate;
   animation-delay: 1s;
 }
 
 @keyframes dot-flashing {
   0% {
-    background-color: var(--tertiary-grey);
+    background-color: var(--gn-grey-600);
   }
   50%, 100% {
-    background-color: var(--primary-grey);
+    background-color: var(--gn-grey-300);
   }
 }

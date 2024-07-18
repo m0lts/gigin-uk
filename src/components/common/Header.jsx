@@ -4,7 +4,9 @@ import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
 import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "/components/ui/Extras/Icons"
 import { useState } from "react"
-import { ExitIcon, HouseIcon, LogOutIcon, MapIcon, NewTabIcon, SettingsIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
+import { firestore } from "../../firebase"
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MapIcon, NewTabIcon, SettingsIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
 
 export const Header = ({ setAuthModal, setAuthType, user }) => {
     
@@ -12,6 +14,29 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [accountMenu, setAccountMenu] = useState(false);
+    const [feedbackForm, setFeedbackForm] = useState(false);
+    const [feedback, setFeedback] = useState({
+        scale: '',
+        feedback: '',
+    });
+
+    const handleScaleSelection = (scale) => {
+        setFeedback(prev => ({ ...prev, scale }));
+    };
+
+    const handleFeedbackSubmit = async () => {
+        try {
+            await addDoc(collection(firestore, 'feedback'), {
+                ...feedback,
+                timestamp: serverTimestamp()
+            });
+        
+            setFeedback({ scale: '', feedback: '' });
+            setFeedbackForm(false);
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+        }
+    };
 
     const showAuthModal = (type) => {
         setAuthModal(true);
@@ -28,7 +53,6 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
             window.location.reload();
         }
     }
-
 
     const getLocation = () => {
         if (location.pathname.includes('host')) {
@@ -149,7 +173,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                 <>
                     <div className="left">
                         { getLocation() }
-                        {location.pathname.includes('dashboard') && (
+                        {location.pathname.includes('host/dashboard') && (
                             <div className="breadcrumbs">
                                 <span className="item">Dashboard</span>
                                 {location.pathname === ('/host/dashboard') && (
@@ -176,12 +200,21 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                         <span className="item active">Musicians</span>
                                     </>
                                 )}
+                                {location.pathname === ('/host/dashboard/finances') && (
+                                    <>
+                                        <RightChevronIcon />
+                                        <span className="item active">Finances</span>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
                     <div className="right">
                         <div className="buttons">
-                            <Link className="link" to={'/host/dashboard'}>
+                            <button className="btn text" onClick={() => setFeedbackForm(!feedbackForm)}>
+                                Feedback
+                            </button>
+                            <Link className="link" to={`${location.pathname.includes('host') ? '/host/dashboard' : '/musician/dashboard'}`}>
                                 <button className="btn secondary">
                                     <DashboardIcon />
                                     Dashboard
@@ -242,6 +275,39 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 <LogOutIcon />
                             </button>
                         </nav>
+                    )}
+                    {feedbackForm && (
+                        <div className="feedback">
+                            <div className="body">
+                                <textarea
+                                    name="feedbackBox"
+                                    id="feedbackBox"
+                                    onChange={(e) => setFeedback(prev => ({ ...prev, feedback: e.target.value }))}
+                                    value={feedback.feedback}
+                                    placeholder="Your feedback..."
+                                    
+                                ></textarea>
+                            </div>
+                            <div className="foot">
+                                <div className="faces">
+                                    <button className={`btn icon ${feedback.scale === 'hearts' ? 'active' : ''}`} onClick={() => handleScaleSelection('hearts')}>
+                                        <FaceHeartsIcon />
+                                    </button>
+                                    <button className={`btn icon ${feedback.scale === 'smiles' ? 'active' : ''}`} onClick={() => handleScaleSelection('smiles')}>
+                                        <FaceSmileIcon />
+                                    </button>
+                                    <button className={`btn icon ${feedback.scale === 'meh' ? 'active' : ''}`} onClick={() => handleScaleSelection('meh')}>
+                                        <FaceMehIcon />
+                                    </button>
+                                    <button className={`btn icon ${feedback.scale === 'frown' ? 'active' : ''}`} onClick={() => handleScaleSelection('frown')}>
+                                        <FaceFrownIcon />
+                                    </button>
+                                </div>
+                                <button className="btn primary-alt" onClick={handleFeedbackSubmit}>
+                                    Send
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </>
             ) : (

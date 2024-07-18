@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '/components/ui/Extras/Icons';
+import { SearcIcon } from '../../../components/ui/Extras/Icons';
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
     const location = useLocation();
@@ -81,37 +82,37 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
         <>
             <div className="head">
                 <h1 className="title">Gigs</h1>
-                <button className="btn secondary" onClick={() => setGigPostModal(true)}>
-                    Post a Gig
-                </button>
             </div>
             <div className="body gigs">
-                <div className="filter-bar">
-                    <p className='subtitle'>Filters</p>
-                    <div className="filters">
-                        <select name="venueSelect" id="venueSelect" value={selectedVenue} onChange={handleVenueChange}>
-                            <option value="">All venues</option>
-                            {venues.map((venue, index) => (
-                                <option value={venue.venueId} key={index}>{venue.name}</option>
-                            ))}
-                        </select>
-                        <input type="date" name="dateSelect" id="dateSelect" value={selectedDate} onChange={handleDateChange} />
-                        <select name="statusSelect" id="statusSelect" value={selectedStatus} onChange={handleStatusChange}>
-                            <option value="all">All gigs</option>
-                            <option value="upcoming">Upcoming</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="previous">Previous</option>
-                        </select>
-                        <button className="sort btn secondary" onClick={toggleSortOrder}>
-                            Date {sortOrder}ending
-                            <SortIcon />
-                        </button>
+                <div className="filters">
+                    <div className="search-bar">
+                        <SearcIcon />
+                        <p>Search</p>
                     </div>
+                    <input type="date" name="dateSelect" id="dateSelect" value={selectedDate} onChange={handleDateChange} />
+                    <select name="venueSelect" id="venueSelect" value={selectedVenue} onChange={handleVenueChange}>
+                        <option value="">Venue</option>
+                        {venues.map((venue, index) => (
+                            <option value={venue.venueId} key={index}>{venue.name}</option>
+                        ))}
+                    </select>
+                    <select name="statusSelect" id="statusSelect" value={selectedStatus} onChange={handleStatusChange}>
+                        <option value="all">Status</option>
+                        <option value="upcoming">Upcoming</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="previous">Previous</option>
+                    </select>
                 </div>
+
                 <table>
                     <thead>
                         <tr>
-                            <th>Date</th>
+                            <th id='date'>
+                                Date
+                                <button className="sort btn text" onClick={toggleSortOrder}>
+                                    <SortIcon />
+                                </button>
+                            </th>
                             <th>Time</th>
                             <th>Venue</th>
                             <th className='centre'>Budget</th>
@@ -120,23 +121,29 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedGigs.map((gig, index) => {
-                            const gigStatus = getGigStatus(gig);
-                            return (
-                                <tr key={index}>
-                                    <td>{new Date(gig.date).toLocaleDateString('en-GB')}</td>
-                                    <td>{gig.startTime}</td>
-                                    <td>{gig.venue.venueName}</td>
-                                    <td className='centre'>{gig.budget}</td>
-                                    <td className={`status-box ${gigStatus.text.toLowerCase()}`}>
-                                        <div className={`status ${gigStatus.text.toLowerCase()}`}>
-                                            {gigStatus.icon} {gigStatus.text}
-                                        </div>
-                                    </td>
-                                    <td className='centre'>{gig.applicants.length}</td>
-                                </tr>
-                            );
-                        })}
+                        {sortedGigs.length > 0 ? (
+                            sortedGigs.map((gig, index) => {
+                                const gigStatus = getGigStatus(gig);
+                                return (
+                                    <tr key={index}>
+                                        <td>{new Date(gig.date).toLocaleDateString('en-GB')}</td>
+                                        <td>{gig.startTime}</td>
+                                        <td>{gig.venue.venueName}</td>
+                                        <td className='centre'>{gig.budget}</td>
+                                        <td className={`status-box ${gigStatus.text.toLowerCase()}`}>
+                                            <div className={`status ${gigStatus.text.toLowerCase()}`}>
+                                                {gigStatus.icon} {gigStatus.text}
+                                            </div>
+                                        </td>
+                                        <td className='centre'>{gig.applicants.length}</td>
+                                    </tr>
+                                );
+                            })
+                        ) : (
+                            <tr>
+                                <td>No gigs to show.</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

@@ -161,7 +161,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
             </div>
             <div className="stage review">
                 <div className="review-box">
-                    <p className="value">{formData.venue.venueName}</p>
+                    <h4 className="value">{formData.venue.venueName}</h4>
                     <button className="btn text" onClick={() => setStage(2)}>
                         <EditIcon />
                     </button>
@@ -169,37 +169,37 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                 <div className="review-grid">
                     <div className="review-left">
                         <div className="review-box">
-                            <p className="value">{formData.date ? formatDate(formData.date) : 'Date undecided'}</p>
+                            <h4 className="value">{formData.date ? formatDate(formData.date) : 'Date undecided'}</h4>
                             <button className="btn text" onClick={() => setStage(1)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className="review-box">
-                            <p className="value">{formData.startTime}</p>
+                            <h4 className="value">{formData.startTime}</h4>
                             <button className="btn text" onClick={() => setStage(7)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className="review-box">
-                            <p className="value">{formatDuration(formData.duration)}</p>
+                            <h4 className="value">{formatDuration(formData.duration)}</h4>
                             <button className="btn text" onClick={() => setStage(7)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className="review-box">
-                            <p className="value">{formData.budget}</p>
+                            <h4 className="value">{formData.budget}</h4>
                             <button className="btn text" onClick={() => setStage(8)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className="review-box">
-                            <p className="value">{formData.privacy} {formData.kind}</p>
+                            <h4 className="value">{formData.privacy} {formData.kind}</h4>
                             <button className="btn text" onClick={() => setStage(3)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className="review-box">
-                            <p className="value">{formatMusic(formData.genre)}</p>
+                            <h4 className="value">{formatMusic(formData.genre)}</h4>
                             <button className="btn text" onClick={() => setStage(5)}>
                                 <EditIcon />
                             </button>
@@ -208,7 +208,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                     <div className="review-right">
                         {formData.dateUndecided === false && (
                             <div className="review-extra-option">
-                                <h2 className="label">Do you want this to be a repeating gig?</h2>
+                                <h4 className="label">Do you want this to be a repeating gig?</h4>
                                 <div className="repeat-group">
                                     <select name="gigRepeat" id="gigRepeat" onChange={(e) => setGigRepeat(e.target.value)}>
                                         <option value="no">No</option>
@@ -252,7 +252,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                                 </div>
                             </div>
                         )}
-                        <div className="review-extra-option">
+                        <div className="review-extra-option template">
                             <div className="input-group">
                                 <label htmlFor="templateName" className="label">Enter a name below to save the gig as a template:</label>
                                 <input 
@@ -265,7 +265,9 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                                     onChange={(e) => setTemplateName(e.target.value)}
                                  />
                             </div>
-                            <button className="btn secondary" onClick={handleSaveTemplate}>{saving ? 'Saving...' : 'Save Gig Template'}</button>
+                            {templateName && (
+                                <button className="btn primary-alt" onClick={handleSaveTemplate}>{saving ? 'Saving...' : 'Save Gig Template'}</button>
+                            )}
                         </div>
                         <div className="review-extra-option">
                             <div className="toggle-container">

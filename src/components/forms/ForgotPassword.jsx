@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 // Components
-import { NoTextLogo } from "/ui/logos/Logos";
+import { NoTextLogoLink } from "/ui/logos/Logos";
 import { SeeIcon, CloseIcon } from "/components/ui/Extras/Icons";
 import { LoadingThreeDots } from '../ui/loading/Loading';
 // Styles
@@ -75,7 +75,7 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
       {showSuccessMsg ? (
         <>
           <div className="head">
-            <NoTextLogo />
+            <NoTextLogoLink />
             <h2>Forgot Password</h2>
           </div>
           <div className="auth-form">
@@ -97,7 +97,7 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
       ) : (
         <>
           <div className="head">
-            <NoTextLogo />
+            <NoTextLogoLink />
             <h2>Forgot Password</h2>
           </div>
           <form className="auth-form" onSubmit={handlePasswordReset}>
