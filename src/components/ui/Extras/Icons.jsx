@@ -9,7 +9,7 @@ export const UserIcon = () => {
         <FontAwesomeIcon icon={faUserCircle} className="icon" />
     )
 }
-export const SearcIcon = () => {
+export const SearchIcon = () => {
     return (
         <FontAwesomeIcon icon={faMagnifyingGlass} className="icon" />
     )

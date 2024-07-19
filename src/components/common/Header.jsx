@@ -173,37 +173,49 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                 <>
                     <div className="left">
                         { getLocation() }
-                        {location.pathname.includes('host/dashboard') && (
+                        {location.pathname.includes('dashboard') && (
                             <div className="breadcrumbs">
                                 <span className="item">Dashboard</span>
-                                {location.pathname === ('/host/dashboard') && (
+                                {location.pathname === ('/host/dashboard') || location.pathname === ('/musician/dashboard') && (
                                     <>
                                         <RightChevronIcon />
                                         <span className="item active">Overview</span>
                                     </>
                                 )}
-                                {location.pathname === ('/host/dashboard/gigs') && (
+                                {location.pathname.includes('gigs') && (
                                     <>
                                         <RightChevronIcon />
                                         <span className="item active">Gigs</span>
                                     </>
                                 )}
-                                {location.pathname === ('/host/dashboard/venues') && (
+                                {location.pathname.includes('venues') && (
                                     <>
                                         <RightChevronIcon />
                                         <span className="item active">Venues</span>
                                     </>
                                 )}
-                                {location.pathname === ('/host/dashboard/musicians') && (
+                                {location.pathname.includes('musicians') && (
                                     <>
                                         <RightChevronIcon />
                                         <span className="item active">Musicians</span>
                                     </>
                                 )}
-                                {location.pathname === ('/host/dashboard/finances') && (
+                                {location.pathname.includes('finances') && (
                                     <>
                                         <RightChevronIcon />
                                         <span className="item active">Finances</span>
+                                    </>
+                                )}
+                                {location.pathname.includes('bands') && (
+                                    <>
+                                        <RightChevronIcon />
+                                        <span className="item active">Bands</span>
+                                    </>
+                                )}
+                                {location.pathname.includes('profile') && (
+                                    <>
+                                        <RightChevronIcon />
+                                        <span className="item active">Profile</span>
                                     </>
                                 )}
                             </div>

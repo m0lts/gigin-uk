@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '/components/ui/Extras/Icons';
-import { SearcIcon } from '../../../components/ui/Extras/Icons';
+import { SearchIcon } from '../../../components/ui/Extras/Icons';
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
     const location = useLocation();
@@ -86,7 +86,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
             <div className="body gigs">
                 <div className="filters">
                     <div className="search-bar">
-                        <SearcIcon />
+                        <SearchIcon />
                         <p>Search</p>
                     </div>
                     <input type="date" name="dateSelect" id="dateSelect" value={selectedDate} onChange={handleDateChange} />
