@@ -10,18 +10,37 @@
 }
 
 .profile-creator .progress-bar-container {
-    width: 100%;
-    background-color: #e0e0e0;
-    border-radius: 10px;
-    height: 20px;
+    display: flex;
+    align-items: center;
+    width: 80%;
+    height: 5px;
     margin-bottom: 20px;
+}
+
+.profile-creator .progress-bar-section {
     position: relative;
+    background-color: var(--gn-grey-400);
+    height: 100%;
+    flex: 1;
     overflow: hidden;
+}
+
+.profile-creator .progress-bar-section:first-of-type {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+.profile-creator .progress-bar-section:last-of-type {
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.profile-creator .progress-bar-gap {
+    width: 5px;
 }
 
 .profile-creator .progress-bar {
     height: 100%;
-    background-color: #4caf50;
-    border-radius: 10px;
+    background-color: var(--gn-black);
     transition: width 0.4s ease;
 }

@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
-import { LeftChevronIcon } from '/components/ui/Extras/Icons'
+import { LeftChevronIcon, ExitIcon } from '/components/ui/Extras/Icons'
 import { v4 as uuidv4 } from 'uuid';
 import useMapboxAccessToken from "../../../../hooks/useAccessTokens";
+import { useAuth } from '../../../../hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
+import { storage, firestore } from "../../../../firebase";
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, arrayUnion, deleteDoc, arrayRemove } from 'firebase/firestore';
+
 import '/styles/musician/profile-creator.styles.css'
 
 // Importing stage components
@@ -19,8 +24,13 @@ import { TracksStage } from './TracksStage';
 import { SocialMediaStage } from './SocialMediaStage';
 import { FinalStage } from './FinalStage';
 import { MusicianTypeStage } from './MusicianTypeStage';
+import { LoadingThreeDots } from '../../../../components/ui/loading/Loading';
+import { useNavigate } from 'react-router-dom';
 
-export const ProfileCreator = () => {
+export const ProfileCreator = ({ musicianProfile }) => {
+
+    const { user } = useAuth();
+    const navigate = useNavigate();
 
     const mapboxToken = useMapboxAccessToken();
 
@@ -50,6 +60,19 @@ export const ProfileCreator = () => {
             soundcloud: '',
         }
     });
+    const [uploadingProfile, setUploadingProfile] = useState(false);
+
+    useEffect(() => {
+        const checkForSavedProfile = async () => {
+            if (musicianProfile.completed !== true) {
+                setFormData(musicianProfile);
+                setStage(musicianProfile.currentStep)
+            }
+        };
+
+        if (musicianProfile) checkForSavedProfile();
+
+    }, [musicianProfile]);
 
     const handleNext = () => {
         if (validateStage(stage)) {
@@ -66,7 +89,7 @@ export const ProfileCreator = () => {
             case 1:
                 return formData.name.trim() !== '';
             case 2:
-                return formData.picture.trim() !== '';
+                return formData.picture !== '';
             case 3:
                 return formData.location.city.trim() !== '';
             case 4:
@@ -99,6 +122,129 @@ export const ProfileCreator = () => {
         });
     };
 
+
+    const uploadFilesToFirebaseStorage = async (files, musicianId, folder) => {
+        const fileUrls = files.filter(file => typeof file === 'string');
+        const newFiles = files.filter(file => typeof file !== 'string');
+
+        if (newFiles.length > 0) {
+            const uploadPromises = newFiles.map(async (file) => {
+                const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${file.name}`);
+                await uploadBytes(storageRef, file);
+                return getDownloadURL(storageRef);
+            });
+
+            const uploadedUrls = await Promise.all(uploadPromises);
+            return [...fileUrls, ...uploadedUrls];
+        }
+
+        return fileUrls;
+    };
+
+    const uploadProfilePictureToFirebaseStorage = async (picture, musicianId) => {
+        if (typeof picture === 'string') {
+            return picture;
+        }
+    
+        const storageRef = ref(storage, `musicians/${musicianId}/profileImg/${picture.name}`);
+        await uploadBytes(storageRef, picture);
+        return getDownloadURL(storageRef);
+    };
+
+    const handleSubmit = async () => {
+        setUploadingProfile(true);
+        try {
+            const pictureFile = formData.picture;
+            const pictureUrl = await uploadProfilePictureToFirebaseStorage(pictureFile, formData.musicianId);
+
+            const videoFiles = formData.videos;
+            const videoUrls = await uploadFilesToFirebaseStorage(videoFiles, formData.musicianId, 'videos');
+
+            const trackFiles = formData.tracks;
+            const trackUrls = await uploadFilesToFirebaseStorage(trackFiles, formData.musicianId, 'tracks');
+
+            const updatedFormData = {
+                ...formData,
+                picture: pictureUrl[0],
+                videos: videoUrls,
+                tracks: trackUrls,
+                completed: true,
+            };
+
+            const musicianRef = doc(firestore, 'musicianProfiles', formData.musicianId);
+            await setDoc(musicianRef, {
+                ...updatedFormData,
+                userId: user.uid,
+            }, { merge: true });
+
+            const userRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userRef, {
+                musicianProfile: arrayUnion(formData.musicianId),
+            });
+
+            navigate('/musician/dashboard');
+            window.location.reload();
+            setUploadingProfile(false);
+
+        } catch (error) {
+            setUploadingProfile(false);
+            console.error('Error uploading files or creating musician profile: ', error);
+        }
+    };
+
+    const handleSaveAndExit = async () => {
+        setSavingProfile(true);
+        if (formData.name === '') {
+            navigate('/musician/dashboard');
+            setSavingProfile(false);
+            return;
+        }
+        try {
+            let updatedFormData;
+    
+            if (formData.completed) {
+                updatedFormData = {
+                    ...formData,
+                    completed: true,
+                };
+                delete formData.currentStep;
+            } else {
+                updatedFormData = {
+                    ...formData,
+                    currentStep: stage,
+                    completed: false,
+                };
+            }
+    
+            const pictureFile = formData.picture;
+            const pictureUrl = await uploadProfilePictureToFirebaseStorage(pictureFile, formData.musicianId);
+            updatedFormData.picture = pictureUrl;
+    
+            const videoFiles = formData.videos;
+            const videoUrls = await uploadFilesToFirebaseStorage(videoFiles, formData.musicianId, 'videos');
+            updatedFormData.videos = videoUrls;
+    
+            const trackFiles = formData.tracks;
+            const trackUrls = await uploadFilesToFirebaseStorage(trackFiles, formData.musicianId, 'tracks');
+            updatedFormData.tracks = trackUrls;
+    
+            const musicianRef = doc(firestore, 'musicianProfiles', formData.musicianId);
+            await setDoc(musicianRef, {
+                ...updatedFormData,
+                userId: user.uid,
+            }, { merge: true });
+    
+            navigate('/musician/dashboard');
+            window.location.reload();
+            setSavingProfile(false);
+    
+        } catch (error) {
+            console.error('Error uploading files or saving musician profile: ', error);
+            setSavingProfile(false);
+        }
+    };
+
+
     const stages = [
         <>
             <h1>Welcome to the profile creator.</h1>
@@ -122,20 +268,33 @@ export const ProfileCreator = () => {
 
     return (
         <div className="profile-creator">
-            {stages[stage]}
-            <ProgressBar currentStage={stage} totalStages={stages.length - 1} />
-            <div className="controls">
-                {stage > 0 && (
-                    <button className='btn secondary' onClick={handlePrevious}>
-                        <LeftChevronIcon />
+            {uploadingProfile ? (
+                <>
+                    <h1>Creating your musician profile...</h1>
+                    <LoadingThreeDots />
+                </>
+            ) : (
+                <>
+                    {stages[stage]}
+                    <ProgressBar currentStage={stage} totalStages={stages.length} />
+                    <button className="btn text" onClick={handleSaveAndExit}>
+                        <ExitIcon />
+                        Save and Exit
                     </button>
-                )}
-                {stage < stages.length - 1 ? (
-                    <button className='btn primary' onClick={handleNext} disabled={!validateStage(stage)}>Continue</button>
-                ) : (
-                    stage > 0 && <button className='btn primary' onClick={() => console.log('Submit form data', formData)} disabled={!validateStage(stage)}>Submit</button>
-                )}
-            </div>
+                    <div className="controls">
+                        {stage > 0 && (
+                            <button className='btn secondary' onClick={handlePrevious}>
+                                <LeftChevronIcon />
+                            </button>
+                        )}
+                        {stage < stages.length - 1 ? (
+                            <button className='btn primary' onClick={handleNext} disabled={!validateStage(stage)}>Continue</button>
+                        ) : (
+                            stage > 0 && <button className='btn primary' onClick={() => handleSubmit()} disabled={!validateStage(stage)}>Submit</button>
+                        )}
+                    </div>
+                </>
+            )}
         </div>
     );
 };
