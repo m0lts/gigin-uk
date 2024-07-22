@@ -1,32 +1,26 @@
+import { MicrophoneIcon, ClubIcon } from "../../../../components/ui/Extras/Icons";
+
 export const MusicianTypeStage = ({ data, onChange }) => {
-    const handleRadioChange = (e) => {
-        onChange('musicianType', e.target.value);
-    };
+
+    const handleMusicianTypeSelect = (value) => {
+        onChange('musicianType', value)
+    }
 
     return (
-        <div className="stage">
-            <h2>Stage 4: Musician Type</h2>
-            <div>
-                <input
-                    type="radio"
-                    id="musician"
-                    name="musicianType"
-                    value="Musician"
-                    checked={data === 'Musician'}
-                    onChange={handleRadioChange}
-                />
-                <label htmlFor="musician">Musician</label>
-            </div>
-            <div>
-                <input
-                    type="radio"
-                    id="dj"
-                    name="musicianType"
-                    value="DJ"
-                    checked={data === 'DJ'}
-                    onChange={handleRadioChange}
-                />
-                <label htmlFor="dj">DJ</label>
+        <div className="stage musician-type">
+            <h3 className="section-title">Music</h3>
+            <div className="body">
+                <h1>What type of musician are you?</h1>
+                    <div className="selections">
+                        <div className={`card ${data === 'Musician/Band' ? 'selected' : ''}`} onClick={() => handleMusicianTypeSelect('Musician/Band')}>
+                            <MicrophoneIcon />
+                            <h4 className="text">Musician/Band</h4>
+                        </div>
+                        <div className={`card ${data === 'DJ' ? 'selected' : ''}`} onClick={() => handleMusicianTypeSelect('DJ')}>
+                            <ClubIcon />
+                            <h4 className="text">DJ</h4>
+                        </div>
+                    </div>            
             </div>
         </div>
     );

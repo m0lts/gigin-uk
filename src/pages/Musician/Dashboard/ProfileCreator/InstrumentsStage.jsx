@@ -1,7 +1,7 @@
 export const InstrumentsStage = ({ data, onChange, musicianType }) => {
     const instruments = {
-        Musician: [
-            'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
+        'Musician/Band': [
+            'My Voice', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
             'Harmonica', 'Banjo', 'Mandolin', 'Harp', 'Accordion'
         ],
         DJ: [
@@ -19,22 +19,17 @@ export const InstrumentsStage = ({ data, onChange, musicianType }) => {
     };
 
     return (
-        <div className="stage">
-            <h2>Stage 7: Instruments</h2>
-            <div className="instruments-list">
-                {instruments[musicianType].map((instrument, index) => (
-                    <div key={index} className="instrument-item">
-                        <input
-                            type="checkbox"
-                            id={instrument}
-                            name={instrument}
-                            value={instrument}
-                            checked={data.includes(instrument)}
-                            onChange={() => handleCheckboxChange(instrument)}
-                        />
-                        <label htmlFor={instrument}>{instrument}</label>
-                    </div>
-                ))}
+        <div className="stage instruments">
+            <h3 className="section-title">Music</h3>
+            <div className="body">
+                <h1>What instruments do you {musicianType === 'DJ' ? 'use' : 'play'}?</h1>
+                <div className="instruments-list">
+                    {instruments[musicianType].map((instrument, index) => (
+                        <div key={index} className={`card small ${data.includes(instrument) ? 'selected' : ''}`} onClick={() => handleCheckboxChange(instrument)}>
+                            {instrument}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

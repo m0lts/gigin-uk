@@ -52,22 +52,17 @@ export const EquipmentStage = ({ data, onChange, instruments }) => {
     const requiredEquipment = getRequiredEquipment(instruments);
 
     return (
-        <div className="stage">
-            <h2>Stage 8: Equipment Required</h2>
-            <div className="equipment-list">
-                {requiredEquipment.map((equipment, index) => (
-                    <div key={index} className="equipment-item">
-                        <input
-                            type="checkbox"
-                            id={equipment}
-                            name={equipment}
-                            value={equipment}
-                            checked={data.includes(equipment)}
-                            onChange={() => handleCheckboxChange(equipment)}
-                        />
-                        <label htmlFor={equipment}>{equipment}</label>
-                    </div>
-                ))}
+        <div className="stage equipment">
+            <h3 className="section-title">Music</h3>
+            <div className="body">
+                <h1>Select any equipment you can't take to gigs with you.</h1>
+                <div className="equipment-list">
+                    {requiredEquipment.map((equipment, index) => (
+                        <div key={index} className={`card small ${data.includes(equipment) ? 'selected' : ''}`} onClick={() => handleCheckboxChange(equipment)}>
+                            {equipment}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

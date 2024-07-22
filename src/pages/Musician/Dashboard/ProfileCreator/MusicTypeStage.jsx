@@ -1,43 +1,25 @@
 export const MusicTypeStage = ({ data, onChange }) => {
-    const handleRadioChange = (e) => {
-        onChange('musicType', e.target.value);
-    };
+
+    const handleMusicTypeSelect = (value) => {
+        onChange('musicType', value)
+    }
 
     return (
-        <div className="stage">
-            <h2>Stage 6: Music Type</h2>
-            <div>
-                <input
-                    type="radio"
-                    id="covers"
-                    name="musicType"
-                    value="Covers"
-                    checked={data === 'Covers'}
-                    onChange={handleRadioChange}
-                />
-                <label htmlFor="covers">Covers</label>
-            </div>
-            <div>
-                <input
-                    type="radio"
-                    id="originals"
-                    name="musicType"
-                    value="Originals"
-                    checked={data === 'Originals'}
-                    onChange={handleRadioChange}
-                />
-                <label htmlFor="originals">Originals</label>
-            </div>
-            <div>
-                <input
-                    type="radio"
-                    id="both"
-                    name="musicType"
-                    value="Both"
-                    checked={data === 'Both'}
-                    onChange={handleRadioChange}
-                />
-                <label htmlFor="both">Both</label>
+        <div className="stage music-type">
+            <h3 className="section-title">Music</h3>
+            <div className="body">
+                <h1>Covers or Originals?</h1>
+                <div className="selections">
+                    <div className={`card small ${data === 'Covers' ? 'selected' : ''}`} onClick={() => handleMusicTypeSelect('Covers')}>
+                        <h4 className="text">Covers</h4>
+                    </div>
+                    <div className={`card small ${data === 'Originals' ? 'selected' : ''}`} onClick={() => handleMusicTypeSelect('Originals')}>
+                        <h4 className="text">Originals</h4>
+                    </div>
+                    <div className={`card small ${data === 'Both' ? 'selected' : ''}`} onClick={() => handleMusicTypeSelect('Both')}>
+                        <h4 className="text">Both</h4>
+                    </div>
+                </div>   
             </div>
         </div>
     );

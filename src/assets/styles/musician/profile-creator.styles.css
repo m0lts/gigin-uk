@@ -1,18 +1,608 @@
 
 .profile-creator {
+    position: relative;
     width:100%;
-    height: 100%;
+    height:100%;
+    max-height: 100%;
+    padding: 1rem 0;
+    display: grid;
+    grid-template-rows: 5% 85% 10%;
+}
+
+
+/* COMMON STYLES */
+
+.profile-creator .loading-state {
+    grid-row: span 3;
+    height:100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.profile-creator .stage .section-title {
+    text-align: center;
+    margin-top:1rem;
+}
+
+.profile-creator .stage .body {
+    height:90%;
+    display: flex;
+    gap:1rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.profile-creator .stage .body::-webkit-scrollbar {
+    display: none;
+}
+
+.profile-creator .stage .body .title-container {
+    text-align: center;
+}
+
+.profile-creator .stage .body .title-container h1 {
+    margin-bottom: 5px;
+}
+
+
+/* CARDS */
+
+.profile-creator .stage .card {
+    position: relative;
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding:1rem;
+    padding-right: 1.5rem;
+    min-width: 150px;
+    max-width: 250px;
+    min-height: 100px;
+    max-height:150px;
+    gap:5px;
+    text-align: left;
+    transition: background-color 200ms linear, border-color 200ms linear;
+}
+
+.profile-creator .stage .card.small {
+    min-width:fit-content;
+    padding-right: 1rem;
+    align-items: center;
+    min-height:fit-content;
+}
+
+.profile-creator .stage .card.template {
+    width:fit-content;
+    min-height: fit-content;
+}
+
+.profile-creator .stage .card .text {
+    font-size: 1rem;
+}
+
+.profile-creator .stage .card .sub-text {
+    font-size: 0.9rem;
+}
+
+.profile-creator .stage .card .icon {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.profile-creator .stage .card:hover {
+    border-color: var(--gn-orange);
+}
+
+.profile-creator .stage .card.selected {
+    background-color: var(--gn-offset-orange);
+    border-color: var(--gn-orange);
+}
+
+.profile-creator .stage .card.disabled {
+    color: var(--gn-grey-600);
+    cursor: auto;
+}
+
+.profile-creator .stage .card.disabled:hover {
+    border-color: var(--gn-grey-400);
+}
+
+
+/* TEXT AND SELECT INPUTS */
+
+.profile-creator .stage .body .input,
+.profile-creator .stage .body .select {
+    padding:10px 5px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    text-align: center;
+    transition: border 0.3s;
+}
+
+.profile-creator .stage .body .input:focus,
+.profile-creator .stage .body .select:focus {
+    border:1px solid var(--gn-orange);
+    outline:none;
+}
+
+
+
+/* INTRO */
+
+.profile-creator .stage.intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+}
+
+
+/* NAME */
+
+.profile-creator .stage.name .input.name {
+    font-size: 5rem;
+    font-weight: var(--gn-semi-bold);
+    text-align: center;
+    border:none;
+    background-color: transparent;
+    width:fit-content;
+    margin-bottom: 2rem;
+}
+
+.profile-creator .stage.name .input.name:focus {
+    outline: none;
+}
+
+
+/* PROFILE PICTURE */
+
+.profile-creator .stage.photo .image-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+}
+
+.profile-creator .stage.photo .input.photo {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-color: var(--gn-grey-300);
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.profile-creator .stage.photo .image-preview {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-color: var(--gn-grey-300);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.profile-creator .stage.photo .image-preview .icon {
+    font-size: 5rem;
+    color: var(--gn-grey-600);
+}
+
+
+/* LOCATION */
+
+.profile-creator .stage.location .map-placeholder {
+    width:200px;
+    height:200px;
+    background-color: var(--gn-grey-300);
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-direction: column;
+}
+
+.profile-creator .stage.location .map-placeholder .icon {
+    font-size: 2rem;
+}
+
+
+/* MUSICIAN TYPE */
+
+.profile-creator .stage.musician-type .selections {
+    display: flex;
     gap:10px;
+}
+
+
+/* GENRES */
+
+.profile-creator .stage.genres .genre-selections-container {
+    position: relative;
+}
+
+.profile-creator .stage.genres .genre-selections-container .input {
+    width:200px;
+}
+
+.profile-creator .stage.genres .genre-selections-container .input:focus + .genre-suggestions {
+    border:1px solid var(--gn-orange);
+    border-top: none;
+}
+
+.profile-creator .stage.genres .genre-suggestions {
+    position: absolute;
+    top:2.5rem;
+    max-height:200px;
+    width:200px;
+    overflow: scroll;
+    background-color: var(--gn-white);
+    border:1px solid var(--gn-grey-400);
+    border-top: none;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-bottom-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    transition: border-color 200ms linear;
+}
+
+.profile-creator .stage.genres .genre-suggestions::-webkit-scrollbar {
+    display: none;
+}
+
+.profile-creator .stage.genres .genre-suggestions .genre-option {
+    border-bottom: 1px solid var(--gn-grey-400);
+    padding:0.5rem;
+    cursor: pointer;
+}
+
+.profile-creator .stage.genres .genre-suggestions .genre-option:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.profile-creator .stage.genres .genre-suggestions .genre-option:last-of-type {
+    border-bottom: none;
+}
+
+.profile-creator .stage.genres .selected-genres {
+    width:80%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    flex-wrap: wrap;
+}
+
+.profile-creator .stage.genres .genre-tag {
+    border:1px solid var(--gn-orange);
+    padding:0.25rem 0.5rem;
+    border-radius: 5px;
+    background-color: var(--gn-offset-orange);
+    cursor: pointer;
+}
+
+
+/* COVERS OR ORIGINALS */
+
+.profile-creator .stage.music-type .selections {
+    display: flex;
+    gap:10px;
+}
+
+
+/* INSTRUMENTS */
+
+.profile-creator .stage.instruments .instruments-list {
+    width:80%;
+    display: flex;
+    gap:5px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+
+/* EQUIPMENT */
+
+.profile-creator .stage.equipment .equipment-list {
+    width:80%;
+    display: flex;
+    gap:5px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+
+/* BIO */
+
+.profile-creator .stage.bio textarea {
+    width: 400px;
+    max-width: 400px;
+    min-width: 400px;
+    height: 200px;
+    max-height: 200px;
+    min-height: 200px;
+    padding:10px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    transition: border 0.3s;
+}
+
+.profile-creator .stage.bio textarea:focus {
+    outline: none;
+    border: 1px solid var(--gn-orange);
+}
+
+
+/* VIDEOS AND TRACKS */
+
+.profile-creator .stage.videos .upload,
+.profile-creator .stage.tracks .upload {
+    border:1px dashed var(--gn-grey-500);
+    background-color: var(--gn-grey-300);
+    border-radius: 5px;
+    min-height: 10%;
+    cursor: pointer;
+    padding: 1rem 2rem;
+}
+
+.profile-creator .stage.videos .upload-label,
+.profile-creator .stage.tracks .upload-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap:1rem;
+    font-size: 0.9rem;
+    color: var(--gn-black);
+    cursor: pointer;
+}
+
+.profile-creator .stage.videos .upload-label .icon,
+.profile-creator .stage.tracks .upload-label .icon {
+    font-size: 3rem;
+}
+
+
+/* VIDEOS */
+
+.profile-creator .stage.videos .carousel-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+.profile-creator .stage.videos .carousel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width:100%;
+    transition: transform 0.3s ease-in-out;
+}
+
+.profile-creator .stage.videos .carousel-item {
+    box-sizing: border-box;
+    text-align: center;
+    border:1px solid var(--gn-grey-400);
+    padding:1rem;
+    position: relative;
+    background-color: var(--gn-white);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    border-radius: 10px;
+}
+
+.profile-creator .stage.videos .carousel-item video {
+    width: 200px;
+    max-height: 250px;
+}
+
+.profile-creator .stage.videos .carousel-item .remove-button {
+    position: absolute;
+    top:0;
+    right: 3px;
+}
+.profile-creator .stage.videos .carousel-item .remove-button .icon {
+    font-size: 1rem;
+    color: var(--gn-red);
+}
+
+.profile-creator .stage.videos .carousel-controls {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    justify-content: space-between;
+    width: 75%;
+}
+
+.profile-creator .stage.videos .carousel-controls .btn {
+    border-radius: 5px;
+    padding: 0;
+    width:25px;
+    height: 25px;
+}
+
+
+/* TRACKS */
+
+.profile-creator .stage.tracks .media-table {
+    width:50%;
+    min-width: 400px;
+    border:1px solid var(--gn-grey-400);
+    overflow: hidden;
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.profile-creator .stage.tracks .media-table thead {
+    background-color: var(--gn-grey-300);
+    border-collapse: collapse;
+}
+
+.profile-creator .stage.tracks .media-table thead tr td {
+    font-weight: 500;
+}
+
+.profile-creator .stage.tracks .media-table thead tr td,
+.profile-creator .stage.tracks .media-table tbody tr td {
+    padding:0.25rem;
+}
+
+.profile-creator .stage.tracks .media-table .file-type {
+    text-align: center;
+}
+
+.profile-creator .stage.tracks .media-table audio {
+    border: 1px solid red;
+}
+
+.profile-creator .stage.tracks .media-table .title {
+    position: relative;
+}
+
+.profile-creator .stage.tracks .media-table .input {
+    padding:5px;
+    text-align: left;
+    border: none;
+}
+
+.profile-creator .stage.tracks .media-table .remove-button {
+    font-size: 0.75rem;
+    padding:5px;
+}
+
+
+/* SOCIAL MEDIA */
+
+.profile-creator .stage.social-media .social-media-inputs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:10px;
+}
+
+.profile-creator .stage.social-media .social-media-input {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap:1rem;
+}
+
+.profile-creator .stage.social-media .facebook-icon .icon {
+    color: blue;
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .instagram-icon .icon {
+    color: #fbad50;
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .twitter-icon .icon {
+    color:rgb(55, 178, 255);
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .youtube-icon .icon {
+    color:red;
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .spotify-icon .icon {
+    color:rgb(20, 204, 0);
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .soundcloud-icon .icon {
+    color:rgb(255, 92, 55);
+    font-size: 2rem;
+}
+
+
+/* FINAL */
+
+.profile-creator .stage.final .email-input {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.profile-creator .stage.final .email-input .input {
+    width:250px;
+}
+
+.profile-creator .stage.final .message {
+    border:1px solid rgb(27, 201, 0);
+    padding:0.5rem;
+    border-radius: 5px;
+    background-color: rgba(27, 201, 0, 0.05);
+}
+
+.profile-creator .stage.final .message .icon {
+    color: rgb(27, 201, 0);
+}
+
+
+
+/* CONTROLS, BUTTONS AND PROGRESS BAR */
+
+.profile-creator .top {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin: 1rem 5%;
+}
+
+.profile-creator .bottom {
+    width:90%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.profile-creator .bottom .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width:100%;
+}
+
+.profile-creator .bottom .controls.single {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 .profile-creator .progress-bar-container {
     display: flex;
     align-items: center;
-    width: 80%;
+    width: 100%;
     height: 5px;
     margin-bottom: 20px;
 }

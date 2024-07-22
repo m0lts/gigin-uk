@@ -34,7 +34,7 @@ export const ProfileCreator = ({ musicianProfile }) => {
 
     const mapboxToken = useMapboxAccessToken();
 
-    const [stage, setStage] = useState(0);
+    const [stage, setStage] = useState(10);
     const [formData, setFormData] = useState({
         musicianId: uuidv4(),
         name: '',
@@ -61,6 +61,7 @@ export const ProfileCreator = ({ musicianProfile }) => {
         }
     });
     const [uploadingProfile, setUploadingProfile] = useState(false);
+    const [savingProfile, setSavingProfile] = useState(false);
 
     useEffect(() => {
         const checkForSavedProfile = async () => {
@@ -123,22 +124,41 @@ export const ProfileCreator = ({ musicianProfile }) => {
     };
 
 
-    const uploadFilesToFirebaseStorage = async (files, musicianId, folder) => {
-        const fileUrls = files.filter(file => typeof file === 'string');
-        const newFiles = files.filter(file => typeof file !== 'string');
+    // const uploadFilesToFirebaseStorage = async (files, musicianId, folder) => {
+    //     const fileUrls = files.filter(file => typeof file === 'string');
+    //     const newFiles = files.filter(file => typeof file !== 'string');
 
-        if (newFiles.length > 0) {
-            const uploadPromises = newFiles.map(async (file) => {
-                const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${file.name}`);
-                await uploadBytes(storageRef, file);
-                return getDownloadURL(storageRef);
-            });
+    //     if (newFiles.length > 0) {
+    //         const uploadPromises = newFiles.map(async (file) => {
+    //             const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${file.name}`);
+    //             await uploadBytes(storageRef, file);
+    //             return getDownloadURL(storageRef);
+    //         });
 
-            const uploadedUrls = await Promise.all(uploadPromises);
-            return [...fileUrls, ...uploadedUrls];
-        }
+    //         const uploadedUrls = await Promise.all(uploadPromises);
+    //         return [...fileUrls, ...uploadedUrls];
+    //     }
 
-        return fileUrls;
+    //     return fileUrls;
+    // };
+
+    const uploadFilesToFirebaseStorage = async (mediaFiles, musicianId, folder) => {
+        const uploadPromises = mediaFiles.map(async (media) => {
+            if (typeof media.file === 'string') {
+                return media;
+            }
+    
+            const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${media.file.name}`);
+            await uploadBytes(storageRef, media.file);
+            const url = await getDownloadURL(storageRef);
+    
+            return {
+                ...media,
+                file: url
+            };
+        });
+    
+        return Promise.all(uploadPromises);
     };
 
     const uploadProfilePictureToFirebaseStorage = async (picture, musicianId) => {
@@ -246,12 +266,12 @@ export const ProfileCreator = ({ musicianProfile }) => {
 
 
     const stages = [
-        <>
+        <div className='stage intro'>
             <h1>Welcome to the profile creator.</h1>
             <h4>Before you apply to gigs on Gigin, you need to show the venue your talent!</h4>
             <p>This should only take around 5 minutes. We advise that you have videos and tracks available to upload.</p>
-        </>,
-        <NameStage data={formData.name} onChange={handleChange} />,
+        </div>,
+        <NameStage data={formData.name} onChange={handleChange} user={user} />,
         <ProfilePictureStage data={formData.picture} onChange={handleChange} />,
         <LocationStage data={formData.location} onChange={handleChange} mapboxToken={mapboxToken} />,
         <MusicianTypeStage data={formData.musicianType} onChange={handleChange} />,
@@ -269,29 +289,37 @@ export const ProfileCreator = ({ musicianProfile }) => {
     return (
         <div className="profile-creator">
             {uploadingProfile ? (
-                <>
+                <div className='loading-state'>
                     <h1>Creating your musician profile...</h1>
                     <LoadingThreeDots />
-                </>
+                </div>
+            ) : savingProfile ? (
+                <div className='loading-state'>
+                    <h1>Saving your musician profile...</h1>
+                    <LoadingThreeDots />
+                </div>
             ) : (
                 <>
+                    <div className="top">
+                        <button className="btn secondary save-and-exit" onClick={handleSaveAndExit}>
+                            Save and Exit
+                        </button>
+                    </div>
                     {stages[stage]}
-                    <ProgressBar currentStage={stage} totalStages={stages.length} />
-                    <button className="btn text" onClick={handleSaveAndExit}>
-                        <ExitIcon />
-                        Save and Exit
-                    </button>
-                    <div className="controls">
-                        {stage > 0 && (
-                            <button className='btn secondary' onClick={handlePrevious}>
-                                <LeftChevronIcon />
-                            </button>
-                        )}
-                        {stage < stages.length - 1 ? (
-                            <button className='btn primary' onClick={handleNext} disabled={!validateStage(stage)}>Continue</button>
-                        ) : (
-                            stage > 0 && <button className='btn primary' onClick={() => handleSubmit()} disabled={!validateStage(stage)}>Submit</button>
-                        )}
+                    <div className="bottom">
+                        <ProgressBar currentStage={stage} totalStages={stages.length} />
+                        <div className={`${stage === 0 && 'single'} controls`}>
+                            {stage > 0 && (
+                                <button className='btn secondary' onClick={handlePrevious}>
+                                    <LeftChevronIcon />
+                                </button>
+                            )}
+                            {stage < stages.length - 1 ? (
+                                <button className='btn primary' onClick={handleNext} disabled={!validateStage(stage)}>Continue</button>
+                            ) : (
+                                stage > 0 && <button className='btn primary' onClick={() => handleSubmit()} disabled={!validateStage(stage)}>Submit</button>
+                            )}
+                        </div>
                     </div>
                 </>
             )}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CloseIcon } from "../../../../components/ui/Extras/Icons";
+import { CameraIcon, CloseIcon } from "../../../../components/ui/Extras/Icons";
 
 export const ProfilePictureStage = ({ data, onChange }) => {
     const [preview, setPreview] = useState('');
@@ -20,27 +20,25 @@ export const ProfilePictureStage = ({ data, onChange }) => {
         }
     };
 
-    const removeImage = () => {
-        setPreview('');
-        onChange('picture', '');
-    };
-
     return (
-        <div className="stage">
-            <h2>Stage 2: Profile Picture</h2>
-            <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-            />
-            {preview && (
-                <div className="image-preview">
-                    <img src={preview} alt="Profile Preview" />
-                    <button className="remove-button" onClick={removeImage}>
-                        <CloseIcon />
-                    </button>
+        <div className="stage photo">
+            <h3 className="section-title">Details</h3>
+            <div className="body">
+                <h1>Upload a Profile Picture</h1>
+                <div className="image-container">
+                    <input
+                        className="input photo"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                    />
+                    <div className="image-preview" style={{ backgroundImage: `url(${preview})` }}>
+                        {!preview && (
+                            <CameraIcon />
+                        )}
+                    </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 };

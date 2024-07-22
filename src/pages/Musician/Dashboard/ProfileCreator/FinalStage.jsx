@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TickIcon } from "../../../../components/ui/Extras/Icons";
 
 export const FinalStage = () => {
     const [email1, setEmail1] = useState('');
@@ -29,36 +30,42 @@ export const FinalStage = () => {
     };
 
     return (
-        <div className="stage">
-            <h2>Stage 12: Final</h2>
-            <div className="email-inputs">
+        <div className="stage final">
+            <h3 className="section-title">Content</h3>
+            <div className="body">
+                <div className="title-container">
+                    <h1>Let's finish up.</h1>
+                    <p>To hit the ground running on Gigin, provide a couple emails to people who can testify to the quality of your performing.</p>
+                </div>
                 <div className="email-input">
                     {message1 ? (
-                        <p>{message1}</p>
+                        <h4 className="message"><TickIcon /> {message1}</h4>
                     ) : (
                         <>
                             <input
                                 type="email"
+                                className="input"
                                 value={email1}
                                 onChange={(e) => setEmail1(e.target.value)}
                                 placeholder="Enter first email address for testimonial"
                             />
-                            <button onClick={() => handleSendEmail(email1, setMessage1)}>Send</button>
+                            <button className="btn primary-alt" onClick={() => handleSendEmail(email1, setMessage1)}>Send</button>
                         </>
                     )}
                 </div>
                 <div className="email-input">
                     {message2 ? (
-                        <p>{message2}</p>
+                        <h4 className="message"><TickIcon /> {message2}</h4>
                     ) : (
                         <>
                             <input
                                 type="email"
+                                className="input"
                                 value={email2}
                                 onChange={(e) => setEmail2(e.target.value)}
                                 placeholder="Enter second email address for testimonial"
                             />
-                            <button onClick={() => handleSendEmail(email2, setMessage2)}>Send</button>
+                            <button className="btn primary-alt" onClick={() => handleSendEmail(email2, setMessage2)}>Send</button>
                         </>
                     )}
                 </div>

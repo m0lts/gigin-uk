@@ -1,114 +1,146 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { CloseIcon } from '/components/ui/Extras/Icons';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { BackgroundMusicIcon } from "../../../../components/ui/Extras/Icons";
-
-const ItemType = 'TRACK';
-
-const DraggableTrack = ({ track, index, moveTrack, removeTrack }) => {
-    const [, ref] = useDrag({
-        type: ItemType,
-        item: { index }
-    });
-
-    const [, drop] = useDrop({
-        accept: ItemType,
-        hover: (draggedItem) => {
-            if (draggedItem.index !== index) {
-                moveTrack(draggedItem.index, index);
-                draggedItem.index = index;
-            }
-        }
-    });
-
-    return (
-        <div
-            ref={(node) => ref(drop(node))}
-            className="preview-track-container"
-        >
-            <audio controls className="preview-track">
-                <source src={typeof track === 'string' ? track : URL.createObjectURL(track)} type="audio/mp3" />
-                Your browser does not support the audio element.
-            </audio>
-            <button className="remove-button" onClick={() => removeTrack(index)}>
-                <CloseIcon />
-            </button>
-        </div>
-    );
-};
+import { BackgroundMusicIcon, TrackIcon, EditIcon, PlayIcon, ExitIcon, PauseIcon } from "../../../../components/ui/Extras/Icons";
 
 export const TracksStage = ({ data, onChange }) => {
     const [tracks, setTracks] = useState(data || []);
+    const [currentPlayingIndex, setCurrentPlayingIndex] = useState(null);
+    const audioRefs = useRef([]);
 
     useEffect(() => {
         onChange('tracks', tracks);
     }, [tracks]);
 
     const handleFileChange = (event) => {
-        const files = Array.from(event.target.files);
+        const files = Array.from(event.target.files).map(file => ({
+            file,
+            title: file.name,
+            date: new Date(file.lastModified).toISOString().split('T')[0]
+        }));
         setTracks((prevTracks) => [...prevTracks, ...files]);
     };
 
-    const handleDrop = (event) => {
-        event.preventDefault();
-        const files = Array.from(event.dataTransfer.files);
-        setTracks((prevTracks) => [...prevTracks, ...files]);
+    const handleTitleChange = (index, newTitle) => {
+        setTracks((prevTracks) =>
+            prevTracks.map((track, i) =>
+                i === index ? { ...track, title: newTitle } : track
+            )
+        );
     };
 
-    const handleDragOver = (event) => {
-        event.preventDefault();
-    };
-
-
-    const moveTrack = (fromIndex, toIndex) => {
-        const updatedTracks = [...tracks];
-        const [movedTrack] = updatedTracks.splice(fromIndex, 1);
-        updatedTracks.splice(toIndex, 0, movedTrack);
-        setTracks(updatedTracks);
+    const handleDateChange = (index, newDate) => {
+        setTracks((prevTracks) =>
+            prevTracks.map((track, i) =>
+                i === index ? { ...track, date: newDate } : track
+            )
+        );
     };
 
     const removeTrack = (index) => {
-        setTracks(tracks.filter((_, i) => i !== index));
+        setTracks((prevTracks) => prevTracks.filter((_, i) => i !== index));
+    };
+
+    const handlePlayPauseTrack = (index) => {
+        if (audioRefs.current[index]) {
+            const audioElement = audioRefs.current[index];
+            if (audioElement.paused) {
+                audioElement.play().then(() => {
+                    setCurrentPlayingIndex(index);
+                }).catch(error => {
+                    console.error("Error playing audio:", error);
+                });
+            } else {
+                audioElement.pause();
+                setCurrentPlayingIndex(null);
+            }
+        }
     };
 
     return (
-        <DndProvider backend={HTML5Backend}>
-            <div className="stage tracks">
-                <h3>Stage 11: Tracks</h3>
-                <div className="track-space">
-                    <div
-                        className="upload"
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                    >
-                        <input
-                            type="file"
-                            multiple
-                            accept="audio/*"
-                            onChange={handleFileChange}
-                            style={{ display: 'none' }}
-                            id="fileInput"
-                        />
-                        <label htmlFor="fileInput" className="upload-label">
-                            <BackgroundMusicIcon />
-                            <span>Click or drag tracks here to upload. Add at least 3 tracks.</span>
-                        </label>
-                    </div>
-                    <h6 className="input-label">Drag the tracks to rearrange in order of their importance.</h6>
-                    <div className="preview">
-                        {tracks.map((track, index) => (
-                            <DraggableTrack
-                                key={index}
-                                track={track}
-                                index={index}
-                                moveTrack={moveTrack}
-                                removeTrack={removeTrack}
-                            />
-                        ))}
-                    </div>
+        <div className="stage tracks">
+            <h3 className="section-title">Content</h3>
+            <div className="body">
+                <h1>Upload some of your best recordings.</h1>
+                <div className="upload">
+                    <input
+                        type="file"
+                        multiple
+                        accept="audio/*"
+                        onChange={handleFileChange}
+                        style={{ display: 'none' }}
+                        id="fileInput"
+                    />
+                    <label htmlFor="fileInput" className="upload-label">
+                        <BackgroundMusicIcon />
+                        <span>Upload tracks here.</span>
+                    </label>
                 </div>
+                {tracks.length > 0 && (
+                    <table className="media-table">
+                        <thead>
+                            <tr>
+                                <td className="file-type">Listen</td>
+                                <td>Title</td>
+                                <td>Date</td>
+                                <td></td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tracks.map((track, index) => (
+                                <tr key={index}>
+                                    {/* <td className="file-type" onClick={() => handlePlayPauseTrack(index)}>
+                                        <PlayIcon />
+                                        <audio
+                                            ref={el => audioRefs.current[index] = el}
+                                            src={typeof track.file === 'string' ? track.file : URL.createObjectURL(track.file)}
+                                        />
+                                    </td> */}
+                                    {/* <td className="file-type" onClick={() => handlePlayPauseTrack(index)}>
+                                        <audio
+                                            src={typeof track.file === 'string' ? track.file : URL.createObjectURL(track.file)}
+                                            controls
+                                        />
+                                    </td> */}
+                                    <td className="file-type">
+                                        <button className="btn text" onClick={() => handlePlayPauseTrack(index)}>
+                                            {currentPlayingIndex === index && audioRefs.current[index]?.paused === false ? <PauseIcon /> : <PlayIcon />}
+                                        </button>
+                                        <audio
+                                            ref={el => audioRefs.current[index] = el}
+                                            src={typeof track.file === 'string' ? track.file : URL.createObjectURL(track.file)}
+                                            style={{ display: 'none' }}
+                                        />
+                                    </td>
+                                    <td className="title">
+                                        <input
+                                            type="text"
+                                            className="input"
+                                            value={track.title}
+                                            onChange={(e) => handleTitleChange(index, e.target.value)}
+                                        />
+                                        <EditIcon />
+                                    </td>
+                                    <td>
+                                        <input
+                                            type="date"
+                                            className="input"
+                                            value={track.date}
+                                            onChange={(e) => handleDateChange(index, e.target.value)}
+                                        />
+                                    </td>
+                                    <td>
+                                        <button className="btn danger remove-button" onClick={() => removeTrack(index)}>
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
-        </DndProvider>
+        </div>
     );
 };

@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export const GenresStage = ({ data, onChange, musicianType }) => {
     const [inputValue, setInputValue] = useState('');
     const [filteredGenres, setFilteredGenres] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const dropdownRef = useRef(null);
 
     const genres = {
-        Musician: [
+        'Musician/Band': [
             'Rock', 'Alternative Rock', 'Classic Rock', 'Indie Rock', 'Punk Rock', 'Hard Rock', 'Soft Rock', 'Progressive Rock',
             'Pop', 'Dance Pop', 'Teen Pop', 'Synth-pop', 'Indie Pop',
             'Jazz', 'Smooth Jazz', 'Bebop', 'Swing', 'Cool Jazz', 'Jazz Fusion', 'Free Jazz',
@@ -28,7 +30,7 @@ export const GenresStage = ({ data, onChange, musicianType }) => {
             'Drum and Bass', 'Liquid Drum and Bass', 'Neurofunk',
             'Dubstep', 'Brostep', 'Chillstep',
             'Trap', 'Festival Trap', 'Chill Trap',
-            'Hip Hop', 'Turntablism', 'Hip Hop', 'Rap', 'Trap',
+            'Hip Hop', 'Turntablism', 'Rap', 'Trap',
             'R&B', 'Contemporary R&B', 'Neo-Soul',
             'Pop', 'Dance Pop', 'Synth-pop',
             'Reggae', 'Dancehall', 'Dub',
@@ -40,6 +42,19 @@ export const GenresStage = ({ data, onChange, musicianType }) => {
         ]
     };
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowSuggestions(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
     const handleInputChange = (e) => {
         const value = e.target.value;
         setInputValue(value);
@@ -50,8 +65,10 @@ export const GenresStage = ({ data, onChange, musicianType }) => {
                 genre.toLowerCase().includes(value.toLowerCase())
             );
             setFilteredGenres(filtered);
+            setShowSuggestions(true);
         } else {
             setFilteredGenres([]);
+            setShowSuggestions(false);
         }
     };
 
@@ -59,6 +76,8 @@ export const GenresStage = ({ data, onChange, musicianType }) => {
         if (!data.includes(genre)) {
             onChange('genres', [...data, genre]);
         }
+        setShowSuggestions(false);
+        setInputValue('');
     };
 
     const handleRemoveTag = (genre) => {
@@ -66,29 +85,38 @@ export const GenresStage = ({ data, onChange, musicianType }) => {
     };
 
     return (
-        <div className="stage">
-            <h2>Stage 5: Genres</h2>
-            <input
-                type="text"
-                value={inputValue}
-                onChange={handleInputChange}
-                placeholder="Type to search genres"
-            />
-            {inputValue && filteredGenres.length > 0 && (
-                <div className="genre-suggestions">
-                    {filteredGenres.map((genre, index) => (
-                        <div key={index} className="genre-option" onClick={() => handleGenreClick(genre)}>
+        <div className="stage genres">
+            <h3 className="section-title">Music</h3>
+            <div className="body">
+                <div className="title-container">
+                    <h1>What genres do you play?</h1>
+                    <h5>Select as many as you can, these help us match you with gigs.</h5>
+                </div>
+                <div className="genre-selections-container" ref={dropdownRef}>
+                    <input
+                        className="input"
+                        type="text"
+                        value={inputValue}
+                        onChange={handleInputChange}
+                        placeholder="Type to search genres"
+                    />
+                    {showSuggestions && inputValue && filteredGenres.length > 0 && (
+                        <div className="genre-suggestions">
+                            {filteredGenres.map((genre, index) => (
+                                <div key={index} className="genre-option" onClick={() => handleGenreClick(genre)}>
+                                    {genre}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="selected-genres">
+                    {data.map((genre, index) => (
+                        <div key={index} className="genre-tag" onClick={() => handleRemoveTag(genre)}>
                             {genre}
                         </div>
                     ))}
                 </div>
-            )}
-            <div className="selected-genres">
-                {data.map((genre, index) => (
-                    <div key={index} className="genre-tag">
-                        {genre} <button onClick={() => handleRemoveTag(genre)}>x</button>
-                    </div>
-                ))}
             </div>
         </div>
     );

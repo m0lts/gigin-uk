@@ -1,5 +1,6 @@
-import { faCircle, faUserCircle } from "@fortawesome/free-solid-svg-icons"
-import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faArrowUpFromBracket, faArrowUpRightFromSquare, faBeerFoam, faBookmark, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faGear, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMagnifyingGlass, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPencil, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faQuestionCircle, faRectanglesMixed, faRingsWedding, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faFacebook, faFacebookSquare, faInstagram, faInstagramSquare, faSoundcloud, faSpotify, faTwitter, faTwitterSquare, faYoutube, faYoutubeSquare } from "@fortawesome/free-brands-svg-icons"
+import { faCircle, faFilm, faUserCircle, faVideo } from "@fortawesome/free-solid-svg-icons"
+import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faArrowUpFromBracket, faArrowUpRightFromSquare, faBeerFoam, faBookmark, faCalendar, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faFileMp3, faFileMp4, faGear, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMagnifyingGlass, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPause, faPencil, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faPlay, faPlayPause, faQuestionCircle, faRectanglesMixed, faReel, faRingsWedding, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
 import { faFaceFrown, faFaceMeh, faFaceSmile, faFaceSmileHearts } from "@fortawesome/pro-regular-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
@@ -338,5 +339,55 @@ export const FaceMehIcon = () => {
 export const FaceFrownIcon = () => {
     return (
         <FontAwesomeIcon icon={faFaceFrown} className="icon" />
+    )
+}
+export const FacebookIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFacebook} className="icon" />
+    )
+}
+export const TwitterIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faTwitter} className="icon" />
+    )
+}
+export const InstagramIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faInstagram} className="icon" />
+    )
+}
+export const YoutubeIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faYoutube} className="icon" />
+    )
+}
+export const SpotifyIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faSpotify} className="icon" />
+    )
+}
+export const SoundcloudIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faSoundcloud} className="icon" />
+    )
+}
+export const VideoIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFileMp4} className="icon" />
+    )
+}
+export const TrackIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFileMp3} className="icon" />
+    )
+}
+export const PlayIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faPlay} className="icon" />
+    )
+}
+export const PauseIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faPause} className="icon" />
     )
 }
