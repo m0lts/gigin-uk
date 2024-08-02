@@ -10,7 +10,7 @@ export const MusicianTypeStage = ({ data, onChange }) => {
         <div className="stage musician-type">
             <h3 className="section-title">Music</h3>
             <div className="body">
-                <h1>What type of musician are you?</h1>
+                <h1>What type of performer are you?</h1>
                     <div className="selections">
                         <div className={`card ${data === 'Musician/Band' ? 'selected' : ''}`} onClick={() => handleMusicianTypeSelect('Musician/Band')}>
                             <MicrophoneIcon />

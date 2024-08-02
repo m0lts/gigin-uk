@@ -34,7 +34,7 @@ export const ProfileCreator = ({ musicianProfile }) => {
 
     const mapboxToken = useMapboxAccessToken();
 
-    const [stage, setStage] = useState(10);
+    const [stage, setStage] = useState(0);
     const [formData, setFormData] = useState({
         musicianId: uuidv4(),
         name: '',

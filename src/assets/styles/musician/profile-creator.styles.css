@@ -354,7 +354,6 @@
 
 /* VIDEOS AND TRACKS */
 
-.profile-creator .stage.videos .upload,
 .profile-creator .stage.tracks .upload {
     border:1px dashed var(--gn-grey-500);
     background-color: var(--gn-grey-300);
@@ -364,7 +363,6 @@
     padding: 1rem 2rem;
 }
 
-.profile-creator .stage.videos .upload-label,
 .profile-creator .stage.tracks .upload-label {
     display: flex;
     align-items: center;
@@ -376,7 +374,6 @@
     cursor: pointer;
 }
 
-.profile-creator .stage.videos .upload-label .icon,
 .profile-creator .stage.tracks .upload-label .icon {
     font-size: 3rem;
 }
@@ -384,7 +381,152 @@
 
 /* VIDEOS */
 
-.profile-creator .stage.videos .carousel-container {
+.profile-creator .stage.videos .upload {
+    border:1px solid var(--gn-grey-500);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    width:60%;
+    height:75px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-creator .stage.videos .upload-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width:100%;
+    height: 100%;
+    gap:1rem;
+    font-size: 0.9rem;
+    color: var(--gn-black);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 200ms linear;
+}
+
+.profile-creator .stage.videos .upload-label:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.profile-creator .stage.videos .videos-table {
+    border: 1px solid var(--gn-grey-500);
+    border-radius: 1rem;
+    min-width: 60%;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+}
+
+.profile-creator .stage.videos .videos-table thead {
+    background-color: var(--gn-grey-300);
+}
+
+.profile-creator .stage.videos .videos-table th,
+.profile-creator .stage.videos .videos-table td {
+    border: none;
+    padding: 0.5rem;
+    background-clip: padding-box;
+    text-align: center;
+}
+
+.profile-creator .stage.videos .videos-table th {
+    background-color: var(--gn-grey-300);
+    font-weight: 500;
+}
+
+.profile-creator .stage.videos .upload-table td {
+    padding: 0;
+}
+
+.profile-creator .stage.videos .videos-table .table-input .icon {
+    margin-left: 5px;
+    color: var(--gn-grey-600);
+}
+
+.profile-creator .stage.videos .upload-table .upload-table-label {
+    padding: 0;
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 50px;
+    gap: 0.5rem;
+    cursor: pointer;
+    background-color: var(--gn-grey-200);
+    transition: background-color 200ms linear;
+}
+
+.profile-creator .stage.videos .upload-table .upload-table-label:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.profile-creator .stage.videos .video-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-creator .stage.videos .video-container {
+    width:100px;
+    height: 60px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.profile-creator .stage.videos .video-container img {
+    width:100%;
+    height: 100%;
+    border-radius: 5px;
+    object-fit: cover;
+}
+
+.profile-creator .stage.videos .video-container .icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--gn-white);
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+.profile-creator .stage.videos .videos-table .btn {
+    color: var(--gn-red);
+}
+
+
+.profile-creator .stage.videos .modal-content {
+    position: relative;
+    border:none;
+    height: 100%;
+    width:100%;
+    padding:0;
+    background-color: transparent;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-creator .stage.videos .modal-content video {
+    max-height: 75%;
+    max-width: 90%;
+}
+
+.profile-creator .stage.videos .modal .close {
+    position: absolute;
+    top: 1rem;
+    right: 2rem;
+    color: var(--gn-red);
+    font-size: 2rem;
+    cursor: pointer;
+}
+/* .profile-creator .stage.videos .carousel-container {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -441,7 +583,7 @@
     padding: 0;
     width:25px;
     height: 25px;
-}
+} */
 
 
 /* TRACKS */
