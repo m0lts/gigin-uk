@@ -124,41 +124,22 @@ export const ProfileCreator = ({ musicianProfile }) => {
     };
 
 
-    // const uploadFilesToFirebaseStorage = async (files, musicianId, folder) => {
-    //     const fileUrls = files.filter(file => typeof file === 'string');
-    //     const newFiles = files.filter(file => typeof file !== 'string');
-
-    //     if (newFiles.length > 0) {
-    //         const uploadPromises = newFiles.map(async (file) => {
-    //             const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${file.name}`);
-    //             await uploadBytes(storageRef, file);
-    //             return getDownloadURL(storageRef);
-    //         });
-
-    //         const uploadedUrls = await Promise.all(uploadPromises);
-    //         return [...fileUrls, ...uploadedUrls];
-    //     }
-
-    //     return fileUrls;
-    // };
-
     const uploadFilesToFirebaseStorage = async (mediaFiles, musicianId, folder) => {
         const uploadPromises = mediaFiles.map(async (media) => {
+            // If the file is already a URL (indicating it has been uploaded before), skip re-upload
             if (typeof media.file === 'string') {
-                return media;
+                return media.file; // Return the existing URL
             }
     
-            const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${media.file.name}`);
-            await uploadBytes(storageRef, media.file);
-            const url = await getDownloadURL(storageRef);
+            // Otherwise, upload the file to Firebase Storage
+            const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${media.title}`); // Use `media.file.title` for file name
+            await uploadBytes(storageRef, media.file); // Upload the actual file
+            const url = await getDownloadURL(storageRef); // Get the download URL
     
-            return {
-                ...media,
-                file: url
-            };
+            return url; // Return the newly uploaded file's URL
         });
     
-        return Promise.all(uploadPromises);
+        return Promise.all(uploadPromises); // Resolve all promises and return the array of URLs
     };
 
     const uploadProfilePictureToFirebaseStorage = async (picture, musicianId) => {
@@ -177,17 +158,30 @@ export const ProfileCreator = ({ musicianProfile }) => {
             const pictureFile = formData.picture;
             const pictureUrl = await uploadProfilePictureToFirebaseStorage(pictureFile, formData.musicianId);
 
-            const videoFiles = formData.videos;
-            const videoUrls = await uploadFilesToFirebaseStorage(videoFiles, formData.musicianId, 'videos');
+            const videoUrls = await uploadFilesToFirebaseStorage(formData.videos, formData.musicianId, 'videos');
 
-            const trackFiles = formData.tracks;
-            const trackUrls = await uploadFilesToFirebaseStorage(trackFiles, formData.musicianId, 'tracks');
+            // Create an array of video metadata with URLs
+            const videoMetadata = formData.videos.map((video, index) => ({
+                date: video.date,
+                title: video.title,
+                url: videoUrls[index], // Attach the corresponding URL
+            }));
 
+            const trackUrls = await uploadFilesToFirebaseStorage(formData.tracks, formData.musicianId, 'tracks');
+
+            
+            // Create an array of track metadata with URLs
+            const trackMetadata = formData.tracks.map((track, index) => ({
+                date: track.date,
+                title: track.title,
+                url: trackUrls[index], // Attach the corresponding URL
+            }));
+            
             const updatedFormData = {
                 ...formData,
-                picture: pictureUrl[0],
-                videos: videoUrls,
-                tracks: trackUrls,
+                picture: pictureUrl, // Store as a string
+                videos: videoMetadata, // Store as an array of metadata objects
+                tracks: trackMetadata, // Store as an array of metadata objects
                 completed: true,
             };
 
@@ -240,14 +234,24 @@ export const ProfileCreator = ({ musicianProfile }) => {
             const pictureUrl = await uploadProfilePictureToFirebaseStorage(pictureFile, formData.musicianId);
             updatedFormData.picture = pictureUrl;
     
-            const videoFiles = formData.videos;
-            const videoUrls = await uploadFilesToFirebaseStorage(videoFiles, formData.musicianId, 'videos');
-            updatedFormData.videos = videoUrls;
-    
-            const trackFiles = formData.tracks;
-            const trackUrls = await uploadFilesToFirebaseStorage(trackFiles, formData.musicianId, 'tracks');
-            updatedFormData.tracks = trackUrls;
-    
+            // Upload videos and create metadata
+            const videoUrls = await uploadFilesToFirebaseStorage(formData.videos, formData.musicianId, 'videos');
+            const videoMetadata = formData.videos.map((video, index) => ({
+                date: video.date,
+                title: video.title,
+                url: videoUrls[index], // Attach the corresponding URL
+            }));
+            updatedFormData.videos = videoMetadata;
+
+            // Upload tracks and create metadata
+            const trackUrls = await uploadFilesToFirebaseStorage(formData.tracks, formData.musicianId, 'tracks');
+            const trackMetadata = formData.tracks.map((track, index) => ({
+                date: track.date,
+                title: track.title,
+                url: trackUrls[index], // Attach the corresponding URL
+            }));
+            updatedFormData.tracks = trackMetadata;    
+            
             const musicianRef = doc(firestore, 'musicianProfiles', formData.musicianId);
             await setDoc(musicianRef, {
                 ...updatedFormData,

@@ -354,34 +354,7 @@
 
 /* VIDEOS AND TRACKS */
 
-.profile-creator .stage.tracks .upload {
-    border:1px dashed var(--gn-grey-500);
-    background-color: var(--gn-grey-300);
-    border-radius: 5px;
-    min-height: 10%;
-    cursor: pointer;
-    padding: 1rem 2rem;
-}
-
-.profile-creator .stage.tracks .upload-label {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap:1rem;
-    font-size: 0.9rem;
-    color: var(--gn-black);
-    cursor: pointer;
-}
-
-.profile-creator .stage.tracks .upload-label .icon {
-    font-size: 3rem;
-}
-
-
-/* VIDEOS */
-
-.profile-creator .stage.videos .upload {
+.profile-creator .stage.media .upload {
     border:1px solid var(--gn-grey-500);
     border-radius: 5px;
     background-color: var(--gn-white);
@@ -392,7 +365,7 @@
     justify-content: center;
 }
 
-.profile-creator .stage.videos .upload-label {
+.profile-creator .stage.media .upload-label {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -406,46 +379,16 @@
     transition: background-color 200ms linear;
 }
 
-.profile-creator .stage.videos .upload-label:hover {
+.profile-creator .stage.media .upload-label:hover {
     background-color: var(--gn-grey-300);
 }
 
-.profile-creator .stage.videos .videos-table {
-    border: 1px solid var(--gn-grey-500);
-    border-radius: 1rem;
-    min-width: 60%;
-    border-collapse: separate;
-    border-spacing: 0;
-    overflow: hidden;
-}
 
-.profile-creator .stage.videos .videos-table thead {
-    background-color: var(--gn-grey-300);
-}
-
-.profile-creator .stage.videos .videos-table th,
-.profile-creator .stage.videos .videos-table td {
-    border: none;
-    padding: 0.5rem;
-    background-clip: padding-box;
-    text-align: center;
-}
-
-.profile-creator .stage.videos .videos-table th {
-    background-color: var(--gn-grey-300);
-    font-weight: 500;
-}
-
-.profile-creator .stage.videos .upload-table td {
+.profile-creator .stage.media .upload-table td {
     padding: 0;
 }
 
-.profile-creator .stage.videos .videos-table .table-input .icon {
-    margin-left: 5px;
-    color: var(--gn-grey-600);
-}
-
-.profile-creator .stage.videos .upload-table .upload-table-label {
+.profile-creator .stage.media .upload-table .upload-table-label {
     padding: 0;
     width:100%;
     display: flex;
@@ -458,49 +401,91 @@
     transition: background-color 200ms linear;
 }
 
-.profile-creator .stage.videos .upload-table .upload-table-label:hover {
+.profile-creator .stage.media .upload-table .upload-table-label:hover {
     background-color: var(--gn-grey-300);
 }
 
-.profile-creator .stage.videos .video-data {
+.profile-creator .stage.media .media-table {
+    width:50%;
+    min-width: 400px;
+    border:1px solid var(--gn-grey-400);
+    overflow: hidden;
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.profile-creator .stage.media .media-table thead {
+    background-color: var(--gn-grey-300);
+    border-collapse: collapse;
+}
+
+.profile-creator .stage.media .media-table thead tr th {
+    font-weight: 500;
+    text-align: left;
+}
+
+.profile-creator .stage.media .media-table thead tr th,
+.profile-creator .stage.media .media-table tbody tr td {
+    padding:0.25rem;
+}
+
+.profile-creator .stage.media .media-table .file-type {
+    text-align: center;
+}
+
+.profile-creator .stage.media .media-table .title {
+    position: relative;
+}
+
+.profile-creator .stage.media .media-table .input {
+    padding:5px;
+    text-align: left;
+    border: none;
+}
+
+.profile-creator .stage.media .media-table .remove-button {
+    font-size: 1rem;
+    padding:5px;
+    color: var(--gn-red);
+}
+
+/*  VIDEOS */
+
+.profile-creator .stage.media .video-data {
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.profile-creator .stage.videos .video-container {
-    width:100px;
-    height: 60px;
+.profile-creator .stage.media .video-container {
+    width:75px;
+    height: 50px;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
 }
 
-.profile-creator .stage.videos .video-container img {
+.profile-creator .stage.media .video-container img {
     width:100%;
     height: 100%;
-    border-radius: 5px;
     object-fit: cover;
+    border-radius: 5px;
 }
 
-.profile-creator .stage.videos .video-container .icon {
+.profile-creator .stage.media .video-container .icon {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top:50%;
+    right:50%;
+    transform: translate(50%, -50%);
     color: var(--gn-white);
-    font-size: 2rem;
-    cursor: pointer;
+    font-size: 1.5rem;
 }
 
-.profile-creator .stage.videos .videos-table .btn {
-    color: var(--gn-red);
-}
-
-
-.profile-creator .stage.videos .modal-content {
+.profile-creator .stage.media .modal-content {
     position: relative;
     border:none;
     height: 100%;
@@ -513,12 +498,12 @@
     justify-content: center;
 }
 
-.profile-creator .stage.videos .modal-content video {
+.profile-creator .stage.media .modal-content video {
     max-height: 75%;
     max-width: 90%;
 }
 
-.profile-creator .stage.videos .modal .close {
+.profile-creator .stage.media .modal .close {
     position: absolute;
     top: 1rem;
     right: 2rem;
@@ -526,116 +511,7 @@
     font-size: 2rem;
     cursor: pointer;
 }
-/* .profile-creator .stage.videos .carousel-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-}
 
-.profile-creator .stage.videos .carousel {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width:100%;
-    transition: transform 0.3s ease-in-out;
-}
-
-.profile-creator .stage.videos .carousel-item {
-    box-sizing: border-box;
-    text-align: center;
-    border:1px solid var(--gn-grey-400);
-    padding:1rem;
-    position: relative;
-    background-color: var(--gn-white);
-    box-shadow: 0px 0px 5px var(--gn-shadow);
-    border-radius: 10px;
-}
-
-.profile-creator .stage.videos .carousel-item video {
-    width: 200px;
-    max-height: 250px;
-}
-
-.profile-creator .stage.videos .carousel-item .remove-button {
-    position: absolute;
-    top:0;
-    right: 3px;
-}
-.profile-creator .stage.videos .carousel-item .remove-button .icon {
-    font-size: 1rem;
-    color: var(--gn-red);
-}
-
-.profile-creator .stage.videos .carousel-controls {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    justify-content: space-between;
-    width: 75%;
-}
-
-.profile-creator .stage.videos .carousel-controls .btn {
-    border-radius: 5px;
-    padding: 0;
-    width:25px;
-    height: 25px;
-} */
-
-
-/* TRACKS */
-
-.profile-creator .stage.tracks .media-table {
-    width:50%;
-    min-width: 400px;
-    border:1px solid var(--gn-grey-400);
-    overflow: hidden;
-    background-color: var(--gn-white);
-    border-radius: var(--gn-btn-border-radius);
-    box-shadow: 0px 0px 5px var(--gn-shadow);
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.profile-creator .stage.tracks .media-table thead {
-    background-color: var(--gn-grey-300);
-    border-collapse: collapse;
-}
-
-.profile-creator .stage.tracks .media-table thead tr td {
-    font-weight: 500;
-}
-
-.profile-creator .stage.tracks .media-table thead tr td,
-.profile-creator .stage.tracks .media-table tbody tr td {
-    padding:0.25rem;
-}
-
-.profile-creator .stage.tracks .media-table .file-type {
-    text-align: center;
-}
-
-.profile-creator .stage.tracks .media-table audio {
-    border: 1px solid red;
-}
-
-.profile-creator .stage.tracks .media-table .title {
-    position: relative;
-}
-
-.profile-creator .stage.tracks .media-table .input {
-    padding:5px;
-    text-align: left;
-    border: none;
-}
-
-.profile-creator .stage.tracks .media-table .remove-button {
-    font-size: 0.75rem;
-    padding:5px;
-}
 
 
 /* SOCIAL MEDIA */
@@ -655,32 +531,26 @@
 }
 
 .profile-creator .stage.social-media .facebook-icon .icon {
-    color: blue;
     font-size: 2rem;
 }
 
 .profile-creator .stage.social-media .instagram-icon .icon {
-    color: #fbad50;
     font-size: 2rem;
 }
 
 .profile-creator .stage.social-media .twitter-icon .icon {
-    color:rgb(55, 178, 255);
     font-size: 2rem;
 }
 
 .profile-creator .stage.social-media .youtube-icon .icon {
-    color:red;
     font-size: 2rem;
 }
 
 .profile-creator .stage.social-media .spotify-icon .icon {
-    color:rgb(20, 204, 0);
     font-size: 2rem;
 }
 
 .profile-creator .stage.social-media .soundcloud-icon .icon {
-    color:rgb(255, 92, 55);
     font-size: 2rem;
 }
 

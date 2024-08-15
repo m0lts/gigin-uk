@@ -59,32 +59,18 @@ export const TracksStage = ({ data, onChange }) => {
     };
 
     return (
-        <div className="stage tracks">
+        <div className="stage media">
             <h3 className="section-title">Content</h3>
             <div className="body">
                 <h1>Upload some of your best recordings.</h1>
-                <div className="upload">
-                    <input
-                        type="file"
-                        multiple
-                        accept="audio/*"
-                        onChange={handleFileChange}
-                        style={{ display: 'none' }}
-                        id="fileInput"
-                    />
-                    <label htmlFor="fileInput" className="upload-label">
-                        <BackgroundMusicIcon />
-                        <span>Upload tracks here.</span>
-                    </label>
-                </div>
-                {tracks.length > 0 && (
+                {tracks.length > 0 ? (
                     <table className="media-table">
                         <thead>
                             <tr>
-                                <td className="file-type">Listen</td>
-                                <td>Title</td>
-                                <td>Date</td>
-                                <td></td>
+                                <th className="file-type">Listen</th>
+                                <th>Title</th>
+                                <th>Date</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -131,14 +117,44 @@ export const TracksStage = ({ data, onChange }) => {
                                         />
                                     </td>
                                     <td>
-                                        <button className="btn danger remove-button" onClick={() => removeTrack(index)}>
-                                            Delete
+                                        <button className="btn icon remove-button" onClick={() => removeTrack(index)}>
+                                            &times;
                                         </button>
                                     </td>
                                 </tr>
                             ))}
+                            <tr className="upload-table">
+                                <td colSpan="4">
+                                    <input
+                                        type="file"
+                                        accept="video/*"
+                                        onChange={handleFileChange}
+                                        style={{ display: 'none' }}
+                                        id="fileInput"
+                                    />
+                                    <label htmlFor="fileInput" className="upload-table-label">
+                                        <BackgroundMusicIcon />
+                                        <span>Add more...</span>
+                                    </label>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
+                ) : (
+                    <div className="upload">
+                        <input
+                            type="file"
+                            multiple
+                            accept="audio/*"
+                            onChange={handleFileChange}
+                            style={{ display: 'none' }}
+                            id="fileInput"
+                        />
+                        <label htmlFor="fileInput" className="upload-label">
+                            <BackgroundMusicIcon />
+                            <span>Upload tracks here...</span>
+                        </label>
+                    </div>
                 )}
             </div>
         </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from '../../../hooks/useAuth';
 import { LoadingScreen } from "/components/ui/loading/LoadingScreen";
 import '/styles/musician/musician-dashboard.styles.css'
-import { Profile } from "./Profile";
+import { Profile } from "./Profile/Profile";
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { firestore } from "../../../firebase";
 

@@ -1,6 +1,6 @@
 import { faFacebook, faFacebookSquare, faInstagram, faInstagramSquare, faSoundcloud, faSpotify, faTwitter, faTwitterSquare, faYoutube, faYoutubeSquare } from "@fortawesome/free-brands-svg-icons"
-import { faCircle, faFilm, faPlayCircle, faUserCircle, faVideo } from "@fortawesome/free-solid-svg-icons"
-import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faArrowUpFromBracket, faArrowUpRightFromSquare, faBeerFoam, faBookmark, faCalendar, faCamcorder, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faFileMp3, faFileMp4, faGear, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMagnifyingGlass, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPause, faPencil, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faPlay, faPlayPause, faQuestionCircle, faRectanglesMixed, faReel, faRingsWedding, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faX, faXmarkCircle } from "@fortawesome/pro-light-svg-icons"
+import { faCircle, faFilm, faPlayCircle, faStar, faUserCircle, faVideo } from "@fortawesome/free-solid-svg-icons"
+import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faArrowUpFromBracket, faArrowUpRightFromSquare, faBeerFoam, faBookmark, faCalendar, faCamcorder, faCameraViewfinder, faCastle, faCheck, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faCircleArrowLeft, faCirclePlus, faClipboard, faClock, faCoin, faCoins, faCreditCard, faCutlery, faDoorOpen, faDrum, faEllipsis, faEnvelope, faFileInvoice, faFileMp3, faFileMp4, faGear, faGlassesRound, faGraduationCap, faGuitars, faHouseWindow, faLightbulb, faLocationPin, faMagnifyingGlass, faMailbox, faMailboxFlagUp, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPause, faPencil, faPencilSquare, faPeopleGroup, faPeopleRoof, faPiano, faPlaceOfWorship, faPlay, faPlayPause, faQuestionCircle, faRectanglesMixed, faReel, faRingsWedding, faShield, faShieldCheck, faSort, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faX, faXmarkCircle, faStarShooting } from "@fortawesome/pro-light-svg-icons"
 import { faFaceFrown, faFaceMeh, faFaceSmile, faFaceSmileHearts } from "@fortawesome/pro-regular-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
@@ -343,32 +343,32 @@ export const FaceFrownIcon = () => {
 }
 export const FacebookIcon = () => {
     return (
-        <FontAwesomeIcon icon={faFacebook} className="icon" />
+        <FontAwesomeIcon icon={faFacebook} className="icon" color={'#0000ff'} />
     )
 }
 export const TwitterIcon = () => {
     return (
-        <FontAwesomeIcon icon={faTwitter} className="icon" />
+        <FontAwesomeIcon icon={faTwitter} className="icon" color={'#37b2ff'} />
     )
 }
 export const InstagramIcon = () => {
     return (
-        <FontAwesomeIcon icon={faInstagram} className="icon" />
+        <FontAwesomeIcon icon={faInstagram} className="icon" color={'#fbad50'} />
     )
 }
 export const YoutubeIcon = () => {
     return (
-        <FontAwesomeIcon icon={faYoutube} className="icon" />
+        <FontAwesomeIcon icon={faYoutube} className="icon" color={'#ff0000'} />
     )
 }
 export const SpotifyIcon = () => {
     return (
-        <FontAwesomeIcon icon={faSpotify} className="icon" />
+        <FontAwesomeIcon icon={faSpotify} className="icon" color={'#14cc00'} />
     )
 }
 export const SoundcloudIcon = () => {
     return (
-        <FontAwesomeIcon icon={faSoundcloud} className="icon" />
+        <FontAwesomeIcon icon={faSoundcloud} className="icon" color={'#ff5c37'} />
     )
 }
 export const VideoIcon = () => {
@@ -389,5 +389,15 @@ export const PlayIcon = () => {
 export const PauseIcon = () => {
     return (
         <FontAwesomeIcon icon={faPause} className="icon" />
+    )
+}
+export const StarIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faStar} className="icon" />
+    )
+}
+export const ShootingStarIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faStarShooting} className="icon" />
     )
 }
