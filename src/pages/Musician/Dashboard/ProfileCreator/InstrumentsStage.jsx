@@ -1,7 +1,7 @@
 export const InstrumentsStage = ({ data, onChange, musicianType }) => {
     const instruments = {
         'Musician/Band': [
-            'My Voice', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
+            'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
             'Harmonica', 'Banjo', 'Mandolin', 'Harp', 'Accordion'
         ],
         DJ: [

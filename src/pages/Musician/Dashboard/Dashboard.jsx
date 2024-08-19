@@ -49,7 +49,7 @@ export const MusicianDashboard = () => {
             <div className="window musician">
                 <Routes>
                     <Route index element={<h1>Overview</h1>} />
-                    <Route path="profile" element={<Profile musicianProfile={musicianProfile} />} />
+                    <Route path="profile" element={<Profile musicianProfile={musicianProfile} loadingData={loadingData} />} />
                     <Route path="gigs" element={<h1>Gigs</h1>} />
                     <Route path="bands" element={<h1>Bands</h1>} />
                     <Route path="finances" element={<h1>Finances</h1>} />

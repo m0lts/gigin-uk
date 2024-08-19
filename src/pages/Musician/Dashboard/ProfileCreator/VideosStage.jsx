@@ -40,8 +40,15 @@ export const VideosStage = ({ data, onChange }) => {
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const thumbnail = canvas.toDataURL();
-                resolve(thumbnail);
+    
+                // Convert the canvas to a Blob and then to a File
+                canvas.toBlob((blob) => {
+                    const thumbnailFile = new File([blob], `${file.name}_thumbnail.png`, {
+                        type: 'image/png',
+                        lastModified: Date.now(),
+                    });
+                    resolve(thumbnailFile); // Resolve with the File object
+                }, 'image/png');
             });
         });
     };
@@ -110,7 +117,7 @@ export const VideosStage = ({ data, onChange }) => {
                                     <td onClick={() => openModal(index)} className="video-data">
                                         <div className="video-container">
                                             <img
-                                                src={video.thumbnail}
+                                                src={URL.createObjectURL(video.thumbnail)}
                                                 alt="Video thumbnail"
                                                 style={{ cursor: 'pointer' }}
                                             />
