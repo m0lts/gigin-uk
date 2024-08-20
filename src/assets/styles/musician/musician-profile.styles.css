@@ -236,7 +236,7 @@
 
 
 /* PLAY VIDEO MODAL */
-.profile .modal-content {
+.profile .modal-content.transparent {
     position: relative;
     border:none;
     height: 100%;

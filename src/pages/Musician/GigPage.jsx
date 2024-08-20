@@ -1,17 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { firestore } from '../../firebase';
 import { Header } from '../../components/common/Header';
-import { getDoc, doc, getDocs, collection } from 'firebase/firestore';
+import { getDoc, doc, getDocs, collection, Timestamp, updateDoc } from 'firebase/firestore';
 import '/styles/musician/gig-page.styles.css';
 import { BackgroundMusicIcon, ClubIcon, GuitarsIcon, HouseIcon, InviteIcon, MicrophoneIcon, MicrophoneLinesIcon, PeopleGroupIcon, SaveIcon, ShareIcon, SpeakersIcon, TicketIcon, WeddingIcon } from '../../components/ui/Extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import mapboxgl from 'mapbox-gl';
 import useMapboxAccessToken from "../../hooks/useAccessTokens";
 import 'react-loading-skeleton/dist/skeleton.css';
+import { LoadingThreeDots } from '../../components/ui/loading/Loading';
 
 export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const { gigId } = useParams();
+    const navigate = useNavigate();
     const [gigData, setGigData] = useState(null);
     const [venueProfile, setVenueProfile] = useState(null);
     const [similarGigs, setSimilarGigs] = useState([]);
@@ -21,6 +23,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [padding, setPadding] = useState('5%');
     const [fullscreenImage, setFullscreenImage] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [applyingToGig, setApplyingToGig] = useState(false);
+    const [noProfileModal, setNoProfileModal] = useState(false);
+    const [incompleteMusicianProfile, setIncompleteMusicianProfile] = useState(null);
+    const [userAppliedToGig, setUserAppliedToGig] = useState(false);
 
     useEffect(() => {
         const fetchGigData = async () => {
@@ -30,6 +36,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 if (gigSnapshot.exists()) {
                     const gig = gigSnapshot.data();
                     setGigData(gig);
+
+                    // Check if the user has already applied to this gig
+                    if (user && user.musicianProfile && user.musicianProfile.length > 0) {
+                        const musicianProfileId = user.musicianProfile[0];
+                        const userHasApplied = gig.applicants.some(applicant => applicant.id === musicianProfileId);
+
+                        if (userHasApplied) {
+                            setUserAppliedToGig(true);
+                        }
+                    }
 
                     // Fetch venue profile data
                     const venueRef = doc(firestore, 'venueProfiles', gig.venueId);
@@ -260,6 +276,64 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         }
     }
 
+    const handleGigApplication = async () => {
+        if (userAppliedToGig) return;
+        setApplyingToGig(true);
+
+        if (!user.musicianProfile || user.musicianProfile.length < 1) {
+            setNoProfileModal(true);
+            setApplyingToGig(false);
+            return;
+        }
+
+        try {
+            // Check if musician profile is complete
+            const musicianProfileId = user.musicianProfile[0];
+            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+            const musicianProfileSnapshot = await getDoc(musicianProfileRef);
+            if (musicianProfileSnapshot.exists()) {
+                const musicianProfile = musicianProfileSnapshot.data();
+                if (!musicianProfile.completed) {
+                    setNoProfileModal(true);
+                    setIncompleteMusicianProfile(musicianProfile);
+                    return;
+                }
+
+                const applicants = gigData.applicants;
+
+                // Add the new application to the applicants array
+                const newApplication = {
+                    id: musicianProfileId,
+                    timestamp: Timestamp.now(),
+                    fee: gigData.budget || '£0',
+                    status: 'Pending',
+                };
+
+                // Update the applicants array
+                const updatedApplicants = [...applicants, newApplication];
+
+                // Update the gig document with the new applicants array
+                const gigRef = doc(firestore, 'gigs', gigId);
+                await updateDoc(gigRef, {
+                    applicants: updatedApplicants,
+                });
+
+                setGigData(prevData => ({
+                    ...prevData,
+                    applicants: updatedApplicants,
+                }));
+
+                // Set application state to success
+                setUserAppliedToGig(true);
+            }
+
+            setApplyingToGig(false)
+        } catch (error) {
+            console.error(error)
+            setApplyingToGig(false);
+        }
+    }
+
     return (
         <div className='gig-page' style={{ padding: `0 ${padding}` }}>
             <Header
@@ -455,9 +529,21 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                     </div>
                                 </div>
                                 <div className="action-box-buttons">
-                                    <button className="btn primary">
-                                        Apply To Gig
-                                    </button>
+                                    {userAppliedToGig ? (
+                                        <button className="btn primary disabled" disabled>
+                                            Applied To Gig
+                                        </button>
+                                    ) : (
+                                        <button className="btn primary" onClick={handleGigApplication}>
+                                            {applyingToGig ? (
+                                                <LoadingThreeDots />
+                                            ) : (
+                                                <>
+                                                    Apply To Gig
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                     <div className="two-buttons">
                                         <button className="btn primary-alt">
                                             Negotiate
@@ -479,6 +565,20 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                     </div>
                 )}
             </section>
+
+            {noProfileModal && (
+                <div className="modal">
+                    <div className="modal-content">
+                        <h2>No Complete Musician Profile Found</h2>
+                        <p style={{ textAlign: 'center' }}>Please create or finish your profile before applying to gigs.</p>
+                        <div className="two-buttons">
+                            <button className="btn secondary" onClick={() => setNoProfileModal(false)}>Cancel</button>
+                            <button className="btn primary-alt" onClick={() => navigate('/musician/create-musician-profile', { state: { incompleteMusicianProfile } })}>Create Profile</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };

@@ -91,6 +91,10 @@
     border: none;
 }
 
+.window .body.gigs table tbody tr:nth-of-type(even) {
+    background-color: var(--gn-grey-200);
+}
+
 .window .body.gigs table tbody td {
     font-weight: var(--gn-semi-bold);
 }
@@ -141,7 +145,7 @@
 }
 
 .window .body.gigs table tbody tr:hover {
-    background-color: var(--gn-grey-200);
+    background-color: var(--gn-grey-300);
     cursor: pointer;
 }
 

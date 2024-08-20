@@ -125,7 +125,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                             sortedGigs.map((gig, index) => {
                                 const gigStatus = getGigStatus(gig);
                                 return (
-                                    <tr key={index}>
+                                    <tr key={index} onClick={() => navigate('/host/dashboard/gig-applications', { state: { gig } })}>
                                         <td>{new Date(gig.date).toLocaleDateString('en-GB')}</td>
                                         <td>{gig.startTime}</td>
                                         <td>{gig.venue.venueName}</td>

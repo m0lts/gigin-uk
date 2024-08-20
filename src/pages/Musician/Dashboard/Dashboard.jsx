@@ -1,17 +1,19 @@
-import { Route, Routes } from "react-router-dom"
+import { Route, Routes, useNavigate } from "react-router-dom"
 import { Sidebar } from "./Sidebar"
 import { useState, useEffect } from "react"
 import { useAuth } from '../../../hooks/useAuth';
 import { LoadingScreen } from "/components/ui/loading/LoadingScreen";
 import '/styles/musician/musician-dashboard.styles.css'
-import { Profile } from "./Profile/Profile";
+import { ProfileTab } from "./Profile/ProfileTab";
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { firestore } from "../../../firebase";
+import { ProfileCreator } from "./ProfileCreator/ProfileCreator";
 
 
 export const MusicianDashboard = () => {
 
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     const [loadingData, setLoadingData] = useState(true);
     const [musicianProfile, setMusicianProfile] = useState(null);
@@ -29,6 +31,8 @@ export const MusicianDashboard = () => {
                 if (!querySnapshot.empty) {
                     const musicianProfile = querySnapshot.docs[0].data();
                     setMusicianProfile(musicianProfile);
+                } else {
+                    navigate('/musician/create-musician-profile');
                 }
     
                 setLoadingData(false);
@@ -44,17 +48,20 @@ export const MusicianDashboard = () => {
 
     return (
         <>  
-            {loadingData && <LoadingScreen />}
+            {loadingData ? (<LoadingScreen /> ) : (
+                <>
             <Sidebar />
             <div className="window musician">
                 <Routes>
                     <Route index element={<h1>Overview</h1>} />
-                    <Route path="profile" element={<Profile musicianProfile={musicianProfile} loadingData={loadingData} />} />
+                    <Route path="profile" element={<ProfileTab musicianProfile={musicianProfile} />} />
                     <Route path="gigs" element={<h1>Gigs</h1>} />
                     <Route path="bands" element={<h1>Bands</h1>} />
                     <Route path="finances" element={<h1>Finances</h1>} />
                 </Routes>
             </div>
+                </>
+            )}
         </>
     )
 }

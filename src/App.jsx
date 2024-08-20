@@ -25,6 +25,7 @@ import { LoadingScreen } from './components/ui/loading/LoadingScreen';
 import { GigFinder } from './pages/Musician/GigFinder/GigFinder';
 import { GigPage } from './pages/Musician/GigPage';
 import { MusicianDashboard } from './pages/Musician/Dashboard/Dashboard';
+import { ProfileCreator } from './pages/Musician/Dashboard/ProfileCreator/ProfileCreator';
 
 
 
@@ -38,7 +39,7 @@ export default function App() {
   const [authClosable, setAuthClosable] = useState(true);
 
   useEffect(() => {
-    if (location.pathname.includes('dashboard') || location.pathname.includes('venue-builder')) {
+    if (location.pathname.includes('dashboard') || location.pathname.includes('venue-builder') || location.pathname.includes('create-musician-profile')) {
       setAuthClosable(false);
     } else {
       setAuthClosable(true);
@@ -59,6 +60,7 @@ export default function App() {
           <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><HostDashboard /></DashboardLayout>} />
         </Route>
         <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
+        <Route path='/musician/create-musician-profile/*' element={<NoHeaderFooterLayout><ProfileCreator user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
         <Route path="/musician">
           <Route index element={<GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
           <Route path=':gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />

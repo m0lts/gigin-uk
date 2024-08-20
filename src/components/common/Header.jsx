@@ -182,10 +182,16 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                         <span className="item active">Overview</span>
                                     </>
                                 )}
-                                {location.pathname.includes('gigs') && (
+                                {location.pathname.includes('gig') && (
                                     <>
                                         <RightChevronIcon />
                                         <span className="item active">Gigs</span>
+                                        {location.pathname.includes('applications') && (
+                                            <>
+                                                <RightChevronIcon />
+                                                <span className="item active">Gig Applications</span>
+                                            </>
+                                        )}
                                     </>
                                 )}
                                 {location.pathname.includes('venues') && (

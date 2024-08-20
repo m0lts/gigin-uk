@@ -4,10 +4,10 @@ import { PlayIcon } from "../../../../components/ui/Extras/Icons";
 const VideoModal = ({ video, onClose }) => {
     return (
         <div className="modal">
-            <div className="modal-content">
+            <div className="modal-content transparent">
                 <span className="close" onClick={onClose}>&times;</span>
                 <video controls autoPlay style={{ width: '100%' }}>
-                    <source src={video.url} type="video/mp4" />
+                    <source src={video.file} type="video/mp4" />
                     Your browser does not support the video tag.
                 </video>
             </div>
@@ -75,7 +75,7 @@ export const MusicTab = ({ videos, tracks }) => {
                                     autoPlay 
                                     onEnded={() => setCurrentTrackIndex(null)}
                                 >
-                                    <source src={track.url} type="audio/mpeg" />
+                                    <source src={track.file} type="audio/mpeg" />
                                     Your browser does not support the audio element.
                                 </audio>
                             ) : (

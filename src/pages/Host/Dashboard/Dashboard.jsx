@@ -10,6 +10,7 @@ import '/styles/host/host-dashboard.styles.css'
 import { Venues } from "./Venues";
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { firestore } from "../../../firebase";
+import { GigApplications } from "./GigApplications";
 
 export const HostDashboard = ({  }) => {
 
@@ -102,6 +103,7 @@ export const HostDashboard = ({  }) => {
                 <Routes>
                     <Route index element={<h1>Overview</h1>} />
                     <Route path="gigs" element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
+                    <Route path="gig-applications" element={<GigApplications />} />
                     <Route path="venues" element={<Venues venues={venueProfiles} />} />
                     <Route path="musicians" element={<h1>musicians</h1>} />
                     <Route path="finances" element={<h1>financials</h1>} />

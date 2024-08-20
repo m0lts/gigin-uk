@@ -36,7 +36,7 @@ export const Sidebar = ({ setGigPostModal }) => {
           </li>
         </ul>
         <ul className="menu">
-          <li className={`menu-item expandable ${location.pathname.includes('/host/dashboard/gigs') && 'active'}`} onClick={() => {navigate('/host/dashboard/gigs')}}>
+          <li className={`menu-item expandable ${location.pathname.includes('/host/dashboard/gig') && 'active'}`} onClick={() => {navigate('/host/dashboard/gigs')}}>
             <CalendarIcon />
             Gigs
           </li>

@@ -25,16 +25,18 @@ import { SocialMediaStage } from './SocialMediaStage';
 import { FinalStage } from './FinalStage';
 import { MusicianTypeStage } from './MusicianTypeStage';
 import { LoadingThreeDots } from '../../../../components/ui/loading/Loading';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-export const ProfileCreator = ({ musicianProfile }) => {
+export const ProfileCreator = () => {
 
     const { user } = useAuth();
+    const location = useLocation();
+    const musicianProfile = location.state?.musicianProfile;
     const navigate = useNavigate();
 
     const mapboxToken = useMapboxAccessToken();
 
-    const [stage, setStage] = useState(0);
+    const [stage, setStage] = useState(musicianProfile ? 1 : 0);
     const [formData, setFormData] = useState({
         musicianId: uuidv4(),
         name: '',
@@ -65,15 +67,16 @@ export const ProfileCreator = ({ musicianProfile }) => {
 
     useEffect(() => {
         const checkForSavedProfile = async () => {
-            if (musicianProfile.completed !== true) {
+            if (musicianProfile) {
                 setFormData(musicianProfile);
-                setStage(musicianProfile.currentStep)
+                setStage(musicianProfile.currentStep ? musicianProfile.currentStep : 1)
             }
         };
 
         if (musicianProfile) checkForSavedProfile();
 
     }, [musicianProfile]);
+
 
     const handleNext = () => {
         if (validateStage(stage)) {
@@ -122,8 +125,6 @@ export const ProfileCreator = ({ musicianProfile }) => {
             [name]: value
         });
     };
-
-    console.log(formData)
 
     const uploadVideosToFirebaseStorage = async (mediaFiles, musicianId, folder) => {
         const uploadPromises = mediaFiles.map(async (media) => {
@@ -189,7 +190,7 @@ export const ProfileCreator = ({ musicianProfile }) => {
             const videoMetadata = formData.videos.map((video, index) => ({
                 date: video.date,
                 title: video.title,
-                url: videoResults[index].videoUrl,
+                file: videoResults[index].videoUrl,
                 thumbnail: videoResults[index].thumbnailUrl,
             }));
 
@@ -200,7 +201,7 @@ export const ProfileCreator = ({ musicianProfile }) => {
             const trackMetadata = formData.tracks.map((track, index) => ({
                 date: track.date,
                 title: track.title,
-                url: trackUrls[index], // Attach the corresponding URL
+                file: trackUrls[index], // Attach the corresponding URL
             }));
             
             const updatedFormData = {
@@ -235,7 +236,7 @@ export const ProfileCreator = ({ musicianProfile }) => {
     const handleSaveAndExit = async () => {
         setSavingProfile(true);
         if (formData.name === '') {
-            navigate('/musician/dashboard');
+            navigate('/musician');
             setSavingProfile(false);
             return;
         }
@@ -265,8 +266,8 @@ export const ProfileCreator = ({ musicianProfile }) => {
             const videoMetadata = formData.videos.map((video, index) => ({
                 date: video.date,
                 title: video.title,
-                url: videoResults[index].videoUrl,
-                thumbnailUrl: videoResults[index].thumbnailUrl,
+                file: videoResults[index].videoUrl,
+                thumbnail: videoResults[index].thumbnailUrl,
             }));
             updatedFormData.videos = videoMetadata;
 
@@ -275,7 +276,7 @@ export const ProfileCreator = ({ musicianProfile }) => {
             const trackMetadata = formData.tracks.map((track, index) => ({
                 date: track.date,
                 title: track.title,
-                url: trackUrls[index], // Attach the corresponding URL
+                file: trackUrls[index], // Attach the corresponding URL
             }));
             updatedFormData.tracks = trackMetadata;    
             
@@ -285,7 +286,11 @@ export const ProfileCreator = ({ musicianProfile }) => {
                 userId: user.uid,
             }, { merge: true });
     
-            navigate('/musician/dashboard');
+            if (updatedFormData.completed) {
+                navigate('/musician/dashboard')
+            } else {
+                navigate('/musician');
+            }
             window.location.reload();
             setSavingProfile(false);
     

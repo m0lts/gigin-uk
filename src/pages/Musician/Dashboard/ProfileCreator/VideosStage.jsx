@@ -117,7 +117,7 @@ export const VideosStage = ({ data, onChange }) => {
                                     <td onClick={() => openModal(index)} className="video-data">
                                         <div className="video-container">
                                             <img
-                                                src={URL.createObjectURL(video.thumbnail)}
+                                                src={typeof video.thumbnail === 'string' ? video.thumbnail : URL.createObjectURL(video.thumbnail)}
                                                 alt="Video thumbnail"
                                                 style={{ cursor: 'pointer' }}
                                             />
