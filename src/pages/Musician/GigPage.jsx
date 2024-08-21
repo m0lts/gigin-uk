@@ -323,6 +323,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                     applicants: updatedApplicants,
                 }));
 
+                const updatedGigsArray = musicianProfile.gigs ? [...musicianProfile.gigs, gigId] : [gigId];
+                await updateDoc(musicianProfileRef, {
+                    gigs: updatedGigsArray,
+                });
+
                 // Set application state to success
                 setUserAppliedToGig(true);
             }

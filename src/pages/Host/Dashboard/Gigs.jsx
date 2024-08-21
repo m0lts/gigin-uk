@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '/components/ui/Extras/Icons';
 import { SearchIcon } from '../../../components/ui/Extras/Icons';
 
-export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
+export const Gigs = ({ gigs, venues }) => {
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -22,7 +22,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
         const gigDate = new Date(gig.date);
 
         if (gigDate > now) {
-            const acceptedApplicant = gig.applicants.some(applicant => applicant.status === 'accepted');
+            const acceptedApplicant = gig.applicants.some(applicant => applicant.status === 'Accepted');
             if (acceptedApplicant) {
                 return { icon: <TickIcon />, text: 'Confirmed' };
             }
@@ -76,7 +76,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
             ? new Date(b.date) - new Date(a.date)
             : new Date(a.date) - new Date(b.date);
     });
-
 
     return (
         <>

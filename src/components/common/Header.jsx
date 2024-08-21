@@ -18,6 +18,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     const [feedback, setFeedback] = useState({
         scale: '',
         feedback: '',
+        user: user.uid,
     });
 
     const handleScaleSelection = (scale) => {
@@ -166,7 +167,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
             )
         )
     }
-
+    
     return (
         <header className="header default" style={headerStyle}>
             {user ? (

@@ -8,7 +8,7 @@ import { LoadingScreen } from "/components/ui/loading/LoadingScreen";
 import { Gigs } from "./Gigs";
 import '/styles/host/host-dashboard.styles.css'
 import { Venues } from "./Venues";
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { firestore } from "../../../firebase";
 import { GigApplications } from "./GigApplications";
 
@@ -26,71 +26,67 @@ export const HostDashboard = ({  }) => {
 
 
     useEffect(() => {
-        const fetchHostData = async () => {
+      const fetchHostData = async () => {
           if (!user) return;
           setLoadingData(true);
-    
-          try {
-            const venuesRef = collection(firestore, 'venueProfiles');
-            const q = query(venuesRef, where('user', '==', user.uid), where('completed', '==', true));
-            const querySnapshot = await getDocs(q);
-    
-            const completeProfiles = querySnapshot.docs.map(doc => doc.data());
-            setVenueProfiles(completeProfiles);
-            setLoadingData(false);
-          } catch (error) {
-            console.error('Error fetching venue profiles:', error);
-            setLoadingData(false);
-          }
-        };
-    
-        fetchHostData();
-    }, [user]);
 
-    useEffect(() => {
-      const fetchVenueData = async () => {
-        if (venueProfiles.length === 0) return;
-        setLoadingData(true);
-    
-        const venueIds = venueProfiles.map(profile => profile.venueId);
-    
-        try {
-          const gigsRef = collection(firestore, 'gigs');
-          const templatesRef = collection(firestore, 'templates');
-    
-          // Query gigs based on top-level venueId
-          const gigsQuery = query(gigsRef, where('venueId', 'in', venueIds));
-          const gigsSnapshot = await getDocs(gigsQuery);
-          const fetchedGigs = gigsSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              ...data,
-              date: data.date.toDate(), // Convert Firestore Timestamp to JS Date
-              createdAt: data.createdAt.toDate() // Convert Firestore Timestamp to JS Date
-            };
-          });
-    
-          const completeGigs = fetchedGigs.filter(gig => gig.complete !== false);
-          const incompleteGigs = fetchedGigs.filter(gig => gig.complete === false);
-    
-          setGigs(completeGigs);
-          setIncompleteGigs(incompleteGigs);
-    
-          // Query templates based on top-level venueId
-          const templatesQuery = query(templatesRef, where('venueId', 'in', venueIds));
-          const templatesSnapshot = await getDocs(templatesQuery);
-          const fetchedTemplates = templatesSnapshot.docs.map(doc => doc.data());
-    
-          setTemplates(fetchedTemplates);
-          setLoadingData(false);
-        } catch (error) {
-          console.error('Error fetching venue data:', error);
-          setLoadingData(false);
-        }
+          try {
+              const venuesRef = collection(firestore, 'venueProfiles');
+              const q = query(venuesRef, where('user', '==', user.uid), where('completed', '==', true));
+              const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                  const completeProfiles = querySnapshot.docs.map(doc => doc.data());
+                  setVenueProfiles(completeProfiles);
+                  setLoadingData(false);
+
+                  // Now that venueProfiles are loaded, we can set up listeners for gigs and templates
+                  if (completeProfiles.length > 0) {
+                      const venueIds = completeProfiles.map(profile => profile.venueId);
+                      
+                      // Set up gigs listener
+                      const gigsRef = collection(firestore, 'gigs');
+                      const gigsQuery = query(gigsRef, where('venueId', 'in', venueIds));
+                      const unsubscribeGigs = onSnapshot(gigsQuery, (gigsSnapshot) => {
+                          const fetchedGigs = gigsSnapshot.docs.map(doc => {
+                              const data = doc.data();
+                              return {
+                                  ...data,
+                                  date: data.date.toDate(), // Convert Firestore Timestamp to JS Date
+                                  createdAt: data.createdAt.toDate(), // Convert Firestore Timestamp to JS Date
+                              };
+                          });
+
+                          const completeGigs = fetchedGigs.filter(gig => gig.complete !== false);
+                          const incompleteGigs = fetchedGigs.filter(gig => gig.complete === false);
+
+                          setGigs(completeGigs);
+                          setIncompleteGigs(incompleteGigs);
+                      });
+
+                      // Set up templates listener
+                      const templatesRef = collection(firestore, 'templates');
+                      const templatesQuery = query(templatesRef, where('venueId', 'in', venueIds));
+                      const unsubscribeTemplates = onSnapshot(templatesQuery, (templatesSnapshot) => {
+                          const fetchedTemplates = templatesSnapshot.docs.map(doc => doc.data());
+                          setTemplates(fetchedTemplates);
+                      });
+
+                      // Cleanup listeners when the component unmounts
+                      return () => {
+                          unsubscribeGigs();
+                          unsubscribeTemplates();
+                      };
+                  }
+              });
+
+              return unsubscribe; // Cleanup listener on unmount
+          } catch (error) {
+              console.error('Error fetching venue profiles:', error);
+              setLoadingData(false);
+          }
       };
-    
-      fetchVenueData();
-    }, [venueProfiles]);
+
+      fetchHostData();
+  }, [user]);
 
 
     return (

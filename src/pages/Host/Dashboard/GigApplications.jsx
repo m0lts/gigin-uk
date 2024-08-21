@@ -1,14 +1,35 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom"
-import { doc, getDoc } from 'firebase/firestore';
-import { firestore } from '../../../firebase'; // Adjust this import to your actual Firebase configuration
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { firestore } from '../../../firebase';
 import { LoadingThreeDots } from "../../../components/ui/loading/Loading";
+import { ClockIcon, RejectedIcon, TickIcon } from "../../../components/ui/Extras/Icons";
 
 export const GigApplications = () => {
     const location = useLocation();
-    const gigInfo = location.state.gig;
+    const [gigId, setGigId] = useState(location.state.gig.gigId)
+    const [gigDate, setGigDate] = useState(location.state.gig.date);
+    const [venueName, setVenueName] = useState(location.state.gig.venue.venueName);
+    const [gigInfo, setGigInfo] = useState(null);
     const [musicianProfiles, setMusicianProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const gigRef = doc(firestore, 'gigs', gigId);
+
+        // Set up the onSnapshot listener
+        const unsubscribe = onSnapshot(gigRef, (gigSnapshot) => {
+            if (gigSnapshot.exists()) {
+                const updatedGig = gigSnapshot.data();
+                setGigInfo(updatedGig); // Update the state with the latest gig data
+            } else {
+                console.error('Gig not found');
+            }
+        });
+
+        // Clean up the listener when the component unmounts
+        return () => unsubscribe();
+    }, [gigId]);
 
     useEffect(() => {
         const fetchMusicianProfiles = async () => {
@@ -17,14 +38,16 @@ export const GigApplications = () => {
                 const musicianRef = doc(firestore, 'musicianProfiles', applicant.id);
                 const musicianSnapshot = await getDoc(musicianRef);
                 if (musicianSnapshot.exists()) {
-                    profiles.push({ ...musicianSnapshot.data(), id: applicant.id, status: applicant.status });
+                    profiles.push({ ...musicianSnapshot.data(), id: applicant.id, status: applicant.status, proposedFee: applicant.fee });
                 }
             }
             setMusicianProfiles(profiles);
             setLoading(false);
         };
 
-        fetchMusicianProfiles();
+        if (gigInfo) {
+            fetchMusicianProfiles();
+        }
     }, [gigInfo]);
 
     const formatDate = (timestamp) => {
@@ -45,21 +68,73 @@ export const GigApplications = () => {
         }
     };
 
-    const handleAccept = (id) => {
-        // Implement logic for accepting the application
-        console.log(`Accepted musician with id: ${id}`);
+    const handleAccept = async (musicianId, event) => {
+        event.stopPropagation();
+
+        // TAKE PAYMENT FROM HOST
+    
+        try {
+            const gigRef = doc(firestore, 'gigs', gigInfo.gigId);
+            const gigSnapshot = await getDoc(gigRef);
+    
+            if (gigSnapshot.exists()) {
+                const gigData = gigSnapshot.data();
+                const updatedApplicants = gigData.applicants.map(applicant => {
+                    if (applicant.id === musicianId) {
+                        return { ...applicant, status: 'Accepted' };
+                    } else {
+                        return { ...applicant, status: 'Rejected' };
+                    }
+                });
+                await updateDoc(gigRef, { applicants: updatedApplicants });
+                setGigInfo(prevState => ({
+                    ...prevState,
+                    applicants: updatedApplicants
+                }));
+            } else {
+                console.error('Gig not found');
+            }
+        } catch (error) {
+            console.error('Error updating gig document:', error);
+        }
     };
 
-    const handleReject = (id) => {
-        // Implement logic for rejecting the application
-        console.log(`Rejected musician with id: ${id}`);
+    const handleReject = async (musicianId, event) => {
+        event.stopPropagation();
+        try {
+            const gigRef = doc(firestore, 'gigs', gigInfo.gigId);
+            const gigSnapshot = await getDoc(gigRef);
+    
+            if (gigSnapshot.exists()) {
+                const gigData = gigSnapshot.data();
+                const updatedApplicants = gigData.applicants.map(applicant => {
+                    if (applicant.id === musicianId) {
+                        return { ...applicant, status: 'Rejected' };
+                    }
+                });
+                await updateDoc(gigRef, { applicants: updatedApplicants });
+                setGigInfo(prevState => ({
+                    ...prevState,
+                    applicants: updatedApplicants
+                }));
+            } else {
+                console.error('Gig not found');
+            }
+        } catch (error) {
+            console.error('Error updating gig document:', error);
+        }
+    };
+
+    const openMusicianProfile = (musicianId) => {
+        const url = `/musician/${musicianId}/${gigInfo.gigId}`;
+        window.open(url, '_blank');
     };
 
     return (
         <>
             <div className="head">
                 <h1 className="title" style={{ fontWeight: 500 }}>
-                    Applications for {formatDate(gigInfo.date)} at {gigInfo.venue.venueName}
+                    Applications for {formatDate(gigDate)} at {venueName}
                 </h1>
             </div>
             <div className="body gigs">
@@ -71,39 +146,76 @@ export const GigApplications = () => {
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>Genres</th>
+                                    <th>Genre(s)</th>
                                     <th>Reviews</th>
-                                    <th>Status</th>
+                                    <th>Fee</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {musicianProfiles.map((profile) => (
-                                    <tr key={profile.id}>
-                                        <td>
-                                            <img
-                                                src={profile.picture}
-                                                alt={`${profile.name}'s profile`}
-                                                style={{ width: '50px', height: '50px', borderRadius: '50%' }}
-                                            />
-                                            {profile.name}
-                                        </td>
-                                        <td>{profile.genres.join(', ')}</td>
-                                        <td>{profile.reviews?.length || 'No'} Reviews</td>
-                                        <td>
-                                            <button onClick={() => console.log(`Viewing profile of ${profile.name}`)}>
-                                                View Profile
-                                            </button>
-                                        </td>
-                                        <td>
-                                            <button onClick={() => handleAccept(profile.id)} className="btn accept-btn">
-                                                Accept
-                                            </button>
-                                            <button onClick={() => handleReject(profile.id)} className="btn reject-btn">
-                                                Reject
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {musicianProfiles.map((profile) => {
+
+                                    const applicant = gigInfo.applicants.find(applicant => applicant.id === profile.id);
+                                    const status = applicant ? applicant.status : 'Pending';
+
+                                    return (
+                                        <tr key={profile.id} className="applicant"  onClick={() => openMusicianProfile(profile.id)}>
+                                            <td>
+                                                {profile.name}
+                                            </td>
+                                            <td className="genres">
+                                                {profile.genres
+                                                    .filter(genre => !genre.includes(' ')) // Filter to include only one-word genres
+                                                    .map((genre, index) => (
+                                                        <span key={index} className="genre-tag">{genre}</span>
+                                                    ))}
+                                            </td>
+                                            <td>{profile.reviews?.length || 'No'} Reviews</td>
+                                            <td>
+                                                {profile.proposedFee}
+                                            </td>
+                                            <td style={{ textAlign: 'center' }}>
+                                                {status === 'Accepted' && (
+                                                    <div className="status-box">
+                                                        <div className="status confirmed">
+                                                            <TickIcon />
+                                                            Accepted
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {status === 'Rejected' && (
+                                                    <div className="status-box">
+                                                        <div className="status rejected">
+                                                            <RejectedIcon />
+                                                            Rejected
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {status === 'Negotiating' && (
+                                                    <div className="status-box">
+                                                        <div className="status upcoming">
+                                                            <ClockIcon />
+                                                            Negotiating
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {status === 'Pending' && (
+                                                <>
+                                                    <button className="btn accept small" onClick={(event) => handleAccept(profile.id, event)}>
+                                                        Accept
+                                                    </button>
+                                                    <button className="btn danger small" onClick={(event) => handleReject(profile.id, event)}>
+                                                        Reject
+                                                    </button>
+                                                    <button className="btn primary-alt small">
+                                                        Negotiate
+                                                    </button>
+                                                </>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
                             </tbody>
                         </table>
                     ) : (

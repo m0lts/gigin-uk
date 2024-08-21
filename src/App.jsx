@@ -26,6 +26,7 @@ import { GigFinder } from './pages/Musician/GigFinder/GigFinder';
 import { GigPage } from './pages/Musician/GigPage';
 import { MusicianDashboard } from './pages/Musician/Dashboard/Dashboard';
 import { ProfileCreator } from './pages/Musician/Dashboard/ProfileCreator/ProfileCreator';
+import { MusicianProfile } from './pages/Musician/Profile/Profile';
 
 
 
@@ -63,9 +64,10 @@ export default function App() {
         <Route path='/musician/create-musician-profile/*' element={<NoHeaderFooterLayout><ProfileCreator user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
         <Route path="/musician">
           <Route index element={<GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-          <Route path=':gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+          <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
           <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><MusicianDashboard /></DashboardLayout>} />
         </Route>
+        <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>
       

@@ -48,8 +48,8 @@ export const Sidebar = () => {
                 <li className="menu-item sub top" onClick={() => navigate('/musician/dashboard/gigs?status=confirmed')}>
                     Confirmed
                 </li>
-                <li className="menu-item sub" onClick={() => navigate('/musician/dashboard/gigs?status=upcoming')}>
-                    Upcoming
+                <li className="menu-item sub" onClick={() => navigate('/musician/dashboard/gigs?status=pending')}>
+                    Pending
                 </li>
                 <li className="menu-item sub bottom" onClick={() => navigate('/musician/dashboard/gigs?status=previous')}>
                     Previous

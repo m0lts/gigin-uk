@@ -142,7 +142,7 @@ export const MapView = ({ upcomingGigs }) => {
     };
     
     const openMusicianGig = (gigId) => {
-        const url = `/musician/${gigId}`;
+        const url = `/gig/${gigId}`;
         window.open(url, '_blank');
     };
         

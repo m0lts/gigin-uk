@@ -138,15 +138,36 @@
     color: orange;
 }
 
+.window .body.gigs table .status.pending {
+    border:1px solid orange;
+    background-color: rgba(255, 166, 0, 0.1);
+    color: orange;
+}
+
 .window .body.gigs table .status.previous {
     border:1px solid gray;
     background-color: rgba(128, 128, 128, 0.1);
     color: gray;
 }
 
+.window .body.gigs table .status.rejected {
+    border:1px solid var(--gn-red);
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+}
+
 .window .body.gigs table tbody tr:hover {
     background-color: var(--gn-grey-300);
     cursor: pointer;
+}
+
+.window .body.gigs.musician table tbody tr:hover {
+    background-color: var(--gn-white);
+    cursor: auto;
+}
+
+.window .body.gigs.musician table tbody tr:nth-of-type(even):hover {
+    background-color: var(--gn-grey-200);
 }
 
 
@@ -188,4 +209,58 @@
     margin-top: 1rem;
     width:100%;
     justify-content: space-between;
+}
+
+
+/* GIG APPLICATIONS PAGE */
+.window .body.gigs .applications-table {
+    width: 100%;
+}
+
+.window .body.gigs .applications-table th:nth-child(1),
+.window .body.gigs .applications-table td:nth-child(1) {
+    width: 15%;
+}
+
+.window .body.gigs .applications-table th:nth-child(2),
+.window .body.gigs .applications-table td:nth-child(2) {
+    text-overflow: ellipsis;
+}
+
+.window .body.gigs .applications-table th:nth-child(3),
+.window .body.gigs .applications-table td:nth-child(3),
+.window .body.gigs .applications-table th:nth-child(4),
+.window .body.gigs .applications-table td:nth-child(4) {
+    width: 15%;
+    text-align: center;
+}
+
+.window .body.gigs .applications-table .applicant td {
+    white-space: nowrap; /* Prevent content wrapping */
+    overflow: hidden;
+    text-overflow:clip;
+}
+
+.window .body.gigs .applications-table .applicant .genre-tag {
+    border:1px solid var(--gn-orange);
+    padding:0.1rem 0.35rem;
+    border-radius: 5px;
+    background-color: var(--gn-offset-orange);
+    margin-right: 5px;
+    white-space: nowrap;
+}
+
+.window .body.gigs .applications-table .applicant td:nth-of-type(4) {
+    width:10%;
+}
+
+.window .body.gigs .applications-table td:nth-of-type(5),
+.window .body.gigs .applications-table th:nth-of-type(5) {
+    text-align: center;
+    width:25%;
+    min-width: 250px;
+}
+
+.window .body.gigs .applications-table .applicant td:nth-of-type(5) .btn.danger {
+    margin: 0 5px;
 }

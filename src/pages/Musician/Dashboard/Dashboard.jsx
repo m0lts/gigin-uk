@@ -8,6 +8,7 @@ import { ProfileTab } from "./Profile/ProfileTab";
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { firestore } from "../../../firebase";
 import { ProfileCreator } from "./ProfileCreator/ProfileCreator";
+import { Gigs } from "./Gigs";
 
 
 export const MusicianDashboard = () => {
@@ -17,6 +18,7 @@ export const MusicianDashboard = () => {
 
     const [loadingData, setLoadingData] = useState(true);
     const [musicianProfile, setMusicianProfile] = useState(null);
+    const [gigs, setGigs] = useState([]);
 
     useEffect(() => {
         const fetchMusicianData = async () => {
@@ -31,6 +33,7 @@ export const MusicianDashboard = () => {
                 if (!querySnapshot.empty) {
                     const musicianProfile = querySnapshot.docs[0].data();
                     setMusicianProfile(musicianProfile);
+                    setGigs(musicianProfile.gigs);
                 } else {
                     navigate('/musician/create-musician-profile');
                 }
@@ -45,7 +48,6 @@ export const MusicianDashboard = () => {
         fetchMusicianData();
     }, [user]);
 
-
     return (
         <>  
             {loadingData ? (<LoadingScreen /> ) : (
@@ -55,7 +57,7 @@ export const MusicianDashboard = () => {
                 <Routes>
                     <Route index element={<h1>Overview</h1>} />
                     <Route path="profile" element={<ProfileTab musicianProfile={musicianProfile} />} />
-                    <Route path="gigs" element={<h1>Gigs</h1>} />
+                    <Route path="gigs" element={<Gigs gigs={gigs} musicianId={musicianProfile.musicianId} />} />
                     <Route path="bands" element={<h1>Bands</h1>} />
                     <Route path="finances" element={<h1>Finances</h1>} />
                 </Routes>

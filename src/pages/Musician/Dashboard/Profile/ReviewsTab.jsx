@@ -8,7 +8,7 @@ export const ReviewsTab = ({ reviews }) => {
     } else {
         return (
             <div className="no-reviews">
-                <h4>You have no reviews.</h4>
+                <h4>No reviews to show.</h4>
             </div>
         )
     }

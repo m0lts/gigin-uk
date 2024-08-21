@@ -21,6 +21,51 @@
     gap:5px;
 }
 
+.profile .profile-banner .profile-actions.applicant {
+    background: var(--gn-white);
+    padding: 1rem;
+    box-shadow: 0 0 10px var(--gn-shadow);
+    border:1px solid var(--gn-grey-200);
+    border-radius: 5px;
+    flex-direction: column;
+    align-items: center;
+    gap:0.5rem;
+}
+
+.profile .profile-banner .profile-actions.applicant .primary-alt {
+    width:100%;
+    margin-top:5px;
+}
+
+.profile .profile-banner .profile-actions.applicant .status {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    padding:5px;
+    width:fit-content;
+    border-radius: 5px;
+}
+
+.profile .profile-banner .profile-actions.applicant .status.confirmed {
+    border:1px solid rgb(0, 219, 0);
+    background-color: rgba(0, 239, 0, 0.1);
+    color: rgb(0, 219, 0);
+}
+
+.profile .profile-banner .profile-actions.applicant .status.upcoming {
+    border:1px solid orange;
+    background-color: rgba(255, 166, 0, 0.1);
+    color: orange;
+}
+
+.profile .profile-banner .profile-actions.applicant .status.rejected {
+    border:1px solid var(--gn-red);
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+}
+
 .profile .profile-banner .profile-picture {
     width: 100px;
     height: 100px;
