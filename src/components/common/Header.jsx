@@ -3,10 +3,11 @@ import { HostLogoLink, MusicianLogoLink, TextLogo } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
 import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "/components/ui/Extras/Icons"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { firestore } from "../../firebase"
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import { ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MapIcon, NewTabIcon, SettingsIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
+import { MessagesPopUp } from "./MessagesPopUp"
 
 export const Header = ({ setAuthModal, setAuthType, user }) => {
     
@@ -20,6 +21,72 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
         feedback: '',
         user: user.uid,
     });
+    const [messagesPopUp, setMessagesPopUp] = useState(false);
+    const [newMessages, setNewMessages] = useState(false);
+    const [conversations, setConversations] = useState([]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        // Check for conversations where the user is a participant
+        const checkForNewMessages = () => {
+            const conversationsRef = collection(firestore, 'conversations');
+            const queries = [];
+
+            // Query by musicianProfile ID
+            if (user.musicianProfile && user.musicianProfile.length > 0) {
+                const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile[0]));
+                queries.push(musicianQuery);
+            }
+
+            // Query by each venueProfile ID
+            if (user.venueProfiles && user.venueProfiles.length > 0) {
+                user.venueProfiles.forEach(venueProfileId => {
+                    const venueQuery = query(conversationsRef, where('participants', 'array-contains', venueProfileId));
+                    queries.push(venueQuery);
+                });
+            }
+
+            // Set up listeners for each query
+            const unsubscribeFunctions = queries.map(q => 
+                onSnapshot(q, snapshot => {
+                    if (!snapshot.empty) {
+                        const newConversations = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data(),
+                        }));
+                        
+                        setConversations(prevConversations => {
+                            // Merge new conversations into the existing state
+                            const updatedConversations = [...prevConversations];
+                            newConversations.forEach(newConv => {
+                                const existingIndex = updatedConversations.findIndex(conv => conv.id === newConv.id);
+                                if (existingIndex !== -1) {
+                                    updatedConversations[existingIndex] = newConv;
+                                } else {
+                                    updatedConversations.push(newConv);
+                                }
+                            });
+                            return updatedConversations;
+                        });
+                        // Check if there are any new messages
+                        snapshot.docChanges().forEach(change => {
+                            if (change.type === 'added') {
+                                setNewMessages(true); // New message detected
+                            }
+                        });
+                    }
+                })
+            );
+
+            // Clean up the listeners when the component unmounts
+            return () => {
+                unsubscribeFunctions.forEach(unsub => unsub());
+            };
+        };
+
+        checkForNewMessages();
+    }, [user]);
 
     const handleScaleSelection = (scale) => {
         setFeedback(prev => ({ ...prev, scale }));
@@ -239,9 +306,10 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                     Dashboard
                                 </button>
                             </Link>
-                            <button className="btn secondary">
+                            <button className="btn secondary" onClick={() => setMessagesPopUp(!messagesPopUp)}>
                                 <MailboxEmptyIcon />
                                 Messages
+                                {newMessages && <span className="new-message-indicator" style={{ color: 'var(--gn-orange)'}}>•</span>}
                             </button>
                         </div>
                         <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
@@ -327,6 +395,9 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 </button>
                             </div>
                         </div>
+                    )}
+                    {messagesPopUp && (
+                        <MessagesPopUp conversations={conversations} />
                     )}
                 </>
             ) : (

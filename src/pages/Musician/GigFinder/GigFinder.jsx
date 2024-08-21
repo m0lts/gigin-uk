@@ -17,7 +17,12 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
                 const currentDate = new Date();
                 const gigsQuery = query(gigsRef, where('date', '>=', currentDate));
                 const gigsSnapshot = await getDocs(gigsQuery);
-                const gigsList = gigsSnapshot.docs.map(doc => doc.data());
+                const gigsList = gigsSnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(gig => {
+                    // Check if the gig has any applicant with status "Accepted"
+                    return !gig.applicants.some(applicant => applicant.status === 'Accepted');
+                });
                 setUpcomingGigs(gigsList);
             } catch (error) {
                 console.error('Error fetching gigs:', error.message);
