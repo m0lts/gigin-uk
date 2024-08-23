@@ -16,7 +16,7 @@ import { GigExtraDetails } from './Stage6_ExtraDetails';
 import { GigTemplates } from './Stage0_Templates';
 import { formatISO, addDays, addWeeks, addMonths } from 'date-fns';
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, user }) => {
 
     const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
@@ -42,6 +42,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         privateApplications: false,
         applicants: [],
         createdAt: new Date(),
+        accountName: user.name,
     });
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);

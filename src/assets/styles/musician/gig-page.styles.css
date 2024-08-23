@@ -211,6 +211,21 @@
     gap:5px;
 }
 
+.gig-page .input {
+    padding:10px 5px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    text-align: center;
+    font-weight: 500;
+    transition: border 0.3s;
+}
+
+.gig-page .input:focus {
+    border:1px solid var(--gn-orange);
+    outline:none;
+}
+
 
 /* IMPORTANT INFO */
 

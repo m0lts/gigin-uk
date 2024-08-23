@@ -27,6 +27,8 @@ import { GigPage } from './pages/Musician/GigPage';
 import { MusicianDashboard } from './pages/Musician/Dashboard/Dashboard';
 import { ProfileCreator } from './pages/Musician/Dashboard/ProfileCreator/ProfileCreator';
 import { MusicianProfile } from './pages/Musician/Profile/Profile';
+import { MessagePage } from './pages/Messages/MessagePage';
+import { MessagesLayout } from './layouts/MessagesLayout';
 
 
 
@@ -56,6 +58,7 @@ export default function App() {
     <>
       <Routes>
         <Route path="/" element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><LandingPage /></MainLayout>} />
+        <Route path="/messages" element={<MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout>} />
         <Route path="/host">
           <Route index element={<HostInfo user={user} setAuthModal={setAuthModal} />} />
           <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><HostDashboard /></DashboardLayout>} />

@@ -1,12 +1,12 @@
 import { useNavigate, useLocation, Link } from "react-router-dom"
-import { HostLogoLink, MusicianLogoLink, TextLogo } from "../ui/logos/Logos"
+import { HostLogoLink, MusicianLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
 import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "/components/ui/Extras/Icons"
 import { useState, useEffect } from "react"
 import { firestore } from "../../firebase"
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
-import { ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MapIcon, NewTabIcon, SettingsIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
+import { DotIcon, ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MailboxFullIcon, MapIcon, NewTabIcon, SettingsIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
 import { MessagesPopUp } from "./MessagesPopUp"
 
 export const Header = ({ setAuthModal, setAuthType, user }) => {
@@ -19,7 +19,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     const [feedback, setFeedback] = useState({
         scale: '',
         feedback: '',
-        user: user.uid,
+        user: user?.uid,
     });
     const [messagesPopUp, setMessagesPopUp] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
@@ -128,7 +128,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
         } else if (location.pathname.includes('musician')) {
             return <MusicianLogoLink />;
         } else {
-            return <TextLogo />;
+            return <TextLogoLink />;
         }
     }
 
@@ -177,10 +177,10 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 <h6>{user.name}</h6>
                                 <p>{user.email}</p>
                             </div>
-                            <div className="item">
+                            <Link className="link item" to={'/messages'}>
                                 Messages
                                 <MailboxEmptyIcon />
-                            </div>
+                            </Link>
                             <div className="break" />
                             <h6 className="title">musicians</h6>
                             <div className="item no-margin">
@@ -306,11 +306,22 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                     Dashboard
                                 </button>
                             </Link>
-                            <button className="btn secondary" onClick={() => setMessagesPopUp(!messagesPopUp)}>
-                                <MailboxEmptyIcon />
-                                Messages
-                                {newMessages && <span className="new-message-indicator" style={{ color: 'var(--gn-orange)'}}>•</span>}
-                            </button>
+                            {newMessages ? (
+                                <Link className="link" to={'/messages'}>
+                                    <button className="btn secondary messages" onClick={() => setMessagesPopUp(!messagesPopUp)}>
+                                        <span className="notification-dot"><DotIcon /></span>
+                                        <MailboxFullIcon />
+                                        Messages
+                                    </button>
+                                </Link>
+                            ) : (
+                                <Link className="link" to={'/messages'}>
+                                    <button className="btn secondary" onClick={() => setMessagesPopUp(!messagesPopUp)}>
+                                        <MailboxEmptyIcon />
+                                        Messages
+                                    </button>
+                                </Link>
+                            )}
                         </div>
                         <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
                             <UserIcon />
@@ -397,7 +408,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                         </div>
                     )}
                     {messagesPopUp && (
-                        <MessagesPopUp conversations={conversations} />
+                        <MessagesPopUp conversations={conversations} onClose={() => setMessagesPopUp(false)} user={user} />
                     )}
                 </>
             ) : (

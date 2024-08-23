@@ -27,6 +27,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [noProfileModal, setNoProfileModal] = useState(false);
     const [incompleteMusicianProfile, setIncompleteMusicianProfile] = useState(null);
     const [userAppliedToGig, setUserAppliedToGig] = useState(false);
+    const [negotiateModal, setNegotiateModal] = useState(false);
+    const [newOffer, setNewOffer] = useState();
 
     useEffect(() => {
         const fetchGigData = async () => {
@@ -276,7 +278,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         }
     }
 
+    const handleBudgetChange = (e) => {
+        const value = e.target.value.replace(/[^0-9]/g, '');
+        setNewOffer(`£${value}`)
+    };
+
     const handleGigApplication = async () => {
+        if (!user) {
+            setAuthModal(true);
+            setAuthType('login');
+            setApplyingToGig(false);
+            return;
+        };
         if (userAppliedToGig) return;
         setApplyingToGig(true);
 
@@ -338,9 +351,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 if (conversationSnapshot.empty) {
                     // Step 2: If no conversation exists, create a new one
                     const newConversation = {
-                        participants: [gigData.venueId, musicianProfileId],
+                        participants: [
+                            gigData.venueId,
+                            musicianProfileId
+                        ],
+                        accountNames: [
+                            { participantId: gigData.venueId, accountName: gigData.accountName, accountId: venueProfile.user, role: 'venue' }, 
+                            { participantId: musicianProfileId, accountName: musicianProfile.name, accountId: musicianProfile.userId, role: 'musician' }
+                        ],
                         gigId: gigId,
-                        lastMessage: `${musicianProfile.name} applied to your gig at ${gigData.venue.venueName}`,
+                        lastMessage: `${musicianProfile.name} has applied to your gig.`,
                         lastMessageTimestamp: Timestamp.now(),
                         status: "open",
                         createdAt: Timestamp.now(),
@@ -355,9 +375,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 // Step 3: Send an automatic message to the host
                 const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
                 await addDoc(messagesRef, {
-                    senderId: musicianProfileId,
-                    receiverId: gigData.venueId, // Assuming you have the hostId
-                    text: `${musicianProfile.name} applied to your gig at ${gigData.venue.venueName}`,
+                    senderId: user.uid,
+                    receiverId: venueProfile.user,
+                    text: `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName} for ${gigData.budget}`,
                     type: "application",
                     timestamp: Timestamp.now(),
                 });
@@ -372,43 +392,153 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         }
     }
 
+    const handleNegotiateButtonClick = () => {
+        if (!user) {
+            setAuthModal(true);
+            setAuthType('login');
+            setApplyingToGig(false);
+            return;
+        } else {
+            setNegotiateModal(true)
+        }
+
+    }
+
     const handleNegotiate = async () => {
+
+
+        if (userAppliedToGig) return;
+
+        if (!user.musicianProfile || user.musicianProfile.length < 1) {
+            setNoProfileModal(true);
+            setApplyingToGig(false);
+            return;
+        }
+
+        if (!newOffer) return;
+
         try {
-            // Fetch or create the conversation (similar to the logic in handleGigApplication)
-            const conversationId = await getOrCreateConversation('negotiation');
             const musicianProfileId = user.musicianProfile[0];
-    
-            // Send a negotiation message
-            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-            await addDoc(messagesRef, {
-                senderId: musicianProfileId,
-                receiverId: gigData.venueId, // Assuming you have the hostId
-                text: "I would like to negotiate the fee.",
-                type: "negotiation",
-                timestamp: Timestamp.now(),
-            });
+            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+            const musicianProfileSnapshot = await getDoc(musicianProfileRef);
+            if (musicianProfileSnapshot.exists()) {
+                const musicianProfile = musicianProfileSnapshot.data();
+                if (!musicianProfile.completed) {
+                    setNoProfileModal(true);
+                    setIncompleteMusicianProfile(musicianProfile);
+                    return;
+                }
+
+                const applicants = gigData.applicants;
+
+                // Add the new application to the applicants array
+                const newApplication = {
+                    id: musicianProfile.musicianId,
+                    timestamp: Timestamp.now(),
+                    fee: newOffer || '£0',
+                    status: 'Pending',
+                };
+
+                // Update the applicants array
+                const updatedApplicants = [...applicants, newApplication];
+
+                // Update the gig document with the new applicants array
+                const gigRef = doc(firestore, 'gigs', gigId);
+                await updateDoc(gigRef, {
+                    applicants: updatedApplicants,
+                });
+
+                setGigData(prevData => ({
+                    ...prevData,
+                    applicants: updatedApplicants,
+                }));
+
+                const updatedGigsArray = musicianProfile.gigs ? [...musicianProfile.gigs, gigId] : [gigId];
+                await updateDoc(musicianProfileRef, {
+                    gigs: updatedGigsArray,
+                });
+
+                // Fetch or create the conversation (similar to the logic in handleGigApplication)
+                const conversationId = await getOrCreateConversation(musicianProfile, 'negotiation');
+                const musicianProfileId = user.musicianProfile[0];
+        
+                // Send a negotiation message
+                const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                await addDoc(messagesRef, {
+                    senderId: user.uid,
+                    receiverId: venueProfile.user,
+                    text: `${musicianProfile.name} wants to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}`,
+                    oldFee: gigData.budget,
+                    newFee: newOffer,
+                    type: "negotiation",
+                    timestamp: Timestamp.now(),
+                });
+        }
         } catch (error) {
             console.error("Error sending negotiation message:", error);
+        } finally {
+            setNegotiateModal(false);
+            setApplyingToGig(false);
         }
     };
     
     const handleMessage = async () => {
         try {
-            // Fetch or create the conversation (similar to the logic in handleGigApplication)
-            const conversationId = await getOrCreateConversation('message');
             const musicianProfileId = user.musicianProfile[0];
-    
-            // Send a general message (e.g., open a message input modal to get the message text)
-            const messageText = prompt("Enter your message:"); // Replace with a proper input in your UI
-            if (messageText) {
-                const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                await addDoc(messagesRef, {
-                    senderId: musicianProfileId,
-                    receiverId: gigData.venueId, // Assuming you have the hostId
-                    text: messageText,
-                    type: "text",
+            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+            const musicianProfileSnapshot = await getDoc(musicianProfileRef);
+            if (musicianProfileSnapshot.exists()) {
+                const musicianProfile = musicianProfileSnapshot.data();
+                if (!musicianProfile.completed) {
+                    setNoProfileModal(true);
+                    setIncompleteMusicianProfile(musicianProfile);
+                    return;
+                }
+
+                const applicants = gigData.applicants;
+
+                // Add the new application to the applicants array
+                const newApplication = {
+                    id: musicianProfileId,
                     timestamp: Timestamp.now(),
+                    fee: gigData.budget || '£0',
+                    status: 'Pending',
+                };
+
+                // Update the applicants array
+                const updatedApplicants = [...applicants, newApplication];
+
+                // Update the gig document with the new applicants array
+                const gigRef = doc(firestore, 'gigs', gigId);
+                await updateDoc(gigRef, {
+                    applicants: updatedApplicants,
                 });
+
+                setGigData(prevData => ({
+                    ...prevData,
+                    applicants: updatedApplicants,
+                }));
+
+                const updatedGigsArray = musicianProfile.gigs ? [...musicianProfile.gigs, gigId] : [gigId];
+                await updateDoc(musicianProfileRef, {
+                    gigs: updatedGigsArray,
+                });
+                // Fetch or create the conversation (similar to the logic in handleGigApplication)
+                const conversationId = await getOrCreateConversation(musicianProfile, 'message');
+                const musicianProfileId = user.musicianProfile[0];
+        
+                // Send a general message (e.g., open a message input modal to get the message text)
+                const messageText = prompt("Enter your message:"); // Replace with a proper input in your UI
+                if (messageText) {
+                    const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                    await addDoc(messagesRef, {
+                        senderId: musicianProfileId,
+                        receiverId: gigData.venueId, // Assuming you have the hostId
+                        text: messageText,
+                        type: "text",
+                        timestamp: Timestamp.now(),
+                    });
+                }
             }
         } catch (error) {
             console.error("Error sending message:", error);
@@ -416,7 +546,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     };
     
 
-    const getOrCreateConversation = async (context) => {
+    const getOrCreateConversation = async (musicianProfile, context) => {
 
         if (userAppliedToGig) return;
         setApplyingToGig(true);
@@ -437,15 +567,22 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         let lastMessage;
 
         if (context === "negotiation") {
-            lastMessage = "Musician wants to negotiate the fee.";
+            lastMessage = `${musicianProfile.name} has offered a new gig fee.`;
         } else if (context === "message") {
-            lastMessage = "Musician has sent a message.";
+            lastMessage = `${musicianProfile.name} wants to send you a message.`;
         }
     
         if (conversationSnapshot.empty) {
             // Create a new conversation if none exists
             const newConversation = {
-                participants: [gigData.venueId, musicianProfileId], // Assuming you have the hostId
+                participants: [
+                    gigData.venueId,
+                    musicianProfileId
+                ],
+                accountNames: [
+                    { participantId: gigData.venueId, accountName: gigData.accountName, accountId: venueProfile.user, role: 'venue' }, 
+                    { participantId: musicianProfileId, accountName: musicianProfile.name, accountId: musicianProfile.userId, role: 'musician' }
+                ],
                 gigId: gigId,
                 lastMessage: lastMessage,
                 lastMessageTimestamp: Timestamp.now(),
@@ -552,13 +689,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                                 <p>{gigData.kind}</p>
                                             </div>
                                         </div>
-                                        <div className="detail">
-                                            <h6>Genres</h6>
-                                            <div className="data">
-                                                <SpeakersIcon />
-                                                <p>{formatGenres(gigData.genre)}</p>
+                                        {gigData.genre.length > 0 && (
+                                            <div className="detail">
+                                                <h6>Genres</h6>
+                                                <div className="data">
+                                                    <SpeakersIcon />
+                                                    <p>{formatGenres(gigData.genre)}</p>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="timeline">
@@ -680,7 +819,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                         </button>
                                     )}
                                     <div className="two-buttons">
-                                        <button className="btn primary-alt" onClick={handleNegotiate}>
+                                        <button className="btn primary-alt" onClick={handleNegotiateButtonClick}>
                                             Negotiate
                                         </button>
                                         <button className="btn primary-alt" onClick={handleMessage}>
@@ -714,6 +853,19 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 </div>
             )}
 
+            {negotiateModal && (
+                <div className="modal">
+                    <div className="modal-content">
+                        <h2>Negotiate the gig fee</h2>
+                        <p style={{ textAlign: 'center' }}>Your offer:</p>
+                        <input type="text" className='input' value={newOffer} onChange={(e) => handleBudgetChange(e)} placeholder={gigData.budget} />
+                        <div className="two-buttons">
+                            <button className="btn secondary" onClick={() => setNegotiateModal(false)}>Cancel</button>
+                            <button className="btn primary-alt" disabled={!newOffer} onClick={handleNegotiate}>Send Offer</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

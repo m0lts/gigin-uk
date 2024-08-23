@@ -107,6 +107,23 @@
 }
 
 
+/* MESSAGES */
+
+.header .btn.messages {
+    position: relative;
+}
+
+.header .notification-dot {
+    position: absolute;
+    top:-10px;
+    right:-7px;
+}
+
+.header .notification-dot .icon {
+    color: var(--gn-orange);
+}
+
+
 /* FEEDBACK */
 
 .header .feedback {

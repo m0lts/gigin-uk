@@ -1,0 +1,516 @@
+
+/* THREAD */
+
+/* .message-thread {
+    width:100%;
+    height:100%;
+}
+
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0 1rem;
+    margin-bottom: 1rem;
+    padding-right: 10px;
+}
+
+.message {
+    padding: 0.5rem;
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+    position: relative;
+    max-width: 80%;
+    border: 1px solid var(--gn-grey-400);
+}
+
+.message.sent {
+    margin-left: auto;
+    border-color: var(--gn-orange);
+}
+
+.message.received {
+    background-color: var(--gn-white);
+}
+
+.message h6 {
+    display: block;
+    margin-top: 5px;
+    text-align: right;
+}
+
+.message-input {
+    display: flex;
+    border-top: 1px solid var(--gn-grey-400);
+    padding: 0.5rem;
+    background-color: var(--gn-grey-200);
+}
+
+.message-input .input {
+    flex: 1;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    padding: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.message-input .input:focus {
+    outline: none;
+    border:1px solid var(--gn-orange);
+} */
+
+/* POPUP */
+
+/* .messages-popup {
+    position: fixed;
+    bottom: 0px;
+    right: 5%;
+    width: 350px;
+    height: 500px;
+    background-color: white;
+    box-shadow: 0 0 4px var(--gn-shadow);
+    border-radius: 8px;
+    z-index: 1000;
+    padding: 0.25rem 1rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: slide-down 0.3s ease-out;
+}
+
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(20%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.messages-popup .btn.close {
+    color: var(--gn-red);
+    font-size: 1.25rem;
+    margin-bottom: 5px;
+    padding-left:10px;
+}
+
+.messages-popup .banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    border-bottom: 1px solid var(--gn-grey-300);
+}
+
+.messages-popup .banner .options {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.conversation-list,
+.popup-message-thread {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.3s ease;
+}
+
+
+.conversation-list.slide-in {
+    transform: translateX(0);
+}
+
+.conversation-list.slide-out {
+    transform: translateX(-105%);
+}
+
+.popup-message-thread.slide-in {
+    transform: translateX(0);
+}
+
+.popup-message-thread.slide-out {
+    transform: translateX(105%);
+} */
+
+
+
+
+/* CONVERSATIONS STYLE */
+/* 
+.conversations {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+}
+
+.conversations .conversation {
+    border-bottom: 1px solid var(--gn-grey-400);
+    height:100px;
+    padding:1rem;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+}
+
+.conversations .conversation:last-of-type {
+    border-bottom: none;
+}
+
+.conversations .conversation:hover {
+    background-color: var(--gn-grey-200);
+    cursor: pointer;
+}
+
+.conversations .conversation .icon {
+    position: absolute;
+    right:0;
+    top:50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+}
+
+.conversations .conversation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.conversations .conversation-body {
+    padding-right: 2rem;
+    position: relative;
+}
+
+.conversations .conversation-body .last-message-preview {
+    font-size: 0.9rem;
+} */
+
+/* POPUP MESSAGES */
+/* .popup-message-thread {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.popup-message-thread .banner .username {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.popup-message-thread .banner .username h3 {
+    cursor: pointer;
+}
+
+.popup-message-thread .banner .username h3:hover {
+    color: var(--gn-grey-600);
+}
+
+.popup-message-thread .messages {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+} */
+
+
+/* MESSAGE PAGE */
+.message-page {
+    display: grid;
+    grid-template-columns: 30% 40% 30%;
+    padding: 0 5%;
+    width:100%;
+    height:99%;
+}
+
+.message-page .column {
+    height: 100%;
+}
+
+/* CONVERSATIONS COLUMN */
+
+.message-page .column.conversations {
+    margin-top: 1px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.message-page .column .top-banner,
+.message-page .column .top-banner .left,
+.message-page .column .top-banner .right {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap:1rem;
+}
+
+.message-page .column .top-banner {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--gn-grey-400);
+}
+
+
+.message-page .column.conversations .conversations-list {
+    list-style-type: none;
+}
+
+.message-page .column.conversations .conversations-list .conversation {
+    height:75px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--gn-grey-300);
+    cursor: pointer;
+}
+
+.message-page .column.conversations .conversations-list .conversation:last-of-type {
+    border-bottom: none;
+}
+
+.message-page .column.conversations .conversations-list .conversation:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.message-page .column.conversations .conversations-list .conversation.active {
+    background-color: var(--gn-grey-300);
+}
+
+.message-page .column.conversations .conversations-list .conversation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.message-page .column.conversations .conversations-list .last-message-preview {
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* MESSAGES COLUMN */
+
+.message-page .column.message-thread {
+    border: 1px solid var(--gn-grey-300);
+    box-shadow: 0px 0px 4px var(--gn-shadow);
+    border-radius: 1rem;
+    position: relative;
+}
+
+.message-page .column.message-thread .top-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap:5px;
+    background-color: var(--gn-white);
+    border-radius: 10px 10px 0 0;
+    position: relative;
+    z-index: 10000;
+}
+
+.message-page .column.message-thread .top-banner .participant {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width:100%;
+}
+
+.message-page .column.message-thread .top-banner .participant-options {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.message-page .column.message-thread .messages {
+    position: absolute;
+    width:100%;
+    bottom:0;
+    height:100%;
+    z-index: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.message-page .messages-container {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0 1rem;
+    margin-bottom: 1rem;
+    padding-right: 10px;
+}
+
+.message-page .message {
+    padding: 0.5rem;
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+    position: relative;
+    max-width: 50%;
+    width:fit-content;
+    border: 1px solid var(--gn-grey-400);
+}
+
+.message-page .status-box {
+    margin-top: 1rem;
+}
+
+.message-page .status {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    padding:5px;
+    width:fit-content;
+    border-radius: 5px;
+}
+
+.message-page .status.confirmed {
+    border:1px solid rgb(0, 219, 0);
+    background-color: rgba(0, 239, 0, 0.1);
+    color: rgb(0, 219, 0);
+}
+
+.message-page .status.rejected {
+    border:1px solid var(--gn-red);
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+}
+
+.message-page .message.sent {
+    margin-left: auto;
+    background-color: var(--gn-grey-300);
+}
+
+.message-page .message.sent.negotiation {
+    display: flex;
+    gap: 5px;
+}
+
+.message-page .message.received {
+    background-color: var(--gn-white);
+}
+
+.message-page .message.received.negotiation .fees {
+    display: flex;
+    gap:5px;
+}
+
+.message-page .message.announcement {
+    max-width: 100%;
+    width:100%;
+    border:none;
+    border-top: 1px solid var(--gn-grey-300);
+    border-bottom: 1px solid var(--gn-grey-300);
+    background-color: var(--gn-white);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:5px;
+}
+
+.message-page .message.announcement h4 {
+    text-align: center;
+}
+
+.message-page .message h6 {
+    display: block;
+    margin-top: 5px;
+    text-align: right;
+}
+
+.message-page .message-input {
+    display: flex;
+    border-top: 1px solid var(--gn-grey-400);
+    padding: 0.5rem;
+    background-color: var(--gn-grey-200);
+}
+
+.message-page .message-input .input {
+    flex: 1;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    padding: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.message-page .message-input .input:focus {
+    outline: none;
+    border:1px solid var(--gn-orange);
+}
+
+/* GIG INFO COLUMN */
+
+.message-page .column.information {
+    margin-top: 1px;
+}
+
+.message-page .column.information .venue {
+    margin: 1rem 1.5rem;
+}
+
+.message-page .column.information .venue .photo {
+    margin-top: 5px;
+    width: 100%;
+    height: 150px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+}
+
+.message-page .column.information .venue .photo .img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.message-page .column.information .location {
+    margin-bottom: 1rem;
+    margin-left: 1.5rem;
+}
+
+.message-page .column.information .date-and-time {
+    margin: 1rem 1.5rem;
+}
+
+.message-page .column.information .details {
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 10px;
+    box-shadow: 0px 0px 2px var(--gn-shadow);
+    margin: 1rem 1.5rem;
+    padding:0 0.5rem;
+}
+
+.message-page .column.information .details-list {
+    width:100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:5px;
+}
+
+.message-page .column.information .details-list .detail {
+    margin: 0.5rem 0;
+}
+
+.message-page .column.information .details-list .detail .data {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.message-page .column.information .extra-info {
+    margin: 1.5rem;
+}
+
+.message-page .column.information .extra-info .info {
+    margin-top: 0.5rem;
+}
+

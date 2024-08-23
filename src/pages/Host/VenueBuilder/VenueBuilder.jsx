@@ -33,6 +33,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         photos: [],
         extraInformation: '',
         description: '',
+        accountName: user.name,
     });
 
     useEffect(() => {
