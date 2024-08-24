@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom"
-import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot, getDocs, Timestamp, collection, query, addDoc, where } from 'firebase/firestore';
 import { firestore } from '../../../firebase';
 import { LoadingThreeDots } from "../../../components/ui/loading/Loading";
 import { ClockIcon, RejectedIcon, TickIcon } from "../../../components/ui/Extras/Icons";
+import { useAuth } from "../../../hooks/useAuth";
 
 export const GigApplications = () => {
     const location = useLocation();
+    const { user } = useAuth();
     const [gigId, setGigId] = useState(location.state.gig.gigId)
     const [gigDate, setGigDate] = useState(location.state.gig.date);
     const [venueName, setVenueName] = useState(location.state.gig.venue.venueName);
@@ -99,7 +101,7 @@ export const GigApplications = () => {
         }
     };
 
-    const handleReject = async (musicianId, event) => {
+    const handleReject = async (musicianId, event, musicianUserId) => {
         event.stopPropagation();
         try {
             const gigRef = doc(firestore, 'gigs', gigInfo.gigId);
@@ -113,10 +115,66 @@ export const GigApplications = () => {
                     }
                 });
                 await updateDoc(gigRef, { applicants: updatedApplicants });
-                setGigInfo(prevState => ({
-                    ...prevState,
-                    applicants: updatedApplicants
-                }));
+
+                
+                if (gigData.date.toDate() > new Date()) {
+
+                    const conversationsRef = collection(firestore, 'conversations');
+                    const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianId), where('gigId', '==', gigId));
+                    const conversationSnapshot = await getDocs(conversationQuery);
+
+                    if (!conversationSnapshot.empty) {
+                        const conversationId = conversationSnapshot.docs[0].id;
+                        const timestamp = Timestamp.now(); // Store the timestamp for reuse
+                
+                        // Find the message with type 'application' in the conversation
+                        const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                        const messageQuery = query(messagesRef, where('type', '==', 'application'));
+                        const messageSnapshot = await getDocs(messageQuery);
+                
+                        if (!messageSnapshot.empty) {
+                            const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
+                
+                            // Update the application message with the 'Rejected' status
+                            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                            await updateDoc(messageRef, {
+                                status: 'Rejected',
+                                timestamp: timestamp,
+                            });
+
+                            // Send a decline message to musician
+                            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                            // Add the new message to the 'messages' subcollection
+                            await addDoc(messagesRef, {
+                                senderId: user.uid,
+                                receiverId: musicianUserId,
+                                text: `Your gig application was declined.`,
+                                timestamp: timestamp,
+                                type: 'application-response',
+                                status: 'rejected'
+                            });
+            
+                            const conversationRef = doc(firestore, 'conversations', conversationId);
+                            await updateDoc(conversationRef, {
+                                lastMessage: `Gig application declined.`,
+                                lastMessageTimestamp: timestamp,
+                            });
+                            
+                            setGigInfo(prevState => ({
+                                ...prevState,
+                                applicants: updatedApplicants
+                            }));
+
+                        } else {
+                            console.error('No application message found in the conversation.');
+                        }
+                    } else {
+                        console.error('No conversation found for the musician and gig.');
+                    }
+                } else {
+                    console.log('Gig is not in the future, skipping message update.');
+                }        
+
             } else {
                 console.error('Gig not found');
             }
@@ -204,7 +262,7 @@ export const GigApplications = () => {
                                                     <button className="btn accept small" onClick={(event) => handleAccept(profile.id, event)}>
                                                         Accept
                                                     </button>
-                                                    <button className="btn danger small" onClick={(event) => handleReject(profile.id, event)}>
+                                                    <button className="btn danger small" onClick={(event) => handleReject(profile.id, event, profile.userId)}>
                                                         Reject
                                                     </button>
                                                     <button className="btn primary-alt small">

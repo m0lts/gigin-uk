@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { firestore } from '../../firebase';
-import { TickIcon } from '../../components/ui/Extras/Icons';
+import { CloseIcon, RejectedIcon, TickIcon } from '../../components/ui/Extras/Icons';
 import '/styles/common/messages.styles.css';
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId }) => {
@@ -139,7 +139,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     };
 
-    const handleDeclineGig = async (event, newFee, oldFee, messageId) => {
+    const handleDeclineNegotiation = async (event, newFee, oldFee, messageId) => {
         event.stopPropagation();
     
         try {
@@ -177,7 +177,57 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
                 const conversationRef = doc(firestore, 'conversations', conversationId);
                 await updateDoc(conversationRef, {
-                    lastMessage: newMessage,
+                    lastMessage: `Your offer of ${newFee} was declined.`,
+                    lastMessageTimestamp: timestamp,
+                });
+        
+            } else {
+                console.error('Gig not found');
+            }
+        } catch (error) {
+            console.error('Error updating gig document:', error);
+        }
+    };
+
+    const handleDeclineApplication = async (event, messageId, receiverId) => {
+        event.stopPropagation();
+    
+        try {
+            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
+            const gigSnapshot = await getDoc(gigRef);
+    
+            if (gigSnapshot.exists()) {
+                const gigData = gigSnapshot.data();
+                const updatedApplicants = gigData.applicants.map(applicant => {
+                    if (applicant.id === musicianProfileId) {
+                        return { ...applicant, status: 'Rejected' };
+                    }
+                });
+                await updateDoc(gigRef, { applicants: updatedApplicants });
+
+                const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                await updateDoc(messageRef, {
+                    status: 'Rejected',
+                });
+
+                // Send a new message to Firestore
+                const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                const timestamp = Timestamp.now(); // Store the timestamp for reuse
+        
+                // Add the new message to the 'messages' subcollection
+                await addDoc(messagesRef, {
+                    senderId: user.uid, // The current user's ID
+                    receiverId: receiverId,
+                    text: `Your gig application was declined.`,
+                    timestamp: timestamp,
+                    type: 'application-response',
+                    status: 'rejected'
+                });
+        
+                // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
+                const conversationRef = doc(firestore, 'conversations', conversationId);
+                await updateDoc(conversationRef, {
+                    lastMessage: `Gig application declined.`,
                     lastMessageTimestamp: timestamp,
                 });
         
@@ -194,7 +244,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             <div className="messages-container">
                 {messages.length > 0 && (
                     messages.map(message => (
-                        <div key={message.id} className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'announcement' ? 'announcement' : ''}`}>
+                        <div key={message.id} className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' ? 'announcement' : ''}`}>
                             {/* SENT NEGOTIATION */}
                             {message.type === 'negotiation' && message.senderId === user.uid ? (
                                 <>
@@ -223,15 +273,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     ) : message.status === 'Rejected' ? (
                                         <div className="status-box">
                                             <div className="status rejected">
-                                                <TickIcon />
-                                                Accepted
+                                                <RejectedIcon />
+                                                Declined
                                             </div>
                                         </div>                                    ) : (
                                         <div className="two-buttons">
                                             <button className="btn accept" onClick={(event) => handleAcceptGig(event, message.id)}>
                                                 Accept
                                             </button>
-                                            <button className="btn danger" onClick={(event) => handleDeclineGig(event, newFee, oldFee, message.id)}>
+                                            <button className="btn danger" onClick={(event) => handleDeclineNegotiation(event, newFee, oldFee, message.id)}>
                                                 Decline
                                             </button>
                                         </div>
@@ -241,16 +291,47 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                             ) 
                             // SENT APPLICATION
                             : message.type === 'application' && message.senderId === user.uid ? (
-                                // Add a fallback or handle other message types if necessary
                                 <>
                                     <h4>Gig application sent.</h4>
                                 </>
-                            )
+                            ) 
+                            : message.type === 'application-response' && message.senderId === user.uid ? (
+                                <>
+                                    <h4>Gig application declined.</h4>
+                                </>
+                            ) 
                             // RECEIVED APPLICATION
                             : message.type === 'application' && message.receiverId === user.uid ? (
                                 // Add a fallback or handle other message types if necessary
                                 <>
                                     <h4>{message.text}</h4>
+                                    {userRole === 'venue' && (
+                                        <button className="btn secondary" onClick={() => openMusicianProfile(musicianProfileId)}>Visit Profile</button>
+                                    )}
+                                    {message.status === 'Accepted' ? (
+                                        <div className="status-box">
+                                            <div className="status confirmed">
+                                                <TickIcon />
+                                                Accepted
+                                            </div>
+                                        </div>
+                                    ) : message.status === 'Rejected' ? (
+                                        <div className="status-box">
+                                            <div className="status rejected">
+                                                <RejectedIcon />
+                                                Declined
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="two-buttons">
+                                            <button className="btn accept" onClick={(event) => handleAcceptGig(event, message.id)}>
+                                                Accept
+                                            </button>
+                                            <button className="btn danger" onClick={(event) => handleDeclineApplication(event, message.id, message.receiverId)}>
+                                                Decline
+                                            </button>
+                                        </div>
+                                    )}
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                 </>
                             ) : message.type === 'announcement' ? (

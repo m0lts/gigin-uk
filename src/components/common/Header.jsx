@@ -6,7 +6,7 @@ import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } fr
 import { useState, useEffect } from "react"
 import { firestore } from "../../firebase"
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
-import { DotIcon, ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MailboxFullIcon, MapIcon, NewTabIcon, SettingsIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
+import { DotIcon, ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MailboxFullIcon, MapIcon, NewTabIcon, SettingsIcon, TelescopeIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
 import { MessagesPopUp } from "./MessagesPopUp"
 
 export const Header = ({ setAuthModal, setAuthType, user }) => {
@@ -300,12 +300,21 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             <button className="btn text" onClick={() => setFeedbackForm(!feedbackForm)}>
                                 Feedback
                             </button>
-                            <Link className="link" to={`${location.pathname.includes('host') ? '/host/dashboard' : '/musician/dashboard'}`}>
-                                <button className="btn secondary">
-                                    <DashboardIcon />
-                                    Dashboard
-                                </button>
-                            </Link>
+                            {location.pathname.includes('/musician/dashboard') ? (
+                                <Link className="link" to={'/musician'}>
+                                    <button className="btn secondary">
+                                        <TelescopeIcon />
+                                        Find Gigs
+                                    </button>
+                                </Link>
+                            ) : (
+                                <Link className="link" to={`${location.pathname.includes('host') ? '/host/dashboard' : '/musician/dashboard'}`}>
+                                    <button className="btn secondary">
+                                        <DashboardIcon />
+                                        Dashboard
+                                    </button>
+                                </Link>
+                            )}
                             {newMessages ? (
                                 <Link className="link" to={'/messages'}>
                                     <button className="btn secondary messages" onClick={() => setMessagesPopUp(!messagesPopUp)}>

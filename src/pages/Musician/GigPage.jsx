@@ -360,7 +360,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                             { participantId: musicianProfileId, accountName: musicianProfile.name, accountId: musicianProfile.userId, role: 'musician' }
                         ],
                         gigId: gigId,
-                        lastMessage: `${musicianProfile.name} has applied to your gig.`,
+                        lastMessage: `${musicianProfile.name} applied to the gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}.`,
                         lastMessageTimestamp: Timestamp.now(),
                         status: "open",
                         createdAt: Timestamp.now(),
@@ -379,6 +379,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                     receiverId: venueProfile.user,
                     text: `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName} for ${gigData.budget}`,
                     type: "application",
+                    status: 'Pending...',
                     timestamp: Timestamp.now(),
                 });
 
