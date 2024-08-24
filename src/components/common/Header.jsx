@@ -317,7 +317,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             )}
                             {newMessages ? (
                                 <Link className="link" to={'/messages'}>
-                                    <button className="btn secondary messages" onClick={() => setMessagesPopUp(!messagesPopUp)}>
+                                    <button className="btn secondary messages">
                                         <span className="notification-dot"><DotIcon /></span>
                                         <MailboxFullIcon />
                                         Messages
@@ -325,7 +325,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 </Link>
                             ) : (
                                 <Link className="link" to={'/messages'}>
-                                    <button className="btn secondary" onClick={() => setMessagesPopUp(!messagesPopUp)}>
+                                    <button className="btn secondary">
                                         <MailboxEmptyIcon />
                                         Messages
                                     </button>

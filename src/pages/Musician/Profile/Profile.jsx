@@ -54,21 +54,8 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             }
         };
 
-        // const fetchSimilarMusicians = async () => {
-        //     try {
-        //         const gigsSnapshot = await getDocs(collection(firestore, 'gigs'));
-        //         const gigsData = gigsSnapshot.docs
-        //         .map(doc => ({ id: doc.id, ...doc.data() }))
-        //         .filter(gig => gig.id !== gigId);
-
-        //         setSimilarGigs(gigsData);
-        //     } catch (error) {
-        //         console.error('Error fetching similar gigs:', error);
-        //     }
-        // };
 
         fetchMusicianProfile();
-        // fetchSimilarMusicians();
 
     }, [musicianId, gigId]);
 
@@ -116,7 +103,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                     if (applicant.id === musicianId) {
                         return { ...applicant, status: 'Accepted' };
                     } else {
-                        return { ...applicant, status: 'Rejected' };
+                        return { ...applicant, status: 'Declined' };
                     }
                 });
                 await updateDoc(gigRef, { applicants: updatedApplicants });
@@ -139,7 +126,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 const gigData = gigSnapshot.data();
                 const updatedApplicants = gigData.applicants.map(applicant => {
                     if (applicant.id === musicianId) {
-                        return { ...applicant, status: 'Rejected' };
+                        return { ...applicant, status: 'Declined' };
                     }
                 });
                 await updateDoc(gigRef, { applicants: updatedApplicants });
@@ -185,54 +172,27 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                                 </div>
                             </div>
                         </div>
+                            {applicantData && (
                         <div className="profile-actions applicant">
-                            {applicantData ? (
-                                <>
-                                    <h2>{applicantData.fee}</h2>
-                                    {applicantData.status === 'Accepted' && (
-                                        <div className="status-box">
-                                            <div className="status confirmed">
-                                                <TickIcon />
-                                                Accepted
-                                            </div>
-                                        </div>
-                                    )}
-                                    {applicantData.status === 'Rejected' && (
-                                        <div className="status-box">
-                                            <div className="status rejected">
-                                                <RejectedIcon />
-                                                Rejected
-                                            </div>
-                                        </div>
-                                    )}
-                                    {applicantData.status === 'Negotiating' && (
-                                        <div className="status-box">
-                                            <div className="status upcoming">
-                                                <ClockIcon />
-                                                Negotiating...
-                                            </div>
-                                        </div>
-                                    )}
-                                    {applicantData.status === 'Pending' && (
-                                        <>
-                                            <div className="two-buttons">
-                                                <button className="btn accept" onClick={() => handleAccept(applicantData.id)}>
-                                                    Accept
-                                                </button>
-                                                <button className="btn danger" onClick={() => handleReject(applicantData.id)}>
-                                                    Reject
-                                                </button>
-                                            </div>
-                                            <button className="btn primary-alt">
-                                                Negotiate Fee
-                                            </button>
-                                        </>
-                                    )}
-                                </>
-                            ) : (
-                                <h1>actions to invite a musician to a gig or build a gig around a musician</h1>
+                            <h2>{applicantData.fee}</h2>
+                            {applicantData.status === 'Accepted' && (
+                                <div className="status-box">
+                                    <div className="status confirmed">
+                                        <TickIcon />
+                                        Accepted
+                                    </div>
+                                </div>
+                            )}
+                            {applicantData.status === 'Declined' && (
+                                <div className="status-box">
+                                    <div className="status rejected">
+                                        <RejectedIcon />
+                                        Declined
+                                    </div>
+                                </div>
                             )}
                         </div>
+                            )}
                     </div>
                     <nav className="profile-tabs">
                         <p onClick={() => setActiveTab('overview')} className={`profile-tab ${activeTab === 'overview' ? 'active' : ''}`}>

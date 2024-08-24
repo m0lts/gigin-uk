@@ -19,8 +19,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     }, [activeConversation])
 
-    console.log(userRole)
-
     useEffect(() => {
         if (!conversationId) return;
 
@@ -93,7 +91,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                         agreedFee = applicant.fee;
                         return { ...applicant, status: 'Accepted' };
                     } else {
-                        return { ...applicant, status: 'Rejected' };
+                        return { ...applicant, status: 'Declined' };
                     }
                 });
                 await updateDoc(gigRef, { applicants: updatedApplicants, budget: `${agreedFee}` });
@@ -107,27 +105,19 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
                 const timestamp = Timestamp.now(); // Store the timestamp for reuse
         
-                // Add the new message to the 'messages' subcollection
-                if (userRole === 'venue') {
-                    await addDoc(messagesRef, {
-                        senderId: user.uid,
-                        text: `The gig has been accepted with a fee of ${agreedFee}. Please follow the instructions to pay.`,
-                        timestamp: timestamp,
-                        type: 'announcement',
-                    });
-                } else {
-                    await addDoc(messagesRef, {
-                        senderId: user.uid,
-                        text: `The gig has been accepted with a fee of ${agreedFee}. Once the host has paid the fee, the gig will be confirmed. You will receive payment once the gig has been performed.`,
-                        timestamp: timestamp,
-                        type: 'announcement',
-                    });
-                }
+
+                await addDoc(messagesRef, {
+                    senderId: user.uid,
+                    text: `The gig has been accepted with a fee of ${agreedFee}.`,
+                    timestamp: timestamp,
+                    type: 'announcement',
+                    status: 'awaiting payment',
+                });
         
                 // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
                 const conversationRef = doc(firestore, 'conversations', conversationId);
                 await updateDoc(conversationRef, {
-                    lastMessage: 'Gig Accepted',
+                    lastMessage: 'Gig application accepted',
                     lastMessageTimestamp: timestamp,
                 });
         
@@ -139,9 +129,11 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     };
 
-    const handleDeclineNegotiation = async (event, newFee, oldFee, messageId) => {
+    console.log(messages)
+
+    const handleDeclineNegotiation = async (event, newFee, oldFee, messageId, receiverId) => {
         event.stopPropagation();
-    
+
         try {
             const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
             const gigSnapshot = await getDoc(gigRef);
@@ -150,14 +142,17 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 const gigData = gigSnapshot.data();
                 const updatedApplicants = gigData.applicants.map(applicant => {
                     if (applicant.id === musicianProfileId) {
-                        return { ...applicant, status: 'Rejected' };
+                        return { ...applicant, status: 'Declined' };
+                    } else {
+                        return { ...applicant };
                     }
                 });
+
                 await updateDoc(gigRef, { applicants: updatedApplicants });
 
                 const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
                 await updateDoc(messageRef, {
-                    status: 'Rejected',
+                    status: 'Declined',
                 });
 
                 // Send a new message to Firestore
@@ -166,18 +161,18 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         
                 // Add the new message to the 'messages' subcollection
                 await addDoc(messagesRef, {
-                    senderId: user.uid, // The current user's ID
-                    text: `Your offer of ${newFee} was declined.`,
-                    oldFee: newFee,
-                    newFee: oldFee,
+                    senderId: user.uid,
+                    receiverId: receiverId,
+                    text: `${newFee}`,
                     timestamp: timestamp,
-                    type: 'negotiation',
+                    status: 'Declined',
+                    type: 'negotiation-response',
                 });
         
                 // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
                 const conversationRef = doc(firestore, 'conversations', conversationId);
                 await updateDoc(conversationRef, {
-                    lastMessage: `Your offer of ${newFee} was declined.`,
+                    lastMessage: `The fee of ${newFee} was declined.`,
                     lastMessageTimestamp: timestamp,
                 });
         
@@ -200,14 +195,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 const gigData = gigSnapshot.data();
                 const updatedApplicants = gigData.applicants.map(applicant => {
                     if (applicant.id === musicianProfileId) {
-                        return { ...applicant, status: 'Rejected' };
+                        return { ...applicant, status: 'Declined' };
                     }
                 });
                 await updateDoc(gigRef, { applicants: updatedApplicants });
 
                 const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
                 await updateDoc(messageRef, {
-                    status: 'Rejected',
+                    status: 'Declined',
                 });
 
                 // Send a new message to Firestore
@@ -221,7 +216,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     text: `Your gig application was declined.`,
                     timestamp: timestamp,
                     type: 'application-response',
-                    status: 'rejected'
+                    status: 'Declined'
                 });
         
                 // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
@@ -257,12 +252,9 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 <>
                                     <h4>{message.text}</h4>
                                     <div className="fees">
-                                        <h3 style={{ textDecoration: 'line-through'}}>{message.oldFee}</h3>
-                                        <h3>{message.newFee}</h3>
+                                        <h4 style={{ textDecoration: 'line-through'}}>{message.oldFee}</h4>
+                                        <h4>{message.newFee}</h4>
                                     </div>
-                                    {userRole === 'venue' && (
-                                        <button className="btn secondary" onClick={() => openMusicianProfile(musicianProfileId)}>Visit Profile</button>
-                                    )}
                                     {message.status === 'Accepted' ? (
                                         <div className="status-box">
                                             <div className="status confirmed">
@@ -270,18 +262,19 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Accepted
                                             </div>
                                         </div>
-                                    ) : message.status === 'Rejected' ? (
+                                    ) : message.status === 'Declined' ? (
                                         <div className="status-box">
                                             <div className="status rejected">
                                                 <RejectedIcon />
                                                 Declined
                                             </div>
-                                        </div>                                    ) : (
+                                        </div>
+                                    ) : (
                                         <div className="two-buttons">
                                             <button className="btn accept" onClick={(event) => handleAcceptGig(event, message.id)}>
                                                 Accept
                                             </button>
-                                            <button className="btn danger" onClick={(event) => handleDeclineNegotiation(event, newFee, oldFee, message.id)}>
+                                            <button className="btn danger" onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.oldFee, message.id, message.senderId)}>
                                                 Decline
                                             </button>
                                         </div>
@@ -289,25 +282,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                 </>
                             ) 
-                            // SENT APPLICATION
-                            : message.type === 'application' && message.senderId === user.uid ? (
+                             : message.type === 'negotiation-response' && message.senderId === user.uid ? (
                                 <>
-                                    <h4>Gig application sent.</h4>
+                                    <h4>Offer declined.</h4>
                                 </>
-                            ) 
-                            : message.type === 'application-response' && message.senderId === user.uid ? (
-                                <>
-                                    <h4>Gig application declined.</h4>
-                                </>
-                            ) 
-                            // RECEIVED APPLICATION
-                            : message.type === 'application' && message.receiverId === user.uid ? (
-                                // Add a fallback or handle other message types if necessary
+                            )  : message.type === 'negotiation-response' && message.receiverId === user.uid ? (
                                 <>
                                     <h4>{message.text}</h4>
-                                    {userRole === 'venue' && (
-                                        <button className="btn secondary" onClick={() => openMusicianProfile(musicianProfileId)}>Visit Profile</button>
-                                    )}
                                     {message.status === 'Accepted' ? (
                                         <div className="status-box">
                                             <div className="status confirmed">
@@ -315,7 +296,46 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Accepted
                                             </div>
                                         </div>
-                                    ) : message.status === 'Rejected' ? (
+                                    ) : message.status === 'Declined' && (
+                                        <div className="status-box">
+                                            <div className="status rejected">
+                                                <RejectedIcon />
+                                                Declined
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )
+                            // SENT APPLICATION
+                            : message.type === 'application' && message.senderId === user.uid ? (
+                                <>
+                                    <h4>Gig application sent.</h4>
+                                </>
+                            ) 
+                            : message.type === 'application-response' && message.senderId === user.uid ? (
+                                message.status === 'Accepted' ? (
+                                    <>
+                                        <h4>Gig application accepted.</h4>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h4>Gig application declined.</h4>
+                                    </>
+                                )
+                            ) 
+                            // RECEIVED APPLICATION
+                            : message.type === 'application' && message.receiverId === user.uid ? (
+                                // Add a fallback or handle other message types if necessary
+                                <>
+                                    <h4>{message.text}</h4>
+                                    {message.status === 'Accepted' ? (
+                                        <div className="status-box">
+                                            <div className="status confirmed">
+                                                <TickIcon />
+                                                Accepted
+                                            </div>
+                                        </div>
+                                    ) : message.status === 'Declined' ? (
                                         <div className="status-box">
                                             <div className="status rejected">
                                                 <RejectedIcon />
@@ -336,8 +356,30 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 </>
                             ) : message.type === 'announcement' ? (
                                 <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>{message.text}</h4>
+                                {message.status === 'awaiting payment' && userRole === 'venue' ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text} Please click the button below to pay.</h4>
+                                        <button className="btn primary">
+                                            Complete Payment
+                                        </button>
+                                    </>
+                                ) : message.status === 'awaiting payment' && userRole === 'musician' ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text} Once the host has paid the fee, the gig will be confirmed.</h4>
+                                    </>
+                                ) : message.status === 'payment complete' && userRole === 'venue' ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>Payment is complete and the gig is confirmed. The musician will be paid after the gig is performed.</h4>
+                                    </>
+                                ) : message.status === 'payment complete' && (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>Payment is complete and the gig is confirmed. You will receive payment after the gig.</h4>
+                                    </>
+                                )}
                                 </>
                             ) : (
                                 <>

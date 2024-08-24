@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { LeftChevronIcon, NewTabIcon, OptionsIcon, QuestionCircleIcon, RightChevronIcon } from '../../components/ui/Extras/Icons';
 import { MessageThread } from './MessageThread';
 import { GigInformation } from './GigInformation';
+import { Link } from 'react-router-dom';
 
 export const MessagePage = () => {
 
@@ -65,6 +66,12 @@ export const MessagePage = () => {
                                     updatedConversations.push(newConv);
                                 }
                             });
+                            updatedConversations.sort((a, b) => {
+                                const timeA = a.lastMessageTimestamp ? a.lastMessageTimestamp.seconds : 0;
+                                const timeB = b.lastMessageTimestamp ? b.lastMessageTimestamp.seconds : 0;
+                                return timeB - timeA;
+                            });
+            
                             return updatedConversations;
                         });
                         // Check if there are any new messages
@@ -85,8 +92,6 @@ export const MessagePage = () => {
 
         checkForNewMessages();
     }, [user]);
-
-    console.log(activeConversation)
 
     const openGig = (gigId) => {
         const url = `/gig/${gigId}`;
@@ -145,23 +150,16 @@ export const MessagePage = () => {
                             <div className="participant-options">
                                 {(activeConversation.accountNames.find(account => account.accountId === user.uid)?.role === 'venue') ? (
                                     <>
-                                        <button className="btn primary-alt">
-                                            Negotiate Fee
-                                        </button>
-                                        <button className="btn primary-alt">
-                                            View Musician Profile
-                                        </button>
-                                        <button className="btn primary-alt">
-                                            Offer another gig
-                                        </button>
+                                        <Link className='link' to={`/musician/${activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}/null`}>
+                                            <button className="btn primary-alt">
+                                                View Musician Profile
+                                            </button>
+                                        </Link>
                                     </>
                                 ) : (
                                     <>
                                         <button className="btn primary-alt">
                                             Negotiate Fee
-                                        </button>
-                                        <button className="btn primary-alt">
-                                            View Gig Details
                                         </button>
                                     </>
                                 )}

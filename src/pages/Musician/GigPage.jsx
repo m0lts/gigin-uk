@@ -407,7 +407,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
 
     const handleNegotiate = async () => {
 
-
         if (userAppliedToGig) return;
 
         if (!user.musicianProfile || user.musicianProfile.length < 1) {
@@ -461,7 +460,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
 
                 // Fetch or create the conversation (similar to the logic in handleGigApplication)
                 const conversationId = await getOrCreateConversation(musicianProfile, 'negotiation');
-                const musicianProfileId = user.musicianProfile[0];
         
                 // Send a negotiation message
                 const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
