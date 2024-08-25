@@ -2,9 +2,12 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
+import { GigsProvider } from './context/GigsContext.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
-      <App />
+      <GigsProvider>
+        <App />
+      </GigsProvider>
     </BrowserRouter>,
 )

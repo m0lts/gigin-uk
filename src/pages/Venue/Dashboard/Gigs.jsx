@@ -19,7 +19,7 @@ export const Gigs = ({ gigs, venues }) => {
     // Function to get the status of the gig
     const getGigStatus = (gig) => {
         const now = new Date();
-        const gigDate = new Date(gig.date);
+        const gigDate = gig.date.toDate();
 
         if (gigDate > now) {
             const acceptedApplicant = gig.applicants.some(applicant => applicant.status === 'Accepted');
@@ -58,13 +58,14 @@ export const Gigs = ({ gigs, venues }) => {
     // Filter gigs based on URL parameters
     const filteredGigs = gigs.filter(gig => {
         const gigStatus = getGigStatus(gig).text.toLowerCase();
-        const gigDate = format(new Date(gig.date), 'yyyy-MM-dd');
+        const gigDate = format(gig.date.toDate(), 'yyyy-MM-dd');
         return (
             (selectedVenue === '' || gig.venueId === selectedVenue) &&
             (selectedDate === '' || gigDate === selectedDate) &&
             (selectedStatus === 'all' || gigStatus === selectedStatus)
         );
     });
+
 
     const toggleSortOrder = () => {
         setSortOrder((prevOrder) => (prevOrder === 'desc' ? 'asc' : 'desc'));
@@ -73,8 +74,8 @@ export const Gigs = ({ gigs, venues }) => {
     // Sort gigs based on the current sort order
     const sortedGigs = filteredGigs.slice().sort((a, b) => {
         return sortOrder === 'desc'
-            ? new Date(b.date) - new Date(a.date)
-            : new Date(a.date) - new Date(b.date);
+            ? (b.date).toDate() - (a.date).toDate()
+            : (a.date).toDate() - (b.date).toDate();
     });
 
     return (
@@ -124,8 +125,8 @@ export const Gigs = ({ gigs, venues }) => {
                             sortedGigs.map((gig, index) => {
                                 const gigStatus = getGigStatus(gig);
                                 return (
-                                    <tr key={index} onClick={() => navigate('/host/dashboard/gig-applications', { state: { gig } })}>
-                                        <td>{new Date(gig.date).toLocaleDateString('en-GB')}</td>
+                                    <tr key={index} onClick={() => navigate('/venues/dashboard/gig-applications', { state: { gig } })}>
+                                        <td>{gig.date.toDate().toLocaleDateString('en-GB')}</td>
                                         <td>{gig.startTime}</td>
                                         <td>{gig.venue.venueName}</td>
                                         <td className='centre'>{gig.budget}</td>

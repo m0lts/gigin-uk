@@ -303,7 +303,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
       
           setLoading(false);
           setGigPostModal(false);
-          window.location.reload();
         } catch (error) {
           setLoading(false);
           console.error('Failed to post gig:', error);
@@ -400,7 +399,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
       
           setSaving(false);
           setGigPostModal(false);
-          window.location.reload();
         } catch (error) {
           setSaving(false);
           console.error('Failed to save gig:', error);

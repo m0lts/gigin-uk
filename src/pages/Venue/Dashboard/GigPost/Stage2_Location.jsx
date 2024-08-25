@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { BeerIcon, ClubIcon, HouseIcon, MicrophoneIcon, OtherIcon, PlaceOfWorshipIcon, RestaurantIcon, VillageHallIcon } from "/components/ui/Extras/Icons";
+import { VenueBuilderIcon } from "../../../../components/ui/Extras/Icons";
 
 export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage }) => {
 
@@ -53,8 +54,11 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
                         </div>
                     ))}
                 </div>
-                <Link className="link" to={'/host/venue-builder'}>
-                    Add another venue
+                <Link className="link" to={'/venues/add-venue'}>
+                    <button className="btn secondary">
+                        <VenueBuilderIcon />
+                        <span style={{ marginLeft: '5px' }}>Add another venue</span>
+                    </button>
                 </Link>
             </div>
         </>

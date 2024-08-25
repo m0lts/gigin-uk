@@ -12,7 +12,7 @@ export const Venues = ({ venues }) => {
     const [venueToDelete, setVenueToDelete] = useState(null);
 
     const handleEditVenue = (venue) => {
-        navigate('/host/venue-builder', { state: { venue } });
+        navigate('/venues/add-venue', { state: { venue } });
     };
 
     const handleDeleteVenue = (venue) => {

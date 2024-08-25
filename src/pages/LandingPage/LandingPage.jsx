@@ -7,8 +7,8 @@ export const LandingPage = () => {
             <Link to={'/musician'} className="link">
                 Musicians
             </Link>
-            <Link to={'/host'} className="link">
-                Hosts
+            <Link to={'/venues'} className="link">
+                Venues
             </Link>
             <Link to={'/giggoer'} className="link">
                 Gig-goers

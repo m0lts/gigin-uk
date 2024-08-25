@@ -1,16 +1,17 @@
 import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
+import { Header } from "../../components/venue-components/Header";
 
-export const HostInfo = ({ user, setAuthModal }) => {
+export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
 
     const navigate = useNavigate();
 
     const checkUserAuth = () => {
         if (!user) {
             setAuthModal(true);
-            sessionStorage.setItem('redirect', '/host/venue-builder');
+            sessionStorage.setItem('redirect', '/venues/add-venue');
         } else {
-            navigate('/host/venue-builder');
+            navigate('/venues/add-venue');
         }
     }
 
@@ -24,7 +25,12 @@ export const HostInfo = ({ user, setAuthModal }) => {
 
     return (
         <div>
-            <h1>This is the Host info page</h1>
+            <Header
+                user={user}
+                setAuthModal={setAuthModal}
+                setAuthType={setAuthType}
+            />
+            <h1>This is the Venue info page</h1>
             <button onClick={checkUserAuth}>
                 Let's get started
             </button>

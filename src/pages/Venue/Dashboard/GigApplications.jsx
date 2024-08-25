@@ -5,71 +5,81 @@ import { firestore } from '../../../firebase';
 import { LoadingThreeDots } from "../../../components/ui/loading/Loading";
 import { ClockIcon, RejectedIcon, TickIcon } from "../../../components/ui/Extras/Icons";
 import { useAuth } from "../../../hooks/useAuth";
+import { useGigs } from "../../../context/GigsContext";
 
 export const GigApplications = () => {
+
     const location = useLocation();
     const { user } = useAuth();
-    const [gigId, setGigId] = useState(location.state.gig.gigId)
-    const [gigDate, setGigDate] = useState(location.state.gig.date);
-    const [venueName, setVenueName] = useState(location.state.gig.venue.venueName);
+    const { gigs } = useGigs();
+
     const [gigInfo, setGigInfo] = useState(null);
     const [musicianProfiles, setMusicianProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const gigRef = doc(firestore, 'gigs', gigId);
-
-        // Set up the onSnapshot listener
-        const unsubscribe = onSnapshot(gigRef, (gigSnapshot) => {
-            if (gigSnapshot.exists()) {
-                const updatedGig = gigSnapshot.data();
-                setGigInfo(updatedGig); // Update the state with the latest gig data
-            } else {
-                console.error('Gig not found');
-            }
-        });
-
-        // Clean up the listener when the component unmounts
-        return () => unsubscribe();
-    }, [gigId]);
+    const gigId = location.state?.gig?.gigId || '';
+    const gigDate = location.state?.gig?.date || '';
+    const venueName = location.state?.gig?.venue?.venueName || '';
 
     useEffect(() => {
+        if (!gigId || !gigs) return;
+
+        const activeGig = gigs.find(gig => gig.gigId === gigId);
+        setGigInfo(activeGig);
+    }, [gigId, gigs]);
+
+    useEffect(() => {
+        if (!gigInfo) return;
+
         const fetchMusicianProfiles = async () => {
-            const profiles = [];
-            for (const applicant of gigInfo.applicants) {
+            const profiles = await Promise.all(gigInfo.applicants.map(async (applicant) => {
                 const musicianRef = doc(firestore, 'musicianProfiles', applicant.id);
                 const musicianSnapshot = await getDoc(musicianRef);
                 if (musicianSnapshot.exists()) {
-                    profiles.push({ ...musicianSnapshot.data(), id: applicant.id, status: applicant.status, proposedFee: applicant.fee });
+                    return { 
+                        ...musicianSnapshot.data(), 
+                        id: applicant.id, 
+                        status: applicant.status, 
+                        proposedFee: applicant.fee 
+                    };
                 }
-            }
-            setMusicianProfiles(profiles);
+                return null;
+            }));
+
+            setMusicianProfiles(profiles.filter(profile => profile !== null));
             setLoading(false);
         };
 
-        if (gigInfo) {
-            fetchMusicianProfiles();
-        }
+        fetchMusicianProfiles();
     }, [gigInfo]);
 
     const formatDate = (timestamp) => {
-        const date = timestamp;
+        const date = timestamp.toDate();
         const day = date.getDate();
         const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
         const month = date.toLocaleDateString('en-GB', { month: 'long' });
+
+        const getOrdinalSuffix = (day) => {
+            if (day > 3 && day < 21) return 'th';
+            switch (day % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        };
+
         return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
     };
 
-    const getOrdinalSuffix = (day) => {
-        if (day > 3 && day < 21) return 'th';
-        switch (day % 10) {
-            case 1: return 'st';
-            case 2: return 'nd';
-            case 3: return 'rd';
-            default: return 'th';
-        }
+    const openMusicianProfile = (musicianId) => {
+        const url = `/musician/${musicianId}/${gigInfo.gigId}`;
+        window.open(url, '_blank');
     };
 
+    if (loading) {
+        return <LoadingThreeDots />;
+    }
     const handleAccept = async (musicianId, event, musicianUserId, proposedFee) => {
         event.stopPropagation();
 
@@ -337,16 +347,11 @@ export const GigApplications = () => {
         }
     };
 
-    const openMusicianProfile = (musicianId) => {
-        const url = `/musician/${musicianId}/${gigInfo.gigId}`;
-        window.open(url, '_blank');
-    };
-
     return (
         <>
             <div className="head">
                 <h1 className="title" style={{ fontWeight: 500 }}>
-                    Applications for {formatDate(gigDate)} at {venueName}
+                    Applications for {formatDate(gigInfo.date)} at {venueName}
                 </h1>
             </div>
             <div className="body gigs">

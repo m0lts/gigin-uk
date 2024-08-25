@@ -294,7 +294,6 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                         </div>
                     </div>
                 </div>
-                <button className="btn secondary">Preview</button>
             </div>
         </>
     )

@@ -8,19 +8,19 @@ import "/styles/common/buttons.styles.css"
 import { LandingPage } from './pages/LandingPage/LandingPage';
 import { useEffect, useState } from 'react';
 import { MainLayout } from './layouts/MainLayout';
-import { HostInfo } from './pages/Host/Info';
+import { VenueHome } from './pages/Venue/Home';
 import { MusicianInfo } from './pages/Musician/Info';
 import { GigGoerInfo } from './pages/GigGoer/Info';
 import { HostLayout } from './layouts/HostLayout';
 import { MusicianLayout } from './layouts/MusicianLayout';
 import { GigGoerLayout } from './layouts/GigGoerLayout';
 import { NoHeaderFooterLayout } from './layouts/NoHeaderFooterLayout';
-import { VenueBuilder } from './pages/Host/VenueBuilder/VenueBuilder';
+import { VenueBuilder } from './pages/Venue/VenueBuilder/VenueBuilder';
 import { useAuth } from './hooks/useAuth';
 import { AuthModal } from './components/common/AuthModal';
 import { LoadingThreeDots } from './components/ui/loading/Loading';
 import { DashboardLayout } from './layouts/DashboardLayout';
-import { HostDashboard } from './pages/Host/Dashboard/Dashboard';
+import { VenueDashboard } from './pages/Venue/Dashboard/Dashboard';
 import { LoadingScreen } from './components/ui/loading/LoadingScreen';
 import { GigFinder } from './pages/Musician/GigFinder/GigFinder';
 import { GigPage } from './pages/Musician/GigPage';
@@ -29,6 +29,7 @@ import { ProfileCreator } from './pages/Musician/Dashboard/ProfileCreator/Profil
 import { MusicianProfile } from './pages/Musician/Profile/Profile';
 import { MessagePage } from './pages/Messages/MessagePage';
 import { MessagesLayout } from './layouts/MessagesLayout';
+import { VenueDashboardLayout } from './layouts/VenueDashboardLayout';
 
 
 
@@ -49,6 +50,9 @@ export default function App() {
     }
   }, [location.pathname]);
 
+  useEffect(() => {
+    console.log(user)
+  }, [user])
   if (loading) {
     return <LoadingScreen />;
   }
@@ -59,11 +63,12 @@ export default function App() {
       <Routes>
         <Route path="/" element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><LandingPage /></MainLayout>} />
         <Route path="/messages" element={<MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout>} />
-        <Route path="/host">
-          <Route index element={<HostInfo user={user} setAuthModal={setAuthModal} />} />
-          <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><HostDashboard /></DashboardLayout>} />
+        <Route path="/venues">
+          <Route index element={<VenueHome user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+          <Route path='add-venue/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
+          <Route path='dashboard/*' element={<VenueDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><VenueDashboard /></VenueDashboardLayout>} />
         </Route>
-        <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
+        {/* <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} /> */}
         <Route path='/musician/create-musician-profile/*' element={<NoHeaderFooterLayout><ProfileCreator user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
         <Route path="/musician">
           <Route index element={<GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />

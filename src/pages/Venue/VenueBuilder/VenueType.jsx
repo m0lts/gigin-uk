@@ -7,7 +7,7 @@ export const VenueType = ({ formData, handleInputChange }) => {
 
     const handleNext = () => {
         if (formData.type === '') return;
-        navigate('/host/venue-builder/venue-details');
+        navigate('/venues/add-venue/venue-details');
     };
 
     return (

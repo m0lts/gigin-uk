@@ -15,12 +15,12 @@ export const TextLogoLink = () => {
         </h1>
     )
 }
-export const HostLogoLink = () => {
+export const VenueLogoLink = () => {
     return (
         <h1 className="logo">
             <Link className="link" to={'/'}>
                 gigin<span className="orange-txt">.</span>
-                <span className="user-type">HOSTS</span>
+                <span className="user-type">VENUES</span>
             </Link>
         </h1>
     )

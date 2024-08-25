@@ -10,12 +10,12 @@ export const InHouseEquipment = ({ formData, handleInputChange }) => {
 
     const handleNext = () => {
         if (formData.equipmentAvailable === '') return;
-        navigate('/host/venue-builder/photos');
+        navigate('/venues/add-venue/photos');
     };
 
     useEffect(() => {
         if (formData.type === '') {
-            navigate('/host/venue-builder');
+            navigate('/venues/add-venue');
         }
     }, [formData])
 

@@ -26,7 +26,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
 
     useEffect(() => {
         if (formData.type === '') {
-            navigate('/host/venue-builder');
+            navigate('/venues/add-venue');
         }
     }, [formData]);
 
@@ -75,9 +75,9 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
         if (formData.address === '') return;
         if (formData.type === 'Public Establishment') {
             if (formData.establishment === '') return;
-            navigate('/host/venue-builder/equipment');
+            navigate('/venues/add-venue/equipment');
         } else {
-            navigate('/host/venue-builder/photos');
+            navigate('/venues/add-venue/photos');
         }
     };
 

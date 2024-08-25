@@ -10,13 +10,13 @@ export const Sidebar = ({ setGigPostModal }) => {
     const [expandedItem, setExpandedItem] = useState('');
 
     useEffect(() => {
-        if (location.pathname.includes('/host/dashboard/gigs')) {
+        if (location.pathname.includes('/venues/dashboard/gigs')) {
             setExpandedItem('gigs');
-        } else if (location.pathname.includes('/host/dashboard/venues')) {
+        } else if (location.pathname.includes('/venues/dashboard/venues')) {
             setExpandedItem('venues');
-        } else if (location.pathname.includes('/host/dashboard/musicians')) {
+        } else if (location.pathname.includes('/venues/dashboard/musicians')) {
             setExpandedItem('musicians');
-        } else if (location.pathname.includes('/host/dashboard/finances')) {
+        } else if (location.pathname.includes('/venues/dashboard/finances')) {
             setExpandedItem('finances');
         } else {
             setExpandedItem('')
@@ -30,73 +30,73 @@ export const Sidebar = ({ setGigPostModal }) => {
           Post a Gig
         </button>
         <ul className="menu">
-          <li className={`menu-item ${location.pathname === '/host/dashboard' && 'active'}`} onClick={() => navigate('/host/dashboard')}>
+          <li className={`menu-item ${location.pathname === '/venues/dashboard' && 'active'}`} onClick={() => navigate('/venues/dashboard')}>
             <HouseIcon />
             Overview
           </li>
         </ul>
         <ul className="menu">
-          <li className={`menu-item expandable ${location.pathname.includes('/host/dashboard/gig') && 'active'}`} onClick={() => {navigate('/host/dashboard/gigs')}}>
+          <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/gig') && 'active'}`} onClick={() => {navigate('/venues/dashboard/gigs')}}>
             <CalendarIcon />
             Gigs
           </li>
           {expandedItem === 'gigs' && (
             <>
-              <li className="menu-item sub top" onClick={() => navigate('/host/dashboard/gigs?status=confirmed')}>
+              <li className="menu-item sub top" onClick={() => navigate('/venues/dashboard/gigs?status=confirmed')}>
                 Confirmed
               </li>
-              <li className="menu-item sub" onClick={() => navigate('/host/dashboard/gigs?status=upcoming')}>
+              <li className="menu-item sub" onClick={() => navigate('/venues/dashboard/gigs?status=upcoming')}>
                 Upcoming
               </li>
-              <li className="menu-item sub bottom" onClick={() => navigate('/host/dashboard/gigs?status=previous')}>
+              <li className="menu-item sub bottom" onClick={() => navigate('/venues/dashboard/gigs?status=previous')}>
                 Previous
               </li>
             </>
           )}
         </ul>
         <ul className="menu">
-        <li className={`menu-item expandable ${location.pathname.includes('/host/dashboard/venues') && 'active'}`} onClick={() => {navigate('/host/dashboard/venues')}}>
+        <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/venues') && 'active'}`} onClick={() => {navigate('/venues/dashboard/venues')}}>
           <DoorIcon />
           Venues
         </li>
         {expandedItem === 'venues' && (
           <>
-            <li className="menu-item sub top" onClick={() => navigate('/host/dashboard/venues')}>
+            <li className="menu-item sub top" onClick={() => navigate('/venues/dashboard/venues')}>
               My Venues
             </li>
-            <li className="menu-item sub bottom" onClick={() => navigate('/host/venue-builder')}>
+            <li className="menu-item sub bottom" onClick={() => navigate('/venues/venue-builder')}>
               New Venue
             </li>
           </>
         )}
       </ul>
       <ul className="menu">
-        <li className={`menu-item expandable ${location.pathname.includes('/host/dashboard/musicians') && 'active'}`} onClick={() => {navigate('/host/dashboard/musicians')}}>
+        <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/musicians') && 'active'}`} onClick={() => {navigate('/venues/dashboard/musicians')}}>
           <GuitarsIcon />
           Musicians
         </li>
         {expandedItem === 'musicians' && (
           <>
-            <li className="menu-item sub top" onClick={() => navigate('/host/dashboard/musicians')}>
+            <li className="menu-item sub top" onClick={() => navigate('/venues/dashboard/musicians')}>
               Saved Musicians
             </li>
-            <li className="menu-item sub bottom" onClick={() => navigate('/host/dashboard/musicians/find')}>
+            <li className="menu-item sub bottom" onClick={() => navigate('/venues/dashboard/musicians/find')}>
               Find Musicians
             </li>
           </>
         )}
       </ul>
       <ul className="menu">
-        <li className={`menu-item expandable ${location.pathname.includes('/host/dashboard/finances') && 'active'}`} onClick={() => {navigate('/host/dashboard/finances')}}>
+        <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/finances') && 'active'}`} onClick={() => {navigate('/venues/dashboard/finances')}}>
           <CoinsIcon />
           Finances
         </li>
         {expandedItem === 'finances' && (
           <>
-            <li className={`menu-item sub top`} onClick={() => navigate('/host/dashboard/finances')}>
+            <li className={`menu-item sub top`} onClick={() => navigate('/venues/dashboard/finances')}>
               Card Details
             </li>
-            <li className={`menu-item sub bottom`} onClick={() => navigate('/host/dashboard/finances')}>
+            <li className={`menu-item sub bottom`} onClick={() => navigate('/venues/dashboard/finances')}>
               Invoices
             </li>
           </>

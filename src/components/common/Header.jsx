@@ -1,5 +1,5 @@
 import { useNavigate, useLocation, Link } from "react-router-dom"
-import { HostLogoLink, MusicianLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
+import { VenueLogoLink, MusicianLogoLink, TextLogo, TextLogoLink } from "../ui/logos/Logos"
 import '/styles/common/header.styles.css'
 import { useAuth } from "../../hooks/useAuth"
 import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } from "/components/ui/Extras/Icons"
@@ -25,68 +25,68 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     const [newMessages, setNewMessages] = useState(false);
     const [conversations, setConversations] = useState([]);
 
-    useEffect(() => {
-        if (!user) return;
+    // useEffect(() => {
+    //     if (!user) return;
 
-        // Check for conversations where the user is a participant
-        const checkForNewMessages = () => {
-            const conversationsRef = collection(firestore, 'conversations');
-            const queries = [];
+    //     // Check for conversations where the user is a participant
+    //     const checkForNewMessages = () => {
+    //         const conversationsRef = collection(firestore, 'conversations');
+    //         const queries = [];
 
-            // Query by musicianProfile ID
-            if (user.musicianProfile && user.musicianProfile.length > 0) {
-                const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile[0]));
-                queries.push(musicianQuery);
-            }
+    //         // Query by musicianProfile ID
+    //         if (user.musicianProfile && user.musicianProfile.length > 0) {
+    //             const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile[0]));
+    //             queries.push(musicianQuery);
+    //         }
 
-            // Query by each venueProfile ID
-            if (user.venueProfiles && user.venueProfiles.length > 0) {
-                user.venueProfiles.forEach(venueProfileId => {
-                    const venueQuery = query(conversationsRef, where('participants', 'array-contains', venueProfileId));
-                    queries.push(venueQuery);
-                });
-            }
+    //         // Query by each venueProfile ID
+    //         if (user.venueProfiles && user.venueProfiles.length > 0) {
+    //             user.venueProfiles.forEach(venueProfileId => {
+    //                 const venueQuery = query(conversationsRef, where('participants', 'array-contains', venueProfileId));
+    //                 queries.push(venueQuery);
+    //             });
+    //         }
 
-            // Set up listeners for each query
-            const unsubscribeFunctions = queries.map(q => 
-                onSnapshot(q, snapshot => {
-                    if (!snapshot.empty) {
-                        const newConversations = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data(),
-                        }));
+    //         // Set up listeners for each query
+    //         const unsubscribeFunctions = queries.map(q => 
+    //             onSnapshot(q, snapshot => {
+    //                 if (!snapshot.empty) {
+    //                     const newConversations = snapshot.docs.map(doc => ({
+    //                         id: doc.id,
+    //                         ...doc.data(),
+    //                     }));
                         
-                        setConversations(prevConversations => {
-                            // Merge new conversations into the existing state
-                            const updatedConversations = [...prevConversations];
-                            newConversations.forEach(newConv => {
-                                const existingIndex = updatedConversations.findIndex(conv => conv.id === newConv.id);
-                                if (existingIndex !== -1) {
-                                    updatedConversations[existingIndex] = newConv;
-                                } else {
-                                    updatedConversations.push(newConv);
-                                }
-                            });
-                            return updatedConversations;
-                        });
-                        // Check if there are any new messages
-                        snapshot.docChanges().forEach(change => {
-                            if (change.type === 'added') {
-                                setNewMessages(true); // New message detected
-                            }
-                        });
-                    }
-                })
-            );
+    //                     setConversations(prevConversations => {
+    //                         // Merge new conversations into the existing state
+    //                         const updatedConversations = [...prevConversations];
+    //                         newConversations.forEach(newConv => {
+    //                             const existingIndex = updatedConversations.findIndex(conv => conv.id === newConv.id);
+    //                             if (existingIndex !== -1) {
+    //                                 updatedConversations[existingIndex] = newConv;
+    //                             } else {
+    //                                 updatedConversations.push(newConv);
+    //                             }
+    //                         });
+    //                         return updatedConversations;
+    //                     });
+    //                     // Check if there are any new messages
+    //                     snapshot.docChanges().forEach(change => {
+    //                         if (change.type === 'added') {
+    //                             setNewMessages(true); // New message detected
+    //                         }
+    //                     });
+    //                 }
+    //             })
+    //         );
 
-            // Clean up the listeners when the component unmounts
-            return () => {
-                unsubscribeFunctions.forEach(unsub => unsub());
-            };
-        };
+    //         // Clean up the listeners when the component unmounts
+    //         return () => {
+    //             unsubscribeFunctions.forEach(unsub => unsub());
+    //         };
+    //     };
 
-        checkForNewMessages();
-    }, [user]);
+    //     checkForNewMessages();
+    // }, [user]);
 
     const handleScaleSelection = (scale) => {
         setFeedback(prev => ({ ...prev, scale }));
@@ -124,7 +124,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
 
     const getLocation = () => {
         if (location.pathname.includes('host')) {
-            return <HostLogoLink />;
+            return <VenueLogoLink />;
         } else if (location.pathname.includes('musician')) {
             return <MusicianLogoLink />;
         } else {

@@ -69,27 +69,23 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
     };
 
     useEffect(() => {
-        const checkForSavedProfile = async () => {
-            try {
-              const venuesRef = collection(firestore, 'venueProfiles');
-              const q = query(venuesRef, where('userId', '==', user.uid), where('completed', '==', false));
-              const querySnapshot = await getDocs(q);
-          
-              if (!querySnapshot.empty) {
-                const incompleteProfile = querySnapshot.docs[0].data();
-                setSavedProfile(incompleteProfile);
-                setCompleteSavedProfileModal(true);
-              }
-            } catch (error) {
-              console.error('Error checking for saved profile:', error);
-            }
+        const checkForSavedProfile = async () => {        
+            if (user.venueProfiles && user.venueProfiles.some(profile => !profile.completed)) {
+                const savedProfile = user.venueProfiles.find(profile => !profile.completed);
+                if (savedProfile) {
+                    setSavedProfile(savedProfile);
+                    setCompleteSavedProfileModal(true);
+                }
+                }
         };
 
         if (!user) {
             setAuthModal(true);
             setAuthClosable(false);
+            return;
         }
-        if (user && formData.name === '') {
+        // Only check for saved profile if the user has a profile associated with their account
+        if (user.venueProfiles && formData.name === '') {
             checkForSavedProfile();
         }
     }, [user, setAuthModal, formData]);
@@ -142,7 +138,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             setTimeout(() => setProgress(66), 6000);
             setTimeout(() => {
                 setProgress(100);
-                navigate('/host/dashboard');
+                navigate('/venues/dashboard');
             }, 9000);
 
         } catch (error) {
@@ -186,7 +182,12 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 userId: user.uid,
             }, {merge:true});
 
-            navigate('/');
+            const accountRef = doc(firestore, 'users', user.uid);
+            await updateDoc(accountRef, {
+                venueProfiles: arrayUnion(formData.venueId),
+            })
+
+            navigate('/venues');
 
         } catch (error) {
             console.error('Error uploading images or creating venue profile: ', error);
@@ -229,23 +230,23 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
     const redirectToStep = (step) => {
         if (step === 1) {
-            navigate('/host/venue-builder/');
+            navigate('/venues/add-venue/');
         } else if (step === 2) {
-            navigate('/host/venue-builder/venue-details');
+            navigate('/venues/add-venue/venue-details');
         } else if (step === 3) {
             if (savedProfile.type === 'Public Establishment') {
-                navigate('/host/venue-builder/equipment');
+                navigate('/venues/add-venue/equipment');
             } else {
-                navigate('/host/venue-builder/photos');
+                navigate('/venues/add-venue/photos');
             }
         } else if (step === 4) {
             if (savedProfile.type === 'Public Establishment') {
-                navigate('/host/venue-builder/photos');
+                navigate('/venues/add-venue/photos');
             } else {
-                navigate('/host/venue-builder/additional-details');
+                navigate('/venues/add-venue/additional-details');
             }
         } else if (step === 5) {
-            navigate('/host/venue-builder/additional-details');
+            navigate('/venues/add-venue/additional-details');
         }
     };
 

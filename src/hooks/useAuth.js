@@ -1,26 +1,77 @@
 import { useState, useEffect } from 'react';
 import { auth, firestore } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, where, getDocs, query } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 export const useAuth = () => {
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-        setUser({ uid: firebaseUser.uid, ...userDoc.data(), email: firebaseUser.email });
+        try {
+          const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+
+          // Real-time listener for user document
+          const unsubscribeUserDoc = onSnapshot(userDocRef, async (userDocSnapshot) => {
+            const userData = { uid: firebaseUser.uid, ...userDocSnapshot.data(), email: firebaseUser.email };
+            let userMusicianProfile = null;
+            let userVenueProfiles = [];
+
+            if (userData.musicianProfile && userData.musicianProfile.length > 0) {
+              const musicianProfileRef = doc(firestore, 'musicianProfiles', userData.musicianProfile[0]);
+              const musicianProfileDoc = await getDoc(musicianProfileRef);
+
+              if (musicianProfileDoc.exists()) {
+                userMusicianProfile = musicianProfileDoc.data();
+                userData.musicianProfile = userMusicianProfile;
+              }
+            }
+
+            if (userData.venueProfiles && userData.venueProfiles.length > 0) {
+              const venueProfilePromises = userData.venueProfiles.map(async (venueProfileId) => {
+                const venueProfileRef = doc(firestore, 'venueProfiles', venueProfileId);
+                const venueProfileDoc = await getDoc(venueProfileRef);
+                if (venueProfileDoc.exists()) {
+                  return { id: venueProfileId, ...venueProfileDoc.data() };
+                }
+                return null;
+              });
+
+              userVenueProfiles = await Promise.all(venueProfilePromises);
+              userData.venueProfiles = userVenueProfiles.filter(profile => profile !== null);
+            }
+
+            setUser(userData);
+            setLoading(false); // Set loading to false only when data is successfully fetched
+          });
+
+          // Cleanup function to unsubscribe from user document updates
+          return () => {
+            unsubscribeUserDoc();
+            setLoading(false); // Ensure loading is set to false when unsubscribing
+          };
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setUser(null);
+          setLoading(false); // Set loading to false on error
+        }
       } else {
         setUser(null);
+        setLoading(false); // Set loading to false if no user is logged in
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
-
+    // Cleanup function to unsubscribe from auth state changes
+    return () => {
+      unsubscribeAuth();
+      setLoading(false); // Ensure loading is set to false when unsubscribing from auth changes
+    };
+  }, [navigate]);
   const checkCredentials = async (credentials) => {
     try {
       const userDoc = await getDoc(doc(firestore, 'users', credentials.email));
@@ -37,11 +88,19 @@ export const useAuth = () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
       const userDoc = await getDoc(doc(firestore, 'users', userCredential.user.uid));
-      setUser({ uid: userCredential.user.uid, ...userDoc.data() });
-    } catch (error) {
-      setUser(null);
-      throw { error };
-    }
+      const userDocData = userDoc.data() || {};
+      setUser({ uid: userCredential.user.uid, ...userDocData });
+      const musicianProfile = userDocData.musicianProfile || [];
+      const venueProfiles = userDocData.venueProfiles || [];
+      if (musicianProfile.length < 1 && venueProfiles.length > 0) {
+        navigate('/venues');
+      } else if (musicianProfile.length > 0 && venueProfiles.length < 1) {
+        navigate('/');
+      }
+      } catch (error) {
+        setUser(null);
+        throw { error };
+      }
   };
 
   const signup = async (credentials, marketingConsent) => {

@@ -64,7 +64,7 @@ export const Photos = ({ formData, handleInputChange }) => {
 
     const handleNext = () => {
         if (images.length < 3) return;
-        navigate('/host/venue-builder/additional-details');
+        navigate('/venues/add-venue/additional-details');
     };
 
     const moveImage = (fromIndex, toIndex) => {
@@ -80,7 +80,7 @@ export const Photos = ({ formData, handleInputChange }) => {
 
     useEffect(() => {
         if (formData.type === '') {
-            navigate('/host/venue-builder');
+            navigate('/venues/add-venue');
         }
     }, [formData]);
 

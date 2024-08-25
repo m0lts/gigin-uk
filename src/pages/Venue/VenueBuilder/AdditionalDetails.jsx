@@ -9,7 +9,7 @@ export const AdditionalDetails = ({ formData, handleInputChange, handleSubmit })
 
     useEffect(() => {
         if (formData.type === '') {
-            navigate('/host/venue-builder');
+            navigate('/venues/add-venue');
         }
     }, [formData])
 
