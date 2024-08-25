@@ -18,35 +18,26 @@ export const MusicianDashboard = () => {
 
     const [loadingData, setLoadingData] = useState(true);
     const [musicianProfile, setMusicianProfile] = useState(null);
-    const [gigs, setGigs] = useState([]);
+    const [gigApplications, setGigApplications] = useState([]);
 
     useEffect(() => {
         const fetchMusicianData = async () => {
             if (!user) return;
             setLoadingData(true);
-    
-            try {
-                const profilesRef = collection(firestore, 'musicianProfiles');
-                const q = query(profilesRef, where('userId', '==', user.uid));
-                const querySnapshot = await getDocs(q);
-    
-                if (!querySnapshot.empty) {
-                    const musicianProfile = querySnapshot.docs[0].data();
-                    setMusicianProfile(musicianProfile);
-                    setGigs(musicianProfile.gigs);
-                } else {
-                    navigate('/musician/create-musician-profile');
-                }
-    
-                setLoadingData(false);
-            } catch (error) {
-                console.error('Error fetching musician profile:', error);
+
+            if (!user.musicianProfile) {
+                navigate('/musician/create-musician-profile');
                 setLoadingData(false);
             }
+
+            setMusicianProfile(user.musicianProfile);
+            setGigApplications(user.musicianProfile.gigApplications ? user.musicianProfile.gigApplications : []);
+            setLoadingData(false);
         };
     
         fetchMusicianData();
     }, [user]);
+
 
     return (
         <>  
@@ -57,7 +48,7 @@ export const MusicianDashboard = () => {
                 <Routes>
                     <Route index element={<h1>Overview</h1>} />
                     <Route path="profile" element={<ProfileTab musicianProfile={musicianProfile} />} />
-                    <Route path="gigs" element={<Gigs gigs={gigs} musicianId={musicianProfile.musicianId} />} />
+                    <Route path="gigs" element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} />} />
                     <Route path="bands" element={<h1>Bands</h1>} />
                     <Route path="finances" element={<h1>Finances</h1>} />
                 </Routes>

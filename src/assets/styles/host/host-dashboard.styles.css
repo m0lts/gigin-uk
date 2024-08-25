@@ -150,7 +150,7 @@
     color: gray;
 }
 
-.window .body.gigs table .status.rejected {
+.window .body.gigs table .status.declined {
     border:1px solid var(--gn-red);
     background-color: var(--gn-offset-red);
     color: var(--gn-red);

@@ -236,7 +236,7 @@ export const ProfileCreator = () => {
     const handleSaveAndExit = async () => {
         setSavingProfile(true);
         if (formData.name === '') {
-            navigate('/musician');
+            navigate('/find-a-gig');
             setSavingProfile(false);
             return;
         }
@@ -287,11 +287,10 @@ export const ProfileCreator = () => {
             }, { merge: true });
     
             if (updatedFormData.completed) {
-                navigate('/musician/dashboard')
+                navigate('/dashboard')
             } else {
-                navigate('/musician');
+                navigate('/find-a-gig');
             }
-            window.location.reload();
             setSavingProfile(false);
     
         } catch (error) {

@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom"
-import { Header } from "../../../components/common/Header";
+import { Header as MusicianHeader } from "../../../components/musician-components/Header";
+import { Header as VenueHeader } from "../../../components/venue-components/Header";
 import { firestore } from '../../../firebase';
 import { getDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { OverviewTab } from "../Dashboard/Profile/OverviewTab";
 import { MusicTab } from "../Dashboard/Profile/MusicTab";
 import { ReviewsTab } from "../Dashboard/Profile/ReviewsTab";
 import { ClockIcon, RejectedIcon, StarIcon, TickIcon } from "../../../components/ui/Extras/Icons";
+import { useGigs } from "../../../context/GigsContext";
 
 export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
 
     const { musicianId, gigId } = useParams();
+
+    const { gigs } = useGigs();
+
     const [musicianProfile, setMusicianProfile] = useState();
     const [applicantData, setApplicantData] = useState();
     const [activeTab, setActiveTab] = useState('overview');
@@ -26,22 +31,11 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 if (musicianSnapshot.exists()) {
                     const musician = musicianSnapshot.data();
                     setMusicianProfile(musician);
-                    if (gigId) {
-                        const gigRef = doc(firestore, 'gigs', gigId);
-    
-                        // Set up the onSnapshot listener
-                        const unsubscribe = onSnapshot(gigRef, (gigSnapshot) => {
-                            if (gigSnapshot.exists()) {
-                                const gig = gigSnapshot.data();
-                                const applicant = gig.applicants.find(applicant => applicant.id === musician.musicianId);
-                                setApplicantData(applicant);
-                            } else {
-                                console.error('No such applicant!');
-                            }
-                        });
-    
-                        // Clean up the listener when the component unmounts
-                        return () => unsubscribe();
+
+                    if (gigs) {
+                        const currentGig = gigs.find(gig => gig.gigId === gigId)
+                        const applicant = currentGig.applicants.find(applicant => applicant.id === musician.musicianId);
+                        setApplicantData(applicant);
                     }
 
                 } else {
@@ -142,11 +136,19 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
 
     return (
         <div className="musician-profile-page" style={{ padding: `0 ${padding}` }}>
-            <Header 
-                user={user}
-                setAuthModal={setAuthModal}
-                setAuthType={setAuthType}
-            />
+            {user.venueProfiles ? (
+                <VenueHeader
+                    user={user}
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                />
+            ) : (
+                <MusicianHeader
+                    user={user}
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                />
+            )}
             {loading ? (
                 <p>loading...</p>
             ) : (

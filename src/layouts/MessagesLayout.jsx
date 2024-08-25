@@ -1,5 +1,6 @@
 import { useEffect } from "react"
-import { Header } from "../components/common/Header"
+import { Header as MusicianHeader } from "../components/musician-components/Header"
+import { Header as VenuesHeader } from "../components/venue-components/Header"
 import '/styles/common/layouts.styles.css'
 import { useNavigate } from "react-router-dom"
 
@@ -15,12 +16,23 @@ export const MessagesLayout = ({ children, setAuthModal, setAuthType, user, logo
 
     return (
         <section className="layout-messages">
-            <Header
-                setAuthModal={setAuthModal}
-                setAuthType={setAuthType}
-                user={user}
-                logout={logout}
-            />
+            {user.venueProfiles ? (
+                <VenuesHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                    logout={logout}
+                />
+
+            ) : (
+                <MusicianHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                    logout={logout}
+                />
+
+            )}
             <main className="body">{children}</main>
         </section>
     )

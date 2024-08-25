@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { Header } from "../components/common/Header"
+import { Header } from "../components/musician-components/Header"
 import { useAuth } from "../hooks/useAuth"
 import '/styles/common/dashboard.styles.css'
 
-export const DashboardLayout = ({ children, setAuthModal, setAuthType, user, setAuthClosable }) => {
+export const MusicianDashboardLayout = ({ children, setAuthModal, setAuthType, user, setAuthClosable }) => {
 
     const { loading } = useAuth();
 

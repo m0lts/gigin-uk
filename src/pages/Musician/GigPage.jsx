@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { firestore } from '../../firebase';
-import { Header } from '../../components/common/Header';
+import { Header } from '../../components/musician-components/Header';
 import { getDoc, doc, getDocs, collection, Timestamp, updateDoc, addDoc, query, where } from 'firebase/firestore';
 import '/styles/musician/gig-page.styles.css';
 import { BackgroundMusicIcon, ClubIcon, GuitarsIcon, HouseIcon, InviteIcon, MicrophoneIcon, MicrophoneLinesIcon, PeopleGroupIcon, SaveIcon, ShareIcon, SpeakersIcon, TicketIcon, WeddingIcon } from '../../components/ui/Extras/Icons';
@@ -10,10 +10,14 @@ import mapboxgl from 'mapbox-gl';
 import useMapboxAccessToken from "../../hooks/useAccessTokens";
 import 'react-loading-skeleton/dist/skeleton.css';
 import { LoadingThreeDots } from '../../components/ui/loading/Loading';
+import { useGigs } from '../../context/GigsContext';
 
 export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const { gigId } = useParams();
     const navigate = useNavigate();
+
+    const { gigs } = useGigs();
+
     const [gigData, setGigData] = useState(null);
     const [venueProfile, setVenueProfile] = useState(null);
     const [similarGigs, setSimilarGigs] = useState([]);
@@ -31,59 +35,45 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [newOffer, setNewOffer] = useState();
 
     useEffect(() => {
-        const fetchGigData = async () => {
-            try {
-                const gigRef = doc(firestore, 'gigs', gigId);
-                const gigSnapshot = await getDoc(gigRef);
-                if (gigSnapshot.exists()) {
-                    const gig = gigSnapshot.data();
-                    setGigData(gig);
+        const filterGigData = async () => {
+            
+            if (!gigs || !gigId) return;
 
-                    // Check if the user has already applied to this gig
-                    if (user && user.musicianProfile && user.musicianProfile.length > 0) {
-                        const musicianProfileId = user.musicianProfile[0];
-                        const userHasApplied = gig.applicants.some(applicant => applicant.id === musicianProfileId);
+            const gig = gigs.find(gig => gig.id === gigId);
 
-                        if (userHasApplied) {
-                            setUserAppliedToGig(true);
-                        }
-                    }
+            if (gig) {
+                setGigData(gig);
+            }
 
-                    // Fetch venue profile data
-                    const venueRef = doc(firestore, 'venueProfiles', gig.venueId);
-                    const venueSnapshot = await getDoc(venueRef);
-                    if (venueSnapshot.exists()) {
-                        setVenueProfile(venueSnapshot.data());
-                    } else {
-                        console.error('No such venue!');
-                    }
-                } else {
-                    console.error('No such gig!');
+            // Check if the user has already applied to this gig
+            if (user && user.musicianProfile) {
+                const musicianProfileId = user.musicianProfile.musicianId;
+                const userHasApplied = gig.applicants.some(applicant => applicant.id === musicianProfileId);
+                setUserAppliedToGig(userHasApplied);
+            }
+
+            if (gig) {
+                // Fetch venue profile data
+                const venueRef = doc(firestore, 'venueProfiles', gig.venueId);
+                const venueSnapshot = await getDoc(venueRef);
+                if (venueSnapshot.exists()) {
+                    setVenueProfile(venueSnapshot.data());
                 }
-            } catch (error) {
-                console.error('Error fetching gig or venue data:', error);
-            } finally {
                 setLoading(false);
             }
-        };
 
-        const fetchSimilarGigs = async () => {
-            try {
-                const gigsSnapshot = await getDocs(collection(firestore, 'gigs'));
-                const gigsData = gigsSnapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
-                .filter(gig => gig.id !== gigId);
+            // Fetch similar gigs
+            const similarGigsList = gigs
+                .filter(similarGig => similarGig.id !== gigId)
+                .map(gig => ({ id: gig.id, ...gig }));
+            setSimilarGigs(similarGigsList);
 
-                setSimilarGigs(gigsData);
-            } catch (error) {
-                console.error('Error fetching similar gigs:', error);
-            }
-        };
+        }
 
-        fetchGigData();
-        fetchSimilarGigs();
+        filterGigData();
 
-    }, [gigId]);
+    }, [gigs, gigId, user]);
+
 
     useEffect(() => {
         const handleResize = () => {
@@ -293,7 +283,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         if (userAppliedToGig) return;
         setApplyingToGig(true);
 
-        if (!user.musicianProfile || user.musicianProfile.length < 1) {
+        if (!user.musicianProfile) {
             setNoProfileModal(true);
             setApplyingToGig(false);
             return;
@@ -301,22 +291,19 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
 
         try {
             // Check if musician profile is complete
-            const musicianProfileId = user.musicianProfile[0];
-            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
-            const musicianProfileSnapshot = await getDoc(musicianProfileRef);
-            if (musicianProfileSnapshot.exists()) {
-                const musicianProfile = musicianProfileSnapshot.data();
-                if (!musicianProfile.completed) {
-                    setNoProfileModal(true);
-                    setIncompleteMusicianProfile(musicianProfile);
-                    return;
-                }
+            if (!user.musicianProfile.completed) {
+                setNoProfileModal(true);
+                setIncompleteMusicianProfile(user.musicianProfile);
+                return;
+            }
+
+            if (user.musicianProfile.completed) {
 
                 const applicants = gigData.applicants;
 
                 // Add the new application to the applicants array
                 const newApplication = {
-                    id: musicianProfileId,
+                    id: user.musicianProfile.musicianId,
                     timestamp: Timestamp.now(),
                     fee: gigData.budget || '£0',
                     status: 'Pending',
@@ -336,52 +323,55 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                     applicants: updatedApplicants,
                 }));
 
-                const updatedGigsArray = musicianProfile.gigs ? [...musicianProfile.gigs, gigId] : [gigId];
+                const updatedGigApplicationsArray = user.musicianProfile.gigApplications ? [...user.musicianProfile.gigApplications, gigId] : [gigId];
+
+                const musicianProfileId = user.musicianProfile.musicianId;
+                const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
                 await updateDoc(musicianProfileRef, {
-                    gigs: updatedGigsArray,
+                    gigApplications: updatedGigApplicationsArray,
                 });
 
-                // Step 1: Check if a conversation already exists
-                const conversationsRef = collection(firestore, 'conversations');
-                const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianProfileId), where('gigId', '==', gigId));
-                const conversationSnapshot = await getDocs(conversationQuery);
+                // // Step 1: Check if a conversation already exists
+                // const conversationsRef = collection(firestore, 'conversations');
+                // const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianProfileId), where('gigId', '==', gigId));
+                // const conversationSnapshot = await getDocs(conversationQuery);
 
-                let conversationId;
+                // let conversationId;
 
-                if (conversationSnapshot.empty) {
-                    // Step 2: If no conversation exists, create a new one
-                    const newConversation = {
-                        participants: [
-                            gigData.venueId,
-                            musicianProfileId
-                        ],
-                        accountNames: [
-                            { participantId: gigData.venueId, accountName: gigData.accountName, accountId: venueProfile.user, role: 'venue' }, 
-                            { participantId: musicianProfileId, accountName: musicianProfile.name, accountId: musicianProfile.userId, role: 'musician' }
-                        ],
-                        gigId: gigId,
-                        lastMessage: `${musicianProfile.name} applied to the gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}.`,
-                        lastMessageTimestamp: Timestamp.now(),
-                        status: "open",
-                        createdAt: Timestamp.now(),
-                    };
-                    const conversationDocRef = await addDoc(conversationsRef, newConversation);
-                    conversationId = conversationDocRef.id;
-                } else {
-                    // If a conversation already exists, get its ID
-                    conversationId = conversationSnapshot.docs[0].id;
-                }
+                // if (conversationSnapshot.empty) {
+                //     // Step 2: If no conversation exists, create a new one
+                //     const newConversation = {
+                //         participants: [
+                //             gigData.venueId,
+                //             musicianProfileId
+                //         ],
+                //         accountNames: [
+                //             { participantId: gigData.venueId, accountName: gigData.accountName, accountId: venueProfile.user, role: 'venue' }, 
+                //             { participantId: musicianProfileId, accountName: musicianProfile.name, accountId: musicianProfile.userId, role: 'musician' }
+                //         ],
+                //         gigId: gigId,
+                //         lastMessage: `${musicianProfile.name} applied to the gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}.`,
+                //         lastMessageTimestamp: Timestamp.now(),
+                //         status: "open",
+                //         createdAt: Timestamp.now(),
+                //     };
+                //     const conversationDocRef = await addDoc(conversationsRef, newConversation);
+                //     conversationId = conversationDocRef.id;
+                // } else {
+                //     // If a conversation already exists, get its ID
+                //     conversationId = conversationSnapshot.docs[0].id;
+                // }
 
-                // Step 3: Send an automatic message to the host
-                const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                await addDoc(messagesRef, {
-                    senderId: user.uid,
-                    receiverId: venueProfile.user,
-                    text: `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName} for ${gigData.budget}`,
-                    type: "application",
-                    status: 'Pending...',
-                    timestamp: Timestamp.now(),
-                });
+                // // Step 3: Send an automatic message to the host
+                // const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                // await addDoc(messagesRef, {
+                //     senderId: user.uid,
+                //     receiverId: venueProfile.user,
+                //     text: `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName} for ${gigData.budget}`,
+                //     type: "application",
+                //     status: 'Pending...',
+                //     timestamp: Timestamp.now(),
+                // });
 
                 // Set application state to success
                 setUserAppliedToGig(true);
@@ -393,23 +383,26 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         }
     }
 
-    const handleNegotiateButtonClick = () => {
+    const handleNegotiateButtonClick = () => {        
         if (!user) {
             setAuthModal(true);
             setAuthType('login');
             setApplyingToGig(false);
             return;
+        } else if (!user.musicianProfile.completed) {
+            setNoProfileModal(true);
+            setIncompleteMusicianProfile(musicianProfile);
+            return;
         } else {
-            setNegotiateModal(true)
+            setNegotiateModal(true);
         }
-
     }
 
     const handleNegotiate = async () => {
 
         if (userAppliedToGig) return;
 
-        if (!user.musicianProfile || user.musicianProfile.length < 1) {
+        if (!user.musicianProfile) {
             setNoProfileModal(true);
             setApplyingToGig(false);
             return;
@@ -418,22 +411,20 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         if (!newOffer) return;
 
         try {
-            const musicianProfileId = user.musicianProfile[0];
-            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
-            const musicianProfileSnapshot = await getDoc(musicianProfileRef);
-            if (musicianProfileSnapshot.exists()) {
-                const musicianProfile = musicianProfileSnapshot.data();
-                if (!musicianProfile.completed) {
-                    setNoProfileModal(true);
-                    setIncompleteMusicianProfile(musicianProfile);
-                    return;
-                }
+            // Check if musician profile is complete
+            if (!user.musicianProfile.completed) {
+                setNoProfileModal(true);
+                setIncompleteMusicianProfile(user.musicianProfile);
+                return;
+            }
+
+            if (user.musicianProfile.completed) {
 
                 const applicants = gigData.applicants;
 
                 // Add the new application to the applicants array
                 const newApplication = {
-                    id: musicianProfile.musicianId,
+                    id: user.musicianProfile.musicianId,
                     timestamp: Timestamp.now(),
                     fee: newOffer || '£0',
                     status: 'Pending',
@@ -453,25 +444,28 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                     applicants: updatedApplicants,
                 }));
 
-                const updatedGigsArray = musicianProfile.gigs ? [...musicianProfile.gigs, gigId] : [gigId];
+                const updatedGigApplicationsArray = user.musicianProfile.gigApplications ? [...user.musicianProfile.gigApplications, gigId] : [gigId];
+
+                const musicianProfileId = user.musicianProfile.musicianId;
+                const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
                 await updateDoc(musicianProfileRef, {
-                    gigs: updatedGigsArray,
+                    gigApplications: updatedGigApplicationsArray,
                 });
 
-                // Fetch or create the conversation (similar to the logic in handleGigApplication)
-                const conversationId = await getOrCreateConversation(musicianProfile, 'negotiation');
+                // // Fetch or create the conversation (similar to the logic in handleGigApplication)
+                // const conversationId = await getOrCreateConversation(musicianProfile, 'negotiation');
         
-                // Send a negotiation message
-                const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                await addDoc(messagesRef, {
-                    senderId: user.uid,
-                    receiverId: venueProfile.user,
-                    text: `${musicianProfile.name} wants to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}`,
-                    oldFee: gigData.budget,
-                    newFee: newOffer,
-                    type: "negotiation",
-                    timestamp: Timestamp.now(),
-                });
+                // // Send a negotiation message
+                // const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                // await addDoc(messagesRef, {
+                //     senderId: user.uid,
+                //     receiverId: venueProfile.user,
+                //     text: `${musicianProfile.name} wants to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}`,
+                //     oldFee: gigData.budget,
+                //     newFee: newOffer,
+                //     type: "negotiation",
+                //     timestamp: Timestamp.now(),
+                // });
         }
         } catch (error) {
             console.error("Error sending negotiation message:", error);
@@ -482,128 +476,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     };
     
     const handleMessage = async () => {
-        try {
-            const musicianProfileId = user.musicianProfile[0];
-            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
-            const musicianProfileSnapshot = await getDoc(musicianProfileRef);
-            if (musicianProfileSnapshot.exists()) {
-                const musicianProfile = musicianProfileSnapshot.data();
-                if (!musicianProfile.completed) {
-                    setNoProfileModal(true);
-                    setIncompleteMusicianProfile(musicianProfile);
-                    return;
-                }
-
-                const applicants = gigData.applicants;
-
-                // Add the new application to the applicants array
-                const newApplication = {
-                    id: musicianProfileId,
-                    timestamp: Timestamp.now(),
-                    fee: gigData.budget || '£0',
-                    status: 'Pending',
-                };
-
-                // Update the applicants array
-                const updatedApplicants = [...applicants, newApplication];
-
-                // Update the gig document with the new applicants array
-                const gigRef = doc(firestore, 'gigs', gigId);
-                await updateDoc(gigRef, {
-                    applicants: updatedApplicants,
-                });
-
-                setGigData(prevData => ({
-                    ...prevData,
-                    applicants: updatedApplicants,
-                }));
-
-                const updatedGigsArray = musicianProfile.gigs ? [...musicianProfile.gigs, gigId] : [gigId];
-                await updateDoc(musicianProfileRef, {
-                    gigs: updatedGigsArray,
-                });
-                // Fetch or create the conversation (similar to the logic in handleGigApplication)
-                const conversationId = await getOrCreateConversation(musicianProfile, 'message');
-                const musicianProfileId = user.musicianProfile[0];
-        
-                // Send a general message (e.g., open a message input modal to get the message text)
-                const messageText = prompt("Enter your message:"); // Replace with a proper input in your UI
-                if (messageText) {
-                    const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    await addDoc(messagesRef, {
-                        senderId: musicianProfileId,
-                        receiverId: gigData.venueId, // Assuming you have the hostId
-                        text: messageText,
-                        type: "text",
-                        timestamp: Timestamp.now(),
-                    });
-                }
-            }
-        } catch (error) {
-            console.error("Error sending message:", error);
-        }
+        console.log('message')
     };
     
 
-    const getOrCreateConversation = async (musicianProfile, context) => {
-
-        if (userAppliedToGig) return;
-        setApplyingToGig(true);
-
-        if (!user.musicianProfile || user.musicianProfile.length < 1) {
-            setNoProfileModal(true);
-            setApplyingToGig(false);
-            return;
-        }
-
-        const musicianProfileId = user.musicianProfile[0];
-
-        const conversationsRef = collection(firestore, 'conversations');
-        const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianProfileId), where('gigId', '==', gigId));
-        const conversationSnapshot = await getDocs(conversationQuery);
-    
-        let conversationId;
-        let lastMessage;
-
-        if (context === "negotiation") {
-            lastMessage = `${musicianProfile.name} has offered a new gig fee.`;
-        } else if (context === "message") {
-            lastMessage = `${musicianProfile.name} wants to send you a message.`;
-        }
-    
-        if (conversationSnapshot.empty) {
-            // Create a new conversation if none exists
-            const newConversation = {
-                participants: [
-                    gigData.venueId,
-                    musicianProfileId
-                ],
-                accountNames: [
-                    { participantId: gigData.venueId, accountName: gigData.accountName, accountId: venueProfile.user, role: 'venue' }, 
-                    { participantId: musicianProfileId, accountName: musicianProfile.name, accountId: musicianProfile.userId, role: 'musician' }
-                ],
-                gigId: gigId,
-                lastMessage: lastMessage,
-                lastMessageTimestamp: Timestamp.now(),
-                status: "open",
-                createdAt: Timestamp.now(),
-            };
-            const conversationDocRef = await addDoc(conversationsRef, newConversation);
-            conversationId = conversationDocRef.id;
-        } else {
-            // Get the existing conversation ID
-            conversationId = conversationSnapshot.docs[0].id;
-    
-            // Update the last message in the existing conversation
-            const conversationRef = doc(firestore, 'conversations', conversationId);
-            await updateDoc(conversationRef, {
-                lastMessage: lastMessage,
-                lastMessageTimestamp: Timestamp.now(),
-            });
-        }
-    
-        return conversationId;
-    };
 
     return (
         <div className='gig-page' style={{ padding: `0 ${padding}` }}>

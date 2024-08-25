@@ -5,10 +5,13 @@ import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '/compo
 import { MailboxEmptyIcon, NewTabIcon, RejectedIcon, SearchIcon } from '../../../components/ui/Extras/Icons';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { firestore } from '../../../firebase';
+import { useGigs } from '../../../context/GigsContext';
 
-export const Gigs = ({ gigs: gigIds, musicianId }) => {
+export const Gigs = ({ gigApplications, musicianId }) => {
     const location = useLocation();
     const navigate = useNavigate();
+
+    const { gigs } = useGigs();
 
     const queryParams = new URLSearchParams(location.search);
     const selectedDate = queryParams.get('date') || '';
@@ -18,49 +21,24 @@ export const Gigs = ({ gigs: gigIds, musicianId }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchGigDocuments = async () => {
+        const filterGigs = () => {
             setLoading(true);
 
-            // Fetch and monitor each gig document by gigId
-            const unsubscribes = gigIds.map(gigId => {
-                const gigRef = doc(firestore, 'gigs', gigId);
+            // Filter the gigs based on gigApplications
+            const filteredGigs = gigs.filter(gig => gigApplications.includes(gig.gigId));
 
-                // Set up onSnapshot listener for real-time updates
-                return onSnapshot(gigRef, (gigSnapshot) => {
-                    if (gigSnapshot.exists()) {
-                        const gigData = { id: gigSnapshot.id, ...gigSnapshot.data() };
-
-                        // Update the state with the new gig data
-                        setGigDocuments(prevGigs => {
-                            const existingGigIndex = prevGigs.findIndex(g => g.id === gigData.id);
-                            if (existingGigIndex !== -1) {
-                                // Update the existing gig
-                                const updatedGigs = [...prevGigs];
-                                updatedGigs[existingGigIndex] = gigData;
-                                return updatedGigs;
-                            } else {
-                                // Add the new gig
-                                return [...prevGigs, gigData];
-                            }
-                        });
-                    }
-                });
-            });
-
+            // Set the filtered gigs to state
+            setGigDocuments(filteredGigs);
             setLoading(false);
-
-            // Cleanup the listeners when the component unmounts
-            return () => {
-                unsubscribes.forEach(unsubscribe => unsubscribe());
-            };
         };
 
-        if (gigIds && gigIds.length > 0) {
-            fetchGigDocuments();
+        if (gigApplications && gigApplications.length > 0) {
+            filterGigs();
         } else {
+            setGigDocuments([]);
             setLoading(false);
         }
-    }, [gigIds]);
+    }, [gigApplications, gigs]);
 
 
     // Function to get the status of the gig
@@ -78,8 +56,8 @@ export const Gigs = ({ gigs: gigIds, musicianId }) => {
             if (applicant.status === 'Accepted') {
                 return { icon: <TickIcon />, text: 'Confirmed' };
             }
-            if (applicant.status === 'Rejected') {
-                return { icon: <RejectedIcon />, text: 'Rejected' };
+            if (applicant.status === 'Declined') {
+                return { icon: <RejectedIcon />, text: 'Declined' };
             }
             return { icon: <ClockIcon />, text: 'Pending' };
         }
@@ -110,7 +88,7 @@ export const Gigs = ({ gigs: gigIds, musicianId }) => {
     // Filter gigs based on URL parameters
     const filteredGigs = gigDocuments.filter(gig => {
         const gigStatus = getGigStatus(gig).text.toLowerCase();
-        const gigDate = gig.date.toDate().toISOString().split('T')[0]; // Format date as yyyy-mm-dd
+        const gigDate = format(gig.date.toDate(), 'yyyy-MM-dd');
         return (
             (selectedDate === '' || gigDate === selectedDate) &&
             (selectedStatus === 'all' || gigStatus === selectedStatus)
@@ -124,8 +102,8 @@ export const Gigs = ({ gigs: gigIds, musicianId }) => {
     // Sort gigs based on the current sort order
     const sortedGigs = filteredGigs.slice().sort((a, b) => {
         return sortOrder === 'desc'
-            ? new Date(b.date) - new Date(a.date)
-            : new Date(a.date) - new Date(b.date);
+            ? b.date.toDate() - a.date.toDate()
+            : a.date.toDate() - b.date.toDate();
     });
 
     return (

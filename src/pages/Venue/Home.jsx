@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom"
-import { Header } from "../../components/venue-components/Header";
+import { Header as MusicianHeader } from "../../components/musician-components/Header"
+import { Header as VenuesHeader } from "../../components/venue-components/Header"
 
 export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
 
@@ -25,11 +26,21 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
 
     return (
         <div>
-            <Header
-                user={user}
-                setAuthModal={setAuthModal}
-                setAuthType={setAuthType}
-            />
+                        {user.venueProfiles ? (
+                <VenuesHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                />
+
+            ) : (
+                <MusicianHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                />
+
+            )}
             <h1>This is the Venue info page</h1>
             <button onClick={checkUserAuth}>
                 Let's get started

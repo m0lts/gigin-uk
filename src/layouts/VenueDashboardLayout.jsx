@@ -2,16 +2,23 @@ import { useEffect } from "react";
 import { Header } from "../components/venue-components/Header"
 import { useAuth } from "../hooks/useAuth"
 import '/styles/common/dashboard.styles.css'
+import { useNavigate } from "react-router-dom";
 
 export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user, setAuthClosable }) => {
 
     const { loading } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!loading && !user) {
             setAuthModal(true);
             setAuthClosable(false);
         }
+
+        if (!user.venueProfile) {
+            navigate('/venues/add-venue')
+        }
+
     }, [user])
 
     return (

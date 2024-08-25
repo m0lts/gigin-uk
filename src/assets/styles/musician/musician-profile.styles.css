@@ -60,7 +60,7 @@
     color: orange;
 }
 
-.profile .profile-banner .profile-actions.applicant .status.rejected {
+.profile .profile-banner .profile-actions.applicant .status.declined {
     border:1px solid var(--gn-red);
     background-color: var(--gn-offset-red);
     color: var(--gn-red);

@@ -31,7 +31,7 @@ export const ProfileTab = ({ musicianProfile }) => {
     };    
 
     const editMusicianProfileRedirect = () => {
-        navigate('/musician/create-musician-profile', { state: { musicianProfile } });
+        navigate('/create-musician-profile', { state: { musicianProfile } });
     }    
 
     const handleDeleteProfile = (profile) => {

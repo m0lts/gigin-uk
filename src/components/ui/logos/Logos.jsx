@@ -18,7 +18,7 @@ export const TextLogoLink = () => {
 export const VenueLogoLink = () => {
     return (
         <h1 className="logo">
-            <Link className="link" to={'/'}>
+            <Link className="link" to={'/venues'}>
                 gigin<span className="orange-txt">.</span>
                 <span className="user-type">VENUES</span>
             </Link>
@@ -28,7 +28,7 @@ export const VenueLogoLink = () => {
 export const MusicianLogoLink = () => {
     return (
         <h1 className="logo">
-            <Link className="link" to={'/'}>
+            <Link className="link" to={'/find-a-gig'}>
                 gigin<span className="orange-txt">.</span>
                 <span className="user-type">MUSICIANS</span>
             </Link>

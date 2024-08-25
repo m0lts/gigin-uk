@@ -19,10 +19,10 @@ import { VenueBuilder } from './pages/Venue/VenueBuilder/VenueBuilder';
 import { useAuth } from './hooks/useAuth';
 import { AuthModal } from './components/common/AuthModal';
 import { LoadingThreeDots } from './components/ui/loading/Loading';
-import { DashboardLayout } from './layouts/DashboardLayout';
+import { MusicianDashboardLayout } from './layouts/MusicianDashboardLayout';
 import { VenueDashboard } from './pages/Venue/Dashboard/Dashboard';
 import { LoadingScreen } from './components/ui/loading/LoadingScreen';
-import { GigFinder } from './pages/Musician/GigFinder/GigFinder';
+import { GigFinder } from './pages/Home/GigFinder';
 import { GigPage } from './pages/Musician/GigPage';
 import { MusicianDashboard } from './pages/Musician/Dashboard/Dashboard';
 import { ProfileCreator } from './pages/Musician/Dashboard/ProfileCreator/ProfileCreator';
@@ -61,21 +61,28 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><LandingPage /></MainLayout>} />
-        <Route path="/messages" element={<MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout>} />
+
+        {/* MAP */}
+        <Route path="/find-a-gig" element={<GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+
+        {/* MUSICIAN ROUTES */}
+        <Route path="/">
+          <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><LandingPage /></MainLayout>} />
+          <Route path='create-musician-profile/*' element={<NoHeaderFooterLayout><ProfileCreator user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
+          <Route path='dashboard/*' element={<MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><MusicianDashboard /></MusicianDashboardLayout>} />
+          <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+          <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+        </Route>
+
+        {/* VENUES ROUTES */}
         <Route path="/venues">
           <Route index element={<VenueHome user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
           <Route path='add-venue/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
           <Route path='dashboard/*' element={<VenueDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><VenueDashboard /></VenueDashboardLayout>} />
         </Route>
-        {/* <Route path='/host/venue-builder/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} /> */}
-        <Route path='/musician/create-musician-profile/*' element={<NoHeaderFooterLayout><ProfileCreator user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
-        <Route path="/musician">
-          <Route index element={<GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-          <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-          <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-          <Route path='dashboard/*' element={<DashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><MusicianDashboard /></DashboardLayout>} />
-        </Route>
+
+        {/* OTHER ROUTES */}
+        <Route path="/messages" element={<MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout>} />
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path="/giggoer" element={<GigGoerLayout><GigGoerInfo /></GigGoerLayout>} />
       </Routes>

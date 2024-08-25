@@ -7,7 +7,7 @@ import { useState, useEffect } from "react"
 import { firestore } from "../../firebase"
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import { DotIcon, ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MailboxFullIcon, MapIcon, NewTabIcon, SettingsIcon, TelescopeIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
-import { MessagesPopUp } from "./MessagesPopUp"
+// import { MessagesPopUp } from "./MessagesPopUp"
 
 export const Header = ({ setAuthModal, setAuthType, user }) => {
     
@@ -151,17 +151,17 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                     </div>
                     <div className="right">
                         <div className="buttons">
-                            <Link className="link" to={'/musician'}>
+                            <Link className="link" to={'/find-a-gig'}>
                                 <button className="btn primary-alt">
                                     Musicians
                                 </button>
                             </Link>
-                            <Link className="link" to={'/host/dashboard'}>
+                            <Link className="link" to={'/venues/dashboard'}>
                                 <button className="btn primary-alt">
                                     Hosts
                                 </button>
                             </Link>
-                            <Link className="link" to={'/host/dashboard'}>
+                            <Link className="link" to={''}>
                                 <button className="btn primary-alt">
                                     Gig-Goers
                                 </button>
@@ -416,9 +416,9 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             </div>
                         </div>
                     )}
-                    {messagesPopUp && (
+                    {/* {messagesPopUp && (
                         <MessagesPopUp conversations={conversations} onClose={() => setMessagesPopUp(false)} user={user} />
-                    )}
+                    )} */}
                 </>
             ) : (
                 <>

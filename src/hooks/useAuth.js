@@ -95,7 +95,7 @@ export const useAuth = () => {
       if (musicianProfile.length < 1 && venueProfiles.length > 0) {
         navigate('/venues');
       } else if (musicianProfile.length > 0 && venueProfiles.length < 1) {
-        navigate('/');
+        navigate('/find-a-gig');
       }
       } catch (error) {
         setUser(null);

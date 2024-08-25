@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
-import useMapboxAccessToken from "../../../hooks/useAccessTokens";
-import { CloseIcon, LeftChevronIcon, NewTabIcon, RightChevronIcon } from "../../../components/ui/Extras/Icons";
+import useMapboxAccessToken from "../../hooks/useAccessTokens";
+import { CloseIcon, LeftChevronIcon, NewTabIcon, RightChevronIcon } from "../../components/ui/Extras/Icons";
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
@@ -186,89 +186,3 @@ export const MapView = ({ upcomingGigs }) => {
         </div>
     );
 };
-
-            {/* <div className="filter-box">
-                <ul className="filter-list">
-                    <li className="filter">
-                        Date: 
-                        <input type="date" name="date" id="date" />
-                    </li>
-                    <li className="filter">
-                        Budget:
-                        <input type="range" name="budget" id="budget" />
-                    </li>
-                    <li className="filter">
-                        Distance:
-                        <input type="range" name="distance" id="distance" />
-                    </li>
-                    <button className="btn secondary">
-                        Apply Filters
-                    </button>
-                </ul>
-            </div> */}
-
-    // const formatDuration = (duration) => {
-        //     if (duration < 60) return `${duration}mins`;
-        //     if (duration === 60) return `1 hour`;
-        //     if (duration > 60 && duration < 120) return `1 hour ${duration - 60}mins`;
-        //     if (duration === 120) return `2 hours`;
-        //     if (duration > 120 && duration < 180) return `2 hour ${duration - 120}mins`;
-        //     if (duration === 180) return `3 hours`;
-        //     if (duration > 180 && duration < 240) return `3 hour ${duration - 180}mins`;
-        //     if (duration === 240) return `4 hours`;
-        //     if (duration > 240 && duration < 300) return `4 hour ${duration - 240}mins`;
-        //     if (duration === 300) return `5 hours`;
-        // }
-        
-        // // Function to navigate to previous gig
-        // const navigateToPreviousGig = () => {
-        //     if (currentGigIndex > 0) {
-        //         setCurrentGigIndex(currentGigIndex - 1);
-        //     }
-        // };
-    
-        // // Function to navigate to next gig
-        // const navigateToNextGig = () => {
-        //     if (currentGigIndex < clickedGigs.length - 1) {
-        //         setCurrentGigIndex(currentGigIndex + 1);
-        //     }
-        // };
-
-// <div className="preview-box">
-//     <div className="preview-gig">
-//         <figure className="img-cont">
-//             <img src={clickedGigs[currentGigIndex].venue.photo} alt={clickedGigs[currentGigIndex].venue.venueName} />
-//         </figure>
-//         <h2 className="title">{clickedGigs[currentGigIndex].venue.venueName}</h2>
-//         <p className="date">{formatDate(clickedGigs[currentGigIndex].date)}</p>
-//         <p className="budget">{clickedGigs[currentGigIndex].budget}</p>
-//         <div className="action-buttons">
-//             <button className="btn primary">
-//                 Quick Apply
-//             </button>
-//             <button className="btn secondary" onClick={() => openMusicianGig(clickedGigs[currentGigIndex].gigId)}>
-//                 Open <NewTabIcon />
-//             </button>
-//         </div>
-//     </div>
-//     {clickedGigs.length > 1 && (
-//         <div className="navigation-buttons">
-//             <button className="btn text" onClick={navigateToPreviousGig} disabled={currentGigIndex === 0}>
-//                 <LeftChevronIcon />
-//             </button>
-//             <div className="navigation-dots">
-//                 {clickedGigs.map((gig, index) => (
-//                     <FontAwesomeIcon
-//                         key={index}
-//                         icon={faCircle}
-//                         className="icon"
-//                         style={{ color: currentGigIndex === index ? 'var(--dark-grey)' : 'var(--light-grey)' }}
-//                     />
-//                 ))}
-//             </div>
-//             <button className="btn text" onClick={navigateToNextGig} disabled={currentGigIndex === clickedGigs.length - 1}>
-//                 <RightChevronIcon />
-//             </button>
-//         </div>
-//     )}
-// </div>

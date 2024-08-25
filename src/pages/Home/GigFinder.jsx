@@ -1,36 +1,32 @@
 import { useState, useEffect } from "react"
 import { MapView } from "./MapView";
 import { ListView } from "./ListView";
-import { Header } from "../../../components/common/Header";
+import { Header } from "../../components/musician-components/Header";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { firestore } from "../../../firebase";
+import { firestore } from "../../firebase";
 import '/styles/musician/gig-finder.styles.css';
+import { useGigs } from "../../context/GigsContext";
 
 export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
+
+    const { gigs } = useGigs();
+
     const [viewType, setViewType] = useState('map');
     const [upcomingGigs, setUpcomingGigs] = useState([]);
 
     useEffect(() => {
-        const fetchGigs = async () => {
-            try {
-                const gigsRef = collection(firestore, 'gigs');
-                const currentDate = new Date();
-                const gigsQuery = query(gigsRef, where('date', '>=', currentDate));
-                const gigsSnapshot = await getDocs(gigsQuery);
-                const gigsList = gigsSnapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
-                .filter(gig => {
-                    // Check if the gig has any applicant with status "Accepted"
-                    return !gig.applicants.some(applicant => applicant.status === 'Accepted');
-                });
-                setUpcomingGigs(gigsList);
-            } catch (error) {
-                console.error('Error fetching gigs:', error.message);
-            }
-        };
+        if (!gigs) return;
 
-        fetchGigs();
-    }, []);
+        const currentDate = new Date();
+
+        const filteredGigs = gigs
+            .filter(gig => {
+                const gigDate = gig.date.toDate();
+                return gigDate >= currentDate && !gig.applicants.some(applicant => applicant.status === 'Accepted');
+            });
+
+        setUpcomingGigs(filteredGigs);
+    }, [gigs]);
 
 
     return (

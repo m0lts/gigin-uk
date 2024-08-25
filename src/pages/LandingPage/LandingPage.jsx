@@ -4,7 +4,7 @@ import '/styles/common/landing-page.styles.css'
 export const LandingPage = () => {
     return (
         <div className="landing-page">
-            <Link to={'/musician'} className="link">
+            <Link to={'/find-a-gig'} className="link">
                 Musicians
             </Link>
             <Link to={'/venues'} className="link">
