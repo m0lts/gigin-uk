@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LeftChevronIcon, ExitIcon } from '/components/ui/Extras/Icons'
 import { v4 as uuidv4 } from 'uuid';
-import useMapboxAccessToken from "../../../../hooks/useAccessTokens";
 import { useAuth } from '../../../../hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
 import { storage, firestore } from "../../../../firebase";
@@ -34,7 +33,7 @@ export const ProfileCreator = () => {
     const musicianProfile = location.state?.musicianProfile;
     const navigate = useNavigate();
 
-    const mapboxToken = useMapboxAccessToken();
+    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
     const [stage, setStage] = useState(musicianProfile ? 1 : 0);
     const [formData, setFormData] = useState({

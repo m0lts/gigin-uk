@@ -58,6 +58,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     const menuStyle = {
         right: location.pathname.includes('dashboard') ? '1rem' : '5%',
     };
+
     
     return (
         <header className="header venue" style={headerStyle}>
@@ -113,7 +114,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 Feedback
                             </button>
                             {user.venueProfiles && user.venueProfiles.length > 0 && user.venueProfiles.some(profile => profile.completed) ? (
-                                location.pathname.includes('/venues/dashboard') ? (
+                                location.pathname === ('/venues/dashboard') ? (
                                     <Link className="link" to={'/venues/add-venue'}>
                                         <button className="btn secondary">
                                             <VenueBuilderIcon />
@@ -122,7 +123,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                     </Link>
                                 ) : (
                                     <Link className="link" to={'/venues/dashboard'}>
-                                        <button className="btn secondary">
+                                        <button className="btn secondary" onClick={() => console.log('clicked')}>
                                             <DashboardIcon />
                                             Dashboard
                                         </button>
@@ -160,10 +161,12 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             <h6 className="title">venues</h6>
                             {user.venueProfiles && user.venueProfiles.length > 0 ? (
                                 <>
-                                    <div className="item no-margin">
-                                        Dashboard
-                                        <DashboardIcon />
-                                    </div>
+                                    <Link className="link" to={'/venues/dashboard'}>
+                                        <div className="item no-margin">
+                                            Dashboard
+                                            <DashboardIcon />
+                                        </div>
+                                    </Link>
                                     <div className="item">
                                         Add another venue
                                         <VenueBuilderIcon />

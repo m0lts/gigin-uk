@@ -136,7 +136,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
 
     return (
         <div className="musician-profile-page" style={{ padding: `0 ${padding}` }}>
-            {user.venueProfiles ? (
+            {user.venueProfiles && user.venueProfiles.length > 0 ? (
                 <VenueHeader
                     user={user}
                     setAuthModal={setAuthModal}

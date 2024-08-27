@@ -7,7 +7,6 @@ import '/styles/musician/gig-page.styles.css';
 import { BackgroundMusicIcon, ClubIcon, GuitarsIcon, HouseIcon, InviteIcon, MicrophoneIcon, MicrophoneLinesIcon, PeopleGroupIcon, SaveIcon, ShareIcon, SpeakersIcon, TicketIcon, WeddingIcon } from '../../components/ui/Extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import mapboxgl from 'mapbox-gl';
-import useMapboxAccessToken from "../../hooks/useAccessTokens";
 import 'react-loading-skeleton/dist/skeleton.css';
 import { LoadingThreeDots } from '../../components/ui/loading/Loading';
 import { useGigs } from '../../context/GigsContext';
@@ -22,7 +21,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [venueProfile, setVenueProfile] = useState(null);
     const [similarGigs, setSimilarGigs] = useState([]);
     const [loading, setLoading] = useState(true);
-    const mapboxToken = useMapboxAccessToken();
     const mapContainerRef = useRef(null);
     const [padding, setPadding] = useState('5%');
     const [fullscreenImage, setFullscreenImage] = useState(null);
@@ -93,8 +91,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     }, []);
 
     useEffect(() => {
-        if (venueProfile && venueProfile.coordinates && mapboxToken) {
-            mapboxgl.accessToken = mapboxToken;
+        if (venueProfile && venueProfile.coordinates) {
+            mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
             const map = new mapboxgl.Map({
                 container: mapContainerRef.current,
@@ -109,7 +107,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
 
             return () => map.remove();
         }
-    }, [venueProfile, mapboxToken]);
+    }, [venueProfile]);
 
     if (!gigData) {
         return <div>No gig data found.</div>;

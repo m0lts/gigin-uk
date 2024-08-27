@@ -11,8 +11,6 @@ import { MainLayout } from './layouts/MainLayout';
 import { VenueHome } from './pages/Venue/Home';
 import { MusicianInfo } from './pages/Musician/Info';
 import { GigGoerInfo } from './pages/GigGoer/Info';
-import { HostLayout } from './layouts/HostLayout';
-import { MusicianLayout } from './layouts/MusicianLayout';
 import { GigGoerLayout } from './layouts/GigGoerLayout';
 import { NoHeaderFooterLayout } from './layouts/NoHeaderFooterLayout';
 import { VenueBuilder } from './pages/Venue/VenueBuilder/VenueBuilder';
@@ -53,6 +51,8 @@ export default function App() {
   useEffect(() => {
     console.log(user)
   }, [user])
+
+
   if (loading) {
     return <LoadingScreen />;
   }

@@ -88,6 +88,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     //     checkForNewMessages();
     // }, [user]);
 
+
     const handleScaleSelection = (scale) => {
         setFeedback(prev => ({ ...prev, scale }));
     };
@@ -152,18 +153,21 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                     <div className="right">
                         <div className="buttons">
                             <Link className="link" to={'/find-a-gig'}>
-                                <button className="btn primary-alt">
-                                    Musicians
+                                <button className="btn secondary">
+                                    <TelescopeIcon />
+                                    Find a Gig
                                 </button>
                             </Link>
                             <Link className="link" to={'/venues/dashboard'}>
-                                <button className="btn primary-alt">
-                                    Hosts
+                                <button className="btn secondary">
+                                    <DashboardIcon />
+                                    Venue Dashboard
                                 </button>
                             </Link>
-                            <Link className="link" to={''}>
-                                <button className="btn primary-alt">
-                                    Gig-Goers
+                            <Link className="link" to={'/dashboard'}>
+                                <button className="btn secondary">
+                                    <DashboardIcon />
+                                    Musician Dashboard
                                 </button>
                             </Link>
                         </div>
@@ -244,7 +248,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                         {location.pathname.includes('dashboard') && (
                             <div className="breadcrumbs">
                                 <span className="item">Dashboard</span>
-                                {location.pathname === ('/host/dashboard') || location.pathname === ('/musician/dashboard') && (
+                                {location.pathname === ('/venues/dashboard') || location.pathname === ('/dashboard') && (
                                     <>
                                         <RightChevronIcon />
                                         <span className="item active">Overview</span>
@@ -300,22 +304,27 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             <button className="btn text" onClick={() => setFeedbackForm(!feedbackForm)}>
                                 Feedback
                             </button>
-                            {location.pathname.includes('/musician/dashboard') ? (
-                                <Link className="link" to={'/musician'}>
+                            <Link className="link" to={'/dashboard'}>
+                                    <button className="btn secondary">
+                                        <DashboardIcon />
+                                        Musician Dashboard
+                                    </button>
+                            </Link>
+                            <Link className="link" to={'/venues/dashboard'}>
+                                    <button className="btn secondary">
+                                        <DashboardIcon />
+                                        Venues Dashboard
+                                    </button>
+                            </Link>
+                            {location.pathname !== '/find-a-gig' && (
+                                <Link className="link" to={'/find-a-gig'}>
                                     <button className="btn secondary">
                                         <TelescopeIcon />
                                         Find Gigs
                                     </button>
                                 </Link>
-                            ) : (
-                                <Link className="link" to={`${location.pathname.includes('host') ? '/host/dashboard' : '/musician/dashboard'}`}>
-                                    <button className="btn secondary">
-                                        <DashboardIcon />
-                                        Dashboard
-                                    </button>
-                                </Link>
                             )}
-                            {newMessages ? (
+                            {/* {newMessages ? (
                                 <Link className="link" to={'/messages'}>
                                     <button className="btn secondary messages">
                                         <span className="notification-dot"><DotIcon /></span>
@@ -323,14 +332,14 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                         Messages
                                     </button>
                                 </Link>
-                            ) : (
+                            ) : ( */}
                                 <Link className="link" to={'/messages'}>
                                     <button className="btn secondary">
                                         <MailboxEmptyIcon />
                                         Messages
                                     </button>
                                 </Link>
-                            )}
+                            {/* )} */}
                         </div>
                         <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
                             <UserIcon />

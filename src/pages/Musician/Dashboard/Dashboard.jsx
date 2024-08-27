@@ -9,6 +9,9 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { firestore } from "../../../firebase";
 import { ProfileCreator } from "./ProfileCreator/ProfileCreator";
 import { Gigs } from "./Gigs";
+import { Bands } from "./Bands";
+import { Finances } from "./Finances";
+import { Overview } from "./Overview";
 
 
 export const MusicianDashboard = () => {
@@ -43,16 +46,16 @@ export const MusicianDashboard = () => {
         <>  
             {loadingData ? (<LoadingScreen /> ) : (
                 <>
-            <Sidebar />
-            <div className="window musician">
-                <Routes>
-                    <Route index element={<h1>Overview</h1>} />
-                    <Route path="profile" element={<ProfileTab musicianProfile={musicianProfile} />} />
-                    <Route path="gigs" element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} />} />
-                    <Route path="bands" element={<h1>Bands</h1>} />
-                    <Route path="finances" element={<h1>Finances</h1>} />
-                </Routes>
-            </div>
+                    <Sidebar />
+                    <div className="window musician">
+                        <Routes>
+                            <Route index element={<Overview />} />
+                            <Route path="profile" element={<ProfileTab musicianProfile={musicianProfile} />} />
+                            <Route path="gigs" element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} />} />
+                            <Route path="bands" element={<Bands />} />
+                            <Route path="finances" element={<Finances />} />
+                        </Routes>
+                    </div>
                 </>
             )}
         </>

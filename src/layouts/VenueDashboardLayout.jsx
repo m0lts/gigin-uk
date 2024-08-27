@@ -15,7 +15,7 @@ export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user
             setAuthClosable(false);
         }
 
-        if (!user.venueProfile) {
+        if (user && !user.venueProfiles) {
             navigate('/venues/add-venue')
         }
 

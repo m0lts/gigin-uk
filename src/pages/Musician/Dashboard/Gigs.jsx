@@ -142,7 +142,6 @@ export const Gigs = ({ gigApplications, musicianId }) => {
                                 <th>Venue</th>
                                 <th className='centre'>Fee</th>
                                 <th className='centre'>Status</th>
-                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -165,9 +164,6 @@ export const Gigs = ({ gigApplications, musicianId }) => {
                                                 <div className={`status ${gigStatus.text.toLowerCase()}`}>
                                                     {gigStatus.icon} {gigStatus.text}
                                                 </div>
-                                            </td>
-                                            <td className='btn text'>
-                                                <MailboxEmptyIcon />
                                             </td>
                                         </tr>
                                     );

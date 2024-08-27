@@ -12,6 +12,10 @@ import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestor
 import { firestore } from "../../../firebase";
 import { GigApplications } from "./GigApplications";
 import { useGigs } from "../../../context/GigsContext";
+import { Overview } from "./Overview";
+import { Finances } from "./Finances";
+import { Musicians } from "./Musicians";
+
 
 export const VenueDashboard = ({  }) => {
 
@@ -83,12 +87,12 @@ export const VenueDashboard = ({  }) => {
             />
             <div className="window">
                 <Routes>
-                    <Route index element={<h1>Overview</h1>} />
+                    <Route index element={<Overview />} />
                     <Route path="gigs" element={<Gigs gigs={gigsData} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                     <Route path="gig-applications" element={<GigApplications />} />
                     <Route path="venues" element={<Venues venues={venueProfiles} />} />
-                    <Route path="musicians" element={<h1>musicians</h1>} />
-                    <Route path="finances" element={<h1>financials</h1>} />
+                    <Route path="musicians" element={<Musicians />} />
+                    <Route path="finances" element={<Finances />} />
                 </Routes>
             </div>
             {gigPostModal && 

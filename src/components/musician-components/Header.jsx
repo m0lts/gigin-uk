@@ -166,7 +166,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                         </button>
                     </div>
                     {accountMenu && (
-                        user.venueProfiles && !user.musicianProfile ? (
+                        user.venueProfiles && user.musicianProfile ? (
                             <nav className="account-menu" style={menuStyle}>
                             <div className="item name-and-email no-margin">
                                 <h6>{user.name}</h6>

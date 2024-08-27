@@ -33,8 +33,14 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         photos: [],
         extraInformation: '',
         description: '',
-        accountName: user.name,
+        accountName: user ? user.name : '',
     });
+
+    useEffect(() => {
+        if (!user) {
+            navigate('/venues')
+        }
+    }, [user])
 
     useEffect(() => {
         if (venue) {
@@ -79,13 +85,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 }
         };
 
-        if (!user) {
-            setAuthModal(true);
-            setAuthClosable(false);
-            return;
-        }
         // Only check for saved profile if the user has a profile associated with their account
-        if (user.venueProfiles && formData.name === '') {
+        if (user && user.venueProfiles && formData.name === '') {
             checkForSavedProfile();
         }
     }, [user, setAuthModal, formData]);

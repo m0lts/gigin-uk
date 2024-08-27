@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
-import useMapboxAccessToken from "../../hooks/useAccessTokens";
 import { CloseIcon, LeftChevronIcon, NewTabIcon, RightChevronIcon } from "../../components/ui/Extras/Icons";
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
@@ -8,15 +7,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 export const MapView = ({ upcomingGigs }) => {
 
     const mapContainerRef = useRef(null);
-    const mapboxToken = useMapboxAccessToken();
     const [mapInstance, setMapInstance] = useState(null); // State to hold the map instance
     const [markers, setMarkers] = useState({}); // State to hold marker elements
     const [clickedGigs, setClickedGigs] = useState([]); // State to hold clicked gigs
     const [currentGigIndex, setCurrentGigIndex] = useState(0); // State to track current clicked gig index
 
     useEffect(() => {
-        if (mapboxToken && upcomingGigs && upcomingGigs.length > 0) {
-            mapboxgl.accessToken = mapboxToken;
+        if (upcomingGigs && upcomingGigs.length > 0) {
+            mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
             // Initialize map instance
             const map = new mapboxgl.Map({
@@ -36,7 +34,7 @@ export const MapView = ({ upcomingGigs }) => {
                 }
             };
         }
-    }, [mapboxToken, upcomingGigs]); // Dependency array includes mapboxToken and upcomingGigs
+    }, [upcomingGigs]); // Dependency array includes mapboxToken and upcomingGigs
 
     useEffect(() => {
         if (mapInstance && upcomingGigs && upcomingGigs.length > 0) {
