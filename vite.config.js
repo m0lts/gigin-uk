@@ -17,4 +17,7 @@ export default defineConfig({
       '/sections': '/src/sections',
     },
   },
+  define: {
+    'process.env.VITE_FIREBASE_API_KEY': JSON.stringify(process.env.VITE_FIREBASE_API_KEY),
+  },
 })
