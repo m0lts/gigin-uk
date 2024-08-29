@@ -8,7 +8,13 @@ export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout }
 
     return (
         <section className="layout-main">
-            {(user && user.musicianProfile && user.venueProfiles && user.venueProfiles.length > 0) ? (
+            {!user ? (
+                <CommonHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                />
+            ) : (user && user.musicianProfile && user.venueProfiles && user.venueProfiles.length > 0) ? (
                 <CommonHeader
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
