@@ -92,8 +92,8 @@ export const useAuth = () => {
       setUser({ uid: userCredential.user.uid, ...userDocData });
       const musicianProfile = userDocData.musicianProfile || [];
       const venueProfiles = userDocData.venueProfiles || [];
-      if (!musicianProfile && venueProfiles.length > 0) {
-        navigate('/venues/dashboard');
+      if (venueProfiles.length > 0) {
+        navigate('/venues');
       } else {
         navigate('/find-a-gig');
       }
