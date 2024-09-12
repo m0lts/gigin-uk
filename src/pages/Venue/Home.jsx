@@ -27,25 +27,11 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
 
     return (
         <div>
-            {(user && user.venueProfiles && user.venueProfiles.length > 0) ? (
-                <VenuesHeader
-                    setAuthModal={setAuthModal}
-                    setAuthType={setAuthType}
-                    user={user}
-                />
-            ) : (user && user.musicianProfile) ? (
-                <MusicianHeader
-                    setAuthModal={setAuthModal}
-                    setAuthType={setAuthType}
-                    user={user}
-                />
-            ) : (
-                <CommonHeader
-                    setAuthModal={setAuthModal}
-                    setAuthType={setAuthType}
-                    user={user}
-                />
-            )}
+            <VenuesHeader
+                setAuthModal={setAuthModal}
+                setAuthType={setAuthType}
+                user={user}
+            />
             <h1>This is the Venue info page</h1>
             <button onClick={checkUserAuth}>
                 Let's get started

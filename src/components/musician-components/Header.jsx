@@ -205,12 +205,21 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                         </button>
                                     </Link>
                                 ) : (
-                                    <Link className="link" to={'/dashboard'}>
-                                        <button className="btn secondary">
-                                            <DashboardIcon />
-                                            Dashboard
-                                        </button>
-                                    </Link>
+                                    user.musicianProfile ? (
+                                        <Link className="link" to={'/dashboard'}>
+                                            <button className="btn secondary">
+                                                <DashboardIcon />
+                                                Dashboard
+                                            </button>
+                                        </Link>
+                                    ) : (
+                                        <Link className="link" to={'/create-musician-profile'}>
+                                            <button className="btn secondary">
+                                                <GuitarsIcon />
+                                                Create Musician Profile
+                                            </button>
+                                        </Link>
+                                    )
                                 )
                             )}
                             {
@@ -315,10 +324,17 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             }
                                 <div className="break" />
                                 <h6 className="title">musicians</h6>
-                                <Link className="link item" to={'/dashboard'}>
-                                    Dashboard
-                                    <DashboardIcon />
-                                </Link>
+                                {user.musicianProfile ? (
+                                    <Link className="link item" to={'/dashboard'}>
+                                        Dashboard
+                                        <DashboardIcon />
+                                    </Link>
+                                ) : (
+                                    <Link className="link item" to={'/create-musician-profile'}>
+                                        Create Musician Profile
+                                        <GuitarsIcon />
+                                    </Link>
+                                )}
                                 <Link className="link item no-margin" to={'/find-a-gig'}>
                                     Find a Gig
                                     <MapIcon />

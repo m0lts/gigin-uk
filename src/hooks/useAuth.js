@@ -111,6 +111,7 @@ export const useAuth = () => {
         marketingConsent: marketingConsent,
       });
       setUser({ uid: userCredential.user.uid, ...credentials });
+      navigate('/find-a-gig');
     } catch (error) {
       setUser(null);
       throw { error }

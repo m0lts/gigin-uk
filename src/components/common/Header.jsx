@@ -6,7 +6,7 @@ import { DashboardIcon, DownChevronIcon, MailboxEmptyIcon, RightChevronIcon } fr
 import { useState, useEffect } from "react"
 import { firestore } from "../../firebase"
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
-import { DotIcon, ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MailboxFullIcon, MapIcon, NewTabIcon, SettingsIcon, TelescopeIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
+import { DotIcon, ExitIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, GuitarsIcon, HouseIcon, LogOutIcon, MailboxFullIcon, MapIcon, NewTabIcon, SettingsIcon, TelescopeIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
 // import { MessagesPopUp } from "./MessagesPopUp"
 
 export const Header = ({ setAuthModal, setAuthType, user }) => {
@@ -134,103 +134,6 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
         right: location.pathname.includes('dashboard') ? '1rem' : '5%',
       };
 
-
-    if (location.pathname === '/') {
-        return (
-            user ? (
-                <header className="header default" style={headerStyle}>
-                    <TextLogo />
-                    <div className="left">
-
-                    </div>
-                    <div className="right">
-                        <div className="buttons">
-                            <Link className="link" to={'/find-a-gig'}>
-                                <button className="btn secondary">
-                                    <TelescopeIcon />
-                                    Find a Gig
-                                </button>
-                            </Link>
-                            <Link className="link" to={'/venues/dashboard'}>
-                                <button className="btn secondary">
-                                    <DashboardIcon />
-                                    Venue Dashboard
-                                </button>
-                            </Link>
-                            <Link className="link" to={'/dashboard'}>
-                                <button className="btn secondary">
-                                    <DashboardIcon />
-                                    Musician Dashboard
-                                </button>
-                            </Link>
-                        </div>
-                        <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
-                            <UserIcon />
-                        </button>
-                    </div>
-                    {accountMenu && (
-                        <nav className="account-menu" style={menuStyle}>
-                            <div className="item name-and-email no-margin">
-                                <h6>{user.name}</h6>
-                                <p>{user.email}</p>
-                            </div>
-                            <Link className="link item" to={'/messages'}>
-                                Messages
-                                <MailboxEmptyIcon />
-                            </Link>
-                            <div className="break" />
-                            <h6 className="title">musicians</h6>
-                            <div className="item no-margin">
-                                Dashboard
-                                <DashboardIcon />
-                            </div>
-                            <div className="item">
-                                Map
-                                <MapIcon />
-                            </div>
-                            <div className="break" />
-                            <h6 className="title">hosts</h6>
-                            <div className="item no-margin">
-                                Dashboard
-                                <DashboardIcon />
-                            </div>
-                            <div className="item">
-                                Venue Builder
-                                <VenueBuilderIcon />
-                            </div>
-                            <div className="break" />
-                            <h6 className="title">gig-goers</h6>
-                            <div className="item no-margin">
-                                Map
-                                <MapIcon />
-                            </div>
-                            <div className="break" />
-                            <div className="item no-margin">
-                                Settings
-                                <SettingsIcon />
-                            </div>
-                            <button className="btn danger no-margin" onClick={handleLogout}>
-                                Log Out
-                                <LogOutIcon />
-                            </button>
-                        </nav>
-                    )}
-                </header>
-            ) : (
-                <header className="header default" style={headerStyle}>
-                    <TextLogo />
-                    <nav className="nav-list">
-                        <button className="item btn secondary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
-                            Log In
-                        </button>
-                        <button className="item btn primary-alt" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
-                            Sign Up
-                        </button>
-                    </nav>
-                </header>
-            )
-        )
-    }
     
     return (
         <header className="header default" style={headerStyle}>
@@ -238,103 +141,29 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                 <>
                     <div className="left">
                         { getLocation() }
-                        {location.pathname.includes('dashboard') && (
-                            <div className="breadcrumbs">
-                                <span className="item">Dashboard</span>
-                                {location.pathname === ('/venues/dashboard') || location.pathname === ('/dashboard') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className="item active">Overview</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('gig') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className="item active">Gigs</span>
-                                        {location.pathname.includes('applications') && (
-                                            <>
-                                                <RightChevronIcon />
-                                                <span className="item active">Gig Applications</span>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                                {location.pathname.includes('venues') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className="item active">Venues</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('musicians') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className="item active">Musicians</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('finances') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className="item active">Finances</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('bands') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className="item active">Bands</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('profile') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className="item active">Profile</span>
-                                    </>
-                                )}
-                            </div>
-                        )}
                     </div>
                     <div className="right">
                         <div className="buttons">
-                            <button className="btn text" onClick={() => setFeedbackForm(!feedbackForm)}>
-                                Feedback
-                            </button>
-                            <Link className="link" to={'/dashboard'}>
+                            <Link className="link" to={'/create-musician-profile'}>
                                     <button className="btn secondary">
-                                        <DashboardIcon />
-                                        Musician Dashboard
+                                        <GuitarsIcon />
+                                        Create a Musician Profile
                                     </button>
                             </Link>
-                            <Link className="link" to={'/venues/dashboard'}>
+                            <Link className="link" to={'/venues'}>
                                     <button className="btn secondary">
-                                        <DashboardIcon />
-                                        Venues Dashboard
+                                        <HouseIcon />
+                                        I'm a Venue
                                     </button>
                             </Link>
                             {location.pathname !== '/find-a-gig' && (
                                 <Link className="link" to={'/find-a-gig'}>
                                     <button className="btn secondary">
                                         <TelescopeIcon />
-                                        Find Gigs
+                                        Find A Gig
                                     </button>
                                 </Link>
                             )}
-                            {
-                                newMessages ? (
-                                    <Link className="link" to={'/messages'}>
-                                        <button className="btn secondary messages">
-                                            <span className="notification-dot"><DotIcon /></span>
-                                            <MailboxFullIcon />
-                                            Messages
-                                        </button>
-                                    </Link>
-                                ) : (
-                                    <Link className="link" to={'/messages'}>
-                                        <button className="btn secondary">
-                                            <MailboxEmptyIcon />
-                                            Messages
-                                        </button>
-                                    </Link>
-                                )
-                            }
                         </div>
                         <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
                             <UserIcon />
@@ -346,79 +175,28 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 <h6>{user.name}</h6>
                                 <p>{user.email}</p>
                             </div>
-                            <div className="item">
-                                Messages
-                                <MailboxEmptyIcon />
-                            </div>
                             <div className="break" />
                             <h6 className="title">musicians</h6>
-                            <div className="item no-margin">
-                                Dashboard
-                                <DashboardIcon />
-                            </div>
-                            <div className="item">
-                                Map
-                                <MapIcon />
-                            </div>
+                            <Link to={'/find-a-gig'} className="item">
+                                Find a Gig
+                                <TelescopeIcon />
+                            </Link>
+                            <Link to={'/create-musician-profile'} className="item">
+                                Create Musician Profile
+                                <GuitarsIcon />
+                            </Link>
                             <div className="break" />
-                            <h6 className="title">hosts</h6>
-                            <div className="item no-margin">
-                                Dashboard
-                                <DashboardIcon />
-                            </div>
-                            <div className="item">
-                                Venue Builder
+                            <h6 className="title">VEnues</h6>
+                            <Link to={'/venues'} className="item">
+                                I'm a Venue
                                 <VenueBuilderIcon />
-                            </div>
+                            </Link>
                             <div className="break" />
-                            <h6 className="title">gig-goers</h6>
-                            <div className="item no-margin">
-                                Map
-                                <MapIcon />
-                            </div>
-                            <div className="break" />
-                            <div className="item no-margin">
-                                Settings
-                                <SettingsIcon />
-                            </div>
                             <button className="btn danger no-margin" onClick={handleLogout}>
                                 Log Out
                                 <LogOutIcon />
                             </button>
                         </nav>
-                    )}
-                    {feedbackForm && (
-                        <div className="feedback">
-                            <div className="body">
-                                <textarea
-                                    name="feedbackBox"
-                                    id="feedbackBox"
-                                    onChange={(e) => setFeedback(prev => ({ ...prev, feedback: e.target.value }))}
-                                    value={feedback.feedback}
-                                    placeholder="Your feedback..."
-                                    
-                                ></textarea>
-                            </div>
-                            <div className="foot">
-                                <div className="faces">
-                                    <button className={`btn icon ${feedback.scale === 'hearts' ? 'active' : ''}`} onClick={() => handleScaleSelection('hearts')}>
-                                        <FaceHeartsIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'smiles' ? 'active' : ''}`} onClick={() => handleScaleSelection('smiles')}>
-                                        <FaceSmileIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'meh' ? 'active' : ''}`} onClick={() => handleScaleSelection('meh')}>
-                                        <FaceMehIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'frown' ? 'active' : ''}`} onClick={() => handleScaleSelection('frown')}>
-                                        <FaceFrownIcon />
-                                    </button>
-                                </div>
-                                <button className="btn primary-alt" onClick={handleFeedbackSubmit}>
-                                    Send
-                                </button>
-                            </div>
-                        </div>
                     )}
                 </>
             ) : (

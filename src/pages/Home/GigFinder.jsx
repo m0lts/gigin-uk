@@ -33,25 +33,11 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
 
     return (
         <section className="gig-finder">
-            {(user && user.musicianProfile && user.venueProfiles && user.venueProfiles.length > 0) ? (
-                <CommonHeader
-                    setAuthModal={setAuthModal}
-                    setAuthType={setAuthType}
-                    user={user}
-                />
-            ) : (user && user.musicianProfile) ? (
-                <MusicianHeader
-                    setAuthModal={setAuthModal}
-                    setAuthType={setAuthType}
-                    user={user}
-                />
-            ) : (user && user.venueProfiles && user.venueProfiles.length > 0) && (
-                <VenuesHeader
-                    setAuthModal={setAuthModal}
-                    setAuthType={setAuthType}
-                    user={user}
-                />
-            )}
+            <MusicianHeader
+                setAuthModal={setAuthModal}
+                setAuthType={setAuthType}
+                user={user}
+            />
             {viewType === 'map' ? (
                 <MapView upcomingGigs={upcomingGigs} />
             ) : (

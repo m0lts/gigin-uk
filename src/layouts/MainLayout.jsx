@@ -14,8 +14,8 @@ export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout }
                     setAuthType={setAuthType}
                     user={user}
                 />
-            ) : (user && user.musicianProfile && user.venueProfiles && user.venueProfiles.length > 0) ? (
-                <CommonHeader
+            ) : (user && user.venueProfiles && user.venueProfiles.length > 0) ? (
+                <VenuesHeader
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
                     user={user}
@@ -26,8 +26,8 @@ export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout }
                     setAuthType={setAuthType}
                     user={user}
                 />
-            ) : (user && user.venueProfiles && user.venueProfiles.length > 0) && (
-                <VenuesHeader
+            ) : (
+                <CommonHeader
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
                     user={user}
