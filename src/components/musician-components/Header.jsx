@@ -222,24 +222,24 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                     )
                                 )
                             )}
-                            {
-                                newMessages ? (
-                                    <Link className="link" to={'/messages'}>
-                                        <button className="btn secondary messages">
-                                            <span className="notification-dot"><DotIcon /></span>
-                                            <MailboxFullIcon />
-                                            Messages
-                                        </button>
-                                    </Link>
-                                ) : (
-                                    <Link className="link" to={'/messages'}>
-                                        <button className="btn secondary">
-                                            <MailboxEmptyIcon />
-                                            Messages
-                                        </button>
-                                    </Link>
-                                )
-                            }
+                            {user.musicianProfile && (
+                                    newMessages ? (
+                                        <Link className="link" to={'/messages'}>
+                                            <button className="btn secondary messages">
+                                                <span className="notification-dot"><DotIcon /></span>
+                                                <MailboxFullIcon />
+                                                Messages
+                                            </button>
+                                        </Link>
+                                    ) : (
+                                        <Link className="link" to={'/messages'}>
+                                            <button className="btn secondary">
+                                                <MailboxEmptyIcon />
+                                                Messages
+                                            </button>
+                                        </Link>
+                                    )
+                            )}
                         </div>
                         <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
                             <UserIcon />
@@ -252,7 +252,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 <h6>{user.name}</h6>
                                 <p>{user.email}</p>
                             </div>
-                            {
+                            {user.musicianProfile && (
                                 newMessages ? (
                                     <Link className="link item message" to={'/messages'}>
                                             Messages
@@ -264,7 +264,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                             <MailboxEmptyIcon />
                                     </Link>
                                 )
-                            }
+                            )}
                             <div className="break" />
                             <h6 className="title">venues</h6>
                             {user.venueProfiles && user.venueProfiles.length > 0 ? (

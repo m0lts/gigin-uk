@@ -177,17 +177,17 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             </div>
                             <div className="break" />
                             <h6 className="title">musicians</h6>
-                            <Link to={'/find-a-gig'} className="item">
+                            <Link to={'/find-a-gig'} className="item link">
                                 Find a Gig
                                 <TelescopeIcon />
                             </Link>
-                            <Link to={'/create-musician-profile'} className="item">
+                            <Link to={'/create-musician-profile'} className="item link">
                                 Create Musician Profile
                                 <GuitarsIcon />
                             </Link>
                             <div className="break" />
                             <h6 className="title">VEnues</h6>
-                            <Link to={'/venues'} className="item">
+                            <Link to={'/venues'} className="item link">
                                 I'm a Venue
                                 <VenueBuilderIcon />
                             </Link>
