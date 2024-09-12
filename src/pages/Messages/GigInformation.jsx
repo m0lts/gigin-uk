@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { getDoc, doc } from 'firebase/firestore';
 import { firestore } from "../../firebase";
+import mapboxgl from 'mapbox-gl';
+import 'react-loading-skeleton/dist/skeleton.css';
 import { LocationPinIcon, BackgroundMusicIcon, BeerIcon, MicrophoneIcon, ClubIcon, PeopleGroupIcon, InviteIcon, SpeakersIcon, GuitarsIcon, TicketIcon, HouseIcon, MicrophoneLinesIcon } from "../../components/ui/Extras/Icons";
 
 export const GigInformation = ({ gigId }) => {
 
+    
     const [gigData, setGigData] = useState();
     const [venueProfile, setVenueProfile] = useState();
+    const mapContainerRef = useRef(null);
 
     useEffect(() => {
         const fetchGigInfo = async () => {
@@ -37,6 +41,7 @@ export const GigInformation = ({ gigId }) => {
             fetchGigInfo();
         }
     }, [gigId])
+
 
     const getCityFromAddress = (address) => {
         const parts = address.split(',');
@@ -117,23 +122,52 @@ export const GigInformation = ({ gigId }) => {
         return `${copiedGenres.join(', ')} or ${lastGenre}`;
     };
 
+    useEffect(() => {
+        if (gigData && gigData.coordinates) {
+            mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
+
+            const map = new mapboxgl.Map({
+                container: mapContainerRef.current,
+                style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
+                center: [gigData.coordinates[0], gigData.coordinates[1]],
+                zoom: 15
+            });
+
+            new mapboxgl.Marker()
+                .setLngLat([gigData.coordinates[0], gigData.coordinates[1]])
+                .addTo(map);
+
+            return () => map.remove();
+        }
+    }, [gigData]);
+
     if (gigData) {
 
         return (
             <>
                 <div className="venue">
-                    <h2>{gigData.venue.venueName}</h2>
                     <figure className="photo">
                         <img src={gigData.venue.photo} alt={`${gigData.venue.venueName} Photo`} />
                     </figure>
+                    <h2>{gigData.venue.venueName}</h2>
                 </div>
                 <div className="date-and-time">
-                    <h2>{gigData.budget}</h2>
                     <h3>{formatDate(gigData.date)}</h3>
                     <h3>{formatDurationSpan(gigData.startTime, gigData.duration)}</h3>
                 </div>
                 <div className="location">
                     <h4>{gigData.venue.address}</h4>
+                </div>
+                <div className="budgets">
+                    <div className="budget-container">
+                        <h6>Venue Budget:</h6>
+                        <h2 style={{ textDecoration: gigData.negotiatedFee ? 'line-through' : 'none' }}>{gigData.budget}</h2>                    </div>
+                    {gigData.negotiatedFee && (
+                        <div className="budget-container">
+                            <h6>Negotiated Fee:</h6>
+                            <h2>{gigData.budget}</h2>
+                        </div>
+                    )}
                 </div>
                 <div className="details">
                     <div className="details-list">
@@ -158,7 +192,7 @@ export const GigInformation = ({ gigId }) => {
                                 <p>{gigData.kind}</p>
                             </div>
                         </div>
-                        {gigData.genre.length > 0 && (
+                        {gigData.genre.length > 0 ? (
                             <div className="detail">
                                 <h6>Genres</h6>
                                 <div className="data">
@@ -166,16 +200,19 @@ export const GigInformation = ({ gigId }) => {
                                     <p>{formatGenres(gigData.genre)}</p>
                                 </div>
                             </div>
+                        ) : (
+                            <div className="detail">
+                                <h6>Genres</h6>
+                                <div className="data">
+                                    <SpeakersIcon />
+                                    <p>No Preference</p>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
-                <div className="extra-info">
-                    <h4 className="subtitle">Extra Info:</h4>
-                    <div className="info">
-                        <div className="text">
-                            {gigData.extraInformation}
-                        </div>
-                    </div>
+                <div className="map">
+                    <div ref={mapContainerRef} className="map-container" style={{ height: '100%', width: '100%', borderRadius: '10px' }} />
                 </div>
             </>
         )

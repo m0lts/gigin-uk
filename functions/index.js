@@ -44,3 +44,23 @@
 //   }
 // });
 
+const functions = require("firebase-functions");
+const stripe = require("stripe")(functions.config().stripe.testkey);
+
+exports.createTestConnectedAccount =
+functions.https.onCall(async (data, context) => {
+  try {
+    const account = await stripe.accounts.create({
+      type: "express",
+      country: "GB",
+      email: data.email,
+      capabilities: {
+        transfers: {requested: true},
+      },
+    });
+
+    return {accountId: account.id};
+  } catch (error) {
+    return {error: error.message};
+  }
+});

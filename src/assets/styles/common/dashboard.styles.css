@@ -17,8 +17,9 @@
 
 /* DASHBOARD RIGHT WINDOW */
 .dashboard .window {
+    margin: 10px;
     background-color: var(--gn-grey-100);
-    border-top-left-radius: var(--gn-btn-border-radius);
+    border-radius: var(--gn-btn-border-radius);
     box-shadow: 0px 0px 2px var(--gn-shadow);
     overflow: scroll;
     -ms-overflow-style: none;

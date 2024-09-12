@@ -99,109 +99,114 @@ export const GigApplications = () => {
                         }
                     });
                     const gigRef = doc(firestore, 'gigs', gigInfo.gigId);
-                    await updateDoc(gigRef, { applicants: updatedApplicants, budget: `${agreedFee}` });
+                    if (gigInfo.budget !== agreedFee) {
+                        await updateDoc(gigRef, { applicants: updatedApplicants, negotiatedFee: `${agreedFee}` });
+                    } else {
+                        await updateDoc(gigRef, { applicants: updatedApplicants, budget: `${agreedFee}` });
+                    }
 
+                const conversationsRef = collection(firestore, 'conversations');
+                const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianId), where('gigId', '==', gigId));
+                const conversationSnapshot = await getDocs(conversationQuery);
 
-                    // const conversationsRef = collection(firestore, 'conversations');
-                    // const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianId), where('gigId', '==', gigId));
-                    // const conversationSnapshot = await getDocs(conversationQuery);
+                if (!conversationSnapshot.empty) {
+                    const conversationId = conversationSnapshot.docs[0].id;
+                    const timestamp = Timestamp.now();
 
-                    // if (!conversationSnapshot.empty) {
-                    //     const conversationId = conversationSnapshot.docs[0].id;
-                    //     const timestamp = Timestamp.now();
-
-                    //     if (proposedFee === gigData.budget) {
-                    //         // Find the message with type 'application' in the conversation
-                    //         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    //         const messageQuery = query(messagesRef, where('type', '==', 'application'));
-                    //         const messageSnapshot = await getDocs(messageQuery);
-                    
-                    //         if (!messageSnapshot.empty) {
-                    //             const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
-                    
-                    //             // Update the application message with the 'Accepted' status
-                    //             const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                    //             await updateDoc(messageRef, {
-                    //                 status: 'Accepted',
-                    //                 timestamp: timestamp,
-                    //             });
-    
-                    //             // Send an accept message to musician
-                    //             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    //             // Add the new message to the 'messages' subcollection
-    
-                    //             await addDoc(messagesRef, {
-                    //                 senderId: user.uid,
-                    //                 receiverId: musicianUserId,
-                    //                 text: `The gig has been accepted with a fee of ${agreedFee}.`,
-                    //                 timestamp: timestamp,
-                    //                 type: 'announcement',
-                    //                 status: 'awaiting payment',
-                    //             });
+                    if (proposedFee === gigInfo.budget) {
+                        // Find the message with type 'application' in the conversation
+                        const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                        const messageQuery = query(messagesRef, where('type', '==', 'application'));
+                        const messageSnapshot = await getDocs(messageQuery);
                 
-                    //             const conversationRef = doc(firestore, 'conversations', conversationId);
-                    //             await updateDoc(conversationRef, {
-                    //                 lastMessage: `Gig application accepted.`,
-                    //                 lastMessageTimestamp: timestamp,
-                    //             });
-                                
-                    //             setGigInfo(prevState => ({
-                    //                 ...prevState,
-                    //                 applicants: updatedApplicants
-                    //             }));
-    
-                    //         } else {
-                    //             console.error('No application message found in the conversation.');
-                    //         }
+                        if (!messageSnapshot.empty) {
+                            const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
+                
+                            // Update the application message with the 'Accepted' status
+                            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                            await updateDoc(messageRef, {
+                                status: 'Accepted',
+                                timestamp: timestamp,
+                            });
+
+                            // Send an accept message to musician
+                            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                            // Add the new message to the 'messages' subcollection
+
+                            await addDoc(messagesRef, {
+                                senderId: user.uid,
+                                receiverId: musicianUserId,
+                                text: `The gig has been accepted with a fee of ${agreedFee}.`,
+                                timestamp: timestamp,
+                                type: 'announcement',
+                                status: 'awaiting payment',
+                            });
+            
+                            const conversationRef = doc(firestore, 'conversations', conversationId);
+                            await updateDoc(conversationRef, {
+                                lastMessage: `Gig application accepted.`,
+                                lastMessageTimestamp: timestamp,
+                            });
                             
-                    //     } else {
-                    //         // Find the message with type 'negotiation' in the conversation
-                    //         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    //         const messageQuery = query(messagesRef, where('type', '==', 'negotiation'));
-                    //         const messageSnapshot = await getDocs(messageQuery);
-                    
-                    //         if (!messageSnapshot.empty) {
-                    //             const messageId = messageSnapshot.docs[0].id; // Get the first negotiation message's ID
-                    
-                    //             // Update the negotiation message with the 'Accepted' status
-                    //             const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                    //             await updateDoc(messageRef, {
-                    //                 status: 'Accepted',
-                    //                 timestamp: timestamp,
-                    //             });
-    
-                    //             // Send an accept message to musician
-                    //             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    //             // Add the new message to the 'messages' subcollection
-    
-                    //             await addDoc(messagesRef, {
-                    //                 senderId: user.uid,
-                    //                 receiverId: musicianUserId,
-                    //                 text: `The gig has been accepted with a fee of ${agreedFee}.`,
-                    //                 timestamp: timestamp,
-                    //                 type: 'announcement',
-                    //                 status: 'awaiting payment',
-                    //             });
-                
-                    //             const conversationRef = doc(firestore, 'conversations', conversationId);
-                    //             await updateDoc(conversationRef, {
-                    //                 lastMessage: `Gig application accepted.`,
-                    //                 lastMessageTimestamp: timestamp,
-                    //             });
-                                
-                    //             setGigInfo(prevState => ({
-                    //                 ...prevState,
-                    //                 applicants: updatedApplicants
-                    //             }));
-    
-                    //         } else {
-                    //             console.error('No negotiation message found in the conversation.');
-                    //         }
-                    //     }
+                            setGigInfo(prevState => ({
+                                ...prevState,
+                                applicants: updatedApplicants
+                            }));
+
+                        } else {
+                            console.error('No application message found in the conversation.');
+                        }
                         
-                    // } else {
-                    //     console.error('No conversation found for the musician and gig.');
-                    // }
+                    } else {
+                        // Find the message with type 'negotiation' in the conversation
+                        const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                        const messageQuery = query(messagesRef, where('type', '==', 'negotiation'));
+                        const messageSnapshot = await getDocs(messageQuery);
+                
+                        if (!messageSnapshot.empty) {
+                            const messageId = messageSnapshot.docs[0].id; // Get the first negotiation message's ID
+                
+                            // Update the negotiation message with the 'Accepted' status
+                            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                            await updateDoc(messageRef, {
+                                status: 'Accepted',
+                                timestamp: timestamp,
+                            });
+
+                            // Send an accept message to musician
+                            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                            // Add the new message to the 'messages' subcollection
+
+                            await addDoc(messagesRef, {
+                                senderId: user.uid,
+                                receiverId: musicianUserId,
+                                text: `The gig has been accepted with a fee of ${agreedFee}.`,
+                                timestamp: timestamp,
+                                type: 'announcement',
+                                status: 'awaiting payment',
+                            });
+            
+                            const conversationRef = doc(firestore, 'conversations', conversationId);
+                            await updateDoc(conversationRef, {
+                                lastMessage: `Gig application accepted.`,
+                                lastMessageTimestamp: timestamp,
+                            });
+                            
+                            setGigInfo(prevState => ({
+                                ...prevState,
+                                applicants: updatedApplicants
+                            }));
+
+                        } else {
+                            console.error('No negotiation message found in the conversation.');
+                        }
+                    }
+                    
+                } else {
+                    console.error('No conversation found for the musician and gig.');
+                }
+
+                    
                 } else {
                     console.log('Gig is not in the future, skipping application.');
                 }        
@@ -213,6 +218,8 @@ export const GigApplications = () => {
             console.error('Error updating gig document:', error);
         }
     };
+
+
 
     const handleReject = async (musicianId, event, musicianUserId, proposedFee) => {
         event.stopPropagation();
@@ -230,108 +237,118 @@ export const GigApplications = () => {
                     const gigRef = doc(firestore, 'gigs', gigInfo.gigId);
                     await updateDoc(gigRef, { applicants: updatedApplicants });
                 
-
-                    // const conversationsRef = collection(firestore, 'conversations');
-                    // const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianId), where('gigId', '==', gigId));
-                    // const conversationSnapshot = await getDocs(conversationQuery);
-
-                    // if (!conversationSnapshot.empty) {
-                    //     const conversationId = conversationSnapshot.docs[0].id;
-                    //     const timestamp = Timestamp.now(); // Store the timestamp for reuse
-
-                    //     if (proposedFee === gigData.budget) {
-                    //         // Find the message with type 'application' in the conversation
-                    //         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    //         const messageQuery = query(messagesRef, where('type', '==', 'application'));
-                    //         const messageSnapshot = await getDocs(messageQuery);
-                    
-                    //         if (!messageSnapshot.empty) {
-                    //             const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
-                    
-                    //             // Update the application message with the 'Declined' status
-                    //             const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                    //             await updateDoc(messageRef, {
-                    //                 status: 'Declined',
-                    //                 timestamp: timestamp,
-                    //             });
-    
-                    //             // Send a decline message to musician
-                    //             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    //             // Add the new message to the 'messages' subcollection
-                    //             await addDoc(messagesRef, {
-                    //                 senderId: user.uid,
-                    //                 receiverId: musicianUserId,
-                    //                 text: `Your gig application was declined.`,
-                    //                 timestamp: timestamp,
-                    //                 type: 'application-response',
-                    //                 status: 'Declined'
-                    //             });
-                
-                    //             const conversationRef = doc(firestore, 'conversations', conversationId);
-                    //             await updateDoc(conversationRef, {
-                    //                 lastMessage: `Gig application declined.`,
-                    //                 lastMessageTimestamp: timestamp,
-                    //             });
-                                
-                    //             setGigInfo(prevState => ({
-                    //                 ...prevState,
-                    //                 applicants: updatedApplicants
-                    //             }));
-    
-                    //         } else {
-                    //             console.error('No application message found in the conversation.');
-                    //         }
-                    //     } else {
-                    //         // Find the message with type 'application' in the conversation
-                    //         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    //         const messageQuery = query(messagesRef, where('type', '==', 'negotiation'));
-                    //         const messageSnapshot = await getDocs(messageQuery);
-                    
-                    //         if (!messageSnapshot.empty) {
-                    //             const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
-                    
-                    //             // Update the application message with the 'Declined' status
-                    //             const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                    //             await updateDoc(messageRef, {
-                    //                 status: 'Declined',
-                    //                 timestamp: timestamp,
-                    //             });
-    
-                    //             // Send a decline message to musician
-                    //             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    //             // Add the new message to the 'messages' subcollection
-                    //             await addDoc(messagesRef, {
-                    //                 senderId: user.uid,
-                    //                 receiverId: musicianUserId,
-                    //                 text: `Your offer was declined.`,
-                    //                 timestamp: timestamp,
-                    //                 type: 'negotiation-response',
-                    //                 status: 'Declined'
-                    //             });
-                
-                    //             const conversationRef = doc(firestore, 'conversations', conversationId);
-                    //             await updateDoc(conversationRef, {
-                    //                 lastMessage: `Gig offer declined.`,
-                    //                 lastMessageTimestamp: timestamp,
-                    //             });
-                                
-                    //             setGigInfo(prevState => ({
-                    //                 ...prevState,
-                    //                 applicants: updatedApplicants
-                    //             }));
-    
-                    //         } else {
-                    //             console.error('No negotiation message found in the conversation.');
-                    //         }
-                            
-                    //     }
-                
-                    // } else {
-                    //     console.error('No conversation found for the musician and gig.');
-                    // }
                 } else {
                     console.log('Gig is not in the future, skipping application update.');
-                }        
+                }      
+                
+                const conversationsRef = collection(firestore, 'conversations');
+                const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianId), where('gigId', '==', gigId));
+                const conversationSnapshot = await getDocs(conversationQuery);
+
+                if (!conversationSnapshot.empty) {
+                    const conversationId = conversationSnapshot.docs[0].id;
+                    const timestamp = Timestamp.now(); // Store the timestamp for reuse
+
+                    if (proposedFee === gigInfo.budget) {
+                        // Find the message with type 'application' in the conversation
+                        const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                        const messageQuery = query(messagesRef, where('type', '==', 'application'));
+                        const messageSnapshot = await getDocs(messageQuery);
+                
+                        if (!messageSnapshot.empty) {
+                            const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
+                
+                            // Update the application message with the 'Declined' status
+                            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                            await updateDoc(messageRef, {
+                                status: 'Declined',
+                                timestamp: timestamp,
+                            });
+
+                            // Send a decline message to musician
+                            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                            // Add the new message to the 'messages' subcollection
+                            await addDoc(messagesRef, {
+                                senderId: user.uid,
+                                receiverId: musicianUserId,
+                                text: `Your gig application was declined.`,
+                                timestamp: timestamp,
+                                type: 'application-response',
+                                status: 'Declined'
+                            });
+            
+                            const conversationRef = doc(firestore, 'conversations', conversationId);
+                            await updateDoc(conversationRef, {
+                                lastMessage: `Gig application declined.`,
+                                lastMessageTimestamp: timestamp,
+                            });
+                            const updatedApplicants = gigInfo.applicants.map(applicant => {
+                                if (applicant.id === musicianId) {
+                                    return { ...applicant, status: 'Declined' };
+                                } else {
+                                    return { ...applicant };
+                                }
+                            });
+                            setGigInfo(prevState => ({
+                                ...prevState,
+                                applicants: updatedApplicants
+                            }));
+
+                        } else {
+                            console.error('No application message found in the conversation.');
+                        }
+                    } else {
+                        // Find the message with type 'application' in the conversation
+                        const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                        const messageQuery = query(messagesRef, where('type', '==', 'negotiation'));
+                        const messageSnapshot = await getDocs(messageQuery);
+                
+                        if (!messageSnapshot.empty) {
+                            const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
+                
+                            // Update the application message with the 'Declined' status
+                            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                            await updateDoc(messageRef, {
+                                status: 'Declined',
+                                timestamp: timestamp,
+                            });
+
+                            // Send a decline message to musician
+                            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                            // Add the new message to the 'messages' subcollection
+                            await addDoc(messagesRef, {
+                                senderId: user.uid,
+                                receiverId: musicianUserId,
+                                text: `Your offer was declined.`,
+                                timestamp: timestamp,
+                                type: 'negotiation-response',
+                                status: 'Declined'
+                            });
+            
+                            const conversationRef = doc(firestore, 'conversations', conversationId);
+                            await updateDoc(conversationRef, {
+                                lastMessage: `Gig offer declined.`,
+                                lastMessageTimestamp: timestamp,
+                            });
+                            const updatedApplicants = gigInfo.applicants.map(applicant => {
+                                if (applicant.id === musicianId) {
+                                    return { ...applicant, status: 'Declined' };
+                                } else {
+                                    return { ...applicant };
+                                }
+                            });
+                            
+                            setGigInfo(prevState => ({
+                                ...prevState,
+                                applicants: updatedApplicants
+                            }));
+
+                        } else {
+                            console.error('No negotiation message found in the conversation.');
+                        }
+                        
+                    }
+                }
 
             } else {
                 console.error('Gig not found');
@@ -405,7 +422,7 @@ export const GigApplications = () => {
                                                 )}
                                                 {status === 'Declined' && (
                                                     <div className="status-box">
-                                                        <div className="status rejected">
+                                                        <div className="status declined">
                                                             <RejectedIcon />
                                                             Declined
                                                         </div>
@@ -443,3 +460,266 @@ export const GigApplications = () => {
         </>
     );
 };
+
+
+// OLD MESSAGES CODE
+// const handleAccept = async (musicianId, event, musicianUserId, proposedFee) => {
+//     event.stopPropagation();
+
+//     // TAKE PAYMENT FROM HOST
+
+//     try {
+         
+//         if (gigInfo) {
+//             if (gigInfo.date.toDate() > new Date()) {
+//                 let agreedFee;
+//                 const updatedApplicants = gigInfo.applicants.map(applicant => {
+//                     if (applicant.id === musicianId) {
+//                         agreedFee = applicant.fee;
+//                         return { ...applicant, status: 'Accepted' };
+//                     } else {
+//                         return { ...applicant, status: 'Declined' };
+//                     }
+//                 });
+//                 const gigRef = doc(firestore, 'gigs', gigInfo.gigId);
+//                 await updateDoc(gigRef, { applicants: updatedApplicants, budget: `${agreedFee}` });
+
+
+                // const conversationsRef = collection(firestore, 'conversations');
+                // const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianId), where('gigId', '==', gigId));
+                // const conversationSnapshot = await getDocs(conversationQuery);
+
+                // if (!conversationSnapshot.empty) {
+                //     const conversationId = conversationSnapshot.docs[0].id;
+                //     const timestamp = Timestamp.now();
+
+                //     if (proposedFee === gigData.budget) {
+                //         // Find the message with type 'application' in the conversation
+                //         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                //         const messageQuery = query(messagesRef, where('type', '==', 'application'));
+                //         const messageSnapshot = await getDocs(messageQuery);
+                
+                //         if (!messageSnapshot.empty) {
+                //             const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
+                
+                //             // Update the application message with the 'Accepted' status
+                //             const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                //             await updateDoc(messageRef, {
+                //                 status: 'Accepted',
+                //                 timestamp: timestamp,
+                //             });
+
+                //             // Send an accept message to musician
+                //             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                //             // Add the new message to the 'messages' subcollection
+
+                //             await addDoc(messagesRef, {
+                //                 senderId: user.uid,
+                //                 receiverId: musicianUserId,
+                //                 text: `The gig has been accepted with a fee of ${agreedFee}.`,
+                //                 timestamp: timestamp,
+                //                 type: 'announcement',
+                //                 status: 'awaiting payment',
+                //             });
+            
+                //             const conversationRef = doc(firestore, 'conversations', conversationId);
+                //             await updateDoc(conversationRef, {
+                //                 lastMessage: `Gig application accepted.`,
+                //                 lastMessageTimestamp: timestamp,
+                //             });
+                            
+                //             setGigInfo(prevState => ({
+                //                 ...prevState,
+                //                 applicants: updatedApplicants
+                //             }));
+
+                //         } else {
+                //             console.error('No application message found in the conversation.');
+                //         }
+                        
+                //     } else {
+                //         // Find the message with type 'negotiation' in the conversation
+                //         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                //         const messageQuery = query(messagesRef, where('type', '==', 'negotiation'));
+                //         const messageSnapshot = await getDocs(messageQuery);
+                
+                //         if (!messageSnapshot.empty) {
+                //             const messageId = messageSnapshot.docs[0].id; // Get the first negotiation message's ID
+                
+                //             // Update the negotiation message with the 'Accepted' status
+                //             const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                //             await updateDoc(messageRef, {
+                //                 status: 'Accepted',
+                //                 timestamp: timestamp,
+                //             });
+
+                //             // Send an accept message to musician
+                //             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                //             // Add the new message to the 'messages' subcollection
+
+                //             await addDoc(messagesRef, {
+                //                 senderId: user.uid,
+                //                 receiverId: musicianUserId,
+                //                 text: `The gig has been accepted with a fee of ${agreedFee}.`,
+                //                 timestamp: timestamp,
+                //                 type: 'announcement',
+                //                 status: 'awaiting payment',
+                //             });
+            
+                //             const conversationRef = doc(firestore, 'conversations', conversationId);
+                //             await updateDoc(conversationRef, {
+                //                 lastMessage: `Gig application accepted.`,
+                //                 lastMessageTimestamp: timestamp,
+                //             });
+                            
+                //             setGigInfo(prevState => ({
+                //                 ...prevState,
+                //                 applicants: updatedApplicants
+                //             }));
+
+                //         } else {
+                //             console.error('No negotiation message found in the conversation.');
+                //         }
+                //     }
+                    
+                // } else {
+                //     console.error('No conversation found for the musician and gig.');
+                // }
+//             } else {
+//                 console.log('Gig is not in the future, skipping application.');
+//             }        
+
+//         } else {
+//             console.error('Gig not found');
+//         }
+//     } catch (error) {
+//         console.error('Error updating gig document:', error);
+//     }
+// };
+
+// const handleReject = async (musicianId, event, musicianUserId, proposedFee) => {
+//     event.stopPropagation();
+//     try {
+        
+//         if (gigInfo) {               
+//             if (gigInfo.date.toDate() > new Date()) {
+//                 const updatedApplicants = gigInfo.applicants.map(applicant => {
+//                     if (applicant.id === musicianId) {
+//                         return { ...applicant, status: 'Declined' };
+//                     } else {
+//                         return { ...applicant };
+//                     }
+//                 });
+//                 const gigRef = doc(firestore, 'gigs', gigInfo.gigId);
+//                 await updateDoc(gigRef, { applicants: updatedApplicants });
+            
+
+                // const conversationsRef = collection(firestore, 'conversations');
+                // const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianId), where('gigId', '==', gigId));
+                // const conversationSnapshot = await getDocs(conversationQuery);
+
+                // if (!conversationSnapshot.empty) {
+                //     const conversationId = conversationSnapshot.docs[0].id;
+                //     const timestamp = Timestamp.now(); // Store the timestamp for reuse
+
+                //     if (proposedFee === gigData.budget) {
+                //         // Find the message with type 'application' in the conversation
+                //         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                //         const messageQuery = query(messagesRef, where('type', '==', 'application'));
+                //         const messageSnapshot = await getDocs(messageQuery);
+                
+                //         if (!messageSnapshot.empty) {
+                //             const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
+                
+                //             // Update the application message with the 'Declined' status
+                //             const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                //             await updateDoc(messageRef, {
+                //                 status: 'Declined',
+                //                 timestamp: timestamp,
+                //             });
+
+                //             // Send a decline message to musician
+                //             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                //             // Add the new message to the 'messages' subcollection
+                //             await addDoc(messagesRef, {
+                //                 senderId: user.uid,
+                //                 receiverId: musicianUserId,
+                //                 text: `Your gig application was declined.`,
+                //                 timestamp: timestamp,
+                //                 type: 'application-response',
+                //                 status: 'Declined'
+                //             });
+            
+                //             const conversationRef = doc(firestore, 'conversations', conversationId);
+                //             await updateDoc(conversationRef, {
+                //                 lastMessage: `Gig application declined.`,
+                //                 lastMessageTimestamp: timestamp,
+                //             });
+                            
+                //             setGigInfo(prevState => ({
+                //                 ...prevState,
+                //                 applicants: updatedApplicants
+                //             }));
+
+                //         } else {
+                //             console.error('No application message found in the conversation.');
+                //         }
+                //     } else {
+                //         // Find the message with type 'application' in the conversation
+                //         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                //         const messageQuery = query(messagesRef, where('type', '==', 'negotiation'));
+                //         const messageSnapshot = await getDocs(messageQuery);
+                
+                //         if (!messageSnapshot.empty) {
+                //             const messageId = messageSnapshot.docs[0].id; // Get the first application message's ID
+                
+                //             // Update the application message with the 'Declined' status
+                //             const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+                //             await updateDoc(messageRef, {
+                //                 status: 'Declined',
+                //                 timestamp: timestamp,
+                //             });
+
+                //             // Send a decline message to musician
+                //             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+                //             // Add the new message to the 'messages' subcollection
+                //             await addDoc(messagesRef, {
+                //                 senderId: user.uid,
+                //                 receiverId: musicianUserId,
+                //                 text: `Your offer was declined.`,
+                //                 timestamp: timestamp,
+                //                 type: 'negotiation-response',
+                //                 status: 'Declined'
+                //             });
+            
+                //             const conversationRef = doc(firestore, 'conversations', conversationId);
+                //             await updateDoc(conversationRef, {
+                //                 lastMessage: `Gig offer declined.`,
+                //                 lastMessageTimestamp: timestamp,
+                //             });
+                            
+                //             setGigInfo(prevState => ({
+                //                 ...prevState,
+                //                 applicants: updatedApplicants
+                //             }));
+
+                //         } else {
+                //             console.error('No negotiation message found in the conversation.');
+                //         }
+                        
+                //     }
+            
+                // } else {
+                //     console.error('No conversation found for the musician and gig.');
+                // }
+//             } else {
+//                 console.log('Gig is not in the future, skipping application update.');
+//             }        
+
+//         } else {
+//             console.error('Gig not found');
+//         }
+//     } catch (error) {
+//         console.error('Error updating gig document:', error);
+//     }
+// };

@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { TextLogoLink, VenueLogoLink } from "../ui/logos/Logos";
-import { DashboardIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, LogOutIcon, MapIcon, SettingsIcon, UserIcon, VenueBuilderIcon, MailboxEmptyIcon, MailboxFullIcon, GuitarsIcon, RightChevronIcon } from "../ui/Extras/Icons"
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
+import { firestore } from "../../firebase"
+import { DotIcon, DashboardIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, LogOutIcon, MapIcon, SettingsIcon, UserIcon, VenueBuilderIcon, MailboxEmptyIcon, MailboxFullIcon, GuitarsIcon, RightChevronIcon } from "../ui/Extras/Icons"
 
 export const Header = ({ setAuthModal, setAuthType, user }) => {
     
@@ -16,6 +18,66 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
         feedback: '',
         user: user?.uid,
     });
+
+    const [newMessages, setNewMessages] = useState(false);
+
+    useEffect(() => {
+        if (!user) return;
+    
+        const checkForNewMessages = () => {
+            const conversationsRef = collection(firestore, 'conversations');
+            const queries = [];
+    
+            // Query by musicianProfile ID
+            if (user.musicianProfile) {
+                const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile.musicianId));
+                queries.push(musicianQuery);
+            }
+    
+            // Query by each venueProfile ID
+            if (user.venueProfiles && user.venueProfiles.length > 0) {
+                user.venueProfiles.forEach(venue => {
+                    const venueQuery = query(conversationsRef, where('participants', 'array-contains', venue.venueId));
+                    queries.push(venueQuery);
+                });
+            }
+    
+            // Set up listeners for each query
+            const unsubscribeFunctions = queries.map(q => 
+                onSnapshot(q, snapshot => {
+                    if (!snapshot.empty) {
+                        const newConversations = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data(),
+                        }));
+    
+                        // Check for any conversations where the last message is unread
+                        let hasUnreadMessages = false;
+    
+                        newConversations.forEach(conversation => {
+                            const lastViewedTimestamp = conversation.lastViewed?.[user.uid]?.seconds || 0;
+                            const lastMessageTimestamp = conversation.lastMessageTimestamp?.seconds || 0;
+                            const lastMessageSenderId = conversation.lastMessageSenderId;
+    
+                            // If the last message is newer than the last viewed timestamp and the user is not the sender
+                            if (lastMessageTimestamp > lastViewedTimestamp && lastMessageSenderId !== user.uid) {
+                                hasUnreadMessages = true;
+                            }
+                        });
+    
+                        setNewMessages(hasUnreadMessages);  // Update the state based on unread messages
+                    }
+                })
+            );
+    
+            // Clean up the listeners when the component unmounts
+            return () => {
+                unsubscribeFunctions.forEach(unsub => unsub());
+            };
+        };
+    
+        checkForNewMessages();
+    }, [user]);
 
     const handleScaleSelection = (scale) => {
         setFeedback(prev => ({ ...prev, scale }));
@@ -136,12 +198,24 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                     </button>
                                 </Link>
                             )}
-                                <Link className="link" to={'/messages'}>
-                                    <button className="btn secondary">
-                                        <MailboxEmptyIcon />
-                                        Messages
-                                    </button>
-                                </Link>
+                            {
+                                newMessages ? (
+                                    <Link className="link" to={'/messages'}>
+                                        <button className="btn secondary messages">
+                                            <span className="notification-dot"><DotIcon /></span>
+                                            <MailboxFullIcon />
+                                            Messages
+                                        </button>
+                                    </Link>
+                                ) : (
+                                    <Link className="link" to={'/messages'}>
+                                        <button className="btn secondary">
+                                            <MailboxEmptyIcon />
+                                            Messages
+                                        </button>
+                                    </Link>
+                                )
+                            }
                         </div>
                         <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
                             <UserIcon />
@@ -153,10 +227,19 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 <h6>{user.name}</h6>
                                 <p>{user.email}</p>
                             </div>
-                            <div className="item">
-                                Messages
-                                <MailboxEmptyIcon />
-                            </div>
+                            {
+                                newMessages ? (
+                                    <Link className="link item message" to={'/messages'}>
+                                            Messages
+                                            <MailboxFullIcon />
+                                    </Link>
+                                ) : (
+                                    <Link className="link item" to={'/messages'}>
+                                            Messages
+                                            <MailboxEmptyIcon />
+                                    </Link>
+                                )
+                            }
                             <div className="break" />
                             <h6 className="title">venues</h6>
                             {user.venueProfiles && user.venueProfiles.length > 0 ? (
@@ -167,30 +250,30 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                             <DashboardIcon />
                                         </div>
                                     </Link>
-                                    <div className="item">
+                                    <Link to={'/venues/add-venue'} className="item link">
                                         Add another venue
                                         <VenueBuilderIcon />
-                                    </div>
+                                    </Link>
                                 </>
                             ) : (
-                                <div className="item">
+                                <Link to={'/venues/add-venue'} className="item link">
                                     Add my Venue
                                     <VenueBuilderIcon />
-                                </div>
+                                </Link>
                             )}
                             <div className="break" />
-                            <div className="item no-margin">
+                            <Link to={'/create-musician-profile'} className="item no-margin link">
                                 Create a Musician Profile
                                 <GuitarsIcon />
-                            </div>
-                            <div className="item no-margin">
+                            </Link>
+                            {/* <div className="item no-margin">
                                 Find Gigs
                                 <MapIcon />
-                            </div>
-                            <div className="item no-margin">
+                            </div> */}
+                            {/* <div className="item no-margin">
                                 Settings
                                 <SettingsIcon />
-                            </div>
+                            </div> */}
                             <button className="btn danger no-margin" onClick={handleLogout}>
                                 Log Out
                                 <LogOutIcon />

@@ -100,9 +100,6 @@ export const ProfileTab = ({ musicianProfile }) => {
                         </div>
                     </div>
                     <div className="profile-actions">
-                        <button className="btn secondary">
-                            <ShareIcon />
-                        </button>
                         <button className="btn secondary" onClick={editMusicianProfileRedirect}>
                             <EditIcon />
                         </button>

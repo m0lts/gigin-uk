@@ -92,9 +92,9 @@ export const useAuth = () => {
       setUser({ uid: userCredential.user.uid, ...userDocData });
       const musicianProfile = userDocData.musicianProfile || [];
       const venueProfiles = userDocData.venueProfiles || [];
-      if (musicianProfile.length < 1 && venueProfiles.length > 0) {
-        navigate('/venues');
-      } else if (musicianProfile.length > 0 && venueProfiles.length < 1) {
+      if (!musicianProfile && venueProfiles.length > 0) {
+        navigate('/venues/dashboard');
+      } else {
         navigate('/find-a-gig');
       }
       } catch (error) {

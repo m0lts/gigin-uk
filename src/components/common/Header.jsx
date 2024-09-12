@@ -21,72 +21,65 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
         feedback: '',
         user: user?.uid,
     });
-    const [messagesPopUp, setMessagesPopUp] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
-    const [conversations, setConversations] = useState([]);
 
-    // useEffect(() => {
-    //     if (!user) return;
-
-    //     // Check for conversations where the user is a participant
-    //     const checkForNewMessages = () => {
-    //         const conversationsRef = collection(firestore, 'conversations');
-    //         const queries = [];
-
-    //         // Query by musicianProfile ID
-    //         if (user.musicianProfile && user.musicianProfile.length > 0) {
-    //             const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile[0]));
-    //             queries.push(musicianQuery);
-    //         }
-
-    //         // Query by each venueProfile ID
-    //         if (user.venueProfiles && user.venueProfiles.length > 0) {
-    //             user.venueProfiles.forEach(venueProfileId => {
-    //                 const venueQuery = query(conversationsRef, where('participants', 'array-contains', venueProfileId));
-    //                 queries.push(venueQuery);
-    //             });
-    //         }
-
-    //         // Set up listeners for each query
-    //         const unsubscribeFunctions = queries.map(q => 
-    //             onSnapshot(q, snapshot => {
-    //                 if (!snapshot.empty) {
-    //                     const newConversations = snapshot.docs.map(doc => ({
-    //                         id: doc.id,
-    //                         ...doc.data(),
-    //                     }));
-                        
-    //                     setConversations(prevConversations => {
-    //                         // Merge new conversations into the existing state
-    //                         const updatedConversations = [...prevConversations];
-    //                         newConversations.forEach(newConv => {
-    //                             const existingIndex = updatedConversations.findIndex(conv => conv.id === newConv.id);
-    //                             if (existingIndex !== -1) {
-    //                                 updatedConversations[existingIndex] = newConv;
-    //                             } else {
-    //                                 updatedConversations.push(newConv);
-    //                             }
-    //                         });
-    //                         return updatedConversations;
-    //                     });
-    //                     // Check if there are any new messages
-    //                     snapshot.docChanges().forEach(change => {
-    //                         if (change.type === 'added') {
-    //                             setNewMessages(true); // New message detected
-    //                         }
-    //                     });
-    //                 }
-    //             })
-    //         );
-
-    //         // Clean up the listeners when the component unmounts
-    //         return () => {
-    //             unsubscribeFunctions.forEach(unsub => unsub());
-    //         };
-    //     };
-
-    //     checkForNewMessages();
-    // }, [user]);
+    useEffect(() => {
+        if (!user) return;
+    
+        const checkForNewMessages = () => {
+            const conversationsRef = collection(firestore, 'conversations');
+            const queries = [];
+    
+            // Query by musicianProfile ID
+            if (user.musicianProfile) {
+                const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile.musicianId));
+                queries.push(musicianQuery);
+            }
+    
+            // Query by each venueProfile ID
+            if (user.venueProfiles && user.venueProfiles.length > 0) {
+                user.venueProfiles.forEach(venue => {
+                    const venueQuery = query(conversationsRef, where('participants', 'array-contains', venue.venueId));
+                    queries.push(venueQuery);
+                });
+            }
+    
+            // Set up listeners for each query
+            const unsubscribeFunctions = queries.map(q => 
+                onSnapshot(q, snapshot => {
+                    if (!snapshot.empty) {
+                        const newConversations = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data(),
+                        }));
+    
+                        // Check for any conversations where the last message is unread
+                        let hasUnreadMessages = false;
+    
+                        newConversations.forEach(conversation => {
+                            const lastViewedTimestamp = conversation.lastViewed?.[user.uid]?.seconds || 0;
+                            const lastMessageTimestamp = conversation.lastMessageTimestamp?.seconds || 0;
+                            const lastMessageSenderId = conversation.lastMessageSenderId;
+    
+                            // If the last message is newer than the last viewed timestamp and the user is not the sender
+                            if (lastMessageTimestamp > lastViewedTimestamp && lastMessageSenderId !== user.uid) {
+                                hasUnreadMessages = true;
+                            }
+                        });
+    
+                        setNewMessages(hasUnreadMessages);  // Update the state based on unread messages
+                    }
+                })
+            );
+    
+            // Clean up the listeners when the component unmounts
+            return () => {
+                unsubscribeFunctions.forEach(unsub => unsub());
+            };
+        };
+    
+        checkForNewMessages();
+    }, [user]);
 
 
     const handleScaleSelection = (scale) => {
@@ -324,22 +317,24 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                     </button>
                                 </Link>
                             )}
-                            {/* {newMessages ? (
-                                <Link className="link" to={'/messages'}>
-                                    <button className="btn secondary messages">
-                                        <span className="notification-dot"><DotIcon /></span>
-                                        <MailboxFullIcon />
-                                        Messages
-                                    </button>
-                                </Link>
-                            ) : ( */}
-                                <Link className="link" to={'/messages'}>
-                                    <button className="btn secondary">
-                                        <MailboxEmptyIcon />
-                                        Messages
-                                    </button>
-                                </Link>
-                            {/* )} */}
+                            {
+                                newMessages ? (
+                                    <Link className="link" to={'/messages'}>
+                                        <button className="btn secondary messages">
+                                            <span className="notification-dot"><DotIcon /></span>
+                                            <MailboxFullIcon />
+                                            Messages
+                                        </button>
+                                    </Link>
+                                ) : (
+                                    <Link className="link" to={'/messages'}>
+                                        <button className="btn secondary">
+                                            <MailboxEmptyIcon />
+                                            Messages
+                                        </button>
+                                    </Link>
+                                )
+                            }
                         </div>
                         <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
                             <UserIcon />
@@ -425,9 +420,6 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             </div>
                         </div>
                     )}
-                    {/* {messagesPopUp && (
-                        <MessagesPopUp conversations={conversations} onClose={() => setMessagesPopUp(false)} user={user} />
-                    )} */}
                 </>
             ) : (
                 <>

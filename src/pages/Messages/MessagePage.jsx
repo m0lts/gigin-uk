@@ -3,10 +3,11 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useState, useEffect } from "react"
 import { firestore } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { LeftChevronIcon, NewTabIcon, OptionsIcon, QuestionCircleIcon, RightChevronIcon } from '../../components/ui/Extras/Icons';
+import { HouseIcon, LeftChevronIcon, MicrophoneIcon, NewTabIcon, OptionsIcon, QuestionCircleIcon, RightChevronIcon } from '../../components/ui/Extras/Icons';
+import { Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { MessageThread } from './MessageThread';
 import { GigInformation } from './GigInformation';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export const MessagePage = () => {
 
@@ -17,10 +18,20 @@ export const MessagePage = () => {
 
     const [activeConversation, setActiveConversation] = useState(null);
 
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const paramsConversationId = queryParams.get('conversationId');
+
     // Function to handle selecting a conversation
-    const handleSelectConversation = (conversationId) => {
-        const conversation = conversations.find(c => c.id === conversationId)
+    const handleSelectConversation = async (conversationId) => {
+        const conversation = conversations.find(c => c.id === conversationId);
         setActiveConversation(conversation);
+    
+        // Update the lastViewed timestamp for the user in Firestore
+        const conversationRef = doc(firestore, 'conversations', conversationId);
+        const lastViewedUpdate = {};
+        lastViewedUpdate[`lastViewed.${user.uid}`] = Timestamp.now();
+        await updateDoc(conversationRef, lastViewedUpdate);
     };
 
 
@@ -33,15 +44,15 @@ export const MessagePage = () => {
             const queries = [];
 
             // Query by musicianProfile ID
-            if (user.musicianProfile && user.musicianProfile.length > 0) {
-                const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile[0]));
+            if (user.musicianProfile) {
+                const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile.musicianId));
                 queries.push(musicianQuery);
             }
 
             // Query by each venueProfile ID
             if (user.venueProfiles && user.venueProfiles.length > 0) {
-                user.venueProfiles.forEach(venueProfileId => {
-                    const venueQuery = query(conversationsRef, where('participants', 'array-contains', venueProfileId));
+                user.venueProfiles.forEach(venue => {
+                    const venueQuery = query(conversationsRef, where('participants', 'array-contains', venue.id));
                     queries.push(venueQuery);
                 });
             }
@@ -93,8 +104,19 @@ export const MessagePage = () => {
         checkForNewMessages();
     }, [user]);
 
+    useEffect(() => {
+        if (conversations.length > 0 && paramsConversationId) {
+            const conversation = conversations.find(c => c.id === paramsConversationId)
+            setActiveConversation(conversation)
+        }
+    }, [paramsConversationId, conversations])
+
     const openGig = (gigId) => {
         const url = `/gig/${gigId}`;
+        window.open(url, '_blank');
+    };
+
+    const openMusician = (url) => {
         window.open(url, '_blank');
     };
 
@@ -102,34 +124,50 @@ export const MessagePage = () => {
         <div className="message-page">
             <div className="column conversations">
                 <div className="top-banner">
-                    <div className="left">
-                        <button className="btn tertiary"><LeftChevronIcon /></button>
-                        <h3>Messages</h3>
-                    </div>
-                    <div className="right">
-                        <button className="btn tertiary"><OptionsIcon /></button>
-                        <button className="btn tertiary"><QuestionCircleIcon /></button>
-                    </div>
+                    <h2>Messages</h2>
                 </div>
                 <ul className="conversations-list">
                     {conversations.length > 0 ? (
                         conversations.map(conversation => {
                             const otherParticipant = conversation.accountNames.find(account => account.accountId !== user.uid);
 
+                            // Get the last viewed timestamp for the current user
+                            const lastViewedTimestamp = conversation.lastViewed?.[user.uid]?.seconds || 0;
+
+                            // Check if there are unread messages
+                            const hasUnreadMessages = conversation.lastMessageTimestamp.seconds > lastViewedTimestamp && conversation?.lastMessageSenderId !== user.uid;
+
                             return (
                                 <li className={`conversation ${(activeConversation && conversation.id === activeConversation.id) ? 'active' : ''}`} key={conversation.id} onClick={() => handleSelectConversation(conversation.id)}>
-                                    <div className="conversation-header">
-                                        <h3 className="participant-name">
-                                            {otherParticipant ? otherParticipant.accountName : 'Unknown'}
-                                        </h3>
-                                        <h6 className="conversation-date">
-                                            {new Date(conversation.lastMessageTimestamp.seconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                                        </h6>
+                                    <div className="conversation-icon">
+                                        {otherParticipant.role === 'venue' ? (
+                                            <div className="icon-circle">
+                                                <HouseIcon />
+                                            </div>
+                                        ) : (
+                                            <div className="icon-circle">
+                                                <MicrophoneIcon />
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="conversation-body">
-                                        <p className="last-message-preview">
-                                            {conversation.lastMessage}
-                                        </p>
+                                    <div className="conversation-text">
+                                        <div className="conversation-title">
+                                            <h3>
+                                                {otherParticipant ? otherParticipant.accountName : 'Unknown'}
+                                                {otherParticipant.venueName && (
+                                                    <span>- {otherParticipant.venueName}</span>
+                                                )}
+                                            </h3>
+                                            {hasUnreadMessages && <div className="notification-dot"></div>}
+                                        </div>
+                                        <div className="conversation-details">
+                                            <p className="last-message-preview">
+                                                {conversation.lastMessage}
+                                            </p>
+                                            <h6 className="conversation-date">
+                                                {new Date(conversation.lastMessageTimestamp.seconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                            </h6>
+                                        </div>
                                     </div>
                                 </li>
                             );
@@ -140,21 +178,17 @@ export const MessagePage = () => {
                 </ul>
             </div>
             <div className="column message-thread">
-                {activeConversation ? (
+                {activeConversation && (
                     <>
                         <div className="top-banner">
-                            <div className="participant">
-                                <h3>{activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}</h3>
-                                <button className="btn tertiary"><QuestionCircleIcon /></button>
-                            </div>
-                            <div className="participant-options">
+                                <h3>
+                                    {activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}
+                                </h3>
                                 {(activeConversation.accountNames.find(account => account.accountId === user.uid)?.role === 'venue') ? (
                                     <>
-                                        <Link className='link' to={`/musician/${activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}/null`}>
-                                            <button className="btn primary-alt">
+                                            <button className="btn primary-alt" onClick={() => openMusician(`/${activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}/null`)}>
                                                 View Musician Profile
                                             </button>
-                                        </Link>
                                     </>
                                 ) : (
                                     <>
@@ -163,31 +197,29 @@ export const MessagePage = () => {
                                         </button>
                                     </>
                                 )}
-                            </div>
+
                         </div>
-                        <div className="messages">
-                            <MessageThread 
-                                activeConversation={activeConversation}
-                                conversationId={activeConversation.id}
-                                user={user}
-                                musicianProfileId={activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}
-                                gigId={activeConversation.gigId}
-                            />
-                        </div>
+                        <MessageThread 
+                            activeConversation={activeConversation}
+                            conversationId={activeConversation.id}
+                            user={user}
+                            musicianProfileId={activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}
+                            gigId={activeConversation.gigId}
+                        />
                     </>
-                ) : (
-                    <h2>Select a conversation</h2>
                 )}
             </div>
             <div className="column information">
-                <div className="top-banner">
-                    <h3>Gig Information</h3>
-                    <button className="btn tertiary" onClick={() => openGig(activeConversation.gigId)}><NewTabIcon /></button>
-                </div>
                 {activeConversation && (
-                    <div className="gig-information">
-                        <GigInformation gigId={activeConversation.gigId} />
-                    </div>
+                    <>
+                        <div className="top-banner">
+                            <h2>Gig Information</h2>
+                            <button className="btn tertiary" onClick={() => openGig(activeConversation.gigId)}><NewTabIcon /></button>
+                        </div>
+                        <div className="gig-information">
+                            <GigInformation gigId={activeConversation.gigId} />
+                        </div>
+                    </>
                 )}
             </div>
         </div>

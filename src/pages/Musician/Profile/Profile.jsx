@@ -174,7 +174,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                                 </div>
                             </div>
                         </div>
-                            {applicantData && (
+                            {/* {applicantData && (
                         <div className="profile-actions applicant">
                             <h2>{applicantData.fee}</h2>
                             {applicantData.status === 'Accepted' && (
@@ -194,7 +194,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                                 </div>
                             )}
                         </div>
-                            )}
+                            )} */}
                     </div>
                     <nav className="profile-tabs">
                         <p onClick={() => setActiveTab('overview')} className={`profile-tab ${activeTab === 'overview' ? 'active' : ''}`}>

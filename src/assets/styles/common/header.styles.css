@@ -6,6 +6,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background-color: var(--gn-white);
+    box-shadow: 2px 2px 5px var(--gn-grey-400);
 }
 
 .header .left,
@@ -88,6 +90,10 @@
 
 .header .account-menu .item:hover {
     background-color: var(--gn-grey-300);
+}
+
+.header .account-menu .item.message > .icon {
+    color: var(--gn-orange);
 }
 
 .header .account-menu .btn.danger {
