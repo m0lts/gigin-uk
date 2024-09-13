@@ -53,7 +53,7 @@ export const WhiteBckgrdLogo = () => {
     return (
         <div className="bckgrd-white logo">
             <h1>
-                <Link className="link" to={'/'}>
+                <Link className="link" to={'/venues'}>
                     g<span className="orange-txt">.</span>
                 </Link>
             </h1>

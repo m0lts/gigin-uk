@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '/components/ui/Extras/Icons';
-import { SearchIcon } from '../../../components/ui/Extras/Icons';
+import { CalendarIcon, SearchIcon } from '../../../components/ui/Extras/Icons';
 
 export const Gigs = ({ gigs, venues }) => {
     const location = useLocation();
@@ -140,8 +140,13 @@ export const Gigs = ({ gigs, venues }) => {
                                 );
                             })
                         ) : (
-                            <tr>
-                                <td>No gigs to show.</td>
+                            <tr className='no-gigs'>
+                                <td className='data' colSpan={6}>
+                                    <div className="flex">
+                                        <CalendarIcon />
+                                        <h4>No gigs to show.</h4>
+                                    </div>
+                                </td>
                             </tr>
                         )}
                     </tbody>

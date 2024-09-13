@@ -11,27 +11,28 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
     const checkUserAuth = () => {
         if (!user) {
             setAuthModal(true);
+            setAuthType('signup');
             sessionStorage.setItem('redirect', '/venues/add-venue');
         } else {
             navigate('/venues/add-venue');
         }
     }
 
-    useEffect(() => {
-        const redirect = sessionStorage.getItem('redirect');
-        if (redirect) {
-            navigate(redirect);
-            sessionStorage.removeItem('redirect');
-        }
-    }, [user])
-
     return (
         <div>
-            <VenuesHeader
-                setAuthModal={setAuthModal}
-                setAuthType={setAuthType}
-                user={user}
-            />
+            {user && !user.musicianProfile && !user.venueProfiles ? (
+                <CommonHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                />
+            ) : (
+                <VenuesHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                />
+            )}
             <h1>This is the Venue info page</h1>
             <button onClick={checkUserAuth}>
                 Let's get started

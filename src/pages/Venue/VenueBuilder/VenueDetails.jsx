@@ -14,6 +14,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
     const [feature, setFeature] = useState(null);
     const [locationCoordinates, setLocationCoordinates] = useState(formData.coordinates || null);
     const [locationAddress, setLocationAddress] = useState(formData.address || '');
+    const [coordinatesError, setCoordinatesError] = useState(true);
 
     useEffect(() => {
         if (locationAddress !== formData.address) {
@@ -21,6 +22,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
         }
         if (locationCoordinates !== formData.coordinates) {
             handleInputChange('coordinates', locationCoordinates);
+            setCoordinatesError(false);
         }
     }, [locationAddress, locationCoordinates, formData, handleInputChange]);
 
@@ -59,8 +61,6 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
                 if (data.features && data.features.length > 0) {
                     const address = data.features[0].place_name;
                     setLocationAddress(address);
-                } else {
-                    console.error('No coordinates found for the provided address.');
                 }
             } else {
                 console.error('Failed to fetch coordinates.');
@@ -73,6 +73,9 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
     const handleNext = () => {
         if (formData.name === '') return;
         if (formData.address === '') return;
+        if (formData.coordinates === null) {
+            setCoordinatesError(true);
+        }
         if (formData.type === 'Public Establishment') {
             if (formData.establishment === '') return;
             navigate('/venues/add-venue/equipment');
@@ -105,6 +108,8 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
                     setLocationCoordinates={setLocationCoordinates}
                     locationAddress={locationAddress}
                     handleInputChange={handleInputChange}
+                    coordinatesError={coordinatesError}
+                    setCoordinatesError={setCoordinatesError}
                 />
             </div>
             {!expandForm && (
@@ -118,7 +123,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
                                     zoom: 14
                                 }}
                                 mapStyle="mapbox://styles/mapbox/streets-v11"
-                                mapboxAccessToken="pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ5bjE1MDg2dDJrcW5yOHV1Z2t6bSJ9.Sk502nZET2-W6vLvCDwSEg"
+                                mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
                             >
                                 <Marker longitude={locationCoordinates[0]} latitude={locationCoordinates[1]} />
                             </Map>

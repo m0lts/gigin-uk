@@ -86,9 +86,7 @@ export const ProfileTab = ({ musicianProfile }) => {
                         <div className="profile-details">
                             <h1>{musicianProfile.name}</h1>
                             <div className="data">
-                                <p>50 gigs played</p>
-                                <p>300 followers</p>
-                                <p>4.5<StarIcon /> avg. rating</p>
+                                <p>0 gigs played</p>
                             </div>
                             <div className="genre-tags">
                                 {musicianProfile.genres && musicianProfile.genres.map((genre, index) => (

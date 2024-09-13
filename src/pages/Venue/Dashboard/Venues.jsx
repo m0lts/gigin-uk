@@ -71,8 +71,8 @@ export const Venues = ({ venues }) => {
         <>
             <div className="head">
                 <h1 className="title">Venues</h1>
-                <button className="btn secondary" onClick={() => navigate('/host/venue-builder')}>
-                    New Venue
+                <button className="btn secondary" onClick={() => navigate('/venues/add-venue')}>
+                    Add another Venue
                 </button>
             </div>
             <div className="body venues">
@@ -98,7 +98,7 @@ export const Venues = ({ venues }) => {
                     <div className="modal">
                         <div className="modal-content">
                             <h2>Confirm Venue Deletion</h2>
-                            <p>Are you sure you want to delete '{venueToDelete.name}'? <br /> This will also delete all of this venue's gigs.</p>
+                            <p style={{ textAlign: 'center' }}>Are you sure you want to delete '{venueToDelete.name}'? <br /> This will also delete all of this venue's gigs.</p>
                             <div className="two-buttons">
                                 <button className="btn secondary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
                                 <button className="btn danger" onClick={confirmDeleteVenue}>Delete</button>

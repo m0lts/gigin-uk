@@ -32,6 +32,7 @@
     display: flex;
     align-items: center;
     gap:5px;
+    padding-left: 0 !important;
 }
 
 
@@ -51,8 +52,8 @@
     font-weight: normal;
     color: var(--gn-grey-200);
     position: relative;
-    padding:30px 0;
-    font-weight: 400;
+    padding:5px 0;
+    font-weight: 500;
     transition: font-weight 200ms linear, color 200ms linear;
 }
 
@@ -60,40 +61,13 @@
     padding-top:0;
 }
 
-.venue-builder .progress ul li::before,
-.venue-builder .progress ul li::after {
-    content: '';
-    position: absolute;
-    left: 15px;
-    width: 1px;
-    background-color: var(--gn-white);
-}
-
-.venue-builder .progress ul li::before {
-    top: 0;
-    bottom: 50%;
-}
-
-.venue-builder .progress ul li::after {
-    top: 50%;
-    bottom: 0;
-}
-
-.venue-builder .progress ul li:first-child::before {
-    display: none;
-}
-
-.venue-builder .progress ul li:last-child::after {
-    display: none;
-}
-
 .venue-builder .progress ul li.completed {
-    font-weight: 500;
+    font-weight: 600;
     color: var(--gn-white);
 }
 
 .venue-builder .progress ul li.active {
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .venue-builder .progress ul li .circle {
@@ -105,7 +79,7 @@
     border-radius: 50%;
     border: 1px solid var(--gn-white);
     margin-right: 10px;
-    font-weight: bold;
+    font-weight: 800;
     z-index: 1;
     background-color: var(--gn-orange);
     color: var(--gn-white);
@@ -297,6 +271,15 @@
     position: relative;
 }
 
+.venue-builder .input-group input.error {
+    border:1px solid var(--gn-red);
+}
+
+.venue-builder .input-group .error-message {
+    color: var(--gn-red);
+    font-size: 0.8rem;
+}
+
 /* Stage-specific styling */
 
 .venue-builder .stage .equipment-type {
@@ -347,11 +330,18 @@
 }
 
 .venue-builder .stage.photos .upload {
-    border:1px dashed var(--gn-orange);
-    background-color: var(--gn-offset-orange);
+    border:1px solid var(--gn-grey-500);
+    background-color: var(--gn-grey-300);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
     border-radius: 5px;
     min-height: 20%;
     cursor: pointer;
+    transition: all 0.2s linear;
+}
+
+.venue-builder .stage.photos .upload:hover {
+    background-color: var(--gn-white);
+    border:1px solid transparent;
 }
 
 .venue-builder .stage.photos .upload-label {
@@ -508,7 +498,7 @@
     gap:1rem;
 }
 
-.venue-builder .uploading-profile .icons .active {
+.venue-builder .uploading-profile .icons .active .icon {
     font-size: 2rem;
 }
 

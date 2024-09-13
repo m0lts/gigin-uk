@@ -3,15 +3,16 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useState, useEffect } from "react"
 import { firestore } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { HouseIcon, LeftChevronIcon, MicrophoneIcon, NewTabIcon, OptionsIcon, QuestionCircleIcon, RightChevronIcon } from '../../components/ui/Extras/Icons';
+import { HouseIcon, LeftChevronIcon, MailboxEmptyIcon, MicrophoneIcon, NewTabIcon, OptionsIcon, QuestionCircleIcon, RightChevronIcon } from '../../components/ui/Extras/Icons';
 import { Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { MessageThread } from './MessageThread';
 import { GigInformation } from './GigInformation';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export const MessagePage = () => {
 
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     const [newMessages, setNewMessages] = useState(false);
     const [conversations, setConversations] = useState([]);
@@ -120,108 +121,122 @@ export const MessagePage = () => {
         window.open(url, '_blank');
     };
 
-    return (
-        <div className="message-page">
-            <div className="column conversations">
-                <div className="top-banner">
-                    <h2>Messages</h2>
+    if (conversations.length > 0) {
+
+        return (
+            <div className="message-page">
+                <div className="column conversations">
+                    <div className="top-banner">
+                        <h2>Messages</h2>
+                    </div>
+                    <ul className="conversations-list">
+                        {conversations.length > 0 ? (
+                            conversations.map(conversation => {
+                                const otherParticipant = conversation.accountNames.find(account => account.accountId !== user.uid);
+    
+                                // Get the last viewed timestamp for the current user
+                                const lastViewedTimestamp = conversation.lastViewed?.[user.uid]?.seconds || 0;
+    
+                                // Check if there are unread messages
+                                const hasUnreadMessages = conversation.lastMessageTimestamp.seconds > lastViewedTimestamp && conversation?.lastMessageSenderId !== user.uid;
+    
+                                return (
+                                    <li className={`conversation ${(activeConversation && conversation.id === activeConversation.id) ? 'active' : ''}`} key={conversation.id} onClick={() => handleSelectConversation(conversation.id)}>
+                                        <div className="conversation-icon">
+                                            {otherParticipant.role === 'venue' ? (
+                                                <div className="icon-circle">
+                                                    <HouseIcon />
+                                                </div>
+                                            ) : (
+                                                <div className="icon-circle">
+                                                    <MicrophoneIcon />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="conversation-text">
+                                            <div className="conversation-title">
+                                                <h3>
+                                                    {otherParticipant ? otherParticipant.accountName : 'Unknown'}
+                                                    {otherParticipant.venueName && (
+                                                        <span>- {otherParticipant.venueName}</span>
+                                                    )}
+                                                </h3>
+                                                {hasUnreadMessages && <div className="notification-dot"></div>}
+                                            </div>
+                                            <div className="conversation-details">
+                                                <p className="last-message-preview">
+                                                    {conversation.lastMessage}
+                                                </p>
+                                                <h6 className="conversation-date">
+                                                    {new Date(conversation.lastMessageTimestamp.seconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                                </h6>
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            })
+                        ) : (
+                            <p>No messages yet.</p>
+                        )}
+                    </ul>
                 </div>
-                <ul className="conversations-list">
-                    {conversations.length > 0 ? (
-                        conversations.map(conversation => {
-                            const otherParticipant = conversation.accountNames.find(account => account.accountId !== user.uid);
-
-                            // Get the last viewed timestamp for the current user
-                            const lastViewedTimestamp = conversation.lastViewed?.[user.uid]?.seconds || 0;
-
-                            // Check if there are unread messages
-                            const hasUnreadMessages = conversation.lastMessageTimestamp.seconds > lastViewedTimestamp && conversation?.lastMessageSenderId !== user.uid;
-
-                            return (
-                                <li className={`conversation ${(activeConversation && conversation.id === activeConversation.id) ? 'active' : ''}`} key={conversation.id} onClick={() => handleSelectConversation(conversation.id)}>
-                                    <div className="conversation-icon">
-                                        {otherParticipant.role === 'venue' ? (
-                                            <div className="icon-circle">
-                                                <HouseIcon />
-                                            </div>
-                                        ) : (
-                                            <div className="icon-circle">
-                                                <MicrophoneIcon />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="conversation-text">
-                                        <div className="conversation-title">
-                                            <h3>
-                                                {otherParticipant ? otherParticipant.accountName : 'Unknown'}
-                                                {otherParticipant.venueName && (
-                                                    <span>- {otherParticipant.venueName}</span>
-                                                )}
-                                            </h3>
-                                            {hasUnreadMessages && <div className="notification-dot"></div>}
-                                        </div>
-                                        <div className="conversation-details">
-                                            <p className="last-message-preview">
-                                                {conversation.lastMessage}
-                                            </p>
-                                            <h6 className="conversation-date">
-                                                {new Date(conversation.lastMessageTimestamp.seconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                                            </h6>
-                                        </div>
-                                    </div>
-                                </li>
-                            );
-                        })
-                    ) : (
-                        <p>No messages yet.</p>
-                    )}
-                </ul>
-            </div>
-            <div className="column message-thread">
-                {activeConversation && (
-                    <>
-                        <div className="top-banner">
-                                <h3>
-                                    {activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}
-                                </h3>
-                                {(activeConversation.accountNames.find(account => account.accountId === user.uid)?.role === 'venue') ? (
-                                    <>
-                                            <button className="btn primary-alt" onClick={() => openMusician(`/${activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}/null`)}>
-                                                View Musician Profile
+                <div className="column message-thread">
+                    {activeConversation && (
+                        <>
+                            <div className="top-banner">
+                                    <h3>
+                                        {activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}
+                                    </h3>
+                                    {(activeConversation.accountNames.find(account => account.accountId === user.uid)?.role === 'venue') ? (
+                                        <>
+                                                <button className="btn primary-alt" onClick={() => openMusician(`/${activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}/null`)}>
+                                                    View Musician Profile
+                                                </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button className="btn primary-alt">
+                                                Negotiate Fee
                                             </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button className="btn primary-alt">
-                                            Negotiate Fee
-                                        </button>
-                                    </>
-                                )}
+                                        </>
+                                    )}
+    
+                            </div>
+                            <MessageThread 
+                                activeConversation={activeConversation}
+                                conversationId={activeConversation.id}
+                                user={user}
+                                musicianProfileId={activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}
+                                gigId={activeConversation.gigId}
+                            />
+                        </>
+                    )}
+                </div>
+                <div className="column information">
+                    {activeConversation && (
+                        <>
+                            <div className="top-banner">
+                                <h2>Gig Information</h2>
+                                <button className="btn tertiary" onClick={() => openGig(activeConversation.gigId)}><NewTabIcon /></button>
+                            </div>
+                            <div className="gig-information">
+                                <GigInformation gigId={activeConversation.gigId} />
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        )
+    } else {
+        return (
+            <div className="message-page no-messages">
+                <MailboxEmptyIcon />
+                <h3>You have no messages</h3>
+                <button className="btn secondary" onClick={() => navigate(-1)}>
+                    Go Back
+                </button>
+            </div>
+        )
+    }
 
-                        </div>
-                        <MessageThread 
-                            activeConversation={activeConversation}
-                            conversationId={activeConversation.id}
-                            user={user}
-                            musicianProfileId={activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}
-                            gigId={activeConversation.gigId}
-                        />
-                    </>
-                )}
-            </div>
-            <div className="column information">
-                {activeConversation && (
-                    <>
-                        <div className="top-banner">
-                            <h2>Gig Information</h2>
-                            <button className="btn tertiary" onClick={() => openGig(activeConversation.gigId)}><NewTabIcon /></button>
-                        </div>
-                        <div className="gig-information">
-                            <GigInformation gigId={activeConversation.gigId} />
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
-    )
 }

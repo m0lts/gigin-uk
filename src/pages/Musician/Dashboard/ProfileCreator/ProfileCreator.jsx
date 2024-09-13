@@ -76,15 +76,37 @@ export const ProfileCreator = () => {
 
     }, [musicianProfile]);
 
+    // Handle the browser's back and forward buttons
+    useEffect(() => {
+        const handlePopState = (event) => {
+            if (event.state && event.state.stage !== undefined) {
+                setStage(event.state.stage);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, []);
 
     const handleNext = () => {
         if (validateStage(stage)) {
-            setStage(prevStage => prevStage + 1);
+            const nextStage = stage + 1;
+            setStage(nextStage);
+            // Push the new stage to the history stack
+            window.history.pushState({ stage: nextStage }, '');
         }
     };
 
     const handlePrevious = () => {
-        setStage(prevStage => prevStage - 1);
+        if (stage > 0) {
+            const prevStage = stage - 1;
+            setStage(prevStage);
+            // Push the previous stage to the history stack
+            window.history.pushState({ stage: prevStage }, '');
+        }
     };
 
     const validateStage = (currentStage) => {
@@ -222,7 +244,7 @@ export const ProfileCreator = () => {
                 musicianProfile: arrayUnion(formData.musicianId),
             });
 
-            navigate('/musician/dashboard');
+            navigate('/dashboard');
             window.location.reload();
             setUploadingProfile(false);
 
@@ -330,6 +352,7 @@ export const ProfileCreator = () => {
             ) : savingProfile ? (
                 <div className='loading-state'>
                     <h1>Saving your musician profile...</h1>
+                    <h3>Please don't refresh or leave this page.</h3>
                     <LoadingThreeDots />
                 </div>
             ) : (

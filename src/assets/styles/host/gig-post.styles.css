@@ -246,6 +246,7 @@
 
 .gig-post .stage .location .selections {
     display: flex;
+    justify-content: center;
     gap:10px;
 }
 
@@ -322,6 +323,10 @@
     max-height: 250px;
 }
 
+.gig-post .stage .extra-details #extraInformation:focus {
+    outline: none;
+    border: 1px solid var(--gn-orange);
+}
 
 /* TIMINGS */
 .gig-post .stage .timings {
@@ -356,7 +361,10 @@
     border-radius: 5px;
     font-size: 1.25rem;
     font-weight: var(--gn-semi-bold);
-    width:100px;
+}
+
+.gig-post .stage .timings .selections #startTime {
+    width:auto;
 }
 
 .gig-post .stage .timings .selections .input-group .duration-inputs {

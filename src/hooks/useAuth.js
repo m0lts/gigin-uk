@@ -92,7 +92,11 @@ export const useAuth = () => {
       setUser({ uid: userCredential.user.uid, ...userDocData });
       const musicianProfile = userDocData.musicianProfile || [];
       const venueProfiles = userDocData.venueProfiles || [];
-      if (venueProfiles.length > 0) {
+      const redirect = sessionStorage.getItem('redirect');
+      if (redirect) {
+        navigate(redirect);
+        sessionStorage.removeItem('redirect');
+      } else if (venueProfiles.length > 0) {
         navigate('/venues');
       } else {
         navigate('/find-a-gig');
@@ -111,7 +115,13 @@ export const useAuth = () => {
         marketingConsent: marketingConsent,
       });
       setUser({ uid: userCredential.user.uid, ...credentials });
-      navigate('/find-a-gig');
+      const redirect = sessionStorage.getItem('redirect');
+      if (redirect) {
+          navigate(redirect);
+          sessionStorage.removeItem('redirect');
+      } else {
+        navigate('/');
+      }
     } catch (error) {
       setUser(null);
       throw { error }

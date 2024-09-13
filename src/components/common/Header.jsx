@@ -150,12 +150,6 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                         Create a Musician Profile
                                     </button>
                             </Link>
-                            <Link className="link" to={'/venues'}>
-                                    <button className="btn secondary">
-                                        <HouseIcon />
-                                        I'm a Venue
-                                    </button>
-                            </Link>
                             {location.pathname !== '/find-a-gig' && (
                                 <Link className="link" to={'/find-a-gig'}>
                                     <button className="btn secondary">
@@ -164,6 +158,11 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                     </button>
                                 </Link>
                             )}
+                            <Link className="link" to={'/venues'}>
+                                    <button className="btn text">
+                                        I'm a Venue
+                                    </button>
+                            </Link>
                         </div>
                         <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
                             <UserIcon />

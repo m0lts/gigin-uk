@@ -62,7 +62,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
 
             // Fetch similar gigs
             const similarGigsList = gigs
-                .filter(similarGig => similarGig.id !== gigId)
+                .filter(similarGig => 
+                    similarGig.id !== gigId && // Exclude the current gig
+                    similarGig.date.toDate() > Date.now() && // Check if the gig is in the future
+                    !similarGig.confirmed // Ensure the gig is not confirmed
+                )
                 .map(gig => ({ id: gig.id, ...gig }));
             setSimilarGigs(similarGigsList);
 
@@ -201,8 +205,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const startTimeMinusOneHour = gigData.startTime ? calculateTime(gigData.startTime, -60) : '00:00';
     const endTime = gigData.startTime && gigData.duration ? calculateEndTime() : '00:00';
 
-    const openMusicianGig = (gigId) => {
-        const url = `/musician/${gigId}`;
+    const openGig = (gigId) => {
+        const url = `/gig/${gigId}`;
         window.open(url, '_blank');
     };
 
@@ -430,9 +434,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             setAuthType('login');
             setApplyingToGig(false);
             return;
+        }
+
+        if (!user.musicianProfile) {
+            setNoProfileModal(true);
+            setApplyingToGig(false);
+            return;
         } else if (!user.musicianProfile.completed) {
             setNoProfileModal(true);
-            setIncompleteMusicianProfile(musicianProfile);
+            setIncompleteMusicianProfile(user.musicianProfile);
             return;
         } else {
             setNegotiateModal(true);
@@ -517,8 +527,23 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     };
     
     const handleMessage = async () => {
-        if (!user.musicianProfile && !user.venueProfiles) {
+
+        if (!user) {
+            setAuthModal(true);
+            setAuthType('login');
+            setApplyingToGig(false);
+            return;
+        };
+
+        if (!user.musicianProfile) {
             setNoProfileModal(true);
+            setApplyingToGig(false);
+            return;
+        }
+
+        if (!user.musicianProfile.completed) {
+            setNoProfileModal(true);
+            setIncompleteMusicianProfile(user.musicianProfile);
             return;
         }
     
@@ -536,13 +561,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
 
 
     return (
-        <div className='gig-page' style={{ padding: `0 ${padding}` }}>
+        <div className='gig-page'>
             <Header
                 user={user}
                 setAuthModal={setAuthModal}
                 setAuthType={setAuthType}
+                padding={padding}
             />
-            <section className="gig-page-body">
+            <section className="gig-page-body" style={{ padding: `0 ${padding}` }}>
                 {loading ? (
                     <>
                         <div className="head">
@@ -561,14 +587,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                 <h1>{gigData.venue.venueName}</h1>
                                 <p>{getCityFromAddress(gigData.venue.address)}</p>
                             </div>
-                            <div className="options">
+                            {/* <div className="options">
                                 <button className="btn icon">
                                     <ShareIcon />
                                 </button>
                                 <button className="btn icon">
                                     <SaveIcon />
                                 </button>
-                            </div>
+                            </div> */}
                         </div>
                         <div className="images">
                             {venueProfile.photos.slice(0, 3).map((photo, index) => (
@@ -689,10 +715,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                 </div>
                                 {similarGigs.length > 0 && (
                                     <div className="similar-gigs">
-                                        <h4 className="subtitle">Similar Gigs</h4>
+                                        <h4 className="subtitle">More Gigs</h4>
                                         <div className="similar-gigs-list">
                                             {similarGigs.map(gig => (
-                                                <div key={gig.id} className="similar-gig-item" onClick={() => openMusicianGig(gig.id)}>
+                                                <div key={gig.id} className="similar-gig-item" onClick={() => openGig(gig.id)}>
                                                     <div className="similar-gig-item-venue">
                                                         <figure className="similar-gig-img">
                                                             <img src={gig.venue.photo} alt={gig.venue.venueName} />
@@ -778,7 +804,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                         <p style={{ textAlign: 'center' }}>Please create or finish your profile before applying to gigs.</p>
                         <div className="two-buttons">
                             <button className="btn secondary" onClick={() => setNoProfileModal(false)}>Cancel</button>
-                            <button className="btn primary-alt" onClick={() => navigate('/musician/create-musician-profile', { state: { incompleteMusicianProfile } })}>Create Profile</button>
+                            <button className="btn primary-alt" onClick={() => navigate('/create-musician-profile', { state: { incompleteMusicianProfile } })}>Create Profile</button>
                         </div>
                     </div>
                 </div>

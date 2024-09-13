@@ -312,7 +312,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         <>
         <div className="messages">
             {messages.length > 0 && (
-                messages.map(message => (
+                messages.map((message) => (
                     <>
                     <div key={message.id} className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' ? 'announcement' : ''} ${message.type === 'application-response' ? 'announcement' : ''} ${message.type === 'negotiation-response' ? 'announcement' : ''}`}>
                         {message.type === 'negotiation' && message.senderId === user.uid ? (

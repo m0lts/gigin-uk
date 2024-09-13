@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '/components/ui/Extras/Icons';
-import { MailboxEmptyIcon, NewTabIcon, RejectedIcon, SearchIcon } from '../../../components/ui/Extras/Icons';
+import { CalendarIcon, MailboxEmptyIcon, NewTabIcon, RejectedIcon, SearchIcon } from '../../../components/ui/Extras/Icons';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { firestore } from '../../../firebase';
 import { useGigs } from '../../../context/GigsContext';
@@ -169,9 +169,17 @@ export const Gigs = ({ gigApplications, musicianId }) => {
                                     );
                                 })
                             ) : (
-                                <tr>
-                                    <td colSpan="6">No gigs to show.</td>
-                                </tr>
+                                <tr className='no-gigs'>
+                                <td className='data' colSpan={6}>
+                                    <div className="flex">
+                                        <CalendarIcon />
+                                        <h4>No gigs to show.</h4>
+                                        <button className="btn secondary" onClick={() => navigate('/find-a-gig')}>
+                                            Find Gigs
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
                             )}
                         </tbody>
                     </table>

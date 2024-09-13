@@ -13,28 +13,26 @@ export const MapView = ({ upcomingGigs }) => {
     const [currentGigIndex, setCurrentGigIndex] = useState(0); // State to track current clicked gig index
 
     useEffect(() => {
-        if (upcomingGigs && upcomingGigs.length > 0) {
-            mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
+        mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
-            // Initialize map instance
-            const map = new mapboxgl.Map({
-                container: mapContainerRef.current,
-                style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
-                center: [0.1278, 52.2053],
-                zoom: 10,
-            });
+        // Initialize map instance
+        const map = new mapboxgl.Map({
+            container: mapContainerRef.current,
+            style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
+            center: [0.1278, 52.2053],
+            zoom: 10,
+        });
 
-            // Store map instance in state
-            setMapInstance(map);
+        // Store map instance in state
+        setMapInstance(map);
 
-            // Clean up map instance on component unmount
-            return () => {
-                if (map) {
-                    map.remove();
-                }
-            };
-        }
-    }, [upcomingGigs]); // Dependency array includes mapboxToken and upcomingGigs
+        // Clean up map instance on component unmount
+        return () => {
+            if (map) {
+                map.remove();
+            }
+        };
+    }, []); // Dependency array includes mapboxToken and upcomingGigs
 
     useEffect(() => {
         if (mapInstance && upcomingGigs && upcomingGigs.length > 0) {

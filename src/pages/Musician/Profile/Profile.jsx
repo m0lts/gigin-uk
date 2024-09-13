@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { Header as MusicianHeader } from "../../../components/musician-components/Header";
 import { Header as VenueHeader } from "../../../components/venue-components/Header";
 import { firestore } from '../../../firebase';
-import { getDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { getDoc, doc, collection, query, updateDoc, arrayUnion, where, documentId, Timestamp, getDocs } from 'firebase/firestore';
 import { OverviewTab } from "../Dashboard/Profile/OverviewTab";
 import { MusicTab } from "../Dashboard/Profile/MusicTab";
 import { ReviewsTab } from "../Dashboard/Profile/ReviewsTab";
-import { ClockIcon, RejectedIcon, StarIcon, TickIcon } from "../../../components/ui/Extras/Icons";
+import { CardIcon, ClockIcon, InviteIcon, MailboxEmptyIcon, RejectedIcon, SaveIcon, SavedIcon, StarIcon, TickIcon } from "../../../components/ui/Extras/Icons";
 import { useGigs } from "../../../context/GigsContext";
+import { LoadingScreen } from "../../../components/ui/loading/LoadingScreen";
+import { LoadingThreeDots } from "../../../components/ui/loading/Loading";
 
 export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
 
     const { musicianId, gigId } = useParams();
+    const navigate = useNavigate();
 
     const { gigs } = useGigs();
 
@@ -21,6 +24,12 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(true);
     const [padding, setPadding] = useState('5%');
+
+    const [musicianSaved, setMusicianSaved] = useState(false);
+    const [savingMusician, setSavingMusician] = useState(false);
+    const [inviteMusicianModal, setInviteMusicianModal] = useState(false);
+    const [usersGigs, setUsersGigs] = useState([]);
+    const [selectedGig, setSelectedGig] = useState();
 
 
     useEffect(() => {
@@ -48,8 +57,18 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             }
         };
 
+        const getSavedMusicians = async () => {
+            if (user?.savedMusicians && user.savedMusicians.length > 0) {
+                const activeMusicianSaved = user.savedMusicians.includes(musicianId);
+                setMusicianSaved(!!activeMusicianSaved); // Set to true if musician is found, otherwise false
+            } else {
+                setMusicianSaved(false); // If no saved musicians, set to false
+            }
+        }
+
 
         fetchMusicianProfile();
+        getSavedMusicians();
 
     }, [musicianId, gigId]);
 
@@ -83,59 +102,150 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
         }        
     };       
 
-    const handleAccept = async (musicianId) => {
-
-        // TAKE PAYMENT FROM HOST
+    const handleSaveMusician = async () => {
+        if (user && musicianId) {
+            setSavingMusician(true);
+            try {
+                // Reference to the user's document
+                const userRef = doc(firestore, 'users', user.uid);
     
-        try {
-            const gigRef = doc(firestore, 'gigs', gigId);
-            const gigSnapshot = await getDoc(gigRef);
-    
-            if (gigSnapshot.exists()) {
-                const gigData = gigSnapshot.data();
-                const updatedApplicants = gigData.applicants.map(applicant => {
-                    if (applicant.id === musicianId) {
-                        return { ...applicant, status: 'Accepted' };
-                    } else {
-                        return { ...applicant, status: 'Declined' };
-                    }
+                // Update the user document by adding the musicianId to the musicianProfiles array
+                await updateDoc(userRef, {
+                    savedMusicians: arrayUnion(musicianId) // Add the musicianId to the array
                 });
-                await updateDoc(gigRef, { applicants: updatedApplicants });
-                const updatedApplicant = updatedApplicants.find(applicant => applicant.id === musicianId);
-                setApplicantData(updatedApplicant);
+                setMusicianSaved(true)
+            } catch (error) {
+                console.error('Error updating user document: ', error);
+            } finally {
+                setSavingMusician(false);
+            }
+        }
+    }
+
+    const getOrCreateConversation = async (musicianProfile, gigData, venueProfile, type) => {
+
+        const conversationsRef = collection(firestore, 'conversations');
+        const conversationQuery = query(
+            conversationsRef,
+            where('participants', 'array-contains', musicianProfile.musicianId),
+            where('gigId', '==', gigData.gigId)
+        );
+        const conversationSnapshot = await getDocs(conversationQuery);
+    
+        let conversationId;
+    
+        if (conversationSnapshot.empty) {
+            // Create a new conversation
+            const newConversation = {
+                participants: [
+                    gigData.venueId,
+                    musicianProfile.musicianId
+                ],
+                accountNames: [
+                    { participantId: gigData.venueId, accountName: venueProfile.accountName, accountId: venueProfile.user, role: 'venue', venueName: gigData.venue.venueName }, 
+                    { participantId: musicianProfile.musicianId, accountName: musicianProfile.name, accountId: musicianProfile.userId, role: 'musician' }
+                ],
+                gigId: gigData.gigId,
+                lastMessageTimestamp: Timestamp.now(),
+                status: "open",
+                createdAt: Timestamp.now(),
+            };
+    
+            const conversationDocRef = await addDoc(conversationsRef, newConversation);
+            conversationId = conversationDocRef.id;
+        } else {
+            // If a conversation already exists, get its ID
+            conversationId = conversationSnapshot.docs[0].id;
+        }
+    
+        return conversationId;
+    };
+
+    const handleInviteMusician = async () => {
+
+        if (!user) {
+            setAuthModal(true);
+            setAuthType('login');
+            return;
+        };
+
+        if (!user.venueProfiles) {
+            alert('You must create a venue profile and post a gig before inviting a musician to one.'); // Add alert here
+            return;
+        }
+    
+        // Step 1: Extract all gig IDs from the venueProfiles array into one array
+        const gigIds = user.venueProfiles
+            .flatMap(venueProfile => venueProfile.gigs || []); // Flatten the gig arrays from all venue profiles
+    
+        if (gigIds.length === 0) {
+            alert('You must post a gig before inviting a musician to one.'); // Add alert here
+            return;
+        }
+
+    
+        // Step 2: Fetch gigs from Firestore where the document ID matches one of the gig IDs and the date is in the future
+        try {
+            // Step 2: Fetch all gigs by their document ID (gig IDs)
+            const gigsRef = collection(firestore, 'gigs');
+            const gigsQuery = query(gigsRef, where(documentId(), 'in', gigIds));
+    
+            const gigsSnapshot = await getDocs(gigsQuery);
+            const gigs = gigsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+    
+            // Step 3: Filter gigs to only include those where the date is in the future
+            const futureGigs = gigs.filter(gig => gig.date > Timestamp.now());
+    
+            if (futureGigs.length > 0) {
+                setInviteMusicianModal(true);
+                setUsersGigs(futureGigs)
             } else {
-                console.error('Gig not found');
+                console.error('No future gigs found');
             }
         } catch (error) {
-            console.error('Error updating gig document:', error);
+            console.error('Error fetching future gigs:', error);
         }
     };
 
-    const handleReject = async (musicianId) => {
+    const handleSendMusicianInvite = async (gigData) => {
+
+        if (!musicianProfile || !gigData) {
+            return;
+        }
+
+        const venueToSend = user.venueProfiles.find(venue => venue.id === gigData.venueId);
+
+        // Check if the venue was found
+        if (!venueToSend) {
+            console.error('Venue not found in user profiles.');
+            return;
+        }
         try {
-            const gigRef = doc(firestore, 'gigs', gigId);
-            const gigSnapshot = await getDoc(gigRef);
+            // Assume gigData and venueProfile are already available in the scope
+            const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueToSend, 'message');
     
-            if (gigSnapshot.exists()) {
-                const gigData = gigSnapshot.data();
-                const updatedApplicants = gigData.applicants.map(applicant => {
-                    if (applicant.id === musicianId) {
-                        return { ...applicant, status: 'Declined' };
-                    }
-                });
-                await updateDoc(gigRef, { applicants: updatedApplicants });
-                const updatedApplicant = updatedApplicants.find(applicant => applicant.id === musicianId);
-                setApplicantData(updatedApplicant);
-            } else {
-                console.error('Gig not found');
-            }
+            // Navigate the user to the messages page after conversation creation
+            navigate(`/messages?conversationId=${conversationId}`);
         } catch (error) {
-            console.error('Error updating gig document:', error);
+            console.error('Error while creating or fetching conversation:', error);
         }
     };
+
+    const formatDate = (date) => {
+        const d = date.toDate();
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year}`;
+    }
 
     return (
-        <div className="musician-profile-page" style={{ padding: `0 ${padding}` }}>
+        <div className="musician-profile-page">
             {user.venueProfiles && user.venueProfiles.length > 0 ? (
                 <VenueHeader
                     user={user}
@@ -150,9 +260,9 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 />
             )}
             {loading ? (
-                <p>loading...</p>
+                <LoadingScreen />
             ) : (
-                <div className="profile">
+                <div className="profile" style={{ padding: `0 ${padding}` }}>
                     <div className="profile-banner">
                         <div className="profile-information">
                             <figure className="profile-picture">
@@ -161,9 +271,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                             <div className="profile-details">
                                 <h1>{musicianProfile.name}</h1>
                                 <div className="data">
-                                    <p>50 gigs played</p>
-                                    <p>300 followers</p>
-                                    <p>4.5<StarIcon /> avg. rating</p>
+                                    <p>0 gigs played</p>
                                 </div>
                                 <div className="genre-tags">
                                     {musicianProfile.genres && musicianProfile.genres.map((genre, index) => (
@@ -195,6 +303,31 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                             )}
                         </div>
                             )} */}
+                        {user.venueProfiles.length > 0 && (
+                            <div className="profile-actions venue">
+                                <button className="btn secondary" onClick={handleSaveMusician} disabled={user?.savedMusicians?.includes(musicianId)}>
+                                    {musicianSaved ? (
+                                        <>
+                                            <SavedIcon />
+                                            Saved
+                                        </>
+                                    ) : (
+                                        savingMusician ? (
+                                            <LoadingThreeDots />
+                                        ) : (
+                                            <>
+                                                <SaveIcon />
+                                                Save
+                                            </>
+                                        )
+                                    )}
+                                </button>
+                                <button className="btn primary-alt" onClick={handleInviteMusician}>
+                                    <InviteIcon />
+                                    Invite
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <nav className="profile-tabs">
                         <p onClick={() => setActiveTab('overview')} className={`profile-tab ${activeTab === 'overview' ? 'active' : ''}`}>
@@ -212,6 +345,30 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                     </div>
                 </div>
             )}
+
+            {inviteMusicianModal && (
+                <div className="modal">
+                    <div className="modal-content">
+                        <h2>Select a gig to invite {musicianProfile.name} to play at.</h2>
+                        <div className="gig-selection">
+                            {usersGigs.length > 0 && (
+                                usersGigs.map((gig, index) => (
+                                    <div className={`card ${selectedGig === gig ? 'selected' : ''}`} key={index} onClick={() => setSelectedGig(gig)}>
+                                        <h4 className="text">{gig.venue.venueName}</h4>
+                                        <p className="sub-text">{formatDate(gig.date)} - {gig.startTime}</p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="two-buttons">
+                            <button className="btn secondary" onClick={() => setInviteMusicianModal(false)}>Cancel</button>
+                            <button className="btn primary-alt" disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
+
+        
     );
 }

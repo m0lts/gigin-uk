@@ -57,7 +57,7 @@ export const GigBudget = ({ formData, handleInputChange }) => {
         <>
             <div className="head">
                 <h1 className="title">What's your budget?</h1>
-                <p className="text">This is not a fixed price, you can negotiate a price with the musician.</p>
+                <p className="text">This is not a fixed price, you can negotiate a final price with the musician.</p>
             </div>
             <div className="body budget">
                 <div className="input-group">

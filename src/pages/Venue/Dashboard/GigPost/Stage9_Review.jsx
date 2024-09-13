@@ -8,6 +8,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
 
     const [saving, setSaving] = useState(false);
     const [templateName, setTemplateName] = useState('');
+    const [savedTemplate, setSavedTemplate] = useState(false);
     const [repeatData, setRepeatData] = useState({
         repeat: '',
         end: '',
@@ -18,7 +19,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
     const [repeatEnd, setRepeatEnd] = useState('never');
     const [endRepeatAfter, setEndRepeatAfter] = useState('');
     const [endRepeatDate, setEndRepeatDate] = useState('');
-    const [privateApplicationsLink, setPrivateApplicationsLink] = useState(`https://www.gigin.ltd/${formData.gigId}?=${uuidv4()}`);
+    const [privateApplicationsLink, setPrivateApplicationsLink] = useState(`https://www.gigin.ltd/private-application/${formData.gigId}?=${uuidv4()}`);
 
     const handleCheckboxChange = (e) => {
         const isChecked = e.target.checked;
@@ -148,6 +149,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
           });
       
           setSaving(false);
+          setSavedTemplate(true);
         } catch (error) {
           setSaving(false);
           console.error('Failed to save template:', error);
@@ -252,23 +254,25 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                                 </div>
                             </div>
                         )}
-                        <div className="review-extra-option template">
-                            <div className="input-group">
-                                <label htmlFor="templateName" className="label">Enter a name below to save the gig as a template:</label>
-                                <input 
-                                    type="text" 
-                                    name="templateName" 
-                                    className="input"
-                                    id="templateName"
-                                    placeholder="E.g. Friday Night Jazz"
-                                    value={templateName}
-                                    onChange={(e) => setTemplateName(e.target.value)}
-                                 />
+                        {!savedTemplate && (
+                            <div className="review-extra-option template">
+                                <div className="input-group">
+                                    <label htmlFor="templateName" className="label">Enter a name below to save the gig as a template:</label>
+                                    <input 
+                                        type="text" 
+                                        name="templateName" 
+                                        className="input"
+                                        id="templateName"
+                                        placeholder="E.g. Friday Night Jazz"
+                                        value={templateName}
+                                        onChange={(e) => setTemplateName(e.target.value)}
+                                    />
+                                </div>
+                                {templateName && (
+                                    <button className="btn primary-alt" onClick={handleSaveTemplate}>{saving ? 'Saving...' : 'Save Gig Template'}</button>
+                                )}
                             </div>
-                            {templateName && (
-                                <button className="btn primary-alt" onClick={handleSaveTemplate}>{saving ? 'Saving...' : 'Save Gig Template'}</button>
-                            )}
-                        </div>
+                        )}
                         <div className="review-extra-option">
                             <div className="toggle-container">
                                 <label htmlFor="private-applications" className="label">Make applications private?</label>

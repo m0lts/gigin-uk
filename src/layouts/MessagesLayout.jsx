@@ -29,8 +29,14 @@ export const MessagesLayout = ({ children, setAuthModal, setAuthType, user, logo
                     setAuthType={setAuthType}
                     user={user}
                 />
-            ) : (user && user.venueProfiles && user.venueProfiles.length > 0) && (
+            ) : (user && user.venueProfiles && user.venueProfiles.length > 0) ? (
                 <VenuesHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                />
+            ) : (
+                <CommonHeader
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
                     user={user}

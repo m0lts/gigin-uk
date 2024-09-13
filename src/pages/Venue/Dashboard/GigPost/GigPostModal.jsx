@@ -329,7 +329,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
           const startDate = new Date(gigDataPacket.date);
           let gigDocuments = [];
       
-          if (gigDataPacket.repeatData.repeat !== 'no') {
+          if (gigDataPacket.repeatData?.repeat) {
             const repeatType = gigDataPacket.repeatData.repeat;
             const endAfter = parseInt(gigDataPacket.repeatData.endAfter, 10);
             const endDate = gigDataPacket.repeatData.endDate ? new Date(gigDataPacket.repeatData.endDate) : null;

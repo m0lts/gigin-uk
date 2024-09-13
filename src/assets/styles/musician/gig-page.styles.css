@@ -1,11 +1,8 @@
 
-.gig-page .header {
-    padding: 0 !important;
-}
 
 .gig-page-body {
-    margin-top: 0.5rem;
-    padding-bottom: 5rem;
+    margin-top: 2rem;
+    padding-bottom: 5rem !important;
 }
 
 

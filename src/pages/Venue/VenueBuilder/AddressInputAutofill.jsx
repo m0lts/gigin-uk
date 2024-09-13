@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { AddressAutofill } from '@mapbox/search-js-react';
 
-export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange }) => {
+export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange, coordinatesError, setCoordinatesError }) => {
 
     const handleRetrieve = useCallback(
         (res) => {
@@ -11,8 +11,13 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
             const address = feature.properties.full_address;
             const coordinates = feature.geometry.coordinates;
 
+            if (coordinates) {
+                setLocationCoordinates(coordinates);
+            } else {
+                setCoordinatesError(true)
+            }
+
             setLocationAddress(address);
-            setLocationCoordinates(coordinates);
         },
         [setFeature, setLocationAddress, setLocationCoordinates]
     );
@@ -28,7 +33,11 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                 const data = await response.json();
                 if (data.features && data.features.length > 0) {
                     const coordinates = data.features[0].geometry.coordinates;
-                    setLocationCoordinates(coordinates);
+                    if (coordinates) {
+                        setLocationCoordinates(coordinates);
+                    } else {
+                        setCoordinatesError(true);
+                    }
                     const addressDetails = {
                         type: 'Feature',
                         geometry: {
@@ -40,8 +49,6 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         },
                     };
                     setFeature(addressDetails);
-                } else {
-                    console.error('No coordinates found for the provided address.');
                 }
             } else {
                 console.error('Failed to fetch coordinates.');
@@ -76,11 +83,14 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                     <div className="input-group">
                         <label htmlFor="autofill" className="input-label">Venue Address</label>
                         <input
-                            className="input-box"
+                            className={`input-box ${coordinatesError ? 'error': ''}`}
                             type="text"
                             value={locationAddress}
                             disabled
                         />
+                        {coordinatesError && (
+                            <p className="error-message">Sorry, we couldn't find any coordinates for that address. Please try again.</p>
+                        )}
                         <button className="btn secondary" style={{ width: 'fit-content' }} onClick={() => {setLocationAddress(''); setLocationCoordinates(null)}}>
                             Change Address
                         </button>
@@ -92,7 +102,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         <div className="input-group">
                             <label htmlFor="autofill" className="input-label">Venue Address</label>
                             <input
-                                className="input-box"
+                                className={`input-box ${coordinatesError ? 'error': ''}`}
                                 type="text"
                                 name="autofill"
                                 id="autofill"

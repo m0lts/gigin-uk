@@ -64,8 +64,8 @@ export const Sidebar = ({ setGigPostModal }) => {
             <li className="menu-item sub top" onClick={() => navigate('/venues/dashboard/venues')}>
               My Venues
             </li>
-            <li className="menu-item sub bottom" onClick={() => navigate('/venues/venue-builder')}>
-              New Venue
+            <li className="menu-item sub bottom" onClick={() => navigate('/venues/add-venue')}>
+              Add Venue
             </li>
           </>
         )}

@@ -289,8 +289,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                                 )}
                             </ul>
                         </div>
-                        <button className="btn text" onClick={handleSaveAndExit}>
-                            <ExitIcon />
+                        <button className="btn primary" onClick={handleSaveAndExit}>
                             Save and Exit
                         </button>
                     </aside>

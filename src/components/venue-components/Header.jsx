@@ -318,9 +318,6 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                 <>
                     <TextLogoLink />
                     <nav className="nav-list">
-                        <button className="item btn text">
-                            What is Gigin?
-                        </button>
                         <button className="item btn secondary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
                             Log In
                         </button>
