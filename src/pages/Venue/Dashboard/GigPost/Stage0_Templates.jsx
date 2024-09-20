@@ -8,9 +8,11 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData }) => {
     const handlePopulateTemplateData = (template) => {
         const { templateName, templateId, ...templateData } = template;
         const id = uuidv4();
+        delete templateData.id;
         setFormData({
             ...templateData,
             gigId: id,
+            id: id,
             createdAt: new Date(),
         });
         setSelectedCard(templateId);

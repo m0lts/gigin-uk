@@ -24,14 +24,14 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     const [newMessages, setNewMessages] = useState(false);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user && !user.musicianProfile) return;
     
         const checkForNewMessages = () => {
             const conversationsRef = collection(firestore, 'conversations');
             const queries = [];
     
             // Query by musicianProfile ID
-            if (user.musicianProfile) {
+            if (user.musicianProfile.length > 0) {
                 const musicianQuery = query(conversationsRef, where('participants', 'array-contains', user.musicianProfile.musicianId));
                 queries.push(musicianQuery);
             }

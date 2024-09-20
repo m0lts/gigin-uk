@@ -46,10 +46,9 @@ export const ProfileTab = ({ musicianProfile }) => {
           const musicianRef = doc(firestore, 'musicianProfiles', profileToDelete.musicianId);
           await deleteDoc(musicianRef);
       
-          // Remove the venue ID from the user's venueProfiles array
           const userRef = doc(firestore, 'users', profileToDelete.userId);
           await updateDoc(userRef, {
-            musicianProfile: arrayRemove(profileToDelete.musicianId)
+            musicianProfile: arrayRemove(profileToDelete.musicianId),
           });
       
           // Delete all gigs associated with the musician
@@ -59,14 +58,22 @@ export const ProfileTab = ({ musicianProfile }) => {
         //   await Promise.all(gigDeletionPromises);
 
           // Delete all files in Google Cloud Storage associated with the venue
-          const storageRef = ref(storage, `musicians/${profileToDelete.musicianId}`);
-          const listResults = await listAll(storageRef);
-          const deletePromises = listResults.items.map(itemRef => deleteObject(itemRef));
-          await Promise.all(deletePromises);
+          const deleteFolderRecursive = async (storagePath) => {
+            const storageRef = ref(storage, storagePath);
+            const listResults = await listAll(storageRef);
+
+            const deletePromises = listResults.items.map(itemRef => deleteObject(itemRef));
+            const folderDeletePromises = listResults.prefixes.map(folderRef => deleteFolderRecursive(folderRef.fullPath));
+
+            await Promise.all([...deletePromises, ...folderDeletePromises]);
+        };
+
+        // Start the recursive deletion at the musician's folder
+        await deleteFolderRecursive(`musicians/${profileToDelete.musicianId}`);
       
-          navigate('/musician');
+          navigate('/');
         } catch (error) {
-          console.error('An error occurred while deleting the venue:', error);
+          console.error('An error occurred while deleting the musician:', error);
         } finally {
           setShowDeleteModal(false);
           setProfileToDelete(null);

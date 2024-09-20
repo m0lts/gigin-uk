@@ -46,7 +46,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             // Check if the user has already applied to this gig
             if (user && user.musicianProfile) {
                 const musicianProfileId = user.musicianProfile.musicianId;
-                const userHasApplied = gig.applicants.some(applicant => applicant.id === musicianProfileId);
+                const userHasApplied = gig?.applicants.some(applicant => applicant.id === musicianProfileId);
                 setUserAppliedToGig(userHasApplied);
             }
 

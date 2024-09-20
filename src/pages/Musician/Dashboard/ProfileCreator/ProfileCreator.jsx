@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../../../../hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
 import { storage, firestore } from "../../../../firebase";
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, arrayUnion, deleteDoc, arrayRemove } from 'firebase/firestore';
 
 import '/styles/musician/profile-creator.styles.css'
@@ -63,6 +63,8 @@ export const ProfileCreator = () => {
     });
     const [uploadingProfile, setUploadingProfile] = useState(false);
     const [savingProfile, setSavingProfile] = useState(false);
+    const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+    const [trackUploadProgress, setTrackUploadProgress] = useState(0);
 
     useEffect(() => {
         const checkForSavedProfile = async () => {
@@ -147,46 +149,72 @@ export const ProfileCreator = () => {
         });
     };
 
-    const uploadVideosToFirebaseStorage = async (mediaFiles, musicianId, folder) => {
+    const uploadVideosToFirebaseStorage = async (mediaFiles, musicianId, folder, setVideoUploadProgress) => {
+        let totalBytesTransferred = 0;
+        let totalBytes = mediaFiles.reduce((acc, media) => acc + media.file.size, 0);
+    
         const uploadPromises = mediaFiles.map(async (media) => {
-            // Check if the video file is already a URL
             let videoUrl = media.file;
+    
             if (typeof media.file !== 'string') {
                 const videoStorageRef = ref(storage, `musicians/${musicianId}/${folder}/${media.title}`);
-                await uploadBytes(videoStorageRef, media.file);
-                videoUrl = await getDownloadURL(videoStorageRef); // Get the download URL of the video
+                const uploadTask = uploadBytesResumable(videoStorageRef, media.file);
+    
+                uploadTask.on('state_changed', (snapshot) => {
+                    totalBytesTransferred += snapshot.bytesTransferred;
+                    const progress = (totalBytesTransferred / totalBytes) * 100;
+                    setVideoUploadProgress(Math.min(Math.round(progress), 100)); // Ensure it does not exceed 100
+                });
+    
+                await uploadTask;
+                videoUrl = await getDownloadURL(videoStorageRef);
             }
     
-            // Check if the thumbnail is already a URL
             let thumbnailUrl = media.thumbnail;
             if (typeof media.thumbnail !== 'string') {
                 const thumbnailStorageRef = ref(storage, `musicians/${musicianId}/${folder}/thumbnails/${media.title}_thumbnail`);
-                await uploadBytes(thumbnailStorageRef, media.thumbnail); // Upload the thumbnail
-                thumbnailUrl = await getDownloadURL(thumbnailStorageRef); // Get the download URL of the thumbnail
+                const uploadTask = uploadBytesResumable(thumbnailStorageRef, media.thumbnail);
+    
+                uploadTask.on('state_changed', (snapshot) => {
+                    totalBytesTransferred += snapshot.bytesTransferred;
+                    const progress = (totalBytesTransferred / totalBytes) * 100;
+                    setVideoUploadProgress(Math.min(Math.round(progress), 100));
+                });
+    
+                await uploadTask;
+                thumbnailUrl = await getDownloadURL(thumbnailStorageRef);
             }
     
-            return { videoUrl, thumbnailUrl }; // Return both video and thumbnail URLs
+            return { videoUrl, thumbnailUrl };
         });
     
-        return Promise.all(uploadPromises); // Resolve all promises and return an array of objects containing video and thumbnail URLs
+        return Promise.all(uploadPromises);
     };
 
-    const uploadTracksToFirebaseStorage = async (mediaFiles, musicianId, folder) => {
+    const uploadTracksToFirebaseStorage = async (mediaFiles, musicianId, folder, setTrackUploadProgress) => {
+        let totalBytesTransferred = 0;
+        let totalBytes = mediaFiles.reduce((acc, media) => acc + media.file.size, 0);
+    
         const uploadPromises = mediaFiles.map(async (media) => {
-            // If the file is already a URL (indicating it has been uploaded before), skip re-upload
             if (typeof media.file === 'string') {
-                return media.file; // Return the existing URL
+                return media.file;
             }
     
-            // Otherwise, upload the file to Firebase Storage
-            const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${media.title}`); // Use `media.file.title` for file name
-            await uploadBytes(storageRef, media.file); // Upload the actual file
-            const url = await getDownloadURL(storageRef); // Get the download URL
+            const storageRef = ref(storage, `musicians/${musicianId}/${folder}/${media.title}`);
+            const uploadTask = uploadBytesResumable(storageRef, media.file);
     
-            return url; // Return the newly uploaded file's URL
+            uploadTask.on('state_changed', (snapshot) => {
+                totalBytesTransferred += snapshot.bytesTransferred;
+                const progress = (totalBytesTransferred / totalBytes) * 100;
+                setTrackUploadProgress(Math.min(Math.round(progress), 100));
+            });
+    
+            await uploadTask;
+            const url = await getDownloadURL(storageRef);
+            return url;
         });
     
-        return Promise.all(uploadPromises); // Resolve all promises and return the array of URLs
+        return Promise.all(uploadPromises);
     };
 
     const uploadProfilePictureToFirebaseStorage = async (picture, musicianId) => {
@@ -201,11 +229,13 @@ export const ProfileCreator = () => {
 
     const handleSubmit = async () => {
         setUploadingProfile(true);
+        setVideoUploadProgress(0);
+        setTrackUploadProgress(0);
         try {
             const pictureFile = formData.picture;
             const pictureUrl = await uploadProfilePictureToFirebaseStorage(pictureFile, formData.musicianId);
 
-            const videoResults = await uploadVideosToFirebaseStorage(formData.videos, formData.musicianId, 'videos');
+            const videoResults = await uploadVideosToFirebaseStorage(formData.videos, formData.musicianId, 'videos', setVideoUploadProgress);
 
             // Create an array of video metadata with URLs
             const videoMetadata = formData.videos.map((video, index) => ({
@@ -215,7 +245,7 @@ export const ProfileCreator = () => {
                 thumbnail: videoResults[index].thumbnailUrl,
             }));
 
-            const trackUrls = await uploadTracksToFirebaseStorage(formData.tracks, formData.musicianId, 'tracks');
+            const trackUrls = await uploadTracksToFirebaseStorage(formData.tracks, formData.musicianId, 'tracks', setTrackUploadProgress);
 
             
             // Create an array of track metadata with URLs
@@ -347,11 +377,18 @@ export const ProfileCreator = () => {
             {uploadingProfile ? (
                 <div className='loading-state'>
                     <h1>Creating your musician profile...</h1>
+                    <h3>Uploading videos: {videoUploadProgress}%</h3>
+                    <progress value={videoUploadProgress} max="100"></progress>
+                    
+                    <h3>Uploading tracks: {trackUploadProgress}%</h3>
+                    <progress value={trackUploadProgress} max="100"></progress>
+                    
                     <LoadingThreeDots />
                 </div>
             ) : savingProfile ? (
                 <div className='loading-state'>
                     <h1>Saving your musician profile...</h1>
+                    <h3>This may take a while if you added any new videos or tracks.</h3>
                     <h3>Please don't refresh or leave this page.</h3>
                     <LoadingThreeDots />
                 </div>

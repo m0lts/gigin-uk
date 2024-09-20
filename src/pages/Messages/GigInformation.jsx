@@ -165,7 +165,7 @@ export const GigInformation = ({ gigId }) => {
                     {gigData.negotiatedFee && (
                         <div className="budget-container">
                             <h6>Negotiated Fee:</h6>
-                            <h2>{gigData.budget}</h2>
+                            <h2>£{gigData.negotiatedFee}</h2>
                         </div>
                     )}
                 </div>

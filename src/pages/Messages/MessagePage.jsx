@@ -25,8 +25,7 @@ export const MessagePage = () => {
 
     // Function to handle selecting a conversation
     const handleSelectConversation = async (conversationId) => {
-        const conversation = conversations.find(c => c.id === conversationId);
-        setActiveConversation(conversation);
+        navigate(`/messages?conversationId=${conversationId}`);
     
         // Update the lastViewed timestamp for the user in Firestore
         const conversationRef = doc(firestore, 'conversations', conversationId);
@@ -34,6 +33,23 @@ export const MessagePage = () => {
         lastViewedUpdate[`lastViewed.${user.uid}`] = Timestamp.now();
         await updateDoc(conversationRef, lastViewedUpdate);
     };
+
+    useEffect(() => {
+        const updateLastViewed = async () => {
+            if (paramsConversationId && user.uid) {
+                try {
+                    const conversationRef = doc(firestore, 'conversations', paramsConversationId);
+                    const lastViewedUpdate = {};
+                    lastViewedUpdate[`lastViewed.${user.uid}`] = Timestamp.now();
+                    await updateDoc(conversationRef, lastViewedUpdate);
+                } catch (error) {
+                    console.error('Error updating last viewed timestamp:', error);
+                }
+            }
+        };
+    
+        updateLastViewed();
+    }, [paramsConversationId, user]);
 
 
     useEffect(() => {
@@ -110,7 +126,11 @@ export const MessagePage = () => {
             const conversation = conversations.find(c => c.id === paramsConversationId)
             setActiveConversation(conversation)
         }
-    }, [paramsConversationId, conversations])
+        if (conversations.length > 0 && !paramsConversationId) {
+            const firstConversationId = conversations[0]?.id;
+            navigate(`/messages?conversationId=${firstConversationId}`);
+        }
+    }, [paramsConversationId, conversations, navigate])
 
     const openGig = (gigId) => {
         const url = `/gig/${gigId}`;
@@ -120,6 +140,10 @@ export const MessagePage = () => {
     const openMusician = (url) => {
         window.open(url, '_blank');
     };
+
+    const handleNegotiateFee = async (activeConversation) => {
+        console.log(activeConversation)
+    }
 
     if (conversations.length > 0) {
 
@@ -193,9 +217,9 @@ export const MessagePage = () => {
                                                     View Musician Profile
                                                 </button>
                                         </>
-                                    ) : (
+                                    ) : activeConversation.status === "open" && (
                                         <>
-                                            <button className="btn primary-alt">
+                                            <button className="btn primary-alt" onClick={() => handleNegotiateFee(activeConversation)}>
                                                 Negotiate Fee
                                             </button>
                                         </>

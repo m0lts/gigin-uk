@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { Header as MusicianHeader } from "../../../components/musician-components/Header";
 import { Header as VenueHeader } from "../../../components/venue-components/Header";
 import { firestore } from '../../../firebase';
-import { getDoc, doc, collection, query, updateDoc, arrayUnion, where, documentId, Timestamp, getDocs } from 'firebase/firestore';
+import { getDoc, doc, collection, query, updateDoc, arrayUnion, where, documentId, Timestamp, getDocs, addDoc } from 'firebase/firestore';
 import { OverviewTab } from "../Dashboard/Profile/OverviewTab";
 import { MusicTab } from "../Dashboard/Profile/MusicTab";
 import { ReviewsTab } from "../Dashboard/Profile/ReviewsTab";
@@ -30,6 +30,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
     const [inviteMusicianModal, setInviteMusicianModal] = useState(false);
     const [usersGigs, setUsersGigs] = useState([]);
     const [selectedGig, setSelectedGig] = useState();
+    const [invitedMusician, setInvitedMusician] = useState(false);
 
 
     useEffect(() => {
@@ -42,9 +43,12 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                     setMusicianProfile(musician);
 
                     if (gigs) {
-                        const currentGig = gigs.find(gig => gig.gigId === gigId)
+                        const currentGig = gigs.find(gig => gig.gigId === gigId);
                         const applicant = currentGig.applicants.find(applicant => applicant.id === musician.musicianId);
                         setApplicantData(applicant);
+                        if (applicant.invited) {
+                            setInvitedMusician(true);
+                        }
                     }
 
                 } else {
@@ -121,6 +125,24 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             }
         }
     }
+    const formatDateLong = (timestamp) => {
+        const date = timestamp.toDate();
+        const day = date.getDate();
+        const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
+        const month = date.toLocaleDateString('en-GB', { month: 'long' });
+        return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
+    };
+
+    const getOrdinalSuffix = (day) => {
+        if (day > 3 && day < 21) return 'th';
+        switch (day % 10) {
+            case 1: return 'st';
+            case 2: return 'nd';
+            case 3: return 'rd';
+            default: return 'th';
+        }
+    };
+
 
     const getOrCreateConversation = async (musicianProfile, gigData, venueProfile, type) => {
 
@@ -147,6 +169,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 ],
                 gigId: gigData.gigId,
                 lastMessageTimestamp: Timestamp.now(),
+                lastMessage: `${venueProfile.accountName} invited ${musicianProfile.name} to play the the gig at the ${gigData.venue.venueName} on ${formatDateLong(gigData.date)}.`,
                 status: "open",
                 createdAt: Timestamp.now(),
             };
@@ -195,15 +218,19 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 id: doc.id,
                 ...doc.data()
             }));
+
     
             // Step 3: Filter gigs to only include those where the date is in the future
             const futureGigs = gigs.filter(gig => gig.date > Timestamp.now());
+            const availableGigs = futureGigs.filter(gig => 
+                !gig.applicants.some(applicant => applicant.id === musicianId && applicant.status !== 'Declined')
+            );
     
-            if (futureGigs.length > 0) {
+            if (availableGigs.length > 0) {
                 setInviteMusicianModal(true);
                 setUsersGigs(futureGigs)
             } else {
-                console.error('No future gigs found');
+                alert('There are no eligible gigs to invite this musician to.');
             }
         } catch (error) {
             console.error('Error fetching future gigs:', error);
@@ -224,11 +251,50 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             return;
         }
         try {
+            const applicants = gigData.applicants;
+
+            // Add the new application to the applicants array
+            const newApplication = {
+                id: musicianProfile.musicianId,
+                timestamp: Timestamp.now(),
+                fee: gigData.budget || '£0',
+                status: 'Pending',
+                invited: true,
+            };
+
+            // Update the applicants array
+            const updatedApplicants = [...applicants, newApplication];
+
+            // Update the gig document with the new applicants array
+            const gigRef = doc(firestore, 'gigs', gigData.gigId);
+            await updateDoc(gigRef, {
+                applicants: updatedApplicants,
+            });
+
+            const updatedGigApplicationsArray = musicianProfile.gigApplications ? [...musicianProfile.gigApplications, gigData.gigId] : [gigData.gigId];
+
+            const musicianProfileId = musicianProfile.musicianId;
+            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+            await updateDoc(musicianProfileRef, {
+                gigApplications: updatedGigApplicationsArray,
+            });
+
             // Assume gigData and venueProfile are already available in the scope
             const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueToSend, 'message');
     
             // Navigate the user to the messages page after conversation creation
-            navigate(`/messages?conversationId=${conversationId}`);
+            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+            await addDoc(messagesRef, {
+                senderId: user.uid,
+                text: `${venueToSend.accountName} has invited you to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
+                type: "invitation",
+                status: 'Pending...',
+                timestamp: Timestamp.now(),
+            });
+
+            setInviteMusicianModal(false);
+            setInvitedMusician(true);
+
         } catch (error) {
             console.error('Error while creating or fetching conversation:', error);
         }
@@ -322,10 +388,18 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                                         )
                                     )}
                                 </button>
+                                {invitedMusician ? (
                                 <button className="btn primary-alt" onClick={handleInviteMusician}>
-                                    <InviteIcon />
-                                    Invite
+                                    <TickIcon />
+                                    Invited
                                 </button>
+                                ) : (
+                                    <button className="btn primary-alt" onClick={handleInviteMusician}>
+                                        <InviteIcon />
+                                        Invite
+                                    </button>
+
+                                )}
                             </div>
                         )}
                     </div>

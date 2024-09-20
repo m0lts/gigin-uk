@@ -30,6 +30,8 @@ export const useAuth = () => {
                 userMusicianProfile = musicianProfileDoc.data();
                 userData.musicianProfile = userMusicianProfile;
               }
+            } else {
+              delete userData.musicianProfile;
             }
 
             if (userData.venueProfiles && userData.venueProfiles.length > 0) {

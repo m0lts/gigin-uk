@@ -44,6 +44,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         createdAt: new Date(),
         accountName: user.name,
     });
+
+    console.log(formData)
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
