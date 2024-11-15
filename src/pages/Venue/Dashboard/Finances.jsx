@@ -1,35 +1,40 @@
 import React, { useState } from 'react';
-import { functions } from '../../../firebase'; // Adjust the path to your firebase.js
-import { httpsCallable } from 'firebase/functions';
+import { useStripeConnect } from "../../../hooks/useStripeConnect";
+import {
+  ConnectAccountOnboarding,
+  ConnectComponentsProvider,
+} from "@stripe/react-connect-js";
 
 export const Finances = () => {
   const [loading, setLoading] = useState(false);
-  const [accountId, setAccountId] = useState(null);
-  const [error, setError] = useState(null);
 
-  console.log(accountId);
+  const [accountCreatePending, setAccountCreatePending] = useState(false);
+  const [onboardingExited, setOnboardingExited] = useState(false);
+  const [error, setError] = useState(false);
+  const [connectedAccountId, setConnectedAccountId] = useState();
+  const stripeConnectInstance = useStripeConnect(connectedAccountId);
 
   // Function to handle test account creation
   const handleCreateTestAccount = async () => {
-    setLoading(true);
-    setError(null);
+    setAccountCreatePending(true);
+    setError(false);
+    fetch("/account", {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((json) => {
+        setAccountCreatePending(false);
+        const { account, error } = json;
 
-    try {
-      const createAccount = functions.httpsCallable('createTestConnectedAccount');
-      const result = await createAccount({ email: 'test@example.com' });
-      
-      if (result.data.error) {
-        setError(result.data.error);
-      } else {
-        setAccountId(result.data.accountId);
-      }
-    } catch (error) {
-      setError(error.message);
-      console.error(error)
-    }
+        if (account) {
+          setConnectedAccountId(account);
+        }
 
-    setLoading(false);
-  };
+        if (error) {
+          setError(true);
+        }
+      });
+  }
 
   return (
     <div className="finances">
@@ -38,10 +43,21 @@ export const Finances = () => {
       <button className='btn primary' onClick={handleCreateTestAccount} disabled={loading}>
         {loading ? 'Creating Account...' : 'Create Test Stripe Account'}
       </button>
-
-      {accountId && (
-        <p>Test Account Created: {accountId}</p>
-      )}
+        {stripeConnectInstance && (
+          <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+            <ConnectAccountOnboarding
+              onExit={() => setOnboardingExited(true)}
+            />
+          </ConnectComponentsProvider>
+        )}
+        {error && <p className="error">Something went wrong!</p>}
+        {(connectedAccountId || accountCreatePending || onboardingExited) && (
+          <div className="dev-callout">
+            {connectedAccountId && <p>Your connected account ID is: <code className="bold">{connectedAccountId}</code></p>}
+            {accountCreatePending && <p>Creating a connected account...</p>}
+            {onboardingExited && <p>The Account Onboarding component has exited</p>}
+          </div>
+        )}
 
       {error && (
         <p>Error: {error}</p>

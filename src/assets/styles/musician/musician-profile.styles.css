@@ -155,7 +155,9 @@
 }
 
 .profile .profile-banner .genre-tag {
+    box-shadow: 1px 1px 5px var(--gn-shadow);
     border:1px solid var(--gn-orange);
+    color: var(--gn-orange);
     padding:0.1rem 0.35rem;
     border-radius: 5px;
     background-color: var(--gn-offset-orange);

@@ -44,23 +44,61 @@
 //   }
 // });
 
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v2");
 const stripe = require("stripe")(functions.config().stripe.testkey);
 
-exports.createTestConnectedAccount =
-functions.https.onCall(async (data, context) => {
+exports.accountSession = functions.region("europe-west3").https.onRequest(async (req, res) => {
   try {
-    const account = await stripe.accounts.create({
-      type: "express",
-      country: "GB",
-      email: data.email,
-      capabilities: {
-        transfers: {requested: true},
+    const { account } = req.body;
+
+    const accountSession = await stripe.accountSessions.create({
+      account: account,
+      components: {
+        account_onboarding: { enabled: true },
       },
     });
 
-    return {accountId: account.id};
+    res.json({
+      client_secret: accountSession.client_secret,
+    });
   } catch (error) {
-    return {error: error.message};
+    console.error(
+      "An error occurred when calling the Stripe API to create an account session",
+      error
+    );
+    res.status(500).send({ error: error.message });
+  }
+});
+
+exports.account = functions.region("europe-west3").https.onRequest(async (req, res) => {
+  try {
+    const account = await stripe.accounts.create({
+      capabilities: {
+        transfers: { requested: true },
+      },
+      country: "UK",
+      controller: {
+        stripe_dashboard: {
+          type: "none",
+        },
+        fees: {
+          payer: "application",
+        },
+        losses: {
+          payments: "application",
+        },
+        requirement_collection: "application",
+      },
+    });
+
+    res.json({
+      account: account.id,
+    });
+  } catch (error) {
+    console.error(
+      "An error occurred when calling the Stripe API to create an account",
+      error
+    );
+    res.status(500).send({ error: error.message });
   }
 });
