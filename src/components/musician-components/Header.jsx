@@ -24,7 +24,6 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     const [newMessages, setNewMessages] = useState(false);
 
     useEffect(() => {
-        if (!user && !user.musicianProfile) return;
     
         const checkForNewMessages = () => {
             const conversationsRef = collection(firestore, 'conversations');
@@ -77,8 +76,10 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                 unsubscribeFunctions.forEach(unsub => unsub());
             };
         };
-    
-        checkForNewMessages();
+
+        if (user && user.musicianProfile) {
+            checkForNewMessages();
+        }
     }, [user]);
 
 

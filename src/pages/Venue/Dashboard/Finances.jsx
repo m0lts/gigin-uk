@@ -18,7 +18,8 @@ export const Finances = () => {
   const handleCreateTestAccount = async () => {
     setAccountCreatePending(true);
     setError(false);
-    fetch("/account", {
+    // fetch("https://stripeaccount-gxujnzd2uq-uc.a.run.app", {
+    fetch("http://127.0.0.1:5001/giginltd-16772/us-central1/stripeAccount", {
       method: "POST",
     })
       .then((response) => response.json())
@@ -28,6 +29,7 @@ export const Finances = () => {
 
         if (account) {
           setConnectedAccountId(account);
+          console.log(account);
         }
 
         if (error) {

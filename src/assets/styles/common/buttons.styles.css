@@ -156,3 +156,26 @@ button {
 .btn.accept:hover {
     border-color: 1px solid var(--green);
 }
+
+
+/* FOR HOSTS */
+.btn.for-venues {
+    background-color: var(--gn-white);
+    border: 1px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn.for-venues .text {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--gn-grey-600);
+    line-height: 0.5;
+}
+
+.btn.for-venues .icon {
+    margin: 0;
+}

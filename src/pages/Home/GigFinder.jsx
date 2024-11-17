@@ -15,6 +15,23 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
 
     const [viewType, setViewType] = useState('map');
     const [upcomingGigs, setUpcomingGigs] = useState([]);
+    const [location, setLocation] = useState(null);
+
+    useEffect(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    setLocation({ latitude, longitude });
+                },
+                (error) => {
+                    console.error("Error getting location:", error.message);
+                }
+            );
+        } else {
+            console.error("Geolocation is not supported by this browser.");
+        }
+    }, []);
 
     useEffect(() => {
         if (!gigs) return;
@@ -47,9 +64,9 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
                 />
             )}
             {viewType === 'map' ? (
-                <MapView upcomingGigs={upcomingGigs} />
+                <MapView upcomingGigs={upcomingGigs} location={location} />
             ) : (
-                <ListView upcomingGigs={upcomingGigs} />
+                <ListView upcomingGigs={upcomingGigs} location={location} />
             )}
             <button className="btn secondary view-type" onClick={() => setViewType(viewType === 'map' ? 'list' : 'map')}>
                 {viewType === 'map' ? (

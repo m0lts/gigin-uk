@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { getFunctions } from "firebase/functions";
 
 
 // TODO: Add SDKs for Firebase products that you want to use
@@ -13,12 +13,12 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: "gigin-63896.firebaseapp.com",
-  projectId: "gigin-63896",
-  storageBucket: "gigin-63896.appspot.com",
-  messagingSenderId: "263535417038",
-  appId: "1:263535417038:web:f63b143e70f300e909e29f",
-  measurementId: "G-FNDGX6S7HJ"
+  authDomain: "giginltd-16772.firebaseapp.com",
+  projectId: "giginltd-16772",
+  storageBucket: "giginltd-16772.firebasestorage.app",
+  messagingSenderId: "203668777549",
+  appId: "1:203668777549:web:6b3fb1280efc848dfe4a04",
+  measurementId: "G-JQMB434NYK"
 };
 
 // Initialize Firebase

@@ -7,7 +7,8 @@ export const useStripeConnect = (connectedAccountId) => {
   useEffect(() => {
     if (connectedAccountId) {
       const fetchClientSecret = async () => {
-        const response = await fetch("/account_session", {
+        // const response = await fetch("https://stripeaccountsession-gxujnzd2uq-uc.a.run.app", {
+          const response = await fetch("http://127.0.0.1:5001/giginltd-16772/us-central1/stripeAccountSession", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -18,7 +19,6 @@ export const useStripeConnect = (connectedAccountId) => {
         });
 
         if (!response.ok) {
-          // Handle errors on the client side here
           const { error } = await response.json();
           throw ("An error occurred: ", error);
         } else {
@@ -29,7 +29,7 @@ export const useStripeConnect = (connectedAccountId) => {
 
       setStripeConnectInstance(
         loadConnectAndInitialize({
-          publishableKey: 'sk_test_51Py8lOHI8M50kHhR2FHvcCuXFhv8cV500odfYbkv3Xh7i3RI4izDrg2r6e2EkoOpVQEPYNdUjE13uUXza9Bro08600d3QstXIs',
+          publishableKey: 'pk_test_51Py8lOHI8M50kHhR49I0lIAR8gMId69DubgtmTEPQfHJV9JQSBVbflPSq0J8AT1kZUMqDHncMP0xdfvy3pGyQEOG002PN3x3dT',
           fetchClientSecret,
           appearance: {
             overlays: "dialog",

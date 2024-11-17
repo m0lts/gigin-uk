@@ -3,6 +3,8 @@ import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateD
 import { firestore } from '../../firebase';
 import { CloseIcon, DownChevronIcon, RejectedIcon, SendMessageIcon, TickIcon } from '../../components/ui/Extras/Icons';
 import '/styles/common/messages.styles.css';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../firebase';
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId }) => {
     const [messages, setMessages] = useState([]);
@@ -353,6 +355,35 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     };
 
+
+    const handleCompletePayment = async () => {
+        try {
+            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
+            const gigSnapshot = await getDoc(gigRef);
+        
+            if (gigSnapshot.exists()) {
+                const gigData = gigSnapshot.data();
+                let agreedFee = gigData.budget;
+
+            // Remove the £ sign if it exists
+            agreedFee = agreedFee.replace('£', '');
+                const feeInCents = parseInt(agreedFee) * 100;
+                const createCheckoutSession = httpsCallable(functions, 'createCheckoutSession');
+        
+                const response = await createCheckoutSession({
+                    gigId: activeConversation.gigId,
+                    fee: feeInCents,
+                });
+                // Redirect to Stripe Checkout
+                window.location.href = response.data.url;
+            }
+    
+        } catch (error) {
+            console.error('Error initiating Stripe Checkout:', error);
+            alert('An error occurred while starting the payment process.');
+        }
+    };
+
     
     return (
         <>
@@ -520,7 +551,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 <>
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                     <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
-                                    <button className="btn primary">
+                                    <button className="btn primary" onClick={handleCompletePayment}>
                                         Complete Payment
                                     </button>
                                 </>

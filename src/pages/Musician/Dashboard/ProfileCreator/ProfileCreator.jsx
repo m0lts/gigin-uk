@@ -61,6 +61,8 @@ export const ProfileCreator = () => {
             soundcloud: '',
         }
     });
+    console.log(formData)
+
     const [uploadingProfile, setUploadingProfile] = useState(false);
     const [savingProfile, setSavingProfile] = useState(false);
     const [videoUploadProgress, setVideoUploadProgress] = useState(0);
