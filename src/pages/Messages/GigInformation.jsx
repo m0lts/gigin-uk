@@ -5,10 +5,8 @@ import mapboxgl from 'mapbox-gl';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { LocationPinIcon, BackgroundMusicIcon, BeerIcon, MicrophoneIcon, ClubIcon, PeopleGroupIcon, InviteIcon, SpeakersIcon, GuitarsIcon, TicketIcon, HouseIcon, MicrophoneLinesIcon } from "../../components/ui/Extras/Icons";
 
-export const GigInformation = ({ gigId }) => {
+export const GigInformation = ({ gigId, gigData, setGigData }) => {
 
-    
-    const [gigData, setGigData] = useState();
     const [venueProfile, setVenueProfile] = useState();
     const mapContainerRef = useRef(null);
 

@@ -1,28 +1,25 @@
 import React, { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
 import {
     CardNumberElement,
     CardExpiryElement,
     CardCvcElement,
     useStripe,
-    useElements,
-    Elements
+    useElements
   } from '@stripe/react-stripe-js';
 import VisaIcon from '../../assets/images/visa.png';
 import MastercardIcon from '../../assets/images/mastercard.png';
 import AmexIcon from '../../assets/images/amex.png';
 import { motion, AnimatePresence } from 'framer-motion';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../firebase.js';
+import '../../assets/styles/common/card-details.styles.css'
+import {LoadingThreeDots} from '../ui/loading/Loading'
 
-
-// Load your Stripe publishable key
-const stripePromise = loadStripe('pk_test_51Py8lOHI8M50kHhR49I0lIAR8gMId69DubgtmTEPQfHJV9JQSBVbflPSq0J8AT1kZUMqDHncMP0xdfvy3pGyQEOG002PN3x3dT');
 
 // Card input form component
-export const CardForm = () => {
+export const CardForm = ({ activityType, setCardDetails }) => {
     const stripe = useStripe();
     const elements = useElements();
-  
-    const [step, setStep] = useState(1); // Track current step
     const [loading, setLoading] = useState(false);
     const [name, setName] = useState('');
     const [billingDetails, setBillingDetails] = useState({
@@ -36,6 +33,7 @@ export const CardForm = () => {
       },
     });
     const [cardBrand, setCardBrand] = useState('unknown');
+    const [saveCard, setSaveCard] = useState(false);
 
     const cardBrandIcons = {
         visa: VisaIcon,
@@ -73,73 +71,79 @@ export const CardForm = () => {
       });
     };
   
-    const handleNext = (e) => {
-        e.preventDefault();
-    
-        // Ensure all card fields are complete before proceeding
-        if (!cardComplete.number || !cardComplete.expiry || !cardComplete.cvc) {
-          alert('Please fill in all card details before proceeding.');
-          return;
-        }
-    
-        setStep(2); // Move to step 2 (billing address)
-      };
-  
     const handleSave = async (e) => {
       e.preventDefault();
       setLoading(true);
-  
-      const cardNumberElement = elements.getElement(CardNumberElement);
-  
-      // Create PaymentMethod with card details and billing address
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardNumberElement,
-        billing_details: {
-          name,
-          address: billingDetails.address,
-        },
-      });
-  
-      if (error) {
-        console.error('Error creating payment method:', error);
-        alert('Failed to save card details. Please try again.');
-        setLoading(false);
-        return;
-      }
-  
-      try {
-        // Call backend function to save the payment method
-        const savePaymentMethod = httpsCallable(functions, 'savePaymentMethod');
-        const response = await savePaymentMethod({ paymentMethodId: paymentMethod.id });
-  
-        if (response.data.success) {
-          alert('Card and billing details saved successfully!');
-        } else {
-          alert('Failed to save details.');
-        }
-      } catch (err) {
-        console.error('Error saving payment method:', err);
-        alert('An error occurred. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
 
+      const cardNumberElement = elements.getElement(CardNumberElement);
+
+      try {
+          const { error, paymentMethod } = await stripe.createPaymentMethod({
+              type: 'card',
+              card: cardNumberElement,
+              billing_details: {
+                  name,
+                  address: billingDetails.address,
+              },
+          });
+
+          if (error) {
+              console.error('Error creating payment method:', error);
+              alert('Failed to process card details. Please try again.');
+              setLoading(false);
+              return;
+          }
+
+          const formattedPaymentMethod = {
+            id: paymentMethod.id,
+            card: {
+                brand: paymentMethod.card.brand,
+                last4: paymentMethod.card.last4,
+                exp_month: paymentMethod.card.exp_month,
+                exp_year: paymentMethod.card.exp_year,
+            },
+            billing_details: {
+                name: paymentMethod.billing_details.name,
+                address: paymentMethod.billing_details.address,
+            },
+        };
+
+          if (activityType === 'adding card') {
+              const savePaymentMethod = httpsCallable(functions, 'savePaymentMethod');
+              const response = await savePaymentMethod({
+                  paymentMethodId: paymentMethod.id
+              });
+
+              if (response.data.success) {
+                  alert('Card details saved successfully!');
+              } else {
+                  alert('Failed to save card details.');
+              }
+          } else if (activityType === 'making payment') {
+              // Pass card details to parent for payment
+              setCardDetails([formattedPaymentMethod]);
+
+              // Optionally save the card if the user checked the box
+              if (saveCard) {
+                  const savePaymentMethod = httpsCallable(functions, 'savePaymentMethod');
+                  await savePaymentMethod({
+                      paymentMethodId: paymentMethod.id,
+                  });
+              }
+          }
+      } catch (err) {
+          console.error('Error processing card:', err);
+          alert('An error occurred. Please try again.');
+      } finally {
+          setLoading(false);
+      }
+  };
 
 return (
     <form className="card-details-form">
-      <AnimatePresence mode="wait">
-        {step === 1 && (
-          <motion.div
-            className="card-details-container"
-            key="card-details"
-            initial={{ x: 0, opacity: 1 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -300, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-        <div className="field-container">
+        <div className="card-details-container">
+          <h4>Card Details:</h4>
+          <div className="field-container">
             <label htmlFor="cardholder-name">Name on Card</label>
             <input
               id="cardholder-name"
@@ -149,6 +153,7 @@ return (
               onChange={(e) => setName(e.target.value)}
               required
               className="input"
+              disabled={loading}
             />
           </div>
           {/* Step 1: Card Details */}
@@ -221,22 +226,7 @@ return (
               />
             </div>
           </div>
-          <button className="btn primary-alt" onClick={handleNext} disabled={loading}>
-            Next
-          </button>
-        </motion.div>
-      )}
-
-      {step === 2 && (
-        <motion.div
-            className="card-details-container"
-            key="billing-details"
-            initial={{ x: 300, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -300, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-        >
-          {/* Step 2: Billing Address */}
+          <h4>Billing Address:</h4>
           <div className="address-flex">
             <div className="field-container">
                 <label htmlFor="line1">Address Line 1</label>
@@ -249,6 +239,7 @@ return (
                 onChange={handleBillingChange}
                 required
                 className="input"
+                disabled={loading}
                 />
             </div>
             <div className="field-container">
@@ -261,6 +252,7 @@ return (
                 value={billingDetails.address.line2}
                 onChange={handleBillingChange}
                 className="input"
+                disabled={loading}
                 />
             </div>
           </div>
@@ -276,6 +268,7 @@ return (
                 onChange={handleBillingChange}
                 required
                 className="input"
+                disabled={loading}
                 />
             </div>
             <div className="field-container">
@@ -289,6 +282,7 @@ return (
                 onChange={handleBillingChange}
                 required
                 className="input"
+                disabled={loading}
                 />
             </div>
           </div>
@@ -304,6 +298,7 @@ return (
                 onChange={handleBillingChange}
                 required
                 className="input"
+                disabled={loading}
                 />
             </div>
             <div className="field-container">
@@ -315,6 +310,7 @@ return (
                 onChange={handleBillingChange}
                 required
                 className="input"
+                disabled={loading}
                 >
                 <option value="GB">United Kingdom</option>
                 <option value="US">United States</option>
@@ -323,12 +319,27 @@ return (
                 </select>
             </div>
           </div>
-          <button className="btn primary-alt" onClick={handleSave} disabled={loading}>
-            {loading ? 'Saving...' : 'Save Details'}
-          </button>
-        </motion.div>
-      )}
-      </AnimatePresence>
+          {activityType === 'making payment' && (
+          <div className="field-container save-card">
+              <label htmlFor="save-card">
+                  <input
+                      id="save-card"
+                      type="checkbox"
+                      checked={saveCard}
+                      onChange={() => setSaveCard(!saveCard)}
+                      disabled={loading}
+                  />
+                  Save this card for future payments
+              </label>
+          </div>)}
+          {loading ? (
+            <LoadingThreeDots />
+          ) : (
+            <button className="btn primary-alt" onClick={handleSave} disabled={loading}>
+              {activityType === 'adding card' ? 'Save Card' : 'Next'}
+            </button>
+          )}
+        </div>
     </form>
   );
 };

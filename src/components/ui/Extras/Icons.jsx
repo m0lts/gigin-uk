@@ -423,3 +423,4 @@ export const SendMessageIcon = () => {
         <FontAwesomeIcon icon={faArrowUp} className="icon" />
     )
 }
+

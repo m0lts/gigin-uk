@@ -16,6 +16,8 @@ import { Overview } from "./Overview";
 import { Finances } from "./Finances";
 import { SavedMusicians } from "./SavedMusicians";
 import { FindMusicians } from "./FindMusicians";
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../../firebase';
 
 
 export const VenueDashboard = ({  }) => {
@@ -30,6 +32,8 @@ export const VenueDashboard = ({  }) => {
     const [incompleteGigs, setIncompleteGigs] = useState([]);
     const [templates, setTemplates] = useState([]);
     const [editGigData, setEditGigData] = useState();
+    const [savedCards, setSavedCards] = useState([]);
+    const [loadingCards, setLoadingCards] = useState(true);
     
 
     useEffect(() => {
@@ -78,7 +82,22 @@ export const VenueDashboard = ({  }) => {
             }
         };
 
+        const fetchSavedCards = async () => {
+            setLoadingCards(true);
+            try {
+              const getSavedCards = httpsCallable(functions, 'getSavedCards');
+              const response = await getSavedCards();
+              setSavedCards(response.data.paymentMethods);
+            } catch (error) {
+              console.error('Error fetching saved cards:', error);
+              alert('Unable to fetch saved cards.');
+            } finally {
+                setLoadingCards(false);
+            }
+        };
+
         filterVenueData();
+        fetchSavedCards();
     }, [user, gigs]); 
 
     return (
@@ -89,12 +108,12 @@ export const VenueDashboard = ({  }) => {
             />
             <div className="dashboard window">
                 <Routes>
-                    <Route index element={<Overview />} />
+                    <Route index element={<Overview savedCards={savedCards} loadingCards={loadingCards} />} />
                     <Route path="gigs" element={<Gigs gigs={gigsData} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                     <Route path="gig-applications" element={<GigApplications />} />
                     <Route path="venues" element={<Venues venues={venueProfiles} />} />
                     <Route path="musicians" element={<SavedMusicians user={user} />} />
-                    <Route path="musicians/find" element={<FindMusicians user={user} />} />
+                    <Route path="musicians/find" element={<FindMusicians user={user} savedCards={savedCards} loadingCards={loadingCards} />} />
                     <Route path="finances" element={<Finances />} />
                 </Routes>
             </div>

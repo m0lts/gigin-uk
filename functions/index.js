@@ -1,7 +1,7 @@
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
+const functions = require('firebase-functions');
 const {logger} = require("firebase-functions/v2");
 const {getFirestore} = require('firebase-admin/firestore');
-const {onUserCreated} = require('firebase-functions/v2/auth');
 const {defineSecret} = require("firebase-functions/params");
 const admin = require('firebase-admin');
 const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
@@ -15,33 +15,33 @@ if (!admin.apps.length) {
 
 const db = getFirestore();
 
-export const createStripeCustomer = onUserCreated(
-  {
-    secrets: [stripeTestKey],
-    region: 'europe-west2',
-  },
-  async (event) => {
-    try {
-      const stripe = new Stripe(stripeTestKey.value());
-      const { uid, email } = event.data;
-      const customer = await stripe.customers.create({ email });
-      await db.collection('users').doc(uid).set(
-        {
-          stripeCustomerId: customer.id,
-        },
-        { merge: true }
-      );
+// // Create a stripe customer when the user signs up
+// exports.createStripeCustomer = functions.auth.user().onCreate(async (user) => {
+//   try {
+//     const { uid, email } = user; // Extract user ID and email from the event
 
-      console.log(`Stripe customer created for UID: ${uid}, Customer ID: ${customer.id}`);
-    } catch (error) {
-      console.error('Error creating Stripe customer:', error);
-      throw new Error('Failed to create Stripe customer');
-    }
-  }
-);
+//     // Create a Stripe customer
+//     const stripe = new Stripe(stripeTestKey.value());
+//     const customer = await stripe.customers.create({ email });
 
-export const savePaymentMethod = onCall(
-  { secrets: [stripeTestKey], region: 'europe-west2' }, // Set your preferred region
+//     // Save the Stripe customer ID to Firestore under the user's document
+//     await db.collection('users').doc(uid).set(
+//       {
+//         stripeCustomerId: customer.id,
+//       },
+//       { merge: true } // Merge to avoid overwriting existing data
+//     );
+
+//     console.log(`Stripe customer created for UID: ${uid}, Customer ID: ${customer.id}`);
+//   } catch (error) {
+//     console.error('Error creating Stripe customer:', error);
+//     throw new functions.https.HttpsError('internal', 'Failed to create Stripe customer');
+//   }
+// });
+
+// Save a card to the user's stripe customer id
+exports.savePaymentMethod = onCall(
+  { secrets: [stripeTestKey] }, // Set your preferred region
   async (request) => {
     const { paymentMethodId } = request.data;
 
@@ -78,139 +78,217 @@ export const savePaymentMethod = onCall(
   }
 );
 
-exports.createCheckoutSession = onCall(
-  { secrets: [stripeTestKey] },
+exports.getSavedCards = onCall(
+  { secrets: [stripeTestKey] }, // Set your preferred region
   async (request) => {
-    const { gigId, fee, conversationId } = request.data;
+  const { auth } = request;
 
-    try {
-      // Create the Stripe Checkout session
-      const stripe = new Stripe(stripeTestKey.value());
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        mode: 'payment',
-        line_items: [
-          {
-            price_data: {
-              currency: 'gbp', // Change to your preferred currency
-              product_data: {
-                name: `Gig Payment for Gig ID: ${gigId}`,
-              },
-              unit_amount: fee, // Amount in cents
-            },
-            quantity: 1,
-          },
-        ],
-        metadata: {
-          gigId, // Pass gig ID for tracking
-        },
-        success_url: `https://localhost:5173/payment-success?gigId=${gigId}`,
-        cancel_url: `http://localhost:5173/messages?conversationId=${conversationId}`,
-      });
-
-      // Return the session URL to the client
-      return { url: session.url };
-    } catch (error) {
-      console.error('Error creating Stripe Checkout session:', error);
-      throw new Error('Could not create Stripe Checkout session.');
-    }
+  if (!auth) {
+    throw new Error('User must be authenticated.');
   }
-);
 
-exports.stripeWebhook = onRequest(async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = 'your_webhook_secret';
-  const stripe = new Stripe(stripeTestKey.value());
+  const userId = auth.uid;
 
-  let event;
+  // Retrieve the Stripe customer ID from Firestore
+  const userDoc = await admin.firestore().collection('users').doc(userId).get();
+  const customerId = userDoc.data()?.stripeCustomerId;
+
+  if (!customerId) {
+    throw new Error('Stripe customer ID not found.');
+  }
+
+  // Fetch saved payment methods
   try {
-      const body = await rawBody(req); // Ensure the raw body is used
-      event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
-  } catch (err) {
-      console.error('Webhook signature verification failed:', err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
+    const stripe = new Stripe(stripeTestKey.value());
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: 'card',
+    });
+
+    return { paymentMethods: paymentMethods.data };
+  } catch (error) {
+    console.error('Error fetching payment methods:', error);
+    throw new Error('Unable to fetch payment methods.');
   }
-
-  if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-
-      const gigId = session.metadata.gigId;
-
-      // Update Firestore gig status
-      const gigRef = admin.firestore().collection('gigs').doc(gigId);
-      await gigRef.update({
-          status: 'Confirmed',
-          paymentStatus: 'Paid',
-      });
-
-      console.log(`Gig ${gigId} marked as confirmed.`);
-  }
-
-  res.status(200).send('Webhook received');
 });
 
-exports.stripeAccountSession = onRequest(
-    {secrets: [stripeTestKey]},
-    async (req, res) => {
-      try {
-        const stripe = new Stripe(stripeTestKey.value());
-        const {account} = req.body;
+exports.confirmPayment = onCall(
+  { secrets: [stripeTestKey] }, // Set your preferred region
+  async (request) => {
+  const { auth } = request;
+  const { paymentMethodId, amountToCharge } = request.data;
 
-        const accountSession = await stripe.accountSessions.create({
-          account: account,
-          components: {
-            account_onboarding: {enabled: true},
-          },
-        });
+  if (!auth) {
+    throw new Error('User must be authenticated.');
+  }
 
-        res.json({
-          client_secret: accountSession.client_secret,
-        });
-      } catch (error) {
-        console.error(
-            "Error occurred calling the Stripe API to create account session",
-            error,
-        );
-        res.status(500).send({error: error.message});
-      }
+  if (!paymentMethodId) {
+    throw new Error('Payment method ID is required.');
+  }
+
+  const userId = auth.uid;
+
+  // Retrieve the Stripe customer ID from Firestore
+  const userDoc = await admin.firestore().collection('users').doc(userId).get();
+  const customerId = userDoc.data()?.stripeCustomerId;
+
+  if (!customerId) {
+    throw new Error('Stripe customer ID not found.');
+  }
+
+  try {
+    const stripe = new Stripe(stripeTestKey.value());
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountToCharge,
+      currency: 'gbp',
+      customer: customerId,
+      payment_method: paymentMethodId,
+      off_session: true,
+      confirm: true,
     });
 
-exports.stripeAccount = onRequest(
-    {secrets: [stripeTestKey]},
-    async (req, res) => {
-      try {
-        const stripe = new Stripe(stripeTestKey.value());
-        const account = await stripe.accounts.create({
-          capabilities: {
-            transfers: {requested: true},
-          },
-          country: "GB",
-          controller: {
-            stripe_dashboard: {
-              type: "none",
-            },
-            fees: {
-              payer: "application",
-            },
-            losses: {
-              payments: "application",
-            },
-            requirement_collection: "application",
-          },
-        });
-        console.log(account);
-        console.log("Account creation successful");
-        res.json({
-          account: account.id,
-        });
-      } catch (error) {
-        console.error(
-            "Error occurred when calling the Stripe API to create an account",
-            error,
-        );
-        res.status(500).send({error: error.message});
-      }
-    });
+    return { success: true, paymentIntent };
+  } catch (error) {
+    console.error('Error confirming payment:', error);
+    throw new Error('Unable to complete payment.');
+  }
+});
+
+
+
+// exports.createCheckoutSession = onCall(
+//   { secrets: [stripeTestKey] },
+//   async (request) => {
+//     const { gigId, fee, conversationId } = request.data;
+
+//     try {
+//       // Create the Stripe Checkout session
+//       const stripe = new Stripe(stripeTestKey.value());
+//       const session = await stripe.checkout.sessions.create({
+//         payment_method_types: ['card'],
+//         mode: 'payment',
+//         line_items: [
+//           {
+//             price_data: {
+//               currency: 'gbp', // Change to your preferred currency
+//               product_data: {
+//                 name: `Gig Payment for Gig ID: ${gigId}`,
+//               },
+//               unit_amount: fee, // Amount in cents
+//             },
+//             quantity: 1,
+//           },
+//         ],
+//         metadata: {
+//           gigId, // Pass gig ID for tracking
+//         },
+//         success_url: `https://localhost:5173/payment-success?gigId=${gigId}`,
+//         cancel_url: `http://localhost:5173/messages?conversationId=${conversationId}`,
+//       });
+
+//       // Return the session URL to the client
+//       return { url: session.url };
+//     } catch (error) {
+//       console.error('Error creating Stripe Checkout session:', error);
+//       throw new Error('Could not create Stripe Checkout session.');
+//     }
+//   }
+// );
+
+// exports.stripeWebhook = onRequest(async (req, res) => {
+//   const sig = req.headers['stripe-signature'];
+//   const endpointSecret = 'your_webhook_secret';
+//   const stripe = new Stripe(stripeTestKey.value());
+
+//   let event;
+//   try {
+//       const body = await rawBody(req); // Ensure the raw body is used
+//       event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
+//   } catch (err) {
+//       console.error('Webhook signature verification failed:', err.message);
+//       return res.status(400).send(`Webhook Error: ${err.message}`);
+//   }
+
+//   if (event.type === 'checkout.session.completed') {
+//       const session = event.data.object;
+
+//       const gigId = session.metadata.gigId;
+
+//       // Update Firestore gig status
+//       const gigRef = admin.firestore().collection('gigs').doc(gigId);
+//       await gigRef.update({
+//           status: 'Confirmed',
+//           paymentStatus: 'Paid',
+//       });
+
+//       console.log(`Gig ${gigId} marked as confirmed.`);
+//   }
+
+//   res.status(200).send('Webhook received');
+// });
+
+// exports.stripeAccountSession = onRequest(
+//     {secrets: [stripeTestKey]},
+//     async (req, res) => {
+//       try {
+//         const stripe = new Stripe(stripeTestKey.value());
+//         const {account} = req.body;
+
+//         const accountSession = await stripe.accountSessions.create({
+//           account: account,
+//           components: {
+//             account_onboarding: {enabled: true},
+//           },
+//         });
+
+//         res.json({
+//           client_secret: accountSession.client_secret,
+//         });
+//       } catch (error) {
+//         console.error(
+//             "Error occurred calling the Stripe API to create account session",
+//             error,
+//         );
+//         res.status(500).send({error: error.message});
+//       }
+//     });
+
+// exports.stripeAccount = onRequest(
+//     {secrets: [stripeTestKey]},
+//     async (req, res) => {
+//       try {
+//         const stripe = new Stripe(stripeTestKey.value());
+//         const account = await stripe.accounts.create({
+//           capabilities: {
+//             transfers: {requested: true},
+//           },
+//           country: "GB",
+//           controller: {
+//             stripe_dashboard: {
+//               type: "none",
+//             },
+//             fees: {
+//               payer: "application",
+//             },
+//             losses: {
+//               payments: "application",
+//             },
+//             requirement_collection: "application",
+//           },
+//         });
+//         console.log(account);
+//         console.log("Account creation successful");
+//         res.json({
+//           account: account.id,
+//         });
+//       } catch (error) {
+//         console.error(
+//             "Error occurred when calling the Stripe API to create an account",
+//             error,
+//         );
+//         res.status(500).send({error: error.message});
+//       }
+//     });
 
 
 

@@ -5,13 +5,21 @@ import { CloseIcon, DownChevronIcon, RejectedIcon, SendMessageIcon, TickIcon } f
 import '/styles/common/messages.styles.css';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
+import { PaymentModal } from '../../components/venue-components/PaymentModal'
+import { LoadingThreeDots } from '../../components/ui/loading/Loading'
 
-export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId }) => {
+export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [userRole, setUserRole] = useState('');
     const [allowCounterOffer, setAllowCounterOffer] = useState(false);
     const [newCounterOffer, setNewCounterOffer] = useState('');
+    const [showPaymentModal, setShowPaymentModal] = useState(false); // Modal visibility
+    const [savedCards, setSavedCards] = useState([]);
+    const [loadingPaymentDetails, setLoadingPaymentDetails] = useState(false);
+    const [paymentSuccess, setPaymentSuccess] = useState(false);
+    const [makingPayment, setMakingPayment] = useState(false);
+    const [paymentMessageId, setPaymentMessageId] = useState();
 
     // Create a ref to the messages container
     const messagesEndRef = useRef(null);
@@ -99,10 +107,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     }
 
     const handleAcceptGig = async (event, messageId) => {
-        event.stopPropagation();
-
-        // TAKE PAYMENT FROM HOST IF USER ROLE IS VENUE
-    
+        event.stopPropagation();    
         try {
             const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
             const gigSnapshot = await getDoc(gigRef);
@@ -156,10 +161,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     };
 
     const handleAcceptNegotiation = async (event, messageId) => {
-        event.stopPropagation();
-
-        // TAKE PAYMENT FROM HOST IF USER ROLE IS VENUE
-    
+        event.stopPropagation();    
         try {
             const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
             const gigSnapshot = await getDoc(gigRef);
@@ -357,33 +359,69 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
 
     const handleCompletePayment = async () => {
-        try {
-            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
-            const gigSnapshot = await getDoc(gigRef);
-        
-            if (gigSnapshot.exists()) {
-                const gigData = gigSnapshot.data();
-                let agreedFee = gigData.budget;
+        setLoadingPaymentDetails(true);
+        await fetchSavedCards();
+    };
 
-            // Remove the £ sign if it exists
-            agreedFee = agreedFee.replace('£', '');
-                const feeInCents = parseInt(agreedFee) * 100;
-                const createCheckoutSession = httpsCallable(functions, 'createCheckoutSession');
-        
-                const response = await createCheckoutSession({
-                    gigId: activeConversation.gigId,
-                    fee: feeInCents,
-                    conversationId: activeConversation.id,
-                });
-                // Redirect to Stripe Checkout
-                window.location.href = response.data.url;
-            }
-    
+    const fetchSavedCards = async () => {
+        try {
+          const getSavedCards = httpsCallable(functions, 'getSavedCards');
+          const response = await getSavedCards();
+          setSavedCards(response.data.paymentMethods);
+          setShowPaymentModal(true);
         } catch (error) {
-            console.error('Error initiating Stripe Checkout:', error);
-            alert('An error occurred while starting the payment process.');
+          console.error('Error fetching saved cards:', error);
+          alert('Unable to fetch saved cards.');
+        } finally {
+            setLoadingPaymentDetails(false);
         }
     };
+
+    const handleSelectCard = async (cardId) => {
+        setMakingPayment(true)
+        try {
+          const amountToCharge = parseInt(gigData.budget.replace('£', '')) * 1.05;
+          const stripeAmount = amountToCharge * 100;
+          const confirmPayment = httpsCallable(functions, 'confirmPayment');
+          const response = await confirmPayment({ paymentMethodId: cardId, amountToCharge: stripeAmount });
+      
+          if (response.data.success) {
+            setMakingPayment(false);
+            setPaymentSuccess(true);
+            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
+            const updatedApplicants = gigData.applicants.map(applicant => {
+                if (applicant.id === musicianProfileId) {
+                    return { ...applicant, status: 'Confirmed' };
+                } else {
+                    return { ...applicant };
+                }
+            });
+            await updateDoc(gigRef, { applicants: updatedApplicants });
+            const messagesRef = doc(firestore, 'conversations', conversationId, 'messages', paymentMessageId);
+            const timestamp = Timestamp.now(); // Store the timestamp for reuse
+            await updateDoc(messagesRef, {
+                senderId: user.uid,
+                text: `The fee of ${gigData.budget} has been paid by the venue. The gig is now confirmed.`,
+                timestamp: timestamp,
+                type: 'announcement',
+                status: 'gig confirmed',
+            });
+            // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
+            const conversationRef = doc(firestore, 'conversations', conversationId);
+            await updateDoc(conversationRef, {
+                lastMessage: `The gig is confirmed.`,
+                lastMessageTimestamp: timestamp,
+                lastMessageSenderId: user.uid,
+                status: 'closed',
+            });
+          } else {
+            alert('Payment failed. Please try again.');
+          }
+        } catch (error) {
+          console.error('Error completing payment:', error);
+          alert('An error occurred while processing the payment.');
+        }
+      };
 
     
     return (
@@ -552,14 +590,23 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 <>
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                     <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
-                                    <button className="btn primary" onClick={handleCompletePayment}>
-                                        Complete Payment
-                                    </button>
+                                    {loadingPaymentDetails ? (
+                                        <LoadingThreeDots />
+                                    ) : (
+                                        <button className="btn primary" onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
+                                            Complete Payment
+                                        </button>
+                                    )}
                                 </>
-                            ) : message.status === 'awaiting payment' && userRole === 'musician' && (
+                            ) : message.status === 'awaiting payment' && userRole === 'musician' ? (
                                 <>
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                     <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
+                                </>
+                            ) : message.status === 'gig confirmed' && (
+                                <>
+                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                    <h4>{message.text}</h4>
                                 </>
                             )}
                             </>
@@ -585,7 +632,20 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 />
                 <button type="submit" className='btn primary'><SendMessageIcon /></button>
             </form>
-            </>
+            {showPaymentModal && (
+                <PaymentModal 
+                    savedCards={savedCards}
+                    onSelectCard={handleSelectCard}
+                    onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
+                    gigData={gigData}
+                    setMakingPayment={setMakingPayment}
+                    makingPayment={makingPayment}
+                    setPaymentSuccess={setPaymentSuccess}
+                    paymentSuccess={paymentSuccess}
+                    setSavedCards={setSavedCards}
+                />
+            )}
+        </>
     );
 };
 {/*

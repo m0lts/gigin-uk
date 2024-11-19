@@ -9,12 +9,16 @@ const stripePromise = loadStripe('pk_test_51Py8lOHI8M50kHhR49I0lIAR8gMId69Dubgtm
 
 export const Finances = () => {
   return (
-    <div className="finances">
-      <h1>Finances</h1>
-      <h2>Save Payment Details</h2>
-      <Elements stripe={stripePromise}>
-          <CardForm />
-      </Elements>
+    <>
+    <div className="head">
+        <h1 className="title">Finances</h1>
     </div>
+    <div className="body finances">
+      <div className="tile">
+        <h2>Save Payment Method</h2>
+        <CardForm />
+      </div>
+    </div>
+  </>
   );
 };

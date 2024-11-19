@@ -16,6 +16,7 @@ export const MessagePage = () => {
 
     const [newMessages, setNewMessages] = useState(false);
     const [conversations, setConversations] = useState([]);
+    const [gigData, setGigData] = useState();
 
     const [activeConversation, setActiveConversation] = useState(null);
 
@@ -232,6 +233,8 @@ export const MessagePage = () => {
                                 user={user}
                                 musicianProfileId={activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}
                                 gigId={activeConversation.gigId}
+                                gigData={gigData}
+                                setGigData={setGigData}
                             />
                         </>
                     )}
@@ -244,7 +247,7 @@ export const MessagePage = () => {
                                 <button className="btn tertiary" onClick={() => openGig(activeConversation.gigId)}><NewTabIcon /></button>
                             </div>
                             <div className="gig-information">
-                                <GigInformation gigId={activeConversation.gigId} />
+                                <GigInformation gigId={activeConversation.gigId} gigData={gigData} setGigData={setGigData} />
                             </div>
                         </>
                     )}
