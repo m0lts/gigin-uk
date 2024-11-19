@@ -382,12 +382,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
           const amountToCharge = parseInt(gigData.budget.replace('£', '')) * 1.05;
           const stripeAmount = amountToCharge * 100;
+          const gigDate = gigData.date.toDate();
           const confirmPayment = httpsCallable(functions, 'confirmPayment');
-          const response = await confirmPayment({ paymentMethodId: cardId, amountToCharge: stripeAmount });
+          const response = await confirmPayment({ paymentMethodId: cardId, amountToCharge: stripeAmount, gigData, gigDate });
       
           if (response.data.success) {
             setMakingPayment(false);
             setPaymentSuccess(true);
+            const transactionId = response.data.paymentIntent.id;
             const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
             const updatedApplicants = gigData.applicants.map(applicant => {
                 if (applicant.id === musicianProfileId) {
@@ -396,7 +398,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     return { ...applicant };
                 }
             });
-            await updateDoc(gigRef, { applicants: updatedApplicants });
+            await updateDoc(gigRef, { applicants: updatedApplicants, transactionId: transactionId, });
             const messagesRef = doc(firestore, 'conversations', conversationId, 'messages', paymentMessageId);
             const timestamp = Timestamp.now(); // Store the timestamp for reuse
             await updateDoc(messagesRef, {
@@ -415,14 +417,16 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 status: 'closed',
             });
           } else {
-            alert('Payment failed. Please try again.');
+            setPaymentSuccess(false);
+            setMakingPayment(false);
           }
         } catch (error) {
           console.error('Error completing payment:', error);
-          alert('An error occurred while processing the payment.');
+          setPaymentSuccess(false);
+          setMakingPayment(false);
+          alert('An error occurred while processing the payment. Please try again.');
         }
       };
-
     
     return (
         <>

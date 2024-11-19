@@ -116,7 +116,7 @@ exports.confirmPayment = onCall(
   { secrets: [stripeTestKey] }, // Set your preferred region
   async (request) => {
   const { auth } = request;
-  const { paymentMethodId, amountToCharge } = request.data;
+  const { paymentMethodId, amountToCharge, gigData, gigDate } = request.data;
 
   if (!auth) {
     throw new Error('User must be authenticated.');
@@ -138,6 +138,8 @@ exports.confirmPayment = onCall(
 
   try {
     const stripe = new Stripe(stripeTestKey.value());
+    const acceptedMusician = gigData.applicants.find((applicant) => applicant.status === 'Accepted');
+    const musicianId = acceptedMusician ? acceptedMusician.id : null;
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountToCharge,
       currency: 'gbp',
@@ -145,6 +147,14 @@ exports.confirmPayment = onCall(
       payment_method: paymentMethodId,
       off_session: true,
       confirm: true,
+      metadata: {
+        gigId: gigData.gigId,
+        time: gigData.startTime,
+        date: gigDate,
+        venueName: gigData.venue.venueName,
+        venueId: gigData.venueId,
+        musicianId: musicianId,
+      }
     });
 
     return { success: true, paymentIntent };
@@ -153,6 +163,96 @@ exports.confirmPayment = onCall(
     throw new Error('Unable to complete payment.');
   }
 });
+
+exports.getCustomerData = onCall(
+  { secrets: [stripeTestKey] },
+  async (request) => {
+    const { auth } = request;
+
+    if (!auth) {
+      throw new Error('User must be authenticated.');
+    }
+
+    const userId = auth.uid;
+
+    // Retrieve the Stripe customer ID from Firestore
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    const customerId = userDoc.data()?.stripeCustomerId;
+
+    if (!customerId) {
+      throw new Error('Stripe customer ID not found.');
+    }
+
+    try {
+      const stripe = new Stripe(stripeTestKey.value());
+
+      // Fetch customer data
+      const customer = await stripe.customers.retrieve(customerId);
+
+      // Fetch payment methods
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: customerId,
+        type: 'card',
+      });
+
+      // Fetch charges for the customer to get receipt URLs
+      const charges = await stripe.charges.list({
+        customer: customerId,
+        limit: 100, // Fetch the most recent 100 charges (adjust as needed)
+      });
+
+      // Extract receipt URLs from successful charges
+      const receipts = charges.data
+        .filter((charge) => charge.status === 'succeeded' && charge.receipt_url)
+
+      return {
+        customer,
+        receipts,
+        paymentMethods: paymentMethods.data,
+      };
+    } catch (error) {
+      console.error('Error fetching customer data:', error);
+      throw new Error('Unable to fetch customer data.');
+    }
+  }
+);
+
+exports.deleteCard = onCall(
+  { secrets: [stripeTestKey] }, // Use your Stripe secret key
+  async (request) => {
+    const { auth } = request;
+    const { cardId } = request.data;
+
+    if (!auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+
+    if (!cardId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Card ID is required.');
+    }
+
+    const userId = auth.uid;
+
+    // Retrieve the Stripe customer ID from Firestore
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    const customerId = userDoc.data()?.stripeCustomerId;
+
+    if (!customerId) {
+      throw new functions.https.HttpsError('not-found', 'Stripe customer ID not found.');
+    }
+
+    try {
+      const stripe = new Stripe(stripeTestKey.value());
+      // Detach the card from the customer in Stripe
+      await stripe.paymentMethods.detach(cardId);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting card:', error);
+      throw new functions.https.HttpsError('internal', 'Unable to delete the card.');
+    }
+  }
+);
 
 
 

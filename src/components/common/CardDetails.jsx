@@ -17,7 +17,7 @@ import {LoadingThreeDots} from '../ui/loading/Loading'
 
 
 // Card input form component
-export const CardForm = ({ activityType, setCardDetails }) => {
+export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNewCardSaved }) => {
     const stripe = useStripe();
     const elements = useElements();
     const [loading, setLoading] = useState(false);
@@ -115,9 +115,11 @@ export const CardForm = ({ activityType, setCardDetails }) => {
               });
 
               if (response.data.success) {
-                  alert('Card details saved successfully!');
+                setSaveCardModal(false);
+                setNewCardSaved(true);
               } else {
-                  alert('Failed to save card details.');
+                alert('Failed to save card details.');
+                setSaveCardModal(false);
               }
           } else if (activityType === 'making payment') {
               // Pass card details to parent for payment

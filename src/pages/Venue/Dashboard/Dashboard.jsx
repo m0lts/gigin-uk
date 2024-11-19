@@ -33,7 +33,9 @@ export const VenueDashboard = ({  }) => {
     const [templates, setTemplates] = useState([]);
     const [editGigData, setEditGigData] = useState();
     const [savedCards, setSavedCards] = useState([]);
-    const [loadingCards, setLoadingCards] = useState(true);
+    const [loadingStripeDetails, setLoadingStripeDetails] = useState(true);
+    const [customerDetails, setCustomerDetails] = useState();
+    const [receipts, setReceipts] = useState([]);
     
 
     useEffect(() => {
@@ -82,22 +84,31 @@ export const VenueDashboard = ({  }) => {
             }
         };
 
-        const fetchSavedCards = async () => {
-            setLoadingCards(true);
+        const fetchCustomerData = async () => {
+            setLoadingStripeDetails(true);
             try {
-              const getSavedCards = httpsCallable(functions, 'getSavedCards');
-              const response = await getSavedCards();
-              setSavedCards(response.data.paymentMethods);
+              const getCustomerData = httpsCallable(functions, 'getCustomerData');
+              const response = await getCustomerData();
+        
+              // Destructure response data
+              const { customer, receipts, paymentMethods } = response.data;
+
+              const filteredReceipts = receipts.filter((receipt) => receipt.metadata.gigId)
+        
+              // Save data to state
+              setSavedCards(paymentMethods);
+              setReceipts(filteredReceipts);
+              setCustomerDetails(customer);
             } catch (error) {
-              console.error('Error fetching saved cards:', error);
-              alert('Unable to fetch saved cards.');
+              console.error('Error fetching customer data:', error);
             } finally {
-                setLoadingCards(false);
+              setLoadingStripeDetails(false);
             }
         };
-
+        
+          
         filterVenueData();
-        fetchSavedCards();
+        fetchCustomerData();
     }, [user, gigs]); 
 
     return (
@@ -108,13 +119,13 @@ export const VenueDashboard = ({  }) => {
             />
             <div className="dashboard window">
                 <Routes>
-                    <Route index element={<Overview savedCards={savedCards} loadingCards={loadingCards} />} />
+                    <Route index element={<Overview savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} />} />
                     <Route path="gigs" element={<Gigs gigs={gigsData} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                     <Route path="gig-applications" element={<GigApplications />} />
                     <Route path="venues" element={<Venues venues={venueProfiles} />} />
                     <Route path="musicians" element={<SavedMusicians user={user} />} />
-                    <Route path="musicians/find" element={<FindMusicians user={user} savedCards={savedCards} loadingCards={loadingCards} />} />
-                    <Route path="finances" element={<Finances />} />
+                    <Route path="musicians/find" element={<FindMusicians user={user} />} />
+                    <Route path="finances" element={<Finances savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} customerDetails={customerDetails} setSavedCards={setSavedCards} />} />
                 </Routes>
             </div>
             {gigPostModal && 

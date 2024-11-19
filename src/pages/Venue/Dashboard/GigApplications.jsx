@@ -82,12 +82,8 @@ export const GigApplications = () => {
         return <LoadingThreeDots />;
     }
     const handleAccept = async (musicianId, event, musicianUserId, proposedFee) => {
-        event.stopPropagation();
-
-        // TAKE PAYMENT FROM HOST
-    
+        event.stopPropagation();    
         try {
-             
             if (gigInfo) {
                 if (gigInfo.date.toDate() > new Date()) {
                     let agreedFee;
