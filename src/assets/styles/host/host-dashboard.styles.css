@@ -14,6 +14,183 @@
 }
 
 
+/* OVERVIEW */
+.window.dashboard .overview {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap:1rem;
+    width:100%;
+    height: 100%;
+    overflow: auto;
+    padding: 2.5%;
+}
+
+.window.dashboard .overview .grid-tile {
+    border: 2px solid var(--gn-grey-350);
+    border-radius: 1rem;
+    box-shadow: 2px 2px 5px var(--gn-shadow);
+    padding: 5px 10px;
+    display: grid;
+    grid-template-rows: 12.5% 87.5%;
+    overflow: hidden;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(1) {
+    grid-column-start: 1;
+    grid-column-end: 7;
+    grid-row-start: 1;
+    grid-row-end: 5;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(2) {
+    grid-column-start: 7;
+    grid-column-end: 9;
+    grid-row-start: 1;
+    grid-row-end: 7;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(3) {
+    grid-column-start: 1;
+    grid-column-end: 5;
+    grid-row-start: 5;
+    grid-row-end: 8;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(4) {
+    grid-column-start: 5;
+    grid-column-end: 7;
+    grid-row-start: 5;
+    grid-row-end: 7;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(5) {
+    grid-column-start: 1;
+    grid-column-end: 3;
+    grid-row-start: 8;
+    grid-row-end: 9;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(6) {
+    grid-column-start: 3;
+    grid-column-end: 5;
+    grid-row-start: 8;
+    grid-row-end: 9;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(7) {
+    grid-column-start: 5;
+    grid-column-end: 7;
+    grid-row-start: 7;
+    grid-row-end: 9;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(8) {
+    grid-column-start: 7;
+    grid-column-end: 9;
+    grid-row-start: 7;
+    grid-row-end: 9;
+}
+
+.window.dashboard .card-details-form {
+    width: 100%;
+    height: 100%;
+}
+
+.window.dashboard .card-details-form .card-details-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-around;
+    height: 100%;
+
+}
+
+.window.dashboard .card-details-form .card-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-around;
+    height: 100%;
+    width: 100%;
+}
+
+.window.dashboard .card-details-form .field-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.window.dashboard .card-details-form label {
+    text-transform: uppercase;
+    color: var(--dark-grey);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.window.dashboard .card-details-form .card-number-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border:1px solid var(--gn-grey-300);
+    padding: 5px;
+    width: 100%;
+    min-width: 75px;
+    border-radius: 5px;
+    box-shadow: 1px 1px 2px var(--gn-shadow);
+}
+
+.window.dashboard .card-details-form .card-number-container #card-number {
+    width: 100%;
+}
+
+.window.dashboard .card-details-form .card-number-container .card-brand-icon {
+    width:40px;
+    height:auto;
+}
+
+.window.dashboard .card-details-form .card-number-container:focus {
+    border:1px solid var(--gn-orange);
+    outline: none;
+}
+
+.window.dashboard .card-details-form .input,
+.window.dashboard .card-details-form #card-expiry,
+.window.dashboard .card-details-form #card-cvc {
+    border:1px solid var(--gn-grey-300);
+    padding: 5px;
+    width: 100%;
+    min-width: 75px;
+    border-radius: 5px;
+    box-shadow: 1px 1px 2px var(--gn-shadow);
+}
+
+.window.dashboard .card-details-form #cardholder-name {
+    font-weight: 500;
+}
+
+.window.dashboard .card-details-form .input:focus,
+.window.dashboard .card-details-form #card-expiry:focus,
+.window.dashboard .card-details-form #card-cvc:focus {
+    border:1px solid var(--gn-orange);
+    outline: none;
+}
+
+.window.dashboard .card-details-form .exp-cvc {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 5%;
+}
+
+.window.dashboard .card-details-form .card-details-container .address-flex {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap:5%;
+}
+
+
 /* GIGS */
 
 .window.dashboard .body .filters {

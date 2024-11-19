@@ -1,69 +1,20 @@
 import React, { useState } from 'react';
-import { useStripeConnect } from "../../../hooks/useStripeConnect";
+import { loadStripe } from '@stripe/stripe-js';
 import {
-  ConnectAccountOnboarding,
-  ConnectComponentsProvider,
-} from "@stripe/react-connect-js";
+    Elements
+} from '@stripe/react-stripe-js';
+import { CardForm } from '../../../components/common/CardDetails'
+
+const stripePromise = loadStripe('pk_test_51Py8lOHI8M50kHhR49I0lIAR8gMId69DubgtmTEPQfHJV9JQSBVbflPSq0J8AT1kZUMqDHncMP0xdfvy3pGyQEOG002PN3x3dT');
 
 export const Finances = () => {
-  const [loading, setLoading] = useState(false);
-
-  const [accountCreatePending, setAccountCreatePending] = useState(false);
-  const [onboardingExited, setOnboardingExited] = useState(false);
-  const [error, setError] = useState(false);
-  const [connectedAccountId, setConnectedAccountId] = useState();
-  const stripeConnectInstance = useStripeConnect(connectedAccountId);
-
-  // Function to handle test account creation
-  const handleCreateTestAccount = async () => {
-    setAccountCreatePending(true);
-    setError(false);
-    // fetch("https://stripeaccount-gxujnzd2uq-uc.a.run.app", {
-    fetch("http://127.0.0.1:5001/giginltd-16772/us-central1/stripeAccount", {
-      method: "POST",
-    })
-      .then((response) => response.json())
-      .then((json) => {
-        setAccountCreatePending(false);
-        const { account, error } = json;
-
-        if (account) {
-          setConnectedAccountId(account);
-          console.log(account);
-        }
-
-        if (error) {
-          setError(true);
-        }
-      });
-  }
-
   return (
     <div className="finances">
       <h1>Finances</h1>
-      
-      <button className='btn primary' onClick={handleCreateTestAccount} disabled={loading}>
-        {loading ? 'Creating Account...' : 'Create Test Stripe Account'}
-      </button>
-        {stripeConnectInstance && (
-          <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
-            <ConnectAccountOnboarding
-              onExit={() => setOnboardingExited(true)}
-            />
-          </ConnectComponentsProvider>
-        )}
-        {error && <p className="error">Something went wrong!</p>}
-        {(connectedAccountId || accountCreatePending || onboardingExited) && (
-          <div className="dev-callout">
-            {connectedAccountId && <p>Your connected account ID is: <code className="bold">{connectedAccountId}</code></p>}
-            {accountCreatePending && <p>Creating a connected account...</p>}
-            {onboardingExited && <p>The Account Onboarding component has exited</p>}
-          </div>
-        )}
-
-      {error && (
-        <p>Error: {error}</p>
-      )}
+      <h2>Save Payment Details</h2>
+      <Elements stripe={stripePromise}>
+          <CardForm />
+      </Elements>
     </div>
   );
 };

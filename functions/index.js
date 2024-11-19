@@ -1,4 +1,7 @@
-const {onRequest, onCall} = require("firebase-functions/v2/https");
+const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
+const {logger} = require("firebase-functions/v2");
+const {getFirestore} = require('firebase-admin/firestore');
+const {onUserCreated} = require('firebase-functions/v2/auth');
 const {defineSecret} = require("firebase-functions/params");
 const admin = require('firebase-admin');
 const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
@@ -10,10 +13,75 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
+const db = getFirestore();
+
+export const createStripeCustomer = onUserCreated(
+  {
+    secrets: [stripeTestKey],
+    region: 'europe-west2',
+  },
+  async (event) => {
+    try {
+      const stripe = new Stripe(stripeTestKey.value());
+      const { uid, email } = event.data;
+      const customer = await stripe.customers.create({ email });
+      await db.collection('users').doc(uid).set(
+        {
+          stripeCustomerId: customer.id,
+        },
+        { merge: true }
+      );
+
+      console.log(`Stripe customer created for UID: ${uid}, Customer ID: ${customer.id}`);
+    } catch (error) {
+      console.error('Error creating Stripe customer:', error);
+      throw new Error('Failed to create Stripe customer');
+    }
+  }
+);
+
+export const savePaymentMethod = onCall(
+  { secrets: [stripeTestKey], region: 'europe-west2' }, // Set your preferred region
+  async (request) => {
+    const { paymentMethodId } = request.data;
+
+    // Validate user authentication
+    if (!request.auth) {
+      throw new Error('Unauthenticated request. User must be signed in.');
+    }
+
+    const userId = request.auth.uid;
+
+    try {
+      // Retrieve user's Stripe customer ID from Firestore
+      const stripe = new Stripe(stripeTestKey.value());
+      const userDoc = await db.collection('users').doc(userId).get();
+      const customerId = userDoc.data()?.stripeCustomerId;
+
+      if (!customerId) {
+        throw new Error('Stripe customer ID not found for this user.');
+      }
+
+      // Attach payment method to the Stripe customer
+      await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
+
+      // Optionally set the payment method as the default
+      await stripe.customers.update(customerId, {
+        invoice_settings: { default_payment_method: paymentMethodId },
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving payment method:', error);
+      throw new Error('Failed to save payment method.');
+    }
+  }
+);
+
 exports.createCheckoutSession = onCall(
   { secrets: [stripeTestKey] },
   async (request) => {
-    const { gigId, fee } = request.data;
+    const { gigId, fee, conversationId } = request.data;
 
     try {
       // Create the Stripe Checkout session
@@ -24,7 +92,7 @@ exports.createCheckoutSession = onCall(
         line_items: [
           {
             price_data: {
-              currency: 'usd', // Change to your preferred currency
+              currency: 'gbp', // Change to your preferred currency
               product_data: {
                 name: `Gig Payment for Gig ID: ${gigId}`,
               },
@@ -36,8 +104,8 @@ exports.createCheckoutSession = onCall(
         metadata: {
           gigId, // Pass gig ID for tracking
         },
-        success_url: `https://your-frontend.com/payment-success?gigId=${gigId}`,
-        cancel_url: `https://your-frontend.com/payment-cancelled`,
+        success_url: `https://localhost:5173/payment-success?gigId=${gigId}`,
+        cancel_url: `http://localhost:5173/messages?conversationId=${conversationId}`,
       });
 
       // Return the session URL to the client

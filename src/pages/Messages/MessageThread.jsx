@@ -373,6 +373,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 const response = await createCheckoutSession({
                     gigId: activeConversation.gigId,
                     fee: feeInCents,
+                    conversationId: activeConversation.id,
                 });
                 // Redirect to Stripe Checkout
                 window.location.href = response.data.url;
