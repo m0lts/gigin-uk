@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CardForm } from '../common/CardDetails'
 import '../../assets/styles/host/payment-modal.styles.css'
-import {SuccessIcon } from '../ui/Extras/Icons'
+import {SuccessIcon, PlusIcon} from '../ui/Extras/Icons'
 import VisaIcon from '../../assets/images/visa.png';
 import MastercardIcon from '../../assets/images/mastercard.png';
 import AmexIcon from '../../assets/images/amex.png';
@@ -12,6 +12,7 @@ import { LoadingThreeDots } from '../ui/loading/Loading'
 export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makingPayment, setMakingPayment, paymentSuccess, setPaymentSuccess, setSavedCards }) => {
 
     const [selectedCardId, setSelectedCardId] = useState(null);
+    const [addingNewCard, setAddingNewCard] = useState(false);
 
     const cardBrandIcons = {
         visa: VisaIcon,
@@ -46,12 +47,13 @@ export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makin
                     <div className='payment-success'>
                         <h2>Gig Payment Complete!</h2>
                         <SuccessIcon />
+                        <h4>We are processing the payment now, the gig will be confirmed shortly.</h4>
                         <button className="btn secondary" onClick={onClose}>
                             Close
                         </button>
                     </div>
                 ) : (
-                    savedCards.length > 0 ? (
+                    savedCards.length > 0 && !addingNewCard ? (
                         <>
                             <h2>Complete Gig Payment</h2>
                             <div className="payment-details">
@@ -95,6 +97,10 @@ export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makin
                                     )}
                                 </li>
                             ))}
+                            <li className="card-item" onClick={() => setAddingNewCard(true)}>
+                                <h4>Add Another Card</h4>
+                                <PlusIcon />
+                            </li>
                             </ul>
                             <button
                                 className="btn primary-alt"
@@ -107,7 +113,7 @@ export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makin
                     ) : (
                         <div className="card-details-entry">
                             <h2>Add Payment Details</h2>
-                            <CardForm activityType={'making payment'} setCardDetails={setSavedCards} />
+                            <CardForm activityType={'making payment'} setCardDetails={setSavedCards} cardDetails={savedCards} setAddingNewCard={setAddingNewCard} />
                         </div>
                     )
                 )

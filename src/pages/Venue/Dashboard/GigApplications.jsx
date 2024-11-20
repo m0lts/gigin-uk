@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom"
 import { doc, getDoc, updateDoc, onSnapshot, getDocs, Timestamp, collection, query, addDoc, where, arrayUnion } from 'firebase/firestore';
@@ -284,7 +285,7 @@ export const GigApplications = () => {
         const conversationSnapshot = await getDocs(conversationQuery);
         if (!conversationSnapshot.empty) {
             const conversationId = conversationSnapshot.docs[0].id;
-            navigate(`/messages/conversationId=${conversationId}`)
+            navigate(`/messages?conversationId=${conversationId}`)
         }
     }
 
@@ -307,7 +308,7 @@ export const GigApplications = () => {
         setMakingPayment(true);
         try {
             const amountToCharge = parseFloat(gigInfo.agreedFee.replace('£', '')) * 1.05;
-            const stripeAmount = amountToCharge * 100;
+            const stripeAmount = Math.round(amountToCharge * 100);
             const gigDate = gigInfo.date.toDate();
             const confirmPayment = httpsCallable(functions, 'confirmPayment');
             const response = await confirmPayment({
@@ -317,98 +318,22 @@ export const GigApplications = () => {
                 gigDate, 
             });
             if (response.data.success) {
-                const transactionId = response.data.paymentIntent.id;
-                const gigRef = doc(firestore, 'gigs', gigInfo.gigId);
-                const updatedApplicants = gigInfo.applicants.map(applicant => {
-                    if (applicant.id === musicianProfileId) {
-                        return { ...applicant, status: 'confirmed' };
-                    } else {
-                        return { ...applicant };
-                    }
-                });
-                const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
-                await updateDoc(musicianProfileRef, { confirmedGigs: arrayUnion(gigInfo.gigId) });
-                await updateDoc(gigRef, { applicants: updatedApplicants, transactionId: transactionId, status: 'closed', paid: true });
+                setPaymentSuccess(true);
                 setGigInfo((prevGigInfo) => ({
-                    ...prevGigInfo,
-                    applicants: updatedApplicants,
-                    transactionId: transactionId,
-                    status: 'closed',
-                    paid: true,
+                  ...prevGigInfo,
+                  status: 'payment processing',
                 }));
-                const conversationsRef = collection(firestore, 'conversations');
-                const conversationQuery = query(conversationsRef, where('participants', 'array-contains', musicianProfileId), where('gigId', '==', gigInfo.gigId));
-                const conversationSnapshot = await getDocs(conversationQuery);
-                if (!conversationSnapshot.empty) {
-                    const conversationId = conversationSnapshot.docs[0].id;
-                    const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                    const messageQuery = query(messagesRef, where('status', '==', 'awaiting payment'));
-                    const messageSnapshot = await getDocs(messageQuery);
-                    const timestamp = Timestamp.now();
-                    if (!messageSnapshot.empty) {
-                        const messageId = messageSnapshot.docs[0].id;
-                        const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                        await updateDoc(messageRef, {
-                            senderId: user.uid,
-                            text: `The fee of ${gigInfo.agreedFee} has been paid by the venue. The gig is now confirmed.`,
-                            timestamp: timestamp,
-                            type: 'announcement',
-                            status: 'gig confirmed',
-                        });
-                    } else {
-                        console.error('No messages found with status "awaiting payment".');
-                    }
-                    const conversationRef = doc(firestore, 'conversations', conversationId);
-                    await updateDoc(conversationRef, {
-                        lastMessage: `The gig is confirmed.`,
-                        lastMessageTimestamp: timestamp,
-                        lastMessageSenderId: user.uid,
-                        status: 'closed',
-                    });
-                    const conversationsRef = collection(firestore, 'conversations');
-                    const otherConversationsQuery = query(
-                        conversationsRef,
-                        where('gigId', '==', gigInfo.gigId),
-                        where('participants', 'array-contains', gigInfo.venueId),
-                        where('conversationId', '!=', conversationId)
-                    );
-                    const otherConversationsSnapshot = await getDocs(otherConversationsQuery);
-                    for (const otherConversation of otherConversationsSnapshot.docs) {
-                        const otherConversationId = otherConversation.id;
-                        const otherMessagesRef = collection(firestore, 'conversations', otherConversationId, 'messages');
-                        await addDoc(otherMessagesRef, {
-                            senderId: user.uid,
-                            text: `This gig has been booked or deleted.`,
-                            timestamp,
-                            type: 'announcement',
-                            status: 'gig booked',
-                        });
-                        const otherConversationRef = doc(firestore, 'conversations', otherConversationId);
-                        await updateDoc(otherConversationRef, {
-                            lastMessage: `This gig has been booked or deleted.`,
-                            lastMessageTimestamp: timestamp,
-                            lastMessageSenderId: user.uid,
-                            status: 'closed',
-                        });
-                    }
-                    setMakingPayment(false);
-                    setPaymentSuccess(true);
-                } else {
-                    setMakingPayment(false);
-                    setPaymentSuccess(false);
-                    alert('Payment failed. Please try again.');    
-                }
             } else {
-                setMakingPayment(false);
                 setPaymentSuccess(false);
-                alert('Payment failed. Please try again.');
+                alert(response.data.error || 'Payment failed. Please try again.');
             }
         } catch (error) {
             console.error('Error completing payment:', error);
-            setMakingPayment(false);
             setMusicianProfileId(null);
             setPaymentSuccess(false);
             alert('An error occurred while processing the payment.');
+        } finally {
+            setMakingPayment(false);
         }
     };
 
@@ -483,7 +408,7 @@ export const GigApplications = () => {
                                                     </div>
                                                 )}
                                                 {status === 'accepted' && (
-                                                    loadingPaymentDetails || showPaymentModal ? (
+                                                    loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
                                                         <LoadingThreeDots />
                                                     ) : (
                                                         <button className="btn primary" onClick={(event) => {event.stopPropagation(); handleCompletePayment(profile.id)}}>

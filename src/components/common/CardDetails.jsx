@@ -17,7 +17,7 @@ import {LoadingThreeDots} from '../ui/loading/Loading'
 
 
 // Card input form component
-export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNewCardSaved }) => {
+export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNewCardSaved, setAddingNewCard }) => {
     const stripe = useStripe();
     const elements = useElements();
     const [loading, setLoading] = useState(false);
@@ -123,8 +123,8 @@ export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNe
               }
           } else if (activityType === 'making payment') {
               // Pass card details to parent for payment
-              setCardDetails([formattedPaymentMethod]);
-
+              setCardDetails((prevCardDetails) => [...prevCardDetails, formattedPaymentMethod]);
+              setAddingNewCard(false);
               // Optionally save the card if the user checked the box
               if (saveCard) {
                   const savePaymentMethod = httpsCallable(functions, 'savePaymentMethod');

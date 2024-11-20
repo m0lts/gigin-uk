@@ -340,90 +340,39 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     };
 
     const handleSelectCard = async (cardId) => {
-        setMakingPayment(true)
+        setMakingPayment(true);
         try {
-          const amountToCharge = parseInt(gigData.agreedFee.replace('£', '')) * 1.05;
-          const stripeAmount = amountToCharge * 100;
+          const amountToCharge = parseFloat(gigData.agreedFee.replace('£', '')) * 1.05;
+          const stripeAmount = Math.round(amountToCharge * 100);
           const gigDate = gigData.date.toDate();
           const confirmPayment = httpsCallable(functions, 'confirmPayment');
-          const response = await confirmPayment({ paymentMethodId: cardId, amountToCharge: stripeAmount, gigData, gigDate });
+          const response = await confirmPayment({ 
+            paymentMethodId: cardId,
+            amountToCharge: stripeAmount,
+            gigData,
+            gigDate,
+          });
           if (response.data.success) {
-            setMakingPayment(false);
             setPaymentSuccess(true);
-            const transactionId = response.data.paymentIntent.id;
-            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
-            const updatedApplicants = gigData.applicants.map(applicant => {
-                if (applicant.id === musicianProfileId) {
-                    return { ...applicant, status: 'confirmed' };
-                } else {
-                    return { ...applicant };
-                }
-            });
-            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
-            await updateDoc(musicianProfileRef, { confirmedGigs: arrayUnion(activeConversation.gigId) });
-            await updateDoc(gigRef, { applicants: updatedApplicants, transactionId: transactionId, status: 'closed', paid: true });
             setGigData((prevGigData) => ({
-                ...prevGigData,
-                applicants: updatedApplicants,
-                transactionId: transactionId,
-                status: 'closed',
-                paid: true,
+              ...prevGigData,
+              status: 'payment processing',
             }));
-            const messagesRef = doc(firestore, 'conversations', conversationId, 'messages', paymentMessageId);
-            const timestamp = Timestamp.now();
-            await updateDoc(messagesRef, {
-                senderId: user.uid,
-                text: `The fee of ${gigData.agreedFee} has been paid by the venue. The gig is now confirmed.`,
-                timestamp: timestamp,
-                type: 'announcement',
-                status: 'gig confirmed',
-            });
-            const conversationRef = doc(firestore, 'conversations', conversationId);
-            await updateDoc(conversationRef, {
-                lastMessage: `The gig is confirmed.`,
-                lastMessageTimestamp: timestamp,
-                lastMessageSenderId: user.uid,
-                status: 'closed',
-            });
-            const conversationsRef = collection(firestore, 'conversations');
-            const otherConversationsQuery = query(
-                conversationsRef,
-                where('gigId', '==', activeConversation.gigId),
-                where('participants', 'array-contains', gigData.venueId),
-                where('conversationId', '!=', conversationId)
-            );
-            const otherConversationsSnapshot = await getDocs(otherConversationsQuery);
-            for (const otherConversation of otherConversationsSnapshot.docs) {
-                const otherConversationId = otherConversation.id;
-                const otherMessagesRef = collection(firestore, 'conversations', otherConversationId, 'messages');
-                await addDoc(otherMessagesRef, {
-                    senderId: user.uid,
-                    text: `This gig has been booked or deleted.`,
-                    timestamp,
-                    type: 'announcement',
-                    status: 'gig booked',
-                });
-                const otherConversationRef = doc(firestore, 'conversations', otherConversationId);
-                await updateDoc(otherConversationRef, {
-                    lastMessage: `This gig has been booked or deleted.`,
-                    lastMessageTimestamp: timestamp,
-                    lastMessageSenderId: user.uid,
-                    status: 'closed',
-                });
-            }
           } else {
             setPaymentSuccess(false);
-            setMakingPayment(false);
+            alert(response.data.error || 'Payment failed. Please try again.');
           }
         } catch (error) {
           console.error('Error completing payment:', error);
           setPaymentSuccess(false);
-          setMakingPayment(false);
           alert('An error occurred while processing the payment. Please try again.');
+        } finally {
+          setMakingPayment(false);
         }
       };
 
       console.log(messages)
+
     
     return (
         <>
@@ -591,7 +540,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 <>
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                     <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
-                                    {loadingPaymentDetails ? (
+                                    {loadingPaymentDetails || gigData.status === 'payment processing' ? (
                                         <LoadingThreeDots />
                                     ) : (
                                         <button className="btn primary" onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
@@ -604,10 +553,20 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                     <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
                                 </>
-                            ) : message.status === 'gig confirmed' && (
+                            ) : message.status === 'gig confirmed' ? (
                                 <>
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                     <h4>{message.text}</h4>
+                                </>
+                            ) : message.status === 'payment failed' && userRole === 'venue' ? (
+                                <>
+                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                    <h4>{message.text}</h4>
+                                </>
+                            ) : message.status === 'payment failed' && userRole === 'musician' && (
+                                <>
+                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                    <h4>The gig will be confirmed when the venue has paid the gig fee.</h4>
                                 </>
                             )}
                             </>

@@ -1,10 +1,11 @@
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler")
 const functions = require('firebase-functions');
-const {logger} = require("firebase-functions/v2");
-const {getFirestore} = require('firebase-admin/firestore');
+const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 const {defineSecret} = require("firebase-functions/params");
 const admin = require('firebase-admin');
 const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
+// const endpointSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 
 // Load the Stripe library using the secret
 const Stripe = require("stripe");
@@ -39,37 +40,26 @@ const db = getFirestore();
 //   }
 // });
 
-// Save a card to the user's stripe customer id
+
 exports.savePaymentMethod = onCall(
-  { secrets: [stripeTestKey] }, // Set your preferred region
+  { secrets: [stripeTestKey] },
   async (request) => {
     const { paymentMethodId } = request.data;
-
-    // Validate user authentication
     if (!request.auth) {
       throw new Error('Unauthenticated request. User must be signed in.');
     }
-
     const userId = request.auth.uid;
-
     try {
-      // Retrieve user's Stripe customer ID from Firestore
       const stripe = new Stripe(stripeTestKey.value());
       const userDoc = await db.collection('users').doc(userId).get();
       const customerId = userDoc.data()?.stripeCustomerId;
-
       if (!customerId) {
         throw new Error('Stripe customer ID not found for this user.');
       }
-
-      // Attach payment method to the Stripe customer
       await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
-
-      // Optionally set the payment method as the default
       await stripe.customers.update(customerId, {
         invoice_settings: { default_payment_method: paymentMethodId },
       });
-
       return { success: true };
     } catch (error) {
       console.error('Error saving payment method:', error);
@@ -79,32 +69,24 @@ exports.savePaymentMethod = onCall(
 );
 
 exports.getSavedCards = onCall(
-  { secrets: [stripeTestKey] }, // Set your preferred region
+  { secrets: [stripeTestKey] },
   async (request) => {
   const { auth } = request;
-
   if (!auth) {
     throw new Error('User must be authenticated.');
   }
-
   const userId = auth.uid;
-
-  // Retrieve the Stripe customer ID from Firestore
   const userDoc = await admin.firestore().collection('users').doc(userId).get();
   const customerId = userDoc.data()?.stripeCustomerId;
-
   if (!customerId) {
     throw new Error('Stripe customer ID not found.');
   }
-
-  // Fetch saved payment methods
   try {
     const stripe = new Stripe(stripeTestKey.value());
     const paymentMethods = await stripe.paymentMethods.list({
       customer: customerId,
       type: 'card',
     });
-
     return { paymentMethods: paymentMethods.data };
   } catch (error) {
     console.error('Error fetching payment methods:', error);
@@ -113,32 +95,25 @@ exports.getSavedCards = onCall(
 });
 
 exports.confirmPayment = onCall(
-  { secrets: [stripeTestKey] }, // Set your preferred region
+  { secrets: [stripeTestKey] },
   async (request) => {
   const { auth } = request;
-  const { paymentMethodId, amountToCharge, gigData, gigDate } = request.data;
-
+  const { paymentMethodId, amountToCharge, gigData, gigDate, paymentMessageId } = request.data;
   if (!auth) {
     throw new Error('User must be authenticated.');
   }
-
   if (!paymentMethodId) {
     throw new Error('Payment method ID is required.');
   }
-
   const userId = auth.uid;
-
-  // Retrieve the Stripe customer ID from Firestore
   const userDoc = await admin.firestore().collection('users').doc(userId).get();
   const customerId = userDoc.data()?.stripeCustomerId;
-
   if (!customerId) {
     throw new Error('Stripe customer ID not found.');
   }
-
   try {
     const stripe = new Stripe(stripeTestKey.value());
-    const acceptedMusician = gigData.applicants.find((applicant) => applicant.status === 'Accepted');
+    const acceptedMusician = gigData.applicants.find((applicant) => applicant.status === 'accepted');
     const musicianId = acceptedMusician ? acceptedMusician.id : null;
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountToCharge,
@@ -154,13 +129,25 @@ exports.confirmPayment = onCall(
         venueName: gigData.venue.venueName,
         venueId: gigData.venueId,
         musicianId: musicianId,
+        paymentMessageId: paymentMessageId,
       }
     });
-
     return { success: true, paymentIntent };
   } catch (error) {
     console.error('Error confirming payment:', error);
-    throw new Error('Unable to complete payment.');
+    if (error.type === 'StripeCardError') {
+      return { success: false, error: error.message };
+    } else if (error.type === 'StripeInvalidRequestError') {
+      return { success: false, error: 'Invalid payment request. Please try again.' };
+    } else if (error.type === 'StripeAPIError') {
+      return { success: false, error: 'Payment service is currently unavailable. Please try again later.' };
+    } else if (error.type === 'StripeConnectionError') {
+      return { success: false, error: 'Network error. Please check your connection and try again.' };
+    } else if (error.type === 'StripeAuthenticationError') {
+      return { success: false, error: 'Authentication error. Please contact support.' };
+    } else {
+      return { success: false, error: 'An unexpected error occurred. Please try again.' };
+    }
   }
 });
 
@@ -168,43 +155,28 @@ exports.getCustomerData = onCall(
   { secrets: [stripeTestKey] },
   async (request) => {
     const { auth } = request;
-
     if (!auth) {
       throw new Error('User must be authenticated.');
     }
-
     const userId = auth.uid;
-
-    // Retrieve the Stripe customer ID from Firestore
     const userDoc = await admin.firestore().collection('users').doc(userId).get();
     const customerId = userDoc.data()?.stripeCustomerId;
-
     if (!customerId) {
       throw new Error('Stripe customer ID not found.');
     }
-
     try {
       const stripe = new Stripe(stripeTestKey.value());
-
-      // Fetch customer data
       const customer = await stripe.customers.retrieve(customerId);
-
-      // Fetch payment methods
       const paymentMethods = await stripe.paymentMethods.list({
         customer: customerId,
         type: 'card',
       });
-
-      // Fetch charges for the customer to get receipt URLs
       const charges = await stripe.charges.list({
         customer: customerId,
-        limit: 100, // Fetch the most recent 100 charges (adjust as needed)
+        limit: 100,
       });
-
-      // Extract receipt URLs from successful charges
       const receipts = charges.data
         .filter((charge) => charge.status === 'succeeded' && charge.receipt_url)
-
       return {
         customer,
         receipts,
@@ -222,30 +194,21 @@ exports.deleteCard = onCall(
   async (request) => {
     const { auth } = request;
     const { cardId } = request.data;
-
     if (!auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
     }
-
     if (!cardId) {
       throw new functions.https.HttpsError('invalid-argument', 'Card ID is required.');
     }
-
     const userId = auth.uid;
-
-    // Retrieve the Stripe customer ID from Firestore
     const userDoc = await admin.firestore().collection('users').doc(userId).get();
     const customerId = userDoc.data()?.stripeCustomerId;
-
     if (!customerId) {
       throw new functions.https.HttpsError('not-found', 'Stripe customer ID not found.');
     }
-
     try {
       const stripe = new Stripe(stripeTestKey.value());
-      // Detach the card from the customer in Stripe
       await stripe.paymentMethods.detach(cardId);
-
       return { success: true };
     } catch (error) {
       console.error('Error deleting card:', error);
@@ -253,6 +216,257 @@ exports.deleteCard = onCall(
     }
   }
 );
+
+exports.stripeWebhook = onRequest(
+  {
+    maxInstances: 3,
+    secrets: [stripeTestKey]
+  },
+  async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const stripe = new Stripe(stripeTestKey.value());
+    let event;
+    const endpointSecret = "whsec_b5010dd6cb1cdf2819609636f802f29fb7dc33adfe6c937c65058a48c42a9d56";
+    try {
+      event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+    } catch (err) {
+      console.error('Webhook signature verification failed:', err.message);
+      res.status(400).send(`Webhook Error: ${err.message}`);
+      return;
+    }
+    try {
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          const paymentIntent = event.data.object;
+          console.log('PaymentIntent succeeded:', paymentIntent);
+          await handlePaymentSuccess(paymentIntent);
+          break;
+        case 'payment_intent.payment_failed':
+          const failedIntent = event.data.object;
+          console.warn('PaymentIntent failed:', failedIntent);
+          await handlePaymentFailure(failedIntent);
+          break;
+        default:
+          console.info(`Unhandled event type ${event.type}`);
+      }
+      res.status(200).send({ received: true });
+    } catch (err) {
+      console.error('Error handling webhook event:', err.message);
+      res.status(500).send(`Webhook handler error: ${err.message}`);
+    }
+  }
+);
+
+exports.clearPendingFees = onSchedule('every 1 hours', async (event) => {
+  const firestore = getFirestore();
+  const currentTime = Timestamp.now();
+  try {
+    const musicianProfilesSnapshot = await firestore.collection('musicianProfiles').get();
+    const batch = firestore.batch();
+    musicianProfilesSnapshot.forEach((musicianDoc) => {
+      const musicianData = musicianDoc.data();
+      const musicianId = musicianDoc.id;
+      const feesToClear = musicianData.pendingFees?.filter((fee) => {
+        return fee.disputePeriod.toMillis() <= currentTime.toMillis() && !fee.disputeLogged;
+      });
+      if (feesToClear && feesToClear.length > 0) {
+        const updatedPendingFees = musicianData.pendingFees.filter((fee) => {
+          return !(fee.disputePeriod.toMillis() <= currentTime.toMillis() && !fee.disputeLogged);
+        });
+        const updatedClearedFees = musicianData.clearedFees
+          ? [...musicianData.clearedFees, ...feesToClear]
+          : [...feesToClear];
+        const totalClearedAmount = feesToClear.reduce((sum, fee) => sum + fee.amount, 0);
+        batch.update(firestore.collection('musicianProfiles').doc(musicianId), {
+          pendingFees: updatedPendingFees,
+          clearedFees: updatedClearedFees,
+          earnings: (musicianData.earnings || 0) + totalClearedAmount,
+        });
+      }
+    });
+    await batch.commit();
+    console.log('Pending fees cleared successfully and moved to cleared fees.');
+  } catch (error) {
+    console.error('Error clearing pending fees:', error);
+    throw new Error('Failed to clear pending fees.');
+  }
+});
+
+const handlePaymentSuccess = async (paymentIntent) => {
+  const gigId = paymentIntent.metadata?.gigId;
+  const musicianId = paymentIntent.metadata?.musicianId;
+  const venueId = paymentIntent.metadata?.venueId;
+  const gigTime = paymentIntent.metadata?.time;
+  const gigDate = paymentIntent.metadata?.date;
+  const transactionId = paymentIntent.id;
+  const formattedGigDate = new Date(gigDate);
+  const [hours, minutes] = gigTime.split(':').map(Number);
+  formattedGigDate.setHours(hours);
+  formattedGigDate.setMinutes(minutes);
+  formattedGigDate.setSeconds(0);
+  const disputePeriodDate = new Date(formattedGigDate.getTime() + 24 * 60 * 60 * 1000);
+  if (!gigId || !musicianId || !venueId) {
+    console.error('Missing required metadata in paymentIntent');
+    return;
+  }
+  try {
+    const timestamp = Timestamp.now();
+    const gigRef = admin.firestore().collection('gigs').doc(gigId);
+    const gigDoc = await gigRef.get();
+    if (!gigDoc.exists) {
+      throw new Error(`Gig with ID ${gigId} not found`);
+    }
+    const gigData = gigDoc.data();
+    const updatedApplicants = gigData.applicants.map(applicant => {
+      if (applicant.id === musicianId) {
+        return { ...applicant, status: 'confirmed' };
+      }
+      return { ...applicant };
+    });
+    await gigRef.update({
+      applicants: updatedApplicants,
+      transactionId: transactionId,
+      status: 'closed',
+      paid: true,
+      paymentStatus: 'succeeded',
+      musicianFeeStatus: 'pending',
+      disputeClearingTime: disputePeriodDate,
+    });
+    const musicianProfileRef = admin.firestore().collection('musicianProfiles').doc(musicianId);
+    await musicianProfileRef.update({
+      confirmedGigs: FieldValue.arrayUnion(gigId),
+      pendingFees: FieldValue.arrayUnion({
+        gigId: gigId,
+        venueId: venueId,
+        amount: paymentIntent.amount / 100,
+        currency: paymentIntent.currency || 'gbp',
+        timestamp: timestamp,
+        gigDate: gigDate,
+        gigTime: gigTime,
+        disputeClearingTime: Timestamp.fromDate(disputePeriodDate),
+        disputeLogged: false,
+        disputeDetails: null,
+        status: 'pending',
+        feeCleared: false,
+        paymentIntentId: paymentIntent.id,
+      }),
+    });
+    const conversationsRef = admin.firestore().collection('conversations');
+    const conversationsSnapshot = await conversationsRef.where('gigId', '==', gigId).get();
+    conversationsSnapshot.forEach(async (conversationDoc) => {
+      const conversationId = conversationDoc.id;
+      const conversationData = conversationDoc.data();
+      const isVenueAndMusicianConversation =
+        conversationData.participants.includes(venueId) &&
+        conversationData.participants.includes(musicianId);
+      const messagesRef = admin.firestore().collection('conversations').doc(conversationId).collection('messages');
+      if (isVenueAndMusicianConversation) {
+        const awaitingPaymentQuery = messagesRef.where('status', '==', 'awaiting payment');
+        const awaitingPaymentSnapshot = await awaitingPaymentQuery.get();
+        if (!awaitingPaymentSnapshot.empty) {
+          const awaitingMessageId = awaitingPaymentSnapshot.docs[0].id;
+          const awaitingMessageRef = messagesRef.doc(awaitingMessageId);
+          await awaitingMessageRef.update({
+            senderId: venueId,
+            text: `The fee of ${gigData.agreedFee} has been paid by the venue. The gig is now confirmed.`,
+            timestamp: timestamp,
+            type: 'announcement',
+            status: 'gig confirmed',
+          });
+        }
+        await admin.firestore().collection('conversations').doc(conversationId).update({
+          lastMessage: `The fee of ${gigData.agreedFee} has been paid by the venue. The gig is now confirmed.`,
+          lastMessageTimestamp: timestamp,
+          lastMessageSenderId: venueId,
+          status: 'closed',
+        });
+      } else {
+        const pendingMessagesQuery = messagesRef.where('status', '==', 'pending');
+        const pendingMessagesSnapshot = await pendingMessagesQuery.get();
+        if (!pendingMessagesSnapshot.empty) {
+          pendingMessagesSnapshot.forEach(async (pendingMessageDoc) => {
+            const pendingMessageRef = messagesRef.doc(pendingMessageDoc.id);
+            await pendingMessageRef.update({
+              status: 'declined',
+            });
+          });
+        }
+        await messagesRef.add({
+          senderId: venueId,
+          text: 'This gig has been booked or deleted.',
+          timestamp: timestamp,
+          type: 'announcement',
+          status: 'gig booked',
+        });
+        await admin.firestore().collection('conversations').doc(conversationId).update({
+          lastMessage: 'This gig has been booked or deleted.',
+          lastMessageTimestamp: timestamp,
+          lastMessageSenderId: venueId,
+          status: 'closed',
+        });
+      }
+    });
+    console.log(`Gig ${gigId} updated successfully after payment confirmation.`);
+  } catch (error) {
+    console.error('Error handling payment success:', error);
+    throw new Error('Error updating gig and related data.');
+  }
+};
+
+const handlePaymentFailure = async (failedIntent) => {
+  const gigId = failedIntent.metadata?.gigId;
+  const venueId = failedIntent.metadata?.venueId;
+  const musicianId = paymentIntent.metadata?.musicianId;
+  const transactionId = failedIntent.id;
+  if (!gigId || !venueId || !musicianId) {
+    console.error('Missing required metadata in failedIntent');
+    return;
+  }
+  try {
+    const timestamp = Timestamp.now();
+    const gigRef = admin.firestore().collection('gigs').doc(gigId);
+    await gigRef.update({
+      paymentStatus: 'failed',
+      paid: false,
+      transactionId,
+      status: 'open',
+    });
+    const conversationsRef = admin.firestore().collection('conversations');
+    const conversationQuery = conversationsRef
+      .where('gigId', '==', gigId)
+      .where('participants', 'array-contains', venueId)
+      .where('participants', 'array-contains', musicianId);
+    const conversationsSnapshot = await conversationQuery.get();
+    if (!conversationsSnapshot.empty) {
+      const conversationDoc = conversationsSnapshot.docs[0];
+      const conversationId = conversationDoc.id;
+      const messagesRef = admin
+        .firestore()
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages');
+      await messagesRef.add({
+        senderId: venueId,
+        text: `The payment for this gig failed. Please try again or contact support.`,
+        timestamp: timestamp,
+        type: 'announcement',
+        status: 'payment failed',
+      });
+      await admin.firestore().collection('conversations').doc(conversationId).update({
+        lastMessage: 'The payment for this gig failed.',
+        lastMessageTimestamp: timestamp,
+        lastMessageSenderId: venueId,
+      });
+      console.log(`Updated conversation ${conversationId} for payment failure.`);
+    } else {
+      console.error('No relevant conversation found between venue and musician.');
+    }
+    console.log(`Handled payment failure for gig ${gigId}`);
+  } catch (error) {
+    console.error('Error handling payment failure:', error.message);
+    throw new Error('Error updating gig and related data after payment failure.');
+  }
+};
 
 
 
