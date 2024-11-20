@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateDoc, getDocs, arrayUnion, where } from 'firebase/firestore';
 import { firestore } from '../../firebase';
 import { CloseIcon, DownChevronIcon, RejectedIcon, SendMessageIcon, TickIcon } from '../../components/ui/Extras/Icons';
 import '/styles/common/messages.styles.css';
@@ -14,17 +14,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const [userRole, setUserRole] = useState('');
     const [allowCounterOffer, setAllowCounterOffer] = useState(false);
     const [newCounterOffer, setNewCounterOffer] = useState('');
-    const [showPaymentModal, setShowPaymentModal] = useState(false); // Modal visibility
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [savedCards, setSavedCards] = useState([]);
     const [loadingPaymentDetails, setLoadingPaymentDetails] = useState(false);
     const [paymentSuccess, setPaymentSuccess] = useState(false);
     const [makingPayment, setMakingPayment] = useState(false);
     const [paymentMessageId, setPaymentMessageId] = useState();
 
-    // Create a ref to the messages container
     const messagesEndRef = useRef(null);
 
-    // Function to scroll to the bottom
     const scrollToBottom = () => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -47,11 +45,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
     useEffect(() => {
         if (!conversationId) return;
-
-        // Fetch messages in real-time for this conversation
         const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
         const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
-
         const unsubscribe = onSnapshot(messagesQuery, snapshot => {
             const fetchedMessages = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -59,38 +54,28 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             }));
             setMessages(fetchedMessages);
         });
-
-        // Clean up the listener when the component unmounts
         return () => unsubscribe();
     }, [conversationId]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-    
         if (!newMessage.trim()) return;
-    
         try {
-            // Send a new message to Firestore
             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-            const timestamp = Timestamp.now(); // Store the timestamp for reuse
-    
-            // Add the new message to the 'messages' subcollection
+            const timestamp = Timestamp.now();
             await addDoc(messagesRef, {
-                senderId: user.uid, // The current user's ID
+                senderId: user.uid,
                 text: newMessage,
                 timestamp: timestamp,
                 type: 'text',
             });
-    
-            // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
             const conversationRef = doc(firestore, 'conversations', conversationId);
             await updateDoc(conversationRef, {
                 lastMessage: newMessage,
                 lastMessageTimestamp: timestamp,
                 lastMessageSenderId: user.uid,
             });
-    
-            setNewMessage(''); // Clear the input field
+            setNewMessage('');
         } catch (error) {
             console.error('Error sending message:', error);
         }
@@ -107,54 +92,53 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     }
 
     const handleAcceptGig = async (event, messageId) => {
-        event.stopPropagation();    
+        event.stopPropagation();
         try {
-            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
-            const gigSnapshot = await getDoc(gigRef);
-    
-            if (gigSnapshot.exists()) {
-                const gigData = gigSnapshot.data();
-                let agreedFee;
-                const updatedApplicants = gigData.applicants.map(applicant => {
-                    if (applicant.id === musicianProfileId) {
-                        agreedFee = applicant.fee;
-                        return { ...applicant, status: 'Accepted' };
-                    } else {
-                        return { ...applicant, status: 'Declined' };
-                    }
-                });
-                await updateDoc(gigRef, { applicants: updatedApplicants, budget: `${agreedFee}` });
-
-                const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                await updateDoc(messageRef, {
-                    status: 'Accepted',
-                });
-
-                // Send a new message to Firestore
-                const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                const timestamp = Timestamp.now(); // Store the timestamp for reuse
-        
-
-                await addDoc(messagesRef, {
-                    senderId: user.uid,
-                    text: `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`,
-                    timestamp: timestamp,
-                    type: 'announcement',
-                    status: 'awaiting payment',
-                });
-        
-                // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
-                const conversationRef = doc(firestore, 'conversations', conversationId);
-                await updateDoc(conversationRef, {
-                    lastMessage: `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`,
-                    lastMessageTimestamp: timestamp,
-                    lastMessageSenderId: user.uid,
-                    status: 'closed',
-                });
-        
-            } else {
-                console.error('Gig not found');
+            if (!gigData) {
+                console.error('Gig data is missing');
+                return;
             }
+            let agreedFee;
+            const updatedApplicants = gigData.applicants.map(applicant => {
+                if (applicant.id === musicianProfileId) {
+                    agreedFee = applicant.fee;
+                    return { ...applicant, status: 'accepted' };
+                } else {
+                    return { ...applicant, status: 'declined' };
+                }
+            });
+            const gigRef = doc(firestore, 'gigs', gigData.gigId);
+            await updateDoc(gigRef, { 
+                applicants: updatedApplicants,
+                agreedFee: `${agreedFee}`,
+                paid: false,
+            });
+            setGigData((prevGigData) => ({
+                ...prevGigData,
+                applicants: updatedApplicants,
+                agreedFee: `${agreedFee}`,
+                paid: false,
+            }));
+            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+            await updateDoc(messageRef, {
+                status: 'accepted',
+            });
+            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+            const timestamp = Timestamp.now();
+            await addDoc(messagesRef, {
+                senderId: user.uid,
+                text: `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`,
+                timestamp: timestamp,
+                type: 'announcement',
+                status: 'awaiting payment',
+            });
+            const conversationRef = doc(firestore, 'conversations', conversationId);
+            await updateDoc(conversationRef, {
+                lastMessage: `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`,
+                lastMessageTimestamp: timestamp,
+                lastMessageSenderId: user.uid,
+                status: 'closed',
+            });
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
@@ -163,139 +147,126 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleAcceptNegotiation = async (event, messageId) => {
         event.stopPropagation();    
         try {
-            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
-            const gigSnapshot = await getDoc(gigRef);
-    
-            if (gigSnapshot.exists()) {
-                const gigData = gigSnapshot.data();
-                let agreedFee;
-                const updatedApplicants = gigData.applicants.map(applicant => {
-                    if (applicant.id === musicianProfileId) {
-                        agreedFee = applicant.fee;
-                        return { ...applicant, status: 'Accepted' };
-                    } else {
-                        return { ...applicant, status: 'Declined' };
-                    }
-                });
-                await updateDoc(gigRef, { applicants: updatedApplicants, negotiatedFee: `${agreedFee}`, status: 'awaiting payment' });
-
-                const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                await updateDoc(messageRef, {
-                    status: 'Accepted',
-                });
-
-                // Send a new message to Firestore
-                const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                const timestamp = Timestamp.now(); // Store the timestamp for reuse
-        
-
-                await addDoc(messagesRef, {
-                    senderId: user.uid,
-                    text: `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`,
-                    timestamp: timestamp,
-                    type: 'announcement',
-                    status: 'awaiting payment',
-                });
-        
-                // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
-                const conversationRef = doc(firestore, 'conversations', conversationId);
-                await updateDoc(conversationRef, {
-                    lastMessage: `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`,
-                    lastMessageTimestamp: timestamp,
-                    lastMessageSenderId: user.uid,
-                    status: 'closed',
-                });
-        
-            } else {
-                console.error('Gig not found');
+            if (!gigData) {
+                console.error('Gig data is missing');
+                return;
             }
+            let agreedFee;
+            const updatedApplicants = gigData.applicants.map(applicant => {
+                if (applicant.id === musicianProfileId) {
+                    agreedFee = applicant.fee;
+                    return { ...applicant, status: 'accepted' };
+                } else {
+                    return { ...applicant, status: 'declined' };
+                }
+            });
+            const gigRef = doc(firestore, 'gigs', gigData.gigId);
+            await updateDoc(gigRef, { 
+                applicants: updatedApplicants,
+                agreedFee: `${agreedFee}`,
+                paid: false
+            });
+            setGigData((prevGigData) => ({
+                ...prevGigData,
+                applicants: updatedApplicants,
+                agreedFee: `${agreedFee}`,
+                paid: false,
+            }));
+            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+            await updateDoc(messageRef, {
+                status: 'accepted',
+            });
+            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+            const timestamp = Timestamp.now();
+            await addDoc(messagesRef, {
+                senderId: user.uid,
+                text: `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`,
+                timestamp: timestamp,
+                type: 'announcement',
+                status: 'awaiting payment',
+            });
+            const conversationRef = doc(firestore, 'conversations', conversationId);
+            await updateDoc(conversationRef, {
+                lastMessage: `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`,
+                lastMessageTimestamp: timestamp,
+                lastMessageSenderId: user.uid,
+                status: 'closed',
+            });
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
     };
 
-
-    const handleDeclineNegotiation = async (event, newFee, oldFee, messageId, receiverId) => {
+    const handleDeclineNegotiation = async (event, newFee, messageId) => {
         event.stopPropagation();
-
         try {
-            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
-            const gigSnapshot = await getDoc(gigRef);
-    
-            if (gigSnapshot.exists()) {
-                const gigData = gigSnapshot.data();
-                const updatedApplicants = gigData.applicants.map(applicant => {
-                    if (applicant.id === musicianProfileId) {
-                        return { ...applicant, status: 'Declined' };
-                    } else {
-                        return { ...applicant };
-                    }
-                });
-
-                await updateDoc(gigRef, { applicants: updatedApplicants });
-
-                const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                const timestamp = Timestamp.now(); // Store the timestamp for reuse
-                await updateDoc(messageRef, {
-                    status: 'Declined',
-                    timestamp: timestamp,
-                });
-        
-                // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
-                const conversationRef = doc(firestore, 'conversations', conversationId);
-                await updateDoc(conversationRef, {
-                    lastMessage: `The fee of ${newFee} was declined by the ${userRole}.`,
-                    lastMessageTimestamp: timestamp,
-                    lastMessageSenderId: user.uid,
-                });
-
-                setAllowCounterOffer(true);
-        
-            } else {
-                console.error('Gig not found');
+            if (!gigData) {
+                console.error('Gig data is missing');
+                return;
             }
+            const updatedApplicants = gigData.applicants.map(applicant => {
+                if (applicant.id === musicianProfileId) {
+                    return { ...applicant, status: 'declined' };
+                } else {
+                    return { ...applicant };
+                }
+            });
+            const gigRef = doc(firestore, 'gigs', gigData.gigId);
+            await updateDoc(gigRef, { applicants: updatedApplicants });
+            setGigData((prevGigData) => ({
+                ...prevGigData,
+                applicants: updatedApplicants,
+            }));
+            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+            const timestamp = Timestamp.now();
+            await updateDoc(messageRef, {
+                status: 'declined',
+                timestamp: timestamp,
+            });
+            const conversationRef = doc(firestore, 'conversations', conversationId);
+            await updateDoc(conversationRef, {
+                lastMessage: `The fee of ${newFee} was declined by the ${userRole}.`,
+                lastMessageTimestamp: timestamp,
+                lastMessageSenderId: user.uid,
+            });
+            setAllowCounterOffer(true);
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
     };
 
-    const handleDeclineApplication = async (event, messageId, receiverId) => {
+    const handleDeclineApplication = async (event, messageId) => {
         event.stopPropagation();
-    
         try {
-            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
-            const gigSnapshot = await getDoc(gigRef);
-        
-            if (gigSnapshot.exists()) {
-                const gigData = gigSnapshot.data();
-                const updatedApplicants = gigData.applicants.map(applicant => {
-                    if (applicant.id === musicianProfileId) {
-                        return { ...applicant, status: 'Declined' };
-                    } else {
-                        return { ...applicant };
-                    }
-                });
-                await updateDoc(gigRef, { applicants: updatedApplicants });
-    
-                const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
-                const timestamp = Timestamp.now(); // Store the timestamp for reuse
-                await updateDoc(messageRef, {
-                    status: 'Declined',
-                    timestamp: timestamp,
-                });
-    
-                // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
-                const conversationRef = doc(firestore, 'conversations', conversationId);
-                await updateDoc(conversationRef, {
-                    lastMessage: `The gig application has been declined.`,
-                    lastMessageTimestamp: timestamp,
-                    lastMessageSenderId: user.uid,
-                });
-
-            
-            } else {
-                console.error('Gig not found');
+            if (!gigData) {
+                console.error('Gig data is missing');
+                return;
             }
+            const updatedApplicants = gigData.applicants.map(applicant => {
+                if (applicant.id === musicianProfileId) {
+                    return { ...applicant, status: 'declined' };
+                } else {
+                    return { ...applicant };
+                }
+            });
+            const gigRef = doc(firestore, 'gigs', gigData.gigId);
+            await updateDoc(gigRef, { applicants: updatedApplicants });
+            setGigData((prevGigData) => ({
+                ...prevGigData,
+                applicants: updatedApplicants,
+            }));
+            const messageRef = doc(firestore, 'conversations', conversationId, 'messages', messageId);
+            const timestamp = Timestamp.now();
+            await updateDoc(messageRef, {
+                status: 'declined',
+                timestamp: timestamp,
+            });
+            const conversationRef = doc(firestore, 'conversations', conversationId);
+            await updateDoc(conversationRef, {
+                lastMessage: `The gig application has been declined.`,
+                lastMessageTimestamp: timestamp,
+                lastMessageSenderId: user.uid,
+            });
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
@@ -303,60 +274,51 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
     const handleSendCounterOffer = async (newFee) => {
         try {
-            const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
-            const gigSnapshot = await getDoc(gigRef);
-        
-            if (gigSnapshot.exists()) {
-                const gigData = gigSnapshot.data();
-                const applicants = gigData.applicants;
-
-                // Find the relevant applicant and update their fee
-                const updatedApplicants = applicants.map(applicant => {
-                    if (applicant.id === musicianProfileId) {
-                        return {
-                            ...applicant,
-                            fee: newFee, // Update with the new fee
-                            timestamp: Timestamp.now(), // Update the timestamp
-                            status: 'Pending' // Set the status back to Pending
-                        };
-                    } else {
-                        return { ...applicant }
-                    }
-                });
-
-                // Update the gig document with the updated applicants array
-                await updateDoc(gigRef, { applicants: updatedApplicants });
-
-                const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-                const timestamp = Timestamp.now(); // Store the timestamp for reuse
-        
-                // Send the new counter-offer from the venue
-                await addDoc(messagesRef, {
-                    senderId: user.uid,
-                    text: `The ${userRole} proposes a new fee of ${newFee}.`,
-                    timestamp: timestamp,
-                    type: 'negotiation',
-                    status: 'Pending',
-                    oldFee: gigData.budget, // Original budget or last offered fee
-                    newFee: newFee, // New proposed fee
-                });
-        
-                // Update the conversation
-                const conversationRef = doc(firestore, 'conversations', conversationId);
-                await updateDoc(conversationRef, {
-                    lastMessage: `The ${userRole} proposes a new fee of ${newFee}.`,
-                    lastMessageTimestamp: timestamp,
-                    lastMessageSenderId: user.uid,
-                });
-        
-                // Close the counter-offer input
-                setAllowCounterOffer(false);
+            if (!gigData) {
+                console.error('Gig data is missing');
+                return;
             }
+            const applicants = gigData.applicants;
+            const updatedApplicants = applicants.map(applicant => {
+                if (applicant.id === musicianProfileId) {
+                    return {
+                        ...applicant,
+                        fee: newFee,
+                        timestamp: Timestamp.now(),
+                        status: 'pending'
+                    };
+                } else {
+                    return { ...applicant }
+                }
+            });
+            const gigRef = doc(firestore, 'gigs', gigData.gigId);
+            await updateDoc(gigRef, { applicants: updatedApplicants });
+            setGigData((prevGigData) => ({
+                ...prevGigData,
+                applicants: updatedApplicants,
+            }));
+            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+            const timestamp = Timestamp.now();
+            await addDoc(messagesRef, {
+                senderId: user.uid,
+                text: `The ${userRole} proposes a new fee of ${newFee}.`,
+                timestamp: timestamp,
+                type: 'negotiation',
+                status: 'pending',
+                oldFee: gigData.budget,
+                newFee: newFee,
+            });
+            const conversationRef = doc(firestore, 'conversations', conversationId);
+            await updateDoc(conversationRef, {
+                lastMessage: `The ${userRole} proposes a new fee of ${newFee}.`,
+                lastMessageTimestamp: timestamp,
+                lastMessageSenderId: user.uid,
+            });
+            setAllowCounterOffer(false);
         } catch (error) {
             console.error('Error sending counter-offer:', error);
         }
     };
-
 
     const handleCompletePayment = async () => {
         setLoadingPaymentDetails(true);
@@ -373,19 +335,18 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
           console.error('Error fetching saved cards:', error);
           alert('Unable to fetch saved cards.');
         } finally {
-            setLoadingPaymentDetails(false);
+          setLoadingPaymentDetails(false);
         }
     };
 
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true)
         try {
-          const amountToCharge = parseInt(gigData.budget.replace('£', '')) * 1.05;
+          const amountToCharge = parseInt(gigData.agreedFee.replace('£', '')) * 1.05;
           const stripeAmount = amountToCharge * 100;
           const gigDate = gigData.date.toDate();
           const confirmPayment = httpsCallable(functions, 'confirmPayment');
           const response = await confirmPayment({ paymentMethodId: cardId, amountToCharge: stripeAmount, gigData, gigDate });
-      
           if (response.data.success) {
             setMakingPayment(false);
             setPaymentSuccess(true);
@@ -393,22 +354,30 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             const gigRef = doc(firestore, 'gigs', activeConversation.gigId);
             const updatedApplicants = gigData.applicants.map(applicant => {
                 if (applicant.id === musicianProfileId) {
-                    return { ...applicant, status: 'Confirmed' };
+                    return { ...applicant, status: 'confirmed' };
                 } else {
                     return { ...applicant };
                 }
             });
-            await updateDoc(gigRef, { applicants: updatedApplicants, transactionId: transactionId, });
+            const musicianProfileRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+            await updateDoc(musicianProfileRef, { confirmedGigs: arrayUnion(activeConversation.gigId) });
+            await updateDoc(gigRef, { applicants: updatedApplicants, transactionId: transactionId, status: 'closed', paid: true });
+            setGigData((prevGigData) => ({
+                ...prevGigData,
+                applicants: updatedApplicants,
+                transactionId: transactionId,
+                status: 'closed',
+                paid: true,
+            }));
             const messagesRef = doc(firestore, 'conversations', conversationId, 'messages', paymentMessageId);
-            const timestamp = Timestamp.now(); // Store the timestamp for reuse
+            const timestamp = Timestamp.now();
             await updateDoc(messagesRef, {
                 senderId: user.uid,
-                text: `The fee of ${gigData.budget} has been paid by the venue. The gig is now confirmed.`,
+                text: `The fee of ${gigData.agreedFee} has been paid by the venue. The gig is now confirmed.`,
                 timestamp: timestamp,
                 type: 'announcement',
                 status: 'gig confirmed',
             });
-            // Update the 'lastMessage' and 'lastMessageTimestamp' in the parent 'conversation' document
             const conversationRef = doc(firestore, 'conversations', conversationId);
             await updateDoc(conversationRef, {
                 lastMessage: `The gig is confirmed.`,
@@ -416,6 +385,32 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 lastMessageSenderId: user.uid,
                 status: 'closed',
             });
+            const conversationsRef = collection(firestore, 'conversations');
+            const otherConversationsQuery = query(
+                conversationsRef,
+                where('gigId', '==', activeConversation.gigId),
+                where('participants', 'array-contains', gigData.venueId),
+                where('conversationId', '!=', conversationId)
+            );
+            const otherConversationsSnapshot = await getDocs(otherConversationsQuery);
+            for (const otherConversation of otherConversationsSnapshot.docs) {
+                const otherConversationId = otherConversation.id;
+                const otherMessagesRef = collection(firestore, 'conversations', otherConversationId, 'messages');
+                await addDoc(otherMessagesRef, {
+                    senderId: user.uid,
+                    text: `This gig has been booked or deleted.`,
+                    timestamp,
+                    type: 'announcement',
+                    status: 'gig booked',
+                });
+                const otherConversationRef = doc(firestore, 'conversations', otherConversationId);
+                await updateDoc(otherConversationRef, {
+                    lastMessage: `This gig has been booked or deleted.`,
+                    lastMessageTimestamp: timestamp,
+                    lastMessageSenderId: user.uid,
+                    status: 'closed',
+                });
+            }
           } else {
             setPaymentSuccess(false);
             setMakingPayment(false);
@@ -427,6 +422,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
           alert('An error occurred while processing the payment. Please try again.');
         }
       };
+
+      console.log(messages)
     
     return (
         <>
@@ -449,14 +446,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         </>
                                     )}
                                     </h4>
-                                {message.status === 'Accepted' ? (
+                                {message.status === 'accepted' ? (
                                     <div className="status-box">
                                         <div className="status confirmed">
                                             <TickIcon />
                                             Accepted
                                         </div>
                                     </div>
-                                ) : message.status === 'Declined' && (
+                                ) : message.status === 'declined' && (
                                     <>
                                     <div className="status-box">
                                         <div className="status rejected">
@@ -486,14 +483,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                         : (message.type === 'application' || message.type === 'invitation') && message.senderId !== user.uid ? (
                             <>
                                 <h4>{message.text}</h4>
-                                {message.status === 'Accepted' ? (
+                                {message.status === 'accepted' ? (
                                     <div className="status-box">
                                         <div className="status confirmed">
                                             <TickIcon />
                                             Accepted
                                         </div>
                                     </div>
-                                ) : message.status === 'Declined' ? (
+                                ) : message.status === 'declined' ? (
                                     <div className="status-box">
                                         <div className="status rejected">
                                             <RejectedIcon />
@@ -517,14 +514,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                             <>
                                 <h4>{message.newFee}</h4>
                                 <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
-                                {message.status === 'Accepted' ? (
+                                {message.status === 'accepted' ? (
                                     <div className="status-box">
                                         <div className="status confirmed">
                                             <TickIcon />
                                             Accepted
                                         </div>
                                     </div>
-                                ) : message.status === 'Declined' && (
+                                ) : message.status === 'declined' && (
                                     <>
                                         <div className="status-box">
                                             <div className="status rejected">
@@ -542,14 +539,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
                                     <h4>{message.newFee}</h4>
                                 </div>
-                                {message.status === 'Accepted' ? (
+                                {message.status === 'accepted' ? (
                                     <div className="status-box">
                                         <div className="status confirmed">
                                             <TickIcon />
                                             Accepted
                                         </div>
                                     </div>
-                                ) : message.status === 'Declined' ? (
+                                ) : message.status === 'declined' ? (
                                     <>
                                         <div className="status-box">
                                             <div className="status rejected">
@@ -652,185 +649,3 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         </>
     );
 };
-{/*
-<div key={message.id} className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' || message.type === 'negotiation-counter' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' ? 'announcement' : ''} ${message.type === 'application-response' ? 'announcement' : ''} ${message.type === 'negotiation-response' ? 'announcement' : ''}`}>
-                         
-                        {message.type === 'negotiation' && message.senderId === user.uid ? (
-                            <>
-                                <h4>{message.newFee}</h4>
-                                <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
-                            </>
-                        ) 
-                        // RECEIVED NEGOTIATION
-                        : message.type === 'negotiation' && message.receiverId === user.uid ? (
-                            <>
-                                <h4>{message.text}</h4>
-                                <div className="fees">
-                                    <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
-                                    <h4>{message.newFee}</h4>
-                                </div>
-                                {message.status === 'Accepted' ? (
-                                    <div className="status-box">
-                                        <div className="status confirmed">
-                                            <TickIcon />
-                                            Accepted
-                                        </div>
-                                    </div>
-                                ) : message.status === 'Declined' ? (
-                                    <div className="status-box">
-                                        <div className="status rejected">
-                                            <RejectedIcon />
-                                            Declined
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="two-buttons">
-                                        <button className="btn accept" onClick={(event) => handleAcceptNegotiation(event, message.id)}>
-                                            Accept
-                                        </button>
-                                        <button className="btn danger" onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.oldFee, message.id, message.senderId)}>
-                                            Decline
-                                        </button>
-                                    </div>
-                                )}
-                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                            </>
-                        )
-                        // SENT NEGOTIATION RESPONSE
-                        : message.type === 'negotiation-response' && message.senderId === user.uid ? (
-                            message.status === 'Accepted' ? (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>The gig application has been accepted.</h4>
-                                </>
-                            ) : (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>The gig application has been declined.</h4>
-                                    {allowCounterOffer && (
-                                        <div className="counter-offer">
-                                            <input
-                                                type="text"
-                                                className="input"
-                                                value={newCounterOffer}
-                                                onChange={(e) => setNewCounterOffer(e.target.value)}
-                                                placeholder="Propose a new fee"
-                                            />
-                                            <button
-                                                className="btn primary"
-                                                onClick={() => handleSendCounterOffer(newCounterOffer)}
-                                            >
-                                                Send Counter Offer
-                                            </button>
-                                        </div>
-                                    )}
-                                </>
-                            )
-                        )
-                        // RECEIVED NEGOTIATION RESPONSE
-                        : message.type === 'negotiation-response' && message.receiverId === user.uid ? (
-                            <>
-                                <h4>{message.text}</h4>
-                                {message.status === 'Accepted' ? (
-                                    <div className="status-box">
-                                        <div className="status confirmed">
-                                            <TickIcon />
-                                            Accepted
-                                        </div>
-                                    </div>
-                                ) : message.status === 'Declined' && (
-                                    <div className="status-box">
-                                        <div className="status rejected">
-                                            <RejectedIcon />
-                                            Declined
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        )
-                        // SENT APPLICATION
-                        : message.type === 'application' && message.senderId === user.uid ? (
-                            <>
-                                <h4>Gig application sent.</h4>
-                            </>
-                        ) 
-                        // RECEIVED APPLICATION RESPONSE
-                        : message.type === 'application-response' && message.receiverId === user.uid ? (
-                            message.status === 'Accepted' ? (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>The gig application has been accepted.</h4>
-                                </>
-                            ) : (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>The gig application has been declined.</h4>
-                                </>
-                            )
-                        ) 
-                        : message.type === 'application-response' && message.receiverId !== user.uid ? (
-                            message.status === 'Accepted' ? (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>The gig application has been accepted.</h4>
-                                </>
-                            ) : (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>The gig application has been declined.</h4>
-                                </>
-                            )
-                        )
-                        // RECEIVED APPLICATION (Visible only to the musician)
-                        : message.type === 'application' && message.senderId !== user.uid ? (
-                            <>
-                                <h4>{message.text}</h4>
-                                {message.status === 'Accepted' ? (
-                                    <div className="status-box">
-                                        <div className="status confirmed">
-                                            <TickIcon />
-                                            Accepted
-                                        </div>
-                                    </div>
-                                ) : message.status === 'Declined' ? (
-                                    <div className="status-box">
-                                        <div className="status rejected">
-                                            <RejectedIcon />
-                                            Declined
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="two-buttons">
-                                        <button className="btn accept" onClick={(event) => handleAcceptGig(event, message.id)}>
-                                            Accept
-                                        </button>
-                                        <button className="btn danger" onClick={(event) => handleDeclineApplication(event, message.id, message.receiverId)}>
-                                            Decline
-                                        </button>
-                                    </div>
-                                )}
-                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                            </>
-                        ) : message.type === 'announcement' ? (
-                            <>
-                            {message.status === 'awaiting payment' && userRole === 'venue' ? (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>{message.text} Please click the button below to pay.</h4>
-                                    <button className="btn primary">
-                                        Complete Payment
-                                    </button>
-                                </>
-                            ) : message.status === 'awaiting payment' && userRole === 'musician' && (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
-                                </>
-                            )}
-                            </>
-                        ) : (
-                            <>
-                                <h4>{message.text}</h4>
-                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                            </>
-                        )} */}

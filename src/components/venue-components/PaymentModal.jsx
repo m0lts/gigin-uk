@@ -57,15 +57,15 @@ export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makin
                             <div className="payment-details">
                                 <div className="payment-line">
                                     <h6>Agreed gig fee:</h6>
-                                    <h3>{gigData.budget}</h3>
+                                    <h3>{gigData.agreedFee}</h3>
                                 </div>
                                 <div className="payment-line">
                                     <h6>Service fee:</h6>
-                                    <h3>£{gigData.budget.replace('£', '') * 0.05}</h3>
+                                    <h3>£{(parseFloat(gigData.agreedFee.replace('£', '')) * 0.05).toFixed(2)}</h3>
                                 </div>
                                 <div className="payment-line">
                                     <h6>Total Payment Due:</h6>
-                                    <h1>£{gigData.budget.replace('£', '') * 1.05}</h1>
+                                    <h1>£{(parseFloat(gigData.agreedFee.replace('£', '')) * 1.05).toFixed(2)}</h1>
                                 </div>
                             </div>
                             <ul className="card-list">

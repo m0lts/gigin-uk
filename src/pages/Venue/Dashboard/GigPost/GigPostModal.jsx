@@ -43,6 +43,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         applicants: [],
         createdAt: new Date(),
         accountName: user.name,
+        status: 'open'
     });
 
     console.log(formData)

@@ -52,10 +52,16 @@
     justify-content: space-between;
     padding: 5px 10px;
     box-shadow: 1px 1px 5px var(--gn-shadow);
+    cursor: pointer;
+    transition: all 200ms linear;
+}
+
+.payment.modal .card-list .card-item:hover {
+    background-color: var(--gn-grey-300);
 }
 
 .payment.modal .card-list .card-item.selected {
-    outline: 2px solid var(--gn-orange);
+    outline: 2px solid var(--gn-grey-600);
     border: 1px solid transparent;
 }
 

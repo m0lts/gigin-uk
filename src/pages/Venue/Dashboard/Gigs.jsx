@@ -22,7 +22,7 @@ export const Gigs = ({ gigs, venues }) => {
         const gigDate = gig.date.toDate();
 
         if (gigDate > now) {
-            const acceptedApplicant = gig.applicants.some(applicant => applicant.status === 'Confirmed');
+            const acceptedApplicant = gig.applicants.some(applicant => applicant.status === 'confirmed');
             if (acceptedApplicant) {
                 return { icon: <TickIcon />, text: 'Confirmed' };
             }
