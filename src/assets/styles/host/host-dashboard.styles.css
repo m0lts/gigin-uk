@@ -1,19 +1,4 @@
 
-.window.dashboard .head {
-    margin: 20px 3rem;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--gn-grey-400);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.window.dashboard .body {
-    margin: 0 3rem;
-    padding-top: 10px;
-}
-
-
 /* OVERVIEW */
 .window.dashboard .overview {
     display: grid;
@@ -529,6 +514,8 @@
     display: grid;
     grid-template-columns: 58.75% 38.75%;
     gap:2.5%;
+    height: 85%;
+    grid-template-rows: repeat(3, 1fr);
 }
 
 .window .body.finances .tile {
@@ -537,6 +524,7 @@
     padding: 0.5rem 1rem;
     border-radius: 1rem;
     box-shadow: 2px 2px 5px var(--gn-shadow);
+    overflow: auto;
 }
 
 .window .body.finances table {

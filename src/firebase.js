@@ -27,6 +27,8 @@ const firestore = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app)
 const functions = getFunctions(app);
-connectFunctionsEmulator(functions, "127.0.0.1", 5001)
+if (window.location.hostname === "localhost") {
+  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+}
 
 export { firestore, auth, storage, functions };

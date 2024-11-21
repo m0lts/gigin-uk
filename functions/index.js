@@ -1,44 +1,42 @@
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
-const {onSchedule} = require("firebase-functions/v2/scheduler")
+const {onTaskDispatched} = require("firebase-functions/v2/tasks");
 const functions = require('firebase-functions');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
+const {getFunctions} = require("firebase-admin/functions")
 const {defineSecret} = require("firebase-functions/params");
 const admin = require('firebase-admin');
 const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
 // const endpointSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+const serviceAccount = require("./service-account.json");
 
-// Load the Stripe library using the secret
 const Stripe = require("stripe");
 
 if (!admin.apps.length) {
-  admin.initializeApp();
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
 }
 
 const db = getFirestore();
 
-// // Create a stripe customer when the user signs up
-// exports.createStripeCustomer = functions.auth.user().onCreate(async (user) => {
-//   try {
-//     const { uid, email } = user; // Extract user ID and email from the event
-
-//     // Create a Stripe customer
-//     const stripe = new Stripe(stripeTestKey.value());
-//     const customer = await stripe.customers.create({ email });
-
-//     // Save the Stripe customer ID to Firestore under the user's document
-//     await db.collection('users').doc(uid).set(
-//       {
-//         stripeCustomerId: customer.id,
-//       },
-//       { merge: true } // Merge to avoid overwriting existing data
-//     );
-
-//     console.log(`Stripe customer created for UID: ${uid}, Customer ID: ${customer.id}`);
-//   } catch (error) {
-//     console.error('Error creating Stripe customer:', error);
-//     throw new functions.https.HttpsError('internal', 'Failed to create Stripe customer');
-//   }
-// });
+exports.createStripeCustomer = functions.auth.user().onCreate(async (user) => {
+  try {
+    const { uid, email } = user;
+    const stripeApiKey = functions.config().stripe.testkey;
+    const stripe = new Stripe(stripeApiKey);
+    const customer = await stripe.customers.create({ email });
+    await db.collection("users").doc(uid).set(
+      {
+        stripeCustomerId: customer.id,
+      },
+      { merge: true }
+    );
+    console.log(`Stripe customer created for UID: ${uid}, Customer ID: ${customer.id}`);
+  } catch (error) {
+    console.error("Error creating Stripe customer:", error);
+    throw new functions.https.HttpsError("internal", "Failed to create Stripe customer");
+  }
+});
 
 
 exports.savePaymentMethod = onCall(
@@ -257,40 +255,138 @@ exports.stripeWebhook = onRequest(
   }
 );
 
-exports.clearPendingFees = onSchedule('every 1 hours', async (event) => {
-  const firestore = getFirestore();
-  const currentTime = Timestamp.now();
+// exports.clearPendingFee = onTaskDispatched(async (event) => {
+//   console.log("Task payload received:", event.data);
+//   const { musicianId, gigId, amount, disputeClearingTime, venueId, gigDate, gigTime } = event.data;
+//   if (!musicianId || !gigId || !disputeClearingTime || !venueId || !gigDate || !gigTime ) {
+//     console.error("Invalid payload received in task.");
+//     return;
+//   }
+//   try {
+//     const firestore = getFirestore();
+//     const musicianProfileRef = firestore.collection("musicianProfiles").doc(musicianId);
+//     const musicianDoc = await musicianProfileRef.get();
+//     if (!musicianDoc.exists) {
+//       throw new Error(`Musician with ID ${musicianId} not found.`);
+//     }
+//     const musicianData = musicianDoc.data();
+//     const pendingFees = musicianData.pendingFees || [];
+//     const clearedFee = pendingFees.find((fee) => fee.gigId === gigId);
+//     if (!clearedFee) {
+//       console.log(`Fee for gig ${gigId} already cleared or not found.`);
+//       return;
+//     }
+//     const gigRef = admin.firestore().collection('gigs').doc(gigId);
+//     const gigDoc = await gigRef.get();
+//     if (!gigDoc.exists) {
+//       console.log(`Gig ${gigId} not found.`);
+//       return;
+//     }
+//     const gigData = gigDoc.data();
+//     if (clearedFee.disputeLogged || gigData.disputeLogged) {
+//       console.log(`Dispute logged for gig ${gigId}`);
+//       return;
+//     }
+      // await gigRef.update({
+      //   musicianFeeStatus: "cleared",
+      // })
+//     const updatedPendingFees = pendingFees.filter((fee) => fee.gigId !== gigId);
+//     const clearedFees = musicianData.clearedFees || [];
+//     const updatedClearedFees = [
+//       ...clearedFees,
+//       { ...clearedFee, feeCleared: true, status: "cleared" },
+//     ];
+//     const totalEarnings = (musicianData.earnings || 0) + amount;
+//     await musicianProfileRef.update({
+//       pendingFees: updatedPendingFees,
+//       clearedFees: updatedClearedFees,
+//       earnings: totalEarnings,
+//     });
+//     console.log(`Fee cleared for musician ${musicianId}, gig ${gigId}.`);
+//   } catch (error) {
+//     console.error("Error clearing fee:", error);
+//     throw new Error("Failed to clear pending fee.");
+//   }
+// });
+
+exports.clearPendingFee = onRequest(
+  {
+    secrets: [stripeTestKey]
+  },
+  async (req, res) => {
+  console.log("Task payload received:", req.body);
+  const { musicianId, gigId, amount, disputeClearingTime, venueId, gigDate, gigTime } = req.body;
+  if (!musicianId || !gigId || !disputeClearingTime || !venueId || !gigDate || !gigTime ) {
+    console.error("Invalid payload received in task.");
+    return;
+  }
+  const stripe = new Stripe(stripeTestKey.value());
+  console.log('api key:', stripeTestKey.value())
   try {
-    const musicianProfilesSnapshot = await firestore.collection('musicianProfiles').get();
-    const batch = firestore.batch();
-    musicianProfilesSnapshot.forEach((musicianDoc) => {
-      const musicianData = musicianDoc.data();
-      const musicianId = musicianDoc.id;
-      const feesToClear = musicianData.pendingFees?.filter((fee) => {
-        return fee.disputePeriod.toMillis() <= currentTime.toMillis() && !fee.disputeLogged;
-      });
-      if (feesToClear && feesToClear.length > 0) {
-        const updatedPendingFees = musicianData.pendingFees.filter((fee) => {
-          return !(fee.disputePeriod.toMillis() <= currentTime.toMillis() && !fee.disputeLogged);
-        });
-        const updatedClearedFees = musicianData.clearedFees
-          ? [...musicianData.clearedFees, ...feesToClear]
-          : [...feesToClear];
-        const totalClearedAmount = feesToClear.reduce((sum, fee) => sum + fee.amount, 0);
-        batch.update(firestore.collection('musicianProfiles').doc(musicianId), {
-          pendingFees: updatedPendingFees,
-          clearedFees: updatedClearedFees,
-          earnings: (musicianData.earnings || 0) + totalClearedAmount,
-        });
-      }
+    const firestore = getFirestore();
+    const musicianProfileRef = firestore.collection("musicianProfiles").doc(musicianId);
+    const musicianDoc = await musicianProfileRef.get();
+    if (!musicianDoc.exists) {
+      throw new Error(`Musician with ID ${musicianId} not found.`);
+    }
+    const musicianData = musicianDoc.data();
+    const stripeAccountId = musicianData.stripeAccountId;
+    if (!stripeAccountId) {
+      throw new Error("Stripe account ID not found for this musician.");
+    }
+    const pendingFees = musicianData.pendingFees || [];
+    const clearedFee = pendingFees.find((fee) => fee.gigId === gigId);
+    if (!clearedFee) {
+      console.log(`Fee for gig ${gigId} already cleared or not found.`);
+      return;
+    }
+    const gigRef = admin.firestore().collection('gigs').doc(gigId);
+    const gigDoc = await gigRef.get();
+    if (!gigDoc.exists) {
+      console.log(`Gig ${gigId} not found.`);
+      return;
+    }
+    const gigData = gigDoc.data();
+    if (clearedFee.disputeLogged || gigData.disputeLogged) {
+      console.log(`Dispute logged for gig ${gigId}`);
+      return;
+    }
+    const transfer = await stripe.transfers.create({
+      amount: Math.round(amount * 100),
+      currency: "gbp",
+      destination: stripeAccountId,
+      metadata: {
+        musicianId,
+        gigId,
+        description: "Gig payout after dispute period",
+      },
     });
-    await batch.commit();
-    console.log('Pending fees cleared successfully and moved to cleared fees.');
+    console.log(`Stripe transfer successful: ${transfer.id}`);
+    await gigRef.update({
+      musicianFeeStatus: "cleared",
+    })
+    const updatedPendingFees = pendingFees.filter((fee) => fee.gigId !== gigId);
+    const clearedFees = musicianData.clearedFees || [];
+    const updatedClearedFees = [
+      ...clearedFees,
+      { ...clearedFee, feeCleared: true, status: "cleared", stripeTransferId: transfer.id },
+    ];
+    const totalEarnings = (musicianData.totalEarnings || 0) + amount;
+    const withdrawableEarnings = (musicianData.withdrawableEarnings || 0) + amount;
+    await musicianProfileRef.update({
+      pendingFees: updatedPendingFees,
+      clearedFees: updatedClearedFees,
+      totalEarnings: totalEarnings,
+      withdrawableEarnings: withdrawableEarnings,
+    });
+    console.log(`Fee cleared for musician ${musicianId}, gig ${gigId}.`);
+    res.status(200).send('Complete');
   } catch (error) {
-    console.error('Error clearing pending fees:', error);
-    throw new Error('Failed to clear pending fees.');
+    console.error("Error clearing fee:", error);
+    throw new Error("Failed to clear pending fee.");
   }
 });
+
 
 const handlePaymentSuccess = async (paymentIntent) => {
   const gigId = paymentIntent.metadata?.gigId;
@@ -331,6 +427,7 @@ const handlePaymentSuccess = async (paymentIntent) => {
       paymentStatus: 'succeeded',
       musicianFeeStatus: 'pending',
       disputeClearingTime: disputePeriodDate,
+      disputeLogged: false,
     });
     const musicianProfileRef = admin.firestore().collection('musicianProfiles').doc(musicianId);
     await musicianProfileRef.update({
@@ -338,7 +435,7 @@ const handlePaymentSuccess = async (paymentIntent) => {
       pendingFees: FieldValue.arrayUnion({
         gigId: gigId,
         venueId: venueId,
-        amount: paymentIntent.amount / 100,
+        amount: parseFloat((parseFloat(gigData.agreedFee.replace('£', '')) * 0.95).toFixed(2)),
         currency: paymentIntent.currency || 'gbp',
         timestamp: timestamp,
         gigDate: gigDate,
@@ -351,6 +448,40 @@ const handlePaymentSuccess = async (paymentIntent) => {
         paymentIntentId: paymentIntent.id,
       }),
     });
+    // const queue = getFunctions().taskQueue("clearPendingFee");
+    // // REPLACE WITH ACTUAL API ENDPOINT
+    // const targetUri = 'http://127.0.0.1:5001/giginltd-16772/us-central1/clearPendingFee';
+    const payload = {
+      musicianId,
+      gigId,
+      venueId,
+      gigDate,
+      gigTime,
+      amount: parseFloat((parseFloat(gigData.agreedFee.replace('£', '')) * 0.95).toFixed(2)),
+      disputeClearingTime: Timestamp.fromDate(disputePeriodDate).toMillis(),
+    };
+    // const disputePeriodDateSimulated = new Date(Date.now() + 1 * 60 * 1000);
+    // await queue.enqueue(
+    //   payload,
+    //   {
+    //     scheduleTime: disputePeriodDateSimulated, // When the task should execute
+    //     dispatchDeadlineSeconds: 60 * 5, // 5 minutes timeout for task execution
+    //     uri: targetUri,
+    //   }
+    // );
+    const response = await fetch("http://127.0.0.1:5001/giginltd-16772/us-central1/clearPendingFee", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed with status ${response.status}: ${errorText}`);
+    }
+    console.log(`Task queued to clear fee for musician ${musicianId} at ${disputePeriodDate}`);
     const conversationsRef = admin.firestore().collection('conversations');
     const conversationsSnapshot = await conversationsRef.where('gigId', '==', gigId).get();
     conversationsSnapshot.forEach(async (conversationDoc) => {
@@ -468,141 +599,139 @@ const handlePaymentFailure = async (failedIntent) => {
   }
 };
 
+exports.stripeAccountSession = onRequest(
+    {secrets: [stripeTestKey]},
+    async (req, res) => {
+      try {
+        const stripe = new Stripe(stripeTestKey.value());
+        const {account} = req.body;
 
+        const accountSession = await stripe.accountSessions.create({
+          account: account,
+          components: {
+            account_onboarding: {enabled: true},
+          },
+        });
 
-// exports.createCheckoutSession = onCall(
-//   { secrets: [stripeTestKey] },
-//   async (request) => {
-//     const { gigId, fee, conversationId } = request.data;
+        res.json({
+          client_secret: accountSession.client_secret,
+        });
+      } catch (error) {
+        console.error(
+            "Error occurred calling the Stripe API to create account session",
+            error,
+        );
+        res.status(500).send({error: error.message});
+      }
+    });
 
-//     try {
-//       // Create the Stripe Checkout session
-//       const stripe = new Stripe(stripeTestKey.value());
-//       const session = await stripe.checkout.sessions.create({
-//         payment_method_types: ['card'],
-//         mode: 'payment',
-//         line_items: [
-//           {
-//             price_data: {
-//               currency: 'gbp', // Change to your preferred currency
-//               product_data: {
-//                 name: `Gig Payment for Gig ID: ${gigId}`,
-//               },
-//               unit_amount: fee, // Amount in cents
-//             },
-//             quantity: 1,
-//           },
-//         ],
-//         metadata: {
-//           gigId, // Pass gig ID for tracking
-//         },
-//         success_url: `https://localhost:5173/payment-success?gigId=${gigId}`,
-//         cancel_url: `http://localhost:5173/messages?conversationId=${conversationId}`,
-//       });
+exports.stripeAccount = onRequest(
+    {secrets: [stripeTestKey]},
+    async (req, res) => {
+      try {
+        const { musicianId } = req.body;
+        if (!musicianId) {
+          res.status(400).send({ error: "Musician ID is required." });
+          return;
+        }
+        const stripe = new Stripe(stripeTestKey.value());
+        const account = await stripe.accounts.create({
+          capabilities: {
+            transfers: {requested: true},
+          },
+          country: "GB",
+          controller: {
+            stripe_dashboard: {
+              type: "none",
+            },
+            fees: {
+              payer: "application",
+            },
+            losses: {
+              payments: "application",
+            },
+            requirement_collection: "application",
+          },
+        });
+        const musicianRef = admin.firestore().collection("musicianProfiles").doc(musicianId);
+        await musicianRef.update({
+          stripeAccountId: account.id,
+        });
+        console.log("Account creation successful");
+        res.json({
+          account: account.id,
+        });
+      } catch (error) {
+        console.error(
+            "Error occurred when calling the Stripe API to create an account",
+            error,
+        );
+        res.status(500).send({error: error.message});
+      }
+    });
 
-//       // Return the session URL to the client
-//       return { url: session.url };
-//     } catch (error) {
-//       console.error('Error creating Stripe Checkout session:', error);
-//       throw new Error('Could not create Stripe Checkout session.');
-//     }
-//   }
-// );
+    exports.payoutToBankAccount = onCall(
+      { secrets: [stripeTestKey] },
+      async (request) => {
+        const stripe = new Stripe(stripeTestKey.value());
+        const { musicianId, amount } = request.data;
+        const { auth } = request;
+        if (!auth) {
+          throw new Error('User must be authenticated.');
+        }
 
-// exports.stripeWebhook = onRequest(async (req, res) => {
-//   const sig = req.headers['stripe-signature'];
-//   const endpointSecret = 'your_webhook_secret';
-//   const stripe = new Stripe(stripeTestKey.value());
+        if (!musicianId || typeof musicianId !== "string" || musicianId.trim() === "") {
+          throw new Error("Invalid musicianId provided.");
+        }
+    
+        if (!amount || amount <= 0) {
+          throw new Error("Invalid amount provided.");
+        }
+    
+        try {
+          const musicianDoc = await admin.firestore().collection("musicianProfiles").doc(musicianId).get();
+          if (!musicianDoc.exists) {
+            throw new Error("Musician profile not found.");
+          }
+    
+          const musicianData = musicianDoc.data();
+          const stripeAccountId = musicianData.stripeAccountId;
+    
+          if (!stripeAccountId) {
+            throw new Error("Stripe account ID not found for this musician.");
+          }
+    
+          const withdrawableEarnings = musicianData.withdrawableEarnings || 0;
+          if (withdrawableEarnings < amount) {
+            throw new Error("Insufficient withdrawable earnings.");
+          }
 
-//   let event;
-//   try {
-//       const body = await rawBody(req); // Ensure the raw body is used
-//       event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
-//   } catch (err) {
-//       console.error('Webhook signature verification failed:', err.message);
-//       return res.status(400).send(`Webhook Error: ${err.message}`);
-//   }
-
-//   if (event.type === 'checkout.session.completed') {
-//       const session = event.data.object;
-
-//       const gigId = session.metadata.gigId;
-
-//       // Update Firestore gig status
-//       const gigRef = admin.firestore().collection('gigs').doc(gigId);
-//       await gigRef.update({
-//           status: 'Confirmed',
-//           paymentStatus: 'Paid',
-//       });
-
-//       console.log(`Gig ${gigId} marked as confirmed.`);
-//   }
-
-//   res.status(200).send('Webhook received');
-// });
-
-// exports.stripeAccountSession = onRequest(
-//     {secrets: [stripeTestKey]},
-//     async (req, res) => {
-//       try {
-//         const stripe = new Stripe(stripeTestKey.value());
-//         const {account} = req.body;
-
-//         const accountSession = await stripe.accountSessions.create({
-//           account: account,
-//           components: {
-//             account_onboarding: {enabled: true},
-//           },
-//         });
-
-//         res.json({
-//           client_secret: accountSession.client_secret,
-//         });
-//       } catch (error) {
-//         console.error(
-//             "Error occurred calling the Stripe API to create account session",
-//             error,
-//         );
-//         res.status(500).send({error: error.message});
-//       }
-//     });
-
-// exports.stripeAccount = onRequest(
-//     {secrets: [stripeTestKey]},
-//     async (req, res) => {
-//       try {
-//         const stripe = new Stripe(stripeTestKey.value());
-//         const account = await stripe.accounts.create({
-//           capabilities: {
-//             transfers: {requested: true},
-//           },
-//           country: "GB",
-//           controller: {
-//             stripe_dashboard: {
-//               type: "none",
-//             },
-//             fees: {
-//               payer: "application",
-//             },
-//             losses: {
-//               payments: "application",
-//             },
-//             requirement_collection: "application",
-//           },
-//         });
-//         console.log(account);
-//         console.log("Account creation successful");
-//         res.json({
-//           account: account.id,
-//         });
-//       } catch (error) {
-//         console.error(
-//             "Error occurred when calling the Stripe API to create an account",
-//             error,
-//         );
-//         res.status(500).send({error: error.message});
-//       }
-//     });
+          const transfer = await stripe.transfers.create({
+            amount: Math.round(amount * 100),
+            currency: "gbp",
+            destination: stripeAccountId,
+            metadata: {
+              musicianId,
+              description: "Payout of withdrawable funds",
+            },
+          });
+    
+          await admin.firestore().collection("musicianProfiles").doc(musicianId).update({
+            withdrawableEarnings: FieldValue.increment(-amount),
+            withdrawals: FieldValue.arrayUnion({
+              amount: amount,
+              status: "complete",
+              timestamp: Timestamp.now(),
+            }),
+          });
+    
+          return { success: true, transferId: transfer.id };
+        } catch (error) {
+          console.error("Error creating payout:", error);
+          throw new Error("Failed to create payout.");
+        }
+      }
+    );
 
 
 

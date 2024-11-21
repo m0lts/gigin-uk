@@ -114,3 +114,17 @@
     background-color: var(--gn-offset-orange);
     color: var(--gn-orange);
 }
+
+.dashboard .head {
+    margin: 20px 3rem;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--gn-grey-400);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dashboard .body {
+    margin: 0 3rem;
+    padding-top: 10px;
+}

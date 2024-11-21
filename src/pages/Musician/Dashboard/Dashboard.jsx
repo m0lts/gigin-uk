@@ -53,7 +53,7 @@ export const MusicianDashboard = () => {
                             <Route path="profile" element={<ProfileTab musicianProfile={musicianProfile} />} />
                             <Route path="gigs" element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} />} />
                             <Route path="bands" element={<Bands />} />
-                            <Route path="finances" element={<Finances />} />
+                            <Route path="finances" element={<Finances musicianProfile={musicianProfile} />} />
                         </Routes>
                     </div>
                 </>

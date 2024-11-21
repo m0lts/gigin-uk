@@ -5,3 +5,52 @@
 .window.musician .profile {
     height: 100%;
 }
+
+.window .body.finances .tile.connect-account {
+    grid-row-start: 2;
+    grid-row-end: 4;
+}
+
+.window .body.finances .tile.your-fees {
+    grid-row-start: 1;
+    grid-row-end: 3;
+}
+
+.window .body.finances .tile.earnings .earnings-flex {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 75%;
+    gap:5%;
+}
+
+.window .body.finances .tile.earnings .earnings-flex .earnings-type {
+    border:2px solid var(--gn-grey-300);
+    border-radius: 1rem;
+    box-shadow: 0 0 10px var(--gn-grey-400);
+    padding:2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.window .body.finances .tile.withdraw .amount {
+    height: 75%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+}
+
+.window .body.finances .tile.connect-account .stripe-window {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.window .body.finances .tile.connect-account .stripe-window h4 {
+    text-align: center;
+}
