@@ -130,7 +130,7 @@ export const Finances = ({ musicianProfile }) => {
                                 onClick={async () => {
                                     setAccountCreatePending(true);
                                     setError(false);
-                                    fetch("http://127.0.0.1:5001/giginltd-16772/us-central1/stripeAccount", {
+                                    fetch("https://stripeaccount-gxujnzd2uq-uc.a.run.app", {
                                     method: "POST",
                                     headers: {
                                         "Content-Type": "application/json",

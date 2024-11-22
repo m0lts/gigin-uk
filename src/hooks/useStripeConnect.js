@@ -7,8 +7,7 @@ export const useStripeConnect = (connectedAccountId) => {
   useEffect(() => {
     if (connectedAccountId) {
       const fetchClientSecret = async () => {
-        // const response = await fetch("https://stripeaccountsession-gxujnzd2uq-uc.a.run.app", {
-          const response = await fetch("http://127.0.0.1:5001/giginltd-16772/us-central1/stripeAccountSession", {
+          const response = await fetch("https://stripeaccountsession-gxujnzd2uq-uc.a.run.app", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
