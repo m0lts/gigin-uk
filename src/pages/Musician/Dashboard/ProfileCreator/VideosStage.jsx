@@ -10,7 +10,14 @@ const VideoModal = ({ video, onClose }) => {
             <div className="modal-content">
                 <span className="close" onClick={onClose}>&times;</span>
                 <video controls autoPlay style={{ width: '100%' }}>
-                    <source src={typeof video.file === 'string' ? video.file : URL.createObjectURL(video.file)} type="video/mp4" />
+                <source
+                    src={
+                        video.file.startsWith("data:video") || video.file.startsWith("http")
+                            ? video.file
+                            : `data:video/mp4;base64,${video.file}`
+                    }
+                    type="video/mp4"
+                />
                     Your browser does not support the video tag.
                 </video>
             </div>
@@ -56,14 +63,36 @@ export const VideosStage = ({ data, onChange }) => {
     const handleFileChange = async (event) => {
         const file = event.target.files[0];
         if (file) {
-            const thumbnail = await generateThumbnail(file);
-            const newVideo = {
-                file,
-                title: file.name,
-                date: new Date(file.lastModified).toISOString().split('T')[0],
-                thumbnail
-            };
-            setVideos((prevVideos) => [...prevVideos, newVideo]);
+            try {
+                // Generate thumbnail
+                const thumbnail = await generateThumbnail(file);
+    
+                // Convert video file to base64
+                const fileToBase64 = (file) => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result.split(",")[1]); // Get the base64 content without the prefix
+                        reader.onerror = () => reject(new Error("Failed to convert file to base64."));
+                        reader.readAsDataURL(file);
+                    });
+                };
+    
+                const fileBase64 = await fileToBase64(file);
+                const thumbnailBase64 = await fileToBase64(thumbnail);
+    
+                // Create new video object with base64 encoded file and thumbnail
+                const newVideo = {
+                    file: fileBase64, // Base64 encoded video file
+                    title: file.name,
+                    date: new Date(file.lastModified).toISOString().split("T")[0],
+                    thumbnail: thumbnailBase64, // Base64 encoded thumbnail
+                };
+    
+                // Add the new video to the videos array
+                setVideos((prevVideos) => [...prevVideos, newVideo]);
+            } catch (error) {
+                console.error("Error processing video file:", error);
+            }
         }
     };
 
@@ -117,7 +146,11 @@ export const VideosStage = ({ data, onChange }) => {
                                     <td onClick={() => openModal(index)} className="video-data">
                                         <div className="video-container">
                                             <img
-                                                src={typeof video.thumbnail === 'string' ? video.thumbnail : URL.createObjectURL(video.thumbnail)}
+                                                src={
+                                                    video.thumbnail.startsWith("data:image") || video.file.startsWith("http")
+                                                        ? video.thumbnail
+                                                        : `data:image/png;base64,${video.thumbnail}`
+                                                }
                                                 alt="Video thumbnail"
                                                 style={{ cursor: 'pointer' }}
                                             />

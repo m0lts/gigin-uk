@@ -243,7 +243,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                             )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <h4>£{user.musicianProfile.withdrawableEarnings ? user.musicianProfile.withdrawableEarnings : '0.00'}</h4>
+                            <h4>£{user.musicianProfile?.withdrawableEarnings ? parseFloat(user.musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h4>
                             <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
                                 <UserIcon />
                             </button>

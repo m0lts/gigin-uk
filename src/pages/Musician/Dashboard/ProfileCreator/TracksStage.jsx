@@ -13,13 +13,31 @@ export const TracksStage = ({ data, onChange }) => {
         onChange('tracks', tracks);
     }, [tracks]);
 
-    const handleFileChange = (event) => {
-        const files = Array.from(event.target.files).map(file => ({
-            file,
-            title: file.name,
-            date: new Date(file.lastModified).toISOString().split('T')[0]
-        }));
-        setTracks((prevTracks) => [...prevTracks, ...files]);
+    const handleFileChange = async (event) => {
+        const files = Array.from(event.target.files);
+    
+        const fileToBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(",")[1]); // Get the base64 content without the prefix
+                reader.onerror = () => reject(new Error("Failed to convert file to base64."));
+                reader.readAsDataURL(file);
+            });
+        };
+    
+        const encodedFiles = await Promise.all(
+            files.map(async (file) => {
+                const base64File = await fileToBase64(file);
+    
+                return {
+                    file: base64File, // Base64 encoded file
+                    title: file.name,
+                    date: new Date(file.lastModified).toISOString().split("T")[0],
+                };
+            })
+        );
+    
+        setTracks((prevTracks) => [...prevTracks, ...encodedFiles]);
     };
 
     const handleTitleChange = (index, newTitle) => {

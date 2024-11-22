@@ -2,7 +2,8 @@ const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {onTaskDispatched} = require("firebase-functions/v2/tasks");
 const functions = require('firebase-functions');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
-const {getFunctions} = require("firebase-admin/functions")
+const {getFunctions} = require("firebase-admin/functions");
+const {getStorage} = require("firebase-admin/storage")
 const {defineSecret} = require("firebase-functions/params");
 const admin = require('firebase-admin');
 const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
@@ -255,59 +256,103 @@ exports.stripeWebhook = onRequest(
   }
 );
 
-// exports.clearPendingFee = onTaskDispatched(async (event) => {
-//   console.log("Task payload received:", event.data);
-//   const { musicianId, gigId, amount, disputeClearingTime, venueId, gigDate, gigTime } = event.data;
-//   if (!musicianId || !gigId || !disputeClearingTime || !venueId || !gigDate || !gigTime ) {
-//     console.error("Invalid payload received in task.");
-//     return;
-//   }
-//   try {
-//     const firestore = getFirestore();
-//     const musicianProfileRef = firestore.collection("musicianProfiles").doc(musicianId);
-//     const musicianDoc = await musicianProfileRef.get();
-//     if (!musicianDoc.exists) {
-//       throw new Error(`Musician with ID ${musicianId} not found.`);
-//     }
-//     const musicianData = musicianDoc.data();
-//     const pendingFees = musicianData.pendingFees || [];
-//     const clearedFee = pendingFees.find((fee) => fee.gigId === gigId);
-//     if (!clearedFee) {
-//       console.log(`Fee for gig ${gigId} already cleared or not found.`);
-//       return;
-//     }
-//     const gigRef = admin.firestore().collection('gigs').doc(gigId);
-//     const gigDoc = await gigRef.get();
-//     if (!gigDoc.exists) {
-//       console.log(`Gig ${gigId} not found.`);
-//       return;
-//     }
-//     const gigData = gigDoc.data();
-//     if (clearedFee.disputeLogged || gigData.disputeLogged) {
-//       console.log(`Dispute logged for gig ${gigId}`);
-//       return;
-//     }
-      // await gigRef.update({
-      //   musicianFeeStatus: "cleared",
-      // })
-//     const updatedPendingFees = pendingFees.filter((fee) => fee.gigId !== gigId);
-//     const clearedFees = musicianData.clearedFees || [];
-//     const updatedClearedFees = [
-//       ...clearedFees,
-//       { ...clearedFee, feeCleared: true, status: "cleared" },
-//     ];
-//     const totalEarnings = (musicianData.earnings || 0) + amount;
-//     await musicianProfileRef.update({
-//       pendingFees: updatedPendingFees,
-//       clearedFees: updatedClearedFees,
-//       earnings: totalEarnings,
-//     });
-//     console.log(`Fee cleared for musician ${musicianId}, gig ${gigId}.`);
-//   } catch (error) {
-//     console.error("Error clearing fee:", error);
-//     throw new Error("Failed to clear pending fee.");
-//   }
-// });
+exports.clearPendingFee = onTaskDispatched(
+  { secrets: [stripeTestKey] },
+  async (event) => {
+    console.log("Task payload received:", event.data);
+    const { musicianId, gigId, amount, disputeClearingTime, venueId, gigDate, gigTime } = event.data;
+
+    // Validate payload
+    if (!musicianId || !gigId || !disputeClearingTime || !venueId || !gigDate || !gigTime || !amount) {
+      console.error("Invalid payload received in task.");
+      throw new Error("Invalid payload received.");
+    }
+
+    const stripe = new Stripe(stripeTestKey.value());
+    try {
+      const firestore = getFirestore();
+      const musicianProfileRef = firestore.collection("musicianProfiles").doc(musicianId);
+      const musicianDoc = await musicianProfileRef.get();
+
+      // Validate musician profile
+      if (!musicianDoc.exists) {
+        throw new Error(`Musician with ID ${musicianId} not found.`);
+      }
+
+      const musicianData = musicianDoc.data();
+      const stripeAccountId = musicianData.stripeAccountId;
+      const pendingFees = musicianData.pendingFees || [];
+      const clearedFee = pendingFees.find((fee) => fee.gigId === gigId);
+
+      // Validate pending fees
+      if (!clearedFee) {
+        console.log(`Fee for gig ${gigId} already cleared or not found.`);
+        return;
+      }
+
+      const gigRef = firestore.collection("gigs").doc(gigId);
+      const gigDoc = await gigRef.get();
+
+      // Validate gig data
+      if (!gigDoc.exists) {
+        console.log(`Gig ${gigId} not found.`);
+        return;
+      }
+
+      const gigData = gigDoc.data();
+      if (clearedFee.disputeLogged || gigData.disputeLogged) {
+        console.log(`Dispute logged for gig ${gigId}`);
+        return;
+      }
+
+      let stripeTransferId = null;
+
+      // If Stripe account exists, perform transfer
+      if (stripeAccountId) {
+        const transfer = await stripe.transfers.create({
+          amount: Math.round(amount * 100),
+          currency: "gbp",
+          destination: stripeAccountId,
+          metadata: {
+            musicianId,
+            gigId,
+            description: "Gig fee transferred after dispute period cleared",
+          },
+        });
+        console.log(`Stripe transfer successful: ${transfer.id}`);
+        stripeTransferId = transfer.id;
+      } else {
+        console.log(`Musician ${musicianId} has no Stripe account. Skipping transfer.`);
+      }
+
+      // Update Firestore with cleared fee and musician data
+      await gigRef.update({
+        musicianFeeStatus: "cleared",
+      });
+
+      const updatedPendingFees = pendingFees.filter((fee) => fee.gigId !== gigId);
+      const clearedFees = musicianData.clearedFees || [];
+      const updatedClearedFees = [
+        ...clearedFees,
+        { ...clearedFee, feeCleared: true, status: "cleared", stripeTransferId },
+      ];
+      const totalEarnings = (musicianData.totalEarnings || 0) + amount;
+      const withdrawableEarnings = (musicianData.withdrawableEarnings || 0) + amount;
+
+      await musicianProfileRef.update({
+        pendingFees: updatedPendingFees,
+        clearedFees: updatedClearedFees,
+        totalEarnings: totalEarnings,
+        withdrawableEarnings: withdrawableEarnings,
+      });
+
+      console.log(`Fee cleared for musician ${musicianId}, gig ${gigId}.`);
+    } catch (error) {
+      console.error("Error clearing fee:", error);
+      throw new Error("Failed to clear pending fee.");
+    }
+  }
+);
 
 exports.clearPendingFee = onRequest(
   {
@@ -316,12 +361,12 @@ exports.clearPendingFee = onRequest(
   async (req, res) => {
   console.log("Task payload received:", req.body);
   const { musicianId, gigId, amount, disputeClearingTime, venueId, gigDate, gigTime } = req.body;
-  if (!musicianId || !gigId || !disputeClearingTime || !venueId || !gigDate || !gigTime ) {
+  if (!musicianId || !gigId || !disputeClearingTime || !venueId || !gigDate || !gigTime || !amount) {
     console.error("Invalid payload received in task.");
+    res.status(400).json({ error: "Invalid payload received." });
     return;
   }
   const stripe = new Stripe(stripeTestKey.value());
-  console.log('api key:', stripeTestKey.value())
   try {
     const firestore = getFirestore();
     const musicianProfileRef = firestore.collection("musicianProfiles").doc(musicianId);
@@ -331,9 +376,6 @@ exports.clearPendingFee = onRequest(
     }
     const musicianData = musicianDoc.data();
     const stripeAccountId = musicianData.stripeAccountId;
-    if (!stripeAccountId) {
-      throw new Error("Stripe account ID not found for this musician.");
-    }
     const pendingFees = musicianData.pendingFees || [];
     const clearedFee = pendingFees.find((fee) => fee.gigId === gigId);
     if (!clearedFee) {
@@ -351,17 +393,24 @@ exports.clearPendingFee = onRequest(
       console.log(`Dispute logged for gig ${gigId}`);
       return;
     }
-    const transfer = await stripe.transfers.create({
-      amount: Math.round(amount * 100),
-      currency: "gbp",
-      destination: stripeAccountId,
-      metadata: {
-        musicianId,
-        gigId,
-        description: "Gig payout after dispute period",
-      },
-    });
-    console.log(`Stripe transfer successful: ${transfer.id}`);
+    let stripeTransferId = null;
+    if (stripeAccountId) {
+      // Only attempt a transfer if Stripe account is set up
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(amount * 100),
+        currency: "gbp",
+        destination: stripeAccountId,
+        metadata: {
+          musicianId,
+          gigId,
+          description: "Gig fee transferred after dispute period cleared",
+        },
+      });
+      console.log(`Stripe transfer successful: ${transfer.id}`);
+      stripeTransferId = transfer.id;
+    } else {
+      console.log(`Musician ${musicianId} has no Stripe account. Skipping transfer.`);
+    }
     await gigRef.update({
       musicianFeeStatus: "cleared",
     })
@@ -369,7 +418,7 @@ exports.clearPendingFee = onRequest(
     const clearedFees = musicianData.clearedFees || [];
     const updatedClearedFees = [
       ...clearedFees,
-      { ...clearedFee, feeCleared: true, status: "cleared", stripeTransferId: transfer.id },
+      { ...clearedFee, feeCleared: true, status: "cleared", stripeTransferId },
     ];
     const totalEarnings = (musicianData.totalEarnings || 0) + amount;
     const withdrawableEarnings = (musicianData.withdrawableEarnings || 0) + amount;
@@ -383,7 +432,7 @@ exports.clearPendingFee = onRequest(
     res.status(200).send('Complete');
   } catch (error) {
     console.error("Error clearing fee:", error);
-    throw new Error("Failed to clear pending fee.");
+    res.status(500).json({ error: "Failed to clear pending fee.", details: error.message });
   }
 });
 
@@ -469,6 +518,7 @@ const handlePaymentSuccess = async (paymentIntent) => {
     //     uri: targetUri,
     //   }
     // );
+    console.log('payload', payload);
     const response = await fetch("http://127.0.0.1:5001/giginltd-16772/us-central1/clearPendingFee", {
       method: "POST",
       headers: {
@@ -654,10 +704,31 @@ exports.stripeAccount = onRequest(
           },
         });
         const musicianRef = admin.firestore().collection("musicianProfiles").doc(musicianId);
-        await musicianRef.update({
-          stripeAccountId: account.id,
-        });
-        console.log("Account creation successful");
+        const musicianDoc = await musicianRef.get();
+        if (!musicianDoc.exists) {
+          throw new Error("Musician profile not found.");
+        }
+        const musicianData = musicianDoc.data();
+        const withdrawableEarnings = musicianData.withdrawableEarnings || 0;
+        await musicianRef.update({ stripeAccountId: account.id });
+        if (withdrawableEarnings > 0) {
+          console.log(
+            `Transferring £${withdrawableEarnings} to Stripe account ${account.id}`
+          );
+          await stripe.transfers.create({
+            amount: Math.round(withdrawableEarnings * 100),
+            currency: "gbp",
+            destination: account.id,
+            metadata: {
+              musicianId,
+              description: "Transfer of existing earnings to Stripe Connect account",
+            },
+          });
+          console.log(`Successfully transferred £${withdrawableEarnings}.`);
+          await musicianRef.update({
+            withdrawableEarnings: 0,
+          });
+        }
         res.json({
           account: account.id,
         });
@@ -706,15 +777,17 @@ exports.stripeAccount = onRequest(
             throw new Error("Insufficient withdrawable earnings.");
           }
 
-          const transfer = await stripe.transfers.create({
-            amount: Math.round(amount * 100),
-            currency: "gbp",
-            destination: stripeAccountId,
-            metadata: {
-              musicianId,
-              description: "Payout of withdrawable funds",
+          const payout = await stripe.payouts.create(
+            {
+              amount: Math.round(amount * 100),
+              currency: "gbp",
+              metadata: {
+                musicianId,
+                description: "Payout of withdrawable funds",
+              },
             },
-          });
+            { stripeAccount: stripeAccountId }
+          );
     
           await admin.firestore().collection("musicianProfiles").doc(musicianId).update({
             withdrawableEarnings: FieldValue.increment(-amount),
@@ -722,16 +795,100 @@ exports.stripeAccount = onRequest(
               amount: amount,
               status: "complete",
               timestamp: Timestamp.now(),
+              stripePayoutId: payout.id,
             }),
           });
     
-          return { success: true, transferId: transfer.id };
+          return { success: true, payoutId: payout.id };
         } catch (error) {
           console.error("Error creating payout:", error);
           throw new Error("Failed to create payout.");
         }
       }
     );
+
+    exports.uploadMediaFiles = onCall(async (request) => {
+      const { musicianId, mediaFiles } = request.data;
+    
+      if (!musicianId || !mediaFiles || !Array.isArray(mediaFiles)) {
+        throw new Error("Invalid payload: musicianId and mediaFiles are required.");
+      }
+    
+      try {
+        const firestore = getFirestore();
+        const bucket = admin.storage().bucket("giginltd-16772.firebasestorage.app"); // Explicit bucket name
+        const videoUpdates = [];
+        const trackUpdates = [];
+    
+        for (const media of mediaFiles) {
+          const { title, file, thumbnail, contentType, type, date } = media;
+
+          if (!file) {
+            throw new Error(`Invalid file for media "${title}". File data is required.`);
+          }
+    
+          const fileBuffer = Buffer.from(file, "base64");
+          const mediaRef = bucket.file(`musicians/${musicianId}/${type}/${title}`);
+          await mediaRef.save(fileBuffer, { contentType });
+          const mediaUrl = `https://storage.googleapis.com/${bucket.name}/${mediaRef.name}`;
+
+          let thumbnailUrl = null;
+
+          // Decode base64 and save the thumbnail if it's a video
+          if (type === "video" && thumbnail) {
+            const thumbnailBuffer = Buffer.from(thumbnail, "base64");
+            const thumbnailRef = bucket.file(`musicians/${musicianId}/${type}/thumbnails/${title}_thumbnail`);
+            await thumbnailRef.save(thumbnailBuffer, { contentType: "image/png" });
+            thumbnailUrl = `https://storage.googleapis.com/${bucket.name}/${thumbnailRef.name}`;
+          }
+
+
+          if (type === "video") {
+            videoUpdates.push({
+              title,
+              file: mediaUrl,
+              thumbnail: thumbnailUrl,
+              date,
+            });
+          } else if (type === "track") {
+            trackUpdates.push({
+              title,
+              file: mediaUrl,
+              date,
+            });
+          }
+        }
+    
+        // Update Firestore with the URLs
+        const musicianRef = firestore.collection("musicianProfiles").doc(musicianId);
+        const musicianDoc = await musicianRef.get();
+        if (!musicianDoc.exists) {
+          throw new Error("Musician profile does not exist.");
+        }
+
+        const currentData = musicianDoc.data();
+        const updatedVideos = (currentData.videos || []).map((video) => {
+          const match = videoUpdates.find((v) => v.title === video.title && video.file === "uploading...");
+          return match ? { ...match } : video;
+        });
+
+        const updatedTracks = (currentData.tracks || []).map((track) => {
+          const match = trackUpdates.find((t) => t.title === track.title && track.file === "uploading...");
+          return match ? { ...match } : track;
+        });
+
+        // Update Firestore with the new URLs replacing placeholders
+        await musicianRef.update({
+          videos: updatedVideos,
+          tracks: updatedTracks,
+        });
+
+        return { success: true, updates: updatePayload };
+      } catch (error) {
+        console.error("Error uploading media files:", error);
+        throw new Error("Failed to upload media files.");
+      }
+    });
 
 
 

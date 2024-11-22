@@ -107,15 +107,15 @@ export const Finances = ({ musicianProfile }) => {
                     <div className="earnings-flex">
                         <div className="earnings-type withdrawable">
                             <h6>Withdrawable Funds:</h6>
-                            <h2>£{musicianProfile.withdrawableEarnings}</h2>
+                            <h2>£{parseFloat(musicianProfile.withdrawableEarnings).toFixed(2)}</h2>
                         </div>
                         <div className="earnings-type total">
                             <h6>Total Earnings:</h6>
-                            <h1>£{musicianProfile.totalEarnings}</h1>
+                            <h1>£{parseFloat(musicianProfile.totalEarnings).toFixed(2)}</h1>
                         </div>
                         <div className="earnings-type pending">
                             <h6>Pending Funds:</h6>
-                            <h2>£{pendingTotal}</h2>
+                            <h2>£{parseFloat(pendingTotal).toFixed(2)}</h2>
                         </div>
                     </div>
                 </div>
@@ -218,7 +218,7 @@ export const Finances = ({ musicianProfile }) => {
                 <div className="tile withdraw">
                     <h2>Withdraw to bank account</h2>
                     <div className="amount">
-                        <h1>£{musicianProfile.withdrawableEarnings}</h1>
+                        <h1>£{parseFloat(musicianProfile.withdrawableEarnings).toFixed(2)}</h1>
                         <button className="btn primary-alt" onClick={handlePayout}>
                             Withdraw Funds
                         </button>

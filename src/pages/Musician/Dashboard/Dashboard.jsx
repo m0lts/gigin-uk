@@ -5,7 +5,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { LoadingScreen } from "/components/ui/loading/LoadingScreen";
 import '/styles/musician/musician-dashboard.styles.css'
 import { ProfileTab } from "./Profile/ProfileTab";
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, onSnapshot } from "firebase/firestore";
 import { firestore } from "../../../firebase";
 import { ProfileCreator } from "./ProfileCreator/ProfileCreator";
 import { Gigs } from "./Gigs";
@@ -24,21 +24,46 @@ export const MusicianDashboard = () => {
     const [gigApplications, setGigApplications] = useState([]);
 
     useEffect(() => {
-        const fetchMusicianData = async () => {
-            if (!user) return;
+        if (!user) return;
+    
+        const fetchMusicianData = () => {
             setLoadingData(true);
-
+    
+            // Check if the user has a musician profile
             if (!user.musicianProfile) {
                 navigate('/musician/create-musician-profile');
                 setLoadingData(false);
+                return;
             }
-
-            setMusicianProfile(user.musicianProfile);
-            setGigApplications(user.musicianProfile.gigApplications ? user.musicianProfile.gigApplications : []);
-            setLoadingData(false);
+    
+            // Reference to the musician profile document in Firestore
+            const musicianRef = doc(firestore, 'musicianProfiles', user.musicianProfile.musicianId);
+    
+            // Listen for real-time updates
+            const unsubscribe = onSnapshot(musicianRef, (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                    const musicianData = docSnapshot.data();
+                    setMusicianProfile(musicianData);
+                    setGigApplications(musicianData.gigApplications ? musicianData.gigApplications : []);
+                } else {
+                    console.warn("Musician profile does not exist.");
+                    setMusicianProfile(null);
+                    setGigApplications([]);
+                }
+                setLoadingData(false);
+            }, (error) => {
+                console.error("Error fetching musician profile:", error);
+                setLoadingData(false);
+            });
+    
+            // Cleanup the listener on unmount
+            return unsubscribe;
         };
     
-        fetchMusicianData();
+        const unsubscribe = fetchMusicianData();
+    
+        // Cleanup function for the effect
+        return () => unsubscribe && unsubscribe();
     }, [user]);
 
 

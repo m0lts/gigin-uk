@@ -19,6 +19,7 @@ import {
     faTurntable,
     faLightbulb
 } from '@fortawesome/pro-light-svg-icons';
+import { LoadingThreeDots } from "../../../../components/ui/loading/Loading";
 
 const VideoModal = ({ video, onClose }) => {
     return (
@@ -111,17 +112,26 @@ export const OverviewTab = ({musicianData}) => {
                     <h2>Watch</h2>
                     <div className="box-style video-thumbnail" onClick={() => openModal()}>
                         {musicianData.videos && musicianData.videos.length > 0 ? (
-                            <>
-                                <img src={musicianData.videos[0].thumbnail} alt="Video Thumbnail" />
-                                <div className="title-and-date">
-                                    <h3>{musicianData.videos[0].title}</h3>
-                                    <h6>{formatVideoDate(musicianData.videos[0].date)}</h6>
-                                </div>
-                            </>
+                            musicianData.videos[0].thumbnail === 'uploading...' ? (
+                                <>
+                                    <h3>Uploading your videos...</h3>
+                                    <LoadingThreeDots />
+                                </>
+                            ) : (
+                                <>
+                                    <img src={musicianData.videos[0].thumbnail} alt="Video Thumbnail" />
+                                    <div className="title-and-date">
+                                        <h3>{musicianData.videos[0].title}</h3>
+                                        <h6>{formatVideoDate(musicianData.videos[0].date)}</h6>
+                                    </div>
+                                </>
+                            )
                         ) : (
                             <p>No videos available.</p>
                         )}
-                        <PlayIcon />
+                        {musicianData.videos[0].thumbnail !== 'uploading...' && (
+                            <PlayIcon />
+                        )}
                     </div>
                 </div>
                 <div className="info-box">

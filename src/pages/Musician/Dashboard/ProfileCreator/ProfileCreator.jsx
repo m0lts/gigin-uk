@@ -6,6 +6,8 @@ import { ProgressBar } from './ProgressBar';
 import { storage, firestore } from "../../../../firebase";
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, arrayUnion, deleteDoc, arrayRemove } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../../../firebase';
 
 import '/styles/musician/profile-creator.styles.css'
 
@@ -40,7 +42,7 @@ export const ProfileCreator = () => {
         musicianId: uuidv4(),
         name: '',
         picture: '',
-        location: { city: '', coordinates: [], travelDistance: '' },
+        location: { city: 'Cambridge', coordinates: [52.1951, 0.1313], travelDistance: '' },
         musicianType: '',
         genres: [],
         musicType: '',
@@ -231,62 +233,63 @@ export const ProfileCreator = () => {
 
     const handleSubmit = async () => {
         setUploadingProfile(true);
-        setVideoUploadProgress(0);
-        setTrackUploadProgress(0);
         try {
-            const pictureFile = formData.picture;
-            const pictureUrl = await uploadProfilePictureToFirebaseStorage(pictureFile, formData.musicianId);
-
-            const videoResults = await uploadVideosToFirebaseStorage(formData.videos, formData.musicianId, 'videos', setVideoUploadProgress);
-
-            // Create an array of video metadata with URLs
-            const videoMetadata = formData.videos.map((video, index) => ({
-                date: video.date,
-                title: video.title,
-                file: videoResults[index].videoUrl,
-                thumbnail: videoResults[index].thumbnailUrl,
-            }));
-
-            const trackUrls = await uploadTracksToFirebaseStorage(formData.tracks, formData.musicianId, 'tracks', setTrackUploadProgress);
-
-            
-            // Create an array of track metadata with URLs
-            const trackMetadata = formData.tracks.map((track, index) => ({
-                date: track.date,
-                title: track.title,
-                file: trackUrls[index], // Attach the corresponding URL
-            }));
-            
-            const updatedFormData = {
-                ...formData,
-                picture: pictureUrl, // Store as a string
-                videos: videoMetadata, // Store as an array of metadata objects
-                tracks: trackMetadata, // Store as an array of metadata objects
-                completed: true,
-            };
-
-            const musicianRef = doc(firestore, 'musicianProfiles', formData.musicianId);
-            await setDoc(musicianRef, {
-                ...updatedFormData,
-                userId: user.uid,
-            }, { merge: true });
-
-            const userRef = doc(firestore, 'users', user.uid);
-            await updateDoc(userRef, {
-                musicianProfile: arrayUnion(formData.musicianId),
-            });
-
-            navigate('/dashboard');
-            window.location.reload();
-            setUploadingProfile(false);
-
+          const pictureFile = formData.picture;
+          const pictureUrl = await uploadProfilePictureToFirebaseStorage(pictureFile, formData.musicianId);
+          const videoFiles = formData.videos.map((video) => ({
+            title: video.title,
+            file: video.file,
+            thumbnail: video.thumbnail,
+            contentType: "video/mp4",
+            type: "video",
+            date: video.date,
+        }));
+        const trackFiles = formData.tracks.map((track) => ({
+            title: track.title,
+            file: track.file,
+            contentType: "audio/mpeg",
+            type: "track",
+            date: track.date,
+        }));
+          const placeholderVideos = formData.videos.map((video) => ({
+            ...video,
+            file: "uploading...",
+            thumbnail: "uploading...",
+        }));
+        const placeholderTracks = formData.tracks.map((track) => ({
+            ...track,
+            file: "uploading...",
+        }));
+          const updatedFormData = {
+            ...formData,
+            picture: pictureUrl,
+            videos: placeholderVideos,
+            tracks: placeholderTracks,
+            completed: true,
+          };
+          const musicianRef = doc(firestore, 'musicianProfiles', formData.musicianId);
+          await setDoc(musicianRef, {
+            ...updatedFormData,
+            userId: user.uid,
+          }, { merge: true });
+          const userRef = doc(firestore, 'users', user.uid);
+          await updateDoc(userRef, {
+            musicianProfile: arrayUnion(formData.musicianId),
+          });
+          const uploadMediaFunction = httpsCallable(functions, "uploadMediaFiles");
+          uploadMediaFunction({
+            musicianId: formData.musicianId,
+            mediaFiles: [...videoFiles, ...trackFiles],
+          });
+          navigate('/dashboard');
+          setUploadingProfile(false);
         } catch (error) {
-            setUploadingProfile(false);
-            console.error('Error uploading files or creating musician profile: ', error);
+          console.error("Error saving musician profile:", error);
+          setUploadingProfile(false);
         }
-    };
+      };
 
-    const handleSaveAndExit = async () => {
+      const handleSaveAndExit = async () => {
         setSavingProfile(true);
         if (formData.name === '') {
             navigate('/find-a-gig');
@@ -295,7 +298,6 @@ export const ProfileCreator = () => {
         }
         try {
             let updatedFormData;
-    
             if (formData.completed) {
                 updatedFormData = {
                     ...formData,
@@ -309,49 +311,60 @@ export const ProfileCreator = () => {
                     completed: false,
                 };
             }
-    
             const pictureFile = formData.picture;
             const pictureUrl = await uploadProfilePictureToFirebaseStorage(pictureFile, formData.musicianId);
             updatedFormData.picture = pictureUrl;
-    
-            // Upload videos and create metadata
-            const videoResults = await uploadVideosToFirebaseStorage(formData.videos, formData.musicianId, 'videos');
-            const videoMetadata = formData.videos.map((video, index) => ({
-                date: video.date,
+            const videoFilesToUpload = formData.videos.filter((video) => !video.file.startsWith("http"));
+            const videosWithExistingUrls = formData.videos.filter((video) => video.file.startsWith("http"));
+            const videoFiles = videoFilesToUpload.map((video) => ({
                 title: video.title,
-                file: videoResults[index].videoUrl,
-                thumbnail: videoResults[index].thumbnailUrl,
+                file: video.file,
+                thumbnail: video.thumbnail,
+                contentType: "video/mp4",
+                type: "video",
+                date: video.date,
             }));
-            updatedFormData.videos = videoMetadata;
-
-            // Upload tracks and create metadata
-            const trackUrls = await uploadTracksToFirebaseStorage(formData.tracks, formData.musicianId, 'tracks');
-            const trackMetadata = formData.tracks.map((track, index) => ({
-                date: track.date,
+            const placeholderVideos = videoFilesToUpload.map((video) => ({
+                ...video,
+                file: "uploading...",
+                thumbnail: "uploading...",
+            }));
+            const trackFilesToUpload = formData.tracks.filter((track) => !track.file.startsWith("http"));
+            const tracksWithExistingUrls = formData.tracks.filter((track) => track.file.startsWith("http"));
+            const trackFiles = trackFilesToUpload.map((track) => ({
                 title: track.title,
-                file: trackUrls[index], // Attach the corresponding URL
+                file: track.file,
+                contentType: "audio/mpeg",
+                type: "track",
+                date: track.date,
             }));
-            updatedFormData.tracks = trackMetadata;    
-            
+            const placeholderTracks = trackFilesToUpload.map((track) => ({
+                ...track,
+                file: "uploading...",
+            }));
+            updatedFormData.videos = [...placeholderVideos, ...videosWithExistingUrls];
+            updatedFormData.tracks = [...placeholderTracks, ...tracksWithExistingUrls];
             const musicianRef = doc(firestore, 'musicianProfiles', formData.musicianId);
             await setDoc(musicianRef, {
                 ...updatedFormData,
                 userId: user.uid,
             }, { merge: true });
-    
+            const uploadMediaFunction = httpsCallable(functions, "uploadMediaFiles");
+            uploadMediaFunction({
+                musicianId: formData.musicianId,
+                mediaFiles: [...videoFiles, ...trackFiles],
+            });
             if (updatedFormData.completed) {
-                navigate('/dashboard')
+                navigate('/dashboard');
             } else {
                 navigate('/find-a-gig');
             }
             setSavingProfile(false);
-    
         } catch (error) {
             console.error('Error uploading files or saving musician profile: ', error);
             setSavingProfile(false);
         }
     };
-
 
     const stages = [
         <div className='stage intro'>
@@ -379,12 +392,6 @@ export const ProfileCreator = () => {
             {uploadingProfile ? (
                 <div className='loading-state'>
                     <h1>Creating your musician profile...</h1>
-                    <h3>Uploading videos: {videoUploadProgress}%</h3>
-                    <progress value={videoUploadProgress} max="100"></progress>
-                    
-                    <h3>Uploading tracks: {trackUploadProgress}%</h3>
-                    <progress value={trackUploadProgress} max="100"></progress>
-                    
                     <LoadingThreeDots />
                 </div>
             ) : savingProfile ? (

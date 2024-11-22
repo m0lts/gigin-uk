@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlayIcon } from "../../../../components/ui/Extras/Icons";
+import { LoadingThreeDots } from "../../../../components/ui/loading/Loading";
 
 const VideoModal = ({ video, onClose }) => {
     return (
@@ -45,22 +46,29 @@ export const MusicTab = ({ videos, tracks }) => {
                 <h2>Watch</h2>
                 <div className="videos-carousel">
                     {videos && videos.map((video, index) => (
-                        <div key={index} className="video-item">
-                            <div 
-                                className="video-thumbnail-container" 
-                                onClick={() => openModal(index)} 
-                            >
-                                <img 
-                                    src={video.thumbnail} 
-                                    alt={`Thumbnail for ${video.title}`} 
-                                />
-                                <PlayIcon />
+                        video.file === 'uploading...' ? (
+                            <div key={index} className="uploading-videos">
+                                <h4>Uploading your videos...</h4>
+                                <LoadingThreeDots />
                             </div>
-                            <div className="video-title-and-date">
-                                <h4>{video.title}</h4>
-                                <h6>{formatVideoDate(video.date)}</h6>
+                        ) : (
+                            <div key={index} className="video-item">
+                                <div 
+                                    className="video-thumbnail-container" 
+                                    onClick={() => openModal(index)} 
+                                >
+                                    <img 
+                                        src={video.thumbnail} 
+                                        alt={`Thumbnail for ${video.title}`} 
+                                    />
+                                    <PlayIcon />
+                                </div>
+                                <div className="video-title-and-date">
+                                    <h4>{video.title}</h4>
+                                    <h6>{formatVideoDate(video.date)}</h6>
+                                </div>
                             </div>
-                        </div>
+                        )
                     ))}
                 </div>
             </div>
@@ -68,33 +76,40 @@ export const MusicTab = ({ videos, tracks }) => {
                 <h2>Listen</h2>
                 <div className="tracks-table">
                     {tracks && tracks.map((track, index) => (
-                        <div key={index} className="track-item">
-                            {currentTrackIndex === index ? (
-                                <audio 
-                                    controls 
-                                    autoPlay 
-                                    onEnded={() => setCurrentTrackIndex(null)}
-                                >
-                                    <source src={track.file} type="audio/mpeg" />
-                                    Your browser does not support the audio element.
-                                </audio>
-                            ) : (
-                                <>
-                                    <div className="track-play-and-title">
-                                        <button 
-                                            onClick={() => playTrack(index)} 
-                                            className="btn icon"
-                                        >
-                                            <PlayIcon />
-                                        </button>
-                                        <h4>{track.title}</h4>
-                                    </div>
-                                    <div className="track-date">
-                                        <h6>{track.date}</h6>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                        track.file === 'uploading...' ? (
+                            <div key={index} className="uploading-tracks">
+                                <h4>Uploading your tracks...</h4>
+                                <LoadingThreeDots />
+                            </div>
+                        ) : (
+                            <div key={index} className="track-item">
+                                {currentTrackIndex === index ? (
+                                    <audio 
+                                        controls 
+                                        autoPlay 
+                                        onEnded={() => setCurrentTrackIndex(null)}
+                                    >
+                                        <source src={track.file} type="audio/mpeg" />
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                ) : (
+                                    <>
+                                        <div className="track-play-and-title">
+                                            <button 
+                                                onClick={() => playTrack(index)} 
+                                                className="btn icon"
+                                            >
+                                                <PlayIcon />
+                                            </button>
+                                            <h4>{track.title}</h4>
+                                        </div>
+                                        <div className="track-date">
+                                            <h6>{track.date}</h6>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )
                     ))}
                 </div>
             </div>
