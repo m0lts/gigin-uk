@@ -12,7 +12,12 @@
       ],
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run lint"
-      ]
+      ],
+      "taskQueueWorkers": {
+        "clearPendingFee": {
+          "region": "europe-west3"
+        }
+      }
     }
   ],
   "emulators": {

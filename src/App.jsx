@@ -48,10 +48,6 @@ export default function App() {
     }
   }, [location.pathname]);
 
-  useEffect(() => {
-    console.log(user)
-  }, [user])
-
 
   if (loading) {
     return <LoadingScreen />;

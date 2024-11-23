@@ -1,5 +1,6 @@
 const {onRequest, onCall} = require("firebase-functions/v2/https");
 const functions = require("firebase-functions");
+const {onTaskDispatched} = require("firebase-functions/v2/tasks");
 const {
   getFirestore,
   Timestamp,
@@ -7,14 +8,16 @@ const {
 } = require("firebase-admin/firestore");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const {getFunctions} = require("firebase-admin/functions");
 const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
 // const endpointSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
-const serviceAccount = require("./service-account.json");
+// const serviceAccount = require("./service-account.json");
 const Stripe = require("stripe");
+const cors = require("cors")({origin: true});
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.applicationDefault(),
   });
 }
 
@@ -43,7 +46,11 @@ functions.auth.user().onCreate(async (user) => {
 });
 
 exports.savePaymentMethod = onCall(
-    {secrets: [stripeTestKey]},
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
     async (request) => {
       const {paymentMethodId} = request.data;
       if (!request.auth) {
@@ -72,7 +79,11 @@ exports.savePaymentMethod = onCall(
     });
 
 exports.getSavedCards = onCall(
-    {secrets: [stripeTestKey]},
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
     async (request) => {
       const {auth} = request;
       if (!auth) {
@@ -100,7 +111,11 @@ exports.getSavedCards = onCall(
     });
 
 exports.confirmPayment = onCall(
-    {secrets: [stripeTestKey]},
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
     async (request) => {
       const {auth} = request;
       const {
@@ -169,7 +184,11 @@ exports.confirmPayment = onCall(
     });
 
 exports.getCustomerData = onCall(
-    {secrets: [stripeTestKey]},
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
     async (request) => {
       const {auth} = request;
       if (!auth) {
@@ -210,7 +229,11 @@ exports.getCustomerData = onCall(
     });
 
 exports.deleteCard = onCall(
-    {secrets: [stripeTestKey]}, // Use your Stripe secret key
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
     async (request) => {
       const {auth} = request;
       const {cardId} = request.data;
@@ -249,6 +272,8 @@ exports.stripeWebhook = onRequest(
     {
       maxInstances: 3,
       secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
     },
     async (req, res) => {
       const sig = req.headers["stripe-signature"];
@@ -274,6 +299,42 @@ exports.stripeWebhook = onRequest(
           case "payment_intent.payment_failed":
             await handlePaymentFailure(event.data.object);
             break;
+          case "account.updated":
+            if (
+              event.data.object.capabilities.transfers === "active"
+            ) {
+              const musicianId = event.data.object.metadata.musicianId;
+              const musicianRef =
+              admin.firestore().collection("musicianProfiles").doc(musicianId);
+              const musicianDoc = await musicianRef.get();
+              if (musicianDoc.exists) {
+                const musicianData = musicianDoc.data();
+                const withdrawableEarnings =
+                musicianData.withdrawableEarnings || 0;
+                if (withdrawableEarnings > 0) {
+                  console.log(
+                      `Transferring £${withdrawableEarnings}
+                     to account ${event.data.object.id}`,
+                  );
+                  await stripe.transfers.create({
+                    amount: Math.round(withdrawableEarnings * 100),
+                    currency: "gbp",
+                    destination: event.data.object.id,
+                    metadata: {
+                      musicianId,
+                      description:
+                        "Transfer of existing earnings to Stripe account",
+                    },
+                  });
+                  console.log(
+                      `Successfully transferred £${withdrawableEarnings}.`,
+                  );
+                }
+              } else {
+                console.warn(`Musician profile not found for: ${musicianId}`);
+              }
+            }
+            break;
           default:
             console.info(`Unhandled event type ${event.type}`);
         }
@@ -284,9 +345,14 @@ exports.stripeWebhook = onRequest(
       }
     });
 
-exports.clearPendingFee = onRequest(
-    {secrets: [stripeTestKey]},
-    async (req, res) => {
+exports.clearPendingFee = onTaskDispatched(
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
+    async (event) => {
+      console.log("Task payload received:", event.data);
       const {
         musicianId,
         gigId,
@@ -295,28 +361,27 @@ exports.clearPendingFee = onRequest(
         venueId,
         gigDate,
         gigTime,
-      } = req.body;
-      if (!musicianId ||
-    !gigId ||
-    !disputeClearingTime ||
-    !venueId ||
-    !gigDate ||
-    !gigTime ||
-    !amount
+      } = event.data;
+      if (
+        !musicianId ||
+      !gigId ||
+      !disputeClearingTime ||
+      !venueId ||
+      !gigDate ||
+      !gigTime ||
+      !amount
       ) {
         console.error("Invalid payload received in task.");
-        res.status(400).json({error: "Invalid payload received."});
-        return;
+        throw new Error("Invalid payload received.");
       }
       const stripe = new Stripe(stripeTestKey.value());
       try {
         const firestore = getFirestore();
         const musicianProfileRef =
-    firestore.collection("musicianProfiles").doc(musicianId);
+      firestore.collection("musicianProfiles").doc(musicianId);
         const musicianDoc = await musicianProfileRef.get();
         if (!musicianDoc.exists) {
-          console.log(`Musician doc ${musicianId} not found.`);
-          res.status(400).json({error: `Musician ${musicianId} not found.`});
+          console.error(`Musician doc ${musicianId} not found.`);
           return;
         }
         const musicianData = musicianDoc.data();
@@ -324,23 +389,18 @@ exports.clearPendingFee = onRequest(
         const pendingFees = musicianData.pendingFees || [];
         const clearedFee = pendingFees.find((fee) => fee.gigId === gigId);
         if (!clearedFee) {
-          console.log(`Fee for gig ${gigId} already cleared or not found.`);
-          res.status(400).json(
-              {error: `Fee for gig ${gigId} already cleared or not found.`},
-          );
+          console.error(`Fee for gig ${gigId} already cleared or not found.`);
           return;
         }
-        const gigRef = admin.firestore().collection("gigs").doc(gigId);
+        const gigRef = firestore.collection("gigs").doc(gigId);
         const gigDoc = await gigRef.get();
         if (!gigDoc.exists) {
-          console.log(`Gig ${gigId} not found.`);
-          res.status(400).json({error: `Gig ${gigId} not found.`});
+          console.error(`Gig ${gigId} not found.`);
           return;
         }
         const gigData = gigDoc.data();
         if (clearedFee.disputeLogged || gigData.disputeLogged) {
-          console.log(`Dispute logged for gig ${gigId}`);
-          res.status(400).json({error: `Dispute logged for gig ${gigId}`});
+          console.error(`Dispute logged for gig ${gigId}`);
           return;
         }
         let stripeTransferId = null;
@@ -353,19 +413,19 @@ exports.clearPendingFee = onRequest(
               musicianId,
               gigId,
               description:
-          "Gig fee transferred after dispute period cleared",
+            "Gig fee transferred after dispute period cleared",
             },
           });
           console.log(`Stripe transfer successful: ${transfer.id}`);
           stripeTransferId = transfer.id;
         } else {
-          console.log(`Musician ${musicianId} has no Stripe account.`);
+          console.log(`Musician ${musicianId} has no Stripe account`);
         }
         await gigRef.update({
           musicianFeeStatus: "cleared",
         });
         const updatedPendingFees =
-        pendingFees.filter((fee) => fee.gigId !== gigId);
+      pendingFees.filter((fee) => fee.gigId !== gigId);
         const clearedFees = musicianData.clearedFees || [];
         const updatedClearedFees = [
           ...clearedFees,
@@ -378,7 +438,7 @@ exports.clearPendingFee = onRequest(
         ];
         const totalEarnings = (musicianData.totalEarnings || 0) + amount;
         const withdrawableEarnings =
-        (musicianData.withdrawableEarnings || 0) + amount;
+      (musicianData.withdrawableEarnings || 0) + amount;
         await musicianProfileRef.update({
           pendingFees: updatedPendingFees,
           clearedFees: updatedClearedFees,
@@ -386,110 +446,103 @@ exports.clearPendingFee = onRequest(
           withdrawableEarnings: withdrawableEarnings,
         });
         console.log(`Fee cleared for musician ${musicianId}, gig ${gigId}.`);
-        res.status(200).send("Complete");
+        return {success: true};
       } catch (error) {
         console.error("Error clearing fee:", error);
-        res.status(500).json({
-          error: "Failed to clear pending fee.", details: error.message,
-        });
+        throw new Error("Failed to clear pending fee.");
       }
-    });
+    },
+);
 
 exports.stripeAccountSession = onRequest(
-    {secrets: [stripeTestKey]},
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
     async (req, res) => {
-      try {
-        const stripe = new Stripe(stripeTestKey.value());
-        const {account} = req.body;
-        const accountSession = await stripe.accountSessions.create({
-          account: account,
-          components: {
-            account_onboarding: {enabled: true},
-          },
-        });
-        res.json({
-          client_secret: accountSession.client_secret,
-        });
-      } catch (error) {
-        console.error(
-            "Error occurred calling the Stripe API to create account session",
-            error,
-        );
-        res.status(500).send({error: error.message});
-      }
+      cors(req, res, async () => {
+        if (req.method !== "POST") {
+          return res.status(405).send("Method Not Allowed");
+        }
+        try {
+          const stripe = new Stripe(stripeTestKey.value());
+          const {account} = req.body;
+          const accountSession = await stripe.accountSessions.create({
+            account: account,
+            components: {
+              account_onboarding: {enabled: true},
+            },
+          });
+          res.json({
+            client_secret: accountSession.client_secret,
+          });
+        } catch (error) {
+          console.error(
+              "Error occurred calling the Stripe API to create account session",
+              error,
+          );
+          res.status(500).send({error: error.message});
+        }
+      });
     });
 
 exports.stripeAccount = onRequest(
-    {secrets: [stripeTestKey]},
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
     async (req, res) => {
-      try {
-        const {musicianId} = req.body;
-        if (!musicianId) {
-          res.status(400).send({error: "Musician ID is required."});
-          return;
+      cors(req, res, async () => {
+        if (req.method !== "POST") {
+          return res.status(405).send("Method Not Allowed");
         }
-        const stripe = new Stripe(stripeTestKey.value());
-        const account = await stripe.accounts.create({
-          capabilities: {
-            transfers: {requested: true},
-          },
-          country: "GB",
-          controller: {
-            stripe_dashboard: {
-              type: "none",
+        try {
+          const {musicianId} = req.body;
+          if (!musicianId) {
+            res.status(400).send({error: "Musician ID is required."});
+            return;
+          }
+          const stripe = new Stripe(stripeTestKey.value());
+          const account = await stripe.accounts.create({
+            capabilities: {
+              transfers: {requested: true},
             },
-            fees: {
-              payer: "application",
+            country: "GB",
+            metadata: {musicianId},
+            controller: {
+              stripe_dashboard: {
+                type: "none",
+              },
+              fees: {
+                payer: "application",
+              },
+              losses: {
+                payments: "application",
+              },
+              requirement_collection: "application",
             },
-            losses: {
-              payments: "application",
-            },
-            requirement_collection: "application",
-          },
-        });
-        const musicianRef =
-    admin.firestore().collection("musicianProfiles").doc(musicianId);
-        const musicianDoc = await musicianRef.get();
-        if (!musicianDoc.exists) {
-          throw new Error("Musician profile not found.");
-        }
-        const musicianData = musicianDoc.data();
-        const withdrawableEarnings = musicianData.withdrawableEarnings || 0;
-        await musicianRef.update({stripeAccountId: account.id});
-        if (withdrawableEarnings > 0) {
-          console.log(
-              `Transferring £${withdrawableEarnings}
-               to Stripe account ${account.id}`,
+          });
+          res.json({
+            account: account.id,
+          });
+        } catch (error) {
+          console.error(
+              "Error occurred when calling the Stripe API to create an account",
+              error,
           );
-          await stripe.transfers.create({
-            amount: Math.round(withdrawableEarnings * 100),
-            currency: "gbp",
-            destination: account.id,
-            metadata: {
-              musicianId,
-              description:
-              "Transfer of existing earnings to Stripe Connect account",
-            },
-          });
-          console.log(`Successfully transferred £${withdrawableEarnings}.`);
-          await musicianRef.update({
-            withdrawableEarnings: 0,
-          });
+          res.status(500).send({error: error.message});
         }
-        res.json({
-          account: account.id,
-        });
-      } catch (error) {
-        console.error(
-            "Error occurred when calling the Stripe API to create an account",
-            error,
-        );
-        res.status(500).send({error: error.message});
-      }
+      });
     });
 
 exports.payoutToBankAccount = onCall(
-    {secrets: [stripeTestKey]},
+    {
+      secrets: [stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
     async (request) => {
       const stripe = new Stripe(stripeTestKey.value());
       const {musicianId, amount} = request.data;
@@ -563,91 +616,105 @@ exports.payoutToBankAccount = onCall(
       }
     });
 
-exports.uploadMediaFiles = onCall(async (request) => {
-  const {musicianId, mediaFiles} = request.data;
-  if (!musicianId || !mediaFiles || !Array.isArray(mediaFiles)) {
-    throw new Error("Invalid payload: musicianId and mediaFiles are required.");
-  }
-  try {
-    const firestore = getFirestore();
-    const bucket =
-    admin.storage().bucket("giginltd-16772.firebasestorage.app");
-    const videoUpdates = [];
-    const trackUpdates = [];
-    for (const media of mediaFiles) {
-      const {
-        title,
-        file,
-        thumbnail,
-        contentType,
-        type,
-        date,
-      } = media;
-      if (!file) {
-        throw new Error(`Invalid file for media "${title}"`);
+exports.uploadMediaFiles = onCall(
+    {
+      timeoutSeconds: 3600,
+      region: "europe-west3",
+    },
+    async (request) => {
+      const {musicianId, mediaFiles} = request.data;
+      if (!musicianId || !mediaFiles || !Array.isArray(mediaFiles)) {
+        throw new Error(
+            "Invalid payload: musicianId and mediaFiles are required.",
+        );
       }
-      const fileBuffer = Buffer.from(file, "base64");
-      const mediaRef = bucket.file(`musicians/${musicianId}/${type}/${title}`);
-      await mediaRef.save(fileBuffer, {contentType});
-      const mediaUrl = `https://storage.googleapis.com/${bucket.name}/${mediaRef.name}`;
-      let thumbnailUrl = null;
-      if (type === "video" && thumbnail) {
-        const thumbnailBuffer = Buffer.from(thumbnail, "base64");
-        const thumbnailRef =
+      try {
+        const firestore = getFirestore();
+        const bucket =
+    admin.storage().bucket("giginltd-16772.firebasestorage.app");
+        const videoUpdates = [];
+        const trackUpdates = [];
+        console.log("Received media, uploading starting.");
+        for (const media of mediaFiles) {
+          const {
+            title,
+            file,
+            thumbnail,
+            contentType,
+            type,
+            date,
+          } = media;
+          if (!file) {
+            throw new Error(`Invalid file for media "${title}"`);
+          }
+          const fileBuffer = Buffer.from(file, "base64");
+          const mediaRef =
+          bucket.file(`musicians/${musicianId}/${type}/${title}`);
+          await mediaRef.save(fileBuffer, {contentType});
+          const mediaUrl = `https://storage.googleapis.com/${bucket.name}/${mediaRef.name}`;
+          let thumbnailUrl = null;
+          if (type === "video" && thumbnail) {
+            const thumbnailBuffer = Buffer.from(thumbnail, "base64");
+            const thumbnailRef =
         bucket
             .file(
                 `musicians/${musicianId}/${type}/thumbnails/${title}_thumbnail`,
             );
-        await thumbnailRef.save(thumbnailBuffer, {contentType: "image/png"});
-        thumbnailUrl =
+            await thumbnailRef.save(
+                thumbnailBuffer, {contentType: "image/png"},
+            );
+            thumbnailUrl =
         `https://storage.googleapis.com/${bucket.name}/${thumbnailRef.name}`;
-      }
-      if (type === "video") {
-        videoUpdates.push({
-          title,
-          file: mediaUrl,
-          thumbnail: thumbnailUrl,
-          date,
-        });
-      } else if (type === "track") {
-        trackUpdates.push({
-          title,
-          file: mediaUrl,
-          date,
-        });
-      }
-    }
-    const musicianRef =
+          }
+          if (type === "video") {
+            videoUpdates.push({
+              title,
+              file: mediaUrl,
+              thumbnail: thumbnailUrl,
+              date,
+            });
+            console.log(`Video file ${title} uploaded.`);
+          } else if (type === "track") {
+            trackUpdates.push({
+              title,
+              file: mediaUrl,
+              date,
+            });
+            console.log(`Track file ${title} uploaded.`);
+          }
+        }
+        const musicianRef =
     firestore.collection("musicianProfiles").doc(musicianId);
-    const musicianDoc = await musicianRef.get();
-    if (!musicianDoc.exists) {
-      throw new Error("Musician profile does not exist.");
-    }
-    const currentData = musicianDoc.data();
-    const updatedVideos = (currentData.videos || []).map((video) => {
-      const match =
+        const musicianDoc = await musicianRef.get();
+        if (!musicianDoc.exists) {
+          throw new Error("Musician profile does not exist.");
+        }
+        const currentData = musicianDoc.data();
+        const updatedVideos = (currentData.videos || []).map((video) => {
+          const match =
       videoUpdates.find(
           (v) => v.title === video.title && video.file === "uploading...",
       );
-      return match ? {...match} : video;
-    });
-    const updatedTracks = (currentData.tracks || []).map((track) => {
-      const match =
+          return match ? {...match} : video;
+        });
+        const updatedTracks = (currentData.tracks || []).map((track) => {
+          const match =
       trackUpdates.find(
           (t) => t.title === track.title && track.file === "uploading...",
       );
-      return match ? {...match} : track;
+          return match ? {...match} : track;
+        });
+        await musicianRef.update({
+          videos: updatedVideos,
+          tracks: updatedTracks,
+        });
+        console.log("Updated musician profile.");
+        return {success: true};
+      } catch (error) {
+        console.error("Error uploading media files:", error);
+        throw new Error("Failed to upload media files.");
+      }
     });
-    await musicianRef.update({
-      videos: updatedVideos,
-      tracks: updatedTracks,
-    });
-    return {success: true};
-  } catch (error) {
-    console.error("Error uploading media files:", error);
-    throw new Error("Failed to upload media files.");
-  }
-});
 
 const handlePaymentSuccess = async (paymentIntent) => {
   const gigId = paymentIntent.metadata.gigId;
@@ -729,28 +796,26 @@ const handlePaymentSuccess = async (paymentIntent) => {
       disputeClearingTime:
       Timestamp.fromDate(disputePeriodDate).toMillis(),
     };
-    // const queue = getFunctions().taskQueue("clearPendingFee");
-    // const targetUri = "http://127.0.0.1:5001/giginltd-16772/us-central1/clearPendingFee";
-    // const disputePeriodDateSimulated = new Date(Date.now() + 1 * 60 * 1000);
-    // await queue.enqueue(
-    //   payload,
-    //   {
-    //     scheduleTime: disputePeriodDateSimulated,
-    //     dispatchDeadlineSeconds: 60 * 5,
-    //     uri: targetUri,
-    //   }
-    // );
-    const response = await fetch("https://clearpendingfee-gxujnzd2uq-uc.a.run.app", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed with status ${response.status}: ${errorText}`);
-    }
+    const queue = getFunctions().taskQueue("clearPendingFee");
+    const disputePeriodDateSimulated = new Date(Date.now() + 5 * 60 * 1000);
+    await queue.enqueue(
+        payload,
+        {
+          scheduleTime: disputePeriodDateSimulated,
+          dispatchDeadlineSeconds: 60 * 5,
+        },
+    );
+    // const response = await fetch("https://clearpendingfee-gxujnzd2uq-uc.a.run.app", {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   body: JSON.stringify(payload),
+    // });
+    // if (!response.ok) {
+    //   const errorText = await response.text();
+    //   throw new Error(`Failed with status ${response.status}: ${errorText}`);
+    // }
     console.log(
         `Task queued for musician ${musicianId} at ${disputePeriodDate}`,
     );
