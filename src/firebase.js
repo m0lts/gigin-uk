@@ -26,7 +26,7 @@ const app = initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app)
-const functions = getFunctions(app);
+const functions = getFunctions(app, "europe-west3");
 // if (window.location.hostname === "localhost") {
 //   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
 // }
