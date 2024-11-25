@@ -14,6 +14,7 @@ const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
 // const serviceAccount = require("./service-account.json");
 const Stripe = require("stripe");
 const cors = require("cors")({origin: true});
+const {GoogleAuth} = require("google-auth-library");
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -272,7 +273,6 @@ exports.stripeWebhook = onRequest(
     {
       maxInstances: 3,
       secrets: [stripeTestKey],
-      region: "europe-west3",
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -348,7 +348,6 @@ exports.stripeWebhook = onRequest(
 exports.clearPendingFee = onTaskDispatched(
     {
       secrets: [stripeTestKey],
-      region: "europe-west3",
       timeoutSeconds: 3600,
     },
     async (event) => {
@@ -716,6 +715,35 @@ exports.uploadMediaFiles = onCall(
       }
     });
 
+let auth;
+
+// [START v2GetFunctionUri]
+/**
+ * Get the URL of a given v2 cloud function.
+ *
+ * @param {string} name the function's name
+ * @param {string} location the function's location
+ * @return {Promise<string>} The URL of the function
+ */
+
+const getFunctionUrl = async (name, location="us-central1") => {
+  if (!auth) {
+    auth = new GoogleAuth({
+      scopes: "https://www.googleapis.com/auth/cloud-platform",
+    });
+  }
+  const projectId = await auth.getProjectId();
+  const url = "https://cloudfunctions.googleapis.com/v2beta/" +
+    `projects/${projectId}/locations/${location}/functions/${name}`;
+  const client = await auth.getClient();
+  const res = await client.request({url});
+  const uri = res.data.serviceConfig.uri;
+  if (!uri) {
+    throw new Error(`Unable to retreive uri for function at ${url}`);
+  }
+  return uri;
+};
+
 const handlePaymentSuccess = async (paymentIntent) => {
   const gigId = paymentIntent.metadata.gigId;
   const musicianId = paymentIntent.metadata.musicianId;
@@ -797,14 +825,13 @@ const handlePaymentSuccess = async (paymentIntent) => {
       Timestamp.fromDate(disputePeriodDate).toMillis(),
     };
     const queue = getFunctions().taskQueue("clearPendingFee");
+    const targetUri = await getFunctionUrl("clearPendingFee");
     const disputePeriodDateSimulated = new Date(Date.now() + 5 * 60 * 1000);
-    await queue.enqueue(
-        payload,
-        {
-          scheduleTime: disputePeriodDateSimulated,
-          dispatchDeadlineSeconds: 60 * 5,
-        },
-    );
+    await queue.enqueue(payload, {
+      scheduleTime: disputePeriodDateSimulated,
+      dispatchDeadlineSeconds: 60 * 5,
+      uri: targetUri,
+    });
     // const response = await fetch("https://clearpendingfee-gxujnzd2uq-uc.a.run.app", {
     //   method: "POST",
     //   headers: {
