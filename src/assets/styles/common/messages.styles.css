@@ -68,6 +68,8 @@
 
 .message-page .column.conversations .conversations-list .conversation {
     height:75px;
+    min-width: 100%;
+    max-width: 100%;
     display: flex;
     align-items: center;
     gap:1rem;
@@ -102,6 +104,8 @@
 }
 
 .message-page .column.conversations .conversations-list .conversation-text {
+    max-width:80%;
+    min-width: 80%;
     width:100%;
     display: flex;
     flex-direction: column;
@@ -125,8 +129,9 @@
 }
 
 .message-page .column.conversations .conversations-list .conversation-details {
+    width: 100%;
     display: grid;
-    grid-template-columns: 75% 25%;
+    grid-template-columns: auto 50px;
 }
 
 .message-page .column.conversations .conversations-list .conversation-details .conversation-date {
@@ -136,7 +141,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
-
 }
 
 .message-page .column.conversations .conversations-list .last-message-preview {
@@ -147,6 +151,7 @@
 }
 
 .message-page .column.conversations .conversations-list .conversation-title-text {
+    max-width: 85%;
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
@@ -191,20 +196,42 @@
     display: none; /* Chrome, Safari, and Edge */
 }
 
+/* MESSAGE */
+
+.message-page .message-container {
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: 10px;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.message-page .message-container .participant-icon {
+    background-color: var(--gn-off-black);
+    box-shadow: 0 0 10px var(--gn-grey-400);
+    padding: 0.5rem;
+    border-radius: 10px;
+}
+
+.message-page .message-container .participant-icon .icon {
+    color: var(--gn-white);
+    font-size: 1.1rem;
+}
+
 .message-page .message {
     padding: 0.5rem;
-    border-radius: 5px;
-    margin-bottom: 0.5rem;
+    border-radius: 10px;
     margin-right: 0.5rem;
     margin-left: 0.5rem;
     position: relative;
     max-width: 50%;
     width:fit-content;
-    border: 1px solid var(--gn-grey-400);
+    border: 1px solid var(--gn-grey-350);
+    box-shadow: 0 0 3px var(--gn-shadow);
 }
 
 .message-page .status-box {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
 }
 
 .message-page .status {
@@ -251,14 +278,16 @@
 
 .message-page .message.announcement {
     max-width: 100%;
-    width:100%;
+    width:80%;
+    margin: auto;
+    padding: 2rem 1rem;
     border:none;
-    border-top: 1px solid var(--gn-grey-300);
-    border-bottom: 1px solid var(--gn-grey-300);
     background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-350);
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: space-evenly;
     gap:5px;
 }
 
@@ -326,6 +355,15 @@
 
 .message-page .counter-offer .btn {
     padding: 5px !important;
+}
+
+.message-page .message-container .two-buttons {
+    margin: 0.5rem 0;
+    justify-content: flex-start;
+}
+
+.message-page .message.announcement .complete-payment {
+    margin-top: 1rem;
 }
 
 

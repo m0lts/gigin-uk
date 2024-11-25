@@ -41,7 +41,7 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
         const filteredGigs = gigs
             .filter(gig => {
                 const gigDate = gig.date.toDate();
-                return gigDate >= currentDate && !gig.applicants.some(applicant => applicant.status === 'Accepted') && gig.complete;
+                return gigDate >= currentDate && gig.status !== 'closed' && gig.complete;
             });
 
         setUpcomingGigs(filteredGigs);

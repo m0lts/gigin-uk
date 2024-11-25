@@ -93,7 +93,7 @@ export const ProfileTab = ({ musicianProfile }) => {
                         <div className="profile-details">
                             <h1>{musicianProfile.name}</h1>
                             <div className="data">
-                                <p>0 gigs played</p>
+                                <h6>{musicianProfile.clearedFees.length} gigs played</h6>
                             </div>
                             <div className="genre-tags">
                                 {musicianProfile.genres && musicianProfile.genres.map((genre, index) => (

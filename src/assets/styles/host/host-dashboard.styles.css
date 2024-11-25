@@ -185,7 +185,7 @@
 
 /* GIGS */
 
-.window.dashboard .body .filters {
+.window .body.gigs .filters {
     display: flex;
     justify-content: flex-start;
     gap:2%;
@@ -193,12 +193,12 @@
     width:100%;
 }
 
-.window.dashboard .body.musicians .filters {
+.window .body.gigs.musicians .filters {
     margin-bottom: 2rem;
 }
 
-.window.dashboard .body .filters select,
-.window.dashboard .body .filters input {
+.window .body.gigs .filters select,
+.window .body.gigs .filters input {
     padding:7px;
     border:1px solid var(--gn-grey-400);
     border-radius: 5px;
@@ -206,7 +206,7 @@
     width:15%;
 }
 
-.window.dashboard .body .filters .search-bar {
+.window .body.gigs .filters .search-bar {
     width:50%;
     padding: 8px 1rem;
     background-color: var(--gn-white);
@@ -218,17 +218,17 @@
     gap:0.5rem;
 }
 
-.window.dashboard .body .filters select:focus,
-.window.dashboard .body .filters input:focus {
+.window .body.gigs .filters select:focus,
+.window .body.gigs .filters input:focus {
     outline:none;
     border:1px solid var(--gn-orange);
 }
 
-.window.dashboard .body .filters .sort {
+.window .body.gigs .filters .sort {
     text-transform: capitalize;    
 }
 
-.window.dashboard .body .filters .sort:hover {
+.window .body.gigs .filters .sort:hover {
     background-color: var(--gn-white);    
 }
 

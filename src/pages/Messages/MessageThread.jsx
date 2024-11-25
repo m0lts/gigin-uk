@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateDoc, getDocs, arrayUnion, where } from 'firebase/firestore';
 import { firestore } from '../../firebase';
-import { CloseIcon, DownChevronIcon, RejectedIcon, SendMessageIcon, TickIcon } from '../../components/ui/Extras/Icons';
+import { CloseIcon, DownChevronIcon, RejectedIcon, SendMessageIcon, TickIcon, HouseIcon, MicrophoneIcon } from '../../components/ui/Extras/Icons';
 import '/styles/common/messages.styles.css';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
@@ -379,206 +379,219 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         <div className="messages">
             {messages.length > 0 && (
                 messages.map((message) => (
-                    <>
-                    <div key={message.id} className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' ? 'announcement' : ''}`} >
-                        {(message.type === 'application' || message.type === 'invitation') && message.senderId === user.uid ? (
-                            <>
-                                <h4>
-                                    {message.type === 'application' ? (
+                    <div className='message-container'>
+                        {/* {message.type !== 'announcement' && (
+                            <div className="participant-icon">
+                                {message.senderId === musicianProfileId ? (
+                                    <div className="icon-circle">
+                                        <HouseIcon />
+                                    </div>
+                                ) : message.senderId === musicianProfileId && (
+                                    <div className="icon-circle">
+                                        <MicrophoneIcon />
+                                    </div>
+                                )}
+                            </div>
+                        )} */}
+                        <div key={message.id} className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' ? 'announcement' : ''}`} >
+                            {(message.type === 'application' || message.type === 'invitation') && message.senderId === user.uid ? (
+                                <>
+                                    <h4>
+                                        {message.type === 'application' ? (
+                                            <>
+                                                Gig application sent.
+                                            </>
+
+                                        ) : (
+                                            <>
+                                                Gig invitation sent.
+                                            </>
+                                        )}
+                                        </h4>
+                                    {message.status === 'accepted' ? (
+                                        <div className="status-box">
+                                            <div className="status confirmed">
+                                                <TickIcon />
+                                                Accepted
+                                            </div>
+                                        </div>
+                                    ) : message.status === 'declined' && (
                                         <>
-                                            Gig application sent.
+                                        <div className="status-box">
+                                            <div className="status rejected">
+                                                <RejectedIcon />
+                                                Declined
+                                            </div>
+                                        </div>
+                                        <div className="counter-offer">
+                                            <input
+                                                type="text"
+                                                className="input"
+                                                value={newCounterOffer}
+                                                onChange={(e) => handleCounterOffer(e)}
+                                                placeholder="Propose a new fee"
+                                            />
+                                            <button
+                                                className="btn primary-alt"
+                                                onClick={() => handleSendCounterOffer(newCounterOffer)}
+                                            >
+                                                Send
+                                            </button>
+                                        </div>
+                                        </>
+                                    )}
+                                </>
+                            ) 
+                            : (message.type === 'application' || message.type === 'invitation') && message.senderId !== user.uid ? (
+                                <>
+                                    <h4>{message.text}</h4>
+                                    {message.status === 'accepted' ? (
+                                        <div className="status-box">
+                                            <div className="status confirmed">
+                                                <TickIcon />
+                                                Accepted
+                                            </div>
+                                        </div>
+                                    ) : message.status === 'declined' ? (
+                                        <div className="status-box">
+                                            <div className="status rejected">
+                                                <RejectedIcon />
+                                                Declined
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="two-buttons">
+                                            <button className="btn accept" onClick={(event) => handleAcceptGig(event, message.id)}>
+                                                Accept
+                                            </button>
+                                            <button className="btn danger" onClick={(event) => handleDeclineApplication(event, message.id, message.receiverId)}>
+                                                Decline
+                                            </button>
+                                        </div>
+                                    )}
+                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                </>
+                            ) : 
+                            message.type === 'negotiation' && message.senderId === user.uid ? (
+                                <>
+                                    <h4>{message.newFee}</h4>
+                                    <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
+                                    {message.status === 'accepted' ? (
+                                        <div className="status-box">
+                                            <div className="status confirmed">
+                                                <TickIcon />
+                                                Accepted
+                                            </div>
+                                        </div>
+                                    ) : message.status === 'declined' && (
+                                        <>
+                                            <div className="status-box">
+                                                <div className="status rejected">
+                                                    <RejectedIcon />
+                                                    Declined
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </>
+                            ) : message.type === 'negotiation' && message.senderId !== user.uid ? (
+                                <>
+                                    <h4>{message.text}</h4>
+                                    <div className="fees">
+                                        <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
+                                        <h4>{message.newFee}</h4>
+                                    </div>
+                                    {message.status === 'accepted' ? (
+                                        <div className="status-box">
+                                            <div className="status confirmed">
+                                                <TickIcon />
+                                                Accepted
+                                            </div>
+                                        </div>
+                                    ) : message.status === 'declined' ? (
+                                        <>
+                                            <div className="status-box">
+                                                <div className="status rejected">
+                                                    <RejectedIcon />
+                                                    Declined
+                                                </div>
+                                            </div>
+                                            {allowCounterOffer && (
+                                                <div className="counter-offer">
+                                                    <input
+                                                        type="text"
+                                                        className="input"
+                                                        value={newCounterOffer}
+                                                        onChange={(e) => handleCounterOffer(e)}
+                                                        placeholder="Propose a new fee"
+                                                    />
+                                                    <button
+                                                        className="btn primary-alt"
+                                                        onClick={() => handleSendCounterOffer(newCounterOffer)}
+                                                    >
+                                                        Send
+                                                    </button>
+                                                </div>
+                                            )}
                                         </>
 
                                     ) : (
-                                        <>
-                                            Gig invitation sent.
-                                        </>
+                                        <div className="two-buttons">
+                                            <button className="btn accept" onClick={(event) => handleAcceptNegotiation(event, message.id)}>
+                                                Accept
+                                            </button>
+                                            <button className="btn danger" onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.oldFee, message.id, message.senderId)}>
+                                                Decline
+                                            </button>
+                                        </div>
                                     )}
-                                    </h4>
-                                {message.status === 'accepted' ? (
-                                    <div className="status-box">
-                                        <div className="status confirmed">
-                                            <TickIcon />
-                                            Accepted
-                                        </div>
-                                    </div>
-                                ) : message.status === 'declined' && (
+                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                </>
+                            ) : message.type === 'announcement' ? (
+                                <>
+                                {message.status === 'awaiting payment' && userRole === 'venue' ? (
                                     <>
-                                    <div className="status-box">
-                                        <div className="status rejected">
-                                            <RejectedIcon />
-                                            Declined
-                                        </div>
-                                    </div>
-                                    <div className="counter-offer">
-                                        <input
-                                            type="text"
-                                            className="input"
-                                            value={newCounterOffer}
-                                            onChange={(e) => handleCounterOffer(e)}
-                                            placeholder="Propose a new fee"
-                                        />
-                                        <button
-                                            className="btn primary-alt"
-                                            onClick={() => handleSendCounterOffer(newCounterOffer)}
-                                        >
-                                            Send
-                                        </button>
-                                    </div>
-                                    </>
-                                )}
-                            </>
-                        ) 
-                        : (message.type === 'application' || message.type === 'invitation') && message.senderId !== user.uid ? (
-                            <>
-                                <h4>{message.text}</h4>
-                                {message.status === 'accepted' ? (
-                                    <div className="status-box">
-                                        <div className="status confirmed">
-                                            <TickIcon />
-                                            Accepted
-                                        </div>
-                                    </div>
-                                ) : message.status === 'declined' ? (
-                                    <div className="status-box">
-                                        <div className="status rejected">
-                                            <RejectedIcon />
-                                            Declined
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="two-buttons">
-                                        <button className="btn accept" onClick={(event) => handleAcceptGig(event, message.id)}>
-                                            Accept
-                                        </button>
-                                        <button className="btn danger" onClick={(event) => handleDeclineApplication(event, message.id, message.receiverId)}>
-                                            Decline
-                                        </button>
-                                    </div>
-                                )}
-                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                            </>
-                        ) : 
-                        message.type === 'negotiation' && message.senderId === user.uid ? (
-                            <>
-                                <h4>{message.newFee}</h4>
-                                <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
-                                {message.status === 'accepted' ? (
-                                    <div className="status-box">
-                                        <div className="status confirmed">
-                                            <TickIcon />
-                                            Accepted
-                                        </div>
-                                    </div>
-                                ) : message.status === 'declined' && (
-                                    <>
-                                        <div className="status-box">
-                                            <div className="status rejected">
-                                                <RejectedIcon />
-                                                Declined
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </>
-                        ) : message.type === 'negotiation' && message.senderId !== user.uid ? (
-                            <>
-                                <h4>{message.text}</h4>
-                                <div className="fees">
-                                    <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
-                                    <h4>{message.newFee}</h4>
-                                </div>
-                                {message.status === 'accepted' ? (
-                                    <div className="status-box">
-                                        <div className="status confirmed">
-                                            <TickIcon />
-                                            Accepted
-                                        </div>
-                                    </div>
-                                ) : message.status === 'declined' ? (
-                                    <>
-                                        <div className="status-box">
-                                            <div className="status rejected">
-                                                <RejectedIcon />
-                                                Declined
-                                            </div>
-                                        </div>
-                                        {allowCounterOffer && (
-                                            <div className="counter-offer">
-                                                <input
-                                                    type="text"
-                                                    className="input"
-                                                    value={newCounterOffer}
-                                                    onChange={(e) => handleCounterOffer(e)}
-                                                    placeholder="Propose a new fee"
-                                                />
-                                                <button
-                                                    className="btn primary-alt"
-                                                    onClick={() => handleSendCounterOffer(newCounterOffer)}
-                                                >
-                                                    Send
-                                                </button>
-                                            </div>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
+                                        {loadingPaymentDetails || gigData.status === 'payment processing' ? (
+                                            <LoadingThreeDots />
+                                        ) : (
+                                            <button className="btn primary complete-payment" onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
+                                                Complete Payment
+                                            </button>
                                         )}
                                     </>
-
-                                ) : (
-                                    <div className="two-buttons">
-                                        <button className="btn accept" onClick={(event) => handleAcceptNegotiation(event, message.id)}>
-                                            Accept
-                                        </button>
-                                        <button className="btn danger" onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.oldFee, message.id, message.senderId)}>
-                                            Decline
-                                        </button>
-                                    </div>
+                                ) : message.status === 'awaiting payment' && userRole === 'musician' ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
+                                    </>
+                                ) : message.status === 'gig confirmed' ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text} Your payment will arrive in your account 24 hours after the gig has been performed.</h4>
+                                    </>
+                                ) : message.status === 'payment failed' && userRole === 'venue' ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text}</h4>
+                                    </>
+                                ) : message.status === 'payment failed' && userRole === 'musician' && (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>The gig will be confirmed when the venue has paid the gig fee.</h4>
+                                    </>
                                 )}
-                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                            </>
-                        ) : message.type === 'announcement' ? (
-                            <>
-                            {message.status === 'awaiting payment' && userRole === 'venue' ? (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
-                                    {loadingPaymentDetails || gigData.status === 'payment processing' ? (
-                                        <LoadingThreeDots />
-                                    ) : (
-                                        <button className="btn primary" onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
-                                            Complete Payment
-                                        </button>
-                                    )}
                                 </>
-                            ) : message.status === 'awaiting payment' && userRole === 'musician' ? (
+                            ) : (
                                 <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
-                                </>
-                            ) : message.status === 'gig confirmed' ? (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                     <h4>{message.text}</h4>
-                                </>
-                            ) : message.status === 'payment failed' && userRole === 'venue' ? (
-                                <>
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>{message.text}</h4>
-                                </>
-                            ) : message.status === 'payment failed' && userRole === 'musician' && (
-                                <>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                    <h4>The gig will be confirmed when the venue has paid the gig fee.</h4>
                                 </>
                             )}
-                            </>
-                        ) : (
-                            <>
-                                <h4>{message.text}</h4>
-                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                            </>
-                        )}
+                        </div>
+                        <div ref={messagesEndRef} />
                     </div>
-                    <div ref={messagesEndRef} />
-                    </>
                 ))
             )}
             </div>

@@ -49,17 +49,19 @@ export const Gigs = ({ gigApplications, musicianId }) => {
         const applicant = gig.applicants.find(applicant => applicant.id === musicianId);
 
         if (!applicant) {
-            return { icon: <ClockIcon />, text: 'Not Applied' }; // If the musician hasn't applied to this gig
+            return { icon: <ClockIcon />, text: 'Not Applied' };
         }
 
         if (gigDate > now) {
-            if (applicant.status === 'Accepted') {
+            if (applicant.status === 'confirmed') {
                 return { icon: <TickIcon />, text: 'Confirmed' };
             }
-            if (applicant.status === 'Declined') {
+            if (applicant.status === 'accepted') {
+                return { icon: <ClockIcon />, text: 'Waiting for Venue Payment' };
+            }
+            if (applicant.status === 'declined') {
                 return { icon: <RejectedIcon />, text: 'Declined' };
             }
-            return { icon: <ClockIcon />, text: 'Pending' };
         }
 
         return { icon: <PreviousIcon />, text: 'Previous' };
@@ -106,6 +108,8 @@ export const Gigs = ({ gigApplications, musicianId }) => {
             : a.date.toDate() - b.date.toDate();
     });
 
+    console.log(sortedGigs)
+
     return (
         <>
             <div className="head">
@@ -122,7 +126,7 @@ export const Gigs = ({ gigApplications, musicianId }) => {
                         <option value="all">Status</option>
                         <option value="confirmed">Confirmed</option>
                         <option value="previous">Previous</option>
-                        <option value="pending">Pending</option>
+                        <option value="pending">Waiting For Venue Payment</option>
                     </select>
                 </div>
 
@@ -160,8 +164,8 @@ export const Gigs = ({ gigApplications, musicianId }) => {
                                                     : gig.budget
                                                 }
                                             </td>
-                                            <td className={`status-box ${gigStatus.text.toLowerCase()}`}>
-                                                <div className={`status ${gigStatus.text.toLowerCase()}`}>
+                                            <td className={`status-box ${gigStatus.text.toLowerCase() === 'waiting for venue payment' ? 'pending' : gigStatus.text.toLowerCase()}`}>
+                                                <div className={`status ${gigStatus.text.toLowerCase() === 'waiting for venue payment' ? 'pending' : gigStatus.text.toLowerCase()}`}>
                                                     {gigStatus.icon} {gigStatus.text}
                                                 </div>
                                             </td>

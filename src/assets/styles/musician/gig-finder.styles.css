@@ -97,6 +97,12 @@
     font-size: 0.9rem;
 }
 
+.gig-finder .preview-gig-list .preview-gig-info h3 {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
 .gig-finder .preview-gig-list .preview-gig-budget {
     grid-column-start: 2;
     grid-column-end: 3;

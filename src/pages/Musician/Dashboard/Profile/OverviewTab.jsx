@@ -110,7 +110,7 @@ export const OverviewTab = ({musicianData}) => {
             <div className="overview-top">
                 <div className="info-box">
                     <h2>Watch</h2>
-                    <div className="box-style video-thumbnail" onClick={() => openModal()}>
+                    <div className="video-thumbnail" onClick={() => openModal()}>
                         {musicianData.videos && musicianData.videos.length > 0 ? (
                             musicianData.videos[0].thumbnail === 'uploading...' ? (
                                 <>
@@ -146,7 +146,7 @@ export const OverviewTab = ({musicianData}) => {
                     <MapIcon /> {musicianData.location.city} <DotIcon /> {musicianData.location.travelDistance}
                 </h6>
                 <h6 className="data">
-                    <BackgroundMusicIcon /> {musicianData.musicType}
+                    <BackgroundMusicIcon /> {musicianData.musicType === 'Both' ? 'Both Covers and Originals' : musicianData.musicType}
                 </h6>
                 <h6 className="data">
                     <ShootingStarIcon />

@@ -145,7 +145,7 @@
     width:100%;
     display: flex;
     gap:5px;
-    overflow-x: scroll;
+    overflow-x: auto;
     scrollbar-width: none;
     padding: 5px 0;
 }
@@ -199,18 +199,22 @@
 
 /* OVERVIEW */
 .profile .overview {
-    padding: 1rem 0;
+    padding: 1rem 0.25rem;
 }
 
 .profile .overview .box-style {
-    border:1px solid var(--gn-grey-400);
-    box-shadow: 0px 0px 2px var(--gn-shadow);
-    border-radius: 5px;
+    border: 2px solid var(--gn-grey-350);
+    border-radius: 1rem;
+    box-shadow: 0 0 5px var(--gn-shadow);
     overflow: hidden;
 }
 
+.profile .overview .info-box h2 {
+    margin-bottom: 5px;
+}
+
 .profile .overview .box-style.text {
-    padding: 5px 7px;
+    padding: 1rem;
 }
 
 .profile .overview .overview-top {
@@ -222,7 +226,6 @@
 }
 
 .profile .overview .video-thumbnail {
-    padding: 7px;
     position: relative;
 }
 
@@ -230,7 +233,7 @@
     width:100%;
     height: 350px;
     object-fit: cover;
-    border-radius: 3px;
+    border-radius: 10px;
     cursor: pointer;
 }
 
@@ -251,7 +254,7 @@
 
 .profile .overview .overview-top .bio {
     max-height: 475px;
-    overflow: scroll;
+    overflow: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
@@ -376,7 +379,7 @@
     display: flex;
     align-items: center;
     gap:2rem;
-    overflow-x: scroll;
+    overflow-x: auto;
     padding-bottom: 1rem;
 }
 
@@ -415,7 +418,7 @@
     box-shadow: 0px 0px 2px var(--gn-shadow);
     margin-top: 5px;
     max-height: 200px;
-    overflow-y: scroll;
+    overflow-y: auto;
 }
 
 .profile .music .tracks-table .track-item,

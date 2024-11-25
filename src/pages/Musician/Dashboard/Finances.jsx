@@ -107,11 +107,11 @@ export const Finances = ({ musicianProfile }) => {
                     <div className="earnings-flex">
                         <div className="earnings-type withdrawable">
                             <h6>Withdrawable Funds:</h6>
-                            <h2>£{parseFloat(musicianProfile.withdrawableEarnings).toFixed(2)}</h2>
+                            <h2>£{parseFloat(musicianProfile.withdrawableEarnings ? musicianProfile.withdrawableEarnings : 0).toFixed(2)}</h2>
                         </div>
                         <div className="earnings-type total">
                             <h6>Total Earnings:</h6>
-                            <h1>£{parseFloat(musicianProfile.totalEarnings).toFixed(2)}</h1>
+                            <h1>£{parseFloat(musicianProfile.totalEarnings ? musicianProfile.totalEarnings : 0).toFixed(2)}</h1>
                         </div>
                         <div className="earnings-type pending">
                             <h6>Pending Funds:</h6>
@@ -123,7 +123,7 @@ export const Finances = ({ musicianProfile }) => {
                     <h2>Connect Your Bank Account</h2>
                     <div className="stripe-window">
                         {connectedAccountId && !stripeConnectInstance && <h2>Add information to start accepting money</h2>}
-                        {!connectedAccountId && <h4>We use stripe to securely manage your payment details. If you want your withdrawable earnings paid into your personal account, select Individual/Sole Trader. If you are paying the funds into a business account, you must select the type of business you are. This is required for legal compliance.</h4>}
+                        {!connectedAccountId && <h4>We use Stripe to securely manage your payment details. <br /><br /> If you want your withdrawable earnings paid into your personal account, select Individual/Sole Trader. If you are paying the funds into a business account, you must select the type of business you are. This is required for legal compliance.</h4>}
                         {!accountCreatePending && !connectedAccountId && (
                             <button
                                 className='btn primary'
@@ -163,13 +163,6 @@ export const Finances = ({ musicianProfile }) => {
                         </ConnectComponentsProvider>
                         )}
                         {error && <p className="error">Something went wrong!</p>}
-                        {(connectedAccountId || accountCreatePending || onboardingExited) && (
-                        <div className="dev-callout">
-                            {connectedAccountId && <h4>Your connected account ID is: <code className="bold">{connectedAccountId}</code></h4>}
-                            {accountCreatePending && <h4>Creating a connected account...</h4>}
-                            {onboardingExited && <h4>The Account Onboarding component has exited</h4>}
-                        </div>
-                        )}
                     </div>
                 </div>
                 <div className="tile your-fees">
