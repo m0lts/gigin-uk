@@ -1,7 +1,7 @@
 
 button {
     font-size: 1rem;
-    font-weight: 400;
+    font-weight: 300;
     cursor: pointer;
 }
 
@@ -67,14 +67,17 @@ button {
 
 .btn.secondary {
     background-color: var(--gn-white);
-    border:1px solid var(--gn-grey-400);
-    padding:var(--gn-btn-padding-y) var(--gn-btn-padding-x);
+    border:1px solid var(--gn-grey-350);
+    padding: 0.5rem 1rem;
     border-radius: var(--gn-btn-border-radius);
-    transition: background-color 200ms linear;
+    box-shadow: 0 0 2px var(--gn-shadow);
+    font-weight: 300;
+    transition: all 200ms linear;
 }
 
 .btn.secondary:hover {
     background-color: var(--gn-grey-300);
+    box-shadow: none;
 }
 
 

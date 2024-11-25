@@ -180,10 +180,10 @@ export const MessagePage = () => {
                                         </div>
                                         <div className="conversation-text">
                                             <div className="conversation-title">
-                                                <h3>
+                                                <h3 className='conversation-title-text'>
                                                     {otherParticipant ? otherParticipant.accountName : 'Unknown'}
                                                     {otherParticipant.venueName && (
-                                                        <span>- {otherParticipant.venueName}</span>
+                                                        <span> - {otherParticipant.venueName}</span>
                                                     )}
                                                 </h3>
                                                 {hasUnreadMessages && <div className="notification-dot"></div>}

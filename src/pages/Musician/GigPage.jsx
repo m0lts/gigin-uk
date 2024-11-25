@@ -31,6 +31,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [userAppliedToGig, setUserAppliedToGig] = useState(false);
     const [negotiateModal, setNegotiateModal] = useState(false);
     const [newOffer, setNewOffer] = useState();
+    const [width, setWidth] = useState('100%');
 
     useEffect(() => {
         const filterGigData = async () => {
@@ -80,15 +81,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth > 1100) {
-                setPadding('15vw');
+                setPadding('10%');
+                setWidth('80%');
             } else {
-                setPadding('1rem');
+                setPadding('2.5%');
+                setWidth('95%');
             }
         };
-
-        handleResize(); // Set initial padding
+        handleResize();
         window.addEventListener('resize', handleResize);
-
         return () => {
             window.removeEventListener('resize', handleResize);
         };
@@ -228,7 +229,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const calculateServiceFee = (budget) => {
         const numericBudget = parseFloat(budget.replace('£', ''));
         const fee = (numericBudget * 0.05).toFixed(2);
-        return parseFloat(fee);
+        return fee;
     };
     
     const calculateTotalIncome = (budget) => {
@@ -501,7 +502,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         }
     };
     
-
+    console.log(gigData)
 
     return (
         <div className='gig-page'>
@@ -511,7 +512,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 setAuthType={setAuthType}
                 padding={padding}
             />
-            <section className="gig-page-body" style={{ padding: `0 ${padding}` }}>
+            <section className="gig-page-body" style={{ width: `${width}`}}>
                 {loading ? (
                     <>
                         <div className="head">
@@ -539,15 +540,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                 </button>
                             </div> */}
                         </div>
-                        <div className="images">
-                            {venueProfile.photos.slice(0, 3).map((photo, index) => (
-                                <figure key={index} className={`img-${index + 1}`} onClick={() => handleImageClick(index)}>
-                                    <img src={photo} alt={`${gigData.venue.venueName} photo ${index + 1}`} />
-                                    {index === 2 && venueProfile.photos.length > 3 && (
-                                        <div className="more-overlay">+{venueProfile.photos.length - 3}</div>
-                                    )}
+                        <div className="images-and-location">
+                            <div className="main-image">
+                                <figure className="img" onClick={() => handleImageClick(0)}>
+                                    <img src={venueProfile.photos[0]} alt={`${gigData.venue.venueName} photo`} />
+                                    <div className="more-overlay">
+                                        <h2>+{venueProfile.photos.length - 1}</h2>
+                                    </div>
                                 </figure>
-                            ))}
+                            </div>
+                            <div className="location">
+                                <div ref={mapContainerRef} className="map-container" style={{ height: '100%', width: '100%' }} />
+                            </div>
                         </div>
                         <div className="main">
                             <div className="gig-info">
@@ -559,12 +563,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                     <div className="address">
                                         <h4>{gigData.venue.address}</h4>
                                     </div>
-                                    <div className="description">
-                                        <p>{venueProfile.description}</p>
-                                    </div>
                                 </div>
                                 <div className="details">
-                                    <h4 className="subtitle">Details</h4>
                                     <div className="details-list">
                                         <div className="detail">
                                             <h6>Performer</h6>
@@ -637,26 +637,26 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                         <p>* You can discuss adjustments to the timings with the host in your messages.</p>
                                     </div>
                                 </div>
-                                <div className="location">
-                                    <h4>Location</h4>
-                                    <div ref={mapContainerRef} className="map-container" style={{ height: '300px', width: '75%', borderRadius: '5px' }} />
+                                <div className="description">
+                                    <h4>Description</h4>
+                                    <p>{venueProfile.description}</p>
                                 </div>
                                 <div className="extra-info">
                                     <h4 className="subtitle">Extra Info</h4>
                                     <div className="info">
-                                        <h6>Gig requests</h6>
+                                        <h6>Gig Applications</h6>
                                         <div className="text">
-                                            {gigData.extraInformation}
+                                            <p>{gigData.applicants.length}</p>
                                         </div>
                                     </div>
                                     <div className="info">
                                         <h6>Venue Information</h6>
                                         <div className="text">
-                                            {venueProfile.extraInformation}
+                                            <p>{venueProfile.extraInformation}</p>
                                         </div>
                                     </div>
                                 </div>
-                                {similarGigs.length > 0 && (
+                                {/* {similarGigs.length > 0 && (
                                     <div className="similar-gigs">
                                         <h4 className="subtitle">More Gigs</h4>
                                         <div className="similar-gigs-list">
@@ -678,7 +678,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                             ))}
                                         </div>
                                     </div>
-                                )}
+                                )} */}
                             </div>
                             <div className="action-box">
                                 <div className="action-box-info">
@@ -688,6 +688,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                     </div>
                                     <div className="action-box-duration">
                                         <h4>{formatDuration(gigData.duration)}</h4>
+                                    </div>
+                                </div>
+                                <div className="action-box-date-and-time">
+                                    <div className="action-box-date">
+                                        <h3>{formatDate(gigData.date)}, {gigData.startTime}</h3>
                                     </div>
                                 </div>
                                 <div className="action-box-fees">
@@ -716,6 +721,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                             )}
                                         </button>
                                     )}
+                                    
                                     <div className="two-buttons">
                                         {!userAppliedToGig && (
                                             <button className="btn primary-alt" onClick={handleNegotiateButtonClick}>
@@ -726,6 +732,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                             Message
                                         </button>
                                     </div>
+                                    <button className="btn secondary">
+                                        Other Gigs at {gigData.venue.venueName}
+                                    </button>
                                 </div>
                             </div>
                         </div>

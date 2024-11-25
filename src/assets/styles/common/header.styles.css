@@ -7,7 +7,7 @@
     justify-content: space-between;
     align-items: center;
     background-color: var(--gn-white);
-    box-shadow: 2px 2px 5px var(--gn-grey-400);
+    box-shadow: 0 0 5px var(--gn-grey-400);
 }
 
 .header .left,
@@ -59,6 +59,47 @@
 
 
 /* ACCOUNT MENU */
+
+.header .account-btn {
+    border:1px solid transparent;
+    background-color: var(--gn-off-black);
+    color: var(--gn-white);
+    padding: 8px 12px;
+    border-radius: 2rem;
+    box-shadow: 0 0 5px var(--gn-shadow);
+    transition: all 200ms linear;
+}
+
+.header .account-btn:hover {
+    background-color: var(--gn-grey-200);
+    border: 1px solid var(--gn-grey-350);
+}
+
+.header .account-btn .icon,
+.header .account-btn .withdrawable-earnings {
+    transition: all 200ms linear;
+}
+
+.header .account-btn .icon {
+    font-size: 1.5rem;
+    box-shadow: 0 0 2px var(--gn-shadow);
+    color: var(--gn-white);
+}
+
+.header .account-btn:hover .icon,
+.header .account-btn:hover .withdrawable-earnings {
+    color: var(--gn-black);
+}
+
+.header .account-btn.active {
+    background-color: var(--gn-grey-200);
+    border: 1px solid var(--gn-grey-350);
+}
+
+.header .account-btn.active .icon,
+.header .account-btn.active .withdrawable-earnings {
+    color: var(--gn-black);
+}
 
 .header .account-menu {
     position: absolute;

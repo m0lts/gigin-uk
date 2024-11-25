@@ -33,7 +33,7 @@ export const useStripeConnect = (connectedAccountId) => {
           appearance: {
             overlays: "dialog",
             variables: {
-              colorPrimary: "#635BFF",
+              colorPrimary: "#FF6C4B",
             },
           },
         })

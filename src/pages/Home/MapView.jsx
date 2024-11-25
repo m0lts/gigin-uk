@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
-import { CloseIcon, LeftChevronIcon, NewTabIcon, RightChevronIcon } from "../../components/ui/Extras/Icons";
+import { CloseIcon, ErrorIcon, LeftChevronIcon, NewTabIcon, RightChevronIcon } from "../../components/ui/Extras/Icons";
 import { faCircle } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
@@ -64,7 +64,7 @@ export const MapView = ({ upcomingGigs }) => {
     const createCustomMarker = (gig) => {
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-marker';
-        markerElement.style.background = 'var(--gn-grey-100)';
+        markerElement.style.background = 'var(--gn-white)';
         markerElement.style.boxShadow = '0px 0px 10px var(--gn-shadow)';
         markerElement.style.width = '50px';
         markerElement.style.height = '30px';
@@ -73,15 +73,15 @@ export const MapView = ({ upcomingGigs }) => {
         markerElement.style.justifyContent = 'center';
         markerElement.style.alignItems = 'center';
         markerElement.style.position = 'relative';
-        markerElement.style.padding = '10px 30px';
+        markerElement.style.padding = '15px 35px';
         markerElement.style.cursor = 'pointer';
-        markerElement.style.transition = 'background-color 0.1s linear';
+        markerElement.style.transition = 'background-color 200ms linear';
 
         const tooltip = document.createElement('span');
         tooltip.textContent = `${gig.budget}`;
-        tooltip.style.color = 'var(--gn-black)';
-        tooltip.style.fontWeight = '600';
-        tooltip.style.fontSize = '1rem';
+        tooltip.style.color = 'var(--gn-off-black)';
+        tooltip.style.fontWeight = '700';
+        tooltip.style.fontSize = '1.1rem';
         markerElement.appendChild(tooltip);
 
         return markerElement;
@@ -99,13 +99,13 @@ export const MapView = ({ upcomingGigs }) => {
     };
 
     const handleMarkerMouseEnter = (markerElement) => {
-        markerElement.style.background = 'var(--gn-grey-600)';
+        markerElement.style.background = 'var(--gn-off-black)';
         markerElement.querySelector('span').style.color = 'white';
     };
 
     // Function to handle marker mouse leave
     const handleMarkerMouseLeave = (markerElement) => {
-        markerElement.style.background = 'var(--gn-grey-100)';
+        markerElement.style.background = 'var(--gn-white)';
         markerElement.querySelector('span').style.color = 'black';
     };
 
@@ -147,6 +147,15 @@ export const MapView = ({ upcomingGigs }) => {
         setClickedGigs(prevGigs => prevGigs.filter(g => g.gigId !== gig.gigId));
     };
 
+    function formatGigRange(gigStartTime, duration) {
+        const [startHour, startMinute] = gigStartTime.split(':').map(Number);
+        const startDate = new Date();
+        startDate.setHours(startHour, startMinute, 0, 0);
+        const endDate = new Date(startDate.getTime() + duration * 60000);
+        const formatTime = (date) => date.toTimeString().slice(0, 5);
+        return `${formatTime(startDate)}-${formatTime(endDate)}`;
+    }
+
     return (
         <div className="map-view">
             <div
@@ -160,15 +169,16 @@ export const MapView = ({ upcomingGigs }) => {
                     {clickedGigs.map((gig, index) => (
                         <li className="preview-gig-item" key={index} onClick={() => openMusicianGig(gig.gigId)}>
                             <button className="btn danger" onClick={(e) => handleCloseGig(gig, e)}>
-                                <CloseIcon />
+                                <ErrorIcon />
                             </button>
                             <div className="preview-gig-item-venue">
                                 <figure className="preview-gig-img">
                                     <img src={gig.venue.photo} alt={gig.venue.venueName} />
                                 </figure>
                                 <div className="preview-gig-info">
-                                    <h4>{gig.venue.venueName}</h4>
+                                    <h3>{gig.venue.venueName}</h3>
                                     <p>{formatDate(gig.date)}</p>
+                                    <p>{formatGigRange(gig.startTime, gig.duration)}</p>
                                 </div>
                             </div>
                             <div className="preview-gig-budget">

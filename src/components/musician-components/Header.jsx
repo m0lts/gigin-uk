@@ -8,7 +8,7 @@ import { firestore } from "../../firebase"
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import { GuitarsIcon, DotIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MailboxFullIcon, MapIcon, NewTabIcon, SettingsIcon, TelescopeIcon, UserIcon, VenueBuilderIcon, VillageHallIcon } from "../ui/Extras/Icons"
 
-export const Header = ({ setAuthModal, setAuthType, user }) => {
+export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     
     const { logout } = useAuth();
     const navigate = useNavigate();
@@ -118,7 +118,9 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     }
 
     const headerStyle = {
-        padding: location.pathname.includes('dashboard') ? '0 1rem' : '0 5%',
+        padding: location.pathname.includes('dashboard') ? '0 1rem' : location.pathname.startsWith('/gig/') 
+        ? `0 ${padding}` 
+        : '0 1rem',
       };
 
     const menuStyle = {
@@ -242,12 +244,10 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                     )
                             )}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <h4>£{user.musicianProfile?.withdrawableEarnings ? parseFloat(user.musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h4>
-                            <button className="btn icon" onClick={() => setAccountMenu(!accountMenu)}>
-                                <UserIcon />
-                            </button>
-                        </div>
+                        <button className={`btn account-btn ${accountMenu ? 'active' : ''}`} onClick={() => setAccountMenu(!accountMenu)}>
+                            <h4 className="withdrawable-earnings">£{user.musicianProfile?.withdrawableEarnings ? parseFloat(user.musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h4>
+                            <UserIcon />
+                        </button>
                     </div>
                     {accountMenu && (
                         user.venueProfiles && user.musicianProfile ? (

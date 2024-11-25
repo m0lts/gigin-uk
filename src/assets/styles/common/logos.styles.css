@@ -1,5 +1,7 @@
 
-.logo, .logo .link {
+.logo,
+.logo .link {
+    font-style: var(--gn-logo-font);
     text-decoration: none;
     width:fit-content;
     font-weight:600;
