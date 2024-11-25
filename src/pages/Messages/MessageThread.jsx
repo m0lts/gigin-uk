@@ -569,7 +569,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 ) : message.status === 'gig confirmed' ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text} Your payment will arrive in your account 24 hours after the gig has been performed.</h4>
+                                        <h4>{message.text} {userRole !== 'venue' ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : ''}</h4>
                                     </>
                                 ) : message.status === 'payment failed' && userRole === 'venue' ? (
                                     <>
