@@ -1,0 +1,103 @@
+.payment.modal {
+    z-index: 10000;
+}
+
+.payment.modal .modal-content {
+    overflow: hidden;
+}
+
+.payment.modal .payment-details {
+    border-radius: 1rem;
+    width:100%;
+    padding: 1rem;
+    background-color: var(--gn-grey-100);
+    box-shadow: 2px 2px 10px var(--gn-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:10px;
+}
+
+.payment.modal .payment-details .payment-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.payment.modal .card-details-entry {
+    min-height: 300px;
+    width:100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.payment.modal .card-list {
+    width:100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:10px;
+}
+
+.payment.modal .card-list .card-item {
+    border:1px solid var(--gn-grey-350);
+    border-radius: 10px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    box-shadow: 1px 1px 5px var(--gn-shadow);
+    cursor: pointer;
+    transition: all 200ms linear;
+}
+
+.payment.modal .card-list .card-item:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.payment.modal .card-list .card-item.selected {
+    outline: 2px solid var(--gn-grey-600);
+    border: 1px solid transparent;
+}
+
+.payment.modal .card-list .card-left {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap:5%;
+    width: 80%;
+}
+
+.payment.modal .card-list .card-item .card-brand-icon {
+    width:50px;
+    height: auto;
+}
+
+.payment.modal .card-list .card-type {
+    border:1px solid var(--gn-green);
+    border-radius: 5px;
+    background-color: var(--gn-offset-green);
+    padding: 5px;
+    color: var(--gn-green);
+}
+
+.payment.modal .card-list .card-type p {
+    font-size: 0.8rem;
+}
+
+.payment.modal .payment-success,
+.payment.modal .making-payment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:25px;
+}
+
+.payment.modal .payment-success .icon {
+    font-size: 4rem;
+}
