@@ -106,7 +106,7 @@ export const OverviewTab = ({musicianData}) => {
     };
 
     return (
-        <div className="overview">
+        <div className="profile-overview">
             <div className="overview-top">
                 <div className="info-box">
                     <h2>Watch</h2>

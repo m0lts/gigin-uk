@@ -72,9 +72,9 @@ export const MusicianDashboard = () => {
             {loadingData ? (<LoadingScreen /> ) : (
                 <>
                     <Sidebar />
-                    <div className="window musician">
+                    <div className="window dashboard musician">
                         <Routes>
-                            <Route index element={<Overview />} />
+                            <Route index element={<Overview musicianProfile={musicianProfile} gigApplications={gigApplications} />} />
                             <Route path="profile" element={<ProfileTab musicianProfile={musicianProfile} />} />
                             <Route path="gigs" element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} />} />
                             <Route path="bands" element={<Bands />} />

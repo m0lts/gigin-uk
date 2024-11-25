@@ -198,26 +198,26 @@
 }
 
 /* OVERVIEW */
-.profile .overview {
+.profile .profile-overview {
     padding: 1rem 0.25rem;
 }
 
-.profile .overview .box-style {
+.profile .profile-overview .box-style {
     border: 2px solid var(--gn-grey-350);
     border-radius: 1rem;
     box-shadow: 0 0 5px var(--gn-shadow);
     overflow: hidden;
 }
 
-.profile .overview .info-box h2 {
+.profile .profile-overview .info-box h2 {
     margin-bottom: 5px;
 }
 
-.profile .overview .box-style.text {
+.profile .profile-overview .box-style.text {
     padding: 1rem;
 }
 
-.profile .overview .overview-top {
+.profile .profile-overview .overview-top {
     display:grid;
     grid-template-columns: 70% 27.5%;
     gap:2.5%;
@@ -225,11 +225,11 @@
     overflow: hidden;
 }
 
-.profile .overview .video-thumbnail {
+.profile .profile-overview .video-thumbnail {
     position: relative;
 }
 
-.profile .overview .video-thumbnail img {
+.profile .profile-overview .video-thumbnail img {
     width:100%;
     height: 350px;
     object-fit: cover;
@@ -237,7 +237,7 @@
     cursor: pointer;
 }
 
-.profile .overview .video-thumbnail .icon {
+.profile .profile-overview .video-thumbnail .icon {
     position: absolute;
     top:50%;
     left:50%;
@@ -246,24 +246,24 @@
     font-size: 3rem;
 }
 
-.profile .overview .video-thumbnail .title-and-date {
+.profile .profile-overview .video-thumbnail .title-and-date {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.profile .overview .overview-top .bio {
+.profile .profile-overview .overview-top .bio {
     max-height: 475px;
     overflow: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
-.profile .overview .overview-top .bio::-webkit-scrollbar {
+.profile .profile-overview .overview-top .bio::-webkit-scrollbar {
     display: none;
 }
 
-.profile .overview .overview-middle {
+.profile .profile-overview .overview-middle {
     display: flex;
     align-items: center;
     justify-content: space-evenly;
@@ -272,24 +272,24 @@
     padding: 1rem 0;
 }
 
-.profile .overview .overview-middle .data {
+.profile .profile-overview .overview-middle .data {
     display: flex;
     align-items: center;
     gap: 10px;
     font-size: 1rem;
 }
 
-.profile .overview .overview-middle .data .icon:nth-of-type(2) {
+.profile .profile-overview .overview-middle .data .icon:nth-of-type(2) {
     font-size: 0.2rem;
 }
 
-.profile .overview .overview-bottom {
+.profile .profile-overview .overview-bottom {
     display: grid;
     grid-template-columns: 30% 30% 30%;
     gap:5%;
 }
 
-.profile .overview .overview-bottom .musician-type {
+.profile .profile-overview .overview-bottom .musician-type {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -299,15 +299,15 @@
     height: 100px;
 }
 
-.profile .overview .overview-bottom .musician-type .icon {
+.profile .profile-overview .overview-bottom .musician-type .icon {
     font-size: 2rem;
 }
 
-.profile .overview .overview-bottom .list {
+.profile .profile-overview .overview-bottom .list {
     list-style: none;
 }
 
-.profile .overview .overview-bottom .sound-item {
+.profile .profile-overview .overview-bottom .sound-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -316,11 +316,11 @@
     gap:1rem;
 }
 
-.profile .overview .overview-bottom .sound-item .icon {
+.profile .profile-overview .overview-bottom .sound-item .icon {
     font-size: 1.5rem;
 }
 
-.profile .overview .overview-bottom .social-media-links {
+.profile .profile-overview .overview-bottom .social-media-links {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -328,7 +328,7 @@
     padding-top: 2rem;
 }
 
-.profile .overview .overview-bottom .social-media-links .link {
+.profile .profile-overview .overview-bottom .social-media-links .link {
     display: flex;
     align-items: center;
     gap:10px;
@@ -336,7 +336,7 @@
     font-weight: 500;
 }
 
-.profile .overview .overview-bottom .social-media-links .link .icon {
+.profile .profile-overview .overview-bottom .social-media-links .link .icon {
     font-size: 1.5rem;
 }
 
