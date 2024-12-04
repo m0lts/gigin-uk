@@ -214,7 +214,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                 <h1 className="title">Finances</h1>
             </div>
             <div className="body finances">
-                <div className="tile earnings">
+                {/* <div className="tile earnings">
                     <h2>Your Gig Earnings</h2>
                     <div className="earnings-flex">
                         <div className="earnings-type withdrawable">
@@ -230,7 +230,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                             <h2>£{parseFloat(pendingTotal).toFixed(2)}</h2>
                         </div>
                     </div>
-                </div>
+                </div> */}
                 {musicianProfile.bankDetailsAdded ? (
                     <div className="tile connect-account graph">
                         <h2>Earnings Over Time</h2>
