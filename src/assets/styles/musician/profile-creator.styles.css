@@ -1,0 +1,701 @@
+
+.profile-creator {
+    position: relative;
+    width:100vw;
+    height:100vh;
+    max-height: 100vh;
+    padding: 1rem 0;
+    display: grid;
+    grid-template-rows: 5% 85% 10%;
+}
+
+
+/* COMMON STYLES */
+
+.profile-creator .loading-state {
+    grid-row: span 3;
+    height:100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.profile-creator .stage .section-title {
+    text-align: center;
+    margin-top:1rem;
+}
+
+.profile-creator .stage .body {
+    height:90%;
+    display: flex;
+    gap:1rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.profile-creator .stage .body::-webkit-scrollbar {
+    display: none;
+}
+
+.profile-creator .stage .body .title-container {
+    text-align: center;
+}
+
+.profile-creator .stage .body .title-container h1 {
+    margin-bottom: 5px;
+}
+
+
+/* CARDS */
+
+.profile-creator .stage .card {
+    position: relative;
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding:1rem;
+    padding-right: 1.5rem;
+    min-width: 150px;
+    max-width: 250px;
+    min-height: 100px;
+    max-height:150px;
+    gap:5px;
+    text-align: left;
+    transition: background-color 200ms linear, border-color 200ms linear;
+}
+
+.profile-creator .stage .card.small {
+    min-width:fit-content;
+    padding-right: 1rem;
+    align-items: center;
+    min-height:fit-content;
+}
+
+.profile-creator .stage .card.template {
+    width:fit-content;
+    min-height: fit-content;
+}
+
+.profile-creator .stage .card .text {
+    font-size: 1rem;
+}
+
+.profile-creator .stage .card .sub-text {
+    font-size: 0.9rem;
+}
+
+.profile-creator .stage .card .icon {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.profile-creator .stage .card:hover {
+    border-color: var(--gn-orange);
+}
+
+.profile-creator .stage .card.selected {
+    background-color: var(--gn-offset-orange);
+    border-color: var(--gn-orange);
+}
+
+.profile-creator .stage .card.disabled {
+    color: var(--gn-grey-600);
+    cursor: auto;
+}
+
+.profile-creator .stage .card.disabled:hover {
+    border-color: var(--gn-grey-400);
+}
+
+.profile-creator progress {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 10px;
+    background-color: #e0e0e0; /* Background of the progress bar */
+    border-radius: 5px;
+    overflow: hidden;
+    border: none;
+}
+
+.profile-creator progress::-webkit-progress-bar {
+    background-color: #e0e0e0; /* Background of the entire progress bar */
+    border-radius: 5px;
+}
+
+.profile-creator progress::-webkit-progress-value {
+    background-color: #000000; /* Black color for the filled part */
+    border-radius: 5px 0 0 5px; /* Rounded corners for the filled section */
+    transition: width 0.3s ease;
+}
+
+.profile-creator progress::-moz-progress-bar {
+    background-color: #000000; /* Black color for Firefox */
+    border-radius: 5px;
+}
+
+.profile-creator progress:indeterminate {
+    background-color: #e0e0e0; /* Background for indeterminate progress */
+}
+
+
+/* TEXT AND SELECT INPUTS */
+
+.profile-creator .stage .body .input,
+.profile-creator .stage .body .select {
+    padding:10px 5px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    text-align: center;
+    transition: border 0.3s;
+}
+
+.profile-creator .stage .body .input.error,
+.profile-creator .stage .body .select.error {
+    border: 1px solid var(--gn-red);
+}
+
+.profile-creator .stage .body .input:focus,
+.profile-creator .stage .body .select:focus {
+    border:1px solid var(--gn-orange);
+    outline:none;
+}
+
+
+
+/* INTRO */
+
+.profile-creator .stage.intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+}
+
+
+/* NAME */
+
+.profile-creator .stage.name .input.name {
+    font-size: 5rem;
+    font-weight: var(--gn-semi-bold);
+    text-align: center;
+    border:none;
+    background-color: transparent;
+    width:fit-content;
+    margin-bottom: 2rem;
+}
+
+.profile-creator .stage.name .input.name:focus {
+    outline: none;
+}
+
+
+/* PROFILE PICTURE */
+
+.profile-creator .stage.photo .image-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+}
+
+.profile-creator .stage.photo .input.photo {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-color: var(--gn-grey-300);
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.profile-creator .stage.photo .image-preview {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-color: var(--gn-grey-300);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.profile-creator .stage.photo .image-preview .icon {
+    font-size: 5rem;
+    color: var(--gn-grey-600);
+}
+
+
+/* LOCATION */
+
+.profile-creator .stage.location .map-placeholder {
+    width:200px;
+    height:200px;
+    background-color: var(--gn-grey-300);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-creator .stage.location .map-placeholder .icon {
+    font-size: 2rem;
+}
+
+
+/* MUSICIAN TYPE */
+
+.profile-creator .stage.musician-type .selections {
+    display: flex;
+    gap:10px;
+}
+
+
+/* GENRES */
+
+.profile-creator .stage.genres .genre-selections-container {
+    position: relative;
+}
+
+.profile-creator .stage.genres .genre-selections-container .input {
+    width:200px;
+}
+
+.profile-creator .stage.genres .genre-selections-container .input:focus + .genre-suggestions {
+    border:1px solid var(--gn-orange);
+    border-top: none;
+}
+
+.profile-creator .stage.genres .genre-suggestions {
+    position: absolute;
+    top:2.5rem;
+    max-height:200px;
+    width:200px;
+    overflow: scroll;
+    background-color: var(--gn-white);
+    border:1px solid var(--gn-grey-400);
+    border-top: none;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-bottom-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    transition: border-color 200ms linear;
+}
+
+.profile-creator .stage.genres .genre-suggestions::-webkit-scrollbar {
+    display: none;
+}
+
+.profile-creator .stage.genres .genre-suggestions .genre-option {
+    border-bottom: 1px solid var(--gn-grey-400);
+    padding:0.5rem;
+    cursor: pointer;
+}
+
+.profile-creator .stage.genres .genre-suggestions .genre-option:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.profile-creator .stage.genres .genre-suggestions .genre-option:last-of-type {
+    border-bottom: none;
+}
+
+.profile-creator .stage.genres .selected-genres {
+    width:80%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    flex-wrap: wrap;
+}
+
+.profile-creator .stage.genres .genre-tag {
+    border:1px solid var(--gn-orange);
+    padding:0.25rem 0.5rem;
+    border-radius: 5px;
+    background-color: var(--gn-offset-orange);
+    cursor: pointer;
+}
+
+
+/* COVERS OR ORIGINALS */
+
+.profile-creator .stage.music-type .selections {
+    display: flex;
+    gap:10px;
+}
+
+
+/* INSTRUMENTS */
+
+.profile-creator .stage.instruments .instruments-list {
+    width:80%;
+    display: flex;
+    gap:5px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+
+/* EQUIPMENT */
+
+.profile-creator .stage.equipment .equipment-list {
+    width:80%;
+    display: flex;
+    gap:5px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+
+/* BIO */
+
+.profile-creator .stage.bio textarea {
+    width: 400px;
+    max-width: 400px;
+    min-width: 400px;
+    height: 200px;
+    max-height: 200px;
+    min-height: 200px;
+    padding:10px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    transition: border 0.3s;
+}
+
+.profile-creator .stage.bio textarea.error {
+    border: 1px solid var(--gn-red);
+}
+
+.profile-creator .stage.bio textarea:focus {
+    outline: none;
+    border: 1px solid var(--gn-orange);
+}
+
+
+/* VIDEOS AND TRACKS */
+
+.profile-creator .stage.media .upload {
+    border:1px solid var(--gn-grey-500);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    width:60%;
+    height:75px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-creator .stage.media .upload-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width:100%;
+    height: 100%;
+    gap:1rem;
+    font-size: 0.9rem;
+    color: var(--gn-black);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 200ms linear;
+}
+
+.profile-creator .stage.media .upload-label:hover {
+    background-color: var(--gn-grey-300);
+}
+
+
+.profile-creator .stage.media .upload-table td {
+    padding: 0;
+}
+
+.profile-creator .stage.media .upload-table .upload-table-label {
+    padding: 0;
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 50px;
+    gap: 0.5rem;
+    cursor: pointer;
+    background-color: var(--gn-grey-200);
+    transition: background-color 200ms linear;
+}
+
+.profile-creator .stage.media .upload-table .upload-table-label:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.profile-creator .stage.media .media-table {
+    width:50%;
+    min-width: 400px;
+    border:1px solid var(--gn-grey-400);
+    overflow: hidden;
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.profile-creator .stage.media .media-table thead {
+    background-color: var(--gn-grey-300);
+    border-collapse: collapse;
+}
+
+.profile-creator .stage.media .media-table thead tr th {
+    font-weight: 500;
+    text-align: left;
+}
+
+.profile-creator .stage.media .media-table thead tr th,
+.profile-creator .stage.media .media-table tbody tr td {
+    padding:0.25rem;
+}
+
+.profile-creator .stage.media .media-table .file-type {
+    text-align: center;
+}
+
+.profile-creator .stage.media .media-table .title {
+    position: relative;
+}
+
+.profile-creator .stage.media .media-table .input {
+    padding:5px;
+    text-align: left;
+    border: none;
+}
+
+.profile-creator .stage.media .media-table .remove-button {
+    font-size: 1rem;
+    padding:5px;
+    color: var(--gn-red);
+}
+
+/*  VIDEOS */
+
+.profile-creator .stage.media .video-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-creator .stage.media .video-container {
+    width:75px;
+    height: 50px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-creator .stage.media .video-container img {
+    width:100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 5px;
+}
+
+.profile-creator .stage.media .video-container .icon {
+    position: absolute;
+    top:50%;
+    right:50%;
+    transform: translate(50%, -50%);
+    color: var(--gn-white);
+    font-size: 1.5rem;
+}
+
+.profile-creator .stage.media .modal-content {
+    position: relative;
+    border:none;
+    height: 100%;
+    width:100%;
+    padding:0;
+    background-color: transparent;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-creator .stage.media .modal-content video {
+    max-height: 75%;
+    max-width: 90%;
+}
+
+.profile-creator .stage.media .modal .close {
+    position: absolute;
+    top: 1rem;
+    right: 2rem;
+    color: var(--gn-red);
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+
+
+/* SOCIAL MEDIA */
+
+.profile-creator .stage.social-media .social-media-inputs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:10px;
+}
+
+.profile-creator .stage.social-media .social-media-input {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap:1rem;
+}
+
+.profile-creator .stage.social-media .facebook-icon .icon {
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .instagram-icon .icon {
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .twitter-icon .icon {
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .youtube-icon .icon {
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .spotify-icon .icon {
+    font-size: 2rem;
+}
+
+.profile-creator .stage.social-media .soundcloud-icon .icon {
+    font-size: 2rem;
+}
+
+
+/* FINAL */
+
+.profile-creator .stage.final .email-input {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.profile-creator .stage.final .email-input .input {
+    width:250px;
+}
+
+.profile-creator .stage.final .message {
+    border:1px solid rgb(27, 201, 0);
+    padding:0.5rem;
+    border-radius: 5px;
+    background-color: rgba(27, 201, 0, 0.05);
+}
+
+.profile-creator .stage.final .message .icon {
+    color: rgb(27, 201, 0);
+    margin-right: 5px;
+}
+
+.profile-creator .stage.final .message.error {
+    border:1px solid var(--gn-red);
+    padding:0.5rem;
+    border-radius: 5px;
+    background-color: var(--gn-offset-red);
+}
+
+.profile-creator .stage.final .message.error .icon {
+    color: var(--gn-red);
+    margin-right: 5px;
+}
+
+
+
+/* CONTROLS, BUTTONS AND PROGRESS BAR */
+
+.profile-creator .top {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin: 1rem 5%;
+}
+
+.profile-creator .bottom {
+    width:90%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.profile-creator .bottom .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width:100%;
+}
+
+.profile-creator .bottom .controls.single {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.profile-creator .progress-bar-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 5px;
+    margin-bottom: 20px;
+}
+
+.profile-creator .progress-bar-section {
+    position: relative;
+    background-color: var(--gn-grey-400);
+    height: 100%;
+    flex: 1;
+    overflow: hidden;
+}
+
+.profile-creator .progress-bar-section:first-of-type {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+.profile-creator .progress-bar-section:last-of-type {
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.profile-creator .progress-bar-gap {
+    width: 5px;
+}
+
+.profile-creator .progress-bar {
+    height: 100%;
+    background-color: var(--gn-black);
+    transition: width 0.4s ease;
+}

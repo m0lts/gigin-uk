@@ -1,0 +1,101 @@
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-thin.otf) format('opentype');
+    font-weight: 200;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-thinoblique.otf) format('opentype');
+    font-weight: 200;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-light.otf) format('opentype');
+    font-weight: 300;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-lightoblique.otf) format('opentype');
+    font-weight: 300;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-regular.otf) format('opentype');
+    font-weight: 400;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-regularoblique.otf) format('opentype');
+    font-weight: 400;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-medium.otf) format('opentype');
+    font-weight: 500;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-mediumoblique.otf) format('opentype');
+    font-weight: 500;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-demibold.otf) format('opentype');
+    font-weight: 600;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-demiboldoblique.otf) format('opentype');
+    font-weight: 600;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-bold.otf) format('opentype');
+    font-weight: 700;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-boldoblique.otf) format('opentype');
+    font-weight: 700;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-extrabold.otf) format('opentype');
+    font-weight: 800;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-extraboldoblique.otf) format('opentype');
+    font-weight: 800;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-heavyoblique.otf) format('opentype');
+    font-weight: 900;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'VisbyCF';
+    src: url(./visby-font/Fontspring-DEMO-visbycf-heavy.otf) format('opentype');
+    font-weight: 900;
+    font-style: italic;
+}
+
+:root {
+    font-style: normal;
+    --gn-logo-font: 'VisbyCF', sans-serif;
+}

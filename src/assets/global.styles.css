@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
+*, *::after, *::before {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+
+    /* Typography */
+    font-family: "DM Sans", sans-serif;
+    font-size: 14px;
+    --gn-bold: 600;
+    --gn-semi-bold: 500;
+    --gn-regular: 400;
+    --gn-light: 300;
+
+    /* Colours */
+    --gn-orange: #FF6C4B;
+    --gn-offset-orange: #ffe9e4;
+    --gn-white: #ffffff;
+    --gn-grey-100: #fdfdfd;
+    --gn-grey-200: #fcfcfc;
+    --gn-grey-300: #f5f5f5;
+    --gn-grey-350: #e6e6e6;
+    --gn-grey-400: #d4d4d4;
+    --gn-grey-500: #acacac;
+    --gn-grey-600: #808080;
+    --gn-off-black: #333333;
+    --gn-black: #000000;
+    --gn-red: #ff0000;
+    --gn-offset-red: #ff000009;
+    --gn-green: #09b900;
+    --gn-offset-green: #09b90009;
+    --gn-overlay: #80808058;
+    --gn-overlay-dark: #80808096;
+    --gn-shadow: #0000001a;
+    --gn-disabled: rgba(255, 255, 255, 0.5);
+
+    /* Common spacing */
+    --gn-btn-padding-x: 14px;
+    --gn-btn-padding-y: 7px;
+    --gn-btn-border-radius: 5px;
+    --gn-border-radius: 14px;
+    --gn-spacing-x: 14px;
+}
+
+/* ********************** LINKS ************************** */
+.link {
+    color: var(--gn-black);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
+/* ********************** TYPOGRAPHY  ************************** */
+h1 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+h4 {
+    font-size: 1rem;
+    font-weight: 500;
+}
+h5 {
+    font-size: 1rem;
+    font-weight: 400;
+}
+h6 {
+    text-transform: uppercase;
+    color: var(--dark-grey);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+p {
+    font-size: 1rem;
+    font-weight: 400;
+}
+a, .link, li {
+    font-size: 1rem;
+    font-weight: 400;
+}
+p, a, span, label, input, button, select, option, textarea, li {
+    font-family: "DM Sans", sans-serif;
+}
+
+.small-screen-message {
+    width:100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap:1rem;
+}

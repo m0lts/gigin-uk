@@ -1,0 +1,240 @@
+
+/* HEADER */
+
+.header {
+    height: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--gn-white);
+    box-shadow: 0 0 5px var(--gn-grey-400);
+}
+
+.header .left,
+.header .right,
+.header .right .buttons,
+.header .right .btn {
+    display: flex;
+    align-items: center;
+}
+
+.header .left.venues {
+    gap:145px;
+}
+
+.header .left.musician {
+    gap:127px;
+}
+
+.header .right {
+    gap:2rem;
+}
+
+.header .right .buttons {
+    gap:2rem;
+}
+
+.header .right .btn {
+    gap:10px
+}
+
+.header .left .breadcrumbs {
+    display: flex;
+    align-items: center;
+}
+
+.header .left .breadcrumbs .icon {
+    margin: 0 5px;
+    font-size: 0.5rem;
+}
+
+.header .left .breadcrumbs .item {
+    font-size: 0.9rem;
+}
+
+.header .left .breadcrumbs .item.active {
+    font-weight: 600;
+}
+
+.header .nav-list {
+    display: flex;
+    gap:1rem;
+}
+
+
+/* ACCOUNT MENU */
+
+.header .account-btn {
+    border:1px solid transparent;
+    background-color: var(--gn-off-black);
+    color: var(--gn-white);
+    padding: 8px 12px;
+    border-radius: 2rem;
+    box-shadow: 0 0 5px var(--gn-shadow);
+    transition: all 200ms linear;
+}
+
+.header .account-btn:hover {
+    background-color: var(--gn-grey-200);
+    border: 1px solid var(--gn-grey-350);
+}
+
+.header .account-btn .icon,
+.header .account-btn .withdrawable-earnings {
+    transition: all 200ms linear;
+}
+
+.header .account-btn .icon {
+    font-size: 1.5rem;
+    box-shadow: 0 0 2px var(--gn-shadow);
+    color: var(--gn-white);
+}
+
+.header .account-btn:hover .icon,
+.header .account-btn:hover .withdrawable-earnings {
+    color: var(--gn-black);
+}
+
+.header .account-btn.active {
+    background-color: var(--gn-grey-200);
+    border: 1px solid var(--gn-grey-350);
+}
+
+.header .account-btn.active .icon,
+.header .account-btn.active .withdrawable-earnings {
+    color: var(--gn-black);
+}
+
+.header .account-menu {
+    position: absolute;
+    min-width: 250px;
+    right:5%;
+    top:65px;
+    background-color: var(--gn-white);
+    padding:1rem;
+    border: 1px solid var(--gn-grey-300);
+    border-radius: var(--gn-border-radius);
+    box-shadow: 0 0 10px var(--gn-shadow);
+    z-index: 100;
+}
+
+.header .account-menu .item {
+    margin-bottom:10px;
+    padding:5px 10px;
+    border-radius: var(--gn-btn-border-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s linear;
+}
+
+.header .account-menu .item.no-margin {
+    margin-bottom:5px;
+}
+
+.header .account-menu .item:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.header .account-menu .item.message > .icon {
+    color: var(--gn-orange);
+}
+
+.header .account-menu .btn.danger {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding:5px 10px;
+    border-radius: var(--gn-btn-border-radius);
+}
+
+.header .account-menu .break {
+    width: 100%;
+    height:1px;
+    background-color: var(--gn-grey-400);
+    margin: 5px 0;
+}
+
+
+/* MESSAGES */
+
+.header .btn.messages {
+    position: relative;
+}
+
+.header .notification-dot {
+    position: absolute;
+    top:-10px;
+    right:-7px;
+}
+
+.header .notification-dot .icon {
+    color: var(--gn-orange);
+}
+
+
+/* FEEDBACK */
+
+.header .feedback {
+    position: absolute;
+    min-width: 250px;
+    right:20%;
+    top:65px;
+    background-color: var(--gn-white);
+    padding:10px;
+    border: 1px solid var(--gn-grey-300);
+    border-radius: var(--gn-border-radius);
+    box-shadow: 0 0 10px var(--gn-shadow);
+    z-index: 50;    
+}
+
+.header .feedback #feedbackBox {
+    width:250px;
+    resize: none;
+    height: 100px;
+    border-radius: 5px;
+    border: 1px solid var(--gn-grey-400);
+    padding:5px;
+}
+
+.header .feedback #feedbackBox:focus {
+    outline:none;
+    border: 1px solid var(--gn-orange);
+}
+
+.header .feedback .foot {
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.header .feedback .btn .icon {
+    font-size: 1rem;
+}
+
+.header .feedback .btn.icon.active {
+    color: var(--gn-orange);
+}
+
+
+/* SPECIFIC ELEMENTS */
+
+.header .account-menu .name-and-email {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.header .account-menu .name-and-email:hover {
+    background-color: transparent;
+}
+
+.header .account-menu .name-and-email p {
+    font-size: 0.9rem;
+    color: var(--gn-black);
+}
+
+.header .account-menu .title {
+    padding: 5px 10px;
+}

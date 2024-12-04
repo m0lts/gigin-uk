@@ -1,0 +1,190 @@
+
+/* ALL FORMS */
+
+.form,
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    width:100%;
+    gap:1rem;
+}
+
+.form .input-group, 
+.auth-form .input-group {
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+}
+
+.form .input-group label, 
+.auth-form .input-group label {
+    text-transform: uppercase;
+    color: var(--gn-grey-600);
+    font-size: 0.75rem;
+    font-weight: var(--gn-bold);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.form .input-group input,
+.form .input-group .password,
+.form .input-group select, 
+.form .input-group textarea,
+.auth-form .input-group input,
+.auth-form .input-group .password,
+.auth-form .input-group select {
+    padding:10px 5px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    transition: border 0.3s;
+}
+
+.form .input-group input:focus, 
+.auth-form .input-group input:focus {
+    border:1px solid var(--gn-orange);
+    outline:none;
+}
+
+.form .input-group input.error, 
+.auth-form .input-group input.error {
+    border:1px solid var(--gn-red);
+}
+
+.form .error-box, 
+.auth-form .error-box {
+    border:1px solid var(--gn-red);
+    padding:5px;
+    background-color: var(--gn-offset-red);
+    border-radius: 5px;
+}
+
+
+/* AUTH FORMS */
+
+.auth-form .error-msg {
+    font-size: 0.75rem;
+}
+
+.auth-form .error-msg {
+    font-size: 0.75rem;
+}
+
+.auth-form #password {
+    background-color: var(--gn-white);
+}
+
+.auth-form .password {
+    transition: border 0.3s;
+}
+
+.auth-form .password.focused {
+    border: 1px solid var(--gn-orange);
+}
+
+.auth-form #password:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px white inset !important;
+    box-shadow: 0 0 0 1000px white inset !important;
+    -webkit-text-fill-color: black !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+.auth-form .input-group .btn {
+    font-size: 0.75rem;
+    color: var(--gn-grey-600);
+}
+
+.auth-form .input-group label .fp-link {
+    font-size: 0.75rem;
+}
+
+.auth-form .input-group .password {
+    display: flex;
+    justify-content: space-between;
+    width:100%;
+}
+
+.auth-form .input-group .password input {
+    padding:0;
+    border:none;
+    border-radius: 0;
+    width:90%;
+}
+
+.auth-form .input-group .password input:focus {
+    outline: none;
+}
+
+.auth-form .input-group .password input:focus > .password {
+    outline: 2px solid var(--gn-orange);
+}
+
+.auth-form .input-group .password .btn {
+    padding:0 5px;
+    color:var(--gn-grey-600);
+}
+
+.auth-form .input-group .password .btn:hover {
+    background-color: transparent;
+}
+
+.auth-form .phone-number {
+    display: flex;
+    width:100%;
+    gap:5px;
+}
+
+.auth-form .password-info {
+    font-size: 0.75rem;
+    padding: 5px 0;
+    max-width: 320px;
+}
+
+.auth-form button[type='submit']:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+.auth-form #otp {
+    margin:0 auto;
+    text-align: center;
+}
+
+.auth-form .btn.re-send {
+    font-size: 0.75rem;
+}
+
+/* Tick boxes */
+.auth-form .tick-boxes {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap:5px;
+}
+
+.auth-form .tick-boxes .input-group {
+    flex-direction: row;
+}
+
+.auth-form .tick-boxes .input-group label {
+    font-weight: 400;
+    text-transform: none;
+}
+
+.auth-form .tick-boxes .input-group .tc-link {
+    font-size: 0.75rem;
+    font-weight: 400;
+    padding-left: 3px;
+}
+
+/* Other */
+.auth-form .change-auth-type p,
+.auth-form .change-auth-type .btn {
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.auth-form .change-auth-type .btn {
+    color: var(--gn-orange);
+}
