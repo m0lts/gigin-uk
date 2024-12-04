@@ -258,7 +258,7 @@
 .window.dashboard.venue .next-gig {
     padding:10px !important;
     display: grid;
-    grid-template-rows: 35% 60%;
+    grid-template-rows: 50% 50%;
     gap:5%;
 }
 
@@ -266,10 +266,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--gn-off-black);
-    color: var(--gn-white);
     border-radius: 1rem;
-    box-shadow: 0px 0px 5px var(--gn-shadow);
     padding:1rem;
 }
 
@@ -304,6 +301,7 @@
     align-items: center;
     gap:10px;
     margin: 0 1rem;
+    margin-bottom: 1rem;
 }
 
 .window.dashboard.venue .next-gig .bottom .musician-name-and-photo .musician-img {
@@ -387,7 +385,7 @@
 .window .body.gigs .filters select:focus,
 .window .body.gigs .filters input:focus {
     outline:none;
-    border:1px solid var(--gn-orange);
+    border:1px solid var(--gn-off-black);
 }
 
 .window .body.gigs .filters .sort {
@@ -709,7 +707,7 @@
 .window .body.musicians .filters select:focus,
 .window .body.musicians .filters input:focus {
     outline:none;
-    border:1px solid var(--gn-orange);
+    border:1px solid var(--gn-off-black);
 }
 
 .window .body.musicians .filters .sort {
@@ -909,5 +907,5 @@
 
 .window .body.finances .total-expenditure .value h1 {
     font-size: 4rem;
-    text-shadow: 0 0 10px var(--gn-grey-400);
+    text-shadow: 0 0 2px var(--gn-grey-400);
 }

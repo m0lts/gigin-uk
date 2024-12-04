@@ -7,6 +7,8 @@ import { SeeIcon, CloseIcon } from "/components/ui/Extras/Icons";
 import { LoadingThreeDots } from '../ui/loading/Loading';
 // Styles
 import '/styles/forms/forms.styles.css'
+import { ErrorIcon } from '../ui/Extras/Icons';
+import { TextLogo } from '../ui/logos/Logos';
 
 
 
@@ -75,8 +77,8 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
       {showSuccessMsg ? (
         <>
           <div className="head">
-            <NoTextLogoLink />
-            <h2>Forgot Password</h2>
+            <TextLogo />
+            <h1>Forgot Password</h1>
           </div>
           <div className="auth-form">
             <p style={{ textAlign: 'center' }}>We have sent you an email to {credentials.email} with instructions on how to reset your password.</p>
@@ -97,8 +99,8 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
       ) : (
         <>
           <div className="head">
-            <NoTextLogoLink />
-            <h2>Forgot Password</h2>
+            <TextLogo />
+            <h1>Forgot Password</h1>
           </div>
           <form className="auth-form" onSubmit={handlePasswordReset}>
             <div className="input-group">
@@ -137,7 +139,7 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
           </form>
           {(!loading && authClosable) && (
             <button className="btn close tertiary" onClick={() => {if (!authClosable) return; setAuthModal(false); setShowSuccessMessage(false); setAuthType('login')}}>
-              <CloseIcon />
+              <ErrorIcon />
             </button>
           )}
         </>

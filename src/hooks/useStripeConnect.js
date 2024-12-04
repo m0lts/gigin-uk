@@ -28,7 +28,7 @@ export const useStripeConnect = (connectedAccountId) => {
 
       setStripeConnectInstance(
         loadConnectAndInitialize({
-          publishableKey: 'pk_live_51Py8lOHI8M50kHhRvjzq6CjfiliJkeME3oaFpOhWLkIcx750xKeR68QwEgoanKf2GpH9ynizyl5RA1E1mBs5z9HQ00YNyhYnat',
+          publishableKey: 'pk_test_51Py8lOHI8M50kHhR49I0lIAR8gMId69DubgtmTEPQfHJV9JQSBVbflPSq0J8AT1kZUMqDHncMP0xdfvy3pGyQEOG002PN3x3dT',
           fetchClientSecret,
           appearance: {
             overlays: "dialog",

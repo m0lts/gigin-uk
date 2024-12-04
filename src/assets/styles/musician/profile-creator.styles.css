@@ -169,7 +169,7 @@
 
 .profile-creator .stage .body .input:focus,
 .profile-creator .stage .body .select:focus {
-    border:1px solid var(--gn-orange);
+    border:1px solid var(--gn-off-black);
     outline:none;
 }
 
@@ -280,7 +280,7 @@
 }
 
 .profile-creator .stage.genres .genre-selections-container .input:focus + .genre-suggestions {
-    border:1px solid var(--gn-orange);
+    border:1px solid var(--gn-off-black);
     border-top: none;
 }
 
@@ -331,6 +331,7 @@
     border:1px solid var(--gn-orange);
     padding:0.25rem 0.5rem;
     border-radius: 5px;
+    color: var(--gn-orange);
     background-color: var(--gn-offset-orange);
     cursor: pointer;
 }
@@ -388,7 +389,7 @@
 
 .profile-creator .stage.bio textarea:focus {
     outline: none;
-    border: 1px solid var(--gn-orange);
+    border: 1px solid var(--gn-off-black);
 }
 
 

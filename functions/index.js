@@ -7,9 +7,9 @@ const {
 } = require("firebase-admin/firestore");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
-// const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
-const stripeProductionKey = defineSecret("STRIPE_PRODUCTION_KEY");
-const endpointSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+// const stripeProductionKey = defineSecret("STRIPE_PRODUCTION_KEY");
+const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
+const endpointSecret = defineSecret("STRIPE_PROD_WEBHOOK");
 const Stripe = require("stripe");
 const cors = require("cors")({origin: true});
 const {GoogleAuth} = require("google-auth-library");
@@ -27,7 +27,6 @@ exports.createStripeCustomer =
 functions.auth.user().onCreate(async (user) => {
   try {
     const {uid, email} = user;
-    // const stripeApiKey = functions.config().stripe.testkey;
     const stripeApiKey = functions.config().stripe.production;
     const stripe = new Stripe(stripeApiKey);
     const customer = await stripe.customers.create({email});
@@ -48,7 +47,7 @@ functions.auth.user().onCreate(async (user) => {
 
 exports.savePaymentMethod = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -59,7 +58,7 @@ exports.savePaymentMethod = onCall(
       }
       const userId = request.auth.uid;
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const stripe = new Stripe(stripeTestKey.value());
         const userDoc =
     await db.collection("users").doc(userId).get();
         const customerId = userDoc.data().stripeCustomerId;
@@ -81,7 +80,7 @@ exports.savePaymentMethod = onCall(
 
 exports.getSavedCards = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -98,7 +97,7 @@ exports.getSavedCards = onCall(
         throw new Error("Stripe customer ID not found.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const stripe = new Stripe(stripeTestKey.value());
         const paymentMethods =
     await stripe.paymentMethods.list({
       customer: customerId,
@@ -113,7 +112,7 @@ exports.getSavedCards = onCall(
 
 exports.confirmPayment = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -140,7 +139,7 @@ exports.confirmPayment = onCall(
         throw new Error("Stripe customer ID not found.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const stripe = new Stripe(stripeTestKey.value());
         const acceptedMusician =
     gigData.applicants.find(
         (applicant) => applicant.status === "accepted",
@@ -186,7 +185,7 @@ exports.confirmPayment = onCall(
 
 exports.getCustomerData = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -203,7 +202,7 @@ exports.getCustomerData = onCall(
         throw new Error("Stripe customer ID not found.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const stripe = new Stripe(stripeTestKey.value());
         const customer =
     await stripe.customers.retrieve(customerId);
         const paymentMethods = await stripe.paymentMethods.list({
@@ -231,7 +230,7 @@ exports.getCustomerData = onCall(
 
 exports.deleteCard = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -258,7 +257,7 @@ exports.deleteCard = onCall(
         );
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const stripe = new Stripe(stripeTestKey.value());
         await stripe.paymentMethods.detach(cardId);
         return {success: true};
       } catch (error) {
@@ -271,7 +270,7 @@ exports.deleteCard = onCall(
 
 exports.processRefund = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -286,7 +285,7 @@ exports.processRefund = onCall(
         throw new Error("Missing transactionId parameter.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const stripe = new Stripe(stripeTestKey.value());
         await stripe.refunds.create({
           payment_intent: transactionId,
         });
@@ -331,17 +330,19 @@ exports.cancelCloudTask = onCall(
 exports.stripeWebhook = onRequest(
     {
       maxInstances: 3,
-      secrets: [stripeProductionKey, endpointSecret],
+      secrets: [stripeTestKey, endpointSecret],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
       const sig = req.headers["stripe-signature"];
-      const stripe = new Stripe(stripeProductionKey.value());
+      const stripe = new Stripe(stripeTestKey.value());
       let event;
-      const endpointSecret = endpointSecret.value();
+      // const prodEndpointSecret = endpointSecret.value();
+      const prodEndpointSecret =
+      "whsec_b5010dd6cb1cdf2819609636f802f29fb7dc33adfe6c937c65058a48c42a9d56";
       try {
         event =
-    stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+    stripe.webhooks.constructEvent(req.rawBody, sig, prodEndpointSecret);
       } catch (err) {
         console.error(
             "Webhook signature verification failed:", err.message,
@@ -405,7 +406,7 @@ exports.stripeWebhook = onRequest(
 
 exports.clearPendingFee = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -434,7 +435,7 @@ exports.clearPendingFee = onRequest(
         res.status(400).send("Invalid payload.");
         return;
       }
-      const stripe = new Stripe(stripeProductionKey.value());
+      const stripe = new Stripe(stripeTestKey.value());
       try {
         const firestore = getFirestore();
         const musicianProfileRef =
@@ -544,7 +545,7 @@ exports.clearPendingFee = onRequest(
 
 exports.intermediateTaskQueue = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -614,7 +615,7 @@ exports.intermediateTaskQueue = onRequest(
 
 exports.intermediateMessageQueue = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -699,7 +700,7 @@ exports.intermediateMessageQueue = onRequest(
 
 exports.automaticReviewMessage = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -798,7 +799,7 @@ exports.automaticReviewMessage = onRequest(
 
 exports.stripeAccountSession = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -808,7 +809,7 @@ exports.stripeAccountSession = onRequest(
           return res.status(405).send("Method Not Allowed");
         }
         try {
-          const stripe = new Stripe(stripeProductionKey.value());
+          const stripe = new Stripe(stripeTestKey.value());
           const {account} = req.body;
           const accountSession = await stripe.accountSessions.create({
             account: account,
@@ -831,7 +832,7 @@ exports.stripeAccountSession = onRequest(
 
 exports.stripeAccount = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -846,7 +847,7 @@ exports.stripeAccount = onRequest(
             res.status(400).send({error: "Musician ID is required."});
             return;
           }
-          const stripe = new Stripe(stripeProductionKey.value());
+          const stripe = new Stripe(stripeTestKey.value());
           const account = await stripe.accounts.create({
             capabilities: {
               transfers: {requested: true},
@@ -881,7 +882,7 @@ exports.stripeAccount = onRequest(
 
 exports.changeBankDetails = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -896,7 +897,7 @@ exports.changeBankDetails = onCall(
           return;
         }
         try {
-          const stripe = new Stripe(stripeProductionKey.value());
+          const stripe = new Stripe(stripeTestKey.value());
           const accountLink = await stripe.accountLinks.create({
             account: accountId,
             refresh_url: "https://gigin.ltd/dashboard/finances",
@@ -916,12 +917,12 @@ exports.changeBankDetails = onCall(
 
 exports.payoutToBankAccount = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
     async (request) => {
-      const stripe = new Stripe(stripeProductionKey.value());
+      const stripe = new Stripe(stripeTestKey.value());
       const {musicianId, amount} = request.data;
       const {auth} = request;
       if (!auth) {

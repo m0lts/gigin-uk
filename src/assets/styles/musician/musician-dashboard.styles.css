@@ -7,6 +7,11 @@
 }
 
 .window .body.finances .tile.connect-account {
+    grid-row-start: 2;
+    grid-row-end: 4;
+}
+
+.window.musician .body.finances .tile.connect-account {
     grid-row-start: 1;
     grid-row-end: 4;
 }

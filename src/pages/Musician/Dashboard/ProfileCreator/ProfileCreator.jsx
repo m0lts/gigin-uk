@@ -395,7 +395,7 @@ export const ProfileCreator = () => {
                 <div className='loading-state'>
                     <h1>Creating your musician profile...</h1>
                     <h3>Uploading videos: {videoUploadProgress}%</h3>
-                    <progress value={videoUploadProgress} max="100"></progress>                    
+                    <progress value={videoUploadProgress} max="100" style={{ width: "100%", maxWidth: "250px" }}></progress>                    
                     <LoadingThreeDots />
                     <h3>Please don't refresh or leave this page. You will be redirected automatically.</h3>
                 </div>

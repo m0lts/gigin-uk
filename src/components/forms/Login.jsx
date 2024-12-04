@@ -7,6 +7,8 @@ import { SeeIcon, CloseIcon } from "/components/ui/Extras/Icons";
 import { LoadingThreeDots } from '../ui/loading/Loading';
 // Styles
 import '/styles/forms/forms.styles.css'
+import { ErrorIcon, ExitIcon } from '../ui/Extras/Icons';
+import { TextLogo } from '../ui/logos/Logos';
 
 
 
@@ -106,8 +108,8 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   return (
     <div className="modal-content auth" onClick={(e) => e.stopPropagation()}>
       <div className="head">
-        <NoTextLogoLink />
-        <h2>{!otpId ? 'Login' : 'Two-Factor Authentication (2FA)'}</h2>
+        <TextLogo />
+        <h1>{!otpId ? 'Login' : 'Two-Factor Authentication (2FA)'}</h1>
         {otpId && (
           <div className="text">
             <p>For your security, we have a 2FA process.</p>
@@ -218,7 +220,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
       )}
       {(!loading && authClosable) && (
         <button className="btn close tertiary" onClick={() => {if (!authClosable) return; setAuthModal(false)}}>
-          <CloseIcon />
+          <ErrorIcon />
         </button>
       )}
     </div>

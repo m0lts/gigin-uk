@@ -320,23 +320,6 @@ export const Overview = ({ savedCards, loadingStripeDetails, receipts, gigs, loa
                                         )}
                                     </div>
                                 </div>
-                                <div className="musician-data">
-                                    <h6 className="data">
-                                        <MapIcon /> {nextGigMusician.location.city}
-                                    </h6>
-                                    <h6 className="data">
-                                        <ShootingStarIcon />
-                                        {nextGigMusician.bio.experience === 'less than 1 year' ? (
-                                            <>Up and Comer</>
-                                        ) : nextGigMusician.bio.experience === '1-2 years' ? (
-                                            <>Rising Star</>
-                                        ) : nextGigMusician.bio.experience === '2-5 years' ? (
-                                            <>Seasoned Performer</>
-                                        ) : nextGigMusician.bio.experience === '5+ years' && (
-                                            <>Veteran Performer</>
-                                        )}
-                                    </h6>
-                                </div>
                                 <div className="two-buttons">
                                     <button className="btn primary" onClick={() => openMessages(nextGig[0].gigId, nextGig[0].applicants.find((applicant) => applicant.status === 'confirmed').id)}>
                                         Message Musician
@@ -380,7 +363,7 @@ export const Overview = ({ savedCards, loadingStripeDetails, receipts, gigs, loa
                                             <h6>{gig.date.toDate().toLocaleDateString('en-GB')}</h6>
                                         </div>
                                         <div className="fee-and-notification">
-                                            <h3>{applicant.fee || '£?'}</h3>
+                                            <h4>View</h4>
                                             <DotIcon />
                                         </div>
                                     </div>

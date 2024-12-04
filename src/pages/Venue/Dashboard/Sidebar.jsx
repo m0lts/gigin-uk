@@ -57,18 +57,8 @@ export const Sidebar = ({ setGigPostModal }) => {
         <ul className="menu">
         <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/venues') && 'active'}`} onClick={() => {navigate('/venues/dashboard/venues')}}>
           <DoorIcon />
-          Venues
+          My Venues
         </li>
-        {expandedItem === 'venues' && (
-          <>
-            <li className="menu-item sub top" onClick={() => navigate('/venues/dashboard/venues')}>
-              My Venues
-            </li>
-            <li className="menu-item sub bottom" onClick={() => navigate('/venues/add-venue')}>
-              Add Venue
-            </li>
-          </>
-        )}
       </ul>
       <ul className="menu">
         <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/musicians') && 'active'}`} onClick={() => {navigate('/venues/dashboard/musicians')}}>

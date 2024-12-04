@@ -232,7 +232,7 @@
 }
 
 .gig-page .input:focus {
-    border:1px solid var(--gn-orange);
+    border:1px solid var(--gn-off-black);
     outline:none;
 }
 

@@ -801,11 +801,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                             )}
                                             <div className="two-buttons">
                                                 {!userAppliedToGig && (
-                                                    <button className="btn primary" onClick={handleNegotiateButtonClick}>
+                                                    <button className="btn secondary" onClick={handleNegotiateButtonClick}>
                                                         Negotiate
                                                     </button>
                                                 )}
-                                                <button className="btn primary" onClick={handleMessage}>
+                                                <button className="btn secondary" onClick={handleMessage}>
                                                     Message
                                                 </button>
                                             </div>
@@ -813,7 +813,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                     ) : (
                                         <>
                                         <div className="two-buttons">
-                                            <button className="btn primary" onClick={handleMessage}>
+                                            <button className="btn secondary" onClick={handleMessage}>
                                                 Message
                                             </button>
                                         </div>

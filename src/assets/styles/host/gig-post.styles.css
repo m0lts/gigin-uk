@@ -331,7 +331,7 @@
 
 .gig-post .stage .extra-details #extraInformation:focus {
     outline: none;
-    border: 1px solid var(--gn-orange);
+    border: 1px solid var(--gn-off-black);
 }
 
 /* TIMINGS */
@@ -557,7 +557,7 @@
 
 .gig-post .stage .review .review-extra-option #templateName:focus {
     outline: none;
-    border: 1px solid var(--gn-orange);
+    border: 1px solid var(--gn-off-black);
 }
 
 .gig-post .stage .review .review-extra-option .repeat-group {
@@ -583,7 +583,7 @@
 .gig-post .stage .review #endRepeatAfter:focus,
 .gig-post .stage .review #endRepeatDate:focus {
     outline:none;
-    border: 1px solid var(--gn-orange);
+    border: 1px solid var(--gn-off-black);
 }
 
 .gig-post .stage .review #gigRepeat {

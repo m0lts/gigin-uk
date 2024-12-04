@@ -5,6 +5,7 @@ import { TextLogoLink, VenueLogoLink } from "../ui/logos/Logos";
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import { firestore } from "../../firebase"
 import { DotIcon, DashboardIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, LogOutIcon, MapIcon, SettingsIcon, UserIcon, VenueBuilderIcon, MailboxEmptyIcon, MailboxFullIcon, GuitarsIcon, RightChevronIcon, TelescopeIcon } from "../ui/Extras/Icons"
+import { LoadingThreeDots } from "../ui/loading/Loading";
 
 export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     
@@ -18,6 +19,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
         feedback: '',
         user: user?.uid,
     });
+    const [feedbackLoading, setFeedbackLoading] = useState(false);
 
     const [newMessages, setNewMessages] = useState(false);
 
@@ -88,9 +90,14 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     };
 
     const handleFeedbackSubmit = async () => {
+        setFeedbackLoading(true);
         try {
+            let payload = { ...feedback };
+            if (!payload.user) {
+                payload = { ...feedback, user: user.uid };
+            }
             await addDoc(collection(firestore, 'feedback'), {
-                ...feedback,
+                ...payload,
                 timestamp: serverTimestamp()
             });
         
@@ -98,6 +105,8 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
             setFeedbackForm(false);
         } catch (error) {
             console.error('Error submitting feedback:', error);
+        } finally {
+            setFeedbackLoading(false);
         }
     };
 
@@ -189,7 +198,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                     </Link>
                                 ) : (
                                     <Link className="link" to={'/venues/dashboard'}>
-                                        <button className="btn secondary" onClick={() => console.log('clicked')}>
+                                        <button className="btn secondary">
                                             <DashboardIcon />
                                             Dashboard
                                         </button>
@@ -278,7 +287,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 Settings
                                 <SettingsIcon />
                             </Link>
-                            <button className="btn danger no-margin" onClick={handleLogout}>
+                            <button className="btn logout no-margin" onClick={handleLogout}>
                                 Log Out
                                 <LogOutIcon />
                             </button>
@@ -312,7 +321,11 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                     </button>
                                 </div>
                                 <button className="btn primary" onClick={handleFeedbackSubmit}>
-                                    Send
+                                    {feedbackLoading ? (
+                                        <LoadingThreeDots />
+                                    ) : (
+                                        'Send'
+                                    )}
                                 </button>
                             </div>
                         </div>

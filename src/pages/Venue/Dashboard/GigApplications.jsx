@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { doc, getDoc, updateDoc, onSnapshot, getDocs, Timestamp, collection, query, addDoc, where, arrayUnion, writeBatch } from 'firebase/firestore';
 import { firestore, functions } from '../../../firebase';
 import { LoadingThreeDots } from "../../../components/ui/loading/Loading";
-import { BackgroundMusicIcon, ClockIcon, EditIcon, FaceFrownIcon, FaceMehIcon, PeopleGroupIcon, RejectedIcon, StarIcon, TickIcon } from "../../../components/ui/Extras/Icons";
+import { BackgroundMusicIcon, ClockIcon, EditIcon, ErrorIcon, FaceFrownIcon, FaceMehIcon, PeopleGroupIcon, RejectedIcon, StarIcon, TickIcon } from "../../../components/ui/Extras/Icons";
 import { useAuth } from "../../../hooks/useAuth";
 import { useGigs } from "../../../context/GigsContext";
 import { PaymentModal } from "../../../components/venue-components/PaymentModal";
@@ -53,7 +53,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                     viewed: true
                 }));
                 await updateDoc(gigRef, { applicants: updatedApplicants });
-                console.log('Applicants "viewed" field updated successfully');
             } catch (error) {
                 console.error('Error updating applicants "viewed" field:', error);
             }
@@ -454,6 +453,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
         }
     };
 
+    console.log('gigInfo:', gigInfo);
+
     return (
         <>
             <div className="head">
@@ -469,7 +470,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                     <button className="btn danger" onClick={() => setShowDeleteConfirmationModal(true)}>
                         Delete Gig
                     </button>
-                ) : (
+                ) : new Date < new Date(gigInfo.date.toDate().setHours(...gigInfo.startTime.split(':').map(Number))) && (
                     <button className="primary-alt btn" onClick={() => setShowPromoteModal(true)}>
                         <PeopleGroupIcon /> Promote
                     </button>
@@ -480,8 +481,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                     <LoadingThreeDots />
                 ) : (
                     <>
-                    {/* {new Date(gigInfo.disputeClearingTime) > new Date(gigInfo.date.toDate().setHours(...gigInfo.startTime.split(':').map(Number))) &&
-                    gigInfo.applicants.some(applicant => applicant.status === 'confirmed') && ( */}
+                    {new Date(gigInfo.disputeClearingTime) > new Date(gigInfo.date.toDate().setHours(...gigInfo.startTime.split(':').map(Number))) &&
+                        gigInfo.applicants.some(applicant => applicant.status === 'confirmed' &&
+                        !gigInfo.disputeLogged) && (
                         <div className="dispute-box">
                             <h3>Not happy with how the gig went?</h3>
                             <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
@@ -489,7 +491,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                 Dispute Gig
                             </button>
                         </div>
-                    {/* )} */}
+                    )}
                     {musicianProfiles.length > 0 ? (
                         <table className="applications-table">
                             <thead>
@@ -540,7 +542,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                 )}
                                             </td>
                                             <td style={{ textAlign: 'center' }}>
-                                                {status === 'confirmed' && (
+                                                {(status === 'confirmed' || status === 'paid') && (
                                                     new Date() < new Date(gigInfo.date.toDate().setHours(...gigInfo.startTime.split(':').map(Number))) ? (
                                                         <div className="status-box">
                                                             <div className="status confirmed">
@@ -548,17 +550,24 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                                 Confirmed
                                                             </div>
                                                         </div>
-                                                    ) : !gigInfo.reviewed ? (
+                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
                                                         <div className="leave-review">
                                                             <button className="btn primary" onClick={(e) => {e.stopPropagation(); setShowReviewModal(true); setReviewProfile(profile)}}>
                                                                 Leave a Review
                                                             </button>
                                                         </div>
-                                                    ) : gigInfo.reviewed && (
+                                                    ) : gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
                                                         <div className="status-box">
                                                             <div className="status confirmed">
                                                                 <TickIcon />
                                                                 Reviewed
+                                                            </div>
+                                                        </div>
+                                                    ) : gigInfo.disputeLogged && (
+                                                        <div className="status-box">
+                                                            <div className="status declined">
+                                                                <ErrorIcon />
+                                                                Reported
                                                             </div>
                                                         </div>
                                                     )
@@ -585,7 +594,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                         <button className="btn accept small" onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
                                                             Accept
                                                         </button>
-                                                        <button className="btn danger small" onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                        <button className="btn decline small" onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
                                                             Decline
                                                         </button>
                                                     </>
@@ -637,6 +646,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
             {showReviewModal && (
                 <ReviewModal
                     gigData={gigInfo}
+                    setGigData={setGigInfo}
                     reviewer="venue"
                     onClose={() => {
                         setShowReviewModal(false)

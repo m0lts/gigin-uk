@@ -5,7 +5,11 @@ export const WelcomeModal = ({ user, setShowWelcomeModal, role }) => {
         <div className="modal welcome">
             <div className="modal-content welcome">
                 <TextLogo />
-                <h2>Hi {user.name.split(' ')[0]}!</h2>
+                {user ? (
+                    <h2>Hi {user.name.split(' ')[0]}!</h2>
+                ) : (
+                    <h2>Welcome!</h2>
+                )}
                 {role === 'musician' ? (
                     <div className="body">
                         <h4>Thank you for joining the movement!</h4>

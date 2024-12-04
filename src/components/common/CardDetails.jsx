@@ -337,7 +337,7 @@ return (
           {loading ? (
             <LoadingThreeDots />
           ) : (
-            <button className="btn primary-alt" onClick={handleSave} disabled={loading}>
+            <button className="btn primary" onClick={handleSave} disabled={loading}>
               {activityType === 'adding card' ? 'Save Card' : 'Next'}
             </button>
           )}

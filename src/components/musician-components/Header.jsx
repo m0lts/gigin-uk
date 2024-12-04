@@ -7,6 +7,7 @@ import { useState, useEffect } from "react"
 import { firestore } from "../../firebase"
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import { GuitarsIcon, DotIcon, FaceFrownIcon, FaceHeartsIcon, FaceMehIcon, FaceSmileIcon, HouseIcon, LogOutIcon, MailboxFullIcon, MapIcon, NewTabIcon, SettingsIcon, TelescopeIcon, UserIcon, VenueBuilderIcon, VillageHallIcon, TicketIcon } from "../ui/Extras/Icons"
+import { LoadingThreeDots } from "../ui/loading/Loading"
 
 export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     
@@ -20,6 +21,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
         feedback: '',
         user: user?.uid,
     });
+    const [feedbackLoading, setFeedbackLoading] = useState(false);
 
     const [newMessages, setNewMessages] = useState(false);
 
@@ -92,6 +94,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     };
 
     const handleFeedbackSubmit = async () => {
+        setFeedbackLoading(true);
         try {
             await addDoc(collection(firestore, 'feedback'), {
                 ...feedback,
@@ -102,6 +105,8 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
             setFeedbackForm(false);
         } catch (error) {
             console.error('Error submitting feedback:', error);
+        } finally {
+            setFeedbackLoading(false);
         }
     };
 
@@ -186,17 +191,16 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                     </button>
                                 </Link>
                             ) : (
-                                location.pathname.includes('/dashboard') ? (
+                                <>
                                     <Link className="link" to={'/find-a-gig'}>
-                                        <button className="btn secondary">
+                                        <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                                             <TelescopeIcon />
                                             Find A Gig
                                         </button>
                                     </Link>
-                                ) : (
-                                    user.musicianProfile ? (
+                                    {user.musicianProfile ? (
                                         <Link className="link" to={'/dashboard'}>
-                                            <button className="btn secondary">
+                                            <button className={`btn secondary ${location.pathname.includes('dashboard') ? 'disabled' : ''}`}>
                                                 <DashboardIcon />
                                                 Dashboard
                                             </button>
@@ -208,8 +212,8 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                                 Create Musician Profile
                                             </button>
                                         </Link>
-                                    )
-                                )
+                                    )}
+                                </>
                             )}
                             {user.musicianProfile && (
                                     newMessages ? (
@@ -287,7 +291,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 Settings
                                 <SettingsIcon />
                             </Link>
-                            <button className="btn danger no-margin" onClick={handleLogout}>
+                            <button className="btn logout no-margin" onClick={handleLogout}>
                                 Log Out
                                 <LogOutIcon />
                             </button>
@@ -343,7 +347,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                     Settings
                                     <SettingsIcon />
                                 </Link>
-                                <button className="btn danger no-margin" onClick={handleLogout}>
+                                <button className="btn logout no-margin" onClick={handleLogout}>
                                     Log Out
                                     <LogOutIcon />
                                 </button>
@@ -377,7 +381,11 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                     </button>
                                 </div>
                                 <button className="btn primary" onClick={handleFeedbackSubmit}>
-                                    Send
+                                    {feedbackLoading ? (
+                                        <LoadingThreeDots />
+                                    ) : (
+                                        'Send'
+                                    )}
                                 </button>
                             </div>
                         </div>

@@ -7,11 +7,12 @@ import { auth, firestore } from '../../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 // Components
-import { NoTextLogoLink } from "../ui/logos/Logos";
+import { NoTextLogoLink, TextLogo } from "../ui/logos/Logos";
 import { SeeIcon, QuestionCircleIcon, CloseIcon } from "/components/ui/Extras/Icons";
 import { LoadingThreeDots } from '../ui/loading/Loading';
 // Styles
 import '/styles/forms/forms.styles.css';
+import { ErrorIcon } from '../ui/Extras/Icons';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable }) => {
 
@@ -100,8 +101,8 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
   return (
     <div className="modal-content auth" onClick={(e) => e.stopPropagation()}>
       <div className="head">
-        <NoTextLogoLink />
-        <h2>Signup</h2>
+        <TextLogo />
+        <h1>Signup</h1>
       </div>
       <form className="auth-form" onSubmit={handleSignup}>
         <div className="input-group">
@@ -217,7 +218,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       </form>
       {(!loading && authClosable) && (
         <button className="btn close tertiary" onClick={() => {if (!authClosable) return; setAuthModal(false)}}>
-          <CloseIcon />
+          <ErrorIcon />
         </button>
       )}
     </div>

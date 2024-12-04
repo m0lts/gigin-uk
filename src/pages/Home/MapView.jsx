@@ -47,6 +47,7 @@ export const MapView = ({ upcomingGigs }) => {
     useEffect(() => {
         if (mapInstance && upcomingGigs && upcomingGigs.length > 0) {
             clearMarkers();
+    
             const filteredGigs = selectedDates.length > 0
                 ? upcomingGigs.filter(gig => {
                     const gigDate = gig.date.toDate();
@@ -55,25 +56,42 @@ export const MapView = ({ upcomingGigs }) => {
                     );
                 })
                 : upcomingGigs;
-            const newMarkers = {};
-            filteredGigs.forEach(gig => {
+    
+            // Group gigs by coordinates
+            const groupedGigs = filteredGigs.reduce((acc, gig) => {
                 const key = gig.coordinates.toString();
-                if (!newMarkers[key]) {
-                    const markerElement = createCustomMarker(gig);
-                    newMarkers[key] = markerElement;
-                    markerElement.addEventListener('click', () => handleMarkerClick(gig));
-                    markerElement.addEventListener('mouseenter', () => handleMarkerMouseEnter(markerElement));
-                    markerElement.addEventListener('mouseleave', () => handleMarkerMouseLeave(markerElement));
-                    new mapboxgl.Marker(markerElement)
-                        .setLngLat(gig.coordinates)
-                        .addTo(mapInstance);
+                if (!acc[key]) {
+                    acc[key] = [];
                 }
+                acc[key].push(gig);
+                return acc;
+            }, {});
+    
+            const newMarkers = {};
+    
+            // Create a marker for each unique coordinate group
+            Object.keys(groupedGigs).forEach(key => {
+                const gigsAtLocation = groupedGigs[key];
+                const markerElement = createCustomMarker(gigsAtLocation);
+                newMarkers[key] = markerElement;
+    
+                const [lng, lat] = key.split(',').map(Number);
+    
+                // Attach event listeners to the marker
+                markerElement.addEventListener('click', () => handleMarkerClick(gigsAtLocation));
+                markerElement.addEventListener('mouseenter', () => handleMarkerMouseEnter(markerElement));
+                markerElement.addEventListener('mouseleave', () => handleMarkerMouseLeave(markerElement));
+    
+                new mapboxgl.Marker(markerElement)
+                    .setLngLat([lng, lat])
+                    .addTo(mapInstance);
             });
+    
             setMarkers(newMarkers);
         }
     }, [mapInstance, upcomingGigs, clickedGigs, selectedDates]);
-
-    const createCustomMarker = (gig) => {
+    
+    const createCustomMarker = (gigsAtLocation) => {
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-marker';
         markerElement.style.background = 'var(--gn-white)';
@@ -88,22 +106,96 @@ export const MapView = ({ upcomingGigs }) => {
         markerElement.style.padding = '15px 35px';
         markerElement.style.cursor = 'pointer';
         markerElement.style.transition = 'background-color 200ms linear';
+    
         const tooltip = document.createElement('span');
-        tooltip.textContent = `${gig.budget}`;
+        
+        // Show the number of gigs if more than one, otherwise show the budget
+        if (gigsAtLocation.length > 1) {
+            tooltip.textContent = `x${gigsAtLocation.length}`;
+        } else {
+            tooltip.textContent = `${gigsAtLocation[0].budget}`;
+        }
+    
         tooltip.style.color = 'var(--gn-off-black)';
         tooltip.style.fontWeight = '700';
         tooltip.style.fontSize = '1.1rem';
         markerElement.appendChild(tooltip);
+    
         return markerElement;
     };
-
-    const handleMarkerClick = (gig) => {
-        const alreadyClicked = clickedGigs.find(clickedGig => clickedGig.gigId === gig.gigId);
-        if (!alreadyClicked) {
-            setClickedGigs(prevClickedGigs => [...prevClickedGigs, gig]);
-            setCurrentGigIndex(clickedGigs.length);
+    
+    const handleMarkerClick = (gigsAtLocation) => {
+        const newGigs = gigsAtLocation.filter(gig => {
+            // Only add gigs that are not already in clickedGigs
+            return !clickedGigs.find(clickedGig => clickedGig.gigId === gig.gigId);
+        });
+    
+        if (newGigs.length > 0) {
+            // Add the new gigs to the clickedGigs state
+            setClickedGigs(prevClickedGigs => [...prevClickedGigs, ...newGigs]);
         }
     };
+
+    // useEffect(() => {
+    //     if (mapInstance && upcomingGigs && upcomingGigs.length > 0) {
+    //         clearMarkers();
+    //         const filteredGigs = selectedDates.length > 0
+    //             ? upcomingGigs.filter(gig => {
+    //                 const gigDate = gig.date.toDate();
+    //                 return selectedDates.some(
+    //                     selectedDate => gigDate.toDateString() === selectedDate.toDateString()
+    //                 );
+    //             })
+    //             : upcomingGigs;
+    //         const newMarkers = {};
+    //         filteredGigs.forEach(gig => {
+    //             const key = gig.coordinates.toString();
+    //             if (!newMarkers[key]) {
+    //                 const markerElement = createCustomMarker(gig);
+    //                 newMarkers[key] = markerElement;
+    //                 markerElement.addEventListener('click', () => handleMarkerClick(gig));
+    //                 markerElement.addEventListener('mouseenter', () => handleMarkerMouseEnter(markerElement));
+    //                 markerElement.addEventListener('mouseleave', () => handleMarkerMouseLeave(markerElement));
+    //                 new mapboxgl.Marker(markerElement)
+    //                     .setLngLat(gig.coordinates)
+    //                     .addTo(mapInstance);
+    //             }
+    //         });
+    //         setMarkers(newMarkers);
+    //     }
+    // }, [mapInstance, upcomingGigs, clickedGigs, selectedDates]);
+
+    // const createCustomMarker = (gig) => {
+    //     const markerElement = document.createElement('div');
+    //     markerElement.className = 'custom-marker';
+    //     markerElement.style.background = 'var(--gn-white)';
+    //     markerElement.style.boxShadow = '0px 0px 10px var(--gn-shadow)';
+    //     markerElement.style.width = '50px';
+    //     markerElement.style.height = '30px';
+    //     markerElement.style.borderRadius = '25px';
+    //     markerElement.style.display = 'flex';
+    //     markerElement.style.justifyContent = 'center';
+    //     markerElement.style.alignItems = 'center';
+    //     markerElement.style.position = 'relative';
+    //     markerElement.style.padding = '15px 35px';
+    //     markerElement.style.cursor = 'pointer';
+    //     markerElement.style.transition = 'background-color 200ms linear';
+    //     const tooltip = document.createElement('span');
+    //     tooltip.textContent = `${gig.budget}`;
+    //     tooltip.style.color = 'var(--gn-off-black)';
+    //     tooltip.style.fontWeight = '700';
+    //     tooltip.style.fontSize = '1.1rem';
+    //     markerElement.appendChild(tooltip);
+    //     return markerElement;
+    // };
+
+    // const handleMarkerClick = (gig) => {
+    //     const alreadyClicked = clickedGigs.find(clickedGig => clickedGig.gigId === gig.gigId);
+    //     if (!alreadyClicked) {
+    //         setClickedGigs(prevClickedGigs => [...prevClickedGigs, gig]);
+    //         setCurrentGigIndex(clickedGigs.length);
+    //     }
+    // };
 
     const handleMarkerMouseEnter = (markerElement) => {
         markerElement.style.background = 'var(--gn-off-black)';

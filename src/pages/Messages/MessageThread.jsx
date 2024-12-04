@@ -325,6 +325,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     },
                 });
             }
+            console.log('Agreed fee:', agreedFee);
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
@@ -647,7 +648,16 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true);
         try {
-          const amountToCharge = parseFloat(gigData.agreedFee.replace('£', '')) * 1.05;
+            if (!gigData.agreedFee) {
+                console.error('Agreed fee is missing');
+                return;
+            }
+            let amountToCharge;
+            if (gigData.agreedFee.includes('£')) {
+                amountToCharge = parseFloat(gigData.agreedFee.replace('£', '')) * 1.05;
+            } else {
+                amountToCharge = parseFloat(gigData.agreedFee) * 1.05;
+            }
           const stripeAmount = Math.round(amountToCharge * 100);
           const gigDate = gigData.date.toDate();
           const confirmPayment = httpsCallable(functions, 'confirmPayment');
@@ -717,9 +727,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 <>
                                     <h4>
                                         {message.type === 'application' ? (
-                                            <>
+                                            <div className='accepted-group'>
                                                 Gig application sent.
-                                            </>
+                                                {userRole === 'musician' && (
+                                                    <button className="btn primary" onClick={() => navigate('/dashboard/profile')}>
+                                                        Check my Profile
+                                                    </button>
+                                                )}
+                                            </div>
 
                                         ) : (
                                             <>
@@ -735,9 +750,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Accepted
                                                 </div>
                                             </div>
-                                            <button className="btn primary" onClick={() => navigate('/dashboard/profile')}>
-                                                Check my Profile
-                                            </button>
                                         </div>
                                     ) : (message.status === 'declined' || message.status === 'countered') && (
                                         <>
@@ -748,20 +760,23 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                         </div>
                                         {message.status !== 'countered' && (
-                                        <div className="counter-offer">
-                                            <input
-                                                type="text"
-                                                className="input"
-                                                value={newCounterOffer}
-                                                onChange={(e) => handleCounterOffer(e)}
-                                                placeholder="Propose a new fee"
-                                            />
-                                            <button
-                                                className="btn primary-alt"
-                                                onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
-                                            >
-                                                Send
-                                            </button>
+                                            <div className={`counter-offer ${message.senderId === user.uid ? 'sent' : 'received'}`}>
+                                            <h4>Send Counter Offer:</h4>
+                                            <div className="input-group">
+                                                <input
+                                                    type="text"
+                                                    className="input"
+                                                    value={newCounterOffer}
+                                                    onChange={(e) => handleCounterOffer(e)}
+                                                    placeholder="£"
+                                                />
+                                                <button
+                                                    className="btn primary"
+                                                    onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
+                                                >
+                                                    Send
+                                                </button>
+                                            </div>
                                         </div>
                                         )}
                                         </>
@@ -938,55 +953,65 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text}</h4>
                                     </>
-                                ) : message.status === "cancellation" && userRole === 'musician' && (
+                                ) : message.status === "cancellation" && userRole === 'musician' ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>You cancelled the gig. The gig fee has been refunded to the venue.</h4>
+                                    </>
+                                ) : message.status === "dispute" && (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text}</h4>
                                     </>
                                 )}
                                 </>
                             ) : message.type === 'review' ? (
                                 <>
-                                    {/* For the Musician */}
-                                    {!gigData.musicianHasReviewed && userRole === 'musician' ? (
-                                        <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>How was your experience? Click the button below to review the venue.</h4>
-                                            <button
-                                                className="btn primary"
-                                                onClick={() => setShowReviewModal(true)}
-                                            >
-                                                {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
-                                                    ? 'Leave a Review'
-                                                    : 'Leave a Review'}
-                                            </button>
-                                        </>
+                                    {userRole === 'musician' ? (
+                                        !gigData.musicianHasReviewed ? (
+                                            <>
+                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h4>How was your experience? Click the button below to review the venue.</h4>
+                                                <button
+                                                    className="btn primary"
+                                                    onClick={() => setShowReviewModal(true)}
+                                                >
+                                                    {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
+                                                        ? 'Leave a Review'
+                                                        : 'Leave a Review'}
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h4>Thank you for submitting your review.</h4>
+                                            </>
+                                        )
                                     ) : (
-                                        <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>Thank you for submitting your review.</h4>
-                                        </>
-                                    )}
-                        
-                                    {/* For the Venue */}
-                                    {!gigData.venueHasReviewed && userRole === 'venue' ? (
-                                        <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>How was your experience? Click the button below to review the musician{gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date() ? ' or if you want to report an issue with the gig and request a refund.' : '.'}</h4>
-                                            <button
-                                                className="btn primary"
-                                                onClick={() => setShowReviewModal(true)}
-                                            >
-                                                {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
-                                                    ? 'Leave a Review / Report Issue'
-                                                    : 'Leave a Review'}
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>Thank you for submitting your review.</h4>
-                                        </>
+                                        !gigData.venueHasReviewed && !gigData.disputeLogged ? (
+                                            <>
+                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h4>How was your experience? Click the button below to review the musician{gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date() ? ' or if you want to report an issue with the gig and request a refund.' : '.'}</h4>
+                                                <button
+                                                    className="btn primary"
+                                                    onClick={() => setShowReviewModal(true)}
+                                                >
+                                                    {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
+                                                        ? 'Leave a Review / Report Issue'
+                                                        : 'Leave a Review'}
+                                                </button>
+                                            </>
+                                        ) : gigData.venueHasReviewed && !gigData.disputeLogged ? (
+                                            <>
+                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h4>Thank you for submitting your review.</h4>
+                                            </>
+                                        ) : !gigData.venueHasReviewed && gigData.disputeLogged && (
+                                            <>
+                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h4>We have received your report.</h4>
+                                            </>
+                                        )
                                     )}
                                 </>
                             ) : (
@@ -1027,6 +1052,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             {showReviewModal &&
                 <ReviewModal
                     gigData={gigData}
+                    setGigData={setGigData}
                     reviewer={userRole}
                     onClose={(reviewSubmitted) => {
                         setShowReviewModal(false);

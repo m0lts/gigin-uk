@@ -75,9 +75,8 @@ export default function App() {
     return (
       <div className="small-screen-message">
         <TextLogo />
-        <h1>Oops!</h1>
-        <p>Gigin is in the pilot phase and we don't support screen sizes smaller than 768px.</p>
-        <p>Please switch to a device with a larger screen to use Gigin.</p>
+        <h1>Beta Mode</h1>
+        <p style={{ padding: '0 2rem', textAlign: 'center' }}>Gigin is in the beta testing phase and we don't support screen sizes smaller than 768px.</p>
       </div>
     );
   }

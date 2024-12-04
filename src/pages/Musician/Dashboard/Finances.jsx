@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SortIcon, InvoiceIcon, RightChevronIcon } from '../../../components/ui/Extras/Icons';
+import { SortIcon, InvoiceIcon, RightChevronIcon, LeftChevronIcon, LeftArrowIcon } from '../../../components/ui/Extras/Icons';
 import { useStripeConnect } from "../../../hooks/useStripeConnect";
 import {
   ConnectAccountOnboarding,
@@ -187,26 +187,36 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
         }
       };
 
-      const handleEditBankDetails = async () => {
+    //   const handleEditBankDetails = async () => {
+    //     try {
+    //         const changeBankDetailsFunction = httpsCallable(functions, "changeBankDetails");
+    //         const response = await changeBankDetailsFunction({
+    //             accountId: musicianProfile.stripeAccountId,
+    //         });
+    
+    //         // Extract URL from the response
+    //         const { url } = response.data;
+    
+    //         if (url) {
+    //             window.location.href = url; // Redirect to Stripe's account dashboard
+    //         } else {
+    //             alert("Unable to generate account link. Please try again.");
+    //         }
+    //     } catch (error) {
+    //         console.error('Error generating account link:', error);
+    //         alert("An error occurred while trying to edit bank details.");
+    //     }
+    // };
+
+    const updateMusicianProfile = async (data) => {
         try {
-            const changeBankDetailsFunction = httpsCallable(functions, "changeBankDetails");
-            const response = await changeBankDetailsFunction({
-                accountId: musicianProfile.stripeAccountId,
-            });
-    
-            // Extract URL from the response
-            const { url } = response.data;
-    
-            if (url) {
-                window.location.href = url; // Redirect to Stripe's account dashboard
-            } else {
-                alert("Unable to generate account link. Please try again.");
-            }
+            const musicianRef = doc(firestore, "musicianProfiles", musicianProfile.musicianId);
+            await updateDoc(musicianRef, data);
+            setMusicianProfile((prev) => ({ ...prev, ...data }));
         } catch (error) {
-            console.error('Error generating account link:', error);
-            alert("An error occurred while trying to edit bank details.");
+            console.error("Error updating musician profile:", error);
         }
-    };
+    }
 
     return (
         <>
@@ -261,6 +271,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                                             const { account, error } = json;
                                             if (account) {
                                                 setConnectedAccountId(account);
+                                                updateMusicianProfile({ stripeAccountId: account });
                                             }
                                             if (error) {
                                             setError(true);
@@ -280,6 +291,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                                             const musicianRef = doc(firestore, "musicianProfiles", musicianProfile.musicianId);
                                             await updateDoc(musicianRef, {bankDetailsAdded: true});
                                             setMusicianProfile(...prev => ({...prev, bankDetailsAdded: true}));
+                                            window.location.reload();
                                         } catch (error) {
                                             console.error("Error updating musician profile:", error);
                                         }
@@ -315,7 +327,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                                             <td>£{fee.amount.toFixed(2)}</td>
                                             <td className={`status-box ${fee.status === 'cleared' ? 'succeeded' : fee.status === 'in dispute' ? 'declined' : fee.status}`}>
                                                 <div className={`status ${fee.status === 'cleared' ? 'succeeded' : fee.status === 'in dispute' ? 'declined' : fee.status}`}>
-                                                    {fee.status}
+                                                    {fee.status === 'cleared' ? 'Withdrawable' : fee.status}
                                                 </div>
                                             </td>
                                         </tr>
@@ -340,14 +352,20 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                             <h4>Withdrawable Funds</h4>
                             <h1>£{musicianProfile.withdrawableEarnings ? parseFloat(musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h1>
                             <div className="two-buttons">
-                                {musicianProfile.bankDetailsAdded && (
+                                {/* {musicianProfile.bankDetailsAdded && (
                                     <button className="btn secondary" onClick={handleEditBankDetails}>
                                         Edit Bank Details
                                     </button>
+                                )} */}
+                                {musicianProfile.bankDetailsAdded ? (
+                                    <button className="btn primary-alt" onClick={handlePayout}>
+                                        Withdraw Funds
+                                    </button>
+                                ) : (
+                                    <h4>
+                                        <LeftArrowIcon /> Add Bank Details Before Withdrawing
+                                    </h4>
                                 )}
-                                <button className="btn primary-alt" onClick={handlePayout}>
-                                    Withdraw Funds
-                                </button>
                             </div>
                         </div>
                 </div>

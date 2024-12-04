@@ -43,7 +43,7 @@
 
 .form .input-group input:focus, 
 .auth-form .input-group input:focus {
-    border:1px solid var(--gn-orange);
+    border:1px solid var(--gn-off-black);
     outline:none;
 }
 
@@ -80,7 +80,7 @@
 }
 
 .auth-form .password.focused {
-    border: 1px solid var(--gn-orange);
+    border: 1px solid var(--gn-off-black);
 }
 
 .auth-form #password:-webkit-autofill {
@@ -117,7 +117,7 @@
 }
 
 .auth-form .input-group .password input:focus > .password {
-    outline: 2px solid var(--gn-orange);
+    outline: 2px solid var(--gn-off-black);
 }
 
 .auth-form .input-group .password .btn {

@@ -66,9 +66,8 @@ export const Overview = ({ musicianProfile, gigApplications }) => {
     }, [gigApplications, gigs]);
 
     useEffect(() => {
-        if (confirmedGigs.length > 0) {
+        if (mapContainerRef.current && confirmedGigs.length > 0) {
             mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
-
             const map = new mapboxgl.Map({
                 container: mapContainerRef.current,
                 style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
@@ -248,14 +247,19 @@ export const Overview = ({ musicianProfile, gigApplications }) => {
                         {confirmedGigs.length > 0 ? (
                             confirmedGigs.map((gig, index) => {
                                 const applicant = gig.applicants.find((applicant) => applicant.id === musicianProfile.musicianId);
-                                const status = applicant ? applicant.status === 'confirmed' ? 'pending' : applicant.status : 'unknown';
+                                let status = 'unknown';
+                                if (gig.disputeLogged) {
+                                    status = 'in dispute';
+                                } else if (applicant) {
+                                    status = applicant.status === 'confirmed' ? 'pending' : applicant.status;
+                                }
                                 return (
                                     <tr key={index} onClick={() => openGigUrl(gig.gigId)}>
                                         <td>{formatFeeDate(gig.date)}</td>
-                                        <td>{gig.agreedFee}</td>
-                                        <td className={`status-box ${status === 'pending' ? 'pending' : status === 'awaiting payment' ? 'awaiting-payment' : ''}`}>
-                                            <div className={`status ${status === 'pending' ? 'pending' : status === 'awaiting payment' ? 'awaiting-payment' : ''}`}>
-                                                {status}
+                                        <td>£{(parseFloat(gig.agreedFee.replace('£', '')) * 0.95).toFixed(2)}</td>
+                                        <td className={`status-box ${status === 'pending' ? 'pending' : status === 'awaiting payment' ? 'awaiting-payment' : status.toLowerCase() === 'paid' ? 'confirmed' : status === 'in dispute' ? 'declined' : ''}`}>
+                                            <div className={`status ${status === 'pending' ? 'pending' : status === 'awaiting payment' ? 'awaiting-payment' : status.toLowerCase() === 'paid' ? 'confirmed' : status === 'in dispute' ? 'declined' : ''}`}>
+                                                {status === 'pending' ? 'payout pending' : status}
                                             </div>
                                         </td>
                                     </tr>
@@ -293,14 +297,19 @@ export const Overview = ({ musicianProfile, gigApplications }) => {
                         {allGigDocuments.length > 0 ? (
                             allGigDocuments.map((gig, index) => {
                                 const applicant = gig.applicants.find((applicant) => applicant.id === musicianProfile.musicianId);
-                                const status = applicant ? applicant.status === 'confirmed' ? 'pending' : applicant.status : 'unknown';
+                                let status = 'unknown';
+                                if (gig.disputeLogged) {
+                                    status = 'in dispute';
+                                } else if (applicant) {
+                                    status = applicant.status === 'confirmed' ? 'pending' : applicant.status;
+                                }
                                 return (
                                     <tr key={index} onClick={() => openGigUrl(gig.gigId)}>
                                         <td>{formatFeeDate(gig.date)}</td>
                                         <td>{gig.agreedFee ? gig.agreedFee : gig.budget}</td>
-                                        <td className={`status-box ${status === 'pending' ? 'pending' : status === 'accepted' ? 'declined' : status === 'pending' ? 'pending' : ''}`}>
-                                            <div className={`status ${status === 'pending' ? 'pending' : status === 'accepted' ? 'declined' : status === 'pending' ? 'pending' : ''}`}>
-                                                {status === 'accepted' ? 'awaiting venue payment' : status}
+                                        <td className={`status-box ${status === 'pending' ? 'pending' : status === 'accepted' || status === 'in dispute' ? 'declined' : status === 'pending' ? 'pending' : status.toLowerCase() === 'paid' ? 'confirmed' : ''}`}>
+                                            <div className={`status ${status === 'pending' ? 'pending' : status === 'accepted' || status === 'in dispute' ? 'declined' : status === 'pending' ? 'pending' : status.toLowerCase() === 'paid' ? 'confirmed' : ''}`}>
+                                                {status === 'accepted' ? 'awaiting venue payment' : status === 'pending' ? 'payout pending' : status}
                                             </div>
                                         </td>
                                     </tr>

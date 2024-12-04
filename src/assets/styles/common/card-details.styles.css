@@ -62,7 +62,7 @@
 }
 
 .card-details-form .card-number-container:focus {
-    border:1px solid var(--gn-orange);
+    border:1px solid var(--gn-off-black);
     outline: none;
 }
 
@@ -85,7 +85,7 @@
 .card-details-form .input:focus,
 .card-details-form #card-expiry:focus,
 .card-details-form #card-cvc:focus {
-    border:1px solid var(--gn-orange);
+    border:1px solid var(--gn-off-black);
     outline: none;
 }
 

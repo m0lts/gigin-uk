@@ -21,6 +21,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
         feedback: '',
         user: user?.uid,
     });
+    const [feedbackLoading, setFeedbackLoading] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
 
     useEffect(() => {
@@ -195,7 +196,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 <VenueBuilderIcon />
                             </Link>
                             <div className="break" />
-                            <button className="btn danger no-margin" onClick={handleLogout}>
+                            <button className="btn logout no-margin" onClick={handleLogout}>
                                 Log Out
                                 <LogOutIcon />
                             </button>

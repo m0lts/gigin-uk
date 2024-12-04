@@ -70,7 +70,7 @@ export const Venues = ({ venues }) => {
     return (
         <>
             <div className="head">
-                <h1 className="title">Venues</h1>
+                <h1 className="title">My Venues</h1>
                 <button className="btn primary" onClick={() => navigate('/venues/add-venue')}>
                     Add another Venue
                 </button>
