@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom"
 import { Header as MusicianHeader } from "../../components/musician-components/Header"
 import { Header as VenuesHeader } from "../../components/venue-components/Header"
 import { Header as CommonHeader } from "../../components/common/Header";
+import VenueImg from "../../assets/images/venue-welcome.jpg";
+import '/styles/host/info.styles.css'
 
 export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
 
@@ -24,7 +26,7 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
     }
 
     return (
-        <div>
+        <div className="venue-welcome-page">
             {user && !user.musicianProfile && !user.venueProfiles ? (
                 <CommonHeader
                     setAuthModal={setAuthModal}
@@ -38,10 +40,23 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
                     user={user}
                 />
             )}
-            <h1>This is the Venue info page</h1>
-            <button onClick={checkUserAuth}>
-                Let's get started
-            </button>
+            <div className="body">
+                <div className="grid-cont">
+                    <div className="title-and-text">
+                        <h1>Welcome, Venues.</h1>
+                        <h4>Are you a venue owner or manager? Create a profile to start booking musicians for your events!</h4>
+                        <p>We want to make booking gigs simpler for you, reducing the legwork and effort required to find the perfect live musician. All you have to do is build a venue, post a gig and musicians will apply, just leaving you with accepting who you like the look of.</p>
+                    </div>
+                    <div className="img-and-button">
+                        <figure className="img-cont">
+                            <img src={VenueImg} alt="Venue Welcome Page Image" />
+                        </figure>
+                        <button onClick={checkUserAuth} className="btn primary">
+                            Let's get started
+                        </button>
+                    </div>
+                </div>
+            </div>
             {showErrorModal && (
                 <div className="modal">
                     <div className="modal-content">

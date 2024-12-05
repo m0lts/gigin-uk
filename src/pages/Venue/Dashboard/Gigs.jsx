@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ClockIcon, OptionsIcon, PreviousIcon, SortIcon, TickIcon } from '/components/ui/Extras/Icons';
@@ -16,6 +16,14 @@ export const Gigs = ({ gigs, venues }) => {
     const selectedStatus = queryParams.get('status') || 'all';
 
     const [sortOrder, setSortOrder] = useState('asc');
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleSearchChange = (event) => {
         setSearchQuery(event.target.value);
@@ -107,8 +115,6 @@ export const Gigs = ({ gigs, venues }) => {
         return aDateTime < now ? 1 : -1;
     });
 
-    console.log(sortedGigs);
-
     return (
         <>
             <div className="head">
@@ -148,9 +154,13 @@ export const Gigs = ({ gigs, venues }) => {
                             </th>
                             <th>Time</th>
                             <th>Venue</th>
-                            <th className='centre'>Budget</th>
+                            {windowWidth > 880 && (
+                                <th className='centre'>Budget</th>
+                            )}
                             <th className='centre'>Status</th>
-                            <th className='centre'>Applications</th>
+                            {windowWidth > 1268 && (
+                                <th className='centre'>Applications</th>
+                            )}
                             <th></th>
                             <th></th>
                         </tr>
@@ -176,16 +186,20 @@ export const Gigs = ({ gigs, venues }) => {
                                         <tr>
                                             <td>{gig.date.toDate().toLocaleDateString('en-GB')}</td>
                                             <td>{gig.startTime}</td>
-                                            <td>{gig.venue.venueName}</td>
-                                            <td className='centre'>{gig.budget}</td>
+                                            <td style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis'}}>{gig.venue.venueName}</td>
+                                            {windowWidth > 880 && (
+                                                <td className='centre'>{gig.budget}</td>
+                                            )}
                                             <td className={`status-box ${gigStatus.text.toLowerCase()}`}>
                                                 <div className={`status ${gigStatus.text.toLowerCase()}`}>
                                                     {gigStatus.icon} {gigStatus.text}
                                                 </div>
                                             </td>
-                                            <td className='centre'>
-                                                {gig.applicants.length}
-                                            </td>
+                                            {windowWidth > 1268 && (
+                                                <td className='centre'>
+                                                    {gig.applicants.length}
+                                                </td>
+                                            )}
                                             <td className='action-data'>
                                                 <button
                                                     className="btn text"

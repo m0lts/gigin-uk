@@ -25,6 +25,15 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
   const [sortOrder, setSortOrder] = useState('desc');
   const [addCardModal, setAddCardModal] = useState(false);
   const [newCardSaved, setNewCardSaved] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+      const handleResize = () => {
+          setWindowWidth(window.innerWidth);
+      }
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const earningsData = receipts.reduce((acc, receipt) => {
     const receiptDate = new Date(receipt.metadata.date).toLocaleDateString('en-GB', {
@@ -182,10 +191,12 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
         <h1>£{totalExpenditure.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h1>
         </div>
       </div>
-      <div className="tile connect-account graph">
-          <h2>Your Expenditure</h2>
-          <Bar data={chartData} options={chartOptions} />
-      </div>
+      {windowWidth > 1268 && (
+        <div className="tile connect-account graph">
+            <h2>Your Expenditure</h2>
+            <Bar data={chartData} options={chartOptions} />
+        </div>
+      )}
       <div className="tile your-fees">
         <h2>Your Payments</h2>
         <table>
@@ -240,15 +251,25 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
             className={`card-item`}
           >   
             <div className="card-left">
+              {windowWidth > 1000 && (
                 <img
                     src={cardBrandIcons[card.card.brand.toLowerCase()]}
                     alt="Card Type"
                     className="card-brand-icon"
                 />
+
+              )}
                 <div className="card-details">
+                  {windowWidth > 850 ? (
                     <h4>
                     {card.card.brand.toUpperCase()} ending in {card.card.last4}
                     </h4>
+                  ) : (
+                    <h4>
+                    {card.card.brand.toUpperCase()} {card.card.last4}
+                    </h4>
+
+                  )}
                     <h6>Expires {card.card.exp_month}/{card.card.exp_year}</h6>
                 </div>
             </div>

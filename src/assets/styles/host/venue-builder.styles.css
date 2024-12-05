@@ -7,6 +7,30 @@
     gap:1rem;
 }
 
+@media (max-width: 1000px) {
+    .venue-builder {
+        grid-template-columns: 1fr;
+    }
+
+    .venue-builder .left {
+        display: none;
+    }
+
+    .venue-builder .right {
+        position: relative;
+    }
+
+    .venue-builder .stage .form {
+        width: 80vw;
+    }
+
+    .venue-builder .right .btn.save-and-exit {
+        position: absolute;
+        top:1rem;
+        right: 1rem;
+    }
+}
+
 /* SIDEBAR LEFT */
 
 .venue-builder .left {
@@ -28,7 +52,6 @@
     position: absolute;
     bottom: 1.5rem;
     left: 1.5rem;
-    color: var(--gn-white);
     display: flex;
     align-items: center;
     gap:5px;

@@ -41,6 +41,12 @@
     height: 350px;
 }
 
+@media (max-width: 850px) {
+    .gig-page-body .images-and-location {
+        grid-template-columns: auto 275px;
+    }
+}
+
 .gig-page-body .images-and-location .main-image {
     width: 100%;
     height: 100%;
@@ -140,6 +146,12 @@
     grid-template-columns: auto 350px;
     gap:2.5%;
     margin-top: 1rem;
+}
+
+@media (max-width: 850px) {
+    .gig-page-body .main {
+        grid-template-columns: auto 275px;
+    }
 }
 
 

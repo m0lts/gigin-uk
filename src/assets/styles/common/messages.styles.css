@@ -23,6 +23,16 @@
     gap:1%;
 }
 
+@media (max-width: 1000px) {
+    .message-page {
+        grid-template-columns: 40% auto; /* Remove the third column */
+    }
+
+    .message-page .column:nth-of-type(3) {
+        display: none; /* Hide the third column */
+    }
+}
+
 .message-page.no-messages {
     width: 100%;
     height: 100%;
@@ -159,6 +169,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+}
+
+@media (max-width: 1268px) {
+    .message-page .column.conversations .conversations-list .conversation-details .conversation-date {
+        justify-content: center;
+    }
 }
 
 .message-page .column.conversations .conversations-list .last-message-preview {

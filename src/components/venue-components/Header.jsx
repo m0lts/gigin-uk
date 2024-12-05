@@ -22,6 +22,16 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     const [feedbackLoading, setFeedbackLoading] = useState(false);
 
     const [newMessages, setNewMessages] = useState(false);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (!user) return;
@@ -190,12 +200,14 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                             </button>
                             {user.venueProfiles && user.venueProfiles.length > 0 && user.venueProfiles.some(profile => profile.completed) ? (
                                 location.pathname.includes('dashboard') ? (
-                                    <Link className="link" to={'/venues/dashboard/musicians/find'}>
-                                        <button className="btn secondary">
-                                            <TelescopeIcon />
-                                            Find a Musician
-                                        </button>
-                                    </Link>
+                                    windowWidth > 900 && (
+                                        <Link className="link" to={'/venues/dashboard/musicians/find'}>
+                                            <button className="btn secondary">
+                                                <TelescopeIcon />
+                                                Find a Musician
+                                            </button>
+                                        </Link>
+                                    )
                                 ) : (
                                     <Link className="link" to={'/venues/dashboard'}>
                                         <button className="btn secondary">
@@ -294,7 +306,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                         </nav>
                     )}
                     {feedbackForm && (
-                        <div className="feedback">
+                        <div className="feedback-box">
                             <div className="body">
                                 <textarea
                                     name="feedbackBox"

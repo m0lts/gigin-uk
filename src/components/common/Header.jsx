@@ -210,7 +210,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                         <button className="item btn secondary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
                             Log In
                         </button>
-                        <button className="item btn primary-alt" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
+                        <button className="item btn primary" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
                             Sign Up
                         </button>
                     </nav>

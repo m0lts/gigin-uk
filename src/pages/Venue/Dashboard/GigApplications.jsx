@@ -37,6 +37,15 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
     const gigDate = location.state?.gig?.date || '';
     const venueName = location.state?.gig?.venue?.venueName || '';
 
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     useEffect(() => {
         if (!gigId || !gigs) return;
         const activeGig = gigs.find(gig => gig.gigId === gigId);
@@ -453,8 +462,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
         }
     };
 
-    console.log('gigInfo:', gigInfo);
-
     return (
         <>
             <div className="head">
@@ -497,8 +504,12 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>Genre(s)</th>
-                                    <th>Reviews</th>
+                                    {windowWidth > 880 && (
+                                        <th>Genre(s)</th>
+                                    )}
+                                    {windowWidth > 1268 && (
+                                        <th>Reviews</th>
+                                    )}
                                     <th>Fee</th>
                                     <th>Status</th>
                                     <th></th>
@@ -513,22 +524,26 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                             <td>
                                                 {profile.name}
                                             </td>
-                                            <td className="genres">
-                                                {profile.genres
-                                                    .filter(genre => !genre.includes(' '))
-                                                    .map((genre, index) => (
-                                                        <span key={index} className="genre-tag">{genre}</span>
-                                                    ))}
-                                            </td>
-                                            <td>{profile.reviews && profile.reviews.length > 0 ? (
-                                                <>
-                                                    <StarIcon /> 
-                                                    {profile.avgReviews.avgRating}
-                                                    ({profile.avgReviews.totalReviews})
-                                                </>
-                                            ) : (
-                                                'No Reviews'
-                                            )}</td>
+                                            {windowWidth > 880 && (
+                                                <td className="genres">
+                                                    {profile.genres
+                                                        .filter(genre => !genre.includes(' '))
+                                                        .map((genre, index) => (
+                                                            <span key={index} className="genre-tag">{genre}</span>
+                                                        ))}
+                                                </td>
+                                            )}
+                                            {windowWidth > 1268 && (
+                                                <td>{profile.reviews && profile.reviews.length > 0 ? (
+                                                    <>
+                                                        <StarIcon /> 
+                                                        {profile.avgReviews.avgRating}
+                                                        ({profile.avgReviews.totalReviews})
+                                                    </>
+                                                ) : (
+                                                    'No Reviews'
+                                                )}</td>
+                                            )}
                                             <td>
                                                 {profile.proposedFee !== gigInfo.budget ? (
                                                     <>

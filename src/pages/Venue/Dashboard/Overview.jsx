@@ -37,6 +37,15 @@ export const Overview = ({ savedCards, loadingStripeDetails, receipts, gigs, loa
     const [socialsId, setSocialsId] = useState(null);
     const [reviews, setReviews] = useState([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        }
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (gigs?.length > 0) {
@@ -417,46 +426,50 @@ export const Overview = ({ savedCards, loadingStripeDetails, receipts, gigs, loa
                         )}
                 </div>
             )}
-            {!loadingGigs ? (
-                <div className="grid-tile">
-                    <Bar data={chartData} options={chartOptions} />
-                </div>
-            ) : (
-                <div className="grid-tile loading">
-                    <Skeleton width={'100%'} height={'100%'} />
-                </div>
-            )}
-            {!loadingReviews ? (
-                reviews.length > 0 ? (
-                    <div className="grid-tile reviews">
-                        <h2>Recent Reviews</h2>
-                        <ul className="venue-reviews">
-                            {reviews.map((review, index) => (
-                                <li key={index} className='venue-review'>
-                                        <div className="reviewed-venue">
-                                            <figure className="reviewed-venue-img">
-                                                <img src={review.venuePhoto} alt={review.venueName} />
-                                            </figure>
-                                            <h4>{review.venueName}</h4>
-                                        </div>
-                                        <div className="review-rating">
-                                            <StarIcon />
-                                            <h4>{review.rating}</h4>
-                                        </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                ) : (
-                    <div className="grid-tile reviews">
-                        <h2>Recent Reviews</h2>
-                        <h4>No reviews yet.</h4>
-                    </div>
-                )
-            ) : (
-                <div className="grid-tile loading">
-                    <Skeleton width={'100%'} height={'100%'} />
-                </div>
+            {windowWidth > 1268 && (
+                <>
+                    {!loadingGigs ? (
+                        <div className="grid-tile">
+                            <Bar data={chartData} options={chartOptions} />
+                        </div>
+                    ) : (
+                        <div className="grid-tile loading">
+                            <Skeleton width={'100%'} height={'100%'} />
+                        </div>
+                    )}
+                    {!loadingReviews ? (
+                        reviews.length > 0 ? (
+                            <div className="grid-tile reviews">
+                                <h2>Recent Reviews</h2>
+                                <ul className="venue-reviews">
+                                    {reviews.map((review, index) => (
+                                        <li key={index} className='venue-review'>
+                                                <div className="reviewed-venue">
+                                                    <figure className="reviewed-venue-img">
+                                                        <img src={review.venuePhoto} alt={review.venueName} />
+                                                    </figure>
+                                                    <h4>{review.venueName}</h4>
+                                                </div>
+                                                <div className="review-rating">
+                                                    <StarIcon />
+                                                    <h4>{review.rating}</h4>
+                                                </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <div className="grid-tile reviews">
+                                <h2>Recent Reviews</h2>
+                                <h4>No reviews yet.</h4>
+                            </div>
+                        )
+                    ) : (
+                        <div className="grid-tile loading">
+                            <Skeleton width={'100%'} height={'100%'} />
+                        </div>
+                    )}
+                </>
             )}
             {showSocialsModal && (
                 <PromoteModal setShowSocialsModal={setShowSocialsModal} socialLinks={null} venueId={socialsId} musicianId={null} />

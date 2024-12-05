@@ -42,6 +42,17 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             instagram: '',
         },
     });
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
 
     useEffect(() => {
         if (!user) {
@@ -304,6 +315,11 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                         </button>
                     </aside>
                     <section className="right">
+                        {windowWidth < 1000 && (
+                            <button className="btn secondary save-and-exit" onClick={handleSaveAndExit}>
+                                Save and Exit
+                            </button>
+                        )}
                         <Routes>                    
                             <Route index element={<VenueType formData={formData} handleInputChange={handleInputChange} />} />
                             <Route path="venue-details" element={<VenueDetails formData={formData} handleInputChange={handleInputChange} />} />

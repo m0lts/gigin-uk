@@ -33,6 +33,17 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [negotiateModal, setNegotiateModal] = useState(false);
     const [newOffer, setNewOffer] = useState();
     const [width, setWidth] = useState('100%');
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
 
     useEffect(() => {
         const filterGigData = async () => {

@@ -24,6 +24,15 @@ export const MessagePage = () => {
     const queryParams = new URLSearchParams(location.search);
     const paramsConversationId = queryParams.get('conversationId');
 
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Function to handle selecting a conversation
     const handleSelectConversation = async (conversationId, musicianId, gigId) => {
         navigate(`/messages?conversationId=${conversationId}`);
@@ -163,8 +172,6 @@ export const MessagePage = () => {
         return `${weekday}, ${day} ${month}`;
     };
 
-    console.log(conversations)
-
     if (conversations.length > 0) {
         return (
             <div className="message-page">
@@ -228,17 +235,26 @@ export const MessagePage = () => {
                     {activeConversation && (
                         <>
                             <div className="top-banner">
-                                    <h3>
-                                        {activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}
-                                    </h3>
+                                <h3>
+                                    {activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}
+                                </h3>
+                                <div className="buttons" style={{ display: 'flex', alignItems: 'center', gap:5}}>
                                     {(activeConversation.accountNames.find(account => account.accountId === user.uid)?.role === 'venue') && (
                                         <>
-                                                <button className="btn primary" onClick={() => openMusician(`/${activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}/null`)}>
-                                                    View Musician Profile
-                                                </button>
+                                            <button className="btn primary" onClick={() => openMusician(`/${activeConversation.accountNames.find(account => account.role === 'musician')?.participantId}/null`)}>
+                                                Musician Profile
+                                            </button>
                                         </>
                                     )}
-    
+                                    {windowWidth < 1000 && (
+                                        <button
+                                            className="btn secondary"
+                                            onClick={() => openGig(activeConversation.gigId)}
+                                        >
+                                            View Gig
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <MessageThread 
                                 activeConversation={activeConversation}

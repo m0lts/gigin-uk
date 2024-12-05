@@ -4,6 +4,12 @@
     padding-bottom: 5rem;
 }
 
+@media (max-width: 1268px) {
+    .gig-post .modal-content {
+        min-width: 90%;
+    }
+}
+
 
 /* CARDS */
 
