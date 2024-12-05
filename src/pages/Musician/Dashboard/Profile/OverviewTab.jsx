@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BackgroundMusicIcon, ClubIcon, DotIcon, FacebookIcon, GuitarsIcon, InstagramIcon, LocationPinIcon, MapIcon, PlayIcon, ShootingStarIcon, SoundcloudIcon, SpotifyIcon, TwitterIcon, YoutubeIcon } from "../../../../components/ui/Extras/Icons"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -38,6 +38,17 @@ const VideoModal = ({ video, onClose }) => {
 export const OverviewTab = ({musicianData}) => {
 
     const [showModal, setShowModal] = useState(false);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
 
     const formatVideoDate = (dateString) => {
         const [year, month, day] = dateString.split('-');
@@ -136,15 +147,17 @@ export const OverviewTab = ({musicianData}) => {
                 </div>
                 <div className="info-box">
                     <h2>Bio</h2>
-                    <div className="box-style text bio">
+                    <div className="text bio">
                         <p>{musicianData.bio.text}</p>
                     </div>
                 </div>
             </div>
             <div className="overview-middle box-style">
+                {windowWidth > 1268 && (
                 <h6 className="data">
                     <MapIcon /> {musicianData.location.city} <DotIcon /> {musicianData.location.travelDistance}
                 </h6>
+                )}
                 <h6 className="data">
                     <BackgroundMusicIcon /> {musicianData.musicType === 'Both' ? 'Both Covers and Originals' : musicianData.musicType}
                 </h6>

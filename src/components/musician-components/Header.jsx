@@ -24,6 +24,16 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     const [feedbackLoading, setFeedbackLoading] = useState(false);
 
     const [newMessages, setNewMessages] = useState(false);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
     
@@ -192,19 +202,23 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 </Link>
                             ) : (
                                 <>
-                                    <Link className="link" to={'/find-a-gig'}>
-                                        <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                                            <TelescopeIcon />
-                                            Find A Gig
-                                        </button>
-                                    </Link>
-                                    {user.musicianProfile ? (
-                                        <Link className="link" to={'/dashboard'}>
-                                            <button className={`btn secondary ${location.pathname.includes('dashboard') ? 'disabled' : ''}`}>
-                                                <DashboardIcon />
-                                                Dashboard
+                                    {location.pathname !== '/find-a-gig' && windowWidth > 1100 && (
+                                        <Link className="link" to={'/find-a-gig'}>
+                                            <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
+                                                <TelescopeIcon />
+                                                Find A Gig
                                             </button>
                                         </Link>
+                                    )}
+                                    {user.musicianProfile ? (
+                                        windowWidth > 1100 && (
+                                            <Link className="link" to={'/dashboard'}>
+                                                <button className={`btn secondary ${location.pathname.includes('dashboard') ? 'disabled' : ''}`}>
+                                                    <DashboardIcon />
+                                                    Dashboard
+                                                </button>
+                                            </Link>
+                                        )
                                     ) : (
                                         <Link className="link" to={'/create-musician-profile'}>
                                             <button className="btn secondary">
@@ -398,7 +412,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                         <button className="item btn secondary" onClick={() => {showAuthModal(true); setAuthType('login')}}>
                             Log In
                         </button>
-                        <button className="item btn primary-alt" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
+                        <button className="item btn primary" onClick={() => {showAuthModal(true); setAuthType('signup')}}>
                             Sign Up
                         </button>
                     </nav>

@@ -56,20 +56,22 @@ export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makin
                     savedCards.length > 0 && !addingNewCard ? (
                         <>
                             <h2>Complete Gig Payment</h2>
-                            <div className="payment-details">
-                                <div className="payment-line">
-                                    <h6>Agreed gig fee:</h6>
-                                    <h3>{gigData.agreedFee}</h3>
+                            {gigData?.agreedFee && (
+                                <div className="payment-details">
+                                    <div className="payment-line">
+                                        <h6>Agreed gig fee:</h6>
+                                        <h3>{gigData.agreedFee}</h3>
+                                    </div>
+                                    <div className="payment-line">
+                                        <h6>Service fee:</h6>
+                                        <h3>£{(parseFloat(gigData.agreedFee.replace('£', '')) * 0.05).toFixed(2)}</h3>
+                                    </div>
+                                    <div className="payment-line">
+                                        <h6>Total Payment Due:</h6>
+                                        <h1>£{(parseFloat(gigData.agreedFee.replace('£', '')) * 1.05).toFixed(2)}</h1>
+                                    </div>
                                 </div>
-                                <div className="payment-line">
-                                    <h6>Service fee:</h6>
-                                    <h3>£{(parseFloat(gigData.agreedFee.replace('£', '')) * 0.05).toFixed(2)}</h3>
-                                </div>
-                                <div className="payment-line">
-                                    <h6>Total Payment Due:</h6>
-                                    <h1>£{(parseFloat(gigData.agreedFee.replace('£', '')) * 1.05).toFixed(2)}</h1>
-                                </div>
-                            </div>
+                            )}
                             <ul className="card-list">
                             {savedCards.map((card) => (
                                 <li
@@ -105,7 +107,7 @@ export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makin
                             <button
                                 className="btn primary"
                                 onClick={() => onSelectCard(selectedCardId)}
-                                disabled={!selectedCardId} // Prevent payment if no card is selected
+                                disabled={!selectedCardId}
                             >
                                 Pay Gig Fee
                             </button>

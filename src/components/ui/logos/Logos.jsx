@@ -7,6 +7,11 @@ export const TextLogo = () => {
         <h1 className="logo" style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 900 }}>gigin<span className="orange-txt">.</span></h1>
     )
 }
+export const TextLogoXL = () => {
+    return (
+        <h1 className="logo" style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 900, fontSize: '5rem' }}>gigin<span className="orange-txt" style={{ fontSize: '3rem' }}>.<span style={{ color: 'var(--gn-grey-600)', textTransform: 'uppercase', marginLeft: 5 }}>(beta)</span></span></h1>
+    )
+}
 export const TextLogoLink = () => {
     return (
         <h1 className="logo">

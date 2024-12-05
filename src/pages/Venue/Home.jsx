@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { Header as MusicianHeader } from "../../components/musician-components/Header"
 import { Header as VenuesHeader } from "../../components/venue-components/Header"
 import { Header as CommonHeader } from "../../components/common/Header";
-import VenueImg from "../../assets/images/venue-welcome.jpg";
+import VenueImg from "../../assets/images/venue-welcome.png";
 import '/styles/host/info.styles.css'
 
 export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
@@ -43,9 +43,9 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
             <div className="body">
                 <div className="grid-cont">
                     <div className="title-and-text">
-                        <h1>Welcome, Venues.</h1>
-                        <h4>Are you a venue owner or manager? Create a profile to start booking musicians for your events!</h4>
-                        <p>We want to make booking gigs simpler for you, reducing the legwork and effort required to find the perfect live musician. All you have to do is build a venue, post a gig and musicians will apply, just leaving you with accepting who you like the look of.</p>
+                        <h1 style={{ fontSize: '3rem' }}>Welcome, Venues.</h1>
+                        <h4 style={{ fontSize: '1.25rem' }}>Gigin makes gig-booking simpler. We reduce the legwork, so you can focus on creating unforgettable experiences for your guests.</h4>
+                        <h4 style={{ fontSize: '1.25rem' }}>Simply create a venue profile, post a gig, and either let musicians apply or go and find who you are looking for on our comprehensive musician profiles. Partnered with Stripe®️, save a bank card and pay securely in one click. Simple!</h4>
                     </div>
                     <div className="img-and-button">
                         <figure className="img-cont">

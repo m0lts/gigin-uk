@@ -18,6 +18,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js';
+import { LoadingThreeDots } from '../../../components/ui/loading/Loading';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -30,6 +31,18 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
     const [error, setError] = useState(false);
     const [connectedAccountId, setConnectedAccountId] = useState();
     const stripeConnectInstance = useStripeConnect(connectedAccountId);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [payingOut, setPayingOut] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
 
     const earningsData = feesToDisplay.reduce((acc, fee) => {
         const gigDate = new Date(fee.gigDate).toLocaleDateString('en-GB', {
@@ -164,6 +177,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
     };
 
     const handlePayout = async () => {
+        setPayingOut(true);
         const amountToWithdraw = musicianProfile.withdrawableEarnings;
         if (!amountToWithdraw || amountToWithdraw <= 0) {
           alert("No funds available to withdraw.");
@@ -184,6 +198,8 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
         } catch (error) {
           console.error("Error processing payout:", error);
           alert("An error occurred while processing the payout. Please try again later.");
+        } finally {
+            setPayingOut(false);
         }
       };
 
@@ -308,12 +324,14 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                     <table>
                         <thead>
                             <tr>
-                                <th id="date">
-                                    Date
-                                    <button className="sort btn text" onClick={toggleSortOrder}>
-                                        <SortIcon />
-                                    </button>
-                                </th>
+                                {windowWidth > 915 && (
+                                    <th id="date">
+                                        Date
+                                        <button className="sort btn text" onClick={toggleSortOrder}>
+                                            <SortIcon />
+                                        </button>
+                                    </th>
+                                )}
                                 <th>Amount</th>
                                 <th className="centre">Status</th>
                             </tr>
@@ -323,7 +341,9 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                                 feesToDisplay.map((fee, index) => {
                                     return (
                                         <tr key={index} onClick={() => openGigUrl(fee.gigId)}>
+                                            {windowWidth > 915 && (
                                             <td>{formatFeeDate(fee.gigDate)}</td>
+                                            )}
                                             <td>£{fee.amount.toFixed(2)}</td>
                                             <td className={`status-box ${fee.status === 'cleared' ? 'succeeded' : fee.status === 'in dispute' ? 'declined' : fee.status}`}>
                                                 <div className={`status ${fee.status === 'cleared' ? 'succeeded' : fee.status === 'in dispute' ? 'declined' : fee.status}`}>
@@ -358,9 +378,13 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                                     </button>
                                 )} */}
                                 {musicianProfile.bankDetailsAdded ? (
-                                    <button className="btn primary-alt" onClick={handlePayout}>
-                                        Withdraw Funds
-                                    </button>
+                                    payingOut ? (
+                                        <LoadingThreeDots />
+                                    ) : (
+                                        <button className="btn primary-alt" onClick={handlePayout}>
+                                            Withdraw Funds
+                                        </button>
+                                    )
                                 ) : (
                                     <h4>
                                         <LeftArrowIcon /> Add Bank Details Before Withdrawing

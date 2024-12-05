@@ -3,6 +3,13 @@
     max-width: 60vw;
 }
 
+@media (max-width: 1268px) {
+    .modal .gig-handbook {
+        min-width: 90vw;
+        max-width: 95vw;
+    }
+}
+
 /* HEAD */
 
 .modal .gig-handbook .head {

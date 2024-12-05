@@ -371,7 +371,7 @@ export const ProfileCreator = () => {
 
     const stages = [
         <div className='stage intro'>
-            <h1>Welcome to the profile creator.</h1>
+            <h1>Welcome to the musician profile creator!</h1>
             <h4>Before you apply to gigs on Gigin, you need to show the venue your talent!</h4>
             <p>This should only take around 5 minutes. We advise that you have a showcase video ready to upload.</p>
         </div>,

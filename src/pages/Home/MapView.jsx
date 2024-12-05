@@ -136,67 +136,6 @@ export const MapView = ({ upcomingGigs }) => {
         }
     };
 
-    // useEffect(() => {
-    //     if (mapInstance && upcomingGigs && upcomingGigs.length > 0) {
-    //         clearMarkers();
-    //         const filteredGigs = selectedDates.length > 0
-    //             ? upcomingGigs.filter(gig => {
-    //                 const gigDate = gig.date.toDate();
-    //                 return selectedDates.some(
-    //                     selectedDate => gigDate.toDateString() === selectedDate.toDateString()
-    //                 );
-    //             })
-    //             : upcomingGigs;
-    //         const newMarkers = {};
-    //         filteredGigs.forEach(gig => {
-    //             const key = gig.coordinates.toString();
-    //             if (!newMarkers[key]) {
-    //                 const markerElement = createCustomMarker(gig);
-    //                 newMarkers[key] = markerElement;
-    //                 markerElement.addEventListener('click', () => handleMarkerClick(gig));
-    //                 markerElement.addEventListener('mouseenter', () => handleMarkerMouseEnter(markerElement));
-    //                 markerElement.addEventListener('mouseleave', () => handleMarkerMouseLeave(markerElement));
-    //                 new mapboxgl.Marker(markerElement)
-    //                     .setLngLat(gig.coordinates)
-    //                     .addTo(mapInstance);
-    //             }
-    //         });
-    //         setMarkers(newMarkers);
-    //     }
-    // }, [mapInstance, upcomingGigs, clickedGigs, selectedDates]);
-
-    // const createCustomMarker = (gig) => {
-    //     const markerElement = document.createElement('div');
-    //     markerElement.className = 'custom-marker';
-    //     markerElement.style.background = 'var(--gn-white)';
-    //     markerElement.style.boxShadow = '0px 0px 10px var(--gn-shadow)';
-    //     markerElement.style.width = '50px';
-    //     markerElement.style.height = '30px';
-    //     markerElement.style.borderRadius = '25px';
-    //     markerElement.style.display = 'flex';
-    //     markerElement.style.justifyContent = 'center';
-    //     markerElement.style.alignItems = 'center';
-    //     markerElement.style.position = 'relative';
-    //     markerElement.style.padding = '15px 35px';
-    //     markerElement.style.cursor = 'pointer';
-    //     markerElement.style.transition = 'background-color 200ms linear';
-    //     const tooltip = document.createElement('span');
-    //     tooltip.textContent = `${gig.budget}`;
-    //     tooltip.style.color = 'var(--gn-off-black)';
-    //     tooltip.style.fontWeight = '700';
-    //     tooltip.style.fontSize = '1.1rem';
-    //     markerElement.appendChild(tooltip);
-    //     return markerElement;
-    // };
-
-    // const handleMarkerClick = (gig) => {
-    //     const alreadyClicked = clickedGigs.find(clickedGig => clickedGig.gigId === gig.gigId);
-    //     if (!alreadyClicked) {
-    //         setClickedGigs(prevClickedGigs => [...prevClickedGigs, gig]);
-    //         setCurrentGigIndex(clickedGigs.length);
-    //     }
-    // };
-
     const handleMarkerMouseEnter = (markerElement) => {
         markerElement.style.background = 'var(--gn-off-black)';
         markerElement.querySelector('span').style.color = 'white';

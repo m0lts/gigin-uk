@@ -23,14 +23,19 @@
     gap:145px;
 }
 
+
+.header .left.musician {
+    gap:127px;
+}
+
 @media (max-width: 1268px) {
     .header .left.venues {
         gap:67px;
     }
-}
 
-.header .left.musician {
-    gap:127px;
+    .header .left.musician {
+        gap:47px;
+    }
 }
 
 .header .right {

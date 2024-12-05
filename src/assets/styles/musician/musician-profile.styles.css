@@ -321,8 +321,21 @@
     font-size: 2rem;
 }
 
+@media (max-width: 1000px) {
+    .profile .profile-overview .overview-bottom .musician-type {
+        padding: 1rem;
+    }
+    .profile .profile-overview .overview-bottom .musician-type .icon {
+        font-size: 1rem;
+    }
+    .profile .profile-overview .overview-bottom .musician-type h3 {
+        font-size: 1rem;
+    }
+}
+
 .profile .profile-overview .overview-bottom .list {
     list-style: none;
+    min-height: 100px;
 }
 
 .profile .profile-overview .overview-bottom .sound-item {
