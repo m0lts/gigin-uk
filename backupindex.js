@@ -214,3 +214,21 @@
 //         });
 //       }
 //     });
+
+
+// "@fortawesome/fontawesome-pro": "^6.5.1",
+// "@fortawesome/fontawesome-svg-core": "^6.5.1",
+// "@fortawesome/free-brands-svg-icons": "^6.5.1",
+// "@fortawesome/free-solid-svg-icons": "^6.5.1",
+// "@fortawesome/pro-light-svg-icons": "^6.5.1",
+// "@fortawesome/pro-regular-svg-icons": "^6.5.1",
+// "@fortawesome/react-fontawesome": "^0.2.0",
+
+// "@fortawesome/fontawesome-pro": "^6.5.1",
+// "@fortawesome/fontawesome-svg-core": "^6.5.1",
+// "@fortawesome/free-brands-svg-icons": "^6.5.1",
+// "@fortawesome/free-solid-svg-icons": "^6.5.1",
+// "@fortawesome/pro-light-svg-icons": "^6.5.1",
+// "@fortawesome/pro-regular-svg-icons": "^6.5.1",
+// "@fortawesome/react-fontawesome": "^0.2.0",
+

@@ -5,9 +5,9 @@ import {
   ConnectAccountOnboarding,
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
-import { httpsCallable } from 'firebase/functions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestore, functions } from '../../../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -307,6 +307,22 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                                             const musicianRef = doc(firestore, "musicianProfiles", musicianProfile.musicianId);
                                             await updateDoc(musicianRef, {bankDetailsAdded: true});
                                             setMusicianProfile(...prev => ({...prev, bankDetailsAdded: true}));
+                                            const musicianDoc = await getDoc(musicianRef);
+                                            const {withdrawableFunds} = musicianDoc.data();
+                                            if (withdrawableFunds && withdrawableFunds > 1) {
+                                                const transferFunds = httpsCallable(functions, "transferFunds");
+                                                const result = await transferFunds({
+                                                    connectedAccountId: musicianProfile.stripeAccountId,
+                                                    amount: withdrawableFunds * 100,
+                                                });
+                                                if (result.data.success) {
+                                                    console.log("Funds transferred successfully:", result.data.transfer);
+                                                    await updateDoc(musicianRef, { withdrawableFunds: 0 });
+                                                    setMusicianProfile(...prev => ({...prev, withdrawableFunds: 0}));
+                                                } else {
+                                                    console.error("Error transferring funds:", result.data.error);
+                                                }
+                                            }
                                             window.location.reload();
                                         } catch (error) {
                                             console.error("Error updating musician profile:", error);

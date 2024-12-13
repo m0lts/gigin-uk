@@ -863,6 +863,13 @@ exports.stripeAccount = onRequest(
               },
               requirement_collection: "application",
             },
+            settings: {
+              payouts: {
+                schedule: {
+                  interval: "manual",
+                },
+              },
+            },
           });
           res.json({
             account: account.id,
@@ -876,6 +883,36 @@ exports.stripeAccount = onRequest(
         }
       });
     });
+
+exports.transferFunds = onCall(
+    {
+      secrets: [stripeProductionKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
+    async (request) => {
+      const {connectedAccountId, amount} = request.data;
+      const {auth} = request;
+      if (!auth) {
+        throw new Error("User must be authenticated.");
+      }
+      if (!connectedAccountId || !amount) {
+        throw new Error("Missing required parameters.");
+      }
+      try {
+        const stripe = new Stripe(stripeProductionKey.value());
+        const transfer = await stripe.transfers.create({
+          amount,
+          currency: "gbp",
+          destination: connectedAccountId,
+        });
+        return {success: true, transfer: transfer};
+      } catch (error) {
+        console.error("Error transfering funds:", error);
+        throw new Error("Failed to transfer funds.");
+      }
+    },
+);
 
 exports.changeBankDetails = onCall(
     {
