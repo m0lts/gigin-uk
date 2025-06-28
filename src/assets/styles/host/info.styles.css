@@ -1,0 +1,52 @@
+.venue-welcome-page .body {
+    width:100vw;
+    height: calc(100vh - 60px);
+    padding: 2%;
+}
+
+.venue-welcome-page .grid-cont {
+    display: grid;
+    grid-template-columns: 40% 58%;
+    gap:2%;
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 2rem;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+    height: 100%;
+}
+
+.venue-welcome-page .body .title-and-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap:2rem;
+    padding:5rem;
+}
+
+.venue-welcome-page .body .img-and-button {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap:2rem;
+}
+
+.venue-welcome-page .body .img-cont {
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width:900px) {
+    .venue-welcome-page .body .img-cont {
+        width: 350px;
+        height: 350px;
+    }
+}
+
+.venue-welcome-page .body .img-cont img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}

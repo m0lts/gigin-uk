@@ -1,0 +1,341 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom'
+import { Header as MusicianHeader } from '@features/musician/components/Header';
+import { Header as VenueHeader } from '@features/venue/components/Header';
+import { arrayUnion } from 'firebase/firestore';
+import { OverviewTab } from '@features/musician/profile/OverviewTab';
+import { MusicTab } from '@features/musician/profile/MusicTab';
+import { ReviewsTab } from '@features/musician/profile/ReviewsTab';
+import { 
+    InviteIcon,
+    SaveIcon,
+    SavedIcon,
+    StarIcon,
+    TickIcon } from '@features/shared/ui/extras/Icons';
+import { useGigs } from '@context/GigsContext';
+import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
+import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '@services/musicians';
+import { updateUserDocument } from '@services/users';
+import { validateVenueUser } from '@services/utils/validation';
+import { formatDate } from '@services/utils/dates';
+import { getGigsByIds, inviteToGig } from '@services/gigs';
+import { filterFutureGigs } from '@services/utils/filtering';
+import { getOrCreateConversation } from '@services/conversations';
+import { sendGigInvitationMessage } from '@services/messages';
+import { useResizeEffect } from '@hooks/useResizeEffect';
+import { BandMembersTab } from '../bands/BandMembersTab';
+import { getBandDataOnly } from '../../../services/bands';
+
+
+export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
+
+    const { musicianId, gigId } = useParams();
+    const { gigs } = useGigs();
+
+    const [musicianProfile, setMusicianProfile] = useState();
+    const [applicantData, setApplicantData] = useState();
+    const [activeTab, setActiveTab] = useState('overview');
+    const [loading, setLoading] = useState(true);
+    const [padding, setPadding] = useState('5%');
+
+    const [musicianSaved, setMusicianSaved] = useState(false);
+    const [savingMusician, setSavingMusician] = useState(false);
+    const [inviteMusicianModal, setInviteMusicianModal] = useState(false);
+    const [usersGigs, setUsersGigs] = useState([]);
+    const [selectedGig, setSelectedGig] = useState();
+    const [invitedMusician, setInvitedMusician] = useState(false);
+    const [band, setBand] = useState(null);
+    const [bandMembers, setBandMembers] = useState(null);
+
+
+    useEffect(() => {
+        const fetchMusicianProfile = async () => {
+            try {
+                const musician = await getMusicianProfileByMusicianId(musicianId);
+                setMusicianProfile(musician);
+                if (musician.bandProfile) {
+                    const bandData = await getBandDataOnly(musician.musicianId);
+                    setBand(bandData);
+                }
+                if (gigs) {
+                    const currentGig = gigs.find(gig => gig.gigId === gigId);
+                    const applicant = currentGig.applicants.find(applicant => applicant.id === musician.musicianId);
+                    setApplicantData(applicant);
+                    if (applicant.invited) {
+                        setInvitedMusician(true);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching musician profile', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        const getSavedMusicians = async () => {
+            if (user?.savedMusicians && user.savedMusicians.length > 0) {
+                const activeMusicianSaved = user.savedMusicians.includes(musicianId);
+                setMusicianSaved(!!activeMusicianSaved);
+            } else {
+                setMusicianSaved(false);
+            }
+        }
+        fetchMusicianProfile();
+        getSavedMusicians();
+
+    }, [musicianId, gigId]);
+
+    useResizeEffect((width) => {
+        if (width > 1100) {
+          setPadding('15vw');
+        } else {
+          setPadding('1rem');
+        }
+      });
+    
+    const renderActiveTabContent = () => {
+        switch (activeTab) {
+            case 'overview':
+                return <OverviewTab musicianData={musicianProfile} />; 
+            case 'music':
+                return <MusicTab videos={musicianProfile.videos} tracks={musicianProfile.tracks}/>;
+            case 'members':
+                return <BandMembersTab
+                    band={band}
+                    bandMembers={bandMembers}
+                    setBandMembers={setBandMembers}
+                    musicianId={musicianProfile.musicianId}
+                    viewing={true}
+                />
+            case 'reviews':
+                return <ReviewsTab profile={musicianProfile} />;
+            default:
+                return null;
+        }        
+    };       
+
+    const handleSaveMusician = async () => {
+        if (user && musicianId) {
+          setSavingMusician(true);
+          try {
+            await updateUserDocument(user.uid, {
+              savedMusicians: arrayUnion(musicianId),
+            });
+            setMusicianSaved(true);
+          } catch (error) {
+            console.error('Error saving musician:', error);
+          } finally {
+            setSavingMusician(false);
+          }
+        }
+    };
+
+    const handleInviteMusician = async () => {
+        const { valid, venueProfiles } = validateVenueUser({
+            user,
+            setAuthModal,
+            setAuthType,
+            showAlert: (msg) => alert(msg),
+        });
+        if (!valid) return;
+        const gigIds = venueProfiles
+            .flatMap(venueProfile => venueProfile.gigs || []);
+        if (gigIds.length === 0) {
+            alert('You must post a gig before inviting a musician to one.');
+            return;
+        }
+        try {
+            const gigs = await getGigsByIds(gigIds);
+            const futureGigs = filterFutureGigs(gigs);
+            const availableGigs = filterAvailableGigsForMusician(gigs, musicianId);
+            if (availableGigs.length > 0) {
+                setInviteMusicianModal(true);
+                setUsersGigs(futureGigs)
+            } else {
+                alert('There are no eligible gigs to invite this musician to.');
+            }
+        } catch (error) {
+            console.error('Error fetching future gigs:', error);
+        }
+    };
+
+    const handleSendMusicianInvite = async (gigData) => {
+        if (!musicianProfile || !gigData) {
+            return;
+        }
+        const venueToSend = user.venueProfiles.find(venue => venue.id === gigData.venueId);
+        if (!venueToSend) {
+            console.error('Venue not found in user profiles.');
+            return;
+        }
+        try {
+            await inviteToGig(gigData.gigId, musicianProfile);
+            const newGigApplicationEntry = {
+                gigId: gigData.gigId,
+                profileId: musicianProfile.musicianId,
+                name: musicianProfile.name,
+            };
+    
+            const updatedGigApplicationsArray = musicianProfile.gigApplications
+                ? [...musicianProfile.gigApplications, newGigApplicationEntry]
+                : [newGigApplicationEntry];
+    
+            await updateMusicianProfile(musicianProfile.musicianId, {
+                gigApplications: updatedGigApplicationsArray,
+            });
+            const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueToSend, 'invitation');
+            await sendGigInvitationMessage(conversationId, {
+                senderId: user.uid,
+                text: `${venueToSend.accountName} has invited you to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
+            })
+            setInviteMusicianModal(false);
+            setInvitedMusician(true);
+        } catch (error) {
+            console.error('Error while creating or fetching conversation:', error);
+        }
+    };
+
+    return (
+        <div className='musician-profile-page'>
+            {user.venueProfiles && user.venueProfiles.length > 0 ? (
+                <VenueHeader
+                    user={user}
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    padding={padding}
+                />
+            ) : (
+                <MusicianHeader
+                    user={user}
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                />
+            )}
+            {loading ? (
+                <LoadingScreen />
+            ) : (
+                <div className='profile' style={{ padding: `0 ${padding}` }}>
+                    <div className='profile-banner'>
+                        <div className='profile-information'>
+                            <figure className='profile-picture'>
+                                <img src={musicianProfile.picture} alt={`${musicianProfile.name}'s Profile Picture`} />
+                            </figure>
+                            <div className='profile-details'>
+                                <h1>{musicianProfile.name}</h1>
+                                <h4>{musicianProfile?.bandProfile ? 'Band' : 'Musician'}</h4>
+                                <div className='data'>
+                                    {musicianProfile.avgReviews && (
+                                        <h6><StarIcon /> {musicianProfile.avgReviews.avgRating} ({musicianProfile.avgReviews.totalReviews})</h6>
+                                    )}
+                                    <h6>{musicianProfile.clearedFees ? musicianProfile.clearedFees.length : '0'} gigs played</h6>
+                                </div>
+                                <div className='genre-tags'>
+                                    {musicianProfile.genres && musicianProfile.genres.map((genre, index) => (
+                                        <div className='genre-tag' key={index}>
+                                            {genre}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                            {/* {applicantData && (
+                        <div className='profile-actions applicant'>
+                            <h2>{applicantData.fee}</h2>
+                            {applicantData.status === 'Accepted' && (
+                                <div className='status-box'>
+                                    <div className='status confirmed'>
+                                        <TickIcon />
+                                        Accepted
+                                    </div>
+                                </div>
+                            )}
+                            {applicantData.status === 'Declined' && (
+                                <div className='status-box'>
+                                    <div className='status rejected'>
+                                        <RejectedIcon />
+                                        Declined
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                            )} */}
+                        {user.venueProfiles.length > 0 && (
+                            <div className='profile-actions venue'>
+                                    {invitedMusician ? (
+                                    <button className='btn primary' onClick={handleInviteMusician}>
+                                        <TickIcon />
+                                        Invited
+                                    </button>
+                                    ) : (
+                                        <button className='btn primary' onClick={handleInviteMusician}>
+                                            <InviteIcon />
+                                            Invite
+                                        </button>
+    
+                                    )}
+                                <button className='btn secondary' onClick={handleSaveMusician} disabled={user?.savedMusicians?.includes(musicianId)}>
+                                    {musicianSaved ? (
+                                        <>
+                                            <SavedIcon />
+                                            Saved
+                                        </>
+                                    ) : (
+                                        savingMusician ? (
+                                            <LoadingThreeDots />
+                                        ) : (
+                                            <>
+                                                <SaveIcon />
+                                                Save
+                                            </>
+                                        )
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <nav className='profile-tabs'>
+                        <p onClick={() => setActiveTab('overview')} className={`profile-tab ${activeTab === 'overview' ? 'active' : ''}`}>
+                            Overview
+                        </p>
+                        <p onClick={() => setActiveTab('music')} className={`profile-tab ${activeTab === 'music' ? 'active' : ''}`}>
+                            Music
+                        </p>
+                        {band && (
+                            <p onClick={() => setActiveTab('members')} className={`profile-tab ${activeTab === 'members' ? 'active' : ''}`}>Band Members</p>
+                        )}
+                        <p onClick={() => setActiveTab('reviews')} className={`profile-tab ${activeTab === 'reviews' ? 'active' : ''}`}>
+                            Reviews
+                        </p>
+                    </nav>
+                    <div className='profile-sections'>
+                        {renderActiveTabContent()}
+                    </div>
+                </div>
+            )}
+
+            {inviteMusicianModal && (
+                <div className='modal'>
+                    <div className='modal-content'>
+                        <h2>Select a gig to invite {musicianProfile.name} to play at.</h2>
+                        <div className='gig-selection'>
+                            {usersGigs.length > 0 && (
+                                usersGigs.map((gig, index) => (
+                                    <div className={`card ${selectedGig === gig ? 'selected' : ''}`} key={index} onClick={() => setSelectedGig(gig)}>
+                                        <h4 className='text'>{gig.venue.venueName}</h4>
+                                        <p className='sub-text'>{formatDate(gig.date, 'short')} - {gig.startTime}</p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className='two-buttons'>
+                            <button className='btn secondary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>
+                            <button className='btn primary-alt' disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+
+        
+    );
+}

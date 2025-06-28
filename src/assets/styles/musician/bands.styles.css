@@ -1,0 +1,407 @@
+.bands-page {
+    height:100%;
+}
+
+/* CARDS */
+
+.bands-page .card {
+    position: relative;
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding:1rem;
+    padding-right: 1.5rem;
+    min-width: 150px;
+    max-width: 250px;
+    min-height: 100px;
+    max-height:150px;
+    gap:5px;
+    text-align: left;
+    transition: background-color 200ms linear, border-color 200ms linear;
+}
+
+.bands-page .card.small {
+    min-width:fit-content;
+    padding-right: 1rem;
+    align-items: center;
+    min-height:fit-content;
+}
+
+.bands-page .card.template {
+    width:fit-content;
+    min-height: fit-content;
+}
+
+.bands-page .card .text {
+    font-size: 1rem;
+}
+
+.bands-page .card .sub-text {
+    font-size: 0.9rem;
+}
+
+.bands-page .card .icon {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    transition: color 150ms linear;
+}
+
+.bands-page .card:hover {
+    border-color: var(--gn-orange);
+}
+
+.bands-page .card:hover .icon {
+    color: var(--gn-orange);
+}
+
+.bands-page .card.selected {
+    background-color: var(--gn-offset-orange);
+    border-color: var(--gn-orange);
+}
+
+.bands-page .card.disabled {
+    color: var(--gn-grey-600);
+    cursor: auto;
+}
+
+.bands-page .card.disabled:hover {
+    border-color: var(--gn-grey-400);
+}
+
+/* ENTRANCE */
+
+.bands-page .entry-text {
+    margin: 1rem;
+    width:90%;
+}
+
+.bands-page .entry-text h1 {
+    margin-bottom: 0.5rem;
+}
+
+.bands-page h1 span {
+    color: var(--gn-orange);
+    font-size: 2rem;
+}
+
+.bands-page .entry-actions {
+    display: flex;
+    margin: 1rem 2%;
+    gap:1rem;
+}
+
+/* BANDS LIST */
+.bands-page .band-list {
+    margin: 0.5rem 2%;
+}
+
+.bands-page .band-list .band-cards {
+    display: flex;
+    align-items: flex-start;
+    width:100%;
+    gap:0.5rem;
+}
+
+.bands-page .band-list .band-cards .band-card {
+    display: flex;
+    align-items: flex-end;
+    gap:1rem;
+    border:2px solid var(--gn-grey-300);
+    background-color: var(--gn-white);
+    border-radius: 1rem;
+    padding: 1rem;
+    width:100%;
+    cursor: pointer;
+    box-shadow: none;
+    transition: all 200ms linear;
+}
+
+.bands-page .band-list .band-cards .band-card:hover {
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.bands-page .band-list .band-cards .band-img {
+    width:100px;
+    height:100px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.bands-page .band-list .band-cards .band-name {
+    font-size: 3rem;
+}
+
+/* JOINING PAGE */
+.bands-page .join {
+    height:100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.bands-page .join h1 {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.bands-page .join .input {
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+.bands-page .join img {
+    width: 160px;
+    border-radius: 0.75rem;
+    object-fit: cover;
+    animation: pulseZoom 2s infinite;
+}
+
+@keyframes pulseZoom {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+    50% {
+        transform: scale(1.03);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.35);
+    }
+}
+
+/* .bands-page .join img {
+    width: 200px;
+    border-radius: 1.5rem;
+    object-fit: cover;
+    box-shadow: 0 0 20px rgba(0, 128, 255, 0.2);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.bands-page .join img:hover {
+    box-shadow: 0 0 40px rgba(0, 128, 255, 0.3);
+    transform: translateY(-4px);
+} */
+
+/* BAND DASHBOARD */
+.bands-page .band-dashboard {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bands-page .band-dashboard .band-banner {
+    border-radius: 1rem;
+    box-shadow: 0px 0px 10px var(--gn-shadow);
+    margin:1rem;
+    padding:1rem;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: white;
+}
+
+.bands-page .band-dashboard .band-banner img {
+    height:100px;
+    border-radius: 0.75rem;
+    object-fit: cover;
+}
+
+.band-dashboard .band-tabs {
+    margin: 0 1rem;
+    padding: 0.5rem 0rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap:1rem;
+    position: sticky;
+    top: 80px;
+    z-index: 999;
+}
+
+.band-dashboard .band-tabs .tab-button {
+    border:1px solid transparent;
+    background-color: transparent;
+    width: 150px;
+    padding: 0.5rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 0.2s linear;
+}
+
+.band-dashboard .band-tabs .tab-button.active {
+    background-color: var(--gn-off-black);
+    color:white;
+    font-weight: 600;
+}
+
+.band-dashboard .band-tabs .tab-button:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.band-dashboard .band-tabs .tab-button.active:hover {
+    background-color: var(--gn-off-black);
+}
+
+.band-dashboard .tab-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin: 0 1rem;
+    scrollbar-width: none;
+}
+  
+.band-dashboard .tab-content::-webkit-scrollbar {
+    display: none;
+}
+
+
+/* MEMBERS TAB */
+
+.band-dashboard .band-tab.members .members-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+}
+
+.band-dashboard .band-tab.members .members-header .members-password {
+    border:1px solid var(--gn-grey-300);
+    background-color: var(--gn-off-black);
+    box-shadow: 0 0 2px var(--gn-shadow);
+    border-radius: 1rem;
+    padding:1rem;
+    margin: 1rem 0;
+    color: white;
+}
+
+.band-dashboard .band-tab.members .members-header .members-password h2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.band-dashboard .band-tab.members .members-header .members-password h2 .icon {
+    font-size: 1.25rem;
+}
+
+.band-dashboard .band-tab.members .members-header .members-password .members-password-value {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:0.25rem;
+    background-color: var(--gn-grey-600);
+    padding:0.5rem;
+    margin: 0.5rem 0;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 200ms linear;
+}
+
+.band-dashboard .band-tab.members .members-header .members-password .members-password-value:hover {
+    background-color: var(--gn-grey-500);
+}
+
+.band-dashboard .band-tab.members .members-header .invite-link-container .invite-link-btn {
+    margin: 0.5rem 0;
+    width:100%;
+    text-align: center;
+}
+
+.band-dashboard .band-tab.members .members-header .invite-link-container .email-invite-form .input {
+    margin: 0.5rem 0.5rem 0.5rem 0rem;
+}
+
+.band-dashboard .band-tab.members .members-header .members-buttons {
+    display: flex;
+    flex-direction: column;
+    gap:0.5rem;
+}
+
+.band-dashboard .band-tab.members .member-list {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card {
+    width:100%;
+    border-radius: 0.5rem;
+    background-color: white;
+    border:1px solid var(--gn-grey-300);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding:1.5rem;
+    margin: 0.5rem 0;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .left-side {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.band-dashboard .band-tab.members .member-list img {
+    width:100px;
+    height:100px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .member-permissions {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .member-permissions .admin-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1.2rem;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .member-permissions input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .fee-split {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:5px;
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .fee-split .split-input-container {
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .fee-split .split-input-container .split-input {
+    border: 2px solid var(--gn-off-black);
+    border-radius: 1rem;
+    font-size: 2rem;
+    font-weight: 600;
+    padding:5px 10px;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .fee-split .split-input-container .split-input:focus {
+    outline-color: var(--gn-orange);
+}

@@ -1,0 +1,966 @@
+
+/* OVERVIEW */
+.window.dashboard .overview {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap:1rem;
+    width:100%;
+    height: 100%;
+    overflow: auto;
+    padding: 2.5%;
+}
+
+.window.dashboard .overview .grid-tile {
+    border-radius: 1rem;
+    box-shadow: 0 0 5px var(--gn-shadow);
+    padding: 5px 10px;
+    overflow: auto;
+    scrollbar-width:none;
+}
+
+.window.dashboard .overview .grid-tile::-webkit-scrollbar {
+    display: none;
+}
+
+.window.dashboard .overview .grid-tile.loading {
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    overflow: hidden;
+    border-radius: 1rem;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(1) {
+    grid-column-start: 1;
+    grid-column-end: 5;
+    grid-row-start: 1;
+    grid-row-end: 5;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(2) {
+    grid-column-start: 5;
+    grid-column-end: 7;
+    grid-row-start: 1;
+    grid-row-end: 5;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(3) {
+    grid-column-start: 7;
+    grid-column-end: 9;
+    grid-row-start: 1;
+    grid-row-end: 5;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(4) {
+    grid-column-start: 1;
+    grid-column-end: 7;
+    grid-row-start: 5;
+    grid-row-end: 9;
+}
+
+.window.dashboard .overview .grid-tile:nth-of-type(5) {
+    grid-column-start: 7;
+    grid-column-end: 9;
+    grid-row-start: 5;
+    grid-row-end: 9;
+}
+
+@media (max-width: 1268px) {
+    .window.dashboard .overview {
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: repeat(8, 1fr);
+    }
+
+    .window.dashboard .overview .grid-tile:nth-of-type(1) {
+        grid-column-start: 1;
+        grid-column-end: 9;
+        grid-row-start: 1;
+        grid-row-end: 5;
+    }
+
+    .window.dashboard .overview .grid-tile:nth-of-type(2) {
+        grid-column-start: 1;
+        grid-column-end: 5;
+        grid-row-start: 5;
+        grid-row-end: 9;
+    }
+
+    .window.dashboard .overview .grid-tile:nth-of-type(3) {
+        grid-column-start: 5;
+        grid-column-end: 9;
+        grid-row-start: 5;
+        grid-row-end: 9;
+    }
+
+    .window.dashboard .overview .grid-tile:nth-of-type(4) {
+        display: none;
+    }
+
+    .window.dashboard .overview .grid-tile:nth-of-type(5) {
+        display: none;
+    }
+}
+
+.window.dashboard .grid-tile.reviews .venue-reviews {
+    list-style-type: none;
+}
+
+.window.dashboard .grid-tile.reviews h2 {
+    margin-bottom: 5px;
+}
+
+.window.dashboard .grid-tile.reviews .venue-review {
+    border:1px solid var(--gn-grey-350);
+    border-radius: 10px;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.window.dashboard .grid-tile.reviews .venue-review .reviewed-venue {
+    display: flex;
+    align-items: center;
+    gap:10px;
+}
+
+.window.dashboard .grid-tile.reviews .venue-review .review-rating {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.window.dashboard .grid-tile.reviews .reviewed-venue-img {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.window.dashboard .grid-tile.reviews .reviewed-venue-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.window.dashboard .card-list {
+    width:100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:10px;
+    margin: 5px 0;
+}
+
+.window.dashboard .card-list .card-item {
+    border:1px solid var(--gn-grey-350);
+    border-radius: 10px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    box-shadow: 1px 1px 5px var(--gn-shadow);
+    transition: background-color 0.2s linear;
+}
+
+.window.dashboard .card-list .card-item.hoverable:hover {
+    background-color: var(--gn-grey-300);
+    cursor: pointer;
+}
+
+.window.dashboard .card-list .card-item.selected {
+    outline: 2px solid var(--gn-orange);
+    border: 1px solid transparent;
+}
+
+.window.dashboard .card-list .card-left {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap:5%;
+    width: 80%;
+}
+
+.window.dashboard .card-list .card-item .card-brand-icon {
+    width:50px;
+    height: auto;
+}
+
+.window.dashboard .card-list .card-type {
+    border:1px solid var(--gn-green);
+    border-radius: 5px;
+    background-color: var(--gn-offset-green);
+    padding: 5px;
+    color: var(--gn-green);
+}
+
+.window.dashboard .card-list .card-type p {
+    font-size: 0.8rem;
+}
+
+.window.dashboard .receipt-list {
+    list-style: none;
+}
+
+.window.dashboard .receipt-list .receipt-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    margin: 10px 0;
+    border-bottom: 1px solid var(--gn-grey-350);
+    transition: background-color 0.2s linear, border-radius 0.2s linear, border 0.2s linear;
+}
+
+.window.dashboard .receipt-list .receipt-item:hover {
+    border-bottom: 1px solid transparent;
+    border-radius: 10px;
+    background-color: var(--gn-grey-300);
+    cursor: pointer;
+}
+
+.window.dashboard .receipt-list .receipt-item .status {
+    padding: 2px 5px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.window.dashboard .receipt-list .receipt-item .status.paid {
+    border: 1px solid var(--gn-green);
+    background-color: var(--gn-offset-green);
+    color: var(--gn-green);
+}
+
+.window.dashboard .receipt-list .receipt-item .status.due {
+    border: 1px solid var(--gn-red);
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+}
+
+.window.dashboard .new-applicants-list {
+    list-style: none;
+}
+
+.window.dashboard .new-applicants-list .new-applicant {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    margin: 10px 0;
+    border-bottom: 1px solid var(--gn-grey-350);
+    transition: background-color 0.2s linear, border-radius 0.2s linear, border 0.2s linear;
+}
+
+.window.dashboard .new-applicants-list .new-applicant:hover {
+    border-bottom: 1px solid transparent;
+    border-radius: 10px;
+    background-color: var(--gn-grey-300);
+    cursor: pointer;
+}
+
+.window.dashboard .new-applicants-list .new-applicant .fee-and-notification {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.window.dashboard .new-applicants-list .new-applicant .fee-and-notification .icon {
+    font-size: 0.5rem;
+    color: var(--gn-orange);
+}
+
+.window.dashboard .no-applications {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height:80%;
+    gap:10px;
+}
+
+.window.dashboard .no-applications h4 {
+    text-align: center;
+}
+
+.window.dashboard.venue .next-gig {
+    padding:10px !important;
+    display: grid;
+    grid-template-rows: 50% 50%;
+    gap:5%;
+}
+
+.window.dashboard.venue .next-gig .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 1rem;
+    padding:1rem;
+}
+
+.window.dashboard.venue .next-gig .top .left {
+    display: flex;
+    align-items: center;
+    gap:10px;
+}
+
+.window.dashboard.venue .next-gig .top .left .next-gig-img-container {
+    width: 75px;
+    height: 75px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+}
+
+.window.dashboard.venue .next-gig .top .left .next-gig-img-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.window.dashboard.venue .next-gig .bottom {
+    height: 100%;
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.window.dashboard.venue .next-gig .bottom .musician-name-and-photo {
+    display: flex;
+    align-items: center;
+    gap:10px;
+    margin: 0 1rem;
+    margin-bottom: 1rem;
+}
+
+.window.dashboard.venue .next-gig .bottom .musician-name-and-photo .musician-img {
+    width:75px;
+    height: 75px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+}
+
+.window.dashboard.venue .next-gig .bottom .musician-name-and-photo .musician-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.window.dashboard.venue .next-gig .musician-data {
+    border:1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    width:95%;
+    margin: 1rem auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    gap:auto;
+    padding: 1rem;
+}
+
+.window.dashboard.venue .next-gig .musician-data .data {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+}
+
+.window.dashboard.venue .next-gig .musician-data .data .icon:nth-of-type(2) {
+    font-size: 0.2rem;
+}
+
+
+
+
+
+
+/* GIGS */
+
+.window .body.gigs .filters {
+    display: flex;
+    justify-content: flex-start;
+    gap:2%;
+    align-items: center;
+    width:100%;
+}
+
+.window .body.gigs.musicians .filters {
+    margin-bottom: 2rem;
+}
+
+.window .body.gigs .filters select,
+.window .body.gigs .filters input {
+    padding:7px;
+    border:1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    cursor: pointer;
+    width:15%;
+}
+
+.window .body.gigs .filters .search-bar {
+    width:50%;
+    padding: 8px 1rem;
+    background-color: var(--gn-white);
+    border-radius: 5px;
+    border:1px solid var(--gn-grey-400);
+    display: flex;
+    align-items: center;
+    cursor:text;
+    gap:0.5rem;
+}
+
+.window .body.gigs .filters select:focus,
+.window .body.gigs .filters input:focus {
+    outline:none;
+    border:1px solid var(--gn-off-black);
+}
+
+.window .body.gigs .filters .sort {
+    text-transform: capitalize;    
+}
+
+.window .body.gigs .filters .sort:hover {
+    background-color: var(--gn-white);    
+}
+
+
+.window .body.gigs table {
+    width: 100%;
+    margin: 20px 0;
+    font-size: 16px;
+    border:1px solid var(--gn-grey-400);
+    overflow: hidden;
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.window .body.gigs table thead {
+    background-color: var(--gn-grey-300);
+}
+
+.window .body.gigs table thead tr {
+    text-align: left;
+}
+
+.window .body.gigs table thead tr th {
+    font-weight: 500;
+    color: var(--gn-black);
+    border: none;
+}
+
+.window .body.gigs table th,
+.window .body.gigs table td {
+    padding: 12px 15px;
+    border: none;
+}
+
+.window .body.gigs table tbody tr:nth-of-type(even) {
+    background-color: var(--gn-grey-200);
+}
+
+.window .body.gigs table tbody td {
+    font-weight: var(--gn-semi-bold);
+}
+
+.window .body.gigs table #date {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.window .body.gigs table .centre {
+    text-align: center;
+}
+
+.window .body.gigs table .action-data {
+    width:150px;
+    text-align: center;
+}
+
+.window .body.gigs table .notification {
+    width: 10px;
+}
+
+.window .body.gigs table .notification .icon {
+    font-size: 0.7rem;
+    color: var(--gn-orange);
+}
+
+.window .body.gigs table .status-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.window .body.gigs table .status {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    padding:5px;
+    width:fit-content;
+    border-radius: 5px;
+}
+
+.window .body.gigs table .status.confirmed {
+    border:1px solid rgb(0, 219, 0);
+    background-color: rgba(0, 239, 0, 0.1);
+    color: rgb(0, 219, 0);
+}
+
+.window .body.gigs table .status.upcoming {
+    border:1px solid orange;
+    background-color: rgba(255, 166, 0, 0.1);
+    color: orange;
+}
+
+.window .body.gigs table .status.pending {
+    border:1px solid orange;
+    background-color: rgba(255, 166, 0, 0.1);
+    color: orange;
+}
+
+.window .body.gigs table .status.previous {
+    border:1px solid gray;
+    background-color: rgba(128, 128, 128, 0.1);
+    color: gray;
+}
+
+.window .body.gigs table .status.declined {
+    border:1px solid var(--gn-red);
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+}
+
+.window .body.gigs table .open-gig {
+    width:5%;
+}
+
+.window .body.gigs.musician table tbody tr.clickable:hover {
+    background-color: var(--gn-grey-300);
+    cursor: pointer;
+}
+
+.window .body.gigs table tbody .no-gigs:hover {
+    background-color: var(--gn-white);
+    cursor: default;
+}
+
+.window .body.gigs table .filler-row {
+    background-color: var(--gn-grey-300) !important;
+}
+
+.window .body.gigs table .no-gigs .data .flex,
+.window .body.gigs table .filler-row .data .flex {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:10px;
+}
+
+.window .body.gigs table .no-gigs .data .icon {
+    font-size: 3rem;
+}
+
+.window .body.gigs .dispute-box {
+    width:fit-content;
+    padding: 1rem 1.5rem;
+    border-radius: 1rem;
+    background-color: var(--gn-off-black);
+    color: var(--gn-white);
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.window .body.gigs .dispute-box h4 {
+    margin-top: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.window .body.gigs .dispute-box h3 {
+    text-align: center;
+}
+
+
+/* VENUES */
+
+.window .body.venues {
+    display: grid;
+    max-width:100%;
+    grid-template-columns: repeat(3, 1fr);
+    gap:10px;
+    padding-bottom: 2rem;
+}
+
+@media (max-width: 1268px) {
+    .window .body.venues {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.window .body.venues .card.venue {
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    border-radius: 5px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+}
+
+.window .body.venues .venue-image {
+    width:100%;
+    height:150px;
+    overflow: hidden;
+    border-radius: 5px;
+}
+
+.window .body.venues .venue-image img {
+    width:100%;
+    height:100%;
+    object-fit: cover;
+}
+
+.window .body.venues .card.venue .two-buttons {
+    margin-top: 1rem;
+    width:100%;
+    justify-content: space-between;
+}
+
+
+/* GIG APPLICATIONS PAGE */
+
+.window .body.gigs .no-applications {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height:200px;
+    gap:10px;
+}
+
+.window .body.gigs .no-applications .icon {
+    font-size: 3rem;
+}
+
+.window .body.gigs .applications-table {
+    width: 100%;
+}
+
+.window .body.gigs .applications-table th:nth-child(1),
+.window .body.gigs .applications-table td:nth-child(1) {
+    width: 15%;
+}
+
+.window .body.gigs .applications-table th:nth-child(2),
+.window .body.gigs .applications-table td:nth-child(2) {
+    text-overflow: ellipsis;
+}
+
+.window .body.gigs .applications-table th:nth-child(3),
+.window .body.gigs .applications-table td:nth-child(3),
+.window .body.gigs .applications-table th:nth-child(4),
+.window .body.gigs .applications-table td:nth-child(4) {
+    width: 15%;
+    text-align: center;
+}
+
+.window .body.gigs .applications-table .applicant td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow:clip;
+}
+
+.window .body.gigs .applications-table .applicant .genre-tag {
+    border:1px solid var(--gn-orange);
+    padding:0.1rem 0.35rem;
+    border-radius: 5px;
+    background-color: var(--gn-offset-orange);
+    margin-right: 5px;
+    white-space: nowrap;
+    color: var(--gn-orange);
+}
+
+.window .body.gigs .applications-table .applicant td:nth-of-type(4) {
+    width:10%;
+}
+
+.window .body.gigs .applications-table td:nth-of-type(5),
+.window .body.gigs .applications-table th:nth-of-type(5) {
+    text-align: center;
+    width:25%;
+    min-width: 250px;
+}
+
+.window .body.gigs .applications-table .applicant td:nth-of-type(5) .btn.danger {
+    margin: 0 5px;
+}
+
+
+/* MUSICIANS PAGE */
+
+.window .body.musicians .filters {
+    display: flex;
+    justify-content: flex-start;
+    gap:2%;
+    align-items: center;
+    width:100%;
+}
+
+.window .body.musicians .filters {
+    margin-bottom: 2rem;
+}
+
+.window .body.musicians .filters select,
+.window .body.musicians .filters input {
+    padding:7px;
+    border:1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    cursor: pointer;
+    width:15%;
+}
+
+.window .body.musicians .filters .search-bar {
+    width:50%;
+    padding: 8px 1rem;
+    background-color: var(--gn-white);
+    border-radius: 5px;
+    border:1px solid var(--gn-grey-400);
+    display: flex;
+    align-items: center;
+    cursor:text;
+    gap:0.5rem;
+}
+
+.window .body.musicians .filters select:focus,
+.window .body.musicians .filters input:focus {
+    outline:none;
+    border:1px solid var(--gn-off-black);
+}
+
+.window .body.musicians .filters .sort {
+    text-transform: capitalize;    
+}
+
+.window .body.musicians .filters .sort:hover {
+    background-color: var(--gn-white);    
+}
+
+
+.window .body.musicians .saved-musicians {
+    width:100%;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap:10px;
+}
+
+@media (max-width: 1268px) {
+    .window .body.musicians .saved-musicians {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.window .body.musicians .saved-musicians .musician-card {
+    border:1px solid var(--gn-grey-300);
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    padding:1rem;
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+    cursor: pointer;
+    background-color: var(--gn-white);
+    transition: background-color 200ms linear;
+}
+
+.window .body.musicians .saved-musicians .musician-card:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.window .body.musicians .saved-musicians .photo {
+    width:50px;
+    height:50px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.window .body.musicians .saved-musicians .photo img {
+    width:100%;
+    height:100%;
+    object-fit: cover;
+}
+
+/* FINANCES */
+
+.window .body.finances {
+    display: grid;
+    grid-template-columns: 58.75% 38.75%;
+    gap:2.5%;
+    height: 85%;
+    grid-template-rows: repeat(3, 1fr);
+}
+
+.window .body.finances .tile {
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-300);
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    box-shadow: 2px 2px 5px var(--gn-shadow);
+    overflow: auto;
+}
+
+.window .body.finances table {
+    width: 100%;
+    margin: 10px 0;
+    font-size: 16px;
+    overflow: hidden;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+.window .body.finances table tbody tr,
+.window .body.finances table thead tr {
+    border-bottom: 1px solid var(--gn-grey-350);
+}
+
+.window .body.finances table thead tr {
+    text-align: left;
+}
+
+.window .body.finances table thead tr th {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--gn-black);
+}
+
+.window .body.finances table th,
+.window .body.finances table td {
+    padding: 5px 0px 5px 10px;
+}
+
+.window .body.finances table tbody td {
+    font-weight: var(--gn-semi-bold);
+}
+
+.window .body.finances table #date {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.window .body.finances table .centre {
+    text-align: center;
+}
+
+.window .body.finances table .status-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.window .body.finances table .status {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    padding:5px;
+    width:fit-content;
+    border-radius: 5px;
+    text-transform: capitalize;
+}
+
+.window .body.finances table .status.succeeded {
+    border:1px solid rgb(0, 219, 0);
+    background-color: rgba(0, 239, 0, 0.1);
+    color: rgb(0, 219, 0);
+}
+
+.window .body.finances table .status.upcoming {
+    border:1px solid orange;
+    background-color: rgba(255, 166, 0, 0.1);
+    color: orange;
+}
+
+.window .body.finances table .status.pending {
+    border:1px solid orange;
+    background-color: rgba(255, 166, 0, 0.1);
+    color: orange;
+}
+
+.window .body.finances table .status.previous {
+    border:1px solid gray;
+    background-color: rgba(128, 128, 128, 0.1);
+    color: gray;
+}
+
+.window .body.finances table .status.declined {
+    border:1px solid var(--gn-red);
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+}
+
+.window .body.finances table tbody tr:hover {
+    background-color: var(--gn-grey-300);
+    cursor: pointer;
+}
+
+.window .body.finances table .no-receipts .data .flex {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:10px;
+}
+
+.window .body.finances table .no-receipts .data .icon {
+    font-size: 3rem;
+}
+
+.window .body.finances .card-list {
+    margin: 10px 0;
+}
+
+.window .body.finances .card-list .card-item .card-details h4 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+}
+
+.window .body.finances .card-list .card-item .btn {
+    padding:1px 3px;
+}
+
+.window .body.finances .total-expenditure .value {
+    height: 75%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.window .body.finances .total-expenditure .value h1 {
+    font-size: 4rem;
+    text-shadow: 0 0 2px var(--gn-grey-400);
+}
+
+@media (max-width: 1268px) {
+    .window .body.finances {
+        grid-template-rows: repeat(2, 1fr);
+    }
+}
