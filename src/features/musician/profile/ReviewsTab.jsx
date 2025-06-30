@@ -63,7 +63,7 @@ export const ReviewsTab = ({ profile }) => {
                                     </div>
                                 </div>
                                 <div className='right'>
-                                    <button className='btn secondary' onClick={() => openInNewTab(`/gig/${review.gigId}`)}>
+                                    <button className='btn secondary' onClick={(e) => openInNewTab(`/gig/${review.gigId}`, e)}>
                                         View Gig <NewTabIcon />
                                     </button>
                                     <h4>{formatDate(review.timestamp)}</h4>

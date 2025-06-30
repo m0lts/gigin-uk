@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import '@styles/musician/gig-page.styles.css';
@@ -24,7 +24,7 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import { useGigs } from '@context/GigsContext';
 import { getVenueProfileById } from '@services/venues';
 import { updateMusicianGigApplications } from '@services/musicians';
-import { applyToGig } from '@services/gigs';
+import { applyToGig, negotiateGigFee } from '@services/gigs';
 import { getOrCreateConversation } from '@services/conversations';
 import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/messages';
 import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/emails';
@@ -39,6 +39,9 @@ import { getBandMembers } from '../../services/bands';
 export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const { gigId } = useParams();
     const navigate = useNavigate();
+
+    const [searchParams] = useSearchParams();
+    const inviteToken = searchParams.get('token'); 
 
     const { gigs } = useGigs();
 
@@ -61,8 +64,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [validProfiles, setValidProfiles] = useState(null);
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState(user?.musicianProfile);
-
-    console.log(selectedProfile)
+    const [hasAccessToPrivateGig, setHasAccessToPrivateGig] = useState(true);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -85,6 +87,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             const gig = gigs.find(gig => gig.id === gigId);
             if (gig) {
                 setGigData(gig);
+                if (gig?.privateApplications) {
+                    const savedToken = gig.privateApplicationsLink?.split('token=')[1];
+                  
+                    if (!inviteToken || inviteToken !== savedToken) {
+                      setHasAccessToPrivateGig(false)
+                    }
+                }
             }
             const musicianId = user?.musicianProfile?.musicianId;
             const bandIds = user?.musicianProfile?.bands || [];
@@ -116,7 +125,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
               }
               const validBandProfiles = [];
               for (const bandProfile of bandProfiles) {
-                const bandId = bandProfile.id;
+                const bandId = bandProfile.musicianId;
                 try {
                   const members = await getBandMembers(bandId);
                   const userMember = members.find(m => m.musicianProfileId === user.musicianProfile.musicianId);
@@ -144,8 +153,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
 
     useEffect(() => {
         if (!selectedProfile || !gigData) return;
-    
-        const applied = gigData.applicants?.some(app => app.id === selectedProfile.id);
+        const applied = gigData.applicants?.some(app => app.id === selectedProfile.musicianId);
         setUserAppliedToGig(applied);
     }, [selectedProfile, gigData]);
 
@@ -665,7 +673,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                         <p>£{calculateTotalIncome(gigData.budget)}</p>
                                     </div>
                                 </div>
-                                {!(user?.venueProfiles?.length > 0 && (!user.musicianProfile)) && (
+                                {!(user?.venueProfiles?.length > 0 && (!user.musicianProfile)) && hasAccessToPrivateGig && (
                                     <>
                                         {validProfiles?.length > 1 && (
                                             <div className="profile-select-wrapper">
@@ -673,14 +681,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                                 <select
                                                 id="profileSelect"
                                                 className="input"
-                                                value={selectedProfile?.id}
+                                                value={selectedProfile?.musicianId}
                                                 onChange={(e) => {
-                                                    const selected = validProfiles.find(profile => profile.id === e.target.value);
+                                                    const selected = validProfiles.find(profile => profile.musicianId === e.target.value);
                                                     setSelectedProfile(selected);
                                                 }}
                                                 >
                                                 {validProfiles.map((profile) => (
-                                                    <option key={profile.id} value={profile.id}>
+                                                    <option key={profile.musicianId} value={profile.musicianId}>
                                                     {profile.name} {profile.bandProfile ? '(Band)' : '(Solo)'}
                                                     </option>
                                                 ))}

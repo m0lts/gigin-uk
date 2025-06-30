@@ -321,7 +321,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 const isSameGroup = senderGroup === userGroup;
                 return (
                     <div className='message-container' key={message.id}>
-                        <div className={`message ${isSameGroup ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >
+                        <div className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >
                             {(message.type === 'application' || message.type === 'invitation') && isSameGroup ? (
                                 <>
                                     <h4>
@@ -523,7 +523,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
-                                        {loadingPaymentDetails || gigData.status === 'payment processing' ? (
+                                        {loadingPaymentDetails || gigData?.status === 'payment processing' ? (
                                             <LoadingThreeDots />
                                         ) : (
                                             <button className='btn primary complete-payment' onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>

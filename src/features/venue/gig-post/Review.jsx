@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { EditIcon } from '@features/shared/ui/extras/Icons';
+import { EditIcon, CopyIcon } from '@features/shared/ui/extras/Icons';
 import { saveGigTemplate } from '@services/gigs';
 
 export const GigReview = ({ formData, handleInputChange, setStage }) => {
@@ -18,15 +18,21 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
     const [repeatEnd, setRepeatEnd] = useState('never');
     const [endRepeatAfter, setEndRepeatAfter] = useState('');
     const [endRepeatDate, setEndRepeatDate] = useState('');
-    const [privateApplicationsLink, setPrivateApplicationsLink] = useState(`https://www.gigin.ltd/private-application/${formData.gigId}?=${uuidv4()}`);
+    const [privateApplicationsToken, setPrivateApplicationsToken] = useState(null);
+    const [privateApplicationsLink, setPrivateApplicationsLink] = useState(null);
 
-    const handleCheckboxChange = (e) => {
-        const isChecked = e.target.checked;
-        handleInputChange({
-            privateApplications: isChecked,
-            privateApplicationsLink: isChecked ? privateApplicationsLink : null,
-        });
-    };
+    useEffect(() => {
+        if (formData.privateApplications && formData.gigId && !privateApplicationsToken) {
+            const token = uuidv4();
+            setPrivateApplicationsToken(token);
+            setPrivateApplicationsLink(`https://www.gigin.ltd/gig/${formData.gigId}?token=${token}`);
+            handleInputChange({
+                privateApplicationToken: token,
+                privateApplicationsLink: `https://www.gigin.ltd/gig/${formData.gigId}?token=${token}`,
+            });
+        }
+    }, [formData.privateApplications, formData.gigId]);
+
 
     useEffect(() => {
         setRepeatData({
@@ -264,7 +270,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                                 )}
                             </div>
                         )}
-                        {/* <div className='review-extra-option'>
+                        <div className='review-extra-option'>
                             <div className='toggle-container'>
                                 <label htmlFor='private-applications' className='label'>Make applications private?</label>
                                 <label className='switch'>
@@ -272,13 +278,16 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                                         type='checkbox'
                                         id='private-applications'
                                         checked={formData.privateApplications}
-                                        onChange={handleCheckboxChange}
+                                        onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
                                     />
                                     <span className='slider round'></span>
                                 </label>
                             </div>
-                            <p className='text'>Selecting this option means that only Musicians with your private gig link can apply. Leaving this option unchecked means your gig is open for applications.</p>
-                            {formData.privateApplications && (
+                            <p className='text'>
+                                Selecting this means only musicians with your private gig link can apply. 
+                                Useful when inviting someone directly.
+                            </p>
+                            {formData.privateApplications && privateApplicationsLink && (
                                 <div className='private-link'>
                                     <p className='text'>{privateApplicationsLink}</p>
                                     <div className='icon' onClick={copyToClipboard}>
@@ -286,7 +295,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                                     </div>
                                 </div>
                             )}
-                        </div> */}
+                        </div>
                     </div>
                 </div>
             </div>

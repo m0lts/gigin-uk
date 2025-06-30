@@ -10,7 +10,6 @@ export const JoinBand = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const inviteId = searchParams.get('invite');
-  
     const [status, setStatus] = useState('idle');
     const [message, setMessage] = useState('');
     const [band, setBand] = useState(null);
@@ -19,9 +18,11 @@ export const JoinBand = () => {
     const [loading, setLoading] = useState(false);
   
     useEffect(() => {
+      if (!inviteId || user === undefined) return;
       const joinViaLink = async () => {
         if (!user) {
           setError('You must be logged in to join a band.');
+          console.log('user errror')
           return;
         }
         if (!user.musicianProfile?.musicianId) {
@@ -41,10 +42,8 @@ export const JoinBand = () => {
           setMessage(err.message);
         }
       };
-  
-      if (inviteId) {
-        joinViaLink();
-      }
+    
+      joinViaLink();
     }, [inviteId, user]);
   
     const handleManualCodeSubmit = async () => {

@@ -213,7 +213,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
             {receipts.length > 0 ? (
               receipts.map((receipt) => {
                 return (
-                  <tr key={receipt.id} onClick={() => openInNewTab(receipt.receipt_url)}>
+                  <tr key={receipt.id} onClick={(e) => openInNewTab(receipt.receipt_url, e)}>
                     <td>{formatReceiptDate(receipt.created)}</td>
                     <td>£{formatReceiptCharge(receipt.amount)}</td>
                     <td>{receipt.metadata.venueName}</td>

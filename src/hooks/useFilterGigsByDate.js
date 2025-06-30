@@ -13,7 +13,7 @@ export const useFilterGigsByDate = (upcomingGigs, selectedDates) => {
     const isMatch = (gigDate, targetDate) =>
       gigDate.toDateString?.() === targetDate.toDateString?.();
 
-    return Array.isArray(selectedDates) && selectedDates.length > 0
+    const filtered = Array.isArray(selectedDates) && selectedDates.length > 0
       ? upcomingGigs.filter(gig => {
           const gigDate = gig.date.toDate?.();
           return selectedDates.some(date => isMatch(gigDate, date));
@@ -21,5 +21,8 @@ export const useFilterGigsByDate = (upcomingGigs, selectedDates) => {
       : selectedDates instanceof Date
         ? upcomingGigs.filter(gig => isMatch(gig.date.toDate?.(), selectedDates))
         : upcomingGigs;
+
+
+    return filtered.filter(gig => gig.privateApplications !== true);
   }, [upcomingGigs, selectedDates]);
 };

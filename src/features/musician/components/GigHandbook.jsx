@@ -193,7 +193,7 @@ export const GigHandbook = ({ setShowGigHandbook, showGigHandbook, setGigForHand
                         </div>
                     </div>
                     <div className='musician-actions'>
-                        <button className='btn tertiary' onClick={() => openInNewTab(`/gig/${gigForHandbook.gigId}`)}>
+                        <button className='btn tertiary' onClick={(e) => openInNewTab(`/gig/${gigForHandbook.gigId}`, e)}>
                             Gig Page <NewTabIcon />
                         </button>
                         <button className='btn primary' onClick={() => setShowPromoteModal(true)}>

@@ -272,7 +272,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                             {feesToDisplay.length > 0 ? (
                                 feesToDisplay.map((fee, index) => {
                                     return (
-                                        <tr key={index} onClick={() => openInNewTab(`/gig/${fee.gigId}`)}>
+                                        <tr key={index} onClick={(e) => openInNewTab(`/gig/${fee.gigId}`, e)}>
                                             {windowWidth > 915 && (
                                             <td>{formatFeeDate(fee.gigDate)}</td>
                                             )}

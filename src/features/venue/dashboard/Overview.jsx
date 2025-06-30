@@ -315,7 +315,7 @@ export const Overview = ({ savedCards, loadingStripeDetails, receipts, gigs, loa
                         {receipts.length > 0 ? (
                             <ul className='receipt-list'>
                                 {receipts.map((receipt) => (
-                                    <li className='receipt-item' key={receipt.id} onClick={() => openInNewTab(receipt.receipt_url)}>
+                                    <li className='receipt-item' key={receipt.id} onClick={(e) => openInNewTab(receipt.receipt_url, e)}>
                                         <div className='receipt-left'>
                                             <h4>£{formatReceiptCharge(receipt.amount)}</h4>
                                             <h6>{formatReceiptDate(receipt.created)}</h6>

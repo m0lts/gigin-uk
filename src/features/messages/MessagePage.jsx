@@ -247,7 +247,7 @@ export const MessagePage = () => {
                         <>
                             <div className='top-banner'>
                                 <h2>Gig Information</h2>
-                                <button className='btn tertiary' onClick={() => openInNewTab(`/gig/${activeConversation.gigId}`)}><NewTabIcon /></button>
+                                <button className='btn tertiary' onClick={(e) => openInNewTab(`/gig/${activeConversation.gigId}`, e)}><NewTabIcon /></button>
                             </div>
                             <div className='gig-information'>
                                 <GigInformation gigId={activeConversation.gigId} gigData={gigData} setGigData={setGigData} />

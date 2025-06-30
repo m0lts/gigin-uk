@@ -43,7 +43,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
 
     const generateInviteLink = async () => {
         const inviteId = await createBandInvite(band.id, band.admin.musicianId);
-        return `${window.location.origin}/dashboard/bands?invite=${inviteId}`;
+        return `${window.location.origin}/dashboard/bands/join?invite=${inviteId}`;
     };
 
     const handleCreateInvite = async () => {

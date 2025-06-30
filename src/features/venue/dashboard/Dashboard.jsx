@@ -3,7 +3,6 @@ import { Sidebar } from './Sidebar'
 import { useState, useEffect } from 'react'
 import { GigPostModal } from '../gig-post/GigPostModal';
 import { useAuth } from '@hooks/useAuth';
-import axios from 'axios';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { Gigs } from './Gigs';
 import '@styles/host/host-dashboard.styles.css'
@@ -72,7 +71,11 @@ export const VenueDashboard = () => {
             setLoadingStripeDetails(true);
             try {
                 const response = await fetchCustomerData();
-                const { customer, receipts, paymentMethods } = response.data;
+                if (!response?.data) {
+                    throw new Error('Stripe customer data is missing from response.');
+                  }
+              
+                  const { customer, receipts, paymentMethods } = response.data;
                 const filteredReceipts = receipts.filter((receipt) => receipt.metadata.gigId)
                 setSavedCards(paymentMethods);
                 setReceipts(filteredReceipts);

@@ -284,7 +284,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
             <div className='head'>
                 <h1 className='title' style={{ fontWeight: 500 }}>
                     Applications for {formatDate(gigInfo.date)} at {venueName}
-                    {gigInfo.status === 'open' && !gigInfo.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed') && (
+                    {gigInfo.status === 'open' && !gigInfo?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed') && (
                         <button className='btn icon' onClick={() => openGigPostModal(gigInfo)}>
                         <EditIcon />
                     </button>
@@ -440,7 +440,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                             <td>
                                                 <button
                                                     className='btn text'
-                                                    onClick={() => openInNewTab(`/${profile.id}/${gigInfo.gigId}`)}
+                                                    onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)}
                                                 >
                                                     View Musician
                                                 </button>

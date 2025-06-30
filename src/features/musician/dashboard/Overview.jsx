@@ -156,7 +156,7 @@ export const Overview = ({ musicianProfile, gigApplications }) => {
                                 }
                                 const appliedProfile = musicianProfile.gigApplications?.find(app => app.gigId === gig.id);
                                 return (
-                                    <tr key={index} onClick={() => openInNewTab(`/gig/${gig.gigId}`)}>
+                                    <tr key={index} onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
                                         {musicianProfile.bands && appliedProfile && (
                                             <td className="applied-profile-name">
                                                 {appliedProfile.name}
@@ -221,7 +221,7 @@ export const Overview = ({ musicianProfile, gigApplications }) => {
                                 }
                                 const appliedProfile = musicianProfile.gigApplications?.find(app => app.gigId === gig.id);
                                 return (
-                                    <tr key={index} onClick={() => openInNewTab(`/gig/${gig.gigId}`)}>
+                                    <tr key={index} onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
                                         {musicianProfile.bands && appliedProfile && (
                                             <td className="applied-profile-name">
                                                 {appliedProfile.name}

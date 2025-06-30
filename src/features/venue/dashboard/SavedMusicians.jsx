@@ -38,7 +38,7 @@ export const SavedMusicians = ({ user }) => {
             {savedMusicians.length > 0 ? (
                 <div className='saved-musicians'>
                     {savedMusicians.map((musician) => (
-                        <div className='musician-card' key={musician.id} onClick={() => openInNewTab(`/${musician.id}/null`)}>
+                        <div className='musician-card' key={musician.id} onClick={(e) => openInNewTab(`/${musician.id}/null`, e)}>
                             <figure className='photo'>
                                 <img src={musician.picture} alt={musician.name} />
                             </figure>
