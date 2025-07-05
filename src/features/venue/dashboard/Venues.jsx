@@ -6,6 +6,7 @@ import { deleteGig, getGigsByVenueId } from '@services/gigs';
 import { deleteFolderFromStorage } from '@services/storage';
 import { deleteReview, getReviewsByVenueId } from '@services/reviews';
 import { deleteConversation, getConversationsByParticipantId } from '@services/conversations';
+import { openInNewTab } from '@services/utils/misc';
 
 export const Venues = ({ venues }) => {
 
@@ -66,7 +67,7 @@ export const Venues = ({ venues }) => {
             </div>
             <div className='body venues'>
                 {venues.map((venue, index) => (
-                    <div className='card venue' key={index}>
+                    <div className='card venue' key={index} onClick={(e) => openInNewTab(`/venues/${venue.venueId}`, e)}>
                         <div className='venue-image'>
                             <img src={venue.photos[0]} alt={venue.name} />
                         </div>

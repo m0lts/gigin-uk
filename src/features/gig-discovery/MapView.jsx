@@ -4,33 +4,19 @@ import { ErrorIcon } from '@features/shared/ui/extras/Icons';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useFilterGigsByDate } from '@hooks/useFilterGigsByDate';
-import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { openInNewTab } from '@services/utils/misc';
+
 
 export const MapView = ({ upcomingGigs }) => {
 
     const mapContainerRef = useRef(null);
     const [mapInstance, setMapInstance] = useState(null); // State to hold the map instance
-    const [markers, setMarkers] = useState({}); // State to hold marker elements
     const [clickedGigs, setClickedGigs] = useState([]); // State to hold clicked gigs
-    const [currentGigIndex, setCurrentGigIndex] = useState(0); // State to track current clicked gig index
     const [selectedDates, setSelectedDates] = useState([]);
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     const filteredGigs = useFilterGigsByDate(upcomingGigs, selectedDates);
-
-    useMapbox({
-        containerRef: mapContainerRef,
-        coordinates: [0.1278, 52.2053], // Default center (Cambridge)
-        zoom: 10,
-        markers: filteredGigs,
-        onMarkerClick: (gigsAtLocation) => {
-          setClickedGigs(gigsAtLocation);
-          setCurrentGigIndex(0);
-        },
-        setMapInstance,
-      });
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -45,96 +31,160 @@ export const MapView = ({ upcomingGigs }) => {
     }, []);
 
     useEffect(() => {
-        if (mapInstance && upcomingGigs && upcomingGigs.length > 0) {
-            clearMarkers();
-            const groupedGigs = filteredGigs.reduce((acc, gig) => {
-                const key = gig.coordinates.toString();
-                if (!acc[key]) {
-                    acc[key] = [];
-                }
-                acc[key].push(gig);
-                return acc;
-            }, {});
-            const newMarkers = {};
-            Object.keys(groupedGigs).forEach(key => {
-                const gigsAtLocation = groupedGigs[key];
-                const markerElement = createCustomMarker(gigsAtLocation);
-                newMarkers[key] = markerElement;
-                const [lng, lat] = key.split(',').map(Number);
-                markerElement.addEventListener('click', () => handleMarkerClick(gigsAtLocation));
-                markerElement.addEventListener('mouseenter', () => handleMarkerMouseEnter(markerElement));
-                markerElement.addEventListener('mouseleave', () => handleMarkerMouseLeave(markerElement));
-                new mapboxgl.Marker(markerElement)
-                    .setLngLat([lng, lat])
-                    .addTo(mapInstance);
+        mapboxgl.accessToken = import.meta.env.DEV
+          ? 'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
+          : import.meta.env.VITE_MAPBOX_TOKEN;
+    
+        const map = new mapboxgl.Map({
+          container: mapContainerRef.current,
+          style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
+          center: [0.1278, 52.2053],
+          zoom: 10,
+        });
+    
+        map.on('load', () => {
+          const geojson = {
+            type: 'FeatureCollection',
+            features: filteredGigs.map(gig => ({
+              type: 'Feature',
+              properties: {
+                gigId: gig.gigId,
+                budget: gig.budget,
+              },
+              geometry: {
+                type: 'Point',
+                coordinates: gig.coordinates,
+              },
+            })),
+          };
+    
+          map.addSource('gigs', {
+            type: 'geojson',
+            data: geojson,
+            cluster: true,
+            clusterMaxZoom: 14,
+            clusterRadius: 50,
+          });
+    
+          map.addLayer({
+            id: 'clusters',
+            type: 'circle',
+            source: 'gigs',
+            filter: ['has', 'point_count'],
+            paint: {
+              'circle-color': 'white',
+              'circle-radius': [
+                'step',
+                ['get', 'point_count'],
+                15, 5,
+                20, 10,
+                40,
+              ],
+              'circle-stroke-color': 'rgba(0,0,0,0.15)',
+              'circle-stroke-width': 2,
+            },
+          });
+    
+          map.addLayer({
+            id: 'cluster-count',
+            type: 'symbol',
+            source: 'gigs',
+            filter: ['has', 'point_count'],
+            layout: {
+              'text-field': 'x{point_count_abbreviated}',
+              'text-font': ['DM Sans Bold'],
+              'text-size': 14,
+            },
+            paint: {
+              'text-color': '#333',
+            },
+          });
+    
+          map.addLayer({
+            id: 'unclustered-point',
+            type: 'circle',
+            source: 'gigs',
+            filter: ['!', ['has', 'point_count']],
+            paint: {
+              'circle-color': 'white',
+              'circle-radius': 25,
+              'circle-stroke-color': 'rgba(255, 108, 75, 0.5)',
+              'circle-stroke-width': 2,
+            },
+          });
+    
+          map.addLayer({
+            id: 'unclustered-point-label',
+            type: 'symbol',
+            source: 'gigs',
+            filter: ['!', ['has', 'point_count']],
+            layout: {
+              'text-field': ['get', 'budget'],
+              'text-font': ['DM Sans Bold'],
+              'text-size': 14,
+              'text-offset': [0, -0.5],
+              'text-anchor': 'top',
+            },
+            paint: {
+              'text-color': '#111',
+            },
+          });
+    
+          map.on('click', 'unclustered-point', (e) => {
+            const features = map.queryRenderedFeatures(e.point, {
+              layers: ['unclustered-point'],
             });
-            setMarkers(newMarkers);
-        }
-    }, [mapInstance, upcomingGigs, clickedGigs, selectedDates]);
-    
-    const createCustomMarker = (gigsAtLocation) => {
-        const markerElement = document.createElement('div');
-        markerElement.className = 'custom-marker';
-        markerElement.style.background = 'var(--gn-white)';
-        markerElement.style.boxShadow = '0px 0px 10px var(--gn-shadow)';
-        markerElement.style.width = '50px';
-        markerElement.style.height = '30px';
-        markerElement.style.borderRadius = '25px';
-        markerElement.style.display = 'flex';
-        markerElement.style.justifyContent = 'center';
-        markerElement.style.alignItems = 'center';
-        markerElement.style.position = 'relative';
-        markerElement.style.padding = '15px 35px';
-        markerElement.style.cursor = 'pointer';
-        markerElement.style.transition = 'background-color 200ms linear';
-    
-        const tooltip = document.createElement('span');
-        
-        // Show the number of gigs if more than one, otherwise show the budget
-        if (gigsAtLocation.length > 1) {
-            tooltip.textContent = `x${gigsAtLocation.length}`;
-        } else {
-            tooltip.textContent = `${gigsAtLocation[0].budget}`;
-        }
-    
-        tooltip.style.color = 'var(--gn-off-black)';
-        tooltip.style.fontWeight = '700';
-        tooltip.style.fontSize = '1.1rem';
-        markerElement.appendChild(tooltip);
-    
-        return markerElement;
-    };
-    
-    const handleMarkerClick = (gigsAtLocation) => {
-        const newGigs = gigsAtLocation.filter(gig => {
-            // Only add gigs that are not already in clickedGigs
-            return !clickedGigs.find(clickedGig => clickedGig.gigId === gig.gigId);
+          
+            const gigId = features[0]?.properties?.gigId;
+            const gig = filteredGigs.find(g => g.gigId === gigId);
+          
+            if (gig) {
+              setClickedGigs(prev => {
+                const exists = prev.some(g => g.gigId === gig.gigId);
+                if (exists) return prev;
+                return [...prev, gig];
+              });
+            }
+          });
+
+          map.on('click', 'clusters', (e) => {
+            const features = map.queryRenderedFeatures(e.point, {
+              layers: ['clusters'],
+            });
+          
+            if (!features.length) return;
+          
+            const clusterId = features[0].properties.cluster_id;
+            const source = map.getSource('gigs');
+          
+            source.getClusterLeaves(clusterId, Infinity, 0, (err, leafFeatures) => {
+              if (err) {
+                console.error('Error fetching cluster leaves:', err);
+                return;
+              }
+          
+              const newGigs = leafFeatures
+                .map(f => {
+                  const gigId = f.properties.gigId;
+                  return filteredGigs.find(g => g.gigId === gigId);
+                })
+                .filter(g => !!g); // just in case any are undefined
+          
+              setClickedGigs(prev => {
+                const merged = [...prev, ...newGigs];
+                const uniqueById = {};
+                merged.forEach(gig => {
+                  uniqueById[gig.gigId] = gig;
+                });
+                return Object.values(uniqueById);
+              });
+            });
+          });
         });
     
-        if (newGigs.length > 0) {
-            // Add the new gigs to the clickedGigs state
-            setClickedGigs(prevClickedGigs => [...prevClickedGigs, ...newGigs]);
-        }
-    };
-
-    const handleMarkerMouseEnter = (markerElement) => {
-        markerElement.style.background = 'var(--gn-off-black)';
-        markerElement.querySelector('span').style.color = 'white';
-    };
-
-    const handleMarkerMouseLeave = (markerElement) => {
-        markerElement.style.background = 'var(--gn-white)';
-        markerElement.querySelector('span').style.color = 'black';
-    };
-
-    
-    const clearMarkers = () => {
-        Object.values(markers).forEach(markerElement => {
-            markerElement.removeEventListener('click', () => handleMarkerClick);
-            markerElement.remove();
-        });
-        setMarkers({});
-    };
+        setMapInstance(map);
+        return () => map.remove();
+      }, [filteredGigs]);
         
     const handleCloseGig = (gig, e) => {
         e.stopPropagation();

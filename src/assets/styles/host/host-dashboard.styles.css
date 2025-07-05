@@ -526,6 +526,12 @@
     color: orange;
 }
 
+.window .body.gigs table .status.closed {
+    border:1px solid red;
+    background-color: rgba(255, 0, 0, 0.1);
+    color: red;
+}
+
 .window .body.gigs table .status.pending {
     border:1px solid orange;
     background-color: rgba(255, 166, 0, 0.1);

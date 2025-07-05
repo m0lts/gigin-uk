@@ -22,11 +22,16 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
         [setFeature, setLocationAddress, setLocationCoordinates]
     );
 
+    const mapboxToken = import.meta.env.DEV ? 
+    'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
+    : import.meta.env.VITE_MAPBOX_TOKEN;
+
+
     const handleGeocodeAddress = async (address) => {
         setLocationAddress(address);
         try {
             const response = await fetch(
-                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxToken}`
             );
 
             if (response.ok) {
@@ -98,7 +103,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                 
                 ) : (
 
-                    <AddressAutofill accessToken={import.meta.env.VITE_MAPBOX_TOKEN} onRetrieve={handleRetrieve}>
+                    <AddressAutofill accessToken={mapboxToken} onRetrieve={handleRetrieve}>
                         <div className='input-group'>
                             <label htmlFor='autofill' className='input-label'>Venue Address</label>
                             <input

@@ -25,6 +25,7 @@ import { removeGigFromVenue } from '@services/venues';
 import { confirmGigPayment, fetchSavedCards } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
+import { updateGigDocument } from '../../../services/gigs';
 
 export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
 
@@ -46,6 +47,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
     const [reviewProfile, setReviewProfile] = useState(null);
     const [showPromoteModal, setShowPromoteModal] = useState(false);
     const [showDeleteConfirmationModal, setShowDeleteConfirmationModal] = useState(false);
+    const [showCloseGigModal, setShowCloseGigModal] = useState(false);
 
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
@@ -279,6 +281,28 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
         }
     };
 
+    const handleCloseGig = async () => {
+        try {
+            await updateGigDocument(gigId, {
+                status: 'closed',
+            });
+            navigate('/venues/dashboard/gigs');
+        } catch (error) {
+            console.error('Error closing gig:', error);
+        }
+    }
+
+    const handleReopenGig = async () => {
+        try {
+            await updateGigDocument(gigId, {
+                status: 'open',
+            });
+            navigate('/venues/dashboard/gigs');
+        } catch (error) {
+            console.error('Error closing gig:', error);
+        }
+    }
+
     return (
         <>
             <div className='head'>
@@ -291,9 +315,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                     )}
                 </h1>
                 {gigInfo.status === 'open' && !gigInfo.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed') ? (
-                    <button className='btn danger' onClick={() => setShowDeleteConfirmationModal(true)}>
-                        Delete Gig
-                    </button>
+                    <>
+                        <button className="btn secondary" onClick={() => setShowCloseGigModal(true)}>
+                            Close Gig
+                        </button>
+                        <button className='btn danger' onClick={() => setShowDeleteConfirmationModal(true)}>
+                            Delete Gig
+                        </button>
+                    </>
                 ) : new Date < new Date(gigInfo.date.toDate().setHours(...gigInfo.startTime.split(':').map(Number))) && (
                     <button className='primary-alt btn' onClick={() => setShowPromoteModal(true)}>
                         <PeopleGroupIcon /> Promote
@@ -450,6 +479,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                 })}
                             </tbody>
                         </table>
+                    ) : gigInfo.status === 'closed' ? (
+                        <div className='no-applications'>
+                            <FaceMehIcon />
+                            <h4>You have closed this gig.</h4>
+                            <button className='btn primary' onClick={handleReopenGig}>
+                                Reopen Gig to Applications
+                            </button>
+                        </div>
                     ) : (
                         <div className='no-applications'>
                             <FaceMehIcon />
@@ -507,6 +544,25 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                             </button>
                         </div>
                         <button className='btn tertiary close' onClick={() => setShowDeleteConfirmationModal(false)}>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
+            {showCloseGigModal && (
+                <div className='modal'>
+                    <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                        <h3>Are you sure you want to close this gig?</h3>
+                        <p>Musicians will no longer be able to apply to this gig.</p>
+                        <div className='two-buttons'>
+                            <button className='btn danger' onClick={handleCloseGig}>
+                                Close Gig
+                            </button>
+                            <button className='btn secondary' onClick={() => setShowCloseGigModal(false)}>
+                                Cancel
+                            </button>
+                        </div>
+                        <button className='btn tertiary close' onClick={() => setShowCloseGigModal(false)}>
                             Close
                         </button>
                     </div>

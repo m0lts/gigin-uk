@@ -111,6 +111,29 @@ export const listenToTemplatesByVenueIds = (venueIds, onUpdate) => {
     return () => unsubscribers.forEach(unsub => unsub());
   };
 
+  /*** UPDATE OPERATIONS ***/
+
+/**
+ * Updates the account name on all venue profile documents associated with a user.
+ *
+ * @param {string} userId - The UID of the user.
+ * @param {string[]} venueProfileIds - Array of venue profile document IDs.
+ * @param {string} newAccountName - The new account name to set.
+ * @returns {Promise<void>} Resolves when the update is complete.
+ * @throws Will throw an error if the update operation fails.
+ */
+export const updateVenueProfileAccountNames = async (userId, venueProfileIds, newAccountName) => {
+  if (!userId || !venueProfileIds?.length || !newAccountName) return;
+
+  const batch = writeBatch(db);
+
+  venueProfileIds.forEach((profileId) => {
+    const profileRef = doc(db, 'venueProfiles', profileId);
+    batch.update(profileRef, { accountName: newAccountName });
+  });
+
+  await batch.commit();
+};
 
 /*** DELETE OPERATIONS ***/
 

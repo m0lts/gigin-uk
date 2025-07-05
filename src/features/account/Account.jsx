@@ -17,11 +17,15 @@ import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services
 import { deleteFolderFromStorage } from '@services/storage';
 import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/venues';
 import { useResizeEffect } from '@hooks/useResizeEffect';
+import { updateUserDocument } from '../../services/users';
+import { updateVenueProfileAccountNames } from '../../services/venues';
 
 export const Account = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
+    const [showNameModal, setShowNameModal] = useState(false);
+    const [newName, setNewName] = useState('');
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [newEmail, setNewEmail] = useState('');
     const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -52,6 +56,29 @@ export const Account = () => {
             console.error('Reauthentication failed:', error);
             alert('Reauthentication failed. Please ensure your current password is correct.');
             return false;
+        }
+    };
+
+    const handleNameUpdate = async () => {
+        if (!newName) {
+            alert('Please enter a new account name.');
+            return;
+        }
+        try {
+            if (auth.currentUser) {
+                await updateUserDocument(auth.currentUser.uid, {
+                    name: newName,
+                });
+                if (user.venueProfiles && user.venueProfiles.length > 0) {
+                    await updateVenueProfileAccountNames(auth.currentUser.uid, user.venueProfiles, newName);
+                }
+                alert('Account name updated successfully');
+                setShowNameModal(false);
+                setNewName('');
+            }
+        } catch (error) {
+            console.error('Error updating account name:', error);
+            alert('Failed to update account name: ' + error.message);
         }
     };
 
@@ -245,6 +272,9 @@ export const Account = () => {
                         <h3>Name:</h3>
                         <div className='data-highlight'>
                             <h4>{user.name}</h4>
+                            <button className='btn primary' onClick={() => setShowNameModal(true)}>
+                                Change Account Name
+                            </button>
                         </div>
                     </div>
                     <div className='email-settings'>
@@ -346,6 +376,29 @@ export const Account = () => {
                         </>
                     )}
                 </div>
+                {showNameModal && (
+                    <div className='modal'>
+                        <div className='modal-content'>
+                            <h2>Change Your Account Name</h2>
+                            <div className='input-container'>
+                                <input
+                                    className='input'
+                                    type='text'
+                                    placeholder='Enter new name...'
+                                    value={newName}
+                                    onChange={(e) => setNewName(e.target.value)}
+                                />
+                            </div>
+                            <div className='two-buttons'>
+                                <button className='btn primary' onClick={handleNameUpdate}>Submit</button>
+                                <button className='btn secondary' onClick={() => setShowNameModal(false)}>Cancel</button>
+                            </div>
+                            <div className='btn close tertiary' onClick={() => setShowNameModal(false)}>
+                                Close
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {showEmailModal && (
                     <div className='modal'>
                         <div className='modal-content'>

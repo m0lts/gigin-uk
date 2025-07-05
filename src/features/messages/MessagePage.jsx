@@ -18,6 +18,8 @@ import {
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatDate } from '@services/utils/dates';
+import { ArchiveIcon, InboxIcon, SaveIcon, SendMessageIcon } from '../shared/ui/extras/Icons';
+import { updateConversationDocument } from '../../services/conversations';
 
 export const MessagePage = () => {
     const { user } = useAuth();
@@ -30,6 +32,8 @@ export const MessagePage = () => {
     const queryParams = new URLSearchParams(location.search);
     const paramsConversationId = queryParams.get('conversationId');
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [showArchived, setShowArchived] = useState(false);
+    const [archivedConversations, setArchivedConversations] = useState([]);
 
     useResizeEffect((width) => {
         setWindowWidth(width);
@@ -37,15 +41,18 @@ export const MessagePage = () => {
 
     useEffect(() => {
         if (!user) return;
+      
         const unsubscribe = listenToUserConversations(user, (updatedConversations, docChanges) => {
           setConversations(prev => {
             const merged = [...prev];
             updatedConversations.forEach(newConv => {
-              const index = merged.findIndex(c => c.id === newConv.id);
-              if (index !== -1) {
-                merged[index] = newConv;
-              } else {
-                merged.push(newConv);
+              if (newConv.status !== 'archived') {
+                const index = merged.findIndex(c => c.id === newConv.id);
+                if (index !== -1) {
+                  merged[index] = newConv;
+                } else {
+                  merged.push(newConv);
+                }
               }
             });
             merged.sort((a, b) => {
@@ -55,15 +62,36 @@ export const MessagePage = () => {
             });
             return merged;
           });
+      
+          setArchivedConversations(prev => {
+            const merged = [...prev];
+            updatedConversations.forEach(newConv => {
+              if (newConv.status === 'archived') {
+                const index = merged.findIndex(c => c.id === newConv.id);
+                if (index !== -1) {
+                  merged[index] = newConv;
+                } else {
+                  merged.push(newConv);
+                }
+              }
+            });
+            merged.sort((a, b) => {
+              const aTime = a.lastMessageTimestamp?.seconds || 0;
+              const bTime = b.lastMessageTimestamp?.seconds || 0;
+              return bTime - aTime;
+            });
+            return merged;
+          });
+      
           docChanges.forEach(change => {
             if (change.type === 'added') {
               setNewMessages(true);
             }
           });
         });
-    
+      
         return unsubscribe;
-    }, [user]);
+      }, [user]);
 
     useEffect(() => {
         const updateViewed = async () => {
@@ -95,16 +123,30 @@ export const MessagePage = () => {
         await markGigApplicantAsViewed(gigId, musicianId);
     };
 
+    const handleArchiveConversation = async (conversation, shouldArchive) => {
+        await updateConversationDocument(conversation.id, {
+          status: shouldArchive ? 'archived' : 'open',
+        });
+      };
+
+    const handleShowArchived = () => {
+        setShowArchived(prev => !prev);
+      };
+
     if (conversations.length > 0) {
         return (
             <div className='message-page'>
                 <div className='column conversations'>
                     <div className='top-banner'>
                         <h2>Messages</h2>
+                        <button className="btn secondary" onClick={handleShowArchived}>
+                            {showArchived ? <InboxIcon /> : <ArchiveIcon />}
+                            {showArchived ? 'Back to Inbox' : 'View Archived'}
+                        </button>
                     </div>
                     <ul className='conversations-list'>
                         {conversations.length > 0 ? (
-                            conversations.map(conversation => {
+                            (showArchived ? archivedConversations : conversations).map(conversation => {
                                 const isBandConversation = conversation.bandConversation;
 
                                 const bandAccount = isBandConversation
@@ -160,6 +202,27 @@ export const MessagePage = () => {
                                                     <span> - {otherParticipant.venueName}</span>
                                                 )}
                                                 </h3>
+                                                {showArchived ? (
+                                                    <button
+                                                    className='btn tertiary'
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleArchiveConversation(conversation, false); // Restore to inbox
+                                                    }}
+                                                    >
+                                                    <InboxIcon />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                    className='btn tertiary'
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleArchiveConversation(conversation, true); // Archive
+                                                    }}
+                                                    >
+                                                    <ArchiveIcon />
+                                                    </button>
+                                                )}
                                                 {hasUnreadMessages && <div className='notification-dot'></div>}
                                             </div>
                                             <h4 className='gig-date'>{conversation.gigDate && formatDate(conversation.gigDate)}</h4>
@@ -211,18 +274,6 @@ export const MessagePage = () => {
                                 ? activeConversation.accountNames.find(account => account.role === 'band')
                                 : null;
                                 const musicianAccount = activeConversation.accountNames.find(account => account.role === 'musician');
-                                console.log({
-                                    activeConversation:activeConversation,
-                                    conversationId:activeConversation.id,
-                                    user:user,
-                                    musicianProfileId:
-                                        isBand
-                                        ? bandAccount?.participantId
-                                        : musicianAccount?.participantId
-                                    ,
-                                    gigId:activeConversation.gigId,
-                                    gigData:gigData,
-                                })
                                 return (
                                     <MessageThread 
                                         activeConversation={activeConversation}

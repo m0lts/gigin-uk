@@ -20,7 +20,9 @@ export const useMapbox = ({
   style = 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
   zoom = 15,
   shouldInit = true,
-  token = import.meta.env.VITE_MAPBOX_TOKEN,
+  token = import.meta.env.DEV ? 
+  'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
+  : import.meta.env.VITE_MAPBOX_TOKEN,
 }) => {
   useEffect(() => {
     if (!shouldInit || !coordinates || !containerRef.current) return;

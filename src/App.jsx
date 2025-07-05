@@ -28,7 +28,7 @@ import { VenueDashboardLayout } from '@layouts/VenueDashboardLayout';
 import { Account } from '@features/account/Account';
 import { Testimonials } from '@features/musician/profile/TestimonialPage';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-
+import { VenuePage } from './features/venue/components/VenuePage';
 
 
 
@@ -90,6 +90,7 @@ export default function App() {
           <Route index element={<VenueHome user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
           <Route path='add-venue/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
           <Route path='dashboard/*' element={<VenueDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><VenueDashboard /></VenueDashboardLayout>} />
+          <Route path='/venues/:venueId' element={<VenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
 
         {/* OTHER ROUTES */}

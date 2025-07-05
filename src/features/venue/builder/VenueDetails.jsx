@@ -23,6 +23,10 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
     const [locationAddress, setLocationAddress] = useState(formData.address || '');
     const [coordinatesError, setCoordinatesError] = useState(false);
 
+    const mapboxToken = import.meta.env.DEV ? 
+    'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
+    : import.meta.env.VITE_MAPBOX_TOKEN;
+
     useEffect(() => {
         if (locationAddress !== formData.address) {
             handleInputChange('address', locationAddress);
@@ -60,7 +64,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
     const handleGeocodeCoordinates = async (coordinates) => {
         try {
             const response = await fetch(
-                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(coordinates)}.json?access_token=pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ5bjE1MDg2dDJrcW5yOHV1Z2t6bSJ9.Sk502nZET2-W6vLvCDwSEg`
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(coordinates)}.json?access_token=${mapboxToken}`
             );
 
             if (response.ok) {
@@ -130,7 +134,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
                                     zoom: 14
                                 }}
                                 mapStyle='mapbox://styles/mapbox/streets-v11'
-                                mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
+                                mapboxAccessToken={mapboxToken}
                             >
                                 <Marker longitude={locationCoordinates[0]} latitude={locationCoordinates[1]} />
                             </Map>

@@ -221,6 +221,18 @@ export const updateConversationLastViewed = async (conversationId, userId) => {
 };
 
 /**
+ * Updates a conversation document with provided data.
+ *
+ * @param {string} convId - ID of the conversation document.
+ * @param {Object} updates - Partial updates to apply.
+ * @returns {Promise<void>}
+ */
+export const updateConversationDocument = async (convId, updates) => {
+  const convRef = doc(firestore, 'conversations', convId);
+  await updateDoc(convRef, updates);
+};
+
+/**
  * Updates the specified applicant in a gig to mark their application as viewed.
  * 
  * @param {string} gigId 

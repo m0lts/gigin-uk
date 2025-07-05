@@ -7,7 +7,8 @@ import {
     PreviousIcon,
     SortIcon,
     TickIcon,
-    CalendarIcon } from '@features/shared/ui/extras/Icons';
+    CalendarIcon,
+CloseIcon } from '@features/shared/ui/extras/Icons';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 
 export const Gigs = ({ gigs, venues }) => {
@@ -46,7 +47,11 @@ export const Gigs = ({ gigs, venues }) => {
             if (acceptedApplicant) {
                 return { icon: <TickIcon />, text: 'Confirmed' };
             }
-            return { icon: <ClockIcon />, text: 'Upcoming' };
+            if (gig.status === 'open') {
+                return { icon: <ClockIcon />, text: 'Upcoming' };
+            } else {
+                return { icon: <CloseIcon />, text: 'Closed' };
+            }
         }
         return { icon: <PreviousIcon />, text: 'Previous' };
     };

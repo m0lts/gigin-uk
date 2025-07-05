@@ -36,7 +36,9 @@ export const ProfileCreator = () => {
     const navigate = useNavigate();
     const [showErrorModal, setShowErrorModal] = useState(false);
 
-    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    const mapboxToken = import.meta.env.DEV ? 
+    'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
+    : import.meta.env.VITE_MAPBOX_TOKEN;
 
     const [stage, setStage] = useState(musicianProfile ? 1 : 0);
     const [formData, setFormData] = useState({
