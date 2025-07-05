@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
-import '@styles/musician/gig-page.styles.css';
+import '@styles/host/venue-page.styles.css';
 import { 
     BackgroundMusicIcon,
     ClubIcon,
@@ -24,37 +24,84 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/venues';
 import { getCityFromAddress } from '@services/utils/misc';
 import { getGigsByVenueId } from '../../../services/gigs';
+import { useResizeEffect } from '@hooks/useResizeEffect';
+import { useMapbox } from '@hooks/useMapbox';
+import { formatDate } from '@services/utils/dates';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { openInNewTab } from '@services/utils/misc';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
-    const { venueId } = useParams(); // Get venueId from URL
+    const { venueId } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [venueData, setVenueData] = useState(null);
     const [venueGigs, setVenueGigs] = useState([]);
     const [loading, setLoading] = useState(true);
-  
     const mapContainerRef = useRef(null);
     const [padding, setPadding] = useState('5%');
     const [fullscreenImage, setFullscreenImage] = useState(null);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [width, setWidth] = useState('100%');
-  
-    useEffect(() => {
-      if (!venueId) return;
-      const fetchVenueAndGigs = async () => {
-        try {
-          const profile = await getVenueProfileById(venueId);  
-          setVenueData(profile);
-          const gigs = await getGigsByVenueId(venueId);
-          setVenueGigs(gigs);
-        } catch (error) {
-          console.error('Error loading venue profile or gigs:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchVenueAndGigs();
-    }, [venueId]);
 
+    useResizeEffect((width) => {
+        if (width > 1100) {
+          setPadding('10%');
+          setWidth('80%');
+        } else {
+          setPadding('2.5%');
+          setWidth('95%');
+        }
+    });
+
+    useEffect(() => {
+        if (!venueId) return;
+        const fetchVenueAndGigs = async () => {
+            setLoading(true)
+            try {
+                const profile = await getVenueProfileById(venueId);  
+                setVenueData(profile);
+                const gigs = await getGigsByVenueId(venueId);
+                const now = new Date();
+                const futureGigs = gigs.filter(gig => {
+                    const gigDate = gig.date?.toDate?.() ?? gig.date;
+                    return gigDate > now;
+                });
+
+                setVenueGigs(futureGigs);
+            } catch (error) {
+                console.error('Error loading venue profile or gigs:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchVenueAndGigs();
+    }, [venueId]);
+    
+    useMapbox({
+        containerRef: mapContainerRef,
+        coordinates: venueData?.coordinates,
+      });
+
+    const handleImageClick = (index) => {
+        setFullscreenImage(venueData.photos[index]);
+        setCurrentImageIndex(index);
+    };
+
+    const closeFullscreen = () => {
+        setFullscreenImage(null);
+    };
+
+    const showNextImage = (e) => {
+        e.stopPropagation();
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % venueData.photos.length);
+        setFullscreenImage(venueData.photos[(currentImageIndex + 1) % venueData.photos.length]);
+    };
+
+    const showPrevImage = (e) => {
+        e.stopPropagation();
+        setCurrentImageIndex((prevIndex) => (prevIndex - 1 + venueData.photos.length) % venueData.photos.length);
+        setFullscreenImage(venueData.photos[(currentImageIndex - 1 + venueData.photos.length) % venueData.photos.length]);
+    };
     
     return (
         <div className='venue-page'>
@@ -89,7 +136,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                     <>
                         <div className='head'>
                             <div className='title'>
-                                <h1>{venueData.venueName}</h1>
+                                <h1>{venueData.name}</h1>
                                 <p>{getCityFromAddress(venueData.address)}</p>
                             </div>
                             {/* <div className='options'>
@@ -160,7 +207,14 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                 )}
 
                             </div>
-                            <div className='action-box'>
+                            <div className='gigs-box'>
+                                <h3>Upcoming Gigs</h3>
+                                {venueGigs && venueGigs.map((gig) => (
+                                    <div key={gig.gigId} className="venue-gig" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
+                                        <h4>{formatDate(gig.date)}</h4>
+                                        <h4>{gig.budget}</h4>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </>
