@@ -13,6 +13,20 @@
     font-size: 1.5rem;
 }
 
+.logo-med {
+    font-style: var(--gn-logo-font);
+    text-decoration: none;
+    width:fit-content;
+    font-weight:600;
+    font-size: 2.5rem;
+}
+
+.logo-med .orange-txt {
+    color: var(--gn-orange);
+    font-size: 2rem;
+}
+
+
 .logo.bckgrd-white {
     background-color: var(--gn-white);
     border-radius: 50%;

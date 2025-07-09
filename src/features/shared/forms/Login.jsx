@@ -3,7 +3,7 @@ import { useState } from 'react';
 // Components
 import { SeeIcon, ErrorIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { TextLogo } from '@features/shared/ui/logos/Logos';
+import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 // Styles
 import '@styles/forms/forms.styles.css'
 
@@ -103,10 +103,11 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   };
 
   return (
-    <div className='modal-content auth' onClick={(e) => e.stopPropagation()}>
+    <div className='modal-padding auth' onClick={(e) => e.stopPropagation()}>
+    <div className='modal-content auth'>
       <div className='head'>
-        <TextLogo />
-        <h1>{!otpId ? 'Login' : 'Two-Factor Authentication (2FA)'}</h1>
+        <NoTextLogo />
+        <h1>{!otpId ? 'Sign In' : 'Two-Factor Authentication (2FA)'}</h1>
         {otpId && (
           <div className='text'>
             <p>For your security, we have a 2FA process.</p>
@@ -165,11 +166,8 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                 className='btn primary'
                 disabled={error.status || !credentials.email || !credentials.password}
               >
-                Login
+                Sign In
               </button>
-              <div className='change-auth-type'>
-                <p>Want to join the movement? <button className='btn text' type='button' onClick={() => { setAuthType('signup'); clearCredentials(); clearError(); }}>Sign up here</button></p>
-              </div>
             </>
           )}
         </form>
@@ -220,6 +218,12 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
           <ErrorIcon />
         </button>
       )}
+    </div>
+    <div className="change-auth-type">
+        <h4 className='change-auth-type-text'>Don't have an account? </h4>
+        <button className='btn text' type='button' disabled={loading} onClick={() => { setAuthType('signup'); clearCredentials(); clearError(); }}>Sign Up</button>
+      </div>
+
     </div>
   );
 };

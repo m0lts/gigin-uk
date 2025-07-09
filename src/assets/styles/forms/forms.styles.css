@@ -40,14 +40,14 @@
     border: 1px solid var(--gn-grey-400);
     border-radius: 5px;
     background-color: var(--gn-white);
-    transition: border 0.3s;
+    transition: all 0.1s ease-in-out;
 }
 
 .input:focus,
 .form .input-group input:focus, 
 .auth-form .input-group input:focus {
     border:1px solid var(--gn-off-black);
-    outline:none;
+    outline:1px solid var(--gn-off-black);
 }
 
 .input.error,
@@ -64,15 +64,30 @@
     border-radius: 5px;
 }
 
+input:-webkit-autofill {
+    background-color: #fff !important;
+    -webkit-box-shadow: 0 0 0px 1000px #fff inset !important;
+    -webkit-text-fill-color: #000 !important;
+}
+
+.input.disabled,
+.form .input-group input.disabled,
+.form .input-group .password.disabled,
+.form .input-group select.disabled, 
+.form .input-group textarea.disabled,
+.auth-form .input-group input.disabled,
+.auth-form .input-group .password.disabled,
+.auth-form .input-group select.disabled
+.auth-form .password.disabled {
+    background-color: var(--gn-grey-300);
+}
+
 
 /* AUTH FORMS */
 
 .auth-form .error-msg {
     font-size: 0.75rem;
-}
-
-.auth-form .error-msg {
-    font-size: 0.75rem;
+    color:var(--gn-red)
 }
 
 .auth-form #password {
@@ -84,14 +99,14 @@
 }
 
 .auth-form .password.focused {
-    border: 1px solid var(--gn-off-black);
+    border: 2px solid var(--gn-off-black);
+    background-color: var(--gn-off-black);
 }
 
 .auth-form #password:-webkit-autofill {
     -webkit-box-shadow: 0 0 0 1000px white inset !important;
     box-shadow: 0 0 0 1000px white inset !important;
     -webkit-text-fill-color: black !important;
-    transition: background-color 5000s ease-in-out 0s;
 }
 
 .auth-form .input-group .btn {
@@ -133,6 +148,10 @@
     background-color: transparent;
 }
 
+.auth-form .input-group .password .disabled {
+    background-color: var(--gn-grey-300) !important;
+}
+
 .auth-form .phone-number {
     display: flex;
     width:100%;
@@ -140,9 +159,17 @@
 }
 
 .auth-form .password-info {
+    border:1px solid var(--gn-red);
+    background-color: rgba(255, 0, 0, 0.044);
+    color: var(--gn-red);
+    border-radius: 0.5rem;
     font-size: 0.75rem;
-    padding: 5px 0;
-    max-width: 320px;
+    padding: 5px;
+    width:100%;
+}
+
+.auth-form button[type='submit'] {
+    padding: 1rem;
 }
 
 .auth-form button[type='submit']:disabled {

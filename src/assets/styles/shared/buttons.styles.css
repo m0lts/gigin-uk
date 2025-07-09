@@ -28,8 +28,9 @@ button {
     border:none;
     padding:var(--gn-btn-padding-y) var(--gn-btn-padding-x);
     color:var(--gn-white);
-    font-weight: var(--gn-semi-bold);
+    font-weight: 500;
     border-radius: var(--gn-btn-border-radius);
+    font-size: 1rem;
     transition: opacity 200ms linear;
 }
 
@@ -66,8 +67,9 @@ button {
     border:1px solid var(--gn-grey-350);
     padding: 0.5rem 1rem;
     border-radius: var(--gn-btn-border-radius);
-    box-shadow: 0 0 2px var(--gn-shadow);
-    font-weight: 300;
+    box-shadow: 0 0 3px var(--gn-grey-400);
+    font-weight: 400;
+    color: var(--gn-off-black);
     transition: all 200ms linear;
 }
 
@@ -79,22 +81,24 @@ button {
 
 .btn.secondary:hover {
     background-color: var(--gn-grey-300);
-    box-shadow: none;
+    box-shadow: 0 0 3px var(--gn-grey-300);
 }
 
 
 /* TERTIARY BUTTONS */
 
 .btn.tertiary {
-    background-color: transparent;
-    border:none;
+    background-color: var(--gn-grey-300);
+    border:1px solid transparent;
+    font-weight: 400;
     padding:var(--gn-btn-padding-y) var(--gn-btn-padding-x);
     border-radius: var(--gn-btn-border-radius);
     transition: background-color 200ms linear;
 }
 
 .btn.tertiary:hover {
-    background-color: var(--gn-grey-300);
+    border-color: var(--gn-grey-350);
+    background-color: var(--gn-white);
 }
 
 

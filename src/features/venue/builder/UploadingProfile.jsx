@@ -1,30 +1,15 @@
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
-import { CameraIcon, DashboardIcon, HouseIcon } from '@features/shared/ui/extras/Icons';
+import { CameraIcon, DashboardIcon, HouseIconLight } from '@features/shared/ui/extras/Icons';
 import '@styles/host/venue-builder.styles.css'
+import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
 
 export const UploadingProfile = ({ text, progress }) => {
     return (
         <div className='uploading-profile'>
             <NoTextLogo />
-            <span className='text'>{text}</span>
-            <div className='icons'>
-                {progress < 33 ? (
-                    <span className='active'><CameraIcon /></span>
-                ) : (
-                    <CameraIcon />
-                )}
-                {(progress >= 33 && progress < 66) ? (
-                    <span className='active'><HouseIcon /></span>
-                ) : (
-                    <HouseIcon />
-                )}
-                {progress >= 66 ? (
-                    <span className='active'><DashboardIcon /></span>
-                ) : (
-                    <DashboardIcon />
-                )}
-            </div>
+            <h1>{text}</h1>
+            <LoadingThreeDots />
             <div className='progress-bar-container'>
                 <div className='progress-bar' style={{ width: `${progress}%` }}></div>
             </div>

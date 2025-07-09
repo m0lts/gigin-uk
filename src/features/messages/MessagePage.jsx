@@ -2,7 +2,7 @@ import '@styles/shared/messages.styles.css'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@hooks/useAuth';
 import { 
-    HouseIcon,
+    HouseIconLight,
     MailboxEmptyIcon,
     MicrophoneIcon,
     NewTabIcon,
@@ -180,7 +180,7 @@ export const MessagePage = () => {
                                                     otherParticipant.venueImg ? (
                                                         <img className='participant-img' src={otherParticipant.venueImg} alt='Venue' />
                                                     ) : (
-                                                        <HouseIcon />
+                                                        <HouseIconLight />
                                                     )
                                             ) : (
                                                     otherParticipant?.musicianImg ? (

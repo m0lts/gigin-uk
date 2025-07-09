@@ -8,7 +8,7 @@ import {
     ClubIcon,
     FacebookIcon,
     GuitarsIcon,
-    HouseIcon,
+    HouseIconLight,
     InstagramIcon,
     InviteIcon,
     MicrophoneIcon,

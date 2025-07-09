@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
 *, *::after, *::before {
     box-sizing: border-box;
@@ -6,7 +6,7 @@
     padding: 0;
 
     /* Typography */
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 14px;
     --gn-bold: 600;
     --gn-semi-bold: 500;
@@ -15,7 +15,8 @@
 
     /* Colours */
     --gn-orange: #FF6C4B;
-    --gn-offset-orange: #ffe9e4;
+    --gn-offset-orange: #fff1ee;
+    --gn-deep-orange: rgba(255, 47, 0, 0.099);
     --gn-white: #ffffff;
     --gn-grey-100: #fdfdfd;
     --gn-grey-200: #fcfcfc;
@@ -38,7 +39,7 @@
     /* Common spacing */
     --gn-btn-padding-x: 14px;
     --gn-btn-padding-y: 7px;
-    --gn-btn-border-radius: 5px;
+    --gn-btn-border-radius: 0.5rem;
     --gn-border-radius: 14px;
     --gn-spacing-x: 14px;
 }
@@ -87,7 +88,7 @@ a, .link, li {
     font-weight: 400;
 }
 p, a, span, label, input, button, select, option, textarea, li {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
 .small-screen-message {

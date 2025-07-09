@@ -4,7 +4,7 @@ import {
     FaceFrownIcon,
     TelescopeIcon,
     SortIcon,
-    HouseIcon,
+    HouseIconLight,
     PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { useGigs } from '@context/GigsContext';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
@@ -92,7 +92,7 @@ export const Overview = ({ musicianProfile, gigApplications }) => {
                         <div className='left'>
                             <div className='icon-and-title'>
                                 <div className='icon-container'>
-                                    <HouseIcon />
+                                    <HouseIconLight />
                                 </div>
                                 <h1>Next Gig</h1>
                             </div>

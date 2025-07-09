@@ -19,19 +19,31 @@
 
 .modal-content {
     position: relative;
-    min-width: 500px;
+    min-width: 450px;
     max-width: 75vw;
     max-height: 75vh;
-    padding:2.5rem 5rem;
+    padding:2.5rem;
     background-color: var(--gn-white);
     border-radius: var(--gn-border-radius);
-    border:1px solid var(--gn-grey-400);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
+    border:1px solid var(--gn-grey-350);
     gap:2rem;
     box-shadow: 0 0 20px var(--gn-shadow);
+    transition: width 0.5s linear height 0.5s linear;
+}
+
+.modal-padding {
+    border-radius: 1.5rem;
+    padding:1rem;
+    padding-bottom: 0;
+    background-color: var(--gn-grey-300);
+}
+
+.modal-padding .bottom-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:4px;
+    margin:2rem auto;
 }
 
 .modal-content .btn.close {
@@ -63,16 +75,20 @@
 
 
 /* AUTH MODAL */
+
+
 .modal-content.auth {
-    padding-bottom: 5rem;
-    width:500px;
+    border: none;
+    width:450px;
+    max-width: 500px;
 }
 
 .modal-content.auth .head {
-    text-align: center;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap:1rem;
+    margin-bottom: 1rem;
 }
 
 .modal-content.auth .head h2 {
@@ -84,12 +100,29 @@
     margin:0 auto;
 }
 
-.modal-content.auth .head .text {
-    max-width: 300px;
-    margin: 0 auto;
+.modal-content.auth .head p {
+    font-weight: 400;
+    text-align: center;
 }
 
-.modal-content.auth .head .text p {
-    font-size: 0.75rem;
-    margin-top: 5px;
+.modal-padding.auth .change-auth-type {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:4px;
+    margin:2rem 0;
+}
+
+.modal-padding.auth .change-auth-type-text {
+    color: var(--gn-grey-600);
+}
+
+.modal-padding.auth .change-auth-type .btn {
+    font-weight: 500;
+    text-decoration: underline;
+    cursor:pointer;
+}
+
+.modal-padding.auth .change-auth-type .btn:hover {
+    color: var(--gn-grey-600);
 }

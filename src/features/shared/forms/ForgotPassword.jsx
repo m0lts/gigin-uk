@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 // Components
 import { CloseIcon, ErrorIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { TextLogo } from '@features/shared/ui/logos/Logos';
+import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 // Styles
 import '@styles/forms/forms.styles.css';
 
@@ -69,22 +69,20 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
   }, [timer]);
 
   return (
-    <div className='modal-content auth' onClick={(e) => e.stopPropagation()}>
+    <div className="modal-padding auth" onClick={(e) => e.stopPropagation()}>
+    <div className='modal-content auth'>
       {showSuccessMsg ? (
         <>
           <div className='head'>
-            <TextLogo />
+            <NoTextLogo />
             <h1>Forgot Password</h1>
           </div>
           <div className='auth-form'>
-            <p style={{ textAlign: 'center' }}>We have sent you an email to {credentials.email} with instructions on how to reset your password.</p>
+            <p style={{ textAlign: 'center' }}>We have sent an email to {credentials.email} with instructions on how to reset your password.</p>
             <p style={{ textAlign: 'center', marginBottom: '1rem' }}>If you haven't received an email, click the button below to send another link.</p>
             <button className='btn text' onClick={handleResendPasswordReset} disabled={timer > 0}>
-              {timer > 0 ? `Re-send forgot password link (${timer}s).` : 'Re-send forgot password link.'}
+              {timer > 0 ? `Re-send forgot password link (${timer}s)` : 'Re-send forgot password link.'}
             </button>
-            <div className='change-auth-type'>
-              <p>Back to <button className='btn text' type='button' onClick={() => { setAuthType('login'); clearCredentials(); clearError(); setShowSuccessMessage(false) }}>Login</button></p>
-            </div>
           </div>
           {(!loading && authClosable) && (
             <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false); setShowSuccessMessage(false); setAuthType('login')}}>
@@ -95,7 +93,7 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
       ) : (
         <>
           <div className='head'>
-            <TextLogo />
+            <NoTextLogo />
             <h1>Forgot Password</h1>
           </div>
           <form className='auth-form' onSubmit={handlePasswordReset}>
@@ -125,11 +123,8 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
                   className='btn primary'
                   disabled={error.status || !credentials.email}
                 >
-                  Send Link
+                  Reset Password
                 </button>
-                <div className='change-auth-type'>
-                  <p>Back to <button className='btn text' type='button' onClick={() => { setAuthType('login'); clearCredentials(); clearError(); setShowSuccessMessage(false) }}>Login</button></p>
-                </div>
               </>
             )}
           </form>
@@ -140,6 +135,11 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
           )}
         </>
       )}
+    </div>
+    <div className="change-auth-type">
+        <h4 className='change-auth-type-text'>Back to </h4>
+        <button className='btn text' type='button' onClick={() => { setAuthType('login'); clearCredentials(); clearError(); setShowSuccessMessage(false) }}>Sign In</button>
+      </div>
     </div>
   );
 };

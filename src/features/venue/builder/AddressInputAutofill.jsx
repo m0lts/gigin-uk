@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { AddressAutofill } from '@mapbox/search-js-react';
 
-export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange, coordinatesError, setCoordinatesError }) => {
+export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange, coordinatesError, setCoordinatesError, stepError, setStepError, errorField, setErrorField }) => {
 
     const handleRetrieve = useCallback(
         (res) => {
@@ -83,44 +83,50 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
     return (
         <>
             {!expandForm ? ( 
-                <>
-                {locationAddress ? (
-                    <div className='input-group'>
-                        <label htmlFor='autofill' className='input-label'>Venue Address</label>
-                        <input
-                            className={`input-box ${coordinatesError ? 'error': ''}`}
-                            type='text'
-                            value={locationAddress}
-                            disabled
-                        />
-                        {coordinatesError && (
-                            <p className='error-message'>Sorry, we couldn't find any coordinates for that address. Please try again.</p>
-                        )}
-                        <button className='btn secondary' style={{ width: 'fit-content' }} onClick={() => {setLocationAddress(''); setLocationCoordinates(null)}}>
-                            Change Address
-                        </button>
-                    </div>
-                
-                ) : (
-
-                    <AddressAutofill accessToken={mapboxToken} onRetrieve={handleRetrieve}>
+                <div className='address-input'>
+                    {locationAddress ? (
                         <div className='input-group'>
                             <label htmlFor='autofill' className='input-label'>Venue Address</label>
                             <input
-                                className={`input-box ${coordinatesError ? 'error': ''}`}
+                                className={`input-box ${(coordinatesError || (stepError && errorField === 'address')) ? 'error': ''}`}
                                 type='text'
-                                name='autofill'
-                                id='autofill'
-                                placeholder='Start typing your address, e.g. 72 High Street...'
-                                autoComplete='off'
+                                value={locationAddress}
+                                readOnly
+                                onClick={() => {
+                                    setLocationAddress('');
+                                    setLocationCoordinates(null);
+                                    setExpandForm(false);
+                                  }}
                             />
+                            {coordinatesError && (
+                                <p className='error-message'>Sorry, we couldn't find any coordinates for that address. Please try again.</p>
+                            )}
+                            {/* <button className='btn secondary' style={{ width: 'fit-content' }} onClick={() => {setLocationAddress(''); setLocationCoordinates(null)}}>
+                                Change Address
+                            </button> */}
                         </div>
-                    </AddressAutofill>
-                )}
-                    <button className='btn text manual-address' onClick={() => {setExpandForm(true); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
-                        Or enter your address manually
+                    
+                    ) : (
+
+                        <AddressAutofill accessToken={mapboxToken} onRetrieve={handleRetrieve}>
+                            <div className='input-group'>
+                                <label htmlFor='autofill' className='input-label'>Venue Address</label>
+                                <input
+                                    className={`input-box ${(coordinatesError || (stepError && errorField === 'address')) ? 'error': ''}`}
+                                    type='text'
+                                    name='autofill'
+                                    id='autofill'
+                                    placeholder='Start typing your address...'
+                                    autoComplete='off'
+                                    onClick={() => {setStepError(null); setErrorField(null)}}
+                                />
+                            </div>
+                        </AddressAutofill>
+                    )}
+                    <button className='btn text' onClick={() => {setExpandForm(true); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
+                        Or enter the address manually...
                     </button>
-                </>
+                </div>
             ) : (
                 <>
                 <form onSubmit={handleAddressSubmission} className='form' style={{ width: '100%', marginTop: 0 }}>
@@ -179,13 +185,15 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                             id='postcode'
                         />
                     </div>
-                    <button className='btn secondary' type='submit' style={{ width: 'fit-content' }}>
-                        Save
-                    </button>
+                    <div className="two-buttons">
+                        <button className='btn secondary' type='submit' style={{ width: 'fit-content' }}>
+                            Save
+                        </button>
+                        <button className='btn text manual-address' onClick={() => {setExpandForm(false); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
+                            Back to automatic address entry
+                        </button>
+                    </div>
                 </form>
-                <button className='btn text manual-address' onClick={() => {setExpandForm(false); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
-                    Use automatic address entry
-                </button>
                 </>
             )}
         </>

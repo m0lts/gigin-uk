@@ -40,7 +40,7 @@
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
     "firebase": "^10.12.3",
-    "framer-motion": "^11.11.17",
+    "framer-motion": "^11.18.2",
     "jsonwebtoken": "^9.0.2",
     "mapbox-gl": "^3.0.0",
     "mongodb": "^6.3.0",

@@ -71,7 +71,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                 labels: {
                     font: {
                         size: 14,
-                        family: 'DM Sans',
+                        family: 'Inter',
                         weight: 'bold',
                     },
                     color: '#333',
@@ -82,7 +82,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                 text: '',
                 font: {
                     size: 18,
-                    family: 'DM Sans',
+                    family: 'Inter',
                     weight: 'bold',
                 },
                 color: '#333', // Title color
@@ -105,7 +105,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                     color: '#333',
                     font: {
                         size: 12,
-                        family: 'DM Sans',
+                        family: 'Inter',
                     },
                 },
             },
@@ -118,7 +118,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                     color: '#333',
                     font: {
                         size: 12,
-                        family: 'DM Sans',
+                        family: 'Inter',
                     },
                 },
                 beginAtZero: true,

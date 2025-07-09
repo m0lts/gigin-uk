@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { WhiteBckgrdLogo } from '@features/shared/ui/logos/Logos';
 import { VenueDetails } from './VenueDetails';
 import { VenueType } from './VenueType';
 import { InHouseEquipment } from './InHouseEquipment';
@@ -13,6 +12,9 @@ import { arrayUnion, arrayRemove } from 'firebase/firestore';
 import { createVenueProfile, deleteVenueProfile } from '@services/venues';
 import { updateUserDocument } from '@services/users';
 import { useResizeEffect } from '@hooks/useResizeEffect';
+import { TickIcon } from '../../shared/ui/extras/Icons';
+import { uploadImageArrayWithFallback } from '../../../services/storage';
+import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
@@ -76,16 +78,19 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
     }, [venue])
 
     const [uploadingProfile, setUploadingProfile] = useState(false);
-    const [uploadText, setUploadText] = useState('Uploading your images...');
+    const [uploadText, setUploadText] = useState('Saving Your Venue...');
     const [progress, setProgress] = useState(1);
     const [completeSavedProfileModal, setCompleteSavedProfileModal] = useState(false);
     const [savedProfile, setSavedProfile] = useState();
+    const [stepError, setStepError] = useState(null);
+    const [saving, setSaving] = useState(false);
 
     const handleInputChange = (field, value) => {
         setFormData({
             ...formData,
             [field]: value
         });
+        setStepError(null)
     };
 
     useEffect(() => {
@@ -113,20 +118,39 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 photos: imageUrls,
                 completed: true,
             };
+    
             await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             await updateUserDocument(user.uid, {
                 venueProfiles: arrayUnion(formData.venueId),
-            })
-            setTimeout(() => setUploadText('Building your profile...'), 2000);
-            setTimeout(() => setProgress(33), 2000);
-            setTimeout(() => setUploadText('Creating your dashboard...'), 6000);
-            setTimeout(() => setProgress(66), 6000);
+            });
+    
+            // Progress intervals every 1 second
+            const progressIntervals = [11, 22, 33, 44, 55, 66, 77, 88, 100];
+            progressIntervals.forEach((value, index) => {
+                setTimeout(() => setProgress(value), 1000 * (index + 1));
+            });
+    
+            // Text updates
+            setTimeout(() => setUploadText('Uploading Your Images...'), 2000);
+            setTimeout(() => setUploadText('Building Your Dashboard...'), 6000);
+    
+            // Final navigation
             setTimeout(() => {
-                setProgress(100);
                 navigate('/venues/dashboard', { state: { newUser: true } });
-            }, 9000);
+                setUploadingProfile(false)
+            }, 11000);
+    
         } catch (error) {
             setUploadingProfile(false);
+            if (error.message?.includes('storage') || error.message?.includes('image')) {
+                setStepError("Something went wrong while uploading your images. Please check your connection and try again.");
+            } else if (error.message?.includes('createVenueProfile')) {
+                setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
+            } else if (error.message?.includes('updateUserDocument')) {
+                setStepError("Your venue was saved, but we couldn’t link it to your account. Please refresh and check your dashboard.");
+            } else {
+                setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
+            }
             console.error('Error uploading images or creating venue profile: ', error);
         }
     };
@@ -137,6 +161,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             return;
         }
         try {
+            setSaving(true);
             let updatedFormData;
             if (formData.completed) {
                 updatedFormData = {
@@ -162,7 +187,18 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             });
             navigate('/venues');
         } catch (error) {
+            if (error.message?.includes('storage') || error.message?.includes('image')) {
+                setStepError("Something went wrong while uploading your images. Please check your connection and try again.");
+            } else if (error.message?.includes('createVenueProfile')) {
+                setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
+            } else if (error.message?.includes('updateUserDocument')) {
+                setStepError("Your venue was saved, but we couldn’t link it to your account. Please refresh and check your dashboard.");
+            } else {
+                setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
+            }
             console.error('Error uploading images or creating venue profile: ', error);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -199,13 +235,13 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         } else if (step === 2) {
             navigate('/venues/add-venue/venue-details');
         } else if (step === 3) {
-            if (savedProfile.type === 'Public Establishment') {
+            if (savedProfile?.type === 'Public Establishment' || formData.type === 'Public Establishment') {
                 navigate('/venues/add-venue/equipment');
             } else {
                 navigate('/venues/add-venue/photos');
             }
         } else if (step === 4) {
-            if (savedProfile.type === 'Public Establishment') {
+            if (savedProfile?.type === 'Public Establishment' || formData.type === 'Public Establishment') {
                 navigate('/venues/add-venue/photos');
             } else {
                 navigate('/venues/add-venue/additional-details');
@@ -215,46 +251,210 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         }
     };
 
+    const handleStepClick = (step) => {
+        const isPublic = formData.type === 'Public Establishment';
+            
+        // Step 1 — always allowed
+        if (step === 1) {
+          redirectToStep(1);
+          return;
+        }
+      
+        // Step 2 — requires step 1: `type`
+        if (step === 2 && formData.type) {
+          redirectToStep(2);
+          return;
+        }
+      
+        // Step 3 — only for Public Establishment, requires:
+        // type + name, address, coordinates, establishment
+        if (step === 3 && isPublic) {
+          const step2Complete =
+            formData.name &&
+            formData.address &&
+            formData.coordinates &&
+            formData.establishment;
+      
+          if (step2Complete) {
+            redirectToStep(3);
+          }
+      
+          return;
+        }
+      
+        // Step 4 — photos
+        const photoStep = isPublic ? 4 : 3;
+        if (step === photoStep) {
+          if (
+            formData.name &&
+            formData.address &&
+            formData.coordinates &&
+            formData.establishment &&
+            (!isPublic || (formData.equipmentAvailable))
+          ) {
+            redirectToStep(photoStep);
+          }
+          return;
+        }
+      
+        // Step 5 — additional info (only if Public Establishment)
+        const finalStep = isPublic ? 5 : 4;
+        if (step === finalStep) {
+          const step3Valid = !isPublic || (formData.equipmentAvailable);
+          const step4Valid = formData.photos.length > 0;
+      
+          if (
+            formData.name &&
+            formData.address &&
+            formData.coordinates &&
+            formData.establishment &&
+            step3Valid &&
+            step4Valid
+          ) {
+            redirectToStep(finalStep);
+          }
+      
+          return;
+        }
+      };
+
+    const isStep1Complete = () => formData.type;
+
+    const isStep2Complete = () => {
+        const baseValid =
+          formData.name &&
+          formData.address &&
+          formData.coordinates;
+      
+        if (formData.type === 'Public Establishment') {
+          return baseValid && formData.establishment;
+        }
+      
+        return baseValid;
+      };
+    
+    const isStep3Complete = () =>
+    formData.type === 'Public Establishment'
+        ? formData.equipmentAvailable
+        : true;
+    
+    const isStep4Complete = () => formData.photos.length > 0;
+    
+    const isStep5Complete = () => formData.extraInformation && formData.description;
+
+    const getNextIncompleteStep = () => {
+        const isPublic = formData.type === 'Public Establishment';
+      
+        if (!isStep1Complete()) return 1;
+        if (!isStep2Complete()) return 2;
+        if (isPublic && !isStep3Complete()) return 3;
+        if (!isStep4Complete()) return isPublic ? 4 : 3;
+        if (!isStep5Complete()) return isPublic ? 5 : 4;
+      
+        // All complete
+        return null;
+      };
+
+      const isPublic = formData.type === 'Public Establishment';
+      const totalSteps = isPublic ? 5 : 4;
+      
+      const completedSteps = [
+        isStep1Complete(),
+        isStep2Complete(),
+        ...(isPublic ? [isStep3Complete()] : []),
+        isStep4Complete(),
+        isStep5Complete()
+      ].filter(Boolean).length;
+      
+      const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
+
+    console.log(savedProfile)
+
     return (
-        <div className='venue-builder'>
+        <div className={`venue-builder ${uploadingProfile ? 'upload-screen' : ''}`}>
             {uploadingProfile ? (
                 <UploadingProfile text={uploadText} progress={progress} />
             ) : (
                 <>
                     <aside className='left'>
-                        <WhiteBckgrdLogo />
                         <div className='intro-text'>
-                            <h2>Let's get started.</h2>
-                            <p>Build a profile for your venue. If you manage more than one venue, you can build more later.</p>
+                            <h2>Let's Add Your Venue!</h2>
+                            {/* <p>Build a profile for your venue. If you manage more than one venue, you can build more later.</p> */}
+                        </div>
+                        <div className="progress-bar-container">
+                        <div className="progress-bar-wrapper">
+                            <div
+                                className="progress-bar"
+                                style={{
+                                width: `${percentComplete}%`,
+                                }}
+                            />
+                            </div>
+                            <span className="progress-label">
+                            {percentComplete}%
+                            </span>
                         </div>
                         <div className='progress'>
                             <ul>
-                                <li className={`step ${currentStep >= 1 ? 'completed' : ''} ${currentStep === 1 ? 'active' : ''}`}>
-                                    <div className='circle'>1</div>Venue type
+                                <li
+                                className={`step ${isStep1Complete() ? 'completed' : ''} ${getNextIncompleteStep() === 1 ? 'active' : ''}`}
+                                onClick={() => handleStepClick(1)}
+                                >
+                                <div className='circle'>{isStep1Complete() ? <TickIcon /> : 1}</div>
+                                Choose Venue Type
                                 </li>
-                                {formData.type !== '' && (
-                                    <>
-                                        <li className={`step ${currentStep >= 2 ? 'completed' : ''} ${currentStep === 2 ? 'active' : ''}`}>
-                                            <div className='circle'>2</div>Venue Details
-                                        </li>
-                                        {formData.type === 'Public Establishment' && (
-                                            <li className={`step ${currentStep >= 3 ? 'completed' : ''} ${currentStep === 3 ? 'active' : ''}`}>
-                                                <div className='circle'>3</div>In House Equipment
-                                            </li>
-                                        )}
-                                        <li className={`step ${currentStep >= (formData.type === 'Public Establishment' ? 4 : 3) ? 'completed' : ''} ${currentStep === (formData.type === 'Public Establishment' ? 4 : 3) ? 'active' : ''}`}>
-                                            <div className='circle'>{formData.type === 'Public Establishment' ? 4 : 3}</div>Photos
-                                        </li>
-                                        <li className={`step ${currentStep >= (formData.type === 'Public Establishment' ? 5 : 4) ? 'completed' : ''} ${currentStep === (formData.type === 'Public Establishment' ? 5 : 4) ? 'active' : ''}`}>
-                                            <div className='circle'>{formData.type === 'Public Establishment' ? 5 : 4}</div>Additional details
-                                        </li>
-                                    </>
+
+                                <li
+                                className={`step ${isStep2Complete() ? 'completed' : ''} ${getNextIncompleteStep() === 2 ? 'active' : ''}`}
+                                onClick={() => handleStepClick(2)}
+                                >
+                                <div className='circle'>{isStep2Complete() ? <TickIcon /> : 2}</div>
+                                Add Venue Details
+                                </li>
+
+                                {formData.type === 'Public Establishment' && (
+                                <li
+                                    className={`step ${isStep3Complete() ? 'completed' : ''} ${getNextIncompleteStep() === 3 ? 'active' : ''}`}
+                                    onClick={() => handleStepClick(3)}
+                                >
+                                    <div className='circle'>{isStep3Complete() ? <TickIcon /> : 3}</div>
+                                    Any In House Equipment?
+                                </li>
                                 )}
+
+                                <li
+                                className={`step ${isStep4Complete() ? 'completed' : ''} ${getNextIncompleteStep() === (formData.type === 'Public Establishment' ? 4 : 3) ? 'active' : ''}`}
+                                onClick={() => handleStepClick(formData.type === 'Public Establishment' ? 4 : 3)}
+                                >
+                                <div className='circle'>
+                                    {isStep4Complete() ? <TickIcon /> : formData.type === 'Public Establishment' ? 4 : 3}
+                                </div>
+                                Upload Photos
+                                </li>
+
+                                <li
+                                className={`step ${isStep5Complete() ? 'completed' : ''} ${getNextIncompleteStep() === (formData.type === 'Public Establishment' ? 5 : 4) ? 'active' : ''}`}
+                                onClick={() => handleStepClick(formData.type === 'Public Establishment' ? 5 : 4)}
+                                >
+                                <div className='circle'>
+                                    {isStep5Complete() ? <TickIcon /> : formData.type === 'Public Establishment' ? 5 : 4}
+                                </div>
+                                Additional Details
+                                </li>
                             </ul>
-                        </div>
-                        <button className='btn secondary' onClick={handleSaveAndExit}>
-                            Save and Exit
-                        </button>
+                            {stepError && (
+                                <div className="step-error-box">
+                                    <p>{stepError}</p>
+                                </div>
+                            )}
+                            </div>
+                        {saving ? (
+                            <LoadingThreeDots />
+                        ) : (
+                            <button className='btn secondary' onClick={handleSaveAndExit}>
+                                Save and Exit
+                            </button>
+                        )}
                     </aside>
                     <section className='right'>
                         {windowWidth < 1000 && (
@@ -263,11 +463,11 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                             </button>
                         )}
                         <Routes>                    
-                            <Route index element={<VenueType formData={formData} handleInputChange={handleInputChange} />} />
-                            <Route path='venue-details' element={<VenueDetails formData={formData} handleInputChange={handleInputChange} />} />
-                            <Route path='equipment' element={<InHouseEquipment formData={formData} handleInputChange={handleInputChange} />} />
-                            <Route path='photos' element={<Photos formData={formData} handleInputChange={handleInputChange} />} />
-                            <Route path='additional-details' element={<AdditionalDetails formData={formData} handleInputChange={handleInputChange} handleSubmit={handleSubmit} />} />
+                            <Route index element={<VenueType formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
+                            <Route path='venue-details' element={<VenueDetails formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
+                            <Route path='equipment' element={<InHouseEquipment formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
+                            <Route path='photos' element={<Photos formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
+                            <Route path='additional-details' element={<AdditionalDetails formData={formData} handleInputChange={handleInputChange} handleSubmit={handleSubmit} setStepError={setStepError} stepError={stepError} />} />
                         </Routes>
                     </section>
                 </>
@@ -276,24 +476,59 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
             {completeSavedProfileModal && (
                 <div className='modal'>
-                    <div className='modal-content saved-profile'>
-                        <h2>Do you want to continue building '{savedProfile.name}'?</h2>
-                        <p>If you click 'no', the profile will be deleted.</p>
-                        <div className='two-buttons'>
-                            <button className='btn primary' onClick={() => {setFormData(savedProfile); setCompleteSavedProfileModal(false); redirectToStep(savedProfile.currentStep)}}>Yes</button>
-                            <button className='btn secondary' onClick={handleDeleteSavedProfile}>No</button>
+                    <div className="modal-padding">
+                        <div className='modal-content saved-profile'>
+                            <h2>You Have an Unfinished Profile</h2>
+                            <p>Would you like to continue where you left off?</p>
+                            <div
+                                    className="saved-profile-card"
+                                    onClick={() => {
+                                        setFormData(savedProfile);
+                                        setCompleteSavedProfileModal(false);
+                                        redirectToStep(savedProfile.currentStep);
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            setFormData(savedProfile);
+                                            setCompleteSavedProfileModal(false);
+                                            redirectToStep(savedProfile.currentStep);
+                                        }
+                                    }}
+                                >
+                                {savedProfile?.photos[0] ? (
+                                    <div className="img-thumbnail">
+                                        <img src={savedProfile.photos[0]} alt={savedProfile.name} />
+                                    </div>
+                                ) : (
+                                    <div className="img-thumbnail">
+                                        <h1>?</h1>
+                                    </div>
+                                )}
+                                <div className="details">
+                                    <h3>{savedProfile.name}</h3>
+                                    <h4>{savedProfile?.address}</h4>
+                                </div>
+                            </div>
                         </div>
+                        <button className='btn text bottom-text' onClick={handleDeleteSavedProfile}>No, delete the profile.</button>
                     </div>
                 </div>
             )}
 
             {showErrorModal && (
-                <div className='modal'>
+                <div className='modal venue-builder-error'>
                     <div className='modal-content'>
-                        <h3>Oops!</h3>
-                        <p>You are already signed up as a musician. We don't allow two profiles for the time being, check back soon!</p>
-                        <button className='btn primary' onClick={() => {setShowErrorModal(false); navigate('/find-a-gig')}}>Got it!</button>
-                        <button className='btn close tertiary' onClick={() => {setShowErrorModal(false); navigate('/find-a-gig')}}>Close</button>
+                        <div>
+                            <h2>Oops! You’re Already a Musician</h2>
+                            <p>
+                                It looks like you’ve already signed up with a musician profile.
+                                For now, we only support one type of profile per account.
+                                Venue support is coming soon — stay tuned!
+                            </p>
+                        </div>
+                        <button className='btn primary' onClick={() => {setShowErrorModal(false); navigate('/find-a-gig')}}>Go Back</button>
                     </div>
                 </div>
             )}

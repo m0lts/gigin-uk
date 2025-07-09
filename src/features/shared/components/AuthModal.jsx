@@ -27,13 +27,13 @@ export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, s
   const handleModalClick = (e) => {
     if (loading) return;
     if (!authClosable) return;
-    if (e.target.className === 'modal') {
+    if (e.target.className !== 'modal') {
       setAuthModal(false);
     }
   };
 
   return (
-    <div className='modal' onClick={handleModalClick}>
+    <div className='modal auth' onClick={handleModalClick}>
       {authType === 'login' ? (
         <LoginForm
           authClosable={authClosable}

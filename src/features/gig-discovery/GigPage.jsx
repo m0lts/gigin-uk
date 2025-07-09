@@ -8,7 +8,7 @@ import {
     ClubIcon,
     FacebookIcon,
     GuitarsIcon,
-    HouseIcon,
+    HouseIconLight,
     InstagramIcon,
     InviteIcon,
     MicrophoneIcon,
@@ -276,7 +276,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         } else if (input === 'Ticketed Gig') {
             return <TicketIcon />
         } else if (input === 'House Party') {
-            return <HouseIcon />
+            return <HouseIconLight />
         } else if (input === 'Wedding') {
             return <WeddingIcon />
         } else {

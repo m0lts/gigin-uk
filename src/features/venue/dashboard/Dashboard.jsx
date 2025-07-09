@@ -124,17 +124,31 @@ export const VenueDashboard = () => {
             {loadingData && <LoadingScreen />}
             <Sidebar
               setGigPostModal={setGigPostModal}
+              user={user}
             />
-            <div className='dashboard window venue'>
-                <Routes>
-                    <Route index element={<Overview savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} gigs={gigsData} loadingGigs={loadingData} venues={venueProfiles} setGigPostModal={setGigPostModal} />} />
-                    <Route path='gigs' element={<Gigs gigs={gigsData} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
-                    <Route path='gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
-                    <Route path='venues' element={<Venues venues={venueProfiles} />} />
-                    <Route path='musicians' element={<SavedMusicians user={user} />} />
-                    <Route path='musicians/find' element={<FindMusicians user={user} />} />
-                    <Route path='finances' element={<Finances savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} customerDetails={customerDetails} setSavedCards={setSavedCards} />} />
-                </Routes>
+            <div className='window venue'>
+                <div className="breadcrumbs">
+                    <div>
+                        <p>Dashboard</p>
+                    </div>
+                    <div>
+                        <p>Dashboard</p>
+                    </div>
+                    <div>
+                        <p>Dashboard</p>
+                    </div>
+                </div>
+                <div className="output">
+                    <Routes>
+                        <Route index element={<Overview savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} gigs={gigsData} loadingGigs={loadingData} venues={venueProfiles} setGigPostModal={setGigPostModal} />} />
+                        <Route path='gigs' element={<Gigs gigs={gigsData} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
+                        <Route path='gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
+                        <Route path='venues' element={<Venues venues={venueProfiles} />} />
+                        <Route path='musicians' element={<SavedMusicians user={user} />} />
+                        <Route path='musicians/find' element={<FindMusicians user={user} />} />
+                        <Route path='finances' element={<Finances savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} customerDetails={customerDetails} setSavedCards={setSavedCards} />} />
+                    </Routes>
+                </div>
             </div>
             {gigPostModal && 
               <GigPostModal 

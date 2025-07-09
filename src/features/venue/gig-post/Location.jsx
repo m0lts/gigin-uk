@@ -3,7 +3,7 @@ import {
     VenueBuilderIcon,
     BeerIcon,
     ClubIcon,
-    HouseIcon,
+    HouseIconLight,
     MicrophoneIcon,
     OtherIcon,
     PlaceOfWorshipIcon,
@@ -27,7 +27,7 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
 
     const getIcon = (type, establishment) => {
         if (type === 'Personal Space') {
-            return <HouseIcon />
+            return <HouseIconLight />
         } else if (type === 'Public Establishment') {
             if (establishment === 'Pub/Bar') {
                 return <BeerIcon />

@@ -70,7 +70,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
               labels: {
                   font: {
                       size: 14,
-                      family: 'DM Sans',
+                      family: 'Inter',
                       weight: 'bold',
                   },
                   color: '#333',
@@ -81,7 +81,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
               text: 'Expenditure Over Time',
               font: {
                   size: 18,
-                  family: 'DM Sans',
+                  family: 'Inter',
                   weight: 'bold',
               },
               color: '#333',
@@ -104,7 +104,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
                   color: '#333',
                   font: {
                       size: 12,
-                      family: 'DM Sans',
+                      family: 'Inter',
                   },
               },
           },
@@ -117,7 +117,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
                   color: '#333',
                   font: {
                       size: 12,
-                      family: 'DM Sans',
+                      family: 'Inter',
                   },
               },
               beginAtZero: true,

@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LeftChevronIcon, CameraIcon, CloseIcon } from '@features/shared/ui/extras/Icons';
+import { LeftChevronIcon, FileIcon, DeleteIcon, StarIcon } from '@features/shared/ui/extras/Icons';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 const ItemType = 'IMAGE';
 
-const DraggableImage = ({ image, index, moveImage, removeImage }) => {
+const DraggableImage = ({ image, index, moveImage, removeImage, totalImages }) => {
     const [, ref] = useDrag({
         type: ItemType,
-        item: { index }
+        item: { index },
     });
 
     const [, drop] = useDrop({
@@ -19,27 +19,44 @@ const DraggableImage = ({ image, index, moveImage, removeImage }) => {
                 moveImage(draggedItem.index, index);
                 draggedItem.index = index;
             }
-        }
+        },
     });
 
     return (
-        <div
-            ref={(node) => ref(drop(node))}
-            className='preview-image-container'
-        >
+        <div ref={(node) => ref(drop(node))} className="image-row-card">
             <img
                 src={typeof image === 'string' ? image : URL.createObjectURL(image)}
                 alt={`Preview ${index}`}
-                className='preview-image'
+                className="image-thumbnail"
             />
-            <button className='remove-button' onClick={() => removeImage(index)}>
-                <CloseIcon />
-            </button>
+            <div className="image-actions">
+                <button className="btn icon remove" onClick={() => removeImage(index)}>
+                    <DeleteIcon />
+                </button>
+                <div className="position-select">
+                    {Array.from({ length: totalImages }).map((_, i) => (
+                        <button
+                            key={i}
+                            className={`btn tiny ${i === index ? 'selected' : ''}`}
+                            onClick={() => moveImage(index, i)}
+                            disabled={i === index}
+                        >
+                            {i === 0 ? (
+                                    <span className={`first-image ${index === 0 ? 'gold' : 'black'}`}>
+                                        <StarIcon />
+                                    </span>
+                                ) : (
+                                    i + 1
+                            )}
+                        </button>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 };
 
-export const Photos = ({ formData, handleInputChange }) => {
+export const Photos = ({ formData, handleInputChange, stepError, setStepError }) => {
     const navigate = useNavigate();
     const [images, setImages] = useState(formData.photos || []);
 
@@ -63,7 +80,14 @@ export const Photos = ({ formData, handleInputChange }) => {
     };
 
     const handleNext = () => {
-        if (images.length < 3) return;
+        if (images.length === 0) {
+            setStepError('Please upload some images of your venue.');
+            return;
+        }
+        if (images.length < 3) {
+            setStepError('You must upload a minimum of three images.');
+            return;
+        };
         navigate('/venues/add-venue/additional-details');
     };
 
@@ -87,41 +111,48 @@ export const Photos = ({ formData, handleInputChange }) => {
     return (
         <DndProvider backend={HTML5Backend}>
             <div className='stage photos'>
-                <h3>Let's spruce it up! Add some images of your space.</h3>
-                <div className='photo-space'>
-                    <div
-                        className='upload'
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                    >
-                        <input
-                            type='file'
-                            multiple
-                            onChange={handleFileChange}
-                            style={{ display: 'none' }}
-                            id='fileInput'
-                        />
-                        <label htmlFor='fileInput' className='upload-label'>
-                            <CameraIcon />
-                            <span>Click or drag images here to upload. Add at least 3 images.</span>
-                        </label>
+                <div className="stage-content">
+                    <div className="stage-definition">
+                        <h1>Show Off Your Venue</h1>
+                        <p className="stage-copy">Upload clear photos that highlight your venue’s space, stage setup, and unique atmosphere. A great first impression starts here.</p>
                     </div>
-                    <h6 className='input-label'>Drag your venue's main image to the left.</h6>
-                    <div className='preview'>
-                        {images.map((image, index) => (
-                            <DraggableImage
+                    <div className='photo-space'>
+                        <div
+                            className={`upload ${stepError ? 'error' : ''}`}
+                            onDrop={handleDrop}
+                            onDragOver={handleDragOver}
+                        >
+                            <input
+                                type='file'
+                                multiple
+                                onChange={handleFileChange}
+                                onClick={() => setStepError(null)}
+                                style={{ display: 'none' }}
+                                id='fileInput'
+                            />
+                            <label htmlFor='fileInput' className='upload-label'>
+                                <FileIcon />
+                                Click to upload or drag and drop. <br /> <span>Add at least 3 images.</span>
+                            </label>
+                        </div>
+                        <h6 className='input-label'>Arrange your images by importance using drag-and-drop or the position buttons.</h6>
+                        <div className='preview'>
+                            {images.map((image, index) => (
+                                <DraggableImage
                                 key={index}
                                 image={image}
                                 index={index}
                                 moveImage={moveImage}
                                 removeImage={removeImage}
+                                totalImages={images.length}
                             />
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
-                <div className='controls'>
+                <div className='stage-controls'>
                     <button className='btn secondary' onClick={() => navigate(-1)}>
-                        <LeftChevronIcon />
+                        Back
                     </button>
                     <button className='btn primary' onClick={handleNext}>Continue</button>
                 </div>

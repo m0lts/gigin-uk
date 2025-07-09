@@ -158,7 +158,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 location.pathname.includes('dashboard') ? (
                                     windowWidth > 900 && (
                                         <Link className='link' to={'/venues/dashboard/musicians/find'}>
-                                            <button className='btn secondary'>
+                                            <button className='btn tertiary'>
                                                 <TelescopeIcon />
                                                 Find a Musician
                                             </button>

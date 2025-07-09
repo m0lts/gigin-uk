@@ -10,7 +10,7 @@ import {
     SpeakersIcon,
     GuitarsIcon,
     TicketIcon,
-    HouseIcon,
+    HouseIconLight,
     MicrophoneLinesIcon } from '@features/shared/ui/extras/Icons';
 import { getGigById } from '@services/gigs';
 import { getVenueProfileById } from '@services/venues';
@@ -80,7 +80,7 @@ export const GigInformation = ({ gigId, gigData, setGigData }) => {
         } else if (input === 'Ticketed Gig') {
             return <TicketIcon />
         } else if (input === 'House Party') {
-            return <HouseIcon />
+            return <HouseIconLight />
         } else if (input === 'Wedding') {
             return <WeddingIcon />
         } else {

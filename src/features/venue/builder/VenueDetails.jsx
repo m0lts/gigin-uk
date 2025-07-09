@@ -13,7 +13,7 @@ import Map, { Marker } from 'react-map-gl';
 import { AddressInputAutofill } from './AddressInputAutofill';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-export const VenueDetails = ({ formData, handleInputChange }) => {
+export const VenueDetails = ({ formData, handleInputChange, setStepError, stepError }) => {
 
     const navigate = useNavigate();
 
@@ -22,6 +22,7 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
     const [locationCoordinates, setLocationCoordinates] = useState(formData.coordinates || null);
     const [locationAddress, setLocationAddress] = useState(formData.address || '');
     const [coordinatesError, setCoordinatesError] = useState(false);
+    const [errorField, setErrorField] = useState(null);
 
     const mapboxToken = import.meta.env.DEV ? 
     'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
@@ -82,13 +83,33 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
     };
 
     const handleNext = () => {
-        if (formData.name === '') return;
-        if (formData.address === '') return;
+        if (formData.name === '') {
+            setErrorField('name');
+            setStepError('Please enter your venue name before continuing.');
+            return;
+        }
+    
+        if (formData.address === '') {
+            setErrorField('address');
+            setStepError('Please enter the address of your venue.');
+            return;
+        }
+    
         if (formData.coordinates === null) {
             setCoordinatesError(true);
+            setStepError('Please drop a pin on the map or select an address.');
+            return;
         }
+    
+        if (formData.type === 'Public Establishment' && formData.establishment === '') {
+            setStepError('Please select a type of establishment.');
+            return;
+        }
+    
+        // All good
+        setStepError(null);
+    
         if (formData.type === 'Public Establishment') {
-            if (formData.establishment === '') return;
             navigate('/venues/add-venue/equipment');
         } else {
             navigate('/venues/add-venue/photos');
@@ -97,125 +118,103 @@ export const VenueDetails = ({ formData, handleInputChange }) => {
 
     return (
         <div className='stage details'>
-            <h3>Tell us about the venue.</h3>
-            <div className='form'>
-                <div className='input-group'>
-                    <label htmlFor='name' className='input-label'>Venue Name</label>
-                    <input
-                        type='text'
-                        className='input-box'
-                        placeholder='e.g. The Plough'
-                        value={formData.name}
-                        id='name'
-                        autoComplete='off'
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                    />
+            <div className="stage-content">
+                <div className="stage-definition">
+                    <h1>Let’s Pin Down Your Venue</h1>
+                    <p className='stage-copy'>Start by telling us what your venue’s called and where it is. The more accurate the info, the easier it is to attract the right musicians!</p>
                 </div>
-                <AddressInputAutofill
-                    expandForm={expandForm}
-                    setExpandForm={setExpandForm}
-                    setFeature={setFeature}
-                    setLocationAddress={setLocationAddress}
-                    setLocationCoordinates={setLocationCoordinates}
-                    locationAddress={locationAddress}
-                    handleInputChange={handleInputChange}
-                    coordinatesError={coordinatesError}
-                    setCoordinatesError={setCoordinatesError}
-                />
-            </div>
-            {!expandForm && (
-                <>
-                    {(feature && locationCoordinates) && (
-                        <div className='map'>
-                            <Map
-                                initialViewState={{
-                                    longitude: locationCoordinates[0],
-                                    latitude: locationCoordinates[1],
-                                    zoom: 14
-                                }}
-                                mapStyle='mapbox://styles/mapbox/streets-v11'
-                                mapboxAccessToken={mapboxToken}
-                            >
-                                <Marker longitude={locationCoordinates[0]} latitude={locationCoordinates[1]} />
-                            </Map>
+                    <div className='form'>
+                        <div className='input-group'>
+                            <label htmlFor='name' className='input-label'>Venue Name</label>
+                            <input
+                                type='text'
+                                className={`input-box ${stepError && errorField === 'name' ? 'error' : ''}`}
+                                placeholder='e.g. The Plough'
+                                value={formData.name}
+                                id='name'
+                                autoComplete='off'
+                                onChange={(e) => handleInputChange('name', e.target.value)}
+                                onClick={() => setStepError(null)}
+                                />
                         </div>
-                    )}
-
-                    {formData.type === 'Public Establishment' && (
-                        <div className='establishment-type'>
-                            <h6 className='input-label'>Type of establishment</h6>
-                            <div className='selections'>
-                                <button className={`card small ${formData.establishment === 'Pub/Bar' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Pub/Bar')}>
-                                    <div className='status-dot'>
-                                        {formData.establishment === 'Pub/Bar' && (
-                                            <div className='inner'></div>
-                                        )}
-                                    </div>
-                                    <BeerIcon />
-                                    <span className='title'>Pub/Bar</span>
-                                </button>
-                                <button className={`card small ${formData.establishment === 'Music Venue' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Music Venue')}>
-                                    <div className='status-dot'>
-                                        {formData.establishment === 'Music Venue' && (
-                                            <div className='inner'></div>
-                                        )}
-                                    </div>
-                                    <MicrophoneIcon />
-                                    <span className='title'>Music Venue</span>
-                                </button>
-                                <button className={`card small ${formData.establishment === 'Restaurant' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Restaurant')}>
-                                    <div className='status-dot'>
-                                        {formData.establishment === 'Restaurant' && (
-                                            <div className='inner'></div>
-                                        )}
-                                    </div>
-                                    <RestaurantIcon />
-                                    <span className='title'>Restaurant</span>
-                                </button>
-                                <button className={`card small ${formData.establishment === 'Place of Worship' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Place of Worship')}>
-                                    <div className='status-dot'>
-                                        {formData.establishment === 'Place of Worship' && (
-                                            <div className='inner'></div>
-                                        )}
-                                    </div>
-                                    <PlaceOfWorshipIcon />
-                                    <span className='title'>Place of Worship</span>
-                                </button>
-                                <button className={`card small ${formData.establishment === 'Village Hall' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Village Hall')}>
-                                    <div className='status-dot'>
-                                        {formData.establishment === 'Village Hall' && (
-                                            <div className='inner'></div>
-                                        )}
-                                    </div>
-                                    <VillageHallIcon />
-                                    <span className='title'>Village Hall</span>
-                                </button>
-                                <button className={`card small ${formData.establishment === 'Club' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Club')}>
-                                    <div className='status-dot'>
-                                        {formData.establishment === 'Club' && (
-                                            <div className='inner'></div>
-                                        )}
-                                    </div>
-                                    <ClubIcon />
-                                    <span className='title'>Club</span>
-                                </button>
-                                <button className={`card small ${formData.establishment === 'Other' && 'selected'}`} onClick={() => handleInputChange('establishment', 'Other')}>
-                                    <div className='status-dot'>
-                                        {formData.establishment === 'Other' && (
-                                            <div className='inner'></div>
-                                        )}
-                                    </div>
-                                    <OtherIcon />
-                                    <span className='title'>Other</span>
-                                </button>
+                        {!(feature && locationCoordinates) && (
+                            <AddressInputAutofill
+                                expandForm={expandForm}
+                                setExpandForm={setExpandForm}
+                                setFeature={setFeature}
+                                setLocationAddress={setLocationAddress}
+                                setLocationCoordinates={setLocationCoordinates}
+                                locationAddress={locationAddress}
+                                handleInputChange={handleInputChange}
+                                coordinatesError={coordinatesError}
+                                setCoordinatesError={setCoordinatesError}
+                                stepError={stepError}
+                                setStepError={setStepError}
+                                errorField={errorField}
+                                setErrorField={setErrorField}
+                            />
+                        )}
+                    </div>
+                {!expandForm && (
+                    <>
+                        {(feature && locationCoordinates) && (
+                            <div className="map-container">
+                                <div className="address">
+                                    <h4>{formData.address}</h4>
+                                    <button className="btn text" onClick={() => {
+                                    setLocationAddress('');
+                                    setLocationCoordinates(null);
+                                    setExpandForm(false);
+                                  }}>Change</button>
+                                </div>
+                                <div className='map'>
+                                    <Map
+                                        initialViewState={{
+                                            longitude: locationCoordinates[0],
+                                            latitude: locationCoordinates[1],
+                                            zoom: 12
+                                        }}
+                                        mapStyle='mapbox://styles/mapbox/streets-v11'
+                                        mapboxAccessToken={mapboxToken}
+                                    >
+                                        <Marker longitude={locationCoordinates[0]} latitude={locationCoordinates[1]} />
+                                    </Map>
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </>
-            )}
-            <div className='controls'>
+                        )}
+
+                        {formData.type === 'Public Establishment' && (
+                            <div className='establishment-type'>
+                                <h6 className='input-label'>Type of establishment</h6>
+                                <div className='selections'>
+                                    {[
+                                        'Pub/Bar',
+                                        'Music Venue',
+                                        'Restaurant',
+                                        'Place of Worship',
+                                        'Village Hall',
+                                        'Club',
+                                        'Other',
+                                    ].map((type) => (
+                                        <button
+                                            key={type}
+                                            className={`card small ${formData.establishment === type ? 'selected' : ''} ${
+                                                stepError?.includes('establishment') && formData.establishment === '' ? 'error' : ''
+                                            }`}
+                                            onClick={() => handleInputChange('establishment', type)}
+                                        >
+                                            {type}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+            <div className='stage-controls'>
                 <button className='btn secondary' onClick={() => navigate(-1)}>
-                    <LeftChevronIcon />
+                    Back
                 </button>
                 <button className='btn primary' onClick={handleNext}>Continue</button>
             </div>

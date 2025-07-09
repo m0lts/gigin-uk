@@ -137,7 +137,7 @@ export const Overview = ({ savedCards, loadingStripeDetails, receipts, gigs, loa
                   text: 'Expenditure Over Time',
                   font: {
                       size: 18,
-                      family: 'DM Sans',
+                      family: 'Inter',
                       weight: 'bold',
                   },
                   color: '#333',
@@ -160,7 +160,7 @@ export const Overview = ({ savedCards, loadingStripeDetails, receipts, gigs, loa
                       color: '#333',
                       font: {
                           size: 12,
-                          family: 'DM Sans',
+                          family: 'Inter',
                       },
                   },
               },
@@ -173,7 +173,7 @@ export const Overview = ({ savedCards, loadingStripeDetails, receipts, gigs, loa
                       color: '#333',
                       font: {
                           size: 12,
-                          family: 'DM Sans',
+                          family: 'Inter',
                       },
                   },
                   beginAtZero: true,
