@@ -1,6 +1,6 @@
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Route, Routes, useLocation, Link } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { GigPostModal } from '../gig-post/GigPostModal';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
@@ -17,7 +17,8 @@ import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { WelcomeModal } from '@features/musician/components/WelcomeModal';
 import { listenToTemplatesByVenueIds } from '@services/venues';
 import { fetchCustomerData } from '@services/functions';
-
+import { getBreadcrumbs } from '@services/utils/breadcrumbs';
+import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 
 export const VenueDashboard = () => {
 
@@ -25,6 +26,7 @@ export const VenueDashboard = () => {
     const { gigs } = useGigs();
     const location = useLocation();
     const newUser = location.state?.newUser;
+    const breadcrumbs = getBreadcrumbs(location.pathname);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
     const [loadingData, setLoadingData] = useState(false);
@@ -127,23 +129,32 @@ export const VenueDashboard = () => {
               user={user}
             />
             <div className='window venue'>
-                <div className="breadcrumbs">
-                    <div>
-                        <p>Dashboard</p>
+                {location.pathname !== '/venues/dashboard' && (
+                    <div className="breadcrumbs">
+                        {breadcrumbs.map((crumb, index) => (
+                            <React.Fragment key={crumb.path}>
+                            <div className="breadcrumb">
+                                {index !== breadcrumbs.length - 1 ? (
+                                <Link to={crumb.path} className='breadcrumb-link'>{crumb.label}</Link>
+                                ) : (
+                                <p className='breadcrumb-text'>{crumb.label}</p>
+                                )}
+                            </div>
+                            {index !== breadcrumbs.length - 1 && (
+                                <div className="breadcrumb-separator">
+                                <RightChevronIcon />
+                                </div>
+                            )}
+                            </React.Fragment>
+                        ))}
                     </div>
-                    <div>
-                        <p>Dashboard</p>
-                    </div>
-                    <div>
-                        <p>Dashboard</p>
-                    </div>
-                </div>
+                )}
                 <div className="output">
                     <Routes>
                         <Route index element={<Overview savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} gigs={gigsData} loadingGigs={loadingData} venues={venueProfiles} setGigPostModal={setGigPostModal} />} />
                         <Route path='gigs' element={<Gigs gigs={gigsData} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
-                        <Route path='gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
-                        <Route path='venues' element={<Venues venues={venueProfiles} />} />
+                        <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
+                        <Route path='my-venues' element={<Venues venues={venueProfiles} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} customerDetails={customerDetails} setSavedCards={setSavedCards} />} />

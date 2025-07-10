@@ -2,7 +2,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { MusicianLogoLink } from '@features/shared/ui/logos/Logos';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading'
 import { 
-    DashboardIcon,
+    DashboardIconLight,
     MailboxEmptyIcon,
     RightChevronIcon,
     GuitarsIcon,
@@ -156,7 +156,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                             {user.venueProfiles && !user.musicianProfile ? (
                                 <Link className='link' to={'/venues/dashboard'}>
                                     <button className='btn secondary'>
-                                        <DashboardIcon />
+                                        <DashboardIconLight />
                                         Dashboard
                                     </button>
                                 </Link>
@@ -174,7 +174,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                         windowWidth > 1100 && (
                                             <Link className='link' to={'/dashboard'}>
                                                 <button className={`btn secondary ${location.pathname.includes('dashboard') ? 'disabled' : ''}`}>
-                                                    <DashboardIcon />
+                                                    <DashboardIconLight />
                                                     Dashboard
                                                 </button>
                                             </Link>
@@ -239,7 +239,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 <>
                                     <Link className='link item no-margin' to={'/venues/dashboard'}>
                                         Dashboard
-                                        <DashboardIcon />
+                                        <DashboardIconLight />
                                     </Link>
                                     <Link className='link item' to={'/venues/add-venue'}>
                                         Add another venue
@@ -295,7 +295,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 {user.musicianProfile ? (
                                     <Link className='link item' to={'/dashboard'}>
                                         Dashboard
-                                        <DashboardIcon />
+                                        <DashboardIconLight />
                                     </Link>
                                 ) : (
                                     <Link className='link item' to={'/create-profile'}>

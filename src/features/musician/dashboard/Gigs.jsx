@@ -6,7 +6,7 @@ import {
     PreviousIcon,
     SortIcon,
     TickIcon,
-    CalendarIcon,
+    CalendarIconSolid,
     RejectedIcon } from '@features/shared/ui/extras/Icons';
 import { useGigs } from '@context/GigsContext';
 import { GigHandbook } from '@features/musician/components/GigHandbook';
@@ -261,7 +261,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile }) => {
                             <tr className='no-gigs'>
                                 <td className='data' colSpan={6}>
                                     <div className='flex'>
-                                        <CalendarIcon />
+                                        <CalendarIconSolid />
                                         <h4>No gigs to show.</h4>
                                         <button className='btn secondary' onClick={() => navigate('/find-a-gig')}>
                                             Find Gigs

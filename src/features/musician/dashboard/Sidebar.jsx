@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { 
-    CalendarIcon,
+    CalendarIconSolid,
     CoinsIcon,
     GuitarsIcon,
     PeopleGroupIcon,
@@ -44,7 +44,7 @@ export const Sidebar = () => {
         </ul>
         <ul className='menu'>
             <li className={`menu-item expandable ${location.pathname.includes('/dashboard/gigs') && 'active'}`} onClick={() => {navigate('/dashboard/gigs')}}>
-                <CalendarIcon />
+                <CalendarIconSolid />
                 Gigs
             </li>
             {expandedItem === 'gigs' && (

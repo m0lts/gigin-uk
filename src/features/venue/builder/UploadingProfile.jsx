@@ -1,5 +1,5 @@
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
-import { CameraIcon, DashboardIcon, HouseIconLight } from '@features/shared/ui/extras/Icons';
+import { CameraIcon, DashboardIconLight, HouseIconLight } from '@features/shared/ui/extras/Icons';
 import '@styles/host/venue-builder.styles.css'
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 

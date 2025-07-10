@@ -7,9 +7,9 @@ import {
     PreviousIcon,
     SortIcon,
     TickIcon,
-    CalendarIcon,
 CloseIcon } from '@features/shared/ui/extras/Icons';
 import { useResizeEffect } from '@hooks/useResizeEffect';
+import { CalendarIconSolid } from '../../shared/ui/extras/Icons';
 
 export const Gigs = ({ gigs, venues }) => {
     const location = useLocation();
@@ -211,7 +211,7 @@ export const Gigs = ({ gigs, venues }) => {
                                             <td className='action-data'>
                                                 <button
                                                     className='btn text'
-                                                    onClick={() => navigate('/venues/dashboard/gig-applications', { state: { gig } })}
+                                                    onClick={() => navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } })}
                                                 >
                                                     Gig Details
                                                 </button>
@@ -231,7 +231,7 @@ export const Gigs = ({ gigs, venues }) => {
                             <tr className='no-gigs'>
                                 <td className='data' colSpan={6}>
                                     <div className='flex'>
-                                        <CalendarIcon />
+                                        <CalendarIconSolid />
                                         <h4>No gigs to show.</h4>
                                     </div>
                                 </td>

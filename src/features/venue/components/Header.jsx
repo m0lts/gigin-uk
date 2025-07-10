@@ -5,7 +5,7 @@ import { TextLogoLink, VenueLogoLink } from '@features/shared/ui/logos/Logos';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { 
     DotIcon,
-    DashboardIcon,
+    DashboardIconLight,
     FaceFrownIcon,
     FaceHeartsIcon,
     FaceMehIcon,
@@ -167,7 +167,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 ) : (
                                     <Link className='link' to={'/venues/dashboard'}>
                                         <button className='btn secondary'>
-                                            <DashboardIcon />
+                                            <DashboardIconLight />
                                             Dashboard
                                         </button>
                                     </Link>
@@ -228,7 +228,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                     <Link className='link' to={'/venues/dashboard'}>
                                         <div className='item no-margin'>
                                             Dashboard
-                                            <DashboardIcon />
+                                            <DashboardIconLight />
                                         </div>
                                     </Link>
                                     <Link to={'/venues/add-venue'} className='item link'>
