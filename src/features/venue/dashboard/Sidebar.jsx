@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   CoinsIcon,
@@ -25,8 +25,7 @@ export const Sidebar = ({ setGigPostModal, user }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
-
-  const [expandedItem, setExpandedItem] = useState('');
+  const pathname = useMemo(() => location.pathname, [location.pathname]);
   const [newMessages, setNewMessages] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -37,7 +36,7 @@ export const Sidebar = ({ setGigPostModal, user }) => {
         const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
         const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
         const isNotSender = conv.lastMessageSenderId !== user.uid;
-        const isDifferentPage = !location.pathname.includes(conv.id);
+        const isDifferentPage = !pathname.includes(conv.id);
         return lastMessage > lastViewed && isNotSender && isDifferentPage;
       });
       setNewMessages(hasUnread);
@@ -45,30 +44,49 @@ export const Sidebar = ({ setGigPostModal, user }) => {
     return () => unsubscribe();
   }, [user]);
 
-  useEffect(() => {
-    if (location.pathname.includes('/venues/dashboard/gigs')) {
-      setExpandedItem('gigs');
-    } else if (location.pathname.includes('/venues/dashboard/my-venues')) {
-      setExpandedItem('venues');
-    } else if (location.pathname.includes('/venues/dashboard/musicians')) {
-      setExpandedItem('musicians');
-    } else if (location.pathname.includes('/venues/dashboard/finances')) {
-      setExpandedItem('finances');
-    } else {
-      setExpandedItem('');
-    }
-  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
       await logout();
       navigate('/venues');
     } catch (err) {
-      console.error(err);
-    } finally {
-      window.location.reload();
+      console.error('Logout Failed:', err);
     }
   };
+
+  const menuItems = [
+    {
+      path: '/venues/dashboard',
+      label: 'Overview',
+      icon: <DashboardIconLight />,
+      iconActive: <DashboardIconSolid />,
+      exact: true,
+    },
+    {
+      path: '/venues/dashboard/gigs',
+      label: 'Gigs',
+      icon: <CalendarIconLight />,
+      iconActive: <CalendarIconSolid />,
+    },
+    {
+      path: '/venues/dashboard/my-venues',
+      label: 'My Venues',
+      icon: <VenueIconLight />,
+      iconActive: <VenueIconSolid />,
+    },
+    {
+      path: '/venues/dashboard/musicians',
+      label: 'Musicians',
+      icon: <MusicianIconLight />,
+      iconActive: <MusicianIconSolid />,
+    },
+    {
+      path: '/venues/dashboard/finances',
+      label: 'Finances',
+      icon: <CoinsIcon />,
+      iconActive: <CoinsIconSolid />,
+    }
+  ];
 
   return (
     <div className='sidebar'>
@@ -90,21 +108,17 @@ export const Sidebar = ({ setGigPostModal, user }) => {
               </div>
             </div>
           </div>
-          {showDropdown ? (
-            <UpChevronIcon />
-          ) : (
-            <DownChevronIcon />
-          )}
+          {showDropdown ? <UpChevronIcon /> : <DownChevronIcon />}
         </li>
         {showDropdown && (
           <>
-            <li className={`account-dropdown-item ${showDropdown ? 'open' : ''}`} onClick={() => navigate('/create-profile')}>
+            <li className='account-dropdown-item' onClick={() => navigate('/create-profile')}>
               Create a Musician Profile <GuitarsIcon />
             </li>
-            <li className={`account-dropdown-item ${showDropdown ? 'open' : ''}`} onClick={() => navigate('/account')}>
+            <li className='account-dropdown-item' onClick={() => navigate('/account')}>
               Settings <SettingsIcon />
             </li>
-            <li className={`account-dropdown-item red ${showDropdown ? 'open' : ''}`} onClick={handleLogout}>
+            <li className='account-dropdown-item red' onClick={handleLogout}>
               Log Out <LogOutIcon />
             </li>
           </>
@@ -113,57 +127,21 @@ export const Sidebar = ({ setGigPostModal, user }) => {
       <button className='btn primary' onClick={() => setGigPostModal(true)}>
         Post a Gig <GigIcon />
       </button>
-      <ul className='menu'>
-        <li className={`menu-item ${location.pathname === '/venues/dashboard' && 'active'}`} onClick={() => navigate('/venues/dashboard')}>
-          {location.pathname === '/venues/dashboard' ? (
-            <DashboardIconSolid />
-          ) : (
-            <DashboardIconLight />
-          )}
-           Overview
-        </li>
-        <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/gigs') && 'active'}`} onClick={() => navigate('/venues/dashboard/gigs')}>
-          {location.pathname.includes('/venues/dashboard/gigs') ? (
-              <>
-                <CalendarIconSolid /> Gigs
-              </>
-            ) : (
-              <>
-                <CalendarIconLight /> Gigs
-              </>
-          )}
-        </li>
-      {newMessages ? (
-              <li className='menu-item' onClick={() => navigate('/messages')}>
-                <MailboxFullIcon /> Messages
-              </li>
-            ) : (
-              <li className='menu-item' onClick={() => navigate('/messages')}>
-                <MailboxEmptyIcon /> Messages
-              </li>
-            )}
-        <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/my-venues') && 'active'}`} onClick={() => navigate('/venues/dashboard/my-venues')}>
-        {location.pathname.includes('/venues/dashboard/my-venues') ? (
-            <VenueIconSolid />
-          ) : (
-            <VenueIconLight />
-          )}
-          My Venues
-        </li>
-        <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/musicians') && 'active'}`} onClick={() => navigate('/venues/dashboard/musicians')}>
-        {location.pathname.includes('/venues/dashboard/musicians') ? (
-            <MusicianIconSolid />
-          ) : (
-            <MusicianIconLight />
-          )} Musicians
-        </li>
-        <li className={`menu-item expandable ${location.pathname.includes('/venues/dashboard/finances') && 'active'}`} onClick={() => navigate('/venues/dashboard/finances')}>
-        {location.pathname.includes('/venues/dashboard/finances') ? (
-            <CoinsIconSolid />
-          ) : (
-            <CoinsIcon />
-          )}
-          Finances
+      <ul className="menu">
+        {menuItems.map(({ path, label, icon, iconActive, exact }) => {
+          const isActive = exact ? pathname === path : pathname.includes(path);
+          return (
+            <li
+              key={path}
+              className={`menu-item${isActive ? ' active' : ''}`}
+              onClick={() => navigate(path)}
+            >
+              {isActive ? iconActive : icon} {label}
+            </li>
+          );
+        })}
+        <li className="menu-item" onClick={() => navigate('/messages')}>
+          {newMessages ? <MailboxFullIcon /> : <MailboxEmptyIcon />} Messages
         </li>
       </ul>
       <FeedbackBox user={user} />

@@ -14,6 +14,21 @@ import {
   orderBy,
   arrayRemove
 } from 'firebase/firestore';
+import { fetchCustomerData } from '@services/functions';
+
+
+/*** READ OPERATIONS ***/
+
+export const fetchStripeCustomerData = async () => {
+  const response = await fetchCustomerData();
+  const { customer, receipts, paymentMethods } = response;
+  return {
+    customerDetails: customer,
+    savedCards: paymentMethods,
+    receipts: receipts.filter((r) => r.metadata.gigId),
+  };
+};
+
 
 /*** UPDATE OPERATIONS ***/
 

@@ -1,6 +1,6 @@
 import { Route, Routes, useLocation, Link } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { GigPostModal } from '../gig-post/GigPostModal';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
@@ -18,112 +18,47 @@ import { WelcomeModal } from '@features/musician/components/WelcomeModal';
 import { listenToTemplatesByVenueIds } from '@services/venues';
 import { fetchCustomerData } from '@services/functions';
 import { getBreadcrumbs } from '@services/utils/breadcrumbs';
+import { getPendingGigsToReview } from '@services/utils/filtering';
 import { RightChevronIcon } from '../../shared/ui/extras/Icons';
+import { useVenueDashboard } from '@context/VenueDashboardContext';
 
-export const VenueDashboard = () => {
-
-    const { user } = useAuth();
-    const { gigs } = useGigs();
-    const location = useLocation();
-    const newUser = location.state?.newUser;
-    const breadcrumbs = getBreadcrumbs(location.pathname);
-    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-
-    const [loadingData, setLoadingData] = useState(false);
+export const VenueDashboard = ({ user }) => {
+    const {
+      loading,
+      venueProfiles,
+      gigs,
+      incompleteGigs,
+      templates,
+      stripe: { customerDetails, savedCards, receipts },
+      refreshData,
+      refreshGigs,
+      refreshTemplates,
+      refreshStripe
+    } = useVenueDashboard();
+  
     const [gigPostModal, setGigPostModal] = useState(false);
-    const [venueProfiles, setVenueProfiles] = useState([]);
-    const [gigsData, setGigsData] = useState([]);
-    const [incompleteGigs, setIncompleteGigs] = useState([]);
-    const [templates, setTemplates] = useState([]);
     const [editGigData, setEditGigData] = useState();
-    const [savedCards, setSavedCards] = useState([]);
-    const [loadingStripeDetails, setLoadingStripeDetails] = useState(true);
-    const [customerDetails, setCustomerDetails] = useState();
-    const [receipts, setReceipts] = useState([]);
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [gigToReview, setGigToReview] = useState(null);
-    
-
+    const location = useLocation();
+    const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname), [location.pathname]);
+  
     useEffect(() => {
-        const filterVenueData = async () => {
-            if (!user) return;
-            try {
-                setLoadingData(true);
-                const completeProfiles = user.venueProfiles.filter(profile => profile.completed);
-                setVenueProfiles(completeProfiles);
-                if (completeProfiles.length === 0) {
-                    setLoadingData(false);
-                    return;
-                }
-                const venueIds = completeProfiles.map(profile => profile.venueId);
-                const completeGigs = gigs.filter(gig => venueIds.includes(gig.venueId) && gig.complete !== false);
-                const incompleteGigs = gigs.filter(gig => venueIds.includes(gig.venueId) && gig.complete === false);
-                setGigsData(completeGigs);
-                setIncompleteGigs(incompleteGigs);
-                const unsubscribe = listenToTemplatesByVenueIds(venueIds, setTemplates);
-                return () => unsubscribe();
-            } catch (error) {
-                console.error('Error filtering venue data:', error);
-            } finally {
-                setLoadingData(false);
-            }
-        };
-
-        const fetchCustomerStripeData = async () => {
-            setLoadingStripeDetails(true);
-            try {
-                const response = await fetchCustomerData();
-                if (!response?.data) {
-                    throw new Error('Stripe customer data is missing from response.');
-                  }
-              
-                  const { customer, receipts, paymentMethods } = response.data;
-                const filteredReceipts = receipts.filter((receipt) => receipt.metadata.gigId)
-                setSavedCards(paymentMethods);
-                setReceipts(filteredReceipts);
-                setCustomerDetails(customer);
-            } catch (error) {
-                console.error('Error fetching customer data:', error);
-            } finally {
-                setLoadingStripeDetails(false);
-            }
-        };
-
-        const checkGigsForReview = () => {
-            const now = new Date();
-            const twentyFourHoursAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            const gigsToReview = gigs.filter((gig) => {
-                const gigDateTime = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
-                const hasBeenReviewed = localStorage.getItem(`reviewedGig-${gig.gigId}`) === 'true';
-                const gigReviewed = gig.venueHasReviewed;
-                const hasAcceptedApplicant = gig.applicants.some((applicant) => applicant.status === 'confirmed');
-
-            return gigDateTime > twentyFourHoursAgo &&
-            gigDateTime <= now &&
-            !hasBeenReviewed &&
-            !gigReviewed &&
-            hasAcceptedApplicant;
-            });
-            if (gigsToReview.length > 0) {
-                setGigToReview(gigsToReview[0]);
-                setShowReviewModal(true);
-            }
-        };
-
-        filterVenueData();
-        fetchCustomerStripeData();
-        checkGigsForReview();
-    }, [user, gigs]); 
-
+      if (location.state?.newUser) setShowWelcomeModal(true);
+    }, [location]);
+  
     useEffect(() => {
-        if (newUser) {
-            setShowWelcomeModal(true);
+        const gigsToReview = getPendingGigsToReview(gigs);
+        if (gigsToReview.length > 0) {
+          setGigToReview(gigsToReview[0]);
+          setShowReviewModal(true);
         }
-    }, [newUser]);
+      }, [gigs]);
 
     return (
         <>  
-            {loadingData && <LoadingScreen />}
+            {loading && <LoadingScreen />}
             <Sidebar
               setGigPostModal={setGigPostModal}
               user={user}
@@ -151,13 +86,13 @@ export const VenueDashboard = () => {
                 )}
                 <div className="output">
                     <Routes>
-                        <Route index element={<Overview savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} gigs={gigsData} loadingGigs={loadingData} venues={venueProfiles} setGigPostModal={setGigPostModal} />} />
-                        <Route path='gigs' element={<Gigs gigs={gigsData} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
+                        <Route index element={<Overview savedCards={savedCards} receipts={receipts} gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} />} />
+                        <Route path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
-                        <Route path='finances' element={<Finances savedCards={savedCards} loadingStripeDetails={loadingStripeDetails} receipts={receipts} customerDetails={customerDetails} setSavedCards={setSavedCards} />} />
+                        <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} />} />
                     </Routes>
                 </div>
             </div>

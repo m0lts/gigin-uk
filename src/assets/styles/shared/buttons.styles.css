@@ -67,8 +67,7 @@ button {
     border:1px solid var(--gn-grey-350);
     padding: 0.5rem 1rem;
     border-radius: var(--gn-btn-border-radius);
-    box-shadow: 0 0 3px var(--gn-grey-400);
-    font-weight: 400;
+    font-weight: 500;
     color: var(--gn-off-black);
     transition: all 200ms linear;
 }
@@ -90,15 +89,14 @@ button {
 .btn.tertiary {
     background-color: var(--gn-grey-300);
     border:1px solid transparent;
-    font-weight: 400;
+    font-weight: 500;
     padding:var(--gn-btn-padding-y) var(--gn-btn-padding-x);
     border-radius: var(--gn-btn-border-radius);
     transition: background-color 200ms linear;
 }
 
 .btn.tertiary:hover {
-    border-color: var(--gn-grey-350);
-    background-color: var(--gn-white);
+    background-color: var(--gn-grey-350);
 }
 
 
@@ -107,10 +105,15 @@ button {
 .btn.text {
     background-color: transparent;
     border:none;
+    text-decoration: underline;
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--gn-black);
+    transition: color 200ms linear;
 }
 
 .btn.text:hover {
-    text-decoration: underline;
+    color: var(--gn-grey-600);
 }
 
 
@@ -130,13 +133,13 @@ button {
 /* DANGER BUTTONS */
 
 .btn.danger {
-    background-color: var(--gn-red);
-    color: var(--gn-white);
-    border:none;
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+    border:1px solid transparent;
     padding:var(--gn-btn-padding-y) var(--gn-btn-padding-x);
     border-radius: 5px;
     font-weight: 500;
-    transition: opacity 200ms linear;
+    transition: all 200ms linear;
 }
 
 .btn.danger.small {
@@ -145,20 +148,20 @@ button {
 
 .btn.danger:hover {
     opacity: 0.8;
+    border-color: var(--gn-red);
 }
 
 
 /* ACCEPT BUTTONS */
 
 .btn.accept {
-    background-color: var(--gn-green);
+    background-color: var(--gn-offset-green);
     border: 1px solid transparent;
-    color: var(--gn-white);
-    padding:5px 7px;
-    text-transform: uppercase;
-    font-weight: 600;
-    font-size: 0.9rem;
-    border-radius: 5px;
+    color: var(--gn-green);
+    padding: 0.5rem 0.75rem !important;
+    font-weight: 500;
+    font-size: 1rem;
+    border-radius: 0.5rem;
     transition: border 200ms linear;
 }
 
@@ -171,14 +174,13 @@ button {
 }
 
 .btn.decline {
-    background-color: var(--gn-red);
+    background-color: var(--gn-offset-red);
     border: 1px solid transparent;
-    color: var(--gn-white);
-    padding:5px 7px;
-    text-transform: uppercase;
-    font-weight: 600;
-    font-size: 0.9rem;
-    border-radius: 5px;
+    color: var(--gn-red);
+    padding: 0.5rem 0.75rem !important;
+    font-weight: 500;
+    font-size: 1rem;
+    border-radius: 0.5rem;
     transition: border 200ms linear;
 }
 

@@ -29,9 +29,9 @@
     --gn-off-black: #333333;
     --gn-black: #000000;
     --gn-red: #ff0000;
-    --gn-offset-red: #ff000009;
-    --gn-green: #09b900;
-    --gn-offset-green: #09b90009;
+    --gn-offset-red: #ffefef;
+    --gn-green: #2ad921;
+    --gn-offset-green: #e7ffe6;
     --gn-overlay: #80808058;
     --gn-overlay-dark: #80808096;
     --gn-shadow: #0000001a;
@@ -100,4 +100,32 @@ p, a, span, label, input, button, select, option, textarea, li {
     justify-content: center;
     align-items: center;
     gap:1rem;
+}
+
+.tooltip-wrapper {
+    position: relative;
+    display: inline-block;
+}
+  
+.tooltip-wrapper::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--gn-off-black);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease-in-out;
+    z-index: 10;
+}
+  
+.tooltip-wrapper:hover::after {
+    opacity: 1;
 }

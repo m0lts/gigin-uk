@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { 
@@ -9,241 +9,515 @@ import {
     TickIcon,
 CloseIcon } from '@features/shared/ui/extras/Icons';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { CalendarIconSolid } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, FilterIconEmpty, NewTabIcon, OptionsIcon, SearchIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
+import { deleteGigsBatch, duplicateGig, saveGigTemplate, updateGigDocument } from '@services/gigs';
+import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'sonner';
 
-export const Gigs = ({ gigs, venues }) => {
+
+export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
     const location = useLocation();
     const navigate = useNavigate();
+  
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [selectedGigs, setSelectedGigs] = useState([]);
+    const [confirmModal, setConfirmModal] = useState(false);
+    const [confirmMessage, setConfirmMessage] = useState('');
+    const [confirmType, setConfirmType] = useState('');
+    const [openOptionsGigId, setOpenOptionsGigId] = useState(null);
 
+    const toggleOptionsMenu = (gigId) => {
+        setOpenOptionsGigId(prev => (prev === gigId ? null : gigId));
+    };
+
+    const closeOptionsMenu = () => {
+        setOpenOptionsGigId(null);
+    };
+
+    const isSelected = (id) => selectedGigs.includes(id);
+
+    const toggleGigSelection = (id) => {
+        setSelectedGigs((prev) =>
+            prev.includes(id) ? prev.filter((gigId) => gigId !== id) : [...prev, id]
+        );
+    };
+
+    const clearSelection = () => setSelectedGigs([]);
+  
+    useResizeEffect((width) => setWindowWidth(width));
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+          if (!e.target.closest('.options-cell')) {
+            setOpenOptionsGigId(null);
+          }
+        };
+        window.addEventListener('click', handleClickOutside);
+        return () => window.removeEventListener('click', handleClickOutside);
+      }, []);
+  
     const queryParams = new URLSearchParams(location.search);
-
     const selectedVenue = queryParams.get('venue') || '';
     const selectedDate = queryParams.get('date') || '';
     const selectedStatus = queryParams.get('status') || 'all';
-
-    const [sortOrder, setSortOrder] = useState('asc');
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-    useResizeEffect((width) => {
-        setWindowWidth(width);
+  
+    const now = useMemo(() => new Date(), []);
+  
+    const normalizedGigs = useMemo(() => {
+      return gigs.map(gig => {
+        const dateObj = gig.date.toDate();
+        const isoDate = dateObj.toISOString().split('T')[0];
+        const gigDateTime = new Date(`${isoDate}T${gig.startTime}`);
+  
+        const acceptedApplicant = gig.applicants?.some(app => app.status === 'confirmed');
+        let status = 'previous';
+        if (gigDateTime > now) {
+          if (acceptedApplicant) status = 'confirmed';
+          else if (gig.status === 'open') status = 'upcoming';
+          else status = 'closed';
+        }
+  
+        return {
+          ...gig,
+          dateObj,
+          dateIso: isoDate,
+          dateTime: gigDateTime,
+          status,
+        };
       });
-
-    const handleSearchChange = (event) => {
-        setSearchQuery(event.target.value);
-    };
-
-    // Function to get the status of the gig
-    const getGigStatus = (gig) => {
-        const now = new Date();
-        const gigDate = gig.date.toDate();
-        const [hours, minutes] = gig.startTime.split(':').map(Number); // Parse startTime (e.g., '14:30')
-
-        // Combine gigDate and startTime into a single Date object
-        gigDate.setHours(hours, minutes, 0, 0);
-
-        if (gigDate > now) {
-            const acceptedApplicant = gig.applicants.some(applicant => applicant.status === 'confirmed');
-            if (acceptedApplicant) {
-                return { icon: <TickIcon />, text: 'Confirmed' };
-            }
-            if (gig.status === 'open') {
-                return { icon: <ClockIcon />, text: 'Upcoming' };
-            } else {
-                return { icon: <CloseIcon />, text: 'Closed' };
-            }
-        }
-        return { icon: <PreviousIcon />, text: 'Previous' };
-    };
-
-    // Update URL parameters when filter changes
+    }, [gigs, now]);
+  
+    const handleSearchChange = (e) => setSearchQuery(e.target.value);
+  
     const updateUrlParams = (key, value) => {
-        const params = new URLSearchParams(location.search);
-        if (value) {
-            params.set(key, value);
-        } else {
-            params.delete(key);
+      const params = new URLSearchParams(location.search);
+      value ? params.set(key, value) : params.delete(key);
+      navigate(`?${params.toString()}`);
+    };
+  
+    const filteredGigs = useMemo(() => {
+      return normalizedGigs.filter(gig => {
+        const matchesSearch = searchQuery === '' || gig.gigName.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesVenue = selectedVenue === '' || gig.venueId === selectedVenue;
+        const matchesDate = selectedDate === '' || gig.dateIso === selectedDate;
+        const matchesStatus = selectedStatus === 'all' || gig.status === selectedStatus;
+  
+        return matchesSearch && matchesVenue && matchesDate && matchesStatus;
+      });
+    }, [normalizedGigs, searchQuery, selectedVenue, selectedDate, selectedStatus]);
+  
+    const sortedGigs = useMemo(() => {
+      return filteredGigs.slice().sort((a, b) => {
+        if (a.dateTime > now && b.dateTime > now) {
+          return sortOrder === 'desc' ? b.dateTime - a.dateTime : a.dateTime - b.dateTime;
         }
-        navigate(`?${params.toString()}`);
-    };
-
-    // Event handlers for filter changes
-    const handleVenueChange = (e) => {
-        updateUrlParams('venue', e.target.value);
-    };
-
-    const handleDateChange = (e) => {
-        updateUrlParams('date', e.target.value);
-    };
-
-    const handleStatusChange = (e) => {
-        updateUrlParams('status', e.target.value);
-    };
-
-    // Filter gigs based on URL parameters
-    const filteredGigs = gigs.filter(gig => {
-        const gigStatus = getGigStatus(gig).text.toLowerCase();
-        const gigDate = format(gig.date.toDate(), 'yyyy-MM-dd');
-    
-        // Check if the search query matches the gig's name or description
-        const matchesSearchQuery =
-            searchQuery === '' ||
-            gig.venue.venueName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-        return (
-            matchesSearchQuery &&
-            (selectedVenue === '' || gig.venueId === selectedVenue) &&
-            (selectedDate === '' || gigDate === selectedDate) &&
-            (selectedStatus === 'all' || gigStatus === selectedStatus)
-        );
-    });
-
-
+        if (a.dateTime < now && b.dateTime < now) {
+          return sortOrder === 'desc' ? b.dateTime - a.dateTime : a.dateTime - b.dateTime;
+        }
+        return a.dateTime < now ? 1 : -1;
+      });
+    }, [filteredGigs, sortOrder, now]);
+  
     const toggleSortOrder = () => {
-        setSortOrder((prevOrder) => (prevOrder === 'desc' ? 'asc' : 'desc'));
+      setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
     };
 
-    // Sort gigs based on the current sort order
-    const sortedGigs = filteredGigs.slice().sort((a, b) => {
-        const now = new Date();
-    
-        const aDateTime = new Date(`${a.date.toDate().toISOString().split('T')[0]}T${a.startTime}`);
-        const bDateTime = new Date(`${b.date.toDate().toISOString().split('T')[0]}T${b.startTime}`);
-    
-        // If both gigs are in the future or both are in the past, sort by date
-        if (aDateTime > now && bDateTime > now) {
-            return sortOrder === 'desc' ? bDateTime - aDateTime : aDateTime - bDateTime;
-        }
-    
-        if (aDateTime < now && bDateTime < now) {
-            return sortOrder === 'desc' ? bDateTime - aDateTime : aDateTime - bDateTime;
-        }
-    
-        // Move past gigs to the bottom
-        return aDateTime < now ? 1 : -1;
-    });
+    const openGigPostModal = (gig) => {
+        const convertedGig = {
+            ...gig,
+            date: gig.date ? gig.date.toDate() : null,
+        };
+        setEditGigData(convertedGig);
+        setGigPostModal(true);
+    }
 
+    const handleDeleteSelected = async () => {
+        if (selectedGigs.length === 0) return;
+        try {
+          await deleteGigsBatch(selectedGigs);
+          toast.success('Gigs Deleted');
+          setConfirmModal(false);
+          setSelectedGigs([]);
+        } catch (error) {
+          console.error('Failed to delete selected gigs:', error);
+          toast.error('Failed to delete selected gigs. Please try again.');
+          setConfirmModal(false);
+        } finally {
+          setTimeout(() => {
+            setConfirmType(null);
+            setConfirmMessage(null);
+          }, 2500);
+        }
+      };
+      
+      const handleDuplicateSelected = async () => {
+        if (selectedGigs.length === 0) return;      
+        try {
+          const newGigIds = [];
+          for (const gigId of selectedGigs) {
+            const newId = await duplicateGig(gigId);
+            newGigIds.push(newId);
+          }
+          toast.success('Gigs Duplicated');
+          setConfirmModal(false);
+          setSelectedGigs([]);
+        } catch (error) {
+          console.error('Failed to duplicate gigs:', error);
+          toast.error('Failed to duplicate gigs. Please try again.');
+          setConfirmModal(false);
+        } finally {
+            setTimeout(() => {
+              setConfirmType(null);
+              setConfirmMessage(null);
+            }, 2500);
+          }
+      };
+
+      const handleCloneAsTemplate = async (gig) => {
+        const templateId = uuidv4();
+        const templateData = {
+          ...gig,
+          gigId: null,
+          date: null,
+          templateName: gig.gigName,
+          templateId: templateId,
+        };
+      
+        try {
+          await saveGigTemplate(templateData);
+          toast.success('Template Saved');
+        } catch (error) {
+          console.error('Failed to save template:', error);
+          toast.error('Failed to save template');
+        }
+      };
+  
     return (
-        <>
-            <div className='head'>
-                <h1 className='title'>Gigs</h1>
-            </div>
-            <div className='body gigs'>
-                <div className='filters'>
-                    <input 
-                        type='text' 
-                        placeholder='Search...' 
-                        value={searchQuery} 
-                        onChange={handleSearchChange} 
+      <>
+        <div className='head'>
+          <h1 className='title'>Gigs</h1>
+        </div>
+        <div className='body gigs'>
+            <div className='filters'>
+                <div className="status-buttons">
+                    <button className={`btn ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'all')}>
+                        All
+                    </button>
+                    <button className={`btn ${selectedStatus === 'confirmed' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'confirmed')}>
+                        Confirmed
+                    </button>
+                    <button className={`btn ${selectedStatus === 'upcoming' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'upcoming')}>
+                        Upcoming
+                    </button>
+                    <button className={`btn ${selectedStatus === 'previous' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'previous')}>
+                        Previous
+                    </button>
+                </div>
+                {windowWidth >= 1400 ? (
+                    <>
+                    <span className="separator"></span>
+                    <div className="search-bar-container">
+                        <SearchIcon />
+                        <input
+                        type='text'
+                        placeholder='Search By Name...'
+                        value={searchQuery}
+                        onChange={handleSearchChange}
                         className='search-bar'
+                        aria-label='Search gigs'
+                        />
+                    </div>
+                    <span className="separator"></span>
+                    <input
+                        type='date'
+                        id='dateSelect'
+                        value={selectedDate}
+                        onChange={(e) => updateUrlParams('date', e.target.value)}
+                        className='date-select'
                     />
-                    <input type='date' name='dateSelect' id='dateSelect' value={selectedDate} onChange={handleDateChange} />
-                    <select name='venueSelect' id='venueSelect' value={selectedVenue} onChange={handleVenueChange}>
-                        <option value=''>Venue</option>
-                        {venues.map((venue, index) => (
-                            <option value={venue.venueId} key={index}>{venue.name}</option>
+                    <span className="separator"></span>
+                    <select
+                        id='venueSelect'
+                        value={selectedVenue}
+                        onChange={(e) => updateUrlParams('venue', e.target.value)}
+                    >
+                        <option value=''>Filter by Venue</option>
+                        {venues.map((venue) => (
+                        <option value={venue.venueId} key={venue.venueId}>{venue.name}</option>
                         ))}
                     </select>
-                    <select name='statusSelect' id='statusSelect' value={selectedStatus} onChange={handleStatusChange}>
-                        <option value='all'>Status</option>
-                        <option value='upcoming'>Upcoming</option>
-                        <option value='confirmed'>Confirmed</option>
-                        <option value='previous'>Previous</option>
+                    <div className="spacer" />
+                    <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
+                    </>
+                ) : (
+                    <>
+                        <div className="spacer" />
+                        <button className={`btn tertiary ${showMobileFilters ? 'open' : ''}`} onClick={() => setShowMobileFilters(prev => !prev)}>
+                            <FilterIconEmpty />
+                            Filters
+                        </button>
+                        <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
+                    </>
+                )}
+            </div>
+
+            {windowWidth < 1400 && showMobileFilters && (
+                <div className="filters ext">
+                    <div className="search-bar-container">
+                    <SearchIcon />
+                    <input
+                        type='text'
+                        placeholder='Search By Name...'
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                        className='search-bar'
+                        aria-label='Search gigs'
+                    />
+                    </div>
+                    <input
+                    type='date'
+                    id='dateSelect'
+                    value={selectedDate}
+                    onChange={(e) => updateUrlParams('date', e.target.value)}
+                    className='date-select'
+                    />
+                    <select
+                    id='venueSelect'
+                    value={selectedVenue}
+                    onChange={(e) => updateUrlParams('venue', e.target.value)}
+                    >
+                    <option value=''>Venue</option>
+                    {venues.map((venue) => (
+                        <option value={venue.venueId} key={venue.venueId}>{venue.name}</option>
+                    ))}
                     </select>
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th id='date'>
-                                Date
-                                <button className='sort btn text' onClick={toggleSortOrder}>
-                                    <SortIcon />
-                                </button>
-                            </th>
-                            <th>Time</th>
-                            <th>Venue</th>
-                            {windowWidth > 880 && (
-                                <th className='centre'>Budget</th>
-                            )}
-                            <th className='centre'>Status</th>
-                            {windowWidth > 1268 && (
-                                <th className='centre'>Applications</th>
-                            )}
-                            <th></th>
-                            <th></th>
+            )}  
+
+            {selectedGigs.length > 0 && (
+                <div className="gig-action-bar">
+                    <p>{selectedGigs.length} Gig{selectedGigs.length > 1 ? 's' : ''} Selected</p>
+                    <span className="separator"></span>
+                    <div className="tooltip-wrapper" data-tooltip="Delete">
+                        <button
+                            className="btn icon"
+                            onClick={() => {
+                            setConfirmType('delete');
+                            setConfirmModal(true);
+                            setConfirmMessage(
+                                selectedGigs.length > 1
+                                ? 'Are you sure you want to delete these gigs? This action cannot be undone.'
+                                : 'Are you sure you want to delete this gig? This action cannot be undone.'
+                            );
+                            }}
+                        >
+                            {selectedGigs.length > 1 ? <DeleteGigsIcon /> : <DeleteGigIcon />}
+                        </button>
+                    </div>
+
+                    <div className="tooltip-wrapper" data-tooltip="Duplicate">
+                        <button
+                            className="btn icon"
+                            onClick={() => {
+                            setConfirmType('duplicate');
+                            setConfirmModal(true);
+                            setConfirmMessage(
+                                selectedGigs.length > 1
+                                ? 'Duplicate these gigs? The new gigs will have no applicants.'
+                                : 'Duplicate this gig? The new gig will have no applicants.'
+                            );
+                            }}
+                        >
+                            <DuplicateGigIcon />
+                        </button>
+                    </div>
+                    <button className="btn icon" onClick={clearSelection}><ErrorIcon /></button>
+                </div>
+            )}
+
+          <table>
+            <thead>
+              <tr>
+                <th>
+                    <input
+                        type="checkbox"
+                        checked={selectedGigs.length === sortedGigs.length && sortedGigs.length > 0}
+                        onChange={(e) => {
+                        if (e.target.checked) {
+                            setSelectedGigs(sortedGigs.map((gig) => gig.gigId));
+                        } else {
+                            clearSelection();
+                        }
+                        }}
+                    />
+                </th>
+                <th id='name'>Name</th>
+                <th id='date'>
+                  Time and Date
+                  <button className='sort btn text' onClick={toggleSortOrder}>
+                    <SortIcon />
+                  </button>
+                </th>
+                <th>Venue</th>
+                {windowWidth > 880 && <th className='centre'>Budget</th>}
+                <th className='centre'>Status</th>
+                {windowWidth > 1268 && <th className='centre'>Applications</th>}
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedGigs.length > 0 ? (
+                sortedGigs.map((gig, index) => {
+                  const isFirstPreviousGig =
+                    index > 0 &&
+                    gig.dateTime < now &&
+                    sortedGigs[index - 1].dateTime >= now;
+  
+                  const StatusIcon = {
+                    upcoming: <ClockIcon />,
+                    confirmed: <TickIcon />,
+                    closed: <CloseIcon />,
+                    previous: <PreviousIcon />
+                  }[gig.status];
+  
+                  return (
+                    <React.Fragment key={gig.gigId}>
+                      {isFirstPreviousGig && (
+                        <tr className='filler-row'>
+                          <td className='data' colSpan={8}>
+                            <div className='flex center'>
+                              <h4>Previous Gigs</h4>
+                            </div>
+                          </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {sortedGigs.length > 0 ? (
-                            sortedGigs.map((gig, index) => {
-                                const gigDateTime = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
-                                const isFirstPreviousGig = index > 0 && gigDateTime < new Date() && 
-                                    new Date(`${sortedGigs[index - 1].date.toDate().toISOString().split('T')[0]}T${sortedGigs[index - 1].startTime}`) >= new Date();
-                                const gigStatus = getGigStatus(gig);
-                                return (
-                                    <React.Fragment key={gig.id}>
-                                        {isFirstPreviousGig && (
-                                            <tr className='filler-row'>
-                                                <td className='data' colSpan={8}>
-                                                    <div className='flex center'>
-                                                        <h4>Previous Gigs</h4>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                        <tr>
-                                            <td>{gig.date.toDate().toLocaleDateString('en-GB')}</td>
-                                            <td>{gig.startTime}</td>
-                                            <td style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis'}}>{gig.venue.venueName}</td>
-                                            {windowWidth > 880 && (
-                                                <td className='centre'>{gig.budget}</td>
-                                            )}
-                                            <td className={`status-box ${gigStatus.text.toLowerCase()}`}>
-                                                <div className={`status ${gigStatus.text.toLowerCase()}`}>
-                                                    {gigStatus.icon} {gigStatus.text}
-                                                </div>
-                                            </td>
-                                            {windowWidth > 1268 && (
-                                                <td className='centre'>
-                                                    {gig.applicants.length}
-                                                </td>
-                                            )}
-                                            <td className='action-data'>
-                                                <button
-                                                    className='btn text'
-                                                    onClick={() => navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } })}
-                                                >
-                                                    Gig Details
-                                                </button>
-                                            </td>
-                                            {gig.applicants.some(applicant => !applicant.viewed) ? (
-                                                <td className='notification'>
-                                                    <DotIcon />
-                                                </td>
-                                            ) : (
-                                                <td></td>
-                                            )}
-                                        </tr>
-                                    </React.Fragment>
-                                );
-                            })
+                      )}
+                      <tr onClick={() => navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }>
+                        {gig.dateTime > now ? (
+                            <td onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected(gig.gigId)}
+                              onChange={() => toggleGigSelection(gig.gigId)}
+                            />
+                          </td>
                         ) : (
-                            <tr className='no-gigs'>
-                                <td className='data' colSpan={6}>
-                                    <div className='flex'>
-                                        <CalendarIconSolid />
-                                        <h4>No gigs to show.</h4>
-                                    </div>
-                                </td>
-                            </tr>
+                            <td></td>
                         )}
-                    </tbody>
-                </table>
-            </div>
-        </>
+                        <td>{gig.gigName}</td>
+                        <td>{gig.startTime} {gig.dateObj.toLocaleDateString('en-GB')}</td>
+                        <td className='truncate'>{gig.venue.venueName}</td>
+                        {windowWidth > 880 && (
+                          <td className='centre'>{gig.budget}</td>
+                        )}
+                        <td className={`status-box ${gig.status}`}>
+                          <div className={`status ${gig.status}`}>
+                            {StatusIcon} {gig.status.charAt(0).toUpperCase() + gig.status.slice(1)}
+                          </div>
+                        </td>
+                        {windowWidth > 1268 && (
+                          <td className='centre'>{gig.applicants.length}{gig.applicants.some(app => !app.viewed) && <DotIcon />}</td>
+                        )}
+                        <td className="options-cell" onClick={(e) => e.stopPropagation()}>
+                            <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
+                                <OptionsIcon />
+                            </button>
+                            {openOptionsGigId === gig.gigId && (
+                                <div className="options-dropdown">
+                                <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <NewTabIcon /> </button>
+                                {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && (
+                                    <button onClick={() => { closeOptionsMenu(); openGigPostModal(gig) }}>Edit <EditIcon /></button>
+                                )}
+                                {gig.dateTime > now && (
+                                    <button 
+                                        onClick={() => {
+                                            closeOptionsMenu();
+                                            setSelectedGigs([gig.gigId]);
+                                            setConfirmType('duplicate');
+                                            setConfirmModal(true);
+                                            setConfirmMessage('Duplicate this gig? The new gig will have no applicants.');
+                                        }}
+                                    >
+                                        Duplicate
+                                        <DuplicateGigIcon />
+                                    </button>
+                                )}
+                                {gig.dateTime > now && gig.status !== 'confirmed' && (
+                                    <button
+                                    onClick={async () => {
+                                        closeOptionsMenu();
+                                        const newStatus = (gig.status === 'open' || gig.status === 'upcoming') ? 'closed' : 'open';
+                                        try {
+                                            await updateGigDocument(gig.gigId, { status: newStatus });
+                                            toast.success(`Gig ${(newStatus === 'open' || newStatus === 'upcoming') ? 'Opened for Applications' : 'Closed from Applications'}`);
+                                        } catch (error) {
+                                            console.error('Error updating status:', error);
+                                            toast.error('Failed to update gig status.');
+                                        }
+                                    }}
+                                    >
+                                        {(gig.status === "open" || gig.status === 'upcoming') ? 'Close Gig' : 'Reopen Gig'}
+                                        {(gig.status === "open" || gig.status === 'upcoming') ? (
+                                            <CloseIcon />
+                                            ) : (
+                                            <TickIcon />
+                                        )}
+                                    </button>
+                                )}
+                                <button onClick={() => { closeOptionsMenu(); handleCloneAsTemplate(gig); }}>
+                                    Make Gig a Template <TemplateIcon />
+                                </button>
+                                {gig.dateTime > now && (
+                                    <button 
+                                        onClick={() => {
+                                            closeOptionsMenu();
+                                            setSelectedGigs([gig.gigId]);
+                                            setConfirmType('delete');
+                                            setConfirmModal(true);
+                                            setConfirmMessage('Are you sure you want to delete this gig? This action cannot be undone.'); 
+                                        }}>
+                                            Delete
+                                            <DeleteGigIcon />
+                                        </button>
+                                )}
+                                </div>
+                            )}
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })
+              ) : (
+                <tr className='no-gigs'>
+                  <td className='data' colSpan={8} style={{ padding: '0'}}>
+                    <div className='flex' style={{ padding: '2rem 0', backgroundColor: 'var(--gn-grey-300)'}}>
+                      <h4>No Gigs Available</h4>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+            {confirmModal && (
+                <div className="modal confirm">
+                    <div className="modal-content">
+                        <h3>
+                            {confirmMessage}
+                        </h3>
+                        <div className='two-buttons'>
+                            <button className="btn text" onClick={() => setConfirmModal(false)}>Cancel</button>
+                            {confirmType === 'delete' ? (
+                                <button className="btn danger" onClick={handleDeleteSelected}>Delete</button>
+                            ) : (
+                                <button className="btn primary" onClick={handleDuplicateSelected}>Duplicate</button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+      </>
     );
-};
-
-
-
-
+  };

@@ -51,3 +51,20 @@ export const filterInvitableGigsForMusician = (gigs, musicianId) => {
       )
     );
 };
+
+
+export const getPendingGigsToReview = (gigs) => {
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  return gigs.filter((gig) => {
+    const date = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
+    return (
+      date > weekAgo &&
+      date <= now &&
+      !localStorage.getItem(`reviewedGig-${gig.gigId}`) &&
+      !gig.venueHasReviewed &&
+      gig.applicants?.some((a) => a.status === 'confirmed')
+    );
+  });
+};

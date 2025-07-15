@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { 
@@ -26,6 +26,8 @@ import { confirmGigPayment, fetchSavedCards } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
 import { updateGigDocument } from '../../../services/gigs';
+import { CloseIcon, PeopleGroupIconSolid, PreviousIcon } from '../../shared/ui/extras/Icons';
+import { toast } from 'sonner';
 
 export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
 
@@ -33,6 +35,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { gigs } = useGigs();
+    const now = useMemo(() => new Date(), []);
 
     const [gigInfo, setGigInfo] = useState(null);
     const [musicianProfiles, setMusicianProfiles] = useState([]);
@@ -275,9 +278,10 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
             await removeGigFromVenue(venueId, gigId);
             await deleteConversationsByGigId(gigId);
             navigate('/venues/dashboard');
-            window.location.reload();
+            toast.success('Gig Deleted');
         } catch (error) {
             console.error('Error deleting gig:', error);
+            toast.error('Failed to delete gig. Please try again.');
         }
     };
 
@@ -287,8 +291,10 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                 status: 'closed',
             });
             navigate('/venues/dashboard/gigs');
+            toast.success(`Gig Closed`);
         } catch (error) {
             console.error('Error closing gig:', error);
+            toast.error('Failed to update gig status.');
         }
     }
 
@@ -298,35 +304,52 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                 status: 'open',
             });
             navigate('/venues/dashboard/gigs');
+            toast.success(`Gig Opened`);
         } catch (error) {
             console.error('Error closing gig:', error);
+            toast.error('Failed to update gig status.');
         }
     }
 
     return (
         <>
-            <div className='head'>
-                <h1 className='title' style={{ fontWeight: 500 }}>
-                    Applications for {formatDate(gigInfo.date)} at {venueName}
-                    {gigInfo.status === 'open' && !gigInfo?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed') && (
-                        <button className='btn icon' onClick={() => openGigPostModal(gigInfo)}>
-                        <EditIcon />
-                    </button>
-                    )}
-                </h1>
-                {gigInfo.status === 'open' && !gigInfo.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed') ? (
-                    <>
-                        <button className="btn secondary" onClick={() => setShowCloseGigModal(true)}>
-                            Close Gig
-                        </button>
-                        <button className='btn danger' onClick={() => setShowDeleteConfirmationModal(true)}>
-                            Delete Gig
-                        </button>
-                    </>
-                ) : new Date < new Date(gigInfo.date.toDate().setHours(...gigInfo.startTime.split(':').map(Number))) && (
-                    <button className='primary-alt btn' onClick={() => setShowPromoteModal(true)}>
-                        <PeopleGroupIcon /> Promote
-                    </button>
+            <div className='head gig-applications'>
+                <div>
+                    <h1 className='title' style={{ fontWeight: 500 }}>
+                        Applications for "{gigInfo.gigName}"
+                    </h1>
+                    <h3>{gigInfo.startTime} {formatDate(gigInfo.date)} at {venueName}</h3>
+                </div>
+                {gigInfo.date.toDate() > now && (
+                    <div className='action-buttons'>
+                        {!gigInfo?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') && (
+                            <button className='btn tertiary' onClick={() => openGigPostModal(gigInfo)}>
+                                Edit
+                            </button>
+                        )}
+                        {!gigInfo.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') ? (
+                            <>
+                                {gigInfo.status === 'closed' ? (
+                                <button className="btn tertiary" onClick={handleCloseGig}>
+                                    Open
+                                </button>
+
+                                ) : (
+                                <button className="btn tertiary" onClick={handleReopenGig}>
+                                    Close
+                                </button>
+
+                                )}
+                                <button className='btn danger' onClick={() => setShowDeleteConfirmationModal(true)}>
+                                    Delete
+                                </button>
+                            </>
+                        ) : (
+                            <button className='primary btn' onClick={() => setShowPromoteModal(true)}>
+                                <PeopleGroupIconSolid /> Promote
+                            </button>
+                        )}
+                    </div>
                 )}
             </div>
             <div className='body gigs'>
@@ -358,7 +381,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                     )}
                                     <th>Fee</th>
                                     <th>Status</th>
-                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -366,7 +388,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                     const applicant = gigInfo.applicants.find(applicant => applicant.id === profile.id);
                                     const status = applicant ? applicant.status : 'pending';
                                     return (
-                                        <tr key={profile.id} className='applicant'>
+                                        <tr key={profile.id} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)}>
                                             <td>
                                                 {profile.name}
                                             </td>
@@ -402,13 +424,13 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                     </>
                                                 )}
                                             </td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                {(status === 'confirmed' || status === 'paid') && (
-                                                    new Date() < new Date(gigInfo.date.toDate().setHours(...gigInfo.startTime.split(':').map(Number))) ? (
+                                            {gigInfo.date.toDate() < now ? (
+                                                <td>
+                                                    {status !== 'confirmed' ? (
                                                         <div className='status-box'>
-                                                            <div className='status confirmed'>
-                                                                <TickIcon />
-                                                                Confirmed
+                                                            <div className='status previous'>
+                                                                <PreviousIcon />
+                                                                Past
                                                             </div>
                                                         </div>
                                                     ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
@@ -431,49 +453,54 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                                 Reported
                                                             </div>
                                                         </div>
-                                                    )
-                                                )}
-                                                {status === 'negotiating' && (
-                                                    <div className='status-box'>
-                                                        <div className='status upcoming'>
-                                                            <ClockIcon />
-                                                            Negotiating
+                                                    )}
+                                                </td>
+                                            ) : (
+                                                <td className='status-container' style={{ textAlign: 'center' }}>
+                                                    {(status === 'confirmed' || status === 'paid') && (
+                                                        <div className='status-box'>
+                                                            <div className='status confirmed'>
+                                                                <TickIcon />
+                                                                Confirmed
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                )}
-                                                {status === 'accepted' && (
-                                                    loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
-                                                        <LoadingThreeDots />
-                                                    ) : (
-                                                        <button className='btn primary' onClick={(event) => {event.stopPropagation(); handleCompletePayment(profile.id)}}>
-                                                            Complete Payment
+                                                    )}
+                                                    {status === 'negotiating' && (
+                                                        <div className='status-box'>
+                                                            <div className='status upcoming'>
+                                                                <ClockIcon />
+                                                                Negotiating
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {status === 'accepted' && (
+                                                        loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
+                                                            <LoadingThreeDots />
+                                                        ) : (
+                                                            <button className='btn primary' onClick={(event) => {event.stopPropagation(); handleCompletePayment(profile.id)}}>
+                                                                Complete Payment
+                                                            </button>
+                                                        )
+                                                    )}
+                                                    {(status === 'pending' && gigInfo.date.toDate() > now) && (
+                                                        <>
+                                                            <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                <TickIcon />
+                                                                Accept
+                                                            </button>
+                                                            <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                <CloseIcon />
+                                                                Decline
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {status === 'declined' && (
+                                                        <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.id)}}>
+                                                            Negotiate Fee
                                                         </button>
-                                                    )
-                                                )}
-                                                {status === 'pending' && (
-                                                    <>
-                                                        <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                            Accept
-                                                        </button>
-                                                        <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                            Decline
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {status === 'declined' && (
-                                                    <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.id)}}>
-                                                        Negotiate Fee
-                                                    </button>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <button
-                                                    className='btn text'
-                                                    onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)}
-                                                >
-                                                    View Musician
-                                                </button>
-                                            </td>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     )
                                 })}
@@ -481,7 +508,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                         </table>
                     ) : gigInfo.status === 'closed' ? (
                         <div className='no-applications'>
-                            <FaceMehIcon />
                             <h4>You have closed this gig.</h4>
                             <button className='btn primary' onClick={handleReopenGig}>
                                 Reopen Gig to Applications
@@ -489,7 +515,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                         </div>
                     ) : (
                         <div className='no-applications'>
-                            <FaceMehIcon />
                             <h4>No musicians have applied to this gig yet.</h4>
                             <button className='btn primary' onClick={() => navigate('/venues/dashboard/musicians/find')}>
                                 Invite a Musician to Apply
@@ -544,25 +569,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                             </button>
                         </div>
                         <button className='btn tertiary close' onClick={() => setShowDeleteConfirmationModal(false)}>
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
-            {showCloseGigModal && (
-                <div className='modal'>
-                    <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-                        <h3>Are you sure you want to close this gig?</h3>
-                        <p>Musicians will no longer be able to apply to this gig.</p>
-                        <div className='two-buttons'>
-                            <button className='btn danger' onClick={handleCloseGig}>
-                                Close Gig
-                            </button>
-                            <button className='btn secondary' onClick={() => setShowCloseGigModal(false)}>
-                                Cancel
-                            </button>
-                        </div>
-                        <button className='btn tertiary close' onClick={() => setShowCloseGigModal(false)}>
                             Close
                         </button>
                     </div>

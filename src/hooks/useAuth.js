@@ -98,8 +98,10 @@ export const useAuth = () => {
       if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
-      } else if (venueProfiles.length > 0) {
-        navigate('/venues');
+      } else if (venueProfiles.length > 0 && !venueProfiles.some(v => v.completed)) {
+        navigate('/venues/add-venue');
+      } else if (venueProfiles.some(v => v.completed)) {
+        navigate('/venues/dashboard');
       } else {
         navigate('/find-a-gig');
       }
@@ -141,7 +143,6 @@ export const useAuth = () => {
   const logout = async () => {
     try {
       await signOut(auth);
-      setUser(null);
     } catch (error) {
       console.error('Logout failed', error);
     }

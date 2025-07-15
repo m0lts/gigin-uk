@@ -124,26 +124,41 @@ export const getOrCreateConversation = async (musicianProfile, gigData, venuePro
  * Subscribes to real-time updates for all conversations involving the user's musician or venue profiles.
  * 
  * @param {Object} user - The current authenticated user.
- * @param {function} callback - Function to call with the updated conversations list.
+ * @param {function} callback - Function to call with the full merged list of updated conversations.
  * @returns {function} - Unsubscribe function to stop listening.
  */
 export const listenToUserConversations = (user, callback) => {
-    const queries = [];
-    if (user.musicianProfile) {
-        queries.push(query(collection(firestore, 'conversations'), where('participants', 'array-contains', user.musicianProfile.musicianId)));
-    }
-    if (user.venueProfiles?.length) {
-        user.venueProfiles.forEach(venue =>
-            queries.push(query(collection(firestore, 'conversations'), where('participants', 'array-contains', venue.id)))
-        );
-    }
-    const unsubscribeFns = queries.map(q =>
-        onSnapshot(q, (snapshot) => {
-            const updatedConversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            callback(updatedConversations, snapshot.docChanges());
-        })
-    );
-    return () => unsubscribeFns.forEach(unsub => unsub());
+  const convoRef = collection(firestore, 'conversations');
+  const queries = [];
+
+  if (user.musicianProfile?.musicianId) {
+    queries.push(query(convoRef, where('participants', 'array-contains', user.musicianProfile.musicianId)));
+  }
+
+  if (user.venueProfiles?.length) {
+    user.venueProfiles.forEach(venue => {
+      queries.push(query(convoRef, where('participants', 'array-contains', venue.id)));
+    });
+  }
+
+  const mergedConversations = new Map();
+
+  const unsubFns = queries.map(q =>
+    onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach(change => {
+        const data = { id: change.doc.id, ...change.doc.data() };
+        if (change.type === 'removed') {
+          mergedConversations.delete(change.doc.id);
+        } else {
+          mergedConversations.set(change.doc.id, data);
+        }
+      });
+
+      callback(Array.from(mergedConversations.values()));
+    })
+  );
+
+  return () => unsubFns.forEach(unsub => unsub());
 };
 
 /**

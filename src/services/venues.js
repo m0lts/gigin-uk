@@ -96,7 +96,6 @@ export const listenToTemplatesByVenueIds = (venueIds, onUpdate) => {
         snapshot.docChanges().forEach(change => {
           const docData = change.doc.data();
           const docId = change.doc.id;
-  
           if (change.type === 'removed') {
             allTemplatesMap.delete(docId);
           } else {
@@ -111,7 +110,14 @@ export const listenToTemplatesByVenueIds = (venueIds, onUpdate) => {
     return () => unsubscribers.forEach(unsub => unsub());
   };
 
-  /*** UPDATE OPERATIONS ***/
+export const getTemplatesByVenueIds = async (venueIds) => {
+  const templatesCol = collection(firestore, 'templates');
+  const q = query(templatesCol, where('venueId', 'in', venueIds));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+/*** UPDATE OPERATIONS ***/
 
 /**
  * Updates the account name on all venue profile documents associated with a user.

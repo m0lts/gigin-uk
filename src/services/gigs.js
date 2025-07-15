@@ -15,8 +15,10 @@ import {
   deleteField,
   documentId,
   setDoc,
-  arrayUnion
+  arrayUnion,
+  serverTimestamp
 } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
 
 /*** CREATE OPERATIONS ***/
 
@@ -84,6 +86,57 @@ export const logGigCancellation = async (gigId, musicianId, reason) => {
   });
 };
 
+/**
+ * Duplicates a gig document in Firestore, creating a new gig with a fresh ID and no applicants.
+ * Also adds the new gig ID to the related venue profile's gigs array.
+ *
+ * @param {string} gigId - The ID of the gig to duplicate.
+ * @returns {Promise<string>} - The ID of the newly created gig.
+ */
+export const duplicateGig = async (gigId) => {
+  try {
+    const originalRef = doc(firestore, 'gigs', gigId);
+    const originalSnap = await getDoc(originalRef);
+
+    if (!originalSnap.exists()) {
+      throw new Error(`Gig with ID ${gigId} does not exist.`);
+    }
+
+    const originalData = originalSnap.data();
+
+    // Generate new gig ID
+    const newGigId = uuidv4();
+
+    const newGig = {
+      ...originalData,
+      gigId: newGigId,
+      applicants: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      status: 'open',
+    };
+
+    // Remove old Firestore metadata fields
+    delete newGig.id;
+
+    // Create the new gig document
+    await setDoc(doc(firestore, 'gigs', newGigId), newGig);
+
+    // Add new gigId to the venue profile's gigs array
+    if (originalData.venueId) {
+      const venueRef = doc(firestore, 'venueProfiles', originalData.venueId);
+      await updateDoc(venueRef, {
+        gigs: arrayUnion(newGigId),
+      });
+    }
+
+    return newGigId;
+  } catch (error) {
+    console.error('Failed to duplicate gig:', error);
+    throw error;
+  }
+};
+
 /*** READ OPERATIONS ***/
 
 /**
@@ -99,6 +152,70 @@ export const subscribeToGigs = (callback) => {
     callback(gigs);
   });
 };
+
+
+/**
+ * Subscribes to real-time updates for gigs that are upcoming or within the last 48 hours,
+ * for a specific set of venue IDs.
+ *
+ * @param {string[]} venueIds - The venue IDs to filter gigs by.
+ * @param {function} callback - Callback to receive the updated list of gigs.
+ * @returns {function} - Unsubscribe function to stop all listeners.
+ */
+export const subscribeToUpcomingOrRecentGigs = (venueIds, callback) => {
+  if (!venueIds || venueIds.length === 0) {
+    console.warn('No venueIds provided to subscribeToUpcomingOrRecentGigs.');
+    return () => {};
+  }
+
+  const now = new Date();
+  const pastCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000); // 48 hours ago
+  const futureCutoff = Timestamp.fromDate(pastCutoff);
+
+  const batchSize = 10;
+  const allGigs = new Map();
+  const unsubscribers = [];
+
+  for (let i = 0; i < venueIds.length; i += batchSize) {
+    const batch = venueIds.slice(i, i + batchSize);
+
+    const gigsRef = collection(firestore, 'gigs');
+
+    // Query 1: future gigs
+    const futureQuery = query(
+      gigsRef,
+      where('venueId', 'in', batch),
+      where('date', '>=', futureCutoff)
+    );
+
+    // Query 2: recent past gigs (within 48 hours)
+    const pastQuery = query(
+      gigsRef,
+      where('venueId', 'in', batch),
+      where('date', '<', futureCutoff)
+    );
+
+    const handleSnapshot = (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        const gig = { gigId: change.doc.id, ...change.doc.data() };
+
+        if (change.type === 'removed') {
+          allGigs.delete(change.doc.id);
+        } else {
+          allGigs.set(change.doc.id, gig);
+        }
+      });
+
+      callback(Array.from(allGigs.values()));
+    };
+
+    unsubscribers.push(onSnapshot(futureQuery, handleSnapshot));
+    unsubscribers.push(onSnapshot(pastQuery, handleSnapshot));
+  }
+
+  return () => unsubscribers.forEach((unsub) => unsub());
+};
+
 
 /**
  * Fetches a single gig document by its ID.
@@ -158,7 +275,7 @@ export const getGigsByVenueIds = async (venueIds) => {
     if (!venueIds.length) return [];
     const q = query(collection(firestore, 'gigs'), where('venueId', 'in', venueIds));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ref: doc.ref, ...doc.data() }));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 
@@ -395,5 +512,72 @@ export const deleteGig = async (gigId) => {
   } catch (error) {
     console.error('Error deleting gig profile:', error);
     throw error;
+  }
+};
+
+/**
+ * Deletes a gig and cleans up references in venue and musician documents.
+ *
+ * @param {string} gigId - Firestore document ID of the gig to delete.
+ * @returns {Promise<void>}
+ */
+export const deleteGigAndInformation = async (gigId) => {
+  const gigRef = doc(firestore, 'gigs', gigId);
+  const gigSnap = await getDoc(gigRef);
+
+  if (!gigSnap.exists()) {
+    console.warn(`Gig with ID ${gigId} does not exist.`);
+    return;
+  }
+
+  const gigData = gigSnap.data();
+  const batch = writeBatch(firestore);
+
+  // 1. Delete the gig document
+  batch.delete(gigRef);
+
+  // 2. Remove gig from the venueProfile.gigs array
+  const venueId = gigData.venueId;
+  const venueRef = doc(firestore, 'venueProfiles', venueId);
+  const venueSnap = await getDoc(venueRef);
+  if (venueSnap.exists()) {
+    const venueData = venueSnap.data();
+    const updatedGigs = (venueData.gigs || []).filter(g => g.gigId !== gigId);
+    batch.update(venueRef, { gigs: updatedGigs });
+  }
+
+  // 3. Remove gig from each applicant's gigApplications
+  const applicants = gigData.applicants || [];
+  for (const applicant of applicants) {
+    const musicianId = applicant.id;
+    if (!musicianId) continue;
+
+    const musicianRef = doc(firestore, 'musicianProfiles', musicianId);
+    const musicianSnap = await getDoc(musicianRef);
+    if (musicianSnap.exists()) {
+      const musicianData = musicianSnap.data();
+      const updatedApplications = (musicianData.gigApplications || []).filter(
+        (application) => application.gigId !== gigId
+      );
+      batch.update(musicianRef, { gigApplications: updatedApplications });
+    }
+  }
+
+  await batch.commit();
+};
+
+/**
+ * Deletes multiple gigs and cleans up their references.
+ *
+ * @param {string[]} gigIds - Array of gig document IDs to delete.
+ * @returns {Promise<void>}
+ */
+export const deleteGigsBatch = async (gigIds) => {
+  for (const gigId of gigIds) {
+    try {
+      await deleteGig(gigId);
+    } catch (error) {
+      console.error(`Failed to delete gig ${gigId}:`, error);
+    }
   }
 };

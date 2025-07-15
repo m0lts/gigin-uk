@@ -54,6 +54,7 @@
     "react-loading-skeleton": "^3.4.0",
     "react-map-gl": "^7.1.7",
     "react-router-dom": "^6.21.1",
+    "sonner": "^2.0.6",
     "uuid": "^9.0.1",
     "vercel": "^39.0.2"
   },
