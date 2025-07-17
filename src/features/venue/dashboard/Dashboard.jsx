@@ -21,6 +21,7 @@ import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { getPendingGigsToReview } from '@services/utils/filtering';
 import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 import { useVenueDashboard } from '@context/VenueDashboardContext';
+import { getUnreviewedPastGigs } from '../../../services/utils/filtering';
 
 export const VenueDashboard = ({ user }) => {
     const {
@@ -41,6 +42,7 @@ export const VenueDashboard = ({ user }) => {
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [gigToReview, setGigToReview] = useState(null);
+    const [gigsToReview, setGigsToReview] = useState([]);
     const location = useLocation();
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname), [location.pathname]);
   
@@ -49,9 +51,11 @@ export const VenueDashboard = ({ user }) => {
     }, [location]);
   
     useEffect(() => {
-        const gigsToReview = getPendingGigsToReview(gigs);
-        if (gigsToReview.length > 0) {
-          setGigToReview(gigsToReview[0]);
+        const localGigsToReview = getPendingGigsToReview(gigs);
+        const unreviewedGigs = getUnreviewedPastGigs(gigs);
+        if (localGigsToReview.length > 0) {
+          setGigToReview(localGigsToReview[0]);
+          setGigsToReview(unreviewedGigs);
           setShowReviewModal(true);
         }
       }, [gigs]);
@@ -86,13 +90,13 @@ export const VenueDashboard = ({ user }) => {
                 )}
                 <div className="output">
                     <Routes>
-                        <Route index element={<Overview savedCards={savedCards} receipts={receipts} gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} />} />
+                        <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} />} />
                         <Route path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
-                        <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} />} />
+                        <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} venues={venueProfiles} />} />
                     </Routes>
                 </div>
             </div>

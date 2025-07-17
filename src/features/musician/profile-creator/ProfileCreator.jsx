@@ -179,6 +179,11 @@ export const ProfileCreator = () => {
         });
     };
 
+    const generateSearchKeywords = (name) => {
+        const lower = name.toLowerCase();
+        return Array.from({ length: lower.length }, (_, i) => lower.slice(0, i + 1));
+    };
+
     const handleSubmit = async () => {
         setUploadingProfile(true);
         setVideoUploadProgress(0);
@@ -209,12 +214,14 @@ export const ProfileCreator = () => {
                 title: track.title,
                 file: trackUrls[index],
             }));
+            const keywords = generateSearchKeywords(formData.name);
             const updatedFormData = {
                 ...formData,
                 picture: pictureUrl,
                 videos: videoMetadata,
                 tracks: trackMetadata,
                 completed: true,
+                searchKeywords: keywords,
                 email: user?.email,
             };
             await createMusicianProfile(formData.musicianId, updatedFormData, user.uid);
@@ -285,7 +292,9 @@ export const ProfileCreator = () => {
                 title: track.title,
                 file: trackUrls[index],
             }));
-            updatedFormData.tracks = trackMetadata;    
+            const keywords = generateSearchKeywords(formData.name);
+            updatedFormData.tracks = trackMetadata;
+            updatedFormData.searchKeywords = keywords;
             await createMusicianProfile(formData.musicianId, updatedFormData, user.uid);    
             if (updatedFormData.completed) {
                 navigate('/dashboard')

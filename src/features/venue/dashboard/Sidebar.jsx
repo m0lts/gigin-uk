@@ -144,7 +144,9 @@ export const Sidebar = ({ setGigPostModal, user }) => {
           {newMessages ? <MailboxFullIcon /> : <MailboxEmptyIcon />} Messages
         </li>
       </ul>
-      <FeedbackBox user={user} />
+      {pathname !== '/venues/dashboard' && (
+        <FeedbackBox user={user} />
+      )}
     </div>
   );
 };

@@ -21,109 +21,32 @@ import {
 import { deleteSavedCard } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
+import { CardIcon, CoinsIconSolid, DeleteGigIcon, HouseIconSolid, PeopleRoofIconSolid, PieChartIcon } from '../../shared/ui/extras/Icons';
+import { toast } from 'sonner';
+import { changeDefaultCard } from '../../../services/functions';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 
-export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards }) => {
+export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards, venues }) => {
 
   const [sortOrder, setSortOrder] = useState('desc');
   const [addCardModal, setAddCardModal] = useState(false);
   const [newCardSaved, setNewCardSaved] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+const toggleMenu = (cardId) => {
+  setOpenMenuId(prev => (prev === cardId ? null : cardId));
+};
 
   useResizeEffect((width) => {
     setWindowWidth(width);
   });
 
-  const earningsData = receipts.reduce((acc, receipt) => {
-    const receiptDate = new Date(receipt.metadata.date).toLocaleDateString('en-GB', {
-        month: 'short',
-        year: 'numeric',
-    });
-    acc[receiptDate] = (acc[receiptDate] || 0) + receipt.amount / 100;
-    return acc;
-  }, {});
 
   const totalExpenditure = receipts.reduce((total, receipt) => total + receipt.amount / 100, 0);
 
-  const chartData = {
-      labels: Object.keys(earningsData), // Dates (month/year)
-      datasets: [
-          {
-              label: 'Total Expenditure (£)',
-              data: Object.values(earningsData), // Earnings corresponding to the labels
-              backgroundColor: 'rgba(255, 233, 228, 0.5)',
-              borderColor: 'rgba(255, 108, 75, 1)',
-              borderWidth: 1,
-          },
-      ],
-  };
-
-  // Chart configuration options
-  const chartOptions = {
-      responsive: true,
-      plugins: {
-          legend: {
-              display: true,
-              position: 'bottom',
-              labels: {
-                  font: {
-                      size: 14,
-                      family: 'Inter',
-                      weight: 'bold',
-                  },
-                  color: '#333',
-              },
-          },
-          title: {
-              display: true,
-              text: 'Expenditure Over Time',
-              font: {
-                  size: 18,
-                  family: 'Inter',
-                  weight: 'bold',
-              },
-              color: '#333',
-          },
-          tooltip: {
-              enabled: true,
-              backgroundColor: 'rgba(0, 0, 0, 0.7)', // Tooltip background
-              titleColor: '#fff', // Title font color
-              bodyColor: '#fff', // Body font color
-              borderColor: '#ddd', // Tooltip border
-              borderWidth: 1, // Tooltip border width
-          },
-      },
-      scales: {
-          x: {
-              grid: {
-                  display: false,
-              },
-              ticks: {
-                  color: '#333',
-                  font: {
-                      size: 12,
-                      family: 'Inter',
-                  },
-              },
-          },
-          y: {
-              grid: {
-                  color: '#e0e0e0',
-                  borderDash: [4, 4],
-              },
-              ticks: {
-                  color: '#333',
-                  font: {
-                      size: 12,
-                      family: 'Inter',
-                  },
-              },
-              beginAtZero: true,
-          },
-      },
-  };
 
   useEffect(() => {
     if (newCardSaved) {
@@ -164,14 +87,25 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
       }
       const result = await deleteSavedCard(cardId);
       if (result.success) {
-        alert('Card deleted successfully!');
+        toast.success("Card removed.");
         setSavedCards((prevCards) => prevCards.filter((card) => card.id !== cardId));
       } else {
-        alert('Failed to delete the card.');
+        toast.error("Failed to remove card. Please try again.");
       }
     } catch (error) {
       console.error('Error deleting card:', error);
-      alert('An error occurred while deleting the card. Please try again.');
+      toast.error("Failed to remove card");
+    }
+  };
+
+  const handleMakeDefault = async (card) => {
+    try {
+      await changeDefaultCard(card.id);
+      toast.success("Card set as default");
+      setOpenMenuId(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to set default card. Please try again.");
     }
   };
 
@@ -181,18 +115,84 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
         <h1 className='title'>Finances</h1>
     </div>
     <div className='body finances'>
-      <div className='tile total-expenditure'>
-        <h2>Overall Expenditure</h2>
-        <div className='value'>
-        <h1>£{totalExpenditure.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h1>
+      <div className="top-section">
+        <div className='expenditure-card'>
+          <div className="expenditure-icon">
+            <CoinsIconSolid />
+          </div>
+          <div className="expenditure-text">
+            <h5>Overall Expenditure</h5>
+            <h2>£{totalExpenditure.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+          </div>
+        </div>
+        <div className="venue-expenditure-container">
+          {venues.map((venue) => {
+            const venueReceipts = receipts.filter(
+              (r) => r.metadata?.venueId === venue.venueId
+            );
+
+            if (venueReceipts.length === 0) return null;
+
+            const totalSpent = venueReceipts.reduce(
+              (acc, r) => acc + (r.amount || 0),
+              0
+            );
+
+            return (
+              <div key={venue.venueId} className="expenditure-card other">
+                <PieChartIcon />
+                <div className="expenditure-text">
+                  <h3>£{(totalSpent / 100).toFixed(2)}</h3>
+                  <h5>{venue.name}</h5>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-      {windowWidth > 1268 && (
-        <div className='tile connect-account graph'>
-            <h2>Your Expenditure</h2>
-            <Bar data={chartData} options={chartOptions} />
-        </div>
-      )}
+      <div className='saved-cards'>
+        <h2>My Cards</h2>
+        <ul className="card-list">
+          <li className="styled-card add-card" onClick={() => setAddCardModal(true)}>
+            <div className="add-card-content">
+              <PlusIcon />
+              <h3>Add Card</h3>
+            </div>
+          </li>
+          {savedCards.map((card) => (
+            <li key={card.id} className={`styled-card ${card.card.brand.toLowerCase()}`}>
+              <div className="card-top">
+                <span className="dots" onClick={() => toggleMenu(card.id)}>•••</span>
+                
+                {openMenuId === card.id && (
+                  <div className="card-menu">
+                    <button className='btn secondary' onClick={() => handleMakeDefault(card)}>Make Default <CardIcon /></button>
+                    <button className='btn danger' onClick={() => handleDeleteCard(card.id)}>Delete Card <DeleteGigIcon /></button>
+                  </div>
+                )}
+              </div>
+
+              <div className="card-number">**** **** **** {card.card.last4}</div>
+
+              <div className="card-bottom">
+                <div className="card-info">
+                  <div className="card-holder">{card.billing_details?.name}</div>
+                  <div className="card-expiry">{card.card.exp_month}/{card.card.exp_year}</div>
+                </div>
+                <img
+                  src={cardBrandIcons[card.card.brand.toLowerCase()]}
+                  alt={card.card.brand}
+                  className="brand-logo"
+                />
+              </div>
+
+              {card.customer.default_source === card.card.id && (
+                <span className="card-default">Default</span>
+              )}
+            </li>
+          ))}
+      </ul>
+      </div>
       <div className='tile your-fees'>
         <h2>Your Payments</h2>
         <table>
@@ -230,60 +230,13 @@ export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards 
                 <td className='data' colSpan={6}>
                   <div className='flex'>
                     <InvoiceIcon />
-                    <h4>No receipts to show.</h4>
+                    <h4>Your payments will show here.</h4>
                   </div>
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
-      <div className='tile saved-cards'>
-        <h2>Saved Cards</h2>
-        <ul className='card-list'>
-        {savedCards.map((card) => (
-          <li
-            key={card.id}
-            className={`card-item`}
-          >   
-            <div className='card-left'>
-              {windowWidth > 1000 && (
-                <img
-                    src={cardBrandIcons[card.card.brand.toLowerCase()]}
-                    alt='Card Type'
-                    className='card-brand-icon'
-                />
-
-              )}
-                <div className='card-details'>
-                  {windowWidth > 850 ? (
-                    <h4>
-                    {card.card.brand.toUpperCase()} ending in {card.card.last4}
-                    </h4>
-                  ) : (
-                    <h4>
-                    {card.card.brand.toUpperCase()} {card.card.last4}
-                    </h4>
-
-                  )}
-                    <h6>Expires {card.card.exp_month}/{card.card.exp_year}</h6>
-                </div>
-            </div>
-            {card.customer.default_source && (card.customer.default_source === card.card.id) && (
-                <div className='card-type'>
-                    <p>Default</p>
-                </div>
-            )}
-            <button className='btn danger' onClick={() => handleDeleteCard(card.id)}>
-              <DeleteIcon />
-            </button>
-        </li>
-        ))}
-        <li className='card-item hoverable' onClick={() => setAddCardModal(true)}>
-          <h4>Add Another Card</h4>
-          <PlusIcon />
-        </li>
-        </ul>
       </div>
   </div>
     {addCardModal && (

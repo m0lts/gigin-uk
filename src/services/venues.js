@@ -141,6 +141,36 @@ export const updateVenueProfileAccountNames = async (userId, venueProfileIds, ne
   await batch.commit();
 };
 
+/**
+ * Toggles a musician ID in the savedMusicians array of a user's document.
+ *
+ * @param {string} userId - Firestore document ID of the user.
+ * @param {string} musicianId - ID of the musician to toggle.
+ * @returns {Promise<'saved' | 'removed'>} - Returns action performed.
+ */
+export const saveMusician = async (userId, musicianId) => {
+  const ref = doc(firestore, 'users', userId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) return;
+
+  const saved = snap.data().savedMusicians || [];
+  let updated, action;
+
+  if (saved.includes(musicianId)) {
+    // Remove if already saved
+    updated = saved.filter(id => id !== musicianId);
+    action = 'removed';
+  } else {
+    // Add if not saved
+    updated = [...saved, musicianId];
+    action = 'saved';
+  }
+
+  await updateDoc(ref, { savedMusicians: updated });
+  return action;
+};
+
 /*** DELETE OPERATIONS ***/
 
 /**
@@ -222,5 +252,19 @@ export const deleteTemplatesByVenueId = async (venueId) => {
     }
   };
 
-
+/**
+ * Removes a musician ID from the savedMusicians array in a user's document.
+ *
+ * @param {string} userId - Firestore document ID of the user.
+ * @param {string} musicianId - ID of the musician to remove.
+ * @returns {Promise<void>}
+ */
+export const removeMusicianFromUser = async (userId, musicianId) => {
+  const ref = doc(firestore, 'users', userId);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    const updated = (snap.data().savedMusicians || []).filter(id => id !== musicianId);
+    await updateDoc(ref, { savedMusicians: updated });
+  }
+};
 

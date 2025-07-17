@@ -7,6 +7,9 @@ import { deleteFolderFromStorage } from '@services/storage';
 import { deleteReview, getReviewsByVenueId } from '@services/reviews';
 import { deleteConversation, getConversationsByParticipantId } from '@services/conversations';
 import { openInNewTab } from '@services/utils/misc';
+import { DeleteGigIcon, HouseIconSolid, NewTabIcon, PeopleRoofIconSolid } from '../../shared/ui/extras/Icons';
+import { getCityFromAddress } from '../../../services/utils/misc';
+import { toast } from 'sonner';
 
 export const Venues = ({ venues }) => {
 
@@ -45,17 +48,23 @@ export const Venues = ({ venues }) => {
             await deleteTemplatesByVenueId(venueId);
             await deleteFolderFromStorage(`venues/${venueId}`);
             navigate(0);
+            toast.success('Venue Deleted');
         } catch (error) {
           console.error('An error occurred while deleting the venue:', error);
+          toast.error('Failed to delete venue. Please try again.')
         } finally {
           setShowDeleteModal(false);
           setVenueToDelete(null);
         }
       };
 
-    const removeTrailingComma = (str) => {
-        return str.replace(/[\s,]+$/, '');
-    };
+    const formatVenueType = (type) => {
+        if (type === 'Public Establishment') {
+            return <PeopleRoofIconSolid />
+        } else {
+            return <HouseIconSolid />
+        }
+    }
 
     return (
         <>
@@ -67,18 +76,39 @@ export const Venues = ({ venues }) => {
             </div>
             <div className='body venues'>
                 {venues.map((venue, index) => (
-                    <div className='card venue' key={index} onClick={(e) => openInNewTab(`/venues/${venue.venueId}`, e)}>
-                        <div className='venue-image'>
-                            <img src={venue.photos[0]} alt={venue.name} />
+                    <div className='venue-card' key={index}>
+                        <div>
+                            <div className='venue-image'>
+                                <img src={venue.photos[0]} alt={venue.name} />
+                            </div>
+                            <div className="venue-flex">
+                                <div className="venue-name">
+                                    <h3 className='venue-name'>{venue.name}</h3>
+                                    <p className='venue-address'>{getCityFromAddress(venue.address)}</p>
+                                </div>
+                                <button className="btn icon-box" onClick={(e) => openInNewTab(`/venues/${venue.venueId}`, e)}>
+                                    <NewTabIcon />
+                                </button>
+                            </div>
+                            <div className="venue-type">
+                                <span className="icon-cont">
+                                    {formatVenueType(venue.type)}
+                                </span>
+                                <span className='text'>{venue.type}</span>
+                            </div>
+                            <div className="venue-gigs">
+                                <span className="gigs">{(venue?.gigs ?? []).length}</span>
+                                <span className='text'>gigs posted.</span>
+                            </div>
                         </div>
-                        <h2 className='venue-name'>{venue.name}</h2>
-                        <h4 className='venue-address'>{removeTrailingComma(venue.address)}</h4>
-                        <div className='two-buttons'>
-                            <button className='btn icon' onClick={() => handleEditVenue(venue)}>
+                        <div className="action-buttons">
+                            <button className='btn tertiary' onClick={() => handleEditVenue(venue)}>
+                                Edit
                                 <EditIcon />
                             </button>
                             <button className='btn danger' onClick={() => handleDeleteVenue(venue)}>
                                 Delete
+                                <DeleteGigIcon />
                             </button>
                         </div>
                     </div>

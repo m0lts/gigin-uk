@@ -129,6 +129,25 @@ button {
     font-size: 1.5rem;
 }
 
+/* ICONS AS BUTTONS */
+
+.btn.icon-box {
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-350);
+    padding:0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 3px var(--gn-shadow);
+    transition: all 200ms ease;
+}
+
+.btn.icon-box .icon {
+    font-size: 1rem;
+}
+
+.btn.icon-box:hover {
+    background-color: var(--gn-grey-300);
+}
+
 
 /* DANGER BUTTONS */
 

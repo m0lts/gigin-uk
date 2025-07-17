@@ -15,7 +15,9 @@ import {
   orderBy,
   arrayRemove,
   documentId,
-  writeBatch
+  writeBatch,
+  limit,
+  startAfter
 } from 'firebase/firestore';
 import { getBandDataOnly, getBandMembers } from './bands';
 
@@ -143,6 +145,33 @@ export const getAllMusicianProfiles = async () => {
   }
 };
 
+
+export const fetchMusiciansPaginated = async ({ lastDocId, limitCount = 50, type, genres, location, search }) => {
+  let q = collection(firestore, 'musicianProfiles');
+
+  const constraints = [];
+
+  if (type) constraints.push(where('musicianType', '==', type));
+  if (genres?.length) constraints.push(where('genres', 'array-contains-any', genres));
+  // if (location) constraints.push(where('location.city', '==', location)); // adjust path if needed
+  if (search) constraints.push(where('searchKeywords', 'array-contains', search.toLowerCase()));
+
+  if (lastDocId) {
+    const lastDocSnap = await getDoc(doc(firestore, 'musicianProfiles', lastDocId));
+    if (lastDocSnap.exists()) {
+      constraints.push(startAfter(lastDocSnap));
+    }
+  }
+
+  constraints.push(limit(limitCount));
+  const queryRef = query(q, ...constraints);
+
+  const snap = await getDocs(queryRef);
+  const musicians = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const lastDoc = snap.docs.at(-1)?.id || null;
+
+  return { musicians, lastDocId: lastDoc };
+};
 
 /*** UPDATE OPERATIONS ***/
 

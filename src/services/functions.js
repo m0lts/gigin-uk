@@ -125,6 +125,17 @@ export const deleteSavedCard = async (cardId) => {
 };
 
 /**
+ * Change default card by its ID.
+ * @param {string} cardId
+ * @returns {Promise<Object>}
+ */
+export const changeDefaultCard = async (cardId) => {
+  const defaultCard = httpsCallable(functions, 'setDefaultPaymentMethod');
+  const response = await defaultCard({ cardId });
+  return response.data;
+};
+
+/**
  * Get Stripe customer info, receipts, and saved payment methods.
  * @returns {Promise<{ customer: Object, receipts: Object[], paymentMethods: Object[] }>}
  */

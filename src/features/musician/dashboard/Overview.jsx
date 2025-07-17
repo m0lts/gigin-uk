@@ -16,8 +16,6 @@ import { formatFeeDate } from '@services/utils/dates';
 
 export const Overview = ({ musicianProfile, gigApplications }) => {
 
-    console.log(gigApplications)
-
     const navigate = useNavigate();
     const {gigs} = useGigs();
     const mapContainerRef = useRef(null);

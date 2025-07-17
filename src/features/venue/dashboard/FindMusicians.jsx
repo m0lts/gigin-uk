@@ -1,34 +1,134 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom';
-import { getAllMusicianProfiles } from '@services/musicians';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { openInNewTab } from '@services/utils/misc';
+import { PlayIcon, SaveIcon, SavedIcon, SearchIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import Skeleton from 'react-loading-skeleton';
+import { useResizeEffect } from '@hooks/useResizeEffect';
+import { fetchMusiciansPaginated } from '../../../services/musicians';
+import { toast } from 'sonner';
+import { saveMusician } from '../../../services/venues';
+
+
+const VideoModal = ({ video, onClose }) => {
+    return (
+        <div className='modal'>
+            <div className='modal-content transparent'>
+                <span className='close' onClick={onClose}>&times;</span>
+                <video controls autoPlay style={{ width: '100%' }}>
+                    <source src={video.file} type='video/mp4' />
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    );
+};
 
 export const FindMusicians = ({ user }) => {
-
-    const [musicians, setMusicians] = useState([]);
-    const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
+    const [showModal, setShowModal] = useState(false);
+    const [video, setVideo] = useState(null);
+    const [musicians, setMusicians] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const searchQuery = searchParams.get('search') || '';
+    const selectedType = searchParams.get('type') || '';
+    // const selectedLocation = searchParams.get('location') || '';
+    const rawGenres = searchParams.get('genres') || '';
+    const selectedGenres = useMemo(() => rawGenres.split(',').filter(Boolean), [rawGenres]);
+
+
+    const [lastDocId, setLastDocId] = useState(null);
+    const [hasMore, setHasMore] = useState(true);
+    
+    const fetchMusicians = useCallback(async (reset = false) => {
+        if (loading || (!hasMore && !reset)) return;
+        setLoading(true);
+        try {
+          const { musicians: newMusicians, lastDocId: newLastId } = await fetchMusiciansPaginated({
+            lastDocId: reset ? null : lastDocId,
+            limitCount: 50,
+            type: selectedType,
+            genres: selectedGenres,
+            search: searchQuery,
+          });
+          setMusicians(prev => reset ? newMusicians : [...prev, ...newMusicians]);
+          setLastDocId(newLastId);
+          if (newMusicians.length < 50) setHasMore(false);
+        } catch (err) {
+          console.error('Error fetching musicians:', err);
+        } finally {
+          setLoading(false);
+        }
+      }, [loading, hasMore, lastDocId, selectedType, selectedGenres, searchQuery]);
+    
+      useEffect(() => {
+        fetchMusicians();
+      }, [fetchMusicians]);
+
+      useEffect(() => {
+        const el = document.querySelector('.saved-musicians');
+        if (!el) return;
+        const handleScroll = () => {
+          const nearBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 100;
+          if (nearBottom) {
+            fetchMusicians();
+          }
+        };
+        el.addEventListener('scroll', handleScroll);
+        return () => el.removeEventListener('scroll', handleScroll);
+      }, [fetchMusicians]);
 
     useEffect(() => {
-        const fetchMusicians = async () => {
-            try {
-                const musiciansData = await getAllMusicianProfiles();
-                setMusicians(musiciansData);
-            } catch (error) {
-                console.error('Error fetching musicians:', error);
-            }
-        };
+        setLastDocId(null);
+        setHasMore(true);
+        setMusicians([]);
+        fetchMusicians(true); // reset = true
+    }, [selectedType, selectedGenres, searchQuery]);
 
-        fetchMusicians();
-    }, [user]);
-
-    const handleSearchChange = (event) => {
-        setSearchQuery(event.target.value);
+    const updateParam = (key, value) => {
+        const newParams = new URLSearchParams(searchParams);
+        if (value && value.length !== 0) {
+            newParams.set(key, Array.isArray(value) ? value.join(',') : value);
+        } else {
+            newParams.delete(key);
+        }
+        setSearchParams(newParams);
     };
 
-    const filteredMusicians = musicians.filter(musician =>
-        musician.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const formatEarnings = (e) => {
+        if (e < 100) return '<£100';
+        if (e < 500) return '£100+';
+        if (e < 1000) return '£500+';
+        if (e < 2500) return '£1k+';
+        if (e < 5000) return '£2.5k+';
+        return '£5k+';
+    };
+
+    const openVideoModal = (video) => {
+        setVideo(video);
+        setShowModal(true);
+    }
+
+    const closeVideoModal = () => {
+        setShowModal(false);
+        setVideo(null);
+    }
+
+    const handleMusicianSave = async (musician) => {
+        if (!user?.uid || !musician?.id) return;
+        try {
+          const action = await saveMusician(user.uid, musician.id);
+          toast.success(
+            action === 'saved'
+              ? `Saved ${musician.name} to your list`
+              : `Removed ${musician.name} from your list`
+          );
+        } catch (error) {
+          console.error('Error toggling saved musician:', error);
+          toast.error('Something went wrong. Please try again.');
+        }
+      };
 
     return (
         <>
@@ -43,31 +143,155 @@ export const FindMusicians = ({ user }) => {
         </div>
         <div className='body musicians'>
             <div className='filters'>
-                <input 
-                    type='text' 
-                    placeholder='Search...' 
-                    value={searchQuery} 
-                    onChange={handleSearchChange} 
+                <div className="status-buttons">
+                    <button className={`btn ${selectedType === '' ? 'active' : ''}`} onClick={() => updateParam('type', '')}>All</button>
+                    <button className={`btn ${selectedType === 'Musician' ? 'active' : ''}`} onClick={() => updateParam('type', 'Musician')}>Solo</button>
+                    <button className={`btn ${selectedType === 'Band' ? 'active' : ''}`} onClick={() => updateParam('type', 'Band')}>Band</button>
+                    <button className={`btn ${selectedType === 'DJ' ? 'active' : ''}`} onClick={() => updateParam('type', 'DJ')}>DJ</button>
+                </div>
+
+                <select
+                    value={selectedGenres}
+                    onChange={(e) => {
+                        const selected = Array.from(e.target.selectedOptions, o => o.value);
+                        updateParam('genres', selected);
+                    }}
+                    >
+                        <option value="">Any</option>
+                    <option value="Rock">Rock</option>
+                    <option value="Jazz">Jazz</option>
+                    <option value="Pop">Pop</option>
+                    <option value="Hip-Hop">Hip-Hop</option>
+                    <option value="Classical">Classical</option>
+                </select>
+
+                {/* {windowWidth > 1268 && (
+                    <select
+                        value={selectedLocation}
+                        onChange={(e) => updateParam('location', e.target.value)}
+                        >
+                        <option value="">All Locations</option>
+                        <option value="Cambridge">Cambridge</option>
+                    </select>
+                )} */}
+
+                <div className="search-bar-container">
+                    <SearchIcon />
+                    <input
+                    type='text'
+                    placeholder='Search By Name...'
+                    value={searchQuery}
+                    onChange={(e) => updateParam('search', e.target.value)} 
                     className='search-bar'
-                />
+                    aria-label='Search musicians'
+                    />
+                </div>
             </div>
-            {filteredMusicians.length > 0 ? (
+            {!loading ? (
                 <div className='saved-musicians'>
-                    {filteredMusicians.map((musician) => (
-                        <div className='musician-card' key={musician.id} onClick={(e) => openInNewTab(`/${musician.id}/null`, e)}>
-                            <figure className='photo'>
-                                <img src={musician.picture} alt={musician.name} />
-                            </figure>
-                            <h3>{musician.name}</h3>
-                            <h4>{musician.musicianType}</h4>
+                    {musicians.map((musician) => (
+                        <div className='musician-card' key={musician.id}>
+                            <div className="media-container">
+                                <figure className="video-thumbnail" onClick={() => openVideoModal(musician.videos[0])}>
+                                    <video
+                                        src={musician.videos[0]}
+                                        muted
+                                        playsInline
+                                        preload="metadata"
+                                        poster={musician.videos[0]?.thumbnail}
+                                    />
+                                    <div className="play-icon">
+                                        <PlayIcon />
+                                    </div>
+                                </figure>
+                                <div className="profile-picture">
+                                    <img src={musician.picture} alt={musician.name} />
+                                </div>
+                            </div>
+                            <div className="musician-card-flex">
+                                <div className="musician-name-type">
+                                    <h2>{musician.name}</h2>
+                                    <p>{musician.musicianType}</p>
+                                </div>
+                                <button className="btn icon-box" onClick={() => handleMusicianSave(musician)}>
+                                    {user?.savedMusicians?.includes(musician.id) ? <SavedIcon /> : <SaveIcon />}
+                                </button>
+                            </div>
+                            <div className="genre-tags">
+                                {musician.genres.map((g) => (
+                                    <span className="genre-tag" key={g}>
+                                        {g}
+                                    </span>
+                                ))}
+                            </div>
+                            <div className="stats-container">
+                                {musician?.avgReviews?.avgRating ? (
+                                    <div className="stats-box avg-rating">
+                                        <span className="large-item">
+                                            <StarIcon />
+                                            {musician.avgReviews.avgRating}
+                                        </span>
+                                        <span className='text'>avg rating</span>
+                                    </div>
+                                ) : (
+                                    <div className="stats-box avg-rating">
+                                        <span className="large-item">
+                                            <StarIcon />
+                                            -
+                                        </span>
+                                        <span className='text'>no ratings</span>
+                                    </div>
+                                )}
+                                <span className="spacer"></span>
+                                {musician?.totalEarnings ? (
+                                    <div className="stats-box earnings">
+                                        <span className="large-item">
+                                            {formatEarnings(musician.totalEarnings)}
+                                        </span>
+                                        <span className='text'>earned</span>
+                                    </div>
+                                ) : (
+                                    <div className="stats-box earnings">
+                                        <span className="large-item">
+                                            £0
+                                        </span>
+                                        <span className='text'>earned</span>
+                                    </div>
+                                )}
+                                <span className="spacer"></span>
+                                {musician?.followers ? (
+                                    <div className="stats-box followers">
+                                        <span className="large-item">
+                                            {musician.followers}
+                                        </span>
+                                        <span className="text">followers</span>
+                                    </div>
+                                ) : (
+                                    <div className="stats-box followers">
+                                        <span className="large-item">
+                                            0
+                                        </span>
+                                        <span className="text">followers</span>
+                                    </div>
+                                )}
+                            </div>
+                            <button className="btn primary" onClick={(e) => openInNewTab(`/${musician.id}/null`, e)}>
+                                <span>View Profile</span>
+                            </button>
                         </div>
                     ))}
                 </div>
             ) : (
-                <p>No musicians found.</p>
+                <div className='saved-musicians'>
+                {Array.from({ length: 3 }).map((_, index) => (
+                    <div className="musician-card-loading" key={index}>
+                        <Skeleton width={'100%'} height={400} />
+                    </div>
+                ))}
+                </div>
             )}
+            {showModal && <VideoModal video={video} onClose={closeVideoModal} />}
         </div>
     </>
-
     )
 }

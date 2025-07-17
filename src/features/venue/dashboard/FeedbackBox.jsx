@@ -13,7 +13,6 @@ export const FeedbackBox = ({ user }) => {
         setMode('input');
       } else if (mode === 'input') {
         await submitUserFeedback(feedback);
-        console.log('Feedback submitted:', feedback);
         setFeedback({ feedback: '', user: user?.uid });
         setMode('submitted');
       }
