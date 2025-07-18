@@ -14,6 +14,8 @@ import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '../../../services/utils/misc';
+import { logGigCancellation, revertGigAfterCancellation } from '../../../services/gigs';
+import { updateMusicianCancelledGig } from '../../../services/musicians';
 
 
 export const GigHandbook = ({ setShowGigHandbook, showGigHandbook, setGigForHandbook, gigForHandbook, usersConfirmedGigs, musicianId }) => {

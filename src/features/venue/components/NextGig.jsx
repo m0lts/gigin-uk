@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import '@styles/shared/modals.styles.css'
-import '@styles/musician/gig-handbook.styles.css'
+import '@styles/host/next-gig-modal.styles.css'
 import { NewTabIcon, PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useAuth } from '@hooks/useAuth';
@@ -14,7 +14,10 @@ import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '@services/utils/misc';
-import { PeopleGroupIconSolid } from '../../shared/ui/extras/Icons';
+import { CloseIcon, ErrorIcon, ExitIcon, PeopleGroupIconSolid } from '../../shared/ui/extras/Icons';
+import { toast } from 'sonner';
+import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
+import { updateMusicianCancelledGig } from '../../../services/musicians';
 
 
 export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
@@ -25,29 +28,16 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [showPromoteModal, setShowPromoteModal] = useState(false);
     const [askCancellationReason, setAskCancellationReason] = useState(false);
-    const [cancellationReason, setCancellationReason] = useState('');
+    const [cancellationReason, setCancellationReason] = useState({
+        reason: '',
+        extraDetails: '',
+    });
 
     const handleModalClick = (e) => {
         if (loading) return;
         if (e.target.className === 'modal') {
             setNextGigModal(false);
         }
-    };
-
-    const splitDateAndTime = (timestamp) => {
-        const date = timestamp.toDate();
-        const day = date.getDate();
-        const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
-        const month = date.toLocaleDateString('en-GB', { month: 'long' });
-        const year = date.getFullYear();
-        const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        return {
-            weekday, // e.g., 'Monday'
-            day, // e.g., '1st'
-            month, // e.g., 'January'
-            year, // e.g., '2023'
-            time, // e.g., '14:30'
-        };
     };
 
     const formatGenres = (genres) => {
@@ -92,34 +82,32 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 transactionId: nextGig.transactionId,
             });
             const gigId = nextGig.gigId;
-            const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(nextGig.venueId);
             const conversationId = await  getOrCreateConversation(musicianProfile, nextGig, venueProfile, 'cancellation');
             await postCancellationMessage(
                 conversationId,
                 user.uid,
-                `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(
+                `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
                   cancellationReason
-                )}. You have been refunded the gig fee - refunds can take 3–10 business days to appear in your account. The gig has been re-posted for musicians to apply to.`
+                )}. We apologise for any inconvenience caused.`
             );
-            await revertGigAfterCancellation(nextGig, musicianId, cancellationReason);
-            await updateMusicianCancelledGig(musicianId, gigId);
-            await logGigCancellation(gigId, musicianId, cancellationReason);
+            await revertGigAfterCancellationVenue(nextGig, musicianProfile.musicianId, cancellationReason);
+            await updateMusicianCancelledGig(musicianProfile.musicianId, gigId);
+            await logGigCancellation(gigId, musicianProfile.musicianId, cancellationReason);
             setLoading(false);
-            setShowGigHandbook(false);
-            window.location.reload();
+            setNextGigModal(false);
+            toast.success('Gig cancellation successfull.')
         } catch (error) {
             console.error('Error canceling task:', error.message);
             setLoading(false);
+            toast.error('Failed to cancel gig.')
         }
     };
     
     const handleCancelNo = () => {
         setShowConfirmation(false);
+        setAskCancellationReason(false);
     };
-
-    console.log(nextGig)
-    console.log(musicianProfile)
 
     return (
         <div className='modal' onClick={handleModalClick}>
@@ -127,41 +115,59 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 <div className='modal-content confirmation-modal' onClick={(e) => e.stopPropagation()}>
                     {loading ? (
                         <>
-                            <h3>Cancelling gig...</h3>
-                            <p>Please don't leave this window or close your browser.</p>
+                            <div className="text">
+                                <h2>Cancelling gig...</h2>
+                                <p>Please don't leave this window or close your browser.</p>
+                            </div>
                             <LoadingThreeDots />
                         </>
                     ) : !askCancellationReason ? (
                         <>
-                            <h3>Are you sure you want to cancel this gig?</h3>
-                            <p>The venue will be refunded the gig fee and the gig re-listed.</p>
+                            <div className="text">
+                                <h2>Are you sure you want to cancel this gig?</h2>
+                                <p>You will be refunded the gig fee and the gig won't be re-listed. You can relist the gig in the dashboard.</p>
+                            </div>
                             <div className='two-buttons'>
                                 <button className='btn danger' onClick={() => setAskCancellationReason(true)}>
                                     Yes
                                 </button>
-                                <button className='btn secondary' onClick={handleCancelNo}>
+                                <button className='btn tertiary' onClick={handleCancelNo}>
                                     No
                                 </button>
                             </div>
                         </>
                     ) : askCancellationReason && (
                         <>
-                            <h3>Why are you cancelling?</h3>
-                            <select id='cancellation-reason' value={cancellationReason} onChange={(e) => setCancellationReason(e.target.value)}>
-                                <option value=''>Select a reason</option>
-                                <option value='fee'>Fee Dispute</option>
-                                <option value='availability'>Availability</option>
-                                <option value='double-booking'>Double Booking</option>
-                                <option value='personal-reasons'>Personal Reasons</option>
-                                <option value='illness'>Illness</option>
-                                <option value='information'>Not Enough Information</option>
-                                <option value='other'>Other</option>
-                            </select>
+                            <div className="text">
+                                <h2>What is your reason for cancelling?</h2>
+                            </div>
+                            <div className="input-container select">
+                                <select id='cancellation-reason' value={cancellationReason.reason} onChange={(e) => setCancellationReason((prev) => ({
+                                        ...prev,
+                                        reason: e.target.value,
+                                    }))}>
+                                    <option value=''>Please select a reason</option>
+                                    <option value='fee'>Fee Dispute</option>
+                                    <option value='availability'>Availability</option>
+                                    <option value='double-booking'>Double Booking</option>
+                                    <option value='personal-reasons'>Personal Reasons</option>
+                                    <option value='illness'>Illness</option>
+                                    <option value='information'>Not Enough Information</option>
+                                    <option value='other'>Other</option>
+                                </select>
+                            </div>
+                            <div className="input-container">
+                                <label htmlFor="extraDetails" className='label'>Add any extra details below:</label>
+                                <textarea name="extra-details" value={cancellationReason.extraDetails} id="extraDetails" className='input' onChange={(e) => setCancellationReason((prev) => ({
+                                        ...prev,
+                                        extraDetails: e.target.value,
+                                    }))}></textarea>
+                            </div>
                             <div className='two-buttons'>
                                 <button className='btn danger' onClick={handleConfirmCancel} disabled={!cancellationReason}>
-                                    Confirm
+                                    Confirm Cancellation
                                 </button>
-                                <button className='btn secondary' onClick={handleCancelNo}>
+                                <button className='btn tertiary' onClick={handleCancelNo}>
                                     Cancel
                                 </button>
                             </div>
@@ -169,8 +175,8 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                     )}
                 </div>
             ) : (
-                <div className='modal-content gig-handbook' onClick={(e) => e.stopPropagation()}>
-                <div className='head'>
+                <div className='modal-content next-gig' onClick={(e) => e.stopPropagation()}>
+                <div className='head' onClick={(e) => openInNewTab(`/${musicianProfile.musicianId}`, e)}>
                     <div className='venue-info'>
                         <figure className='venue-img-cont'>
                             <img src={musicianProfile.picture} alt={musicianProfile.name} className='venue-img' />
@@ -180,17 +186,9 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                             <p>{musicianProfile.musicianType}</p>
                         </div>
                     </div>
-                    <div className='musician-actions'>
-                        <button className='btn tertiary' onClick={(e) => openInNewTab(`/musicians/${musicianProfile.musicianId}`, e)}>
-                            Musician Profile <NewTabIcon />
-                        </button>
-                        <button className='btn primary' onClick={() => setShowPromoteModal(true)}>
-                            <PeopleGroupIconSolid /> Promote
-                        </button>
-                        <button className='btn danger' onClick={() => handleGigCancelation()}>
-                            Cancel Gig
-                        </button>
-                    </div>
+                    <button className='btn tertiary'>
+                        <NewTabIcon />
+                    </button>
                 </div>
                 <div className='body'>
                     <div className='primary-info'>
@@ -199,7 +197,7 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                             <h3 className='text'>{formatDate(nextGig.date)} {formatDurationSpan(nextGig.startTime, nextGig.duration)}</h3>
                         </div>
                         <div className='info-cont'>
-                            <h3 className='subject'>Type of Gig</h3>
+                            <h3 className='subject'>Gig Type</h3>
                             <h3 className='text'>{nextGig.kind}</h3>
                         </div>
                         <div className='info-cont'>
@@ -211,16 +209,24 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                             <h3 className='text'>{formatGenres(nextGig.genre)}</h3>
                         </div>
                     </div>
+                    <div className='actions'>
+                        <button className='btn primary' onClick={() => setShowPromoteModal(true)}>
+                            <PeopleGroupIconSolid /> Promote Gig
+                        </button>
+                        <button className='btn danger' onClick={() => handleGigCancelation()}>
+                            Cancel Gig
+                        </button>
+                    </div>
                 </div>
                 {(!loading) && (
-                    <button className='btn close tertiary' onClick={() => {setShowGigHandbook(false)}}>
+                    <button className='btn close tertiary' onClick={() => {setNextGigModal(false)}}>
                         Close
                     </button>
                 )}
             </div>
             )}
             {showPromoteModal && (
-                <PromoteModal setShowSocialsModal={setShowPromoteModal} musicianId={musicianId} />
+                <PromoteModal setShowSocialsModal={setShowPromoteModal} musicianId={musicianProfile.musicianId} />
             )}
         </div>
     );

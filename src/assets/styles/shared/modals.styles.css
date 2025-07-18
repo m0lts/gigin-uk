@@ -23,6 +23,7 @@
     max-width: 75vw;
     max-height: 75vh;
     padding:2.5rem;
+    padding-top: 3rem;
     background-color: var(--gn-white);
     border-radius: var(--gn-border-radius);
     border:1px solid var(--gn-grey-350);

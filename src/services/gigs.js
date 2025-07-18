@@ -498,6 +498,32 @@ export const revertGigAfterCancellation = async (gigData, musicianId, cancellati
   });
 };
 
+/**
+ * Reverts a gig to a closed state after cancellation and removes the musician from the applicant list.
+ * @param {object} gigData - The full gig object.
+ * @param {string} musicianId - The ID of the cancelling musician.
+ * @param {string} cancellationReason - The cancellation reason provided.
+ * @returns {Promise<void>}
+ */
+export const revertGigAfterCancellationVenue = async (gigData, musicianId, cancellationReason) => {
+  const gigRef = doc(firestore, 'gigs', gigData.gigId);
+  const updatedApplicants = gigData.applicants.filter(app => app.id !== musicianId);
+  await updateDoc(gigRef, {
+    applicants: updatedApplicants,
+    agreedFee: deleteField(),
+    disputeClearingTime: deleteField(),
+    disputeLogged: deleteField(),
+    musicianFeeStatus: deleteField(),
+    paymentStatus: deleteField(),
+    clearPendingFeeTaskName: deleteField(),
+    automaticMessageTaskName: deleteField(),
+    paid: false,
+    status: 'closed',
+    cancellationReason,
+  });
+};
+
+
 
 /**
  * Deletes a gig from Firestore.
