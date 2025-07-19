@@ -71,6 +71,7 @@
     flex-direction: column;
     gap:5px;
     min-height: 100px;
+    height:fit-content;
     margin:1.5rem 0;
 }
 
@@ -102,8 +103,7 @@
     min-width: 100%;
     height:100px;
     max-height:100px;
-    min-height: 100px;
-    border:1px solid var(--gn-off-black);
+    border:1px solid var(--gn-grey-400);
     outline: 1px solid transparent;
     border-radius:0.5rem;
     padding:0.5rem;
@@ -113,6 +113,82 @@
 .window .body.overview .feedback-section .feedback-textarea:focus {
     outline-color: var(--gn-off-black);
 }
+
+.window .body.overview .review-musicians {
+    margin: 1.5rem 0;
+}
+
+.window .body.overview .review-musicians .musicians-to-review {
+    margin-top: 1rem;
+    display: flex;
+    overflow-x: auto;
+    align-items: flex-start;
+    padding: 0.25rem;
+}
+
+.window .body.overview .review-musicians .musician-to-review {
+    width:300px;
+    min-width: 300px;
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 1rem;
+    box-shadow: 0 0 4px var(--gn-shadow);
+    margin-right:1rem;
+    overflow: hidden;
+    padding:1rem;
+}
+
+.window .body.overview .review-musicians .musician-to-review .musician-img-cont {
+    width:50px;
+    height:50px;
+    overflow: hidden;
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--gn-shadow);
+}
+
+.window .body.overview .review-musicians .musician-to-review img {
+    width:100%;
+    height:100%;
+    object-fit: cover;
+}
+
+.window .body.overview .review-musicians .musician-to-review .musician-name {
+    margin: 0.5rem 0;
+}
+
+.window .body.overview .review-musicians .musician-to-review .musician-name p {
+    color: var(--gn-grey-700);
+}
+
+.window .body.overview .review-musicians .musician-to-review .star-rating .icon {
+    color: gold;
+    font-size: 1.5rem;
+}
+
+.window .body.overview .review-musicians .musician-to-review textarea {
+    margin: 0.5rem 0;
+    width:100%;
+    max-width: 100%;
+    min-width: 100%;
+    height:50px;
+    max-height: 150px;
+    min-height: 50px;
+    padding:5px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    transition: all 0.1s ease-in-out;
+}
+
+.window .body.overview .review-musicians .musician-to-review textarea:disabled {
+    opacity: 0.5;
+}
+
+.window .body.overview .review-musicians .musician-to-review textarea:focus {
+    border:1px solid var(--gn-off-black);
+    outline:1px solid var(--gn-off-black);
+}
+
 
 
 /* GIGS */

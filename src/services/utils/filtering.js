@@ -71,11 +71,11 @@ export const getPendingGigsToReview = (gigs) => {
 
 export const getUnreviewedPastGigs = (gigs) => {
   const now = new Date();
-
   return gigs.filter((gig) => {
     const date = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
     return (
       date <= now
+      // &&
       // !gig.venueHasReviewed &&
       // gig.applicants?.some((a) => a.status === 'confirmed')
     );

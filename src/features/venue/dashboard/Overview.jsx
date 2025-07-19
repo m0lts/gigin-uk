@@ -12,11 +12,14 @@ import {
 import { getMusicianProfileByMusicianId } from '@services/musicians';
 import { getReviewsByVenueIds } from '@services/reviews';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { AllGigsIcon, CalendarIconSolid, ExclamationIcon, GigIcon, MailboxFullIcon, NextGigIcon } from '../../shared/ui/extras/Icons';
+import { AllGigsIcon, CalendarIconSolid, ExclamationIcon, GigIcon, MailboxFullIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { NextGig } from '../components/NextGig';
 import { FeedbackSection } from './FeedbackSection';
+import { submitReview } from '../../../services/reviews';
+import { toast } from 'sonner';
+import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
-export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gigsToReview }) => {
+export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gigsToReview, setGigsToReview }) => {
 
     const navigate = useNavigate();
     const [showSocialsModal, setShowSocialsModal] = useState(false);
@@ -30,7 +33,11 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
     const [socialsId, setSocialsId] = useState(null);
     const [reviews, setReviews] = useState([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
+    const [musiciansToReview, setMusiciansToReview] = useState([]);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [ratings, setRatings] = useState({});
+    const [reviewTexts, setReviewTexts] = useState({});
+    const [submittingReviews, setSubmittingReviews] = useState({});
 
     useResizeEffect((width) => {
         setWindowWidth(width);
@@ -67,39 +74,77 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                 console.error('Error fetching musician profile:', error);
             }
         };
-        const fetchVenueReviews = async () => {
-            if (!venues || !venues.length) return;
+        const fetchMusiciansToReview = async () => {
+            if (!gigsToReview || gigsToReview.length < 1) return;
+          
             try {
-                const venueIds = venues.map(v => v.venueId);
-                const allReviews = await getReviewsByVenueIds(venueIds);
-                const musicianReviews = allReviews.filter(
-                    review => review.reviewWrittenBy === 'musician'
-                );
-                const enrichedReviews = musicianReviews.map(review => {
-                    const matchedVenue = venues.find(v => v.venueId === review.venueId);
-                    return {
-                    ...review,
-                    venueName: matchedVenue?.name || 'Unknown Venue',
-                    venuePhoto: matchedVenue?.photos?.[0] || null,
-                    };
-                });
-                enrichedReviews.sort((a, b) => b.timestamp.toDate() - a.timestamp.toDate());
-                setReviews(reviews);
-                setLoadingReviews(false);
+              const updatedGigs = await Promise.all(
+                gigsToReview.map(async (gig) => {
+                  const confirmedApplicant = gig.applicants.find((app) => app.status === 'confirmed');
+                  if (!confirmedApplicant) return null;
+          
+                  const musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+          
+                  return {
+                    ...gig,
+                    musicianProfile,
+                  };
+                })
+              );
+              const filteredGigs = updatedGigs.filter(Boolean);
+              setMusiciansToReview(filteredGigs);
             } catch (error) {
-                console.error('Error fetching venue reviews:', error);
+              console.error('Error fetching musician profiles for gigs:', error);
             }
-        };
+          };
         fetchMusicianProfile();
-        fetchVenueReviews();
-    }, [nextGig, venues]);
+        if (gigsToReview.length > 0) fetchMusiciansToReview();
+    }, [nextGig, gigsToReview]);
 
     
     const formatName = (name) => {
         return name.split(' ')[0];
     };
 
-    console.log(gigsToReview)
+    const handleRatingChange = (musicianId, star) => {
+        setRatings(prev => ({ ...prev, [musicianId]: star }));
+    };
+      
+      const handleReviewTextChange = (musicianId, text) => {
+        setReviewTexts(prev => ({ ...prev, [musicianId]: text }));
+    };
+
+    const handleSubmitReview = async (musicianId, gigData) => {
+        setSubmittingReviews(prev => ({ ...prev, [musicianId]: true }));
+        try {
+            const ratingValue = ratings[musicianId];
+            const reviewTextValue = reviewTexts[musicianId];
+            if (!ratingValue) {
+                toast.info('Please add a star rating.');
+                return;
+            };
+            await submitReview({
+                reviewer: 'venue',
+                musicianId: musicianId,
+                venueId: gigData.venueId,
+                gigId: gigData.gigId,
+                rating: ratingValue,
+                reviewText: reviewTextValue,
+                profile: gigData.musicianProfile,
+            });
+            toast.success('Review submitted. Thank you!');
+            setGigsToReview((prev) => prev.filter(g => g.gigId !== gigData.gigId));
+            setRatings((prev) => ({ ...prev, [musicianId]: 0 }));
+            setReviewTexts((prev) => ({ ...prev, [musicianId]: '' }));
+        } catch (error) {
+            console.error('Error submitting review:', error);
+            toast.error('Review submission failed. Please try again.');
+        } finally {
+            setSubmittingReviews(prev => ({ ...prev, [musicianId]: false }));
+        }
+    };
+
+
 
     return (
         <>
@@ -135,10 +180,59 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                     </div>
                 </div>
 
-                <div className="recent-musicians">
-                    <h2>Rate Previous Musicians</h2>
+                {musiciansToReview.length > 0 && (
+                    <div className="review-musicians">
+                        <h3>Previous Performers</h3>
+                        <div className="musicians-to-review">
+                            {musiciansToReview.map((musician) => {
+                                const id = musician.musicianProfile.musicianId;
+                                const currentRating = ratings[id] || 0;
+                                const currentText = reviewTexts[id] || '';
 
-                </div>
+                                return (
+                                    <div className="musician-to-review" key={id}>
+                                        <div className="musician-info">
+                                            <figure className="musician-img-cont">
+                                                <img className="musician-img" src={musician.musicianProfile.picture} alt={musician.musicianProfile.name} />
+                                            </figure>
+                                            <div className="musician-name">
+                                                <h3>{musician.musicianProfile.name}</h3>
+                                                <p>{musician.musicianProfile.musicianType}</p>
+                                            </div>
+                                        </div>
+                                        <div className="review-section">
+                                            <div className='star-rating'>
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <span
+                                                    key={star}
+                                                    className='star'
+                                                    onClick={() => handleRatingChange(id, star)}
+                                                    >
+                                                    {currentRating >= star ? <StarIcon /> : <StarEmptyIcon />}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <textarea
+                                                value={currentText}
+                                                onChange={(e) => handleReviewTextChange(id, e.target.value)}
+                                                placeholder='Write your review (optional)...'
+                                                disabled={!currentRating}
+                                                className='textarea'
+                                            />
+                                        </div>
+                                        <button
+                                            className='btn primary'
+                                            onClick={() => handleSubmitReview(id, musician)}
+                                            disabled={submittingReviews[id]}
+                                        >
+                                            {submittingReviews[id] ? <LoadingThreeDots /> : 'Submit Review'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 <FeedbackSection user={user} />
 

@@ -55,8 +55,9 @@ export const VenueDashboard = ({ user }) => {
         const unreviewedGigs = getUnreviewedPastGigs(gigs);
         if (localGigsToReview.length > 0) {
           setGigToReview(localGigsToReview[0]);
-          setGigsToReview(unreviewedGigs);
           setShowReviewModal(true);
+        } else if (unreviewedGigs.length > 0) {
+            setGigsToReview(unreviewedGigs);
         }
       }, [gigs]);
 
@@ -90,7 +91,7 @@ export const VenueDashboard = ({ user }) => {
                 )}
                 <div className="output">
                     <Routes>
-                        <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} />} />
+                        <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} />} />
                         <Route path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} />} />

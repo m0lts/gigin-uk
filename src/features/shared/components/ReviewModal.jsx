@@ -10,6 +10,7 @@ import { updateGigDocument } from '@services/gigs';
 import { sendDisputeMessage } from '@services/messages';
 import { sendEmail } from '@services/emails';
 import { cancelTask } from '@services/functions';
+import { submitReview } from '../../../services/reviews';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);
@@ -121,7 +122,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
         return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
     };
 
-    const submitReview = async () => {
+    const handleSubmitReview = async () => {
         try {
             await submitReview({
                 reviewer,
@@ -280,7 +281,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                     <div className='two-buttons'>
                                         <button
                                             className='btn primary'
-                                            onClick={submitReview}
+                                            onClick={handleSubmitReview}
                                             disabled={!rating}
                                         >
                                             Submit Review
@@ -292,7 +293,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 ) : (
                                     <button
                                         className='btn primary'
-                                        onClick={submitReview}
+                                        onClick={handleSubmitReview}
                                         disabled={!rating}
                                     >
                                         Submit Review
@@ -335,7 +336,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 />
                                 <button
                                     className='btn primary'
-                                    onClick={submitReview}
+                                    onClick={handleSubmitReview}
                                     disabled={!rating}
                                 >
                                     Submit Review
