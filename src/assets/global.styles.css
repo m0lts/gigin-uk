@@ -76,7 +76,7 @@ h5 {
 }
 h6 {
     text-transform: uppercase;
-    color: var(--dark-grey);
+    color: var(--gn-grey-600);
     font-size: 0.75rem;
     font-weight: 600;
 }

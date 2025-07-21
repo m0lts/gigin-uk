@@ -144,6 +144,24 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
         }
     };
 
+    const howToSteps = [
+        {
+          title: 'Add your venues',
+          text: "Add venues (like you already have) that you manage to your account by building them in the 'My Venues' section."
+        },
+        {
+          title: 'Post Gigs for musicians to apply to',
+          text: "With Gigin, the musicians do the work. Click the 'Post a Gig' button to post a new gig opportunity for musicians to apply to."
+        },
+        {
+          title: 'Review gig applications',
+          text: "When musicians apply to your gig post, they'll appear in your messages and your gigs section on the dashboard."
+        },
+        {
+          title: 'Confirm gig',
+          text: "Accept or deny musician applications. When you accept an application, the gig is booked and confirmed."
+        }
+      ];
 
 
     return (
@@ -180,7 +198,7 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                     </div>
                 </div>
 
-                {musiciansToReview.length > 0 && (
+                {musiciansToReview.length > 0 ? (
                     <div className="review-musicians">
                         <h3>Previous Performers</h3>
                         <div className="musicians-to-review">
@@ -230,6 +248,19 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="how-gigin-works-cont">
+                        <h3>How Gigin Works</h3>
+                        <div className="how-gigin-works">
+                            {howToSteps.map((step, index) => (
+                                <div key={index} className="how-to-step">
+                                <div className="step-number">{index + 1}</div>
+                                <h3>{step.title}</h3>
+                                <p>{step.text}</p>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

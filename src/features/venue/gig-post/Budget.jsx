@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export const GigBudget = ({ formData, handleInputChange }) => {
+export const GigBudget = ({ formData, handleInputChange, error }) => {
 
     const budgetInputRef = useRef(null);
 
@@ -26,9 +26,9 @@ export const GigBudget = ({ formData, handleInputChange }) => {
             }
         } else if (kind === 'Background Music') {
             if (gigType === 'DJ') {
-                return 'DJs charge more than £50 an hour for background music.'
+                return 'DJs typically charge around £50 an hour for background music.'
             } else {
-                return 'Musicians charge more than £50 an hour for background music.'
+                return 'Musicians typically charge around £50 an hour for background music.'
             }
         } else if (kind === 'Live Music') {
             if (gigType === 'DJ') {
@@ -68,9 +68,15 @@ export const GigBudget = ({ formData, handleInputChange }) => {
                         ref={budgetInputRef}
                         onChange={handleBudgetChange}
                         value={formData.budget}
+                        autoComplete="off"
                         />
                 </div>
                 <p className='sub-text'>{formatSubText(formData.kind, formData.gigType)}</p>
+                {error && (
+                    <div className="error-cont" style={{ width: 'fit-content', margin: '1rem auto' }}>
+                        <p className="error-message">{error}</p>
+                    </div>
+                )}
             </div>
         </>
     )

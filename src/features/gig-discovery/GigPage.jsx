@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import '@styles/musician/gig-page.styles.css';
@@ -42,6 +42,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
 
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token'); 
+    const venueVisiting = searchParams.get('venue');
 
     const { gigs } = useGigs();
 
@@ -149,7 +150,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         if (user?.musicianProfile && user?.musicianProfile?.bands.length > 0) {
             fetchBandData();
         }
-    }, [gigs, gigId, user]);
+    }, [gigs, gigId, user, venueVisiting]);
 
     useEffect(() => {
         if (!selectedProfile || !gigData) return;
@@ -673,7 +674,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                         <p>£{calculateTotalIncome(gigData.budget)}</p>
                                     </div>
                                 </div>
-                                {!(user?.venueProfiles?.length > 0 && (!user.musicianProfile)) && hasAccessToPrivateGig && (
+                                {!(user?.venueProfiles?.length > 0 && (!user.musicianProfile)) && hasAccessToPrivateGig && !venueVisiting && (
                                     <>
                                         {validProfiles?.length > 1 && (
                                             <div className="profile-select-wrapper">

@@ -1,42 +1,52 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-export const GigTemplates = ({ templates, incompleteGigs, setFormData }) => {
+export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetFormData }) => {
 
     const [selectedCard, setSelectedCard] = useState();
 
     const handlePopulateTemplateData = (template) => {
-        const { templateName, templateId, ...templateData } = template;
-        const id = uuidv4();
-        delete templateData.id;
-        setFormData({
-            ...templateData,
-            gigId: id,
-            id: id,
-            createdAt: new Date(),
-        });
-        setSelectedCard(templateId);
+        if (selectedCard === template.templateId) {
+            resetFormData();
+            setSelectedCard(undefined);
+        } else {
+            const { templateName, templateId, ...templateData } = template;
+            const id = uuidv4();
+            delete templateData.id;
+            setFormData({
+                ...templateData,
+                gigId: id,
+                id: id,
+                createdAt: new Date(),
+            });
+            setSelectedCard(templateId);
+        }
     };
 
     const handlePopulateGigData = (gig) => {
-        const { gigId, createdAt, ...gigData } = gig;
-        setFormData({
-            ...gigData,
-            gigId: gigId,
-            date: gig.date.toDate(),
-            createdAt: new Date(),
-        });
-        setSelectedCard(gigId);
+        if (selectedCard === gig.gigId) {
+            resetFormData();
+            setSelectedCard(undefined);
+        } else {
+            const { gigId, createdAt, ...gigData } = gig;
+            setFormData({
+                ...gigData,
+                gigId: gigId,
+                date: gig.date.toDate(),
+                createdAt: new Date(),
+            });
+            setSelectedCard(gigId);
+        }
     };
 
     const formatDate = (date) => {
         const d = date.toDate();
         const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+        const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
         const hours = String(d.getHours()).padStart(2, '0');
         const minutes = String(d.getMinutes()).padStart(2, '0');
-        return `${day}/${month}/${year} - ${hours}:${minutes}`;
+        return `${hours}:${minutes} - ${day}/${month}/${year}`;
     }
 
     return (
@@ -53,6 +63,7 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData }) => {
                             <div className={`card template ${selectedCard === template.templateId ? 'selected' : ''}`} key={index} onClick={() => handlePopulateTemplateData(template)}>
                                 <h4 className='text'>{template.templateName}</h4>
                                 <p className='sub-text'>{template.venue.venueName}</p>
+                                <p className='sub-text'>{formatDate(template.createdAt)}</p>
                             </div>
                         ))}
                     </div>

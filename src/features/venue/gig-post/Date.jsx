@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-export const GigDate = ({ formData, handleInputChange }) => {
+export const GigDate = ({ formData, handleInputChange, error, setError }) => {
     const [selectedDate, setSelectedDate] = useState(formData.date || null);
 
     useEffect(() => {
@@ -50,8 +50,17 @@ export const GigDate = ({ formData, handleInputChange }) => {
                         selected={selectedDate}
                         onChange={(date) => setSelectedDate(date)}
                         inline
+                        minDate={new Date()}
+                        dayClassName={(date) => 
+                            date < new Date().setHours(0, 0, 0, 0) ? 'past-date' : undefined
+                        }
                     />
                 </div>
+                {error && (
+                    <div className="error-cont">
+                        <p className="error-message">{error}</p>
+                    </div>
+                )}
             </div>
         </>
     );

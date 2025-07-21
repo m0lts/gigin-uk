@@ -26,7 +26,7 @@ import { confirmGigPayment, fetchSavedCards } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
 import { updateGigDocument } from '../../../services/gigs';
-import { CloseIcon, PeopleGroupIconSolid, PreviousIcon } from '../../shared/ui/extras/Icons';
+import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 
 export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
@@ -160,7 +160,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                     <p>Thanks,<br />The Gigin Team</p>
                 `,
             })
+            toast.success('Application Accepted.')
         } catch (error) {
+            toast.error('Error accepting gig application. Please try again.')
             console.error('Error updating gig document:', error);
         }
     };
@@ -200,7 +202,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                     <p>Thanks,<br />The Gigin Team</p>
                 `,
             });
+            toast.info('Application Rejected.')
         } catch (error) {
+            toast.error('Error rejecting gig application. Please try again.')
             console.error('Error updating gig document:', error);
         }
     };
@@ -219,6 +223,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
             setShowPaymentModal(true);
             setMusicianProfileId(profileId);
         } catch (error) {
+            toast.info("We couldn't access your saved cards. Sorry for any inconvenience.")
             console.error('Error fetching saved cards:', error);
         } finally {
             setLoadingPaymentDetails(false);
@@ -232,15 +237,16 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
             if (result.success) {
                 setPaymentSuccess(true);
                 setGigInfo(prev => ({ ...prev, status: 'payment processing' }));
+                toast.info("We are processing your payment...")
             } else {
                 setPaymentSuccess(false);
-                alert(result.error || 'Payment failed. Please try again.');
+                toast.error(result.error || 'Payment failed. Please try again.');
             }
         } catch (error) {
             console.error('Error completing payment:', error);
             setMusicianProfileId(null);
             setPaymentSuccess(false);
-            alert('An error occurred while processing the payment.');
+            toast.error('An error occurred while processing the payment. Please try again.');
         } finally {
             setMakingPayment(false);
         }
@@ -319,34 +325,35 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                         Applications for "{gigInfo.gigName}"
                     </h1>
                     <h3>{gigInfo.startTime} {formatDate(gigInfo.date)} at {venueName}</h3>
+                    <button className="btn text" style={{ marginTop: 5 }} onClick={(e) => openInNewTab(`/gig/${gigInfo.gigId}?venue=true`, e)}>Visit Gig Page <NewTabIcon /></button>
                 </div>
                 {gigInfo.date.toDate() > now && (
                     <div className='action-buttons'>
                         {!gigInfo?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') && (
                             <button className='btn tertiary' onClick={() => openGigPostModal(gigInfo)}>
-                                Edit
+                                Edit Gig Details
                             </button>
                         )}
                         {!gigInfo.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') ? (
                             <>
                                 {gigInfo.status === 'closed' ? (
-                                <button className="btn tertiary" onClick={handleCloseGig}>
-                                    Open
+                                <button className="btn tertiary" onClick={handleReopenGig}>
+                                    Open To Applications
                                 </button>
 
                                 ) : (
-                                <button className="btn tertiary" onClick={handleReopenGig}>
-                                    Close
+                                <button className="btn tertiary" onClick={handleCloseGig}>
+                                    Close From Applications
                                 </button>
 
                                 )}
                                 <button className='btn danger' onClick={() => setShowDeleteConfirmationModal(true)}>
-                                    Delete
+                                    Delete Gig
                                 </button>
                             </>
                         ) : (
                             <button className='primary btn' onClick={() => setShowPromoteModal(true)}>
-                                <PeopleGroupIconSolid /> Promote
+                                <PeopleGroupIconSolid /> Promote Gig
                             </button>
                         )}
                     </div>

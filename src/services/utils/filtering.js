@@ -81,3 +81,22 @@ export const getUnreviewedPastGigs = (gigs) => {
     );
   });
 };
+
+export const mergeAndSortConversations = (prevConversations, newUpdates) => {
+  const merged = [...prevConversations];
+
+  newUpdates.forEach((newConv) => {
+    const index = merged.findIndex(c => c.id === newConv.id);
+    if (index !== -1) {
+      merged[index] = newConv;
+    } else {
+      merged.push(newConv);
+    }
+  });
+
+  return merged.sort((a, b) => {
+    const aTime = a.lastMessageTimestamp?.seconds || 0;
+    const bTime = b.lastMessageTimestamp?.seconds || 0;
+    return bTime - aTime;
+  });
+};

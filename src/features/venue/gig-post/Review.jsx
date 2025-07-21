@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { EditIcon, CopyIcon } from '@features/shared/ui/extras/Icons';
 import { saveGigTemplate } from '@services/gigs';
+import { toast } from 'sonner';
+import { NewTabIcon } from '../../shared/ui/extras/Icons';
 
 export const GigReview = ({ formData, handleInputChange, setStage }) => {
 
@@ -117,7 +119,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
         const gigDate = new Date(formData.date);
     
         if (value < gigDate) {
-            alert('The repeat end date cannot be before the gig date.');
+            toast.error('The repeat end date cannot be before the gig date.');
             return;
         } else {
             setEndRepeatDate(e.target.value);
@@ -126,8 +128,9 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(privateApplicationsLink).then(() => {
-            alert('Link copied to clipboard');
+            toast.success('Link copied to clipboard');
         }).catch((err) => {
+            toast.error('Failed to copy link. Please try again.')
             console.error('Failed to copy link: ', err);
         });
     };
@@ -147,11 +150,17 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
           await saveGigTemplate(templateDataPacket);
           setSaving(false);
           setSavedTemplate(true);
+          toast.success('Template Saved.')
         } catch (error) {
           setSaving(false);
+          toast.error('Failed to save template. Please try again.')
           console.error('Failed to save template:', error);
         }
       };
+
+    // const handlePreviewGig = () => {
+        
+    // }
 
     return (
         <>
@@ -186,7 +195,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                             </button>
                         </div>
                         <div className='review-box'>
-                            <h4 className='value'>{formData.budget}</h4>
+                            <h4 className='value'>{formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig' ? '£0' : formData.budget}</h4>
                             <button className='btn text' onClick={() => setStage(8)}>
                                 <EditIcon />
                             </button>
@@ -283,10 +292,12 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                                     <span className='slider round'></span>
                                 </label>
                             </div>
-                            <p className='text'>
-                                Selecting this means only musicians with your private gig link can apply. 
-                                Useful when inviting someone directly.
-                            </p>
+                            {!formData.privateApplications && (
+                                <p className='text'>
+                                    Selecting this means only musicians with your private gig link can apply. 
+                                    Useful when inviting someone directly.
+                                </p>
+                            )}
                             {formData.privateApplications && privateApplicationsLink && (
                                 <div className='private-link'>
                                     <p className='text'>{privateApplicationsLink}</p>
@@ -298,6 +309,10 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                         </div>
                     </div>
                 </div>
+                {/* <button className="btn secondary" style={{ marginBottom: '1rem' }} onClick={() => handlePreviewGig()}>
+                    <span style={{ marginRight: 5 }}>Preview Gig</span>
+                    <NewTabIcon />
+                </button> */}
             </div>
         </>
     )

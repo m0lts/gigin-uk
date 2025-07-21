@@ -21,8 +21,6 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile }) => {
         setSearchQuery(event.target.value);
     };
 
-    console.log(musicianProfile);
-
     const { gigs } = useGigs();
 
     const queryParams = new URLSearchParams(location.search);

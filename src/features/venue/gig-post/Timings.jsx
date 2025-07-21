@@ -1,5 +1,5 @@
 
-export const GigTimings = ({ formData, handleInputChange }) => {
+export const GigTimings = ({ formData, handleInputChange, error }) => {
 
     const handleStartTimeChange = (time) => {
         handleInputChange({
@@ -52,96 +52,103 @@ export const GigTimings = ({ formData, handleInputChange }) => {
                 <h1 className='title'>Choose your timings for the gig.</h1>
             </div>
             <div className='body timings'>
-                <div className='selections'>
-                    <div className='input-group'>
-                        <label htmlFor='startTime'>Gig Start Time</label>
-                        <input 
-                            type='time' 
-                            name='startTime' 
-                            id='startTime'
-                            onChange={(e) => handleStartTimeChange(e.target.value)}
-                            value={formData.startTime}
-                         />
-                    </div>
-                    <div className='input-group'>
-                        <label htmlFor='duration'>Gig Duration</label>
-                        <div className='duration-inputs'>
-                            <select name='hours' id='hours' onChange={handleHoursChange} value={Math.floor(formData.duration / 60)}>
-                                {[...Array(6).keys()].map(i => (
-                                    <option key={i } value={i}>{i}</option>
-                                ))}
-                            </select>
-                            <span className='unit'> {formData.duration < 120 ? 'hr' : 'hrs'} </span>
-                            <select name='minutes' id='minutes' onChange={handleMinutesChange} value={formData.duration % 60}>
-                                {[0, 15, 30, 45].map(i => (
-                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}</option>
-                                ))}
-                            </select>
-                            <span className='unit'> mins </span>
+                <div className="timeline-stage">
+                    <div className='selections'>
+                        <div className='input-group'>
+                            <label htmlFor='startTime'>Gig Start Time</label>
+                            <input 
+                                type='time' 
+                                name='startTime' 
+                                id='startTime'
+                                onChange={(e) => handleStartTimeChange(e.target.value)}
+                                value={formData.startTime}
+                            />
+                        </div>
+                        <div className='input-group'>
+                            <label htmlFor='duration'>Gig Duration</label>
+                            <div className='duration-inputs'>
+                                <select name='hours' id='hours' onChange={handleHoursChange} value={Math.floor(formData.duration / 60)}>
+                                    {[...Array(6).keys()].map(i => (
+                                        <option key={i } value={i}>{i}</option>
+                                    ))}
+                                </select>
+                                <span className='unit'> {formData.duration < 120 ? 'hr' : 'hrs'} </span>
+                                <select name='minutes' id='minutes' onChange={handleMinutesChange} value={formData.duration % 60}>
+                                    {[0, 15, 30, 45].map(i => (
+                                        <option key={i} value={i}>{i.toString().padStart(2, '0')}</option>
+                                    ))}
+                                </select>
+                                <span className='unit'> mins </span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className='timeline'>
-                    <div className='subtitle'>
-                        <h5 className='label'>Gig Timeline</h5>
-                        {formData.startTime === '' && (
-                            <p>Fill out your timings to see a rough timeline of the evening.</p>
-                        )}
-                    </div>
-                    {formData.startTime !== '' && (
-                        <>
-                            <div className='timeline-event'>
-                                <div className='timeline-time'>{startTimeMinusOneHour !== '00:00' ? formatTime(startTimeMinusOneHour) : '00:00'}</div>
-                                <div className='timeline-line'></div>
-                                <div className='timeline-content'>
-                                    <div className='timeline-details'>
-                                        <h4>Musicians Arrive</h4>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className='timeline-event'>
-                                <div className='timeline-time orange'>{formData.startTime ? formatTime(formData.startTime) : '00:00'}</div>
-                                <div className='timeline-line'></div>
-                                <div className='timeline-content'>
-                                    <div className='timeline-details'>
-                                        <h4>Performance Starts</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                    {(formData.startTime !== '' && formData.duration !== 0) && (
-                        <>
-                            {formData.duration > 60 && (
+                    <div className='timeline'>
+                        <div className='subtitle'>
+                            <h5 className='label'>Gig Timeline</h5>
+                            {formData.startTime === '' && (
+                                <p>Fill out your timings to see a rough timeline of the evening.</p>
+                            )}
+                        </div>
+                        {formData.startTime !== '' && (
+                            <>
                                 <div className='timeline-event'>
+                                    <div className='timeline-time'>{startTimeMinusOneHour !== '00:00' ? formatTime(startTimeMinusOneHour) : '00:00'}</div>
+                                    <div className='timeline-line'></div>
                                     <div className='timeline-content'>
-                                        <div className='timeline-context'>
-                                            <p>* Musicians usually require a short break after an hour of performing.</p>
+                                        <div className='timeline-details'>
+                                            <h4>Musicians Arrive</h4>
                                         </div>
                                     </div>
                                 </div>
-                            )}
-                            <div className='timeline-event'>
-                                <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
-                                <div className='timeline-line'></div>
-                                <div className='timeline-content'>
-                                    <div className='timeline-details'>
-                                        <h4>Performance Ends</h4>
+                                <div className='timeline-event'>
+                                    <div className='timeline-time orange'>{formData.startTime ? formatTime(formData.startTime) : '00:00'}</div>
+                                    <div className='timeline-line'></div>
+                                    <div className='timeline-content'>
+                                        <div className='timeline-details'>
+                                            <h4>Performance Starts</h4>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className='timeline-event'>
-                                <div className='timeline-time'>{endTime !== '00:00' ? formatTime(calculateTime(endTime, 60)) : '00:00'}</div>
-                                <div className='timeline-line'></div>
-                                <div className='timeline-content'>
-                                    <div className='timeline-details'>
-                                        <h4>Musicians Leave</h4>
+                            </>
+                        )}
+                        {(formData.startTime !== '' && formData.duration !== 0) && (
+                            <>
+                                {(formData.duration > 60 && formData.kind !== 'Open Mic') && (
+                                    <div className='timeline-event'>
+                                        <div className='timeline-content'>
+                                            <div className='timeline-context'>
+                                                <p>* Musicians usually require a short break after an hour of performing.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className='timeline-event'>
+                                    <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
+                                    <div className='timeline-line'></div>
+                                    <div className='timeline-content'>
+                                        <div className='timeline-details'>
+                                            <h4>Performance Ends</h4>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </>
-                    )}
+                                <div className='timeline-event'>
+                                    <div className='timeline-time'>{endTime !== '00:00' ? formatTime(calculateTime(endTime, 30)) : '00:00'}</div>
+                                    <div className='timeline-line'></div>
+                                    <div className='timeline-content'>
+                                        <div className='timeline-details'>
+                                            <h4>Musicians Leave</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
+                {error && (
+                    <div className="error-cont" style={{ width: 'fit-content', margin: '0.5rem auto' }}>
+                        <p className="error-message">{error}</p>
+                    </div>
+                )}
             </div>
         </>
     )

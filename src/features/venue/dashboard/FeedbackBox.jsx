@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { submitUserFeedback } from '../../../services/reports';
+import { toast } from 'sonner';
 
 export const FeedbackBox = ({ user }) => {
     const [mode, setMode] = useState('initial');
@@ -12,9 +13,14 @@ export const FeedbackBox = ({ user }) => {
       if (mode === 'initial') {
         setMode('input');
       } else if (mode === 'input') {
-        await submitUserFeedback(feedback);
-        setFeedback({ feedback: '', user: user?.uid });
-        setMode('submitted');
+        try {
+          await submitUserFeedback(feedback);
+          setFeedback({ feedback: '', user: user?.uid });
+          setMode('submitted');
+          toast.success('Feedback received, thank you.')          
+        } catch (error) {
+          toast.error('Feedback submission failed, please try again.')
+        }
       }
     };
   

@@ -122,11 +122,17 @@ button {
 .btn.icon {
     background-color: transparent;
     border: none;
-    padding:5px;
+    padding:5px 7px;
+    border-radius: 0.5rem;
+    transition: background-color 200ms ease;
+}
+
+.btn.icon:hover {
+    background-color: var(--gn-grey-300);
 }
 
 .btn.icon .icon {
-    font-size: 1.5rem;
+    font-size: 1rem;
 }
 
 /* ICONS AS BUTTONS */

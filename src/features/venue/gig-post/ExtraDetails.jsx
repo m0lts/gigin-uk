@@ -20,7 +20,7 @@ export const GigExtraDetails = ({ formData, handleInputChange }) => {
                         id='extraInformation' 
                         onChange={(e) => handleExtraInfoChange(e.target.value)}
                         value={formData.extraInformation}
-                        placeholder='Do you mind if the musicians play some of their original songs? Any special song requests, extra details on what kind of experience you’re after...'
+                        placeholder='Do you mind if the musicians play some of their original songs? Add any special song requests, extra details on what kind of experience you’re after etc.'
                     ></textarea>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
     VenueBuilderIcon,
     BeerIcon,
@@ -9,8 +9,11 @@ import {
     PlaceOfWorshipIcon,
     RestaurantIcon,
     VillageHallIcon } from '@features/shared/ui/extras/Icons';
+import { BeerIconSolid, ClubIconSolid, HouseIconSolid, MicrophoneIconSolid, PlaceOfWorshipIconSolid, RestaurantIconSolid, VillageHallIconSolid } from '../../shared/ui/extras/Icons';
 
-export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage }) => {
+export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage, error, setError }) => {
+
+    const navigate = useNavigate();
 
     const handleLocationSelect = (venue) => {
         handleInputChange({
@@ -25,12 +28,28 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
         setStage(prevStage => prevStage + 1);
     }
 
-    const getIcon = (type, establishment) => {
+    const getIcon = (type, establishment, selected) => {
         if (type === 'Personal Space') {
-            return <HouseIconLight />
+            if (selected) {
+                return <HouseIconSolid />
+            } else {
+                return <HouseIconLight />
+            }
         } else if (type === 'Public Establishment') {
-            if (establishment === 'Pub/Bar') {
+            if (establishment === 'Pub/Bar' && selected) {
+                return <BeerIconSolid />
+            } else if (establishment === 'Pub/Bar') {
                 return <BeerIcon />
+            } else if (establishment === 'Village Hall' && selected) {
+                return <VillageHallIconSolid />
+            } else if (establishment === 'Music Venue' && selected) {
+                return <MicrophoneIconSolid />
+            } else if (establishment === 'Restaurant' && selected) {
+                return <RestaurantIconSolid />
+            } else if (establishment === 'Place of Worship' && selected) {
+                return <PlaceOfWorshipIconSolid />
+            } else if (establishment === 'Club' && selected) {
+                return <ClubIconSolid />
             } else if (establishment === 'Village Hall') {
                 return <VillageHallIcon />
             } else if (establishment === 'Music Venue') {
@@ -50,24 +69,26 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
     return (
         <>
             <div className='head'>
-                <h1 className='title'>Where is the Gig?</h1>
-                
+                <h1 className='title'>Which Venue is Hosting?</h1>
             </div>
             <div className='body location'>
                 <div className='selections'>
                     {venueProfiles.map((venue, index) => (
-                        <div className={`card ${formData.venue.venueName === venue.name && 'selected'}`} key={index} onClick={() => handleLocationSelect(venue)}>
-                            { getIcon(venue.type, venue.establishment) }
+                        <div className={`card ${formData.venueId === venue.venueId && 'selected'}`} key={index} onClick={() => handleLocationSelect(venue)}>
+                            { getIcon(venue.type, venue.establishment, formData.venueId === venue.venueId) }
                             <h4 className='text'>{venue.name}</h4>
                         </div>
                     ))}
                 </div>
-                <Link className='link' to={'/venues/add-venue'}>
-                    <button className='btn secondary'>
-                        <VenueBuilderIcon />
-                        <span style={{ marginLeft: '5px' }}>Add another venue</span>
-                    </button>
-                </Link>
+                {error && (
+                    <div className="error-cont">
+                        <p className="error-message">{error}</p>
+                    </div>
+                )}
+                <button className='btn secondary add-venue' onClick={() => navigate('/venues/add-venue')}>
+                    <VenueBuilderIcon />
+                    <span style={{ marginLeft: '5px' }}>Add another venue</span>
+                </button>
             </div>
         </>
     );

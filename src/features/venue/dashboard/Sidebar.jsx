@@ -15,34 +15,18 @@ import {
   UserIcon
 } from '@features/shared/ui/extras/Icons';
 import { TextLogoMed } from '../../shared/ui/logos/Logos';
-import { listenToUserConversations } from '@services/conversations';
 import { useAuth } from '@hooks/useAuth';
 import '@assets/fonts/fonts.css';
-import { CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, FeedbackIcon, GigIcon, HouseIconSolid, MusicianIconLight, MusicianIconSolid, UpChevronIcon, VenueIconLight, VenueIconSolid } from '../../shared/ui/extras/Icons';
+import { CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, FeedbackIcon, GigIcon, HouseIconSolid, MailboxEmptyIconSolid, MailboxFullIconSolid, MusicianIconLight, MusicianIconSolid, UpChevronIcon, VenueIconLight, VenueIconSolid } from '../../shared/ui/extras/Icons';
 import { FeedbackBox } from './FeedbackBox';
+import { toast } from 'sonner';
 
-export const Sidebar = ({ setGigPostModal, user }) => {
+export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
   const pathname = useMemo(() => location.pathname, [location.pathname]);
-  const [newMessages, setNewMessages] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    const unsubscribe = listenToUserConversations(user, (conversations) => {
-      const hasUnread = conversations.some((conv) => {
-        const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
-        const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
-        const isNotSender = conv.lastMessageSenderId !== user.uid;
-        const isDifferentPage = !pathname.includes(conv.id);
-        return lastMessage > lastViewed && isNotSender && isDifferentPage;
-      });
-      setNewMessages(hasUnread);
-    });
-    return () => unsubscribe();
-  }, [user]);
 
 
   const handleLogout = async () => {
@@ -50,6 +34,7 @@ export const Sidebar = ({ setGigPostModal, user }) => {
       await logout();
       navigate('/venues');
     } catch (err) {
+      toast.error('Failed to logout. Please try again.')
       console.error('Logout Failed:', err);
     }
   };
@@ -67,6 +52,12 @@ export const Sidebar = ({ setGigPostModal, user }) => {
       label: 'Gigs',
       icon: <CalendarIconLight />,
       iconActive: <CalendarIconSolid />,
+    },
+    {
+      path: '/venues/dashboard/messages',
+      label: 'Messages',
+      icon: !newMessages ? <MailboxEmptyIcon /> : <MailboxFullIcon />,
+      iconActive: !newMessages ? <MailboxEmptyIconSolid /> : <MailboxFullIconSolid />,
     },
     {
       path: '/venues/dashboard/my-venues',
@@ -140,9 +131,6 @@ export const Sidebar = ({ setGigPostModal, user }) => {
             </li>
           );
         })}
-        <li className="menu-item" onClick={() => navigate('/messages')}>
-          {newMessages ? <MailboxFullIcon /> : <MailboxEmptyIcon />} Messages
-        </li>
       </ul>
       {pathname !== '/venues/dashboard' && (
         <FeedbackBox user={user} />

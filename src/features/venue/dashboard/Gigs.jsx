@@ -9,10 +9,11 @@ import {
     TickIcon,
 CloseIcon } from '@features/shared/ui/extras/Icons';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { CalendarIconSolid, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, FilterIconEmpty, NewTabIcon, OptionsIcon, SearchIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, FilterIconEmpty, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch, duplicateGig, saveGigTemplate, updateGigDocument } from '@services/gigs';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
+import { openInNewTab } from '../../../services/utils/misc';
 
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
@@ -138,7 +139,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
         if (selectedGigs.length === 0) return;
         try {
           await deleteGigsBatch(selectedGigs);
-          toast.success('Gigs Deleted');
+          toast.success('Gigs Deleted.');
           setConfirmModal(false);
           setSelectedGigs([]);
         } catch (error) {
@@ -266,7 +267,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
 
             {windowWidth < 1400 && showMobileFilters && (
                 <div className="filters ext">
-                    <div className="search-bar-container">
+                    {/* <div className="search-bar-container">
                     <SearchIcon />
                     <input
                         type='text'
@@ -276,7 +277,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                         className='search-bar'
                         aria-label='Search gigs'
                     />
-                    </div>
+                    </div> */}
                     <input
                     type='date'
                     id='dateSelect'
@@ -341,7 +342,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
           <table>
             <thead>
               <tr>
-                <th>
+                {/* <th>
                     <input
                         type="checkbox"
                         checked={selectedGigs.length === sortedGigs.length && sortedGigs.length > 0}
@@ -353,7 +354,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                         }
                         }}
                     />
-                </th>
+                </th> */}
                 <th id='name'>Name</th>
                 <th id='date'>
                   Time and Date
@@ -394,8 +395,14 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                           </td>
                         </tr>
                       )}
-                      <tr onClick={() => navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }>
-                        {gig.dateTime > now ? (
+                      <tr onClick={(e) => {
+                          if (gig.kind === 'Open Mic') {
+                            openInNewTab(`/gig/${gig.gigId}`, e)
+                          } else {
+                            navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } })
+                          }
+                        }}>
+                        {/* {gig.dateTime > now ? (
                             <td onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
@@ -405,12 +412,20 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                           </td>
                         ) : (
                             <td></td>
-                        )}
+                        )} */}
                         <td>{gig.gigName}</td>
                         <td>{gig.startTime} {gig.dateObj.toLocaleDateString('en-GB')}</td>
                         <td className='truncate'>{gig.venue.venueName}</td>
                         {windowWidth > 880 && (
-                          <td className='centre'>{gig.budget}</td>
+                          <td className='centre'>
+                            {gig.kind === 'Open Mic' ? (
+                              'Open Mic'
+                            ) : gig.kind === 'Ticketed Gig' ? (
+                              'Ticketed'
+                            ) : (
+                              gig.budget
+                            )}
+                          </td>
                         )}
                         <td className={`status-box ${gig.status}`}>
                           <div className={`status ${gig.status}`}>
@@ -418,7 +433,15 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                           </div>
                         </td>
                         {windowWidth > 1268 && (
-                          <td className='centre'>{gig.applicants.length}{gig.applicants.some(app => !app.viewed) && <DotIcon />}</td>
+                          <td className='centre'>
+                            {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
+                              '-'
+                            ) : (
+                              <>
+                                {gig.applicants.length}{gig.applicants.some(app => !app.viewed) && <DotIcon />}
+                              </>
+                            )}
+                            </td>
                         )}
                         <td className="options-cell" onClick={(e) => e.stopPropagation()}>
                             <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
@@ -444,7 +467,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                                         <DuplicateGigIcon />
                                     </button>
                                 )}
-                                {gig.dateTime > now && gig.status !== 'confirmed' && (
+                                {(gig.dateTime > now && gig.status !== 'confirmed' && !gig.kind === 'Open Mic') ? (
                                     <button
                                     onClick={async () => {
                                         closeOptionsMenu();
@@ -463,6 +486,27 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                                             <CloseIcon />
                                             ) : (
                                             <TickIcon />
+                                        )}
+                                    </button>
+                                ) : (gig.dateTime > now && gig.status !== 'confirmed' && gig.kind === 'Open Mic') && (
+                                  <button
+                                    onClick={async () => {
+                                        closeOptionsMenu();
+                                        const newStatus = gig.openMicApplications ? false : true;
+                                        try {
+                                            await updateGigDocument(gig.gigId, { openMicApplications: newStatus, limitApplications: false });
+                                            toast.success(`Open mic night ${(newStatus) ? 'opened for applications.' : 'changed to turn up and play.'}`);
+                                        } catch (error) {
+                                            console.error('Error updating status:', error);
+                                            toast.error('Failed to update open mic applications.');
+                                        }
+                                    }}
+                                    >
+                                        {gig.openMicApplications ? 'Change to Turn Up and Play' : 'Change to Applications Required'}
+                                        {gig.openMicApplications ? (
+                                            <MicrophoneIconSolid />
+                                            ) : (
+                                            <ShieldIcon />
                                         )}
                                     </button>
                                 )}

@@ -32,8 +32,11 @@ export const AdditionalDetails = ({ formData, handleInputChange, handleSubmit, s
     }, [formData])
 
     const handleSocialMediaChange = (platform, value) => {
-        handleInputChange('socialMedia', { ...formData.socialMedia, [platform]: value });
-    };
+        handleInputChange('socialMedia', {
+          ...(formData.socialMedia || {}),
+          [platform]: value
+        });
+      };
 
     const platformIcon = (platform) => {
         if (platform === 'facebook') {
@@ -53,7 +56,7 @@ export const AdditionalDetails = ({ formData, handleInputChange, handleSubmit, s
                     <p className='stage-copy'>Add any extra information that will help musicians understand the vibe, layout, or unique qualities of your space.</p>
                 </div>
                 <div className='input-group large-text'>
-                    <label htmlFor='description' className='input-label'>Describe your venue. Give us a sense of the place's character.</label>
+                    <label htmlFor='description' className='input-label'>Describe your venue. Give us a sense of the place's character</label>
                     <textarea
                         className={`${stepError && fieldError === 'description' ? 'error' : ''}`}
                         id='description'
@@ -64,7 +67,7 @@ export const AdditionalDetails = ({ formData, handleInputChange, handleSubmit, s
                     />
                 </div>
                 <div className='input-group large-text margin'>
-                    <label htmlFor='information' className='input-label'>Finally, add any practical information about the place.</label>
+                    <label htmlFor='information' className='input-label'>Finally, add any practical information about the place</label>
                     <textarea
                         className={`${stepError && fieldError === 'extraInfo' ? 'error' : ''}`}
                         id='information'
@@ -74,25 +77,41 @@ export const AdditionalDetails = ({ formData, handleInputChange, handleSubmit, s
                         onClick={() => {setStepError(null); setFieldError(null)}}
                     />
                 </div>
+                <div className="input-group margin">
+                    <label htmlFor='website' className='input-label'>Add your venue's website link here</label>
+                    <input
+                        className='input'
+                        type='text'
+                        id='website'
+                        placeholder='www.myvenue.com'
+                        value={formData.website}
+                        onChange={(e) => handleInputChange('website', e.target.value)}
+                        onClick={() => {setStepError(null); setFieldError(null)}}
+                    />
+                </div>
                 <div className='social-medias margin'>
                     <h6>Add Your Venue's Social Media Links</h6>
                     <div className='social-media-inputs'>
-                        {Object.keys(formData.socialMedia || {}).map((platform) => (
-                            <div key={platform} className='input-group socials'>
-                                <label htmlFor={platform} className={`icon-label`}>{platformIcon(platform)}</label>
-                                <input
-                                    type='url'
-                                    className='input-box'
-                                    id={platform}
-                                    value={formData.socialMedia[platform] || ''}
-                                    onChange={(e) => handleSocialMediaChange(platform, e.target.value)}
-                                    placeholder={`Enter your ${platform} URL`}
-                                />
-                            </div>
+                        {Object.keys(
+                        formData.socialMedia && typeof formData.socialMedia === 'object'
+                            ? formData.socialMedia
+                            : { facebook: '', twitter: '', instagram: '' }
+                        ).map((platform) => (
+                        <div key={platform} className='input-group socials'>
+                            <label htmlFor={platform} className='icon-label'>{platformIcon(platform)}</label>
+                            <input
+                            type='url'
+                            className='input-box'
+                            id={platform}
+                            value={formData.socialMedia?.[platform] ?? ''}
+                            onChange={(e) => handleSocialMediaChange(platform, e.target.value)}
+                            placeholder={`Enter your ${platform} URL`}
+                            />
+                        </div>
                         ))}
                     </div>
+                    </div>
                 </div>
-            </div>
             <div className='stage-controls'>
                 <button className='btn secondary' onClick={() => navigate(-1)}>
                     Back

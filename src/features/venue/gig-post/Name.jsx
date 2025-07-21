@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export const GigName = ({ formData, handleInputChange }) => {
+export const GigName = ({ formData, handleInputChange, error }) => {
 
     const nameInputRef = useRef(null);
 
@@ -31,8 +31,14 @@ export const GigName = ({ formData, handleInputChange }) => {
                         ref={nameInputRef}
                         onChange={(e) => handleNameChange(e.target.value)}
                         value={formData.gigName}
+                        autoComplete='off'
                         />
                 </div>
+                {error && (
+                    <div className="error-cont" style={{ width: 'fit-content', margin: '0 auto' }}>
+                        <p className="error-message">{error}</p>
+                    </div>
+                )}
             </div>
         </>
     );

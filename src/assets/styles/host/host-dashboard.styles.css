@@ -70,7 +70,6 @@
     display: flex;
     flex-direction: column;
     gap:5px;
-    min-height: 100px;
     height:fit-content;
     margin:1.5rem 0;
 }
@@ -189,6 +188,49 @@
     outline:1px solid var(--gn-off-black);
 }
 
+.window .body.overview .how-gigin-works-cont {
+    margin-top:2rem;
+}
+
+.window .body.overview .how-gigin-works {
+    display: flex;
+    gap: 2rem;
+    margin-top: 0.5rem;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+      
+.window .body.overview .how-gigin-works .how-to-step {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    min-width: 200px;
+    max-width: 250px;
+    background: var(--gn-white);
+    border-radius: 1rem;
+    padding: 1rem;
+    box-shadow: 0 4px 12px var(--gn-shadow);
+    text-align: center;
+}
+      
+.window .body.overview .how-gigin-works .step-number {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 0.5rem;
+    border-radius: 50%;
+    background-color: var(--gn-offset-orange);
+    color: var(--gn-orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.window .body.overview .how-gigin-works .how-to-step p {
+    color: var(--gn-grey-700);
+    margin-top: 0.5rem;
+}
 
 
 /* GIGS */
@@ -327,7 +369,7 @@
 
 .window .body.gigs table {
     width: 100%;
-    margin: 20px 0;
+    margin-bottom: 1rem;
     font-size: 16px;
     border-top:1px solid var(--gn-grey-350);
     overflow: hidden;
@@ -489,7 +531,7 @@
     border-radius: 0.5rem;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
     padding: 0.5rem 0;
-    min-width: 210px;
+    min-width: 300px;
     z-index: 1;
     display: flex;
     flex-direction: column;
@@ -719,16 +761,18 @@
 /* VENUES */
 
 .window .body.venues {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 300px);
-    gap: 10px;
-    padding: 0.1rem;
-    width: 100%;
-    padding-bottom: 1rem;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex: none;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    justify-content: flex-start;
+    align-items: flex-start;
 }
 
 .window .body.venues .venue-card {
-    width: 100%;
+    min-width: 325px;
     max-width: 350px;
     height:fit-content;
     min-height:300px;
@@ -740,8 +784,7 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
-    margin-bottom: 2rem;
-  }
+}
 
 .window .body.venues .venue-image {
     width:100%;
@@ -823,13 +866,13 @@
 /* MUSICIANS PAGE */
 
 .window .body.musicians {
-    overflow-y: auto; /* ensure scrolling if needed */
-    -ms-overflow-style: none;  /* IE + Edge */
-    scrollbar-width: none;     /* Firefox */
+    overflow-y: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .window .body.musicians::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
 }
 
 .window .body.musicians.no-saved {
@@ -848,12 +891,14 @@
 }
 
 .window .body.musicians .saved-musicians {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 350px);
-    gap: 10px;
-    padding: 0.1rem;
-    width: 100%;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex: none;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    justify-content: flex-start;
+    align-items: flex-start;
 }
 
 .window .body.musicians .musician-card {
@@ -1137,17 +1182,17 @@
     background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
 }
   
-.card-top {
+.window .body.finances .saved-cards .card-top {
     position: relative;
   }
   
-  .dots {
+.window .body.finances .saved-cards .dots {
     cursor: pointer;
     font-size: 1rem;
     padding: 0 0.5rem;
-  }
+}
   
-  .card-menu {
+.window .body.finances .saved-cards .card-menu {
     position: absolute;
     width:150px;
     top: 2rem;
@@ -1161,9 +1206,9 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-  }
+}
   
-  .card-menu .btn {
+.window .body.finances .saved-cards .card-menu .btn {
     border: none;
     border-radius: 0;
     display: flex;
@@ -1174,11 +1219,11 @@
     width: 100%;
     cursor: pointer;
     font-size: 0.9rem;
-  }
-  
-  .card-menu button:hover {
+}
+
+.window .body.finances .saved-cards .card-menu button:hover {
     background-color: #f5f5f5;
-  }
+}
   
 .window .body.finances .saved-cards .app-logo {
     width: 30px;

@@ -15,13 +15,14 @@ import { SavedMusicians } from './SavedMusicians';
 import { FindMusicians } from './FindMusicians';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { WelcomeModal } from '@features/musician/components/WelcomeModal';
-import { listenToTemplatesByVenueIds } from '@services/venues';
-import { fetchCustomerData } from '@services/functions';
+import { mergeAndSortConversations } from '@services/utils/filtering';
 import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { getPendingGigsToReview } from '@services/utils/filtering';
 import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 import { useVenueDashboard } from '@context/VenueDashboardContext';
 import { getUnreviewedPastGigs } from '../../../services/utils/filtering';
+import { MessagePage } from './messages/MessagePage';
+import { listenToUserConversations } from '@services/conversations';
 
 export const VenueDashboard = ({ user }) => {
     const {
@@ -43,6 +44,8 @@ export const VenueDashboard = ({ user }) => {
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [gigToReview, setGigToReview] = useState(null);
     const [gigsToReview, setGigsToReview] = useState([]);
+    const [newMessages, setNewMessages] = useState(false);
+    const [conversations, setConversations] = useState([]);
     const location = useLocation();
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname), [location.pathname]);
   
@@ -61,12 +64,28 @@ export const VenueDashboard = ({ user }) => {
         }
       }, [gigs]);
 
+      useEffect(() => {
+        if (!user) return;
+        const unsubscribe = listenToUserConversations(user, (updatedConversations) => {
+          setConversations(prev => mergeAndSortConversations(prev, updatedConversations));
+          const hasUnread = updatedConversations.some((conv) => {
+            const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
+            const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
+            const isNotSender = conv.lastMessageSenderId !== user.uid;
+            return lastMessage > lastViewed && isNotSender;
+          });
+          setNewMessages(hasUnread);
+        });
+        return unsubscribe;
+      }, [user]);
+
     return (
         <>  
             {loading && <LoadingScreen />}
             <Sidebar
               setGigPostModal={setGigPostModal}
               user={user}
+              newMessages={newMessages}
             />
             <div className='window venue'>
                 {location.pathname !== '/venues/dashboard' && (
@@ -94,6 +113,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} />} />
                         <Route path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
+                        <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />

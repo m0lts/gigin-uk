@@ -71,7 +71,7 @@ export const Venues = ({ venues }) => {
             <div className='head'>
                 <h1 className='title'>My Venues</h1>
                 <button className='btn primary' onClick={() => navigate('/venues/add-venue')}>
-                    Add another Venue
+                    Add Another Venue
                 </button>
             </div>
             <div className='body venues'>
@@ -86,7 +86,7 @@ export const Venues = ({ venues }) => {
                                     <h3 className='venue-name'>{venue.name}</h3>
                                     <p className='venue-address'>{getCityFromAddress(venue.address)}</p>
                                 </div>
-                                <button className="btn icon-box" onClick={(e) => openInNewTab(`/venues/${venue.venueId}`, e)}>
+                                <button className="btn icon" onClick={(e) => openInNewTab(`/venues/${venue.venueId}`, e)}>
                                     <NewTabIcon />
                                 </button>
                             </div>

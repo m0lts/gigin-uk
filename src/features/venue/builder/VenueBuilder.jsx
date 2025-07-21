@@ -15,6 +15,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { TickIcon } from '../../shared/ui/extras/Icons';
 import { uploadImageArrayWithFallback } from '../../../services/storage';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { toast } from 'sonner';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
@@ -37,6 +38,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         extraInformation: '',
         description: '',
         accountName: user ? user.name : '',
+        website: '',
         socialMedia: {
             facebook: '',
             twitter: '',
@@ -73,6 +75,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 extraInformation: venue.extraInformation || '',
                 description: venue.description || '',
                 completed: venue.completed || false,
+                website: venue.website,
+                socialMedia: venue.socialMedia,
             });
         }
     }, [venue])
@@ -151,6 +155,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             } else {
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             }
+            toast.error('Error creating venue profile. Please try again.')
             console.error('Error uploading images or creating venue profile: ', error);
         }
     };
@@ -186,6 +191,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 venueProfiles: arrayUnion(formData.venueId),
             });
             navigate('/venues');
+            toast.success('Venue profile saved.')
         } catch (error) {
             if (error.message?.includes('storage') || error.message?.includes('image')) {
                 setStepError("Something went wrong while uploading your images. Please check your connection and try again.");
@@ -196,7 +202,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             } else {
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             }
-            console.error('Error uploading images or creating venue profile: ', error);
+            toast.error('Error saving venue profile. Please try again.')
+            console.error('Error uploading images or saving venue profile: ', error);
         } finally {
             setSaving(false);
         }
@@ -210,7 +217,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             });
             setCompleteSavedProfileModal(false);
             setSavedProfile();
+            toast.info('Saved profile deleted.')
         } catch (error) {
+            toast.error('Failed to delete saved profile.')
             console.error(error);
         }
     }
@@ -353,22 +362,20 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
       
         // All complete
         return null;
-      };
+    };
 
-      const isPublic = formData.type === 'Public Establishment';
-      const totalSteps = isPublic ? 5 : 4;
-      
-      const completedSteps = [
+    const isPublic = formData.type === 'Public Establishment';
+    const totalSteps = isPublic ? 5 : 4;
+    
+    const completedSteps = [
         isStep1Complete(),
         isStep2Complete(),
         ...(isPublic ? [isStep3Complete()] : []),
         isStep4Complete(),
         isStep5Complete()
-      ].filter(Boolean).length;
-      
-      const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
-
-    console.log(savedProfile)
+    ].filter(Boolean).length;
+    
+    const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
 
     return (
         <div className={`venue-builder ${uploadingProfile ? 'upload-screen' : ''}`}>

@@ -12,6 +12,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Map, { Marker } from 'react-map-gl';
 import { AddressInputAutofill } from './AddressInputAutofill';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { toast } from 'sonner';
 
 export const VenueDetails = ({ formData, handleInputChange, setStepError, stepError }) => {
 
@@ -75,9 +76,11 @@ export const VenueDetails = ({ formData, handleInputChange, setStepError, stepEr
                     setLocationAddress(address);
                 }
             } else {
+                toast.error("We couldn't find coordinates for that address. Please try again.")
                 console.error('Failed to fetch coordinates.');
             }
         } catch (error) {
+            toast.error("We couldn't find coordinates for that address. Please try again.")
             console.error('Error fetching coordinates:', error);
         }
     };

@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { AddressAutofill } from '@mapbox/search-js-react';
+import { toast } from 'sonner';
 
 export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange, coordinatesError, setCoordinatesError, stepError, setStepError, errorField, setErrorField }) => {
 
@@ -56,9 +57,11 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                     setFeature(addressDetails);
                 }
             } else {
+                toast.error('Error fetching coordinates for that address. Please try again.')
                 console.error('Failed to fetch coordinates.');
             }
         } catch (error) {
+            toast.error('Error fetching coordinates for that address. Please try again.')
             console.error('Error fetching coordinates:', error);
         }
     };

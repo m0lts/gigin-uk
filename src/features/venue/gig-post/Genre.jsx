@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export const GigGenre = ({ formData, handleInputChange }) => {
+export const GigGenre = ({ formData, handleInputChange, error }) => {
     
     const [selectedGenre, setSelectedGenre] = useState(formData.genre || []);
 
@@ -35,8 +35,8 @@ export const GigGenre = ({ formData, handleInputChange }) => {
     return (
         <>
             <div className='head'>
-                <h1 className='title'>What genre would you like?</h1>
-                <p className='text'>Select all that apply.</p>
+                <h1 className='title'>What genre(s) would you prefer?</h1>
+                <p className='text'>Select all that apply. This will help us match the right musician to your gig.</p>
             </div>
             <div className='body genre'>
                 <div className='toggle-container'>
@@ -101,6 +101,11 @@ export const GigGenre = ({ formData, handleInputChange }) => {
                         <div className={`card small ${formData.genre.includes('Chillout/Lounge') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Chillout/Lounge')}>
                             <h4 className='text'>Chillout/Lounge</h4>
                         </div>
+                    </div>
+                )}
+                {error && (
+                    <div className="error-cont" style={{ width: 'fit-content', margin: '0.5rem auto' }}>
+                        <p className="error-message">{error}</p>
                     </div>
                 )}
             </div>
