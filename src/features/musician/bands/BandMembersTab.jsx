@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createBandInvite, getBandMembers } from '@services/bands';
 import { sendEmail } from '@services/emails';
-import { CopyIcon } from '@features/shared/ui/extras/icons';
+import { CopyIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { updateBandMemberSplits, updateBandMemberPermissions, removeBandMember, updateBandAdmin } from '@services/bands';
 import { AddMember } from '../../shared/ui/extras/Icons';
