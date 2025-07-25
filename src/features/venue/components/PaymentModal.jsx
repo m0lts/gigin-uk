@@ -45,9 +45,9 @@ export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makin
             ) : (
                 paymentSuccess ? (
                     <div className='payment-success'>
-                        <h2>Gig Payment Complete!</h2>
+                        <h2>Payment Received!</h2>
                         <SuccessIcon />
-                        <h4>We are processing the payment now, the gig will be confirmed shortly.</h4>
+                        <h4>The gig will be confirmed shortly.</h4>
                         <button className='btn secondary' onClick={onClose}>
                             Close
                         </button>
@@ -55,7 +55,7 @@ export const PaymentModal = ({ savedCards, onSelectCard, onClose, gigData, makin
                 ) : (
                     savedCards.length > 0 && !addingNewCard ? (
                         <>
-                            <h2>Complete Gig Payment</h2>
+                            <h2 className='title'>Complete Gig Payment</h2>
                             {gigData?.agreedFee && (
                                 <div className='payment-details'>
                                     <div className='payment-line'>

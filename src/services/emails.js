@@ -53,36 +53,39 @@ export const sendGigApplicationEmail = async ({
   date,
   budget,
   profileType = 'musician',
+  nonPayableGig = false,
 }) => {
   const isBand = profileType === 'band';
 
   const subject = isBand
-    ? `New Band Gig Application`
+    ? `New Gig Application`
     : `New Gig Application`;
 
-  const text = isBand
-    ? `${musicianName} have applied to your gig on ${date} at ${venueName}. They have proposed a fee of ${budget}.`
-    : `${musicianName} has applied to your gig on ${date} at ${venueName}. They have proposed a fee of ${budget}.`;
+  const feeText = nonPayableGig ? '' : ` They have proposed a fee of ${budget}.`;
 
-  const html = isBand
-    ? `
-      <p><strong>${musicianName}</strong> have applied to your gig:</p>
-      <ul>
-        <li><strong>Date:</strong> ${date}</li>
-        <li><strong>Venue:</strong> ${venueName}</li>
-        <li><strong>Proposed Fee:</strong> ${budget}</li>
-      </ul>
-      <p>Visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to review this application.</p>
-    `
-    : `
-      <p><strong>${musicianName}</strong> has applied to your gig:</p>
-      <ul>
-        <li><strong>Date:</strong> ${date}</li>
-        <li><strong>Venue:</strong> ${venueName}</li>
-        <li><strong>Proposed Fee:</strong> ${budget}</li>
-      </ul>
-      <p>Visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to review this application.</p>
-    `;
+  const text = isBand
+  ? `${musicianName} have applied to your gig on ${date} at ${venueName}.${feeText}`
+  : `${musicianName} has applied to your gig on ${date} at ${venueName}.${feeText}`;
+
+const html = isBand
+  ? `
+    <p><strong>${musicianName}</strong> have applied to your gig:</p>
+    <ul>
+      <li><strong>Date:</strong> ${date}</li>
+      <li><strong>Venue:</strong> ${venueName}</li>
+      ${!nonPayableGig ? `<li><strong>Proposed Fee:</strong> ${budget}</li>` : ''}
+    </ul>
+    <p>Visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to review this application.</p>
+  `
+  : `
+    <p><strong>${musicianName}</strong> has applied to your gig:</p>
+    <ul>
+      <li><strong>Date:</strong> ${date}</li>
+      <li><strong>Venue:</strong> ${venueName}</li>
+      ${!nonPayableGig ? `<li><strong>Proposed Fee:</strong> ${budget}</li>` : ''}
+    </ul>
+    <p>Visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to review this application.</p>
+  `;
 
   const mailRef = collection(firestore, 'mail');
   await addDoc(mailRef, {
@@ -148,6 +151,7 @@ export const sendGigAcceptedEmail = async ({
   gigData,
   agreedFee,
   isNegotiated = false,
+  nonPayableGig = false,
 }) => {
   const formattedDate = new Date(gigData.date).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -190,7 +194,11 @@ export const sendGigAcceptedEmail = async ({
         <li><strong>Date:</strong> ${formattedDate}</li>
         <li><strong>Fee:</strong> ${agreedFee}</li>
       </ul>
-      <p>Visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to pay the gig fee and confirm the gig.</p>
+      <p>${
+        nonPayableGig
+          ? 'This gig is now confirmed — no payment is required.'
+          : 'The gig will be confirmed once you have paid the gig fee.'
+      }</p>
       <p>Thanks,<br />The Gigin Team</p>
     `,
 
@@ -202,7 +210,11 @@ export const sendGigAcceptedEmail = async ({
         <li><strong>Date:</strong> ${formattedDate}</li>
         <li><strong>Fee:</strong> ${agreedFee}</li>
       </ul>
-      <p>The gig isn't confirmed until the venue pays the gig fee.</p>
+      <p>${
+        nonPayableGig
+          ? 'This gig is already confirmed — no payment is required from the venue.'
+          : 'The gig will be confirmed once the venue has paid the gig fee.'
+      }</p>
       <p>Please visit your <a href='${window.location.origin}/dashboard'>dashboard</a> to see the status of the gig.</p>
       <p>Thanks,<br />The Gigin Team</p>
     `,

@@ -26,8 +26,6 @@ export const ListView = ({ upcomingGigs, location }) => {
         return R * c; // Distance in miles
     };
 
-    console.log(filteredGigs)
-
     return (
         <div className='list-view'>
             <div className='filter-bar'>

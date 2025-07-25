@@ -6,9 +6,7 @@ export const ConversationItem = ({
   conversation,
   user,
   isActive,
-  onClick,
-  showArchived,
-  onArchiveToggle
+  onClick
 }) => {
   const isBandConversation = conversation.bandConversation;
 
@@ -41,45 +39,42 @@ export const ConversationItem = ({
       className={`conversation ${isActive ? 'active' : ''}`}
       onClick={() => onClick(conversation.id, musicianId, conversation.gigId)}
     >
-      <div className='conversation-icon'>
-        {otherParticipant?.role === 'venue' ? (
-          otherParticipant.venueImg ? (
-            <img className='participant-img' src={otherParticipant.venueImg} alt='Venue' />
-          ) : (
-            <HouseIconLight />
-          )
-        ) : otherParticipant?.musicianImg ? (
-          <img className='participant-img' src={otherParticipant.musicianImg} alt='Musician' />
-        ) : (
-          <MicrophoneIcon />
-        )}
-      </div>
       <div className='conversation-text'>
         <div className='conversation-title'>
-          <h3 className='conversation-title-text'>
-            {isBandConversation
-              ? otherParticipant?.role === 'venue'
-                ? otherParticipant?.accountName || 'Venue'
-                : bandAccount?.accountName || 'Band'
-              : musicianAccount?.accountName || 'Musician'}
-            {otherParticipant?.venueName && (
-              <span> - {otherParticipant.venueName}</span>
-            )}
-          </h3>
-          <button
-            className='btn tertiary'
-            onClick={(e) => {
-              e.stopPropagation();
-              onArchiveToggle(conversation, !showArchived);
-            }}
-          >
-            {showArchived ? <InboxIcon /> : <ArchiveIcon />}
-          </button>
+          <div className='conversation-name-icon-cont'>
+            <div className='conversation-icon'>
+              {otherParticipant?.role === 'venue' ? (
+                otherParticipant.venueImg ? (
+                  <img className='participant-img' src={otherParticipant.venueImg} alt='Venue' />
+                ) : (
+                  <HouseIconLight />
+                )
+              ) : otherParticipant?.musicianImg ? (
+                <img className='participant-img' src={otherParticipant.musicianImg} alt='Musician' />
+              ) : (
+                <MicrophoneIcon />
+              )}
+            </div>
+            <div className='conversation-name'>
+              <h3 className='conversation-title-text'>
+                {isBandConversation
+                  ? otherParticipant?.role === 'venue'
+                    ? otherParticipant?.accountName || 'Venue'
+                    : bandAccount?.accountName || 'Band'
+                  : musicianAccount?.accountName || 'Musician'}
+                {otherParticipant?.venueName && (
+                  <span> - {otherParticipant.venueName}</span>
+                )}
+              </h3>
+              <h4 className='conversation-title-comp'>
+                {isBandConversation
+                  ? 'Band'
+                  : 'Musician'}
+              </h4>
+            </div>
+          </div>
           {hasUnreadMessages && <div className='notification-dot'></div>}
         </div>
-        <h4 className='gig-date'>
-          {conversation.gigDate && formatDate(conversation.gigDate)}
-        </h4>
         <div className='conversation-details'>
           <p className='last-message-preview'>{conversation.lastMessage}</p>
           <h6 className='conversation-date'>
@@ -93,3 +88,4 @@ export const ConversationItem = ({
     </li>
   );
 };
+

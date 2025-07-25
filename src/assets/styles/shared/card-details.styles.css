@@ -15,7 +15,6 @@
 .card-details-form .card-details-container h4 {
     margin-top: 10px;
     width:100%;
-    border-bottom: 1px solid var(--gn-grey-400);
 }
 
 .card-details-form .card-details {
@@ -31,13 +30,6 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-}
-
-.card-details-form label {
-    text-transform: uppercase;
-    color: var(--dark-grey);
-    font-size: 0.75rem;
-    font-weight: 600;
 }
 
 .card-details-form .card-number-container {
@@ -66,6 +58,11 @@
     outline: none;
 }
 
+.card-details-form .label {
+    margin-bottom: 2px;
+    color: var(--gn-grey-600);
+}
+
 .card-details-form .input,
 .card-details-form #card-expiry,
 .card-details-form #card-cvc {
@@ -79,14 +76,14 @@
 }
 
 .card-details-form #cardholder-name {
-    font-weight: 500;
+    font-weight: 400;
 }
 
 .card-details-form .input:focus,
 .card-details-form #card-expiry:focus,
 .card-details-form #card-cvc:focus {
     border:1px solid var(--gn-off-black);
-    outline: none;
+    outline: 1px solid var(--gn-off-black);
 }
 
 .card-details-form .exp-cvc {
@@ -101,6 +98,10 @@
     justify-content: space-between;
     width: 100%;
     gap:5%;
+}
+
+.card-details-form .card-details-container .address-flex .input {
+    font-weight: 400;
 }
 
 .card-details-form .save-card {

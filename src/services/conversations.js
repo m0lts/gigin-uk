@@ -49,7 +49,7 @@ export const getOrCreateConversation = async (musicianProfile, gigData, venuePro
     {
       participantId: gigData.venueId,
       accountName: venueProfile.accountName,
-      accountId: venueProfile.user,
+      accountId: venueProfile.user ? venueProfile.user : venueProfile.userId,
       role: 'venue',
       venueName: gigData.venue.venueName,
       venueImg: venueProfile.photos?.[0] || null,
@@ -113,7 +113,6 @@ export const getOrCreateConversation = async (musicianProfile, gigData, venuePro
     createdAt: Timestamp.now(),
     bandConversation: isBand ? true : false,
   };
-
   const conversationDocRef = await addDoc(conversationsRef, conversationPayload);
   return conversationDocRef.id;
 };

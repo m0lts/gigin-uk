@@ -9,10 +9,17 @@ import { Toaster } from 'sonner';
 
 const stripePromise = loadStripe('pk_live_51Py8lOHI8M50kHhRvjzq6CjfiliJkeME3oaFpOhWLkIcx750xKeR68QwEgoanKf2GpH9ynizyl5RA1E1mBs5z9HQ00YNyhYnat');
 
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <GigsProvider>
-        <Elements stripe={stripePromise}>
+        <Elements stripe={stripePromise} options={{
+    fonts: [
+      {
+        cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap',
+      },
+    ],
+  }}>
           <App />
           <Toaster richColors position="bottom-right" />
         </Elements>

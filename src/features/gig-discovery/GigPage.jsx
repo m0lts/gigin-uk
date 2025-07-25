@@ -77,6 +77,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         }
     });
 
+    const getLocalGigDateTime = (gig) => {
+        const dateObj = gig.date.toDate();
+        const [hours, minutes] = gig.startTime.split(':').map(Number);
+        dateObj.setHours(hours);
+        dateObj.setMinutes(minutes);
+        dateObj.setSeconds(0);
+        dateObj.setMilliseconds(0);
+        return dateObj;
+      };
+
     useMapbox({
         containerRef: mapContainerRef,
         coordinates: venueProfile?.coordinates,
@@ -110,7 +120,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 if (venue) setVenueProfile(venue);
             }
             const similarGigsList = gigs
-            .filter(g => g.id !== gigId && g.date.toDate() > Date.now() && !g.confirmed)
+            .filter(g => g.id !== gigId && getLocalGigDateTime(g) > new Date() && !g.confirmed)
             .map(g => ({ id: g.id, ...g }));
             setSimilarGigs(similarGigsList);
             setLoading(false)
@@ -173,6 +183,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     if (!gigData) {
         return <div>No gig data found.</div>;
     }
+
+
 
     const handleImageClick = (index) => {
         setFullscreenImage(venueProfile.photos[index]);
@@ -302,6 +314,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
           if (!valid || userAppliedToGig) return;
           setApplyingToGig(true);
           try {
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig';
             const updatedApplicants = await applyToGig(gigId, musicianProfile);
             setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
             if (musicianProfile.bandProfile) {
@@ -315,19 +328,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 venueProfile,
                 'application'
             );
-            await getOrCreateConversation(
-                musicianProfile,
-                { ...gigData, gigId },
-                venueProfile,
-                'application'
-            );
             await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
-                receiverId: venueProfile.user,
+                receiverId: venueProfile.userId,
                 text: musicianProfile.bandProfile
-                    ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName} for ${gigData.budget}`
-                    : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName} for ${gigData.budget}`,
-                profileId: musicianProfile.musicianId,
+                ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for £${gigData.budget}`}`
+                : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for £${gigData.budget}`}`,                profileId: musicianProfile.musicianId,
                 profileType: musicianProfile.bandProfile ? 'band' : 'musician',
             });
             await sendGigApplicationEmail({
@@ -337,6 +343,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 date: formatDate(gigData.date),
                 budget: gigData.budget,
                 profileType: musicianProfile.bandProfile ? 'band' : 'musician',
+                nonPayableGig,
             });
             setUserAppliedToGig(true);
         } catch (error) {
@@ -387,10 +394,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             const profileType = musicianProfile.bandProfile ? 'band' : 'musician';
             const senderName = musicianProfile.name;
             const venueName = gigData.venue?.venueName || 'the venue';
-
             await sendNegotiationMessage(conversationId, {
                 senderId: user.uid,
-                receiverId: venueProfile.user,
+                receiverId: venueProfile.userId,
                 oldFee: gigData.budget,
                 newFee: newOffer,
                 text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${venueName}`,
@@ -697,7 +703,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                             </div>
                                         )}
                                         <div className='action-box-buttons'>
-                                        {new Date(`${gigData.date.toDate().toISOString().split('T')[0]}T${gigData.startTime}`) > new Date() ? (
+                                        {getLocalGigDateTime(gigData) > new Date() ? (
                                             <>
                                                 {userAppliedToGig ? (
                                                     <button className='btn primary-alt disabled' disabled>

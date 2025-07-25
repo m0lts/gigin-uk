@@ -52,13 +52,23 @@ export const filterInvitableGigsForMusician = (gigs, musicianId) => {
     );
 };
 
+export const getLocalGigDateTime = (gig) => {
+  const dateObj = gig.date.toDate(); // Firestore Timestamp
+  const [hours, minutes] = gig.startTime.split(':').map(Number);
+  dateObj.setHours(hours);
+  dateObj.setMinutes(minutes);
+  dateObj.setSeconds(0);
+  dateObj.setMilliseconds(0);
+  return dateObj;
+};
+
 
 export const getPendingGigsToReview = (gigs) => {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   return gigs.filter((gig) => {
-    const date = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
+    const date = getLocalGigDateTime(gig);
     return (
       date > weekAgo &&
       date <= now &&
@@ -72,12 +82,12 @@ export const getPendingGigsToReview = (gigs) => {
 export const getUnreviewedPastGigs = (gigs) => {
   const now = new Date();
   return gigs.filter((gig) => {
-    const date = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
+    const date = getLocalGigDateTime(gig);
     return (
       date <= now
-      // &&
-      // !gig.venueHasReviewed &&
-      // gig.applicants?.some((a) => a.status === 'confirmed')
+      &&
+      !gig.venueHasReviewed &&
+      gig.applicants?.some((a) => a.status === 'confirmed')
     );
   });
 };

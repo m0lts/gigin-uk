@@ -11,7 +11,8 @@ import {
   deleteDoc,
   onSnapshot,
   Timestamp,
-  orderBy
+  orderBy,
+  limit
 } from 'firebase/firestore';
 
 /*** CREATE OPERATIONS ***/
@@ -119,20 +120,20 @@ export const sendGigInvitationMessage = async (conversationId, { senderId, text 
  * @param {'musician' | 'venue'} userRole - The role of the user who accepted the gig.
  * @returns {Promise<Timestamp>} - The timestamp of the sent message.
  */
-export const sendGigAcceptedMessage = async (conversationId, originalMessageId, senderId, agreedFee, userRole) => {
+export const sendGigAcceptedMessage = async (conversationId, originalMessageId, senderId, agreedFee, userRole, nonPayableGig = false) => {
     const messageRef = doc(firestore, 'conversations', conversationId, 'messages', originalMessageId);
     await updateDoc(messageRef, {
         status: 'accepted',
     });
     const timestamp = Timestamp.now();
-    const announcement = `The ${userRole} has accepted the gig for a fee of ${agreedFee}.`;
+    const announcement = !nonPayableGig ? `The ${userRole} has accepted the gig for a fee of ${agreedFee}.` : `The ${userRole} has accepted the musician's application.`;
     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     await addDoc(messagesRef, {
       senderId,
       text: announcement,
       timestamp,
       type: 'announcement',
-      status: 'awaiting payment',
+      status: nonPayableGig ? 'gig confirmed' : 'awaiting payment',
     });
     const conversationRef = doc(firestore, 'conversations', conversationId);
     await updateDoc(conversationRef, {
@@ -270,13 +271,14 @@ export const updateReviewMessageStatus = async (conversationId, messages, userId
  * @param {string} message - The cancellation message to send.
  * @returns {Promise<void>}
  */
-export const postCancellationMessage = async (conversationId, senderId, message) => {
+export const postCancellationMessage = async (conversationId, senderId, message, cancellingParty) => {
   const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
   await addDoc(messagesRef, {
     senderId,
     text: message,
     type: 'announcement',
     status: 'cancellation',
+    cancellingParty: cancellingParty,
     timestamp: Timestamp.now(),
   });
 };
@@ -305,7 +307,7 @@ export const listenToMessages = (conversationId, onUpdate) => {
  * @param {string} conversationId - ID of the conversation to search in.
  * @returns {Promise<Object|null>} - The most recent application message or null if not found.
  */
-export const getMostRecentApplicationMessage = async (conversationId, type) => {
+export const getMostRecentMessage = async (conversationId, type) => {
   try {
     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     const messageQuery = query(

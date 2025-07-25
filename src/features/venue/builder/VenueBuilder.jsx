@@ -55,7 +55,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         if (!user) {
             navigate('/venues')
         }
-        if (user.musicianProfile) {
+        if (user?.musicianProfile) {
             setShowErrorModal(true);
         }
     }, [user])

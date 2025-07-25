@@ -22,14 +22,6 @@ import { toast } from 'sonner';
 export const GigInformation = ({ gigId, gigData, setGigData, venueGigs = [] }) => {
 
     const [venueProfile, setVenueProfile] = useState();
-    const mapContainerRef = useRef(null);
-
-    useMapbox({
-        containerRef: mapContainerRef,
-        coordinates: gigData?.coordinates,
-        zoom: 15,
-        markers: gigData ? [gigData] : [],
-      });
 
       useEffect(() => {
         if (!gigId) return;
@@ -92,14 +84,16 @@ export const GigInformation = ({ gigId, gigData, setGigData, venueGigs = [] }) =
                     <figure className='photo'>
                         <img src={gigData.venue.photo} alt={`${gigData.venue.venueName} Photo`} />
                     </figure>
-                    <h2>{gigData.venue.venueName}</h2>
+                    <h1>{gigData.gigName}</h1>
+                    <h3>{gigData.venue.venueName}</h3>
                 </div>
-                <div className='date-and-time'>
-                    <h3>{formatDate(gigData.date)}</h3>
-                    <h3>{formatDurationSpan(gigData.startTime, gigData.duration)}</h3>
-                </div>
-                <div className='location'>
-                    <h4>{gigData.venue.address}</h4>
+                <div className="event-information">
+                    <div className='date-and-time'>
+                        <h3>From {formatDurationSpan(gigData.startTime, gigData.duration)} on {formatDate(gigData.date)}</h3>
+                    </div>
+                    <div className='location'>
+                        <h4>{gigData.venue.address}</h4>
+                    </div>
                 </div>
                 <div className='budgets'>
                     <div className='budget-container'>
@@ -153,9 +147,6 @@ export const GigInformation = ({ gigId, gigData, setGigData, venueGigs = [] }) =
                             </div>
                         )}
                     </div>
-                </div>
-                <div className='map'>
-                    <div ref={mapContainerRef} className='map-container' style={{ height: '100%', width: '100%', borderRadius: '10px' }} />
                 </div>
             </>
         )

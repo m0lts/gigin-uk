@@ -32,6 +32,26 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
         reason: '',
         extraDetails: '',
     });
+    const [openMicMusicians, setOpenMicMusicians] = useState([]);
+    const [loadingMusicians, setLoadingMusicians] = useState(false);
+
+    useEffect(() => {
+        const fetchConfirmedOpenMicMusicians = async () => {
+          if (nextGig.kind !== 'Open Mic') return;
+            setLoadingMusicians(true);
+          const confirmedApplicants = nextGig.applicants?.filter(app => app.status === 'confirmed');
+          if (!confirmedApplicants?.length) return;
+      
+          const profiles = await Promise.all(
+            confirmedApplicants.map(app => getMusicianProfileByMusicianId(app.id))
+          );
+
+          setOpenMicMusicians(profiles.filter(Boolean));
+          setLoadingMusicians(false);
+        };
+      
+        fetchConfirmedOpenMicMusicians();
+      }, [nextGig]);
 
     const handleModalClick = (e) => {
         if (loading) return;
@@ -41,7 +61,7 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
     };
 
     const formatGenres = (genres) => {
-        if (genres.length === 0) return '';
+        if (genres.length === 0) return 'No specific genre requested';
         if (genres.length === 1) return genres[0];
         const copiedGenres = [...genres];
         const lastGenre = copiedGenres.pop();
@@ -73,27 +93,49 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
     const handleConfirmCancel = async () => {
         setLoading(true);
         try {
-            const taskNames = [
-                nextGig.clearPendingFeeTaskName,
-                nextGig.automaticMessageTaskName,
-            ];
-            await cancelGigAndRefund({
-                taskNames,
-                transactionId: nextGig.transactionId,
-            });
             const gigId = nextGig.gigId;
             const venueProfile = await getVenueProfileById(nextGig.venueId);
-            const conversationId = await  getOrCreateConversation(musicianProfile, nextGig, venueProfile, 'cancellation');
-            await postCancellationMessage(
-                conversationId,
-                user.uid,
-                `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
-                  cancellationReason
-                )}. We apologise for any inconvenience caused.`
-            );
-            await revertGigAfterCancellationVenue(nextGig, musicianProfile.musicianId, cancellationReason);
-            await updateMusicianCancelledGig(musicianProfile.musicianId, gigId);
-            await logGigCancellation(gigId, musicianProfile.musicianId, cancellationReason);
+            const isOpenMic = nextGig.kind === 'Open Mic';
+            const isTicketed = nextGig.kind === 'Ticketed Gig';
+
+            if (!isOpenMic && !isTicketed) {
+                const taskNames = [
+                    nextGig.clearPendingFeeTaskName,
+                    nextGig.automaticMessageTaskName,
+                ];
+                await cancelGigAndRefund({
+                    taskNames,
+                    transactionId: nextGig.transactionId,
+                });
+            }
+            const handleMusicianCancellation = async (musician) => {
+                const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
+                await postCancellationMessage(
+                  conversationId,
+                  user.uid,
+                  `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                    cancellationReason
+                  )}. We apologise for any inconvenience caused.`,
+                  { cancellingParty: 'venue' }
+                );
+                await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
+                await updateMusicianCancelledGig(musician.musicianId, gigId);
+                await logGigCancellation(gigId, musician.musicianId, cancellationReason);
+              };
+          
+              if (isOpenMic) {
+                const bandOrMusicianProfiles = await Promise.all(
+                  nextGig.applicants
+                    .filter(app => app.status === 'confirmed')
+                    .map(app => getMusicianProfileByMusicianId(app.id))
+                );
+                for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
+                  await handleMusicianCancellation(musician);
+                }
+            } else {
+                await handleMusicianCancellation(musicianProfile);
+            }
+            
             setLoading(false);
             setNextGigModal(false);
             toast.success('Gig cancellation successfull.')
@@ -176,20 +218,49 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 </div>
             ) : (
                 <div className='modal-content next-gig' onClick={(e) => e.stopPropagation()}>
-                <div className='head' onClick={(e) => openInNewTab(`/${musicianProfile.musicianId}`, e)}>
-                    <div className='venue-info'>
-                        <figure className='venue-img-cont'>
-                            <img src={musicianProfile.picture} alt={musicianProfile.name} className='venue-img' />
-                        </figure>
-                        <div className='names-div'>
-                            <h1>{musicianProfile.name}</h1>
-                            <p>{musicianProfile.musicianType}</p>
+                    {nextGig?.kind === 'Open Mic' ? (
+                        <>
+                            <h3>Musicians Playing:</h3>
+                            <div className='head multiple-musicians'>
+                                {loadingMusicians ? (
+                                    <LoadingThreeDots />
+                                ) : (
+                                    openMicMusicians.map(musician => (
+                                        <div
+                                            className='musician-item'
+                                            key={musician.musicianId}
+                                            onClick={(e) => openInNewTab(`/${musician.musicianId}`, e)}
+                                        >
+                                            <div className='venue-info'>
+                                            <figure className='venue-img-cont'>
+                                                <img src={musician.picture} alt={musician.name} className='venue-img' />
+                                            </figure>
+                                            <div className='names-div'>
+                                                <h3>{musician.name}</h3>
+                                                <p>{musician.musicianType}</p>
+                                            </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div className='head' onClick={(e) => openInNewTab(`/${musicianProfile.musicianId}`, e)}>
+                            <div className='venue-info'>
+                                <figure className='venue-img-cont'>
+                                    <img src={musicianProfile.picture} alt={musicianProfile.name} className='venue-img' />
+                                </figure>
+                                <div className='names-div'>
+                                    <h1>{musicianProfile.name}</h1>
+                                    <p>{musicianProfile.musicianType}</p>
+                                </div>
+                            </div>
+                            <button className='btn tertiary'>
+                                <NewTabIcon />
+                            </button>
                         </div>
-                    </div>
-                    <button className='btn tertiary'>
-                        <NewTabIcon />
-                    </button>
-                </div>
+                    )}
                 <div className='body'>
                     <div className='primary-info'>
                         <div className='info-cont'>
@@ -200,10 +271,12 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                             <h3 className='subject'>Gig Type</h3>
                             <h3 className='text'>{nextGig.kind}</h3>
                         </div>
-                        <div className='info-cont'>
-                            <h3 className='subject'>Agreed Fee</h3>
-                            <h3 className='text'>{nextGig.agreedFee}</h3>
-                        </div>
+                        {nextGig.kind !== "Open Mic" && nextGig.kind !== 'Ticketed Gig' && (
+                            <div className='info-cont'>
+                                <h3 className='subject'>Agreed Fee</h3>
+                                <h3 className='text'>{nextGig.agreedFee}</h3>
+                            </div>
+                        )}
                         <div className='info-cont'>
                             <h3 className='subject'>Requested Genres</h3>
                             <h3 className='text'>{formatGenres(nextGig.genre)}</h3>

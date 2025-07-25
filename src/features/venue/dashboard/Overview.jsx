@@ -25,14 +25,8 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
     const [showSocialsModal, setShowSocialsModal] = useState(false);
     const [nextGigModal, setNextGigModal] = useState(false);
     const [nextGigMusician, setNextGigMusician] = useState(null);
-    const [nextGig, setNextGig] = useState([]);
+    const [nextGig, setNextGig] = useState(null);
     const [newApplicationsGigs, setNewApplicationsGigs] = useState([]);
-    const [confirmedGigs, setConfirmedGigs] = useState([]);
-    const [nonConfirmedGigs, setNonConfirmedGigs] = useState([]);
-    const [pendingGigs, setPendingGigs] = useState([]);
-    const [socialsId, setSocialsId] = useState(null);
-    const [reviews, setReviews] = useState([]);
-    const [loadingReviews, setLoadingReviews] = useState(true);
     const [musiciansToReview, setMusiciansToReview] = useState([]);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
     const [ratings, setRatings] = useState({});
@@ -43,48 +37,52 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
         setWindowWidth(width);
       });
 
-    useEffect(() => {
-        if (gigs?.length > 0) {
-            const now = new Date();
-            setNewApplicationsGigs(gigs.filter(gig => gig.applicants.some(applicant => applicant.viewed === false || applicant.viewed === undefined)));
-            const confirmedGigsLocal = gigs.filter(gig => gig.applicants.some(applicant => applicant.status === 'confirmed'));
-            setConfirmedGigs(confirmedGigsLocal);
-            const nonConfirmedGigsLocal = gigs.filter(gig => gig.status === 'open');
-            setNonConfirmedGigs(nonConfirmedGigsLocal);
-            setPendingGigs(nonConfirmedGigsLocal.filter((gig) => {
-                const gigDateTime = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
-                return gigDateTime > new Date();
-            }));
-            setNextGig(confirmedGigsLocal.filter((gig) => {
-                const gigDateTime = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
-                return gigDateTime > new Date();
-            }));
-        }
+      useEffect(() => {
+        if (!gigs?.length) return;
+        const now = new Date();
+        const getLocalGigDateTime = (gig) => {
+            const dateObj = gig.date.toDate();
+            const [hours, minutes] = gig.startTime.split(':').map(Number);
+            dateObj.setHours(hours);
+            dateObj.setMinutes(minutes);
+            dateObj.setSeconds(0);
+            dateObj.setMilliseconds(0);
+            return dateObj;
+        };
+        const newApplications = gigs.filter(gig =>
+            gig.applicants.some(applicant => applicant.viewed === false || applicant.viewed === undefined)
+        );
+        const confirmedGigsLocal = gigs.filter(gig =>
+            gig.applicants.some(applicant => applicant.status === 'confirmed')
+        );
+        const upcomingConfirmed = confirmedGigsLocal
+            .filter(gig => getLocalGigDateTime(gig) > now)
+            .sort((a, b) => getLocalGigDateTime(a) - getLocalGigDateTime(b));
+        setNewApplicationsGigs(newApplications);
+        setNextGig(upcomingConfirmed[0] || null);
     }, [gigs]);
 
 
     useEffect(() => {
         const fetchMusicianProfile = async () => {
-            if (!nextGig.length || !nextGig[0].applicants) return;
-                const confirmedApplicant = nextGig[0].applicants.find(applicant => applicant.status === 'confirmed');
+            if (!nextGig?.applicants) return;
+            const confirmedApplicant = nextGig.applicants.find(applicant => applicant.status === 'confirmed');
             if (!confirmedApplicant) return;
             try {
-                setNextGigMusician(await getMusicianProfileByMusicianId(confirmedApplicant.id))
+                const profile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+                setNextGigMusician(profile);
             } catch (error) {
                 console.error('Error fetching musician profile:', error);
             }
         };
         const fetchMusiciansToReview = async () => {
             if (!gigsToReview || gigsToReview.length < 1) return;
-          
             try {
               const updatedGigs = await Promise.all(
                 gigsToReview.map(async (gig) => {
                   const confirmedApplicant = gig.applicants.find((app) => app.status === 'confirmed');
                   if (!confirmedApplicant) return null;
-          
                   const musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
-          
                   return {
                     ...gig,
                     musicianProfile,
@@ -97,9 +95,9 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
               console.error('Error fetching musician profiles for gigs:', error);
             }
           };
-        fetchMusicianProfile();
-        if (gigsToReview.length > 0) fetchMusiciansToReview();
-    }, [nextGig, gigsToReview]);
+          if (nextGig) fetchMusicianProfile();
+          if (gigsToReview.length > 0) fetchMusiciansToReview();
+      }, [nextGig, gigsToReview]);
 
     
     const formatName = (name) => {
@@ -180,7 +178,6 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                         <h4>You have {newApplicationsGigs.length || 3} new gig applications.</h4>
                     </div>
                 )}
-
                 <div className="quick-buttons">
                     <div className="quick-button" onClick={() => setGigPostModal(true)}>
                         <GigIcon />
@@ -268,7 +265,7 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                 <FeedbackSection user={user} />
 
                 {nextGigModal && (
-                    <NextGig nextGig={nextGig[0]} musicianProfile={nextGigMusician} setNextGigModal={setNextGigModal} />
+                    <NextGig nextGig={nextGig} musicianProfile={nextGigMusician} setNextGigModal={setNextGigModal} />
                 )}
             </div>
         </>

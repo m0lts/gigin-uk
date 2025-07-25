@@ -396,20 +396,24 @@ export const setGigAgreement = async (gigId, updatedApplicants, agreedFee) => {
  * @param {Array} musicianProfileId - The musician's profile ID.
  * @returns {Promise<void>}
  */
-export const acceptGigOffer = async (gigData, musicianProfileId) => {
+export const acceptGigOffer = async (gigData, musicianProfileId, nonPayableGig = false) => {
     let agreedFee;
     const updatedApplicants = gigData.applicants.map(applicant => {
       if (applicant.id === musicianProfileId) {
         agreedFee = applicant.fee;
-        return { ...applicant, status: 'accepted' };
+        return { ...applicant, status: nonPayableGig ? 'confirmed' : 'accepted' };
       }
-      return { ...applicant, status: 'declined' };
+      if (nonPayableGig) {
+        return { ...applicant };
+      } else {
+        return { ...applicant, status: 'declined' };
+      }  
     });
     const gig = await getGigById(gigData.gigId);
     await updateDoc(gig.ref, {
       applicants: updatedApplicants,
       agreedFee: `${agreedFee}`,
-      paid: false,
+      paid: nonPayableGig,
     });
     return { updatedApplicants, agreedFee };
 };

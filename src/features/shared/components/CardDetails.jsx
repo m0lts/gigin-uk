@@ -109,7 +109,7 @@ return (
         <div className='card-details-container'>
           <h4>Card Details:</h4>
           <div className='field-container'>
-            <label htmlFor='cardholder-name'>Name on Card</label>
+            <label htmlFor='cardholder-name' className="label">Name on Card</label>
             <input
               id='cardholder-name'
               type='text'
@@ -123,17 +123,18 @@ return (
           </div>
           {/* Step 1: Card Details */}
           <div className='field-container'>
-            <label htmlFor='card-number'>Card Number</label>
+            <label htmlFor='card-number' className="label">Card Number</label>
             <div className='card-number-container'>
                 <CardNumberElement
                 id='card-number'
                 options={{
                     style: {
                     base: {
-                        fontSize: '16px',
+                        fontSize: '14px',
                         color: '#000',
-                        fontFamily: 'Roboto, Open Sans, Segoe UI, sans-serif',
-                        '::placeholder': { color: '#acacac' },
+                        fontWeight: 400,
+                        fontFamily: 'Inter, sans-serif',
+                        '::placeholder': { color: '#808080' },
                     },
                     invalid: { color: '#fa755a' },
                     },
@@ -151,16 +152,17 @@ return (
           </div>
           <div className='exp-cvc'>
             <div className='field-container'>
-              <label htmlFor='card-expiry'>Expiry Date</label>
+              <label htmlFor='card-expiry' className="label">Expiry Date</label>
               <CardExpiryElement
                 id='card-expiry'
                 options={{
                   style: {
                     base: {
-                      fontSize: '16px',
+                      fontSize: '14px',
                       color: '#000',
-                      fontFamily: 'Roboto, Open Sans, Segoe UI, sans-serif',
-                      '::placeholder': { color: '#aab7c4' },
+                      fontWeight: 400,
+                      fontFamily: 'Inter, sans-serif',
+                      '::placeholder': { color: '#808080' },
                     },
                     invalid: { color: '#fa755a' },
                   },
@@ -171,16 +173,17 @@ return (
               />
             </div>
             <div className='field-container'>
-              <label htmlFor='card-cvc'>CVC</label>
+              <label htmlFor='card-cvc' className="label">CVC</label>
               <CardCvcElement
                 id='card-cvc'
                 options={{
                   style: {
                     base: {
-                      fontSize: '16px',
+                      fontSize: '14px',
+                      fontWeight: 400,
                       color: '#000',
-                      fontFamily: 'Roboto, Open Sans, Segoe UI, sans-serif',
-                      '::placeholder': { color: '#aab7c4' },
+                      fontFamily: 'Inter, sans-serif',
+                      '::placeholder': { color: '#808080', fontFamily: 'Inter, sans-serif' },
                     },
                     invalid: { color: '#fa755a' },
                   },
@@ -194,7 +197,7 @@ return (
           <h4>Billing Address:</h4>
           <div className='address-flex'>
             <div className='field-container'>
-                <label htmlFor='line1'>Address Line 1</label>
+                <label htmlFor='line1' className="label">Address Line 1</label>
                 <input
                 id='line1'
                 type='text'
@@ -208,7 +211,7 @@ return (
                 />
             </div>
             <div className='field-container'>
-                <label htmlFor='line2'>Address Line 2 (Optional)</label>
+                <label htmlFor='line2' className="label">Address Line 2 (Optional)</label>
                 <input
                 id='line2'
                 type='text'
@@ -223,7 +226,7 @@ return (
           </div>
           <div className='address-flex'>
             <div className='field-container'>
-                <label htmlFor='city'>City</label>
+                <label htmlFor='city' className="label">City</label>
                 <input
                 id='city'
                 type='text'
@@ -237,7 +240,7 @@ return (
                 />
             </div>
             <div className='field-container'>
-                <label htmlFor='state'>County</label>
+                <label htmlFor='state' className="label">County</label>
                 <input
                 id='state'
                 type='text'
@@ -253,7 +256,7 @@ return (
           </div>
           <div className='address-flex'>
             <div className='field-container'>
-                <label htmlFor='postal_code'>Postal Code</label>
+                <label htmlFor='postal_code' className="label">Postal Code</label>
                 <input
                 id='postal_code'
                 type='text'
@@ -267,7 +270,7 @@ return (
                 />
             </div>
             <div className='field-container'>
-                <label htmlFor='country'>Country</label>
+                <label htmlFor='country' className="label">Country</label>
                 <select
                 id='country'
                 name='address.country'
@@ -278,15 +281,13 @@ return (
                 disabled={loading}
                 >
                 <option value='GB'>United Kingdom</option>
-                <option value='US'>United States</option>
-                <option value='CA'>Canada</option>
                 {/* Add more countries as needed */}
                 </select>
             </div>
           </div>
           {activityType === 'making payment' && (
           <div className='field-container save-card'>
-              <label htmlFor='save-card'>
+              <label htmlFor='save-card' className="label">
                   <input
                       id='save-card'
                       type='checkbox'

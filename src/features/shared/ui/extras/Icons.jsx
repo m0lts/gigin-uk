@@ -120,7 +120,7 @@ export const ShieldIcon = () => {
 }
 export const SuccessIcon = () => {
     return (
-        <FontAwesomeIcon icon={faCheckCircle} className='icon' style={{ color: 'green' }} />
+        <FontAwesomeIcon icon={faCheckCircle} className='icon' style={{ color: 'var(--gn-green)' }} />
     )
 }
 export const ErrorIcon = () => {

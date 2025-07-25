@@ -70,20 +70,27 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
     const normalizedGigs = useMemo(() => {
       return gigs.map(gig => {
         const dateObj = gig.date.toDate();
-        const isoDate = dateObj.toISOString().split('T')[0];
-        const gigDateTime = new Date(`${isoDate}T${gig.startTime}`);
-  
+        const [hours, minutes] = gig.startTime.split(':').map(Number);
+        dateObj.setHours(hours);
+        dateObj.setMinutes(minutes);
+        dateObj.setSeconds(0);
+        dateObj.setMilliseconds(0);
+        const gigDateTime = new Date(dateObj); // local datetime
+    
+        const isoDate = gigDateTime.toISOString().split('T')[0];
+    
         const acceptedApplicant = gig.applicants?.some(app => app.status === 'confirmed');
         let status = 'previous';
+    
         if (gigDateTime > now) {
           if (acceptedApplicant) status = 'confirmed';
           else if (gig.status === 'open') status = 'upcoming';
           else status = 'closed';
         }
-  
+    
         return {
           ...gig,
-          dateObj,
+          dateObj: gigDateTime,
           dateIso: isoDate,
           dateTime: gigDateTime,
           status,
@@ -198,105 +205,105 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
   
     return (
       <>
-        <div className='head'>
+        <div className='head gigs'>
           <h1 className='title'>Gigs</h1>
+          <div className='filters'>
+              <div className="status-buttons">
+                  <button className={`btn ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'all')}>
+                      All
+                  </button>
+                  <button className={`btn ${selectedStatus === 'confirmed' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'confirmed')}>
+                      Confirmed
+                  </button>
+                  <button className={`btn ${selectedStatus === 'upcoming' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'upcoming')}>
+                      Upcoming
+                  </button>
+                  <button className={`btn ${selectedStatus === 'previous' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'previous')}>
+                      Previous
+                  </button>
+              </div>
+              {windowWidth >= 1400 ? (
+                  <>
+                  <span className="separator"></span>
+                  <div className="search-bar-container">
+                      <SearchIcon />
+                      <input
+                      type='text'
+                      placeholder='Search By Name...'
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      className='search-bar'
+                      aria-label='Search gigs'
+                      />
+                  </div>
+                  <span className="separator"></span>
+                  <input
+                      type='date'
+                      id='dateSelect'
+                      value={selectedDate}
+                      onChange={(e) => updateUrlParams('date', e.target.value)}
+                      className='date-select'
+                  />
+                  <span className="separator"></span>
+                  <select
+                      id='venueSelect'
+                      value={selectedVenue}
+                      onChange={(e) => updateUrlParams('venue', e.target.value)}
+                  >
+                      <option value=''>Filter by Venue</option>
+                      {venues.map((venue) => (
+                      <option value={venue.venueId} key={venue.venueId}>{venue.name}</option>
+                      ))}
+                  </select>
+                  <div className="spacer" />
+                  <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
+                  </>
+              ) : (
+                  <>
+                      <div className="spacer" />
+                      <button className={`btn tertiary ${showMobileFilters ? 'open' : ''}`} onClick={() => setShowMobileFilters(prev => !prev)}>
+                          <FilterIconEmpty />
+                          Filters
+                      </button>
+                      <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
+                  </>
+              )}
+          </div>
+
+          {windowWidth < 1400 && showMobileFilters && (
+              <div className="filters ext">
+                  {/* <div className="search-bar-container">
+                  <SearchIcon />
+                  <input
+                      type='text'
+                      placeholder='Search By Name...'
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      className='search-bar'
+                      aria-label='Search gigs'
+                  />
+                  </div> */}
+                  <input
+                  type='date'
+                  id='dateSelect'
+                  value={selectedDate}
+                  onChange={(e) => updateUrlParams('date', e.target.value)}
+                  className='date-select'
+                  />
+                  <select
+                  id='venueSelect'
+                  value={selectedVenue}
+                  onChange={(e) => updateUrlParams('venue', e.target.value)}
+                  >
+                  <option value=''>Venue</option>
+                  {venues.map((venue) => (
+                      <option value={venue.venueId} key={venue.venueId}>{venue.name}</option>
+                  ))}
+                  </select>
+              </div>
+          )}  
         </div>
         <div className='body gigs'>
-            <div className='filters'>
-                <div className="status-buttons">
-                    <button className={`btn ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'all')}>
-                        All
-                    </button>
-                    <button className={`btn ${selectedStatus === 'confirmed' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'confirmed')}>
-                        Confirmed
-                    </button>
-                    <button className={`btn ${selectedStatus === 'upcoming' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'upcoming')}>
-                        Upcoming
-                    </button>
-                    <button className={`btn ${selectedStatus === 'previous' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'previous')}>
-                        Previous
-                    </button>
-                </div>
-                {windowWidth >= 1400 ? (
-                    <>
-                    <span className="separator"></span>
-                    <div className="search-bar-container">
-                        <SearchIcon />
-                        <input
-                        type='text'
-                        placeholder='Search By Name...'
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        className='search-bar'
-                        aria-label='Search gigs'
-                        />
-                    </div>
-                    <span className="separator"></span>
-                    <input
-                        type='date'
-                        id='dateSelect'
-                        value={selectedDate}
-                        onChange={(e) => updateUrlParams('date', e.target.value)}
-                        className='date-select'
-                    />
-                    <span className="separator"></span>
-                    <select
-                        id='venueSelect'
-                        value={selectedVenue}
-                        onChange={(e) => updateUrlParams('venue', e.target.value)}
-                    >
-                        <option value=''>Filter by Venue</option>
-                        {venues.map((venue) => (
-                        <option value={venue.venueId} key={venue.venueId}>{venue.name}</option>
-                        ))}
-                    </select>
-                    <div className="spacer" />
-                    <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
-                    </>
-                ) : (
-                    <>
-                        <div className="spacer" />
-                        <button className={`btn tertiary ${showMobileFilters ? 'open' : ''}`} onClick={() => setShowMobileFilters(prev => !prev)}>
-                            <FilterIconEmpty />
-                            Filters
-                        </button>
-                        <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
-                    </>
-                )}
-            </div>
-
-            {windowWidth < 1400 && showMobileFilters && (
-                <div className="filters ext">
-                    {/* <div className="search-bar-container">
-                    <SearchIcon />
-                    <input
-                        type='text'
-                        placeholder='Search By Name...'
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        className='search-bar'
-                        aria-label='Search gigs'
-                    />
-                    </div> */}
-                    <input
-                    type='date'
-                    id='dateSelect'
-                    value={selectedDate}
-                    onChange={(e) => updateUrlParams('date', e.target.value)}
-                    className='date-select'
-                    />
-                    <select
-                    id='venueSelect'
-                    value={selectedVenue}
-                    onChange={(e) => updateUrlParams('venue', e.target.value)}
-                    >
-                    <option value=''>Venue</option>
-                    {venues.map((venue) => (
-                        <option value={venue.venueId} key={venue.venueId}>{venue.name}</option>
-                    ))}
-                    </select>
-                </div>
-            )}  
 
             {selectedGigs.length > 0 && (
                 <div className="gig-action-bar">
@@ -396,7 +403,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                         </tr>
                       )}
                       <tr onClick={(e) => {
-                          if (gig.kind === 'Open Mic') {
+                          if (gig.kind === 'Open Mic' && !gig.openMicApplications) {
                             openInNewTab(`/gig/${gig.gigId}`, e)
                           } else {
                             navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } })
@@ -433,15 +440,17 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                           </div>
                         </td>
                         {windowWidth > 1268 && (
-                          <td className='centre'>
+                          <td className={`centre ${gig.applicants.some(app => !app.viewed) ? 'has-new-applications' : ''}`}>
                             {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
                               '-'
                             ) : (
                               <>
-                                {gig.applicants.length}{gig.applicants.some(app => !app.viewed) && <DotIcon />}
+                                {gig.applicants.some(app => !app.viewed)
+                                  ? `${gig.applicants.filter(app => !app.viewed).length} Unseen`
+                                  : gig.applicants.length}
                               </>
                             )}
-                            </td>
+                          </td>
                         )}
                         <td className="options-cell" onClick={(e) => e.stopPropagation()}>
                             <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>

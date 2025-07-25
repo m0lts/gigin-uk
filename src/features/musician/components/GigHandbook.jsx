@@ -117,7 +117,8 @@ export const GigHandbook = ({ setShowGigHandbook, showGigHandbook, setGigForHand
                 user.uid,
                 `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(
                   cancellationReason
-                )}. You have been refunded the gig fee - refunds can take 3–10 business days to appear in your account. The gig has been re-posted for musicians to apply to.`
+                )}. You have been refunded the gig fee - refunds can take 3–10 business days to appear in your account. The gig has been re-posted for musicians to apply to.`,
+                {cancellingParty: 'musician'}
             );
             await revertGigAfterCancellation(gigForHandbook, musicianId, cancellationReason);
             await updateMusicianCancelledGig(musicianId, gigId);

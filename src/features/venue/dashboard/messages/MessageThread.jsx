@@ -86,7 +86,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (gigData.date.toDate() < new Date()) return console.error('Gig is in the past.');
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId);
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
+            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig);
             setGigData((prevGigData) => ({
                 ...prevGigData,
                 applicants: updatedApplicants,
@@ -102,7 +103,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 venueProfile: venueData,
                 gigData,
                 agreedFee,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                isNegotiated: false,
+                nonPayableGig
             });
         } catch (error) {
             console.error('Error updating gig document:', error);
@@ -130,7 +132,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 gigData,
                 agreedFee,
                 isNegotiated: true,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
               });
             console.log('Agreed fee:', agreedFee);
         } catch (error) {
@@ -283,8 +284,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
           console.error('Error updating message in Firestore:', error);
         }
     };
-
-
     
     return (
         <>
@@ -537,10 +536,17 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
                                     </>
                                 ) : message.status === 'gig confirmed' ? (
-                                    <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'Your payment split will arrive in your account 24 hours after the gig has been performed.'}</h4>
-                                    </>
+                                    (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
+                                        <>
+                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                            <h4>{message.text} <br /> {'No payment is required for this type of gig.'}</h4>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                            <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'Your payment split will arrive in your account 24 hours after the gig has been performed.'}</h4>
+                                        </>
+                                    )
                                 ) : message.status === 'payment failed' && userRole === 'venue' ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
@@ -551,12 +557,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>The gig will be confirmed when the venue has paid the gig fee.</h4>
                                     </>
-                                ) : message.status === 'cancellation' && userRole === 'venue' ? (
+                                ) : message.status === 'cancellation' && message?.cancellingParty !== userRole ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text}</h4>
                                     </>
-                                ) : message.status === 'cancellation' && (userRole === 'musician' || userRole === 'band') ? (
+                                ) : message.status === 'cancellation' && message?.cancellingParty === userRole ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>You cancelled the gig. The gig fee has been refunded to the venue.</h4>

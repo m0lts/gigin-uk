@@ -12,29 +12,28 @@ import {
     TickIcon
 } from '@features/shared/ui/extras/Icons';
 import { useAuth } from '@hooks/useAuth';
-import { useGigs } from '@context/GigsContext';
 import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { declineGigApplication, deleteGig, updateGigApplicants } from '@services/gigs';
 import { getMusicianProfileByMusicianId, removeGigFromMusician } from '@services/musicians';
 import { deleteConversationsByGigId, getConversationsByParticipantAndGigId, getOrCreateConversation } from '@services/conversations';
-import { sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '@services/messages';
+import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, getMostRecentMessage } from '@services/messages';
 import { sendEmail } from '@services/emails';
 import { removeGigFromVenue } from '@services/venues';
 import { confirmGigPayment, fetchSavedCards } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
-import { updateGigDocument } from '../../../services/gigs';
+import { acceptGigOffer, updateGigDocument } from '../../../services/gigs';
 import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
+import { getVenueProfileById } from '../../../services/venues';
 
-export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
+export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
 
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { gigs } = useGigs();
     const now = useMemo(() => new Date(), []);
 
     const [gigInfo, setGigInfo] = useState(null);
@@ -67,6 +66,16 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
         const activeGig = gigs.find(gig => gig.gigId === gigId);
         setGigInfo(activeGig);
     }, [gigId, gigs]);
+
+    const getLocalGigDateTime = (gig) => {
+        const dateObj = gig.date.toDate();
+        const [hours, minutes] = gig.startTime.split(':').map(Number);
+        dateObj.setHours(hours);
+        dateObj.setMinutes(minutes);
+        dateObj.setSeconds(0);
+        dateObj.setMilliseconds(0);
+        return dateObj;
+      };
 
     useEffect(() => {
         if (!gigInfo) return;
@@ -125,8 +134,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
         event.stopPropagation();    
         try {
             if (!gigInfo) return console.error('Gig data is missing');
-            if (gigInfo.date.toDate() < new Date()) return console.error('Gig is in the past.');
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigInfo, musicianId);
+            if (getLocalGigDateTime(gigInfo) < new Date()) return console.error('Gig is in the past.');
+            const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig";
+            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigInfo, musicianId, nonPayableGig);
             setGigInfo((prevGigInfo) => ({
                 ...prevGigInfo,
                 applicants: updatedApplicants,
@@ -135,16 +145,18 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
             }));
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(gigInfo.venueId);
-            const conversationId = await getOrCreateConversation(musicianProfile, gigInfo, venueProfile, 'application')
+            const conversationId = await getOrCreateConversation(musicianProfile, gigInfo, venueProfile, 'application');
             if (proposedFee === gigInfo.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
-                await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigInfo.budget, 'venue');
+                await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigInfo.budget, 'venue', nonPayableGig);
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
-                await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, agreedFee, 'venue');
+                await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, agreedFee, 'venue', nonPayableGig);
             }
+            const musicianEmail = musicianProfile.email;
+            const musicianName = musicianProfile.name;
             await sendEmail({
-                musicianEmail,
+                to: musicianEmail,
                 subject: `Your Gig Application Has Been Accepted!`,
                 text: `Congratulations! Your application for the gig at ${gigInfo.venue.venueName} on ${formatDate(gigInfo.date)} has been accepted.`,
                 html: `
@@ -155,7 +167,11 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                         <li><strong>Date:</strong> ${formatDate(gigInfo.date)}</li>
                         <li><strong>Fee:</strong> ${agreedFee}</li>
                     </ul>
-                    <p>The gig isn't confirmed until the venue pays the gig fee.</p>
+                    <p>${
+                        nonPayableGig
+                          ? 'This gig is already confirmed — no payment is required from the venue.'
+                          : 'The gig will be confirmed once the venue has paid the gig fee.'
+                      }</p>
                     <p>Please visit your <a href='${window.location.origin}/dashboard'>dashboard</a> to see the status of the gig.</p>
                     <p>Thanks,<br />The Gigin Team</p>
                 `,
@@ -171,7 +187,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
         event.stopPropagation();
         try {
             if (!gigInfo) return console.error('Gig data is missing');
-            if (gigInfo.date.toDate() < new Date()) return console.error('Gig is in the past.');
+            if (getLocalGigDateTime(gigInfo) < new Date()) return console.error('Gig is in the past.');
             const { updatedApplicants } = await declineGigApplication(gigInfo, musicianId);
             setGigInfo((prevGigInfo) => ({
                 ...prevGigInfo,
@@ -185,7 +201,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                 await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, gigInfo.budget, 'venue');
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
-                await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, agreedFee, 'venue');
+                await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, proposedFee, 'venue');
             }
             await sendEmail({
                 to: musicianEmail,
@@ -327,7 +343,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                     <h3>{gigInfo.startTime} {formatDate(gigInfo.date)} at {venueName}</h3>
                     <button className="btn text" style={{ marginTop: 5 }} onClick={(e) => openInNewTab(`/gig/${gigInfo.gigId}?venue=true`, e)}>Visit Gig Page <NewTabIcon /></button>
                 </div>
-                {gigInfo.date.toDate() > now && (
+                {getLocalGigDateTime(gigInfo) > now && (
                     <div className='action-buttons'>
                         {!gigInfo?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') && (
                             <button className='btn tertiary' onClick={() => openGigPostModal(gigInfo)}>
@@ -364,7 +380,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                     <LoadingThreeDots />
                 ) : (
                     <>
-                    {new Date(gigInfo.disputeClearingTime) > new Date(gigInfo.date.toDate().setHours(...gigInfo.startTime.split(':').map(Number))) &&
+                    {new Date(gigInfo.disputeClearingTime) > getLocalGigDateTime(gigInfo) &&
                         gigInfo.applicants.some(applicant => applicant.status === 'confirmed' &&
                         !gigInfo.disputeLogged) && (
                         <div className='dispute-box'>
@@ -420,19 +436,28 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                 )}</td>
                                             )}
                                             <td>
-                                                {profile.proposedFee !== gigInfo.budget ? (
-                                                    <>
-                                                        <span style={{ textDecoration: 'line-through', marginRight: '5px' }}>{gigInfo.budget}</span>
-                                                        <span>{profile.proposedFee}</span>
-                                                    </>
+                                                {(gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') ? (
+                                                    profile.proposedFee !== gigInfo.budget ? (
+                                                        <>
+                                                            <span style={{ textDecoration: 'line-through', marginRight: '5px' }}>{gigInfo.budget}</span>
+                                                            <span>{profile.proposedFee}</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {profile.proposedFee}
+                                                        </>
+                                                    )
                                                 ) : (
-                                                    <>
-                                                        {profile.proposedFee}
-                                                    </>
+                                                    '-'
                                                 )}
                                             </td>
-                                            {gigInfo.date.toDate() < now ? (
-                                                <td>
+                                            {getLocalGigDateTime(gigInfo) < now ? (
+                                                <td className='status-container' style={{
+                                                    textAlign: 'center',
+                                                    minWidth: '140px',
+                                                    width: '100%',
+                                                    whiteSpace: 'nowrap'
+                                                  }}>
                                                     {status !== 'confirmed' ? (
                                                         <div className='status-box'>
                                                             <div className='status previous'>
@@ -463,7 +488,12 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                     )}
                                                 </td>
                                             ) : (
-                                                <td className='status-container' style={{ textAlign: 'center' }}>
+                                                <td className='status-container' style={{
+                                                    textAlign: 'center',
+                                                    minWidth: '140px',
+                                                    width: '100%',
+                                                    whiteSpace: 'nowrap'
+                                                  }}>
                                                     {(status === 'confirmed' || status === 'paid') && (
                                                         <div className='status-box'>
                                                             <div className='status confirmed'>
@@ -480,7 +510,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'accepted' && (
+                                                    {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && (
                                                         loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
                                                             <LoadingThreeDots />
                                                         ) : (
@@ -489,7 +519,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData }) => {
                                                             </button>
                                                         )
                                                     )}
-                                                    {(status === 'pending' && gigInfo.date.toDate() > now) && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && (
                                                         <>
                                                             <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
                                                                 <TickIcon />
