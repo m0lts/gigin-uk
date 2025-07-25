@@ -26,12 +26,15 @@ import { sendGigInvitationMessage } from '@services/messages';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { BandMembersTab } from '../bands/BandMembersTab';
 import { getBandDataOnly } from '../../../services/bands';
+import { filterInvitableGigsForMusician } from '../../../services/utils/filtering';
+import { toast } from 'sonner';
 
 
 export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
 
     const { musicianId, gigId } = useParams();
     const { gigs } = useGigs();
+    const navigate = useNavigate();
 
     const [musicianProfile, setMusicianProfile] = useState();
     const [applicantData, setApplicantData] = useState();
@@ -60,9 +63,9 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 }
                 if (gigs) {
                     const currentGig = gigs.find(gig => gig.gigId === gigId);
-                    const applicant = currentGig.applicants.find(applicant => applicant.id === musician.musicianId);
+                    const applicant = currentGig?.applicants.find(applicant => applicant.id === musician.musicianId);
                     setApplicantData(applicant);
-                    if (applicant.invited) {
+                    if (applicant?.invited) {
                         setInvitedMusician(true);
                     }
                 }
@@ -83,7 +86,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
         fetchMusicianProfile();
         getSavedMusicians();
 
-    }, [musicianId, gigId]);
+    }, [musicianId, gigId, gigs]);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -140,22 +143,17 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
         if (!valid) return;
         const gigIds = venueProfiles
             .flatMap(venueProfile => venueProfile.gigs || []);
-        if (gigIds.length === 0) {
-            alert('You must post a gig before inviting a musician to one.');
-            return;
-        }
         try {
-            const gigs = await getGigsByIds(gigIds);
-            const futureGigs = filterFutureGigs(gigs);
-            const availableGigs = filterAvailableGigsForMusician(gigs, musicianId);
+            const fetchedGigs = await getGigsByIds(gigIds);
+            const futureGigs = filterFutureGigs(fetchedGigs);
+            const availableGigs = filterInvitableGigsForMusician(fetchedGigs, musicianId);
             if (availableGigs.length > 0) {
                 setInviteMusicianModal(true);
                 setUsersGigs(futureGigs)
-            } else {
-                alert('There are no eligible gigs to invite this musician to.');
             }
         } catch (error) {
             console.error('Error fetching future gigs:', error);
+            toast.error('We encountered an error. Please try again.')
         }
     };
 
@@ -194,6 +192,20 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             console.error('Error while creating or fetching conversation:', error);
         }
     };
+
+    const handleBuildGigForMusician = () => {
+        navigate('/venues/dashboard', { state: {
+            musicianData: {
+                id: musicianProfile.id,
+                type: musicianProfile.musicianType,
+                plays: musicianProfile.musicType,
+                genres: musicianProfile.genres,
+                name: musicianProfile.name
+            },
+            buildingForMusician: true,
+            showGigPostModal: true,
+        }})
+    }
 
     return (
         <div className='musician-profile-page'>
@@ -327,9 +339,12 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                                 ))
                             )}
                         </div>
+                        <button className="btn secondary" onClick={handleBuildGigForMusician}>
+                            Build New Gig For Musician
+                        </button>
                         <div className='two-buttons'>
                             <button className='btn secondary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>
-                            <button className='btn primary-alt' disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
+                            <button className='btn primary' disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
                         </div>
                     </div>
                 </div>

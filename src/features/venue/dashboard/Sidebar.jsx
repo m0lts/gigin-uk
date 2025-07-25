@@ -17,7 +17,7 @@ import {
 import { TextLogoMed } from '../../shared/ui/logos/Logos';
 import { useAuth } from '@hooks/useAuth';
 import '@assets/fonts/fonts.css';
-import { CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, FeedbackIcon, GigIcon, HouseIconSolid, MailboxEmptyIconSolid, MailboxFullIconSolid, MusicianIconLight, MusicianIconSolid, UpChevronIcon, VenueIconLight, VenueIconSolid } from '../../shared/ui/extras/Icons';
+import { CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, DotIcon, FeedbackIcon, GigIcon, HouseIconSolid, MailboxEmptyIconSolid, MailboxFullIconSolid, MusicianIconLight, MusicianIconSolid, UpChevronIcon, VenueIconLight, VenueIconSolid } from '../../shared/ui/extras/Icons';
 import { FeedbackBox } from './FeedbackBox';
 import { toast } from 'sonner';
 
@@ -58,6 +58,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
       label: 'Messages',
       icon: !newMessages ? <MailboxEmptyIcon /> : <MailboxFullIcon />,
       iconActive: !newMessages ? <MailboxEmptyIconSolid /> : <MailboxFullIconSolid />,
+      notification: newMessages,
     },
     {
       path: '/venues/dashboard/my-venues',
@@ -119,7 +120,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
         Post a Gig <GigIcon />
       </button>
       <ul className="menu">
-        {menuItems.map(({ path, label, icon, iconActive, exact }) => {
+        {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {
           const isActive = exact ? pathname === path : pathname.includes(path);
           return (
             <li
@@ -127,7 +128,12 @@ export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
               className={`menu-item${isActive ? ' active' : ''}`}
               onClick={() => navigate(path)}
             >
-              {isActive ? iconActive : icon} {label}
+              <span className="body">
+                {isActive ? iconActive : icon} {label}
+              </span>
+              {notification ? 
+              <span className='notification'><DotIcon /></span>
+               : null}
             </li>
           );
         })}

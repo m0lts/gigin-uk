@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import '@styles/shared/modals.styles.css'
 import { GigDate } from './Date';
 import { GigLocation } from './Location';
@@ -18,8 +18,13 @@ import { postMultipleGigs } from '@services/gigs';
 import { toast } from 'sonner';
 import { OpenMicGig } from './OpenMic';
 import { TicketedGig } from './TicketedGig';
+import { Timestamp } from 'firebase/firestore';
+import { formatDate } from '@services/utils/dates';
+import { getMusicianProfileByMusicianId } from '../../../services/musicians';
+import { sendGigInvitationMessage } from '../../../services/messages';
+import { getOrCreateConversation } from '../../../services/conversations';
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, user }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user }) => {
     const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
@@ -88,6 +93,33 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         });
     };
 
+    useEffect(() => {
+        if (buildingForMusician && buildingForMusicianData) {
+            console.log(buildingForMusicianData)
+          const { type, genres, venueId } = buildingForMusicianData;
+      
+          const matchedVenue = venueId
+            ? venueProfiles.find(v => v.venueId === venueId)
+            : null;
+      
+          setFormData(prev => ({
+            ...prev,
+            gigType: type,
+            genre: genres,
+            venueId: venueId || '',
+            venue: matchedVenue
+              ? {
+                  venueName: matchedVenue.name || '',
+                  address: matchedVenue.address || '',
+                  photo: matchedVenue.photos[0] || '',
+                }
+              : prev.venue,
+          }));
+      
+          setStage(1);
+        }
+      }, [buildingForMusician, buildingForMusicianData, venueProfiles]);
+
     const handleInputChange = (updates) => {
         setFormData((prevFormData) => ({
             ...prevFormData,
@@ -101,9 +133,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
           setGigPostModal(false);
         }
     };
-
-    console.log(formData)
-    console.log(error)
 
     const nextStage = () => {
         setError('');
@@ -271,16 +300,24 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                     />
                 );
             case 5:
+                if (buildingForMusician && buildingForMusicianData?.type) {
+                    setStage(6);
+                    return null;
+                }
                 return (
                     <GigMusic
-                        formData={formData}
-                        handleInputChange={handleInputChange}
-                        setStage={setStage}
-                        error={error}
-                        setError={setError}
+                    formData={formData}
+                    handleInputChange={handleInputChange}
+                    setStage={setStage}
+                    error={error}
+                    setError={setError}
                     />
                 );
             case 6:
+                if (buildingForMusician && buildingForMusicianData?.genres) {
+                    setStage(7);
+                    return null;
+                }
                 return (
                     <GigGenre
                         formData={formData}
@@ -348,6 +385,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                         setStage={setStage}
                         error={error}
                         setError={setError}
+                        buildingForMusician={buildingForMusician}
+                        buildingForMusicianData={buildingForMusicianData}
                     />
                 );
             default:
@@ -408,16 +447,39 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 }
             } else {
                 const singleGig = {
-                ...formData,
-                createdAt: new Date(),
-                complete: true,
+                    ...formData,
+                    createdAt: new Date(),
+                    complete: true,
                 };
+                if (buildingForMusician) {
+                    const invitationPackage = {
+                        id: buildingForMusicianData.id,
+                        timestamp: Timestamp.now(),
+                        fee: formData.budget || '£0',
+                        status: 'pending',
+                        invited: true,
+                    }
+                    if (!Array.isArray(singleGig.applicants)) {
+                        singleGig.applicants = [];
+                    }
+                    singleGig.applicants.push(invitationPackage);
+                }
                 delete singleGig.repeatData;
                 gigDocuments.push(singleGig);
             }
           await postMultipleGigs(formData.venueId, gigDocuments)
           setLoading(false);
-          toast.success(`Gig${formData?.repeatData ? 's' : ''} Posted Successfully.`)
+          if (buildingForMusician) {
+            const venueToSend = user.venueProfiles.find(venue => venue.id === formData.venueId);
+            const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
+            const conversationId = await getOrCreateConversation(musicianProfile, formData, venueToSend, 'invitation');
+            await sendGigInvitationMessage(conversationId, {
+                senderId: user.uid,
+                text: `${venueToSend.accountName} has invited you to play at their gig at ${formData.venue.venueName} on the ${formatDate(formData.date)} for ${formData.budget}.
+                ${formData.privateApplicationsLink ? `Follow this link to apply: ${formData.privateApplicationsLink}` : ''}`,
+            })
+          }
+          toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`)
           setGigPostModal(false);
         } catch (error) {
           setLoading(false);

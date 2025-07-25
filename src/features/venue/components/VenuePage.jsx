@@ -29,11 +29,15 @@ import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { openInNewTab } from '@services/utils/misc';
+import { createVenueRequest, getMusicianProfileByMusicianId } from '../../../services/musicians';
+import { toast } from 'sonner';
+import { getOrCreateConversation } from '../../../services/conversations';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const musicianId = searchParams.get('musicianId');
     const [venueData, setVenueData] = useState(null);
     const [venueGigs, setVenueGigs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -42,6 +46,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [fullscreenImage, setFullscreenImage] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [width, setWidth] = useState('100%');
+    const [showRequestModal, setShowRequestModal] = useState(false);
+    const [requestMessage, setRequestMessage] = useState('');
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -102,6 +108,31 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         setCurrentImageIndex((prevIndex) => (prevIndex - 1 + venueData.photos.length) % venueData.photos.length);
         setFullscreenImage(venueData.photos[(currentImageIndex - 1 + venueData.photos.length) % venueData.photos.length]);
     };
+
+    const handleMusicianRequest = async () => {
+        try {
+          const profile = await getMusicianProfileByMusicianId(musicianId);
+          if (!profile) throw new Error('Musician profile not found');
+          await createVenueRequest({
+            venueId: venueData.id,
+            musicianId: profile.musicianId,
+            musicianName: profile.name,
+            musicianImage: profile.picture || '',
+            musicianGenres: profile.genres,
+            musicianType: profile.musicianType,
+            musicianPlays: profile.musicType,
+            message: requestMessage,
+            createdAt: new Date(),
+            viewed: false,
+          });
+          toast.success('Request sent to venue!');
+          setRequestMessage('');
+          setShowRequestModal(false);
+        } catch (err) {
+          console.error('Error sending request:', err);
+          toast.error('Failed to send request. Please try again.');
+        }
+      };
     
     return (
         <div className='venue-page'>
@@ -215,6 +246,11 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         <h4>{gig.budget}</h4>
                                     </div>
                                 ))}
+                                {musicianId && (
+                                    <button className="btn primary" onClick={() => setShowRequestModal(true)}>
+                                        Request To Play Here
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </>
@@ -227,7 +263,27 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                     </div>
                 )}
             </section>
-
+            {showRequestModal && (
+                <div className="modal">
+                    <div className="modal-content">
+                        <div className="head">
+                            <h3>Request to perform at {venueData.name}</h3>
+                            <div className="musician-request">
+                                <textarea
+                                    className="input"
+                                    rows={3}
+                                    placeholder="Write a message to the venue..."
+                                    value={requestMessage}
+                                    onChange={(e) => setRequestMessage(e.target.value)}
+                                />
+                                <button className="btn primary" onClick={handleMusicianRequest}>
+                                    Request To Play Here
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

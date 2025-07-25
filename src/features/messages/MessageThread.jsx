@@ -284,7 +284,19 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     };
 
-
+    const autoLinkText = (text) => {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.split(urlRegex).map((part, index) => {
+          if (urlRegex.test(part)) {
+            return (
+              <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="message-link">
+                {part.includes('token') ? 'Private Gig Link' : part}
+              </a>
+            );
+          }
+          return part;
+        });
+      };
     
     return (
         <>
@@ -388,7 +400,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                             ) 
                             : (message.type === 'application' || message.type === 'invitation') && !isSameGroup ? (
                                 <>
-                                    <h4>{message.text}</h4>
+                                    <h4>{autoLinkText(message.text)}</h4>
                                     {message.status === 'accepted' ? (
                                         <div className='status-box'>
                                             <div className='status confirmed'>

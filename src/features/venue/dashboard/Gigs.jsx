@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { 
     ClockIcon,
@@ -14,9 +14,11 @@ import { deleteGigsBatch, duplicateGig, saveGigTemplate, updateGigDocument } fro
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { openInNewTab } from '../../../services/utils/misc';
+import { RequestCard } from '../components/RequestCard';
+import { removeVenueRequest } from '../../../services/venues';
 
 
-export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
+export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests }) => {
     const location = useLocation();
     const navigate = useNavigate();
   
@@ -29,6 +31,11 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmType, setConfirmType] = useState('');
     const [openOptionsGigId, setOpenOptionsGigId] = useState(null);
+    const [showMusicianRequests, setShowMusicianRequests] = useState(false);
+
+    const visibleRequests = useMemo(() => {
+      return requests.filter(request => !request.removed);
+    }, [requests]);
 
     const toggleOptionsMenu = (gigId) => {
         setOpenOptionsGigId(prev => (prev === gigId ? null : gigId));
@@ -51,19 +58,24 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
     useResizeEffect((width) => setWindowWidth(width));
 
     useEffect(() => {
-        const handleClickOutside = (e) => {
-          if (!e.target.closest('.options-cell')) {
-            setOpenOptionsGigId(null);
-          }
-        };
-        window.addEventListener('click', handleClickOutside);
-        return () => window.removeEventListener('click', handleClickOutside);
-      }, []);
+      const handleClickOutside = (e) => {
+        if (!e.target.closest('.options-cell')) {
+          setOpenOptionsGigId(null);
+        }
+      };
+      window.addEventListener('click', handleClickOutside);
+      return () => window.removeEventListener('click', handleClickOutside);
+    }, []);
   
-    const queryParams = new URLSearchParams(location.search);
-    const selectedVenue = queryParams.get('venue') || '';
-    const selectedDate = queryParams.get('date') || '';
-    const selectedStatus = queryParams.get('status') || 'all';
+    const [searchParams] = useSearchParams();
+    const selectedVenue = searchParams.get('venue') || '';
+    const selectedDate = searchParams.get('date') || '';
+    const selectedStatus = searchParams.get('status') || 'all';
+    const showRequests = searchParams.get('showRequests') === 'true';
+
+    useEffect(() => {
+      if (showRequests) setShowMusicianRequests(true);
+    }, [showRequests])
   
     const now = useMemo(() => new Date(), []);
   
@@ -202,12 +214,55 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
           toast.error('Failed to save template');
         }
       };
+
+      const handleRemoveRequest = async (requestId) => {
+        try {
+          await removeVenueRequest(requestId);
+          setRequests(prev => 
+            prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
+          );
+          toast.success('Request removed.');
+        } catch (err) {
+          console.error('Error removing request:', err);
+          toast.error('Failed to remove request');
+        }
+      };
+      
+      const openBuildGigModal = (request) => {
+        navigate('/venues/dashboard/gigs?showRequests=true', { state: {
+          musicianData: {
+              id: request.musicianId,
+              type: request.musicianType || '',
+              plays: request.musicianPlays || '',
+              genres: request.musicianGenres || [],
+              name: request.musicianName,
+              venueId: request.venueId,
+          },
+          buildingForMusician: true,
+          showGigPostModal: true,
+          skipTemplate:true,
+      }})
+      };
   
     return (
       <>
         <div className='head gigs'>
-          <h1 className='title'>Gigs</h1>
-          <div className='filters'>
+          <div className="title requests">
+            <h1 className='title'>Gigs{showMusicianRequests ? ' - Musician Requests' : ''}</h1>
+            <button
+              className="btn secondary"
+              onClick={() => {
+                const next = !showMusicianRequests;
+                setShowMusicianRequests(next);
+                updateUrlParams('showRequests', next ? 'true' : '');
+              }}
+            >
+              {showMusicianRequests ? 'Hide' : 'Show'} Musician Requests
+            </button>
+          </div>
+          {!showMusicianRequests && (
+            <>
+            <div className='filters'>
               <div className="status-buttons">
                   <button className={`btn ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'all')}>
                       All
@@ -223,7 +278,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                   </button>
               </div>
               {windowWidth >= 1400 ? (
-                  <>
+                <>
                   <span className="separator"></span>
                   <div className="search-bar-container">
                       <SearchIcon />
@@ -257,32 +312,21 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                   </select>
                   <div className="spacer" />
                   <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
-                  </>
+                </>
               ) : (
-                  <>
-                      <div className="spacer" />
-                      <button className={`btn tertiary ${showMobileFilters ? 'open' : ''}`} onClick={() => setShowMobileFilters(prev => !prev)}>
-                          <FilterIconEmpty />
-                          Filters
-                      </button>
-                      <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
-                  </>
+                <>
+                  <div className="spacer" />
+                  <button className={`btn tertiary ${showMobileFilters ? 'open' : ''}`} onClick={() => setShowMobileFilters(prev => !prev)}>
+                      <FilterIconEmpty />
+                      Filters
+                  </button>
+                  <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
+                </>
               )}
-          </div>
+            </div>
 
-          {windowWidth < 1400 && showMobileFilters && (
+            {windowWidth < 1400 && showMobileFilters && (
               <div className="filters ext">
-                  {/* <div className="search-bar-container">
-                  <SearchIcon />
-                  <input
-                      type='text'
-                      placeholder='Search By Name...'
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      className='search-bar'
-                      aria-label='Search gigs'
-                  />
-                  </div> */}
                   <input
                   type='date'
                   id='dateSelect'
@@ -301,10 +345,11 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                   ))}
                   </select>
               </div>
-          )}  
-        </div>
+              )}  
+              </>
+              )}
+          </div>
         <div className='body gigs'>
-
             {selectedGigs.length > 0 && (
                 <div className="gig-action-bar">
                     <p>{selectedGigs.length} Gig{selectedGigs.length > 1 ? 's' : ''} Selected</p>
@@ -345,214 +390,221 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData }) => {
                     <button className="btn icon" onClick={clearSelection}><ErrorIcon /></button>
                 </div>
             )}
-
-          <table>
-            <thead>
-              <tr>
-                {/* <th>
-                    <input
-                        type="checkbox"
-                        checked={selectedGigs.length === sortedGigs.length && sortedGigs.length > 0}
-                        onChange={(e) => {
-                        if (e.target.checked) {
-                            setSelectedGigs(sortedGigs.map((gig) => gig.gigId));
-                        } else {
-                            clearSelection();
-                        }
-                        }}
-                    />
-                </th> */}
-                <th id='name'>Name</th>
-                <th id='date'>
-                  Time and Date
-                  <button className='sort btn text' onClick={toggleSortOrder}>
-                    <SortIcon />
-                  </button>
-                </th>
-                <th>Venue</th>
-                {windowWidth > 880 && <th className='centre'>Budget</th>}
-                <th className='centre'>Status</th>
-                {windowWidth > 1268 && <th className='centre'>Applications</th>}
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedGigs.length > 0 ? (
-                sortedGigs.map((gig, index) => {
-                  const isFirstPreviousGig =
-                    index > 0 &&
-                    gig.dateTime < now &&
-                    sortedGigs[index - 1].dateTime >= now;
-  
-                  const StatusIcon = {
-                    upcoming: <ClockIcon />,
-                    confirmed: <TickIcon />,
-                    closed: <CloseIcon />,
-                    previous: <PreviousIcon />
-                  }[gig.status];
-  
-                  return (
-                    <React.Fragment key={gig.gigId}>
-                      {isFirstPreviousGig && (
-                        <tr className='filler-row'>
-                          <td className='data' colSpan={8}>
-                            <div className='flex center'>
-                              <h4>Previous Gigs</h4>
+          {!showMusicianRequests ? (
+            <table>
+              <thead>
+                <tr>
+                  {/* <th>
+                      <input
+                          type="checkbox"
+                          checked={selectedGigs.length === sortedGigs.length && sortedGigs.length > 0}
+                          onChange={(e) => {
+                          if (e.target.checked) {
+                              setSelectedGigs(sortedGigs.map((gig) => gig.gigId));
+                          } else {
+                              clearSelection();
+                          }
+                          }}
+                      />
+                  </th> */}
+                  <th id='name'>Name</th>
+                  <th id='date'>
+                    Time and Date
+                    <button className='sort btn text' onClick={toggleSortOrder}>
+                      <SortIcon />
+                    </button>
+                  </th>
+                  <th>Venue</th>
+                  {windowWidth > 880 && <th className='centre'>Budget</th>}
+                  <th className='centre'>Status</th>
+                  {windowWidth > 1268 && <th className='centre'>Applications</th>}
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedGigs.length > 0 ? (
+                  sortedGigs.map((gig, index) => {
+                    const isFirstPreviousGig =
+                      index > 0 &&
+                      gig.dateTime < now &&
+                      sortedGigs[index - 1].dateTime >= now;
+    
+                    const StatusIcon = {
+                      upcoming: <ClockIcon />,
+                      confirmed: <TickIcon />,
+                      closed: <CloseIcon />,
+                      previous: <PreviousIcon />
+                    }[gig.status];
+    
+                    return (
+                      <React.Fragment key={gig.gigId}>
+                        {isFirstPreviousGig && (
+                          <tr className='filler-row'>
+                            <td className='data' colSpan={8}>
+                              <div className='flex center'>
+                                <h4>Previous Gigs</h4>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        <tr onClick={(e) => {
+                            if (gig.kind === 'Open Mic' && !gig.openMicApplications) {
+                              openInNewTab(`/gig/${gig.gigId}`, e)
+                            } else {
+                              navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } })
+                            }
+                          }}>
+                          {/* {gig.dateTime > now ? (
+                              <td onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={isSelected(gig.gigId)}
+                                onChange={() => toggleGigSelection(gig.gigId)}
+                              />
+                            </td>
+                          ) : (
+                              <td></td>
+                          )} */}
+                          <td>{gig.gigName}</td>
+                          <td>{gig.startTime} {gig.dateObj.toLocaleDateString('en-GB')}</td>
+                          <td className='truncate'>{gig.venue.venueName}</td>
+                          {windowWidth > 880 && (
+                            <td className='centre'>
+                              {gig.kind === 'Open Mic' ? (
+                                'Open Mic'
+                              ) : gig.kind === 'Ticketed Gig' ? (
+                                'Ticketed'
+                              ) : (
+                                gig.budget
+                              )}
+                            </td>
+                          )}
+                          <td className={`status-box ${gig.status}`}>
+                            <div className={`status ${gig.status}`}>
+                              {StatusIcon} {gig.status.charAt(0).toUpperCase() + gig.status.slice(1)}
                             </div>
                           </td>
-                        </tr>
-                      )}
-                      <tr onClick={(e) => {
-                          if (gig.kind === 'Open Mic' && !gig.openMicApplications) {
-                            openInNewTab(`/gig/${gig.gigId}`, e)
-                          } else {
-                            navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } })
-                          }
-                        }}>
-                        {/* {gig.dateTime > now ? (
-                            <td onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={isSelected(gig.gigId)}
-                              onChange={() => toggleGigSelection(gig.gigId)}
-                            />
-                          </td>
-                        ) : (
-                            <td></td>
-                        )} */}
-                        <td>{gig.gigName}</td>
-                        <td>{gig.startTime} {gig.dateObj.toLocaleDateString('en-GB')}</td>
-                        <td className='truncate'>{gig.venue.venueName}</td>
-                        {windowWidth > 880 && (
-                          <td className='centre'>
-                            {gig.kind === 'Open Mic' ? (
-                              'Open Mic'
-                            ) : gig.kind === 'Ticketed Gig' ? (
-                              'Ticketed'
-                            ) : (
-                              gig.budget
-                            )}
-                          </td>
-                        )}
-                        <td className={`status-box ${gig.status}`}>
-                          <div className={`status ${gig.status}`}>
-                            {StatusIcon} {gig.status.charAt(0).toUpperCase() + gig.status.slice(1)}
-                          </div>
-                        </td>
-                        {windowWidth > 1268 && (
-                          <td className={`centre ${gig.applicants.some(app => !app.viewed) ? 'has-new-applications' : ''}`}>
-                            {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
-                              '-'
-                            ) : (
-                              <>
-                                {gig.applicants.some(app => !app.viewed)
-                                  ? `${gig.applicants.filter(app => !app.viewed).length} Unseen`
-                                  : gig.applicants.length}
-                              </>
-                            )}
-                          </td>
-                        )}
-                        <td className="options-cell" onClick={(e) => e.stopPropagation()}>
-                            <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
-                                <OptionsIcon />
-                            </button>
-                            {openOptionsGigId === gig.gigId && (
-                                <div className="options-dropdown">
-                                <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <NewTabIcon /> </button>
-                                {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && (
-                                    <button onClick={() => { closeOptionsMenu(); openGigPostModal(gig) }}>Edit <EditIcon /></button>
-                                )}
-                                {gig.dateTime > now && (
-                                    <button 
-                                        onClick={() => {
-                                            closeOptionsMenu();
-                                            setSelectedGigs([gig.gigId]);
-                                            setConfirmType('duplicate');
-                                            setConfirmModal(true);
-                                            setConfirmMessage('Duplicate this gig? The new gig will have no applicants.');
-                                        }}
-                                    >
-                                        Duplicate
-                                        <DuplicateGigIcon />
-                                    </button>
-                                )}
-                                {(gig.dateTime > now && gig.status !== 'confirmed' && !gig.kind === 'Open Mic') ? (
+                          {windowWidth > 1268 && (
+                            <td className={`centre ${gig.applicants.some(app => !app.viewed) ? 'has-new-applications' : ''}`}>
+                              {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
+                                '-'
+                              ) : (
+                                <>
+                                  {gig.applicants.some(app => !app.viewed)
+                                    ? `${gig.applicants.filter(app => !app.viewed).length} Unseen`
+                                    : gig.applicants.length}
+                                </>
+                              )}
+                            </td>
+                          )}
+                          <td className="options-cell" onClick={(e) => e.stopPropagation()}>
+                              <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
+                                  <OptionsIcon />
+                              </button>
+                              {openOptionsGigId === gig.gigId && (
+                                  <div className="options-dropdown">
+                                  <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <NewTabIcon /> </button>
+                                  {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && (
+                                      <button onClick={() => { closeOptionsMenu(); openGigPostModal(gig) }}>Edit <EditIcon /></button>
+                                  )}
+                                  {gig.dateTime > now && (
+                                      <button 
+                                          onClick={() => {
+                                              closeOptionsMenu();
+                                              setSelectedGigs([gig.gigId]);
+                                              setConfirmType('duplicate');
+                                              setConfirmModal(true);
+                                              setConfirmMessage('Duplicate this gig? The new gig will have no applicants.');
+                                          }}
+                                      >
+                                          Duplicate
+                                          <DuplicateGigIcon />
+                                      </button>
+                                  )}
+                                  {(gig.dateTime > now && gig.status !== 'confirmed' && !gig.kind === 'Open Mic') ? (
+                                      <button
+                                      onClick={async () => {
+                                          closeOptionsMenu();
+                                          const newStatus = (gig.status === 'open' || gig.status === 'upcoming') ? 'closed' : 'open';
+                                          try {
+                                              await updateGigDocument(gig.gigId, { status: newStatus });
+                                              toast.success(`Gig ${(newStatus === 'open' || newStatus === 'upcoming') ? 'Opened for Applications' : 'Closed from Applications'}`);
+                                          } catch (error) {
+                                              console.error('Error updating status:', error);
+                                              toast.error('Failed to update gig status.');
+                                          }
+                                      }}
+                                      >
+                                          {(gig.status === "open" || gig.status === 'upcoming') ? 'Close Gig' : 'Reopen Gig'}
+                                          {(gig.status === "open" || gig.status === 'upcoming') ? (
+                                              <CloseIcon />
+                                              ) : (
+                                              <TickIcon />
+                                          )}
+                                      </button>
+                                  ) : (gig.dateTime > now && gig.status !== 'confirmed' && gig.kind === 'Open Mic') && (
                                     <button
-                                    onClick={async () => {
-                                        closeOptionsMenu();
-                                        const newStatus = (gig.status === 'open' || gig.status === 'upcoming') ? 'closed' : 'open';
-                                        try {
-                                            await updateGigDocument(gig.gigId, { status: newStatus });
-                                            toast.success(`Gig ${(newStatus === 'open' || newStatus === 'upcoming') ? 'Opened for Applications' : 'Closed from Applications'}`);
-                                        } catch (error) {
-                                            console.error('Error updating status:', error);
-                                            toast.error('Failed to update gig status.');
-                                        }
-                                    }}
-                                    >
-                                        {(gig.status === "open" || gig.status === 'upcoming') ? 'Close Gig' : 'Reopen Gig'}
-                                        {(gig.status === "open" || gig.status === 'upcoming') ? (
-                                            <CloseIcon />
-                                            ) : (
-                                            <TickIcon />
-                                        )}
-                                    </button>
-                                ) : (gig.dateTime > now && gig.status !== 'confirmed' && gig.kind === 'Open Mic') && (
-                                  <button
-                                    onClick={async () => {
-                                        closeOptionsMenu();
-                                        const newStatus = gig.openMicApplications ? false : true;
-                                        try {
-                                            await updateGigDocument(gig.gigId, { openMicApplications: newStatus, limitApplications: false });
-                                            toast.success(`Open mic night ${(newStatus) ? 'opened for applications.' : 'changed to turn up and play.'}`);
-                                        } catch (error) {
-                                            console.error('Error updating status:', error);
-                                            toast.error('Failed to update open mic applications.');
-                                        }
-                                    }}
-                                    >
-                                        {gig.openMicApplications ? 'Change to Turn Up and Play' : 'Change to Applications Required'}
-                                        {gig.openMicApplications ? (
-                                            <MicrophoneIconSolid />
-                                            ) : (
-                                            <ShieldIcon />
-                                        )}
-                                    </button>
-                                )}
-                                <button onClick={() => { closeOptionsMenu(); handleCloneAsTemplate(gig); }}>
-                                    Make Gig a Template <TemplateIcon />
-                                </button>
-                                {gig.dateTime > now && (
-                                    <button 
-                                        onClick={() => {
-                                            closeOptionsMenu();
-                                            setSelectedGigs([gig.gigId]);
-                                            setConfirmType('delete');
-                                            setConfirmModal(true);
-                                            setConfirmMessage('Are you sure you want to delete this gig? This action cannot be undone.'); 
-                                        }}>
-                                            Delete
-                                            <DeleteGigIcon />
-                                        </button>
-                                )}
-                                </div>
-                            )}
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  );
-                })
-              ) : (
-                <tr className='no-gigs'>
-                  <td className='data' colSpan={8} style={{ padding: '0'}}>
-                    <div className='flex' style={{ padding: '2rem 0', backgroundColor: 'var(--gn-grey-300)'}}>
-                      <h4>No Gigs Available</h4>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                                      onClick={async () => {
+                                          closeOptionsMenu();
+                                          const newStatus = gig.openMicApplications ? false : true;
+                                          try {
+                                              await updateGigDocument(gig.gigId, { openMicApplications: newStatus, limitApplications: false });
+                                              toast.success(`Open mic night ${(newStatus) ? 'opened for applications.' : 'changed to turn up and play.'}`);
+                                          } catch (error) {
+                                              console.error('Error updating status:', error);
+                                              toast.error('Failed to update open mic applications.');
+                                          }
+                                      }}
+                                      >
+                                          {gig.openMicApplications ? 'Change to Turn Up and Play' : 'Change to Applications Required'}
+                                          {gig.openMicApplications ? (
+                                              <MicrophoneIconSolid />
+                                              ) : (
+                                              <ShieldIcon />
+                                          )}
+                                      </button>
+                                  )}
+                                  <button onClick={() => { closeOptionsMenu(); handleCloneAsTemplate(gig); }}>
+                                      Make Gig a Template <TemplateIcon />
+                                  </button>
+                                  {gig.dateTime > now && (
+                                      <button 
+                                          onClick={() => {
+                                              closeOptionsMenu();
+                                              setSelectedGigs([gig.gigId]);
+                                              setConfirmType('delete');
+                                              setConfirmModal(true);
+                                              setConfirmMessage('Are you sure you want to delete this gig? This action cannot be undone.'); 
+                                          }}>
+                                              Delete
+                                              <DeleteGigIcon />
+                                          </button>
+                                  )}
+                                  </div>
+                              )}
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  })
+                ) : (
+                  <tr className='no-gigs'>
+                    <td className='data' colSpan={8} style={{ padding: '0'}}>
+                      <div className='flex' style={{ padding: '2rem 0', backgroundColor: 'var(--gn-grey-300)'}}>
+                        <h4>No Gigs Available</h4>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <div className="musician-requests">
+              {visibleRequests.map((request) => (
+                <RequestCard key={request.id} request={request} handleRemoveRequest={handleRemoveRequest} openBuildGigModal={openBuildGigModal} venues={venues} />
+              ))}
+            </div>
+          )}
             {confirmModal && (
                 <div className="modal confirm">
                     <div className="modal-content">

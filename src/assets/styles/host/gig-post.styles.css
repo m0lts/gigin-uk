@@ -15,9 +15,16 @@
     background-color: var(--gn-offset-red);
     padding:0.5rem 1rem;
     border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap:5px;
 }
 
 .gig-post .stage .body .error-message {
+    color: var(--gn-red);
+}
+
+.gig-post .stage .body .error-cont .icon {
     color: var(--gn-red);
 }
 
@@ -186,6 +193,10 @@
 
 .gig-post .stage .toggle-container label {
     font-weight: 500;
+}
+
+.gig-post .stage .toggle-container label.warning {
+    color: var(--gn-red);
 }
 
 .gig-post .stage .switch {

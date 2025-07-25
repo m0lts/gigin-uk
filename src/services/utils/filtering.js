@@ -7,8 +7,11 @@ import { Timestamp } from 'firebase/firestore';
  * @returns {Array<Object>} - Filtered array of gigs with dates in the future.
  */
 export const filterFutureGigs = (gigs) => {
-  const now = Timestamp.now();
-  return gigs.filter(gig => gig.date > now);
+  const now = Date.now();
+
+  return gigs
+    .filter(gig => getLocalGigDateTime(gig) > now)
+    .sort((a, b) => getLocalGigDateTime(a) - getLocalGigDateTime(b));
 };
 
 /**

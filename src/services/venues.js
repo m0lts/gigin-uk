@@ -70,6 +70,34 @@ export const getVenueProfilesByUserId = async (userId) => {
 };
 
 /**
+ * Fetches all venue requests for a given array of venue IDs.
+ * @param {string[]} venueIds - Array of venue document IDs.
+ * @returns {Promise<Object[]>} Array of venue request objects.
+ */
+export const getVenueRequestsByVenueIds = async (venueIds) => {
+  if (!venueIds || venueIds.length === 0) return [];
+
+  const requestsRef = collection(firestore, 'venueRequests');
+
+  // Firestore 'in' queries only support up to 10 values
+  const chunks = [];
+  for (let i = 0; i < venueIds.length; i += 10) {
+    chunks.push(venueIds.slice(i, i + 10));
+  }
+
+  const allResults = [];
+  for (const chunk of chunks) {
+    const q = query(requestsRef, where('venueId', 'in', chunk));
+    const snapshot = await getDocs(q);
+    snapshot.forEach(doc => {
+      allResults.push({ id: doc.id, ...doc.data() });
+    });
+  }
+
+  return allResults;
+};
+
+/**
  * Sets up real-time listeners for templates belonging to the provided venue IDs.
  * Supports >10 IDs by batching `in` queries.
  *
@@ -169,6 +197,30 @@ export const saveMusician = async (userId, musicianId) => {
 
   await updateDoc(ref, { savedMusicians: updated });
   return action;
+};
+
+/**
+ * Marks a venue request as viewed.
+ * @param {string} requestId - The ID of the request to update.
+ * @returns {Promise<void>}
+ */
+export const markRequestAsViewed = async (requestId) => {
+  const docRef = doc(firestore, 'venueRequests', requestId);
+  await updateDoc(docRef, { viewed: true });
+};
+
+/**
+ * Marks a venue request as removed by setting `removed: true`.
+ * @param {string} requestId - The Firestore document ID of the request.
+ * @returns {Promise<void>}
+ */
+export const removeVenueRequest = async (requestId) => {
+  if (!requestId) throw new Error('Invalid request ID');
+  const requestRef = doc(firestore, 'venueRequests', requestId);
+  await updateDoc(requestRef, {
+    removed: true,
+    updatedAt: new Date()
+  });
 };
 
 /*** DELETE OPERATIONS ***/

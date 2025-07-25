@@ -662,6 +662,49 @@
     text-align: center;
 }
 
+.musician-requests {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .request-card {
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 0.75rem;
+    padding: 1rem 1.5rem;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  
+  .musician-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 999px;
+    object-fit: cover;
+  }
+  
+  .request-message {
+    margin-bottom: 1rem;
+  }
+  
+  .timestamp {
+    font-size: 0.85rem;
+    color: var(--gn-grey-500);
+  }
+  
+  .request-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+  }
+
 /* GIG APPLICATIONS */
 
 .window .head.gig-applications {

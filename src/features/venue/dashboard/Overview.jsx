@@ -19,7 +19,7 @@ import { submitReview } from '../../../services/reviews';
 import { toast } from 'sonner';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
-export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gigsToReview, setGigsToReview }) => {
+export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gigsToReview, setGigsToReview, requests }) => {
 
     const navigate = useNavigate();
     const [showSocialsModal, setShowSocialsModal] = useState(false);
@@ -32,12 +32,13 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
     const [ratings, setRatings] = useState({});
     const [reviewTexts, setReviewTexts] = useState({});
     const [submittingReviews, setSubmittingReviews] = useState({});
+    const [musicianRequests, setMusicianRequests] = useState([]);
 
     useResizeEffect((width) => {
         setWindowWidth(width);
       });
 
-      useEffect(() => {
+    useEffect(() => {
         if (!gigs?.length) return;
         const now = new Date();
         const getLocalGigDateTime = (gig) => {
@@ -61,6 +62,16 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
         setNewApplicationsGigs(newApplications);
         setNextGig(upcomingConfirmed[0] || null);
     }, [gigs]);
+
+    useEffect(() => {
+        if (!requests?.length) return;
+      
+        const unseenRequests = requests.filter(
+          (request) => request?.viewed === false || request?.viewed === undefined
+        );
+      
+        setMusicianRequests(unseenRequests);
+      }, [requests]);
 
 
     useEffect(() => {
@@ -176,6 +187,12 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                     <div className="new-applications" onClick={() => navigate('/venues/dashboard/gigs')}>
                         <ExclamationIcon />
                         <h4>You have {newApplicationsGigs.length || 3} new gig applications.</h4>
+                    </div>
+                )}
+                {musicianRequests.length > 0 && (
+                    <div className="new-applications" onClick={() => navigate('/venues/dashboard/gigs?showRequests=true')}>
+                        <ExclamationIcon />
+                        <h4>You have {musicianRequests.length || 3} new musician requests.</h4>
                     </div>
                 )}
                 <div className="quick-buttons">

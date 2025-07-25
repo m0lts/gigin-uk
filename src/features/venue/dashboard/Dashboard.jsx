@@ -31,6 +31,8 @@ export const VenueDashboard = ({ user }) => {
       gigs,
       incompleteGigs,
       templates,
+      requests,
+      setRequests,
       stripe: { customerDetails, savedCards, receipts },
       refreshData,
       refreshGigs,
@@ -46,11 +48,16 @@ export const VenueDashboard = ({ user }) => {
     const [gigsToReview, setGigsToReview] = useState([]);
     const [newMessages, setNewMessages] = useState(false);
     const [conversations, setConversations] = useState([]);
+    const [buildingForMusician, setBuildingForMusician] = useState(false);
+    const [buildingForMusicianData, setBuildingForMusicianData] = useState(false);
     const location = useLocation();
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname), [location.pathname]);
   
     useEffect(() => {
       if (location.state?.newUser) setShowWelcomeModal(true);
+      if (location.state?.showGigPostModal) setGigPostModal(true);
+      if (location.state?.buildingForMusician) setBuildingForMusician(true);
+      if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
     }, [location]);
   
     useEffect(() => {
@@ -110,8 +117,8 @@ export const VenueDashboard = ({ user }) => {
                 )}
                 <div className="output">
                     <Routes>
-                        <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} />} />
-                        <Route path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} />} />
+                        <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} />
+                        <Route path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} />} />
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} />} />
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} />} />
@@ -129,6 +136,8 @@ export const VenueDashboard = ({ user }) => {
                 templates={templates} 
                 incompleteGigs={incompleteGigs} 
                 editGigData={editGigData}
+                buildingForMusician={buildingForMusician}
+                buildingForMusicianData={buildingForMusicianData}
               />
             }
             {showReviewModal && 

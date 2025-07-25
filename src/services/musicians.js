@@ -45,6 +45,23 @@ export const createMusicianProfile = async (musicianId, data, userId) => {
 };
 
 
+/**
+ * Creates a request for a musician to play at a venue.
+ * @param {Object} requestData - The request information.
+ * @param {string} requestData.venueId - The venue receiving the request.
+ * @param {string} requestData.musicianId - The requesting musician's ID.
+ * @param {string} requestData.musicianName - Display name of the musician.
+ * @param {string} [requestData.musicianImage] - Optional image of the musician.
+ * @param {string} [requestData.message] - Optional message sent to the venue.
+ * @param {Date} requestData.createdAt - Timestamp of request creation.
+ * @returns {Promise<string>} The ID of the created request document.
+ */
+export const createVenueRequest = async (requestData) => {
+  const docRef = await addDoc(collection(firestore, 'venueRequests'), requestData);
+  return docRef.id;
+};
+
+
 /*** READ OPERATIONS ***/
 
 /**

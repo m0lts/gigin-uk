@@ -1,6 +1,6 @@
 import { faFacebook, faFacebookSquare, faInstagram, faInstagramSquare, faSoundcloud, faSpotify, faTwitter, faTwitterSquare, faYoutube, faYoutubeSquare } from '@fortawesome/free-brands-svg-icons'
 import { faArrowLeft, faBoxArchive, faCircle, faFilm, faInbox, faLocationDot, faPlayCircle, faUserCircle, faFileImport, faSquareMinus, faChevronUp, faChevronDown, faChevronLeft, faChevronRight, faX, faCheck } from '@fortawesome/free-solid-svg-icons'
-import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faArrowUpFromBracket, faBeerFoam, faCamcorder, faCameraViewfinder, faCastle, faCheckCircle, faCoin, faCutlery, faDoorOpen, faDrum, faEnvelope, faFileMp3, faFileMp4, faGear, faGlassesRound, faGraduationCap, faGuitars, faLightbulb, faLocationPin, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPause, faPencil, faPiano, faPlaceOfWorship, faPlay, faPlayPause, faQuestionCircle, faReel, faRingsWedding, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faXmarkCircle, faStarShooting, faTrashCan, faBan } from '@fortawesome/pro-light-svg-icons'
+import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faBeerFoam, faCamcorder, faCameraViewfinder, faCastle, faCheckCircle, faCoin, faCutlery, faDoorOpen, faDrum, faEnvelope, faFileMp3, faFileMp4, faGear, faGlassesRound, faGraduationCap, faGuitars, faLightbulb, faLocationPin, faMapLocation, faMicrophoneLines, faMicrophoneStand, faMuseum, faPause, faPencil, faPiano, faPlaceOfWorship, faPlay, faPlayPause, faQuestionCircle, faReel, faRingsWedding, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faXmarkCircle, faStarShooting, faTrashCan, faBan } from '@fortawesome/pro-light-svg-icons'
 import { faArrowUp, faComments, faFaceFrown, faFaceMeh, faFaceSmile, faFaceSmileHearts, faUserMinus, faUserPlus, faArrowUpRightFromSquare, faPencilSquare, faTableTree, faClock, faCircleArrowLeft, faChartPieSimple, faCirclePlus, faCreditCard, faFileInvoice, faPartyHorn, faListMusic, faCircleExclamation } from '@fortawesome/pro-regular-svg-icons'
 import { faClipboard, faShieldCheck } from '@fortawesome/pro-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -34,7 +34,7 @@ import { faCoins as faCoinsLight } from '@fortawesome/pro-light-svg-icons'
 import { faCoins as faCoinsSolid } from '@fortawesome/free-solid-svg-icons'
 import { faFilter as faFullFilter } from '@fortawesome/free-solid-svg-icons'
 import { faFilter as faEmptyFilter } from '@fortawesome/pro-regular-svg-icons'
-import { faTrashList as faTrashMultiple, faTrash, faClone, faEllipsis } from '@fortawesome/pro-regular-svg-icons'
+import { faTrashList as faTrashMultiple, faTrash, faClone, faEllipsis, faArrowUpFromBracket } from '@fortawesome/pro-regular-svg-icons'
 import { faMailbox as faMailbox } from '@fortawesome/pro-light-svg-icons';
 import { faMailbox as faMailboxSolid } from '@fortawesome/pro-solid-svg-icons';
 import { faMailboxFlagUp as faMailboxFlagUp } from '@fortawesome/pro-light-svg-icons';

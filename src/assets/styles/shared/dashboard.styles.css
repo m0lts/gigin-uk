@@ -55,6 +55,14 @@
 
 .dashboard .window .output .head .title {
     font-size: 2.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.dashboard .window .output .head .title.requests {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .dashboard .window .breadcrumbs {
@@ -234,7 +242,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
     gap:10px;
     cursor: pointer;
     padding:0.5rem;
@@ -242,6 +250,23 @@
     border-radius: var(--gn-btn-border-radius);
     color: var(--gn-grey-700);
     transition: background-color 0.2s linear;
+}
+
+.dashboard .sidebar .menu-item .body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+}
+
+.dashboard .sidebar .menu-item .notification {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard .sidebar .menu-item .notification .icon {
+    font-size: 0.5rem;
 }
 
 .dashboard .sidebar .menu-item:first-of-type {

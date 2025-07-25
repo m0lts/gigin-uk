@@ -3,9 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { EditIcon, CopyIcon } from '@features/shared/ui/extras/Icons';
 import { saveGigTemplate } from '@services/gigs';
 import { toast } from 'sonner';
-import { NewTabIcon } from '../../shared/ui/extras/Icons';
+import { ExclamationIcon, NewTabIcon } from '../../shared/ui/extras/Icons';
 
-export const GigReview = ({ formData, handleInputChange, setStage }) => {
+export const GigReview = ({ formData, handleInputChange, setStage, buildingForMusician, buildingForMusicianData }) => {
 
     const [saving, setSaving] = useState(false);
     const [templateName, setTemplateName] = useState('');
@@ -25,12 +25,18 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
 
     useEffect(() => {
         if (formData.privateApplications && formData.gigId && !privateApplicationsToken) {
-            const token = uuidv4();
+            const token = buildingForMusician
+                ? buildingForMusicianData?.id
+                : uuidv4();
+    
+            const link = `https://www.gigin.ltd/gig/${formData.gigId}?token=${token}`;
+    
             setPrivateApplicationsToken(token);
-            setPrivateApplicationsLink(`https://www.gigin.ltd/gig/${formData.gigId}?token=${token}`);
+            setPrivateApplicationsLink(link);
+    
             handleInputChange({
                 privateApplicationToken: token,
-                privateApplicationsLink: `https://www.gigin.ltd/gig/${formData.gigId}?token=${token}`,
+                privateApplicationsLink: link,
             });
         }
     }, [formData.privateApplications, formData.gigId]);
@@ -158,10 +164,6 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
         }
       };
 
-    // const handlePreviewGig = () => {
-        
-    // }
-
     return (
         <>
             <div className='head'>
@@ -214,7 +216,7 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                         </div>
                     </div>
                     <div className='review-right'>
-                        {formData.dateUndecided === false && (
+                        {(formData.dateUndecided === false && !buildingForMusician) && (
                             <div className='review-extra-option'>
                                 <h4 className='label'>Do you want this to be a repeating gig?</h4>
                                 <div className='repeat-group'>
@@ -279,34 +281,72 @@ export const GigReview = ({ formData, handleInputChange, setStage }) => {
                                 )}
                             </div>
                         )}
-                        <div className='review-extra-option'>
-                            <div className='toggle-container'>
-                                <label htmlFor='private-applications' className='label'>Make applications private?</label>
-                                <label className='switch'>
-                                    <input
-                                        type='checkbox'
-                                        id='private-applications'
-                                        checked={formData.privateApplications}
-                                        onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
-                                    />
-                                    <span className='slider round'></span>
-                                </label>
-                            </div>
-                            {!formData.privateApplications && (
-                                <p className='text'>
-                                    Selecting this means only musicians with your private gig link can apply. 
-                                    Useful when inviting someone directly.
-                                </p>
-                            )}
-                            {formData.privateApplications && privateApplicationsLink && (
-                                <div className='private-link'>
-                                    <p className='text'>{privateApplicationsLink}</p>
-                                    <div className='icon' onClick={copyToClipboard}>
-                                        <CopyIcon />
-                                    </div>
+                        {buildingForMusician ? (
+                            <div className='review-extra-option body'>
+                                <div className="error-cont">
+                                    <ExclamationIcon />
+                                    <p className='error-message'>You're building this gig for "{buildingForMusicianData.name}".</p>
                                 </div>
-                            )}
-                        </div>
+                                <div className='toggle-container'>
+                                    <label htmlFor='private-applications' className='label warning'>Only allow "{buildingForMusicianData.name}" to apply?</label>
+                                    <label className='switch'>
+                                        <input
+                                            type='checkbox'
+                                            id='private-applications'
+                                            checked={formData.privateApplications}
+                                            onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
+                                        />
+                                        <span className='slider round'></span>
+                                    </label>
+                                </div>
+                                {!formData.privateApplications ? (
+                                    <p className='text'>
+                                        Selecting this means only "{buildingForMusicianData.name}" can apply to this gig. Leave it unselected if you want to allow other musicians to apply.
+                                    </p>
+                                ) : (
+                                    <p className='text'>
+                                        This link will be sent to the musician so they can apply to your gig.
+                                    </p>
+                                )}
+                                {formData.privateApplications && privateApplicationsLink && (
+                                    <div className='private-link'>
+                                        <p className='text'>{privateApplicationsLink}</p>
+                                        <div className='icon' onClick={copyToClipboard}>
+                                            <CopyIcon />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className='review-extra-option'>
+                                <div className='toggle-container'>
+                                    <label htmlFor='private-applications' className='label'>Make applications private?</label>
+                                    <label className='switch'>
+                                        <input
+                                            type='checkbox'
+                                            id='private-applications'
+                                            checked={formData.privateApplications}
+                                            onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
+                                        />
+                                        <span className='slider round'></span>
+                                    </label>
+                                </div>
+                                {!formData.privateApplications && (
+                                    <p className='text'>
+                                        Selecting this means only musicians with your private gig link can apply. 
+                                        Useful when inviting someone directly.
+                                    </p>
+                                )}
+                                {formData.privateApplications && privateApplicationsLink && (
+                                    <div className='private-link'>
+                                        <p className='text'>{privateApplicationsLink}</p>
+                                        <div className='icon' onClick={copyToClipboard}>
+                                            <CopyIcon />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
                 {/* <button className="btn secondary" style={{ marginBottom: '1rem' }} onClick={() => handlePreviewGig()}>

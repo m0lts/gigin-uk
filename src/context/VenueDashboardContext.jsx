@@ -3,6 +3,7 @@ import { getGigsByVenueIds } from '@services/gigs';
 import { getTemplatesByVenueIds } from '@services/venues';
 import { fetchStripeCustomerData } from '@services/payments';
 import { subscribeToUpcomingOrRecentGigs } from '@services/gigs';
+import { getVenueRequestsByVenueIds } from '../services/venues';
 
 const VenueDashboardContext = createContext();
 
@@ -12,6 +13,7 @@ export const VenueDashboardProvider = ({ user, children }) => {
   const [gigs, setGigs] = useState([]);
   const [incompleteGigs, setIncompleteGigs] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [stripe, setStripe] = useState({ customerDetails: null, savedCards: [], receipts: [] });
 
   const loadedOnce = useRef(false);
@@ -39,14 +41,17 @@ export const VenueDashboardProvider = ({ user, children }) => {
       const { completeVenues, venueIds } = extractVenueInfo(user);
       setVenueProfiles(completeVenues);
   
-      const [gigsRes, templatesRes, stripeRes] = await Promise.all([
+      const [gigsRes, templatesRes, requestsRes, stripeRes] = await Promise.all([
         getGigsByVenueIds(venueIds),
         getTemplatesByVenueIds(venueIds),
+        getVenueRequestsByVenueIds(venueIds),
         fetchStripeCustomerData()
       ]);
       
       applyGigs(gigsRes);
       setTemplates(templatesRes);
+      const visibleRequests = requestsRes.filter(req => !req.removed);
+      setRequests(visibleRequests);
       setStripe(stripeRes);
   
       loadedOnce.current = true;
@@ -103,7 +108,7 @@ export const VenueDashboardProvider = ({ user, children }) => {
 
   return (
     <VenueDashboardContext.Provider
-      value={{ loading, venueProfiles, gigs, incompleteGigs, templates, stripe, refreshData,
+      value={{ loading, venueProfiles, gigs, incompleteGigs, templates, requests, setRequests, stripe, refreshData,
         refreshGigs,
         refreshTemplates,
         refreshStripe }}

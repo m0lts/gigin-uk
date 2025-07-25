@@ -35,6 +35,12 @@ import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { getMusicianProfilesByIds, updateBandMembersGigApplications } from '../../services/musicians';
 import { getBandMembers } from '../../services/bands';
+import { acceptGigOffer } from '../../services/gigs';
+import { getMostRecentMessage, sendGigAcceptedMessage } from '../../services/messages';
+import { toast } from 'sonner';
+import { sendEmail } from '../../services/emails';
+import { NewTabIcon, SaveIcon, ShareIcon } from '../shared/ui/extras/Icons';
+import { openInNewTab } from '../../services/utils/misc';
 
 export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const { gigId } = useParams();
@@ -66,6 +72,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState(user?.musicianProfile);
     const [hasAccessToPrivateGig, setHasAccessToPrivateGig] = useState(true);
+    const [accessTokenIsMusicianProfile, setAccessTokenIsMusicianProfile] = useState(false);
+    const [invitedToGig, setInvitedToGig] = useState(false);
+    const [userAcceptedInvite, setUserAcceptedInvite] = useState(false);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -98,22 +107,55 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             const gig = gigs.find(gig => gig.id === gigId);
             if (gig) {
                 setGigData(gig);
+            
                 if (gig?.privateApplications) {
-                    const savedToken = gig.privateApplicationsLink?.split('token=')[1];
-                  
-                    if (!inviteToken || inviteToken !== savedToken) {
-                      setHasAccessToPrivateGig(false)
+                    const savedToken = gig.privateApplicationToken;
+            
+                    // Check if inviteToken matches the token stored in the gig doc
+                    const isTokenValid = !!inviteToken && inviteToken === savedToken;
+            
+                    // Check if inviteToken *is* one of the user's musician profile IDs
+                    const validMusicianProfile = validProfiles?.find(
+                        profile => profile.musicianId === inviteToken
+                    );
+                    const isMusicianValid = !!validMusicianProfile;
+            
+                    if (!isTokenValid && !isMusicianValid) {
+                        // Neither a token match nor a matching musician profile
+                        setHasAccessToPrivateGig(false);
+                    } else {
+                        // Grant access
+                        setHasAccessToPrivateGig(true);
+                        setInvitedToGig(true);
+                        if (isMusicianValid) {
+                            // If the token matches a musician profile, select that one and flag it
+                            setSelectedProfile(validMusicianProfile);
+                            setAccessTokenIsMusicianProfile(true); // <-- important for later
+                            setInvitedToGig(true);
+                        }
                     }
                 }
             }
             const musicianId = user?.musicianProfile?.musicianId;
             const bandIds = user?.musicianProfile?.bands || [];
 
-            if (musicianId) {
-                const applied = gig?.applicants?.some(app =>
-                    app.id === musicianId || bandIds.includes(app.id)
+            if (musicianId && gig?.applicants?.length > 0) {
+                const matchingApplicant = gig.applicants.find(
+                    app => app.id === musicianId || bandIds.includes(app.id)
                 );
-                setUserAppliedToGig(applied);
+            
+                if (matchingApplicant) {
+                    if (matchingApplicant.invited) {
+                        setUserAppliedToGig(false);
+                        setInvitedToGig(true);
+                        if (matchingApplicant.status === 'accepted') {
+                            setUserAcceptedInvite(true);
+                        }
+                    } else {
+                        setUserAppliedToGig(true);
+                        setInvitedToGig(false);
+                    }
+                }
             }
             if (gig?.venueId) {
                 const venue = await getVenueProfileById(gig.venueId);
@@ -160,12 +202,34 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         if (user?.musicianProfile && user?.musicianProfile?.bands.length > 0) {
             fetchBandData();
         }
-    }, [gigs, gigId, user, venueVisiting]);
+    }, [gigs, gigId, user, venueVisiting, inviteToken, multipleProfiles]);
 
     useEffect(() => {
         if (!selectedProfile || !gigData) return;
-        const applied = gigData.applicants?.some(app => app.id === selectedProfile.musicianId);
-        setUserAppliedToGig(applied);
+    
+        const applicant = gigData.applicants?.find(
+            app => app.id === selectedProfile.musicianId
+        );
+    
+        if (applicant) {
+            if (applicant.invited) {
+                setUserAppliedToGig(false);
+                setInvitedToGig(true);
+                if (applicant.status === 'accepted') {
+                    setUserAcceptedInvite(true);
+                } else {
+                    setUserAcceptedInvite(false);
+                }
+            } else {
+                setUserAppliedToGig(true);
+                setInvitedToGig(false);
+                setUserAcceptedInvite(false);
+            }
+        } else {
+            setUserAppliedToGig(false);
+            setInvitedToGig(false);
+            setUserAcceptedInvite(false);
+        }
     }, [selectedProfile, gigData]);
 
     const stripFirestoreRefs = (obj) => {
@@ -183,8 +247,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     if (!gigData) {
         return <div>No gig data found.</div>;
     }
-
-
 
     const handleImageClick = (index) => {
         setFullscreenImage(venueProfile.photos[index]);
@@ -438,6 +500,55 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             console.error('Error while creating or fetching conversation:', error);
         }
     };
+
+    const handleAccept = async (event, proposedFee) => {
+        event.stopPropagation();
+        const musicianId = selectedProfile.id;
+        try {
+            if (!gigData) return console.error('Gig data is missing');
+            if (getLocalGigDateTime(gigData) < new Date()) return console.error('Gig is in the past.');
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
+            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianId, nonPayableGig);
+            setGigData((prevgigData) => ({
+                ...prevgigData,
+                applicants: updatedApplicants,
+                agreedFee: `${agreedFee}`,
+                paid: false,
+            }));
+            const musicianProfile = selectedProfile;
+            const venueProfile = await getVenueProfileById(gigData.venueId);
+            const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'application');
+            const applicationMessage = await getMostRecentMessage(conversationId, 'invitation');
+            await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigData.budget, 'musician', nonPayableGig);
+            const venueEmail = venueProfile.email;
+            const musicianName = musicianProfile.name;
+            await sendEmail({
+                to: venueEmail,
+                subject: `${musicianName} Has Accepted Your Invitation!`,
+                text: `Congratulations! Your invitation sent to ${musicianName} for the gig at ${gigData.venue.venueName} on ${formatDate(gigData.date)} has been accepted.`,
+                html: `
+                    <p>Hi ${venueProfile.accountName},</p>
+                    <p>We're excited to inform you that your invitation for the following gig has been accepted:</p>
+                    <ul>
+                        <li><strong>Musician:</strong> ${musicianName}</li>
+                        <li><strong>Date:</strong> ${formatDate(gigData.date)}</li>
+                        <li><strong>Fee:</strong> ${agreedFee}</li>
+                    </ul>
+                    <p>${
+                        nonPayableGig
+                          ? 'This gig is already confirmed — no payment is required.'
+                          : 'The gig will be confirmed once you have paid the gig fee.'
+                      }</p>
+                    <p>Please visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to see the status of the gig.</p>
+                    <p>Thanks,<br />The Gigin Team</p>
+                `,
+            })
+            toast.success('Application Accepted.')
+        } catch (error) {
+            toast.error('Error accepting gig application. Please try again.')
+            console.error('Error updating gig document:', error);
+        }
+    };
     
     return (
         <div className='gig-page'>
@@ -475,14 +586,17 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                 <h1>{gigData.gigName}</h1>
                                 <p>{getCityFromAddress(gigData.venue.address)}</p>
                             </div>
-                            {/* <div className='options'>
-                                <button className='btn icon'>
+                            <div className='options'>
+                                <button className="btn tertiary" onClick={(e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile.id}`, e)}>
+                                    See Venue Page <NewTabIcon />
+                                </button>
+                                <button className='btn tertiary'>
                                     <ShareIcon />
                                 </button>
-                                <button className='btn icon'>
+                                <button className='btn tertiary'>
                                     <SaveIcon />
                                 </button>
-                            </div> */}
+                            </div>
                         </div>
                         <div className='images-and-location'>
                             <div className='main-image'>
@@ -682,7 +796,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                 </div>
                                 {!(user?.venueProfiles?.length > 0 && (!user.musicianProfile)) && hasAccessToPrivateGig && !venueVisiting && (
                                     <>
-                                        {validProfiles?.length > 1 && (
+                                        {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && (
                                             <div className="profile-select-wrapper">
                                                 <label htmlFor="profileSelect" className="profile-select-label">You are applying as:</label>
                                                 <select
@@ -705,31 +819,34 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                         <div className='action-box-buttons'>
                                         {getLocalGigDateTime(gigData) > new Date() ? (
                                             <>
-                                                {userAppliedToGig ? (
-                                                    <button className='btn primary-alt disabled' disabled>
-                                                        Applied To Gig
-                                                    </button>
-                                                ) : (
-                                                    <button className='btn primary-alt' onClick={handleGigApplication}>
-                                                        {applyingToGig ? (
-                                                            <LoadingThreeDots />
-                                                        ) : (
-                                                            <>
-                                                                Apply To Gig
-                                                            </>
-                                                        )}
+                                            {userAppliedToGig ? (
+                                                <button className='btn primary-alt disabled' disabled>
+                                                    Applied To Gig
+                                                </button>
+                                            ) : userAcceptedInvite ? (
+                                                <button className='btn primary-alt disabled' disabled>
+                                                    Invitation Accepted
+                                                </button>
+                                            ) : invitedToGig ? (
+                                                <button className='btn primary-alt' onClick={handleAccept}>
+                                                    {applyingToGig ? <LoadingThreeDots /> : 'Accept Invitation'}
+                                                </button>
+                                            ) : (
+                                                <button className='btn primary-alt' onClick={handleGigApplication}>
+                                                    {applyingToGig ? <LoadingThreeDots /> : 'Apply To Gig'}
+                                                </button>
+                                            )}
+
+                                            <div className='two-buttons'>
+                                                {!userAppliedToGig && !invitedToGig && (
+                                                    <button className='btn secondary' onClick={handleNegotiateButtonClick}>
+                                                        Negotiate
                                                     </button>
                                                 )}
-                                                <div className='two-buttons'>
-                                                    {!userAppliedToGig && (
-                                                        <button className='btn secondary' onClick={handleNegotiateButtonClick}>
-                                                            Negotiate
-                                                        </button>
-                                                    )}
-                                                    <button className='btn secondary' onClick={handleMessage}>
-                                                        Message
-                                                    </button>
-                                                </div>
+                                                <button className='btn secondary' onClick={handleMessage}>
+                                                Message
+                                                </button>
+                                            </div>
                                             </>
                                         ) : (
                                             <>

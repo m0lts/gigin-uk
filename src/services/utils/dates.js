@@ -14,34 +14,43 @@ const getOrdinalSuffix = (day) => {
 };
 
 /**
- * Formats a Firestore Timestamp into various readable formats
- * @param {Timestamp} timestamp - Firestore Timestamp
+ * Formats a Firestore Timestamp or JavaScript Date into various readable formats
+ * @param {Timestamp | Date} input - Firestore Timestamp or JS Date
  * @param {'long' | 'short' | 'withTime'} format - Desired format
  * @returns {string} Formatted date string
  */
-export const formatDate = (timestamp, format = 'long') => {
-    const date = timestamp.toDate();
+export const formatDate = (input, format = 'long') => {
+  let date;
 
-    const day = date.getDate();
-    const dayPadded = String(day).padStart(2, '0');
-    const month = date.getMonth() + 1;
-    const monthPadded = String(month).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+  // Handle Firestore Timestamp or JS Date
+  if (input && typeof input.toDate === 'function') {
+      date = input.toDate(); // Firestore Timestamp
+  } else if (input instanceof Date) {
+      date = input; // JS Date
+  } else {
+      return 'Invalid date';
+  }
 
-    const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
-    const monthName = date.toLocaleDateString('en-GB', { month: 'long' });
+  const day = date.getDate();
+  const dayPadded = String(day).padStart(2, '0');
+  const month = date.getMonth() + 1;
+  const monthPadded = String(month).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
 
-    switch (format) {
-        case 'short':
-        return `${dayPadded}/${monthPadded}/${year}`;
-        case 'withTime':
-        return `${dayPadded}/${monthPadded}/${year} - ${hours}:${minutes}`;
-        case 'long':
-        default:
-        return `${weekday} ${day}${getOrdinalSuffix(day)} ${monthName}`;
-    }
+  const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
+  const monthName = date.toLocaleDateString('en-GB', { month: 'long' });
+
+  switch (format) {
+      case 'short':
+          return `${dayPadded}/${monthPadded}/${year}`;
+      case 'withTime':
+          return `${dayPadded}/${monthPadded}/${year} - ${hours}:${minutes}`;
+      case 'long':
+      default:
+          return `${weekday} ${day}${getOrdinalSuffix(day)} ${monthName}`;
+  }
 };
 
 /**
