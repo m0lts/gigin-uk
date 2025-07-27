@@ -601,9 +601,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                         <div className='images-and-location'>
                             <div className='main-image'>
                                 <figure className='img' onClick={() => handleImageClick(0)}>
-                                    <img src={venueProfile.photos[0]} alt={`${gigData.venue.venueName} photo`} />
+                                    <img src={venueProfile?.photos[0]} alt={`${gigData.venue.venueName} photo`} />
                                     <div className='more-overlay'>
-                                        <h2>+{venueProfile.photos.length - 1}</h2>
+                                        <h2>+{venueProfile?.photos.length - 1}</h2>
                                     </div>
                                 </figure>
                             </div>
@@ -706,7 +706,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                 </div>
                                 <div className='description'>
                                     <h4>Description</h4>
-                                    <p>{venueProfile.description}</p>
+                                    <p>{venueProfile?.description}</p>
                                 </div>
                                 <div className='extra-info'>
                                     <h4 className='subtitle'>Extra Info</h4>
@@ -719,11 +719,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                     <div className='info'>
                                         <h6>Venue Information</h6>
                                         <div className='text'>
-                                            <p>{venueProfile.extraInformation}</p>
+                                            <p>{venueProfile?.extraInformation}</p>
                                         </div>
                                     </div>
                                 </div>
-                                {venueProfile.socialMedia && (
+                                {venueProfile?.socialMedia && (
                                     <div className='socials'>
                                         <h4 className='subtitle'>Socials</h4>
                                         <div className='links'>

@@ -112,7 +112,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap:5px;
     justify-content: flex-start;
 }
 
@@ -123,7 +122,7 @@
     display: flex;
     align-items: center;
     gap:1rem;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem;
     cursor: pointer;
     overflow: hidden;
     transition: background-color 100ms linear;
@@ -131,16 +130,17 @@
     border-bottom-color: var(--gn-grey-350);
 }
 
+.body.messages .column.conversations .conversations-list .conversation:first-of-type {
+    border-top-color: var(--gn-grey-350);
+}
+
 .body.messages .column.conversations .conversations-list .conversation:hover {
-    background-color: var(--gn-grey-300);
+    background-color: var(--gn-grey-250);
 }
 
 .body.messages .column.conversations .conversations-list .conversation.active {
-    border-bottom-color: transparent;
     border-right-color: transparent;
-    border-radius: 1rem 0 0 1rem;
     background-color: var(--gn-grey-300);
-    box-shadow: 2px 0px 5px inset var(--gn-grey-350);
 }
 
 .body.messages .column.conversations .conversations-list .conversation-icon {
@@ -208,6 +208,7 @@
 
 .body.messages .column.conversations .conversations-list .conversation-title-comp {
     color: var(--gn-grey-600);
+    font-size: 0.9rem;
 }
 
 .body.messages .column.conversations .conversations-list .conversation-details {
@@ -244,6 +245,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+    font-size: 1.1rem;
+    font-weight: 600;
 }
 
 .body.messages .column.conversations .no-conversations {
@@ -279,11 +282,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--gn-white);
+    background-color: var(--gn-off-black);
     border-radius: 1rem 1rem 0 0;
     position: relative;
     z-index: 1;
-    border: 1px solid var(--gn-grey-350);
+    color: var(--gn-white);
 }
 
 .body.messages .column.message-thread .messages {
@@ -299,23 +302,28 @@
     display: none; /* Chrome, Safari, and Edge */
 }
 
-.body.messages .column.message-thread .dropdown-wrapper .btn.icon {
+.body.messages .column.message-thread .dropdown-wrapper .btn.icon-box {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem;
+    padding: 0.25rem;
+    margin-left: 5px;
+    background-color: var(--gn-off-black);
+    border-color: transparent;
+    color: var(--gn-white);
+    transform: rotate(90deg);
 }
 
-.body.messages .column.message-thread .dropdown-wrapper .btn.icon.active {
-    background-color: var(--gn-grey-300);
+.body.messages .column.message-thread .dropdown-wrapper .btn.icon-box .icon {
+    font-size: 1.25rem;
 }
 
-.body.messages .column.message-thread .dropdown-wrapper .btn.icon:focus {
+.body.messages .column.message-thread .dropdown-wrapper .btn.icon-box:focus {
     outline-color: var(--gn-off-black);
 }
 
 .body.messages .column.message-thread .dropdown-menu {
-    padding:0.5rem;
+    padding:0 0.5rem;
     position: absolute;
     top:3rem;
     right:0;

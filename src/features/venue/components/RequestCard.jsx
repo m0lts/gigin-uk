@@ -31,35 +31,30 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
 
   return (
     <div key={request.id} ref={ref} className="request-card">
-        <div className="musician-info">
-            <img src={request.photoUrl} alt={`${request.musicianName} avatar`} className="avatar" />
-        <div>
-            <h4>{request.musicianName}</h4>
+      <div className="top-banner">
+        <div className="musician-info" onClick={(e) => openInNewTab(`/${request.musicianId}`, e)}>
+          <img src={request.musicianImage} alt={`${request.musicianName}`} className="avatar" />
+          <div>
+            <h3>{request.musicianName}</h3>
             <p className="timestamp">{new Date(request.createdAt.toDate()).toLocaleString()}</p>
+          </div>
         </div>
-        </div>
-
-        <div className="venue-requested">
-          <p>
-            Requested to play at: <strong>{venue?.name || 'Unknown Venue'}</strong>
-          </p>
+        <p className='venue-requested'>
+          Requested to play at: <strong>{venue?.name || 'Unknown Venue'}</strong>
+        </p>
       </div>
-
-        <div className="request-message">
-            <p>{request.message}</p>
-        </div>
-
-        <div className="request-actions">
-          <button className="btn tertiary" onClick={(e) => openInNewTab(`/${request.musicianId}`, e)}>
-            View Profile
-          </button>
-        <button className="btn secondary" onClick={() => handleRemoveRequest(request.id)}>
-            Remove Request
-        </button>
-        <button className="btn primary" onClick={() => openBuildGigModal(request)}>
-            Build Gig
-        </button>
-        </div>
+      <div className="request-message">
+        <h4>Request Message:</h4>
+        <p style={{ marginTop: 5}}>{request.message}</p>
+      </div>
+      <div className="request-actions">
+      <button className="btn secondary" onClick={() => handleRemoveRequest(request.id)}>
+          Remove Request
+      </button>
+      <button className="btn primary" onClick={() => openBuildGigModal(request)}>
+          Build Gig For Musician
+      </button>
+      </div>
     </div>
   );
 };

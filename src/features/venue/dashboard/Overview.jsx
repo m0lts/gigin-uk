@@ -33,6 +33,7 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
     const [reviewTexts, setReviewTexts] = useState({});
     const [submittingReviews, setSubmittingReviews] = useState({});
     const [musicianRequests, setMusicianRequests] = useState([]);
+    const [justReviewed, setJustReviewed] = useState(false);
 
     useResizeEffect((width) => {
         setWindowWidth(width);
@@ -108,7 +109,7 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
           };
           if (nextGig) fetchMusicianProfile();
           if (gigsToReview.length > 0) fetchMusiciansToReview();
-      }, [nextGig, gigsToReview]);
+      }, [nextGig, gigsToReview, justReviewed]);
 
     
     const formatName = (name) => {
@@ -145,6 +146,7 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
             setGigsToReview((prev) => prev.filter(g => g.gigId !== gigData.gigId));
             setRatings((prev) => ({ ...prev, [musicianId]: 0 }));
             setReviewTexts((prev) => ({ ...prev, [musicianId]: '' }));
+            setJustReviewed(true);
         } catch (error) {
             console.error('Error submitting review:', error);
             toast.error('Review submission failed. Please try again.');

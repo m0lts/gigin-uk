@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "migrate:gigs": "node scripts/updateGigData.js"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.2.4",
@@ -42,6 +43,8 @@
     "dotenv": "^16.4.5",
     "firebase": "^10.12.3",
     "framer-motion": "^11.18.2",
+    "geofire-common": "^6.0.0",
+    "geofirestore": "^5.2.0",
     "jsonwebtoken": "^9.0.2",
     "mapbox-gl": "^3.0.0",
     "mongodb": "^6.3.0",

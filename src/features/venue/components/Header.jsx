@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { TextLogoLink, VenueLogoLink } from '@features/shared/ui/logos/Logos';
@@ -22,21 +22,16 @@ import {
 import { listenToUserConversations } from '@services/conversations';
 import { submitUserFeedback } from '@services/reports';
 import { useResizeEffect } from '@hooks/useResizeEffect';
+import { HouseIconSolid, VenueIconSolid } from '../../shared/ui/extras/Icons';
 
 export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     
     const { logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const menuRef = useRef(null);
+    const buttonRef = useRef(null);
     const [accountMenu, setAccountMenu] = useState(false);
-    const [feedbackForm, setFeedbackForm] = useState(false);
-    const [feedback, setFeedback] = useState({
-        scale: '',
-        feedback: '',
-        user: user?.uid,
-    });
-    const [feedbackLoading, setFeedbackLoading] = useState(false);
-
     const [newMessages, setNewMessages] = useState(false);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
@@ -59,22 +54,24 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
         return () => unsubscribe();
     }, [user]);
 
-    const handleScaleSelection = (scale) => {
-        setFeedback(prev => ({ ...prev, scale }));
-    };
 
-    const handleFeedbackSubmit = async () => {
-        setFeedbackLoading(true);
-        try {
-          await submitUserFeedback(feedback);
-          setFeedback({ scale: '', feedback: '' });
-          setFeedbackForm(false);
-        } catch (error) {
-          console.error('Error submitting feedback:', error);
-        } finally {
-          setFeedbackLoading(false);
-        }
-    };
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                menuRef.current &&
+                !menuRef.current.contains(event.target) &&
+                buttonRef.current &&
+                !buttonRef.current.contains(event.target)
+            ) {
+                setAccountMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     const showAuthModal = (type) => {
         setAuthModal(true);
@@ -107,122 +104,35 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                 <>
                     <div className='left venues'>
                         <VenueLogoLink />
-                        {location.pathname.includes('dashboard') && (
-                            <div className='breadcrumbs'>
-                                <span className='item breadcrumb' onClick={() => navigate('/venues/dashboard')}>Dashboard</span>
-                                {location.pathname === ('/venues/dashboard') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/venues/dashboard')}>Overview</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('gig') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/venues/dashboard/gigs')}>Gigs</span>
-                                        {location.pathname.includes('applications') && (
-                                            <>
-                                                <RightChevronIcon />
-                                                <span className='item active breadcrumb' onClick={() => navigate('/venues/dashboard/gig-applications')}>Gig Applications</span>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                                {location.pathname === ('/venues/dashboard/venues') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/venues/dashboard/venues')}>Venues</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('musicians') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/venues/dashboard/musicians')}>Musicians</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('finances') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/venues/dashboard/finances')}>Finances</span>
-                                    </>
-                                )}
-                            </div>
-                        )}
                     </div>
                     <div className='right'>
                         <div className='buttons'>
-                            <button className='btn text' onClick={() => setFeedbackForm(!feedbackForm)}>
-                                Feedback
-                            </button>
                             {user.venueProfiles && user.venueProfiles.length > 0 && user.venueProfiles.some(profile => profile.completed) ? (
-                                location.pathname.includes('dashboard') ? (
-                                    windowWidth > 900 && (
-                                        <Link className='link' to={'/venues/dashboard/musicians/find'}>
-                                            <button className='btn tertiary'>
-                                                <TelescopeIcon />
-                                                Find a Musician
-                                            </button>
-                                        </Link>
-                                    )
-                                ) : (
-                                    <Link className='link' to={'/venues/dashboard'}>
-                                        <button className='btn secondary'>
-                                            <DashboardIconLight />
-                                            Dashboard
-                                        </button>
-                                    </Link>
-                                )
+                                <Link className='link' to={'/venues/dashboard'}>
+                                    <button className='btn secondary'>
+                                        <DashboardIconLight />
+                                        Dashboard
+                                    </button>
+                                </Link>
                             ) : (
                                 <Link className='link' to={'/venues/add-venue'}>
-                                    <button className='btn primary'>
-                                        Add my Venue
+                                    <button className='btn primary important'>
+                                        <VenueIconSolid />
+                                        Add Your Venue
                                     </button>
                                 </Link>
                             )}
-                            {user.venueProfiles && (
-                                newMessages ? (
-                                    <Link className='link' to={'/messages'}>
-                                        <button className='btn secondary messages'>
-                                            <span className='notification-dot'><DotIcon /></span>
-                                            <MailboxFullIcon />
-                                            Messages
-                                        </button>
-                                    </Link>
-                                ) : (
-                                    <Link className='link' to={'/messages'}>
-                                        <button className='btn secondary'>
-                                            <MailboxEmptyIcon />
-                                            Messages
-                                        </button>
-                                    </Link>
-                                )
-                            )}
                         </div>
-                        <button className='btn icon' onClick={() => setAccountMenu(!accountMenu)}>
+                        <button className='btn icon account' onClick={() => setAccountMenu(!accountMenu)} ref={buttonRef}>
                             <UserIcon />
                         </button>
                     </div>
                     {accountMenu && (
-                        <nav className='account-menu' style={menuStyle}>
+                        <nav className='account-menu' style={menuStyle} ref={menuRef}>
                             <div className='item name-and-email no-margin'>
                                 <h6>{user.name}</h6>
                                 <p>{user.email}</p>
                             </div>
-                            {user.venueProfiles && (
-                                newMessages ? (
-                                    <Link className='link item message' to={'/messages'}>
-                                            Messages
-                                            <MailboxFullIcon />
-                                    </Link>
-                                ) : (
-                                    <Link className='link item' to={'/messages'}>
-                                            Messages
-                                            <MailboxEmptyIcon />
-                                    </Link>
-                                )
-                            )}
-                            <div className='break' />
-                            <h6 className='title'>venues</h6>
                             {user.venueProfiles && user.venueProfiles.length > 0 ? (
                                 <>
                                     <Link className='link' to={'/venues/dashboard'}>
@@ -231,6 +141,17 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                             <DashboardIconLight />
                                         </div>
                                     </Link>
+                                    {newMessages ? (
+                                        <Link className='link item message no-margin' to={'/venues/dashboard/messages'}>
+                                                Messages
+                                                <MailboxFullIcon />
+                                        </Link>
+                                    ) : (
+                                        <Link className='link item no-margin' to={'/venues/dashboard/messages'}>
+                                                Messages
+                                                <MailboxEmptyIcon />
+                                        </Link>
+                                    )}
                                     <Link to={'/venues/add-venue'} className='item link'>
                                         Add another venue
                                         <VenueBuilderIcon />
@@ -238,20 +159,20 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 </>
                             ) : (
                                 <Link to={'/venues/add-venue'} className='item link'>
-                                    Add my Venue
+                                    Add My Venue
                                     <VenueBuilderIcon />
                                 </Link>
                             )}
                             <div className='break' />
-                            <Link to={'/create-profile'} className='item no-margin link'>
+                            {/* <Link to={'/create-profile'} className='item no-margin link'>
                                 Create a Musician Profile
                                 <GuitarsIcon />
-                            </Link>
+                            </Link> */}
                             {/* <div className='item no-margin'>
                                 Find Gigs
                                 <MapIcon />
                             </div> */}
-                            <Link to={'/account'} className='item no-margin link'>
+                            <Link to={'/account'} className='item no-margin link settings'>
                                 Settings
                                 <SettingsIcon />
                             </Link>
@@ -260,43 +181,6 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 <LogOutIcon />
                             </button>
                         </nav>
-                    )}
-                    {feedbackForm && (
-                        <div className='feedback-box'>
-                            <div className='body'>
-                                <textarea
-                                    name='feedbackBox'
-                                    id='feedbackBox'
-                                    onChange={(e) => setFeedback(prev => ({ ...prev, feedback: e.target.value }))}
-                                    value={feedback.feedback}
-                                    placeholder='Give us your thoughts...'
-                                    
-                                ></textarea>
-                            </div>
-                            <div className='foot'>
-                                <div className='faces'>
-                                    <button className={`btn icon ${feedback.scale === 'hearts' ? 'active' : ''}`} onClick={() => handleScaleSelection('hearts')}>
-                                        <FaceHeartsIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'smiles' ? 'active' : ''}`} onClick={() => handleScaleSelection('smiles')}>
-                                        <FaceSmileIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'meh' ? 'active' : ''}`} onClick={() => handleScaleSelection('meh')}>
-                                        <FaceMehIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'frown' ? 'active' : ''}`} onClick={() => handleScaleSelection('frown')}>
-                                        <FaceFrownIcon />
-                                    </button>
-                                </div>
-                                <button className='btn primary' onClick={handleFeedbackSubmit}>
-                                    {feedbackLoading ? (
-                                        <LoadingThreeDots />
-                                    ) : (
-                                        'Send'
-                                    )}
-                                </button>
-                            </div>
-                        </div>
                     )}
                 </>
             ) : (

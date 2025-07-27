@@ -1,11 +1,14 @@
 
 .venue-builder {
-    background-color: var(--gn-grey-350);
-    height:100vh;
-    padding:1rem 2rem 1rem 1rem;
+    background-image: url('../../images/blurry-bckgrd.svg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    height: 100vh;
+    padding: 1rem 2rem 1rem 1rem;
     display: grid;
     grid-template-columns: 30% 70%;
-    gap:1rem;
+    gap: 1rem;
 }
 
 .venue-builder.upload-screen {

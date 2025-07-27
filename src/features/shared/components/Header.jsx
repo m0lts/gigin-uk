@@ -63,11 +63,11 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     }
 
     const headerStyle = {
-        padding: location.pathname.includes('dashboard') ? '0 1rem' : '0 5%',
+        padding: location.pathname.includes('dashboard') ? '0 1rem' : '0 2.5%',
       };
 
     const menuStyle = {
-        right: location.pathname.includes('dashboard') ? '1rem' : '5%',
+        right: location.pathname.includes('dashboard') ? '1rem' : '2.5%',
       };
 
     

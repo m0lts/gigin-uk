@@ -11,7 +11,8 @@ import {
   deleteDoc,
   onSnapshot,
   Timestamp,
-  orderBy
+  orderBy,
+  arrayUnion
 } from 'firebase/firestore';
 import { incrementRating } from '@services/utils/misc';
 

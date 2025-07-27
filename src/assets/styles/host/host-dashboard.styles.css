@@ -662,48 +662,74 @@
     text-align: center;
 }
 
-.musician-requests {
+.window .body.gigs .musician-requests {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-  }
+}
   
-  .request-card {
+.window .body.gigs .musician-requests .request-card {
     border: 1px solid var(--gn-grey-300);
     border-radius: 0.75rem;
     padding: 1rem 1.5rem;
     background-color: #fff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  }
+}
+
+.window .body.gigs .musician-requests .request-card .top-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.window .body.gigs .musician-requests .request-card .venue-requested {
+    color: var(--gn-grey-500);
+}
+
+.window .body.gigs .musician-requests .request-card .venue-requested strong {
+    color: var(--gn-off-black);
+    font-weight: 600;
+}
   
-  .musician-info {
+.window .body.gigs .musician-requests .musician-info {
     display: flex;
     align-items: center;
     gap: 1rem;
     margin-bottom: 0.75rem;
-  }
+    border:1px solid var(--gn-grey-300);
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    box-shadow: 1px 1px 4px var(--gn-shadow);
+    background-color: transparent;
+    transition: background-color 200ms linear;
+    cursor: pointer;
+}
+
+.window .body.gigs .musician-requests .musician-info:hover {
+    background-color: var(--gn-grey-300);
+}
   
-  .avatar {
+.window .body.gigs .musician-requests .avatar {
     width: 50px;
     height: 50px;
     border-radius: 999px;
     object-fit: cover;
-  }
+}
   
-  .request-message {
+.window .body.gigs .musician-requests .request-message {
     margin-bottom: 1rem;
-  }
+}
   
-  .timestamp {
+.window .body.gigs .musician-requests .timestamp {
     font-size: 0.85rem;
     color: var(--gn-grey-500);
-  }
+}
   
-  .request-actions {
+.window .body.gigs .musician-requests .request-actions {
     display: flex;
     gap: 1rem;
     justify-content: flex-end;
-  }
+}
 
 /* GIG APPLICATIONS */
 

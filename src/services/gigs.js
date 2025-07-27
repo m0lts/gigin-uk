@@ -16,9 +16,14 @@ import {
   documentId,
   setDoc,
   arrayUnion,
-  serverTimestamp
+  serverTimestamp,
+  limit,
+  GeoPoint
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  distanceBetween,
+} from 'geofire-common';
 
 /*** CREATE OPERATIONS ***/
 
@@ -139,6 +144,114 @@ export const duplicateGig = async (gigId) => {
 
 /*** READ OPERATIONS ***/
 
+
+/**
+ * Fetches gigs near the specified location from Firestore using geohash range querying.
+ *
+ * @param {Object} options - Configuration for the query
+ * @param {{ latitude: number, longitude: number }} options.location - User's current coordinates
+ * @param {number} [options.radiusInKm=50] - Radius in kilometers
+ * @param {number} [options.limitCount=50] - Max number of gigs to return
+ * @param {import('firebase/firestore').QueryDocumentSnapshot} [options.lastDoc] - Pagination
+ * @param {Object} filters
+ * @param {string[]} [filters.genres]
+ * @param {string} [filters.kind]
+ * @param {number} [filters.minBudget]
+ * @param {number} [filters.maxBudget]
+ * @returns {Promise<{ gigs: Array<Object>, lastVisible: import('firebase/firestore').QueryDocumentSnapshot | null }>}
+ */
+export const fetchNearbyGigs = async ({
+  location,
+  radiusInKm = 50,
+  limitCount = 50,
+  lastDoc = null,
+  filters = {},
+}) => {
+  const center = [location.latitude, location.longitude];
+  const lat = location.latitude;
+  const lng = location.longitude;
+
+  // Bounding box calculation
+  const latDelta = radiusInKm / 111; // 1 degree latitude ≈ 111km
+  const lngDelta = radiusInKm / (111 * Math.cos(lat * Math.PI / 180));
+
+  const minLat = lat - latDelta;
+  const maxLat = lat + latDelta;
+  const minLng = lng - lngDelta;
+  const maxLng = lng + lngDelta;
+
+  const gigsRef = collection(firestore, 'gigs');
+
+  let q = query(
+    gigsRef,
+    where('geopoint', '>=', new GeoPoint(minLat, minLng)),
+    where('geopoint', '<=', new GeoPoint(maxLat, maxLng)),
+    where('status', '==', 'open'),
+    where('startDateTime', '>=', Timestamp.now()),
+    orderBy('geopoint'),
+    orderBy('startDateTime')
+  );
+
+  if (lastDoc) {
+    q = query(q, startAfter(lastDoc));
+  }
+
+  // Optional filters
+  if (filters.musicianType) {
+    q = query(q, where('gigType', '==', filters.musicianType));
+  }
+  if (filters.kind) {
+    q = query(q, where('kind', '==', filters.kind));
+  }
+  if (typeof filters.minBudget === 'number') {
+    q = query(q, where('budgetValue', '>=', filters.minBudget));
+  }
+  if (typeof filters.maxBudget === 'number') {
+    q = query(q, where('budgetValue', '<=', filters.maxBudget));
+  }
+  if (filters.startDate) {
+    const startTimestamp = Timestamp.fromDate(new Date(filters.startDate));
+    q = query(q, where('startDateTime', '>=', startTimestamp));
+  }
+  
+  if (filters.endDate) {
+    const endTimestamp = Timestamp.fromDate(new Date(filters.endDate));
+    q = query(q, where('startDateTime', '<=', endTimestamp));
+  }
+
+  const snapshot = await getDocs(q);
+
+  const filterByGenreManually = filters.genres?.length > 0;
+
+  const gigs = snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(gig => {
+      const gp = gig.geopoint;
+      if (!gp) return false;
+
+      const dist = distanceBetween(center, [gp.latitude, gp.longitude]);
+      if (dist > radiusInKm) return false;
+
+      // Manual genre filter
+      if (filterByGenreManually) {
+        const genre = gig.genre;
+        if (Array.isArray(genre)) {
+          if (genre.length === 0) return true; // Treat empty genre as match-all
+          return genre.some(g => filters.genres.includes(g));
+        }
+        return true; // If genre is missing or not an array, allow it
+      }
+
+      return true;
+    })
+    .sort((a, b) => a.startDateTime?.seconds - b.startDateTime?.seconds)
+    .slice(0, limitCount);
+
+  const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
+
+  return { gigs, lastVisible };
+};
+
 /**
  * Subscribes to real-time updates for all gigs in the Firestore 'gigs' collection.
  * 
@@ -152,7 +265,6 @@ export const subscribeToGigs = (callback) => {
     callback(gigs);
   });
 };
-
 
 /**
  * Subscribes to real-time updates for gigs that are upcoming or within the last 48 hours,

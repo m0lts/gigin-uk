@@ -1,10 +1,11 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
+import 'dotenv/config'
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
-import { GeoFirestore } from 'geofirestore';
+
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -12,7 +13,7 @@ import { GeoFirestore } from 'geofirestore';
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
   authDomain: 'giginltd-16772.firebaseapp.com',
   projectId: 'giginltd-16772',
   storageBucket: 'giginltd-16772.firebasestorage.app',
@@ -24,12 +25,11 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app)
-const functions = getFunctions(app, 'europe-west3');
-const geoFirestore = new GeoFirestore(firestore);
+// const auth = getAuth(app);
+// const storage = getStorage(app)
+// const functions = getFunctions(app, 'europe-west3');
 // if (window.location.hostname === 'localhost') {
 //   connectFunctionsEmulator(functions, '127.0.0.1', 5001);
 // }
 
-export { firestore, auth, storage, functions, geoFirestore };
+export { firestore };

@@ -1,36 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { ErrorIcon } from '@features/shared/ui/extras/Icons';
-import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { useFilterGigsByDate } from '@hooks/useFilterGigsByDate';
 import { formatDate } from '@services/utils/dates';
-import { openInNewTab } from '@services/utils/misc';
+import { LoadingThreeDots } from '../shared/ui/loading/Loading';
+import { openInNewTab } from '../../services/utils/misc';
 
-
-export const MapView = ({ upcomingGigs }) => {
+export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, gigMarkerDisplay }) => {
 
     const mapContainerRef = useRef(null);
-    const [mapInstance, setMapInstance] = useState(null); // State to hold the map instance
-    const [clickedGigs, setClickedGigs] = useState([]); // State to hold clicked gigs
-    const [selectedDates, setSelectedDates] = useState([]);
-    const [showDatePicker, setShowDatePicker] = useState(false);
-
-    const filteredGigs = useFilterGigsByDate(upcomingGigs, selectedDates);
+    const [mapInstance, setMapInstance] = useState(null);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (!event.target.closest('.filter-bar') && !event.target.closest('.react-datepicker')) {
-                setShowDatePicker(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
+      if (!mapContainerRef.current || !upcomingGigs.length) return;
 
-    useEffect(() => {
         mapboxgl.accessToken = import.meta.env.DEV
           ? 'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
           : import.meta.env.VITE_MAPBOX_TOKEN;
@@ -45,11 +28,12 @@ export const MapView = ({ upcomingGigs }) => {
         map.on('load', () => {
           const geojson = {
             type: 'FeatureCollection',
-            features: filteredGigs.map(gig => ({
+            features: upcomingGigs.map(gig => ({
               type: 'Feature',
               properties: {
                 gigId: gig.gigId,
                 budget: gig.budget,
+                kind: gig.kind,
               },
               geometry: {
                 type: 'Point',
@@ -119,7 +103,7 @@ export const MapView = ({ upcomingGigs }) => {
             source: 'gigs',
             filter: ['!', ['has', 'point_count']],
             layout: {
-              'text-field': ['get', 'budget'],
+              'text-field': ['get', gigMarkerDisplay],
               'text-font': ['DM Sans Bold'],
               'text-size': 14,
               'text-offset': [0, -0.5],
@@ -136,7 +120,7 @@ export const MapView = ({ upcomingGigs }) => {
             });
           
             const gigId = features[0]?.properties?.gigId;
-            const gig = filteredGigs.find(g => g.gigId === gigId);
+            const gig = upcomingGigs.find(g => g.gigId === gigId);
           
             if (gig) {
               setClickedGigs(prev => {
@@ -166,9 +150,9 @@ export const MapView = ({ upcomingGigs }) => {
               const newGigs = leafFeatures
                 .map(f => {
                   const gigId = f.properties.gigId;
-                  return filteredGigs.find(g => g.gigId === gigId);
+                  return upcomingGigs.find(g => g.gigId === gigId);
                 })
-                .filter(g => !!g); // just in case any are undefined
+                .filter(g => !!g);
           
               setClickedGigs(prev => {
                 const merged = [...prev, ...newGigs];
@@ -184,7 +168,7 @@ export const MapView = ({ upcomingGigs }) => {
     
         setMapInstance(map);
         return () => map.remove();
-      }, [filteredGigs]);
+      }, [upcomingGigs, loading, gigMarkerDisplay]);
         
     const handleCloseGig = (gig, e) => {
         e.stopPropagation();
@@ -201,74 +185,46 @@ export const MapView = ({ upcomingGigs }) => {
     }
 
     return (
-        <div className='map-view'>
-            <div className='filter-bar'>
-                {showDatePicker ? (
-                    <ReactDatePicker
-                        selected={null} // Ensure no single date is pre-selected
-                        onChange={(date) => {
-                            setSelectedDates((prevDates) => 
-                                prevDates.some(d => d.toDateString() === date.toDateString())
-                                    ? prevDates.filter(d => d.toDateString() !== date.toDateString())
-                                    : [...prevDates, date]
-                            );
-                            setShowDatePicker(false);
-                        }}
-                        dateFormat='dd-MM-yyyy'
-                        placeholderText='Select Dates'
-                        inline
-                    />
-                ) : (
-                    selectedDates.length > 0 ? (
-                        <ul className='selected-dates'  onClick={() => setShowDatePicker(prevState => !prevState)}>
-                            {selectedDates.map((date, index) => (
-                                <li key={index}>
-                                    {date.toLocaleDateString('en-GB')}
-                                    {index < selectedDates.length - 1 && ','}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <h4 className='filter-button' onClick={() => setShowDatePicker(prevState => !prevState)}>
-                            Filter by Date
-                        </h4>
-                    )
-                )}
-                {selectedDates.length > 0 && (
-                    <button className='btn primary round' onClick={() => setSelectedDates([])}>Clear Filters</button>
-                )}
-            </div>
-            <div
-                ref={mapContainerRef}
-                className='map'
-                style={{ width: '100%', height: '100%' }}
-            />
-            <>
-            {clickedGigs.length > 0 && (
-                <ul className='preview-gig-list'>
-                    {clickedGigs.map((gig, index) => (
-                        <li className='preview-gig-item' key={index} onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
-                            <button className='btn danger' onClick={(e) => handleCloseGig(gig, e)}>
-                                <ErrorIcon />
-                            </button>
-                            <div className='preview-gig-item-venue'>
-                                <figure className='preview-gig-img'>
-                                    <img src={gig.venue.photo} alt={gig.venue.venueName} />
-                                </figure>
-                                <div className='preview-gig-info'>
-                                    <h3>{gig.venue.venueName}</h3>
-                                    <p>{formatDate(gig.date)}</p>
-                                    <p>{formatGigRange(gig.startTime, gig.duration)}</p>
-                                </div>
-                            </div>
-                            <div className='preview-gig-budget'>
-                                <h3>{gig.budget}</h3>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
-            </>
-        </div>
+      <div className="output-container">
+        {!loading ? (
+          upcomingGigs.length > 0 ? (
+            <div ref={mapContainerRef} className="map" style={{ width: '100%', height: clickedGigs.length > 0 ? '70%' : '100%' }} />
+          ) : (
+            <div className="map-loading"><h3>No Results</h3></div>
+          )
+        ) : (
+          <div className="map-loading"><h3>Loading Gigs</h3> <LoadingThreeDots /></div>
+        )}
+  
+        {clickedGigs.length > 0 && (
+          <div className="preview-gig-container">
+            <ul className="preview-gig-list">
+              {clickedGigs.map((gig, i) => (
+                <li key={i} className="preview-gig-item" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
+                  <button className="btn danger" onClick={(e) => {
+                    e.stopPropagation();
+                    setClickedGigs(prev => prev.filter(g => g.gigId !== gig.gigId));
+                  }}>
+                    <ErrorIcon />
+                  </button>
+                  <div className="preview-gig-item-venue">
+                    <figure className="preview-gig-img">
+                      <img src={gig.venue.photo} alt={gig.venue.venueName} />
+                    </figure>
+                    <div className="preview-gig-info">
+                      <h3>{gig.venue.venueName?.trim()}</h3>
+                      <p>{formatDate(gig.date)}</p>
+                      <p>{formatGigRange(gig.startTime, gig.duration)}</p>
+                    </div>
+                  </div>
+                  <div className="preview-gig-budget">
+                    <h3>{gig.budget !== '£' ? gig.budget : 'No Fee'}</h3>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     );
 };

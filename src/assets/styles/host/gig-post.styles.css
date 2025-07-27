@@ -2,6 +2,7 @@
 .gig-post .modal-content {
     padding:4rem 1rem;
     padding-bottom: 5rem;
+    min-width: 70vw;
 }
 
 @media (max-width: 1268px) {
@@ -106,7 +107,7 @@
 .gig-post .modal-content .stage {
     text-align: center;
     height: 500px;
-    width:60vw;
+    width:100%;
     overflow: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;

@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import '@assets/global.styles.css'
 import { BrowserRouter } from 'react-router-dom'
 import { GigsProvider } from '@context/GigsContext.jsx'
 import { loadStripe } from '@stripe/stripe-js';

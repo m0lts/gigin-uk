@@ -46,6 +46,15 @@
     gap:2rem;
 }
 
+.header .right .btn.account .icon {
+    font-size: 1.5rem;
+}
+
+.header .right .btn.primary.important {
+    padding-right: 1.5rem;
+    padding-left: 1.5rem;
+}
+
 .header .right .btn {
     gap:10px
 }
@@ -141,6 +150,10 @@
     transition: background-color 0.2s linear;
 }
 
+.header .account-menu .item.name-and-email {
+    cursor: auto;
+}
+
 .header .account-menu .item.no-margin {
     margin-bottom:5px;
 }
@@ -153,12 +166,17 @@
     color: var(--gn-orange);
 }
 
+.header .account-menu .item.settings {
+    margin-top: 10px;
+}
+
 .header .account-menu .btn.logout {
     width:100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding:5px 10px;
+    font-weight: 400;
     border-radius: var(--gn-btn-border-radius);
 }
 

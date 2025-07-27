@@ -171,7 +171,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                             </button>
                                             <div className="dropdown-wrapper" ref={menuRef} style={{ position: 'relative' }}>
                                                 <button
-                                                    className={`btn icon ${menuOpen === true ? 'active' : ''}`}
+                                                    className={`btn icon-box ${menuOpen === true ? 'active' : ''}`}
                                                     onClick={() => setMenuOpen(prev => !prev)}
                                                 >
                                                     <OptionsIcon />

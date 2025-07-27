@@ -67,9 +67,10 @@ export const VenueDashboard = ({ user }) => {
           setGigToReview(localGigsToReview[0]);
           setShowReviewModal(true);
         } else if (unreviewedGigs.length > 0) {
-            setGigsToReview(unreviewedGigs);
+          setGigsToReview(unreviewedGigs);
         }
       }, [gigs]);
+
 
       useEffect(() => {
         if (!user) return;

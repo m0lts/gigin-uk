@@ -68,7 +68,7 @@
 .dashboard .window .breadcrumbs {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 1;
     background-color: var(--gn-grey-300);
     display: flex;
     align-items: center;
@@ -160,7 +160,7 @@
 }
 
 .dashboard .sidebar .account-dropdown.open {
-    height:195px;
+    height:155px;
 }
 
 .dashboard .sidebar .account-dropdown-item {
@@ -174,7 +174,7 @@
     border:1px solid transparent;
     background-color: transparent;
     cursor: pointer;
-    transition: background-color 200ms linear;
+    transition: background-color 200ms linear, border-color 200ms linear;
 }
 
 .dashboard .sidebar .account-dropdown-item:first-of-type {
@@ -183,6 +183,11 @@
 
 .dashboard .sidebar .account-dropdown-item.red {
     color: red;
+}
+
+.dashboard .sidebar .account-dropdown-item.red:hover {
+    background-color: transparent;
+    border-color: red;
 }
 
 .dashboard .sidebar .account-dropdown-item:hover {

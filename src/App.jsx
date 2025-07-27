@@ -2,7 +2,6 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 
 // Styles and extras
-import '@assets/global.styles.css'
 import '@assets/fonts/fonts.css'
 import '@styles/shared/buttons.styles.css'
 import { LandingPage } from '@features/landing-page/LandingPage';

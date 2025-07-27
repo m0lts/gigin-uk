@@ -11,6 +11,7 @@ import { sendDisputeMessage } from '@services/messages';
 import { sendEmail } from '@services/emails';
 import { cancelTask } from '@services/functions';
 import { submitReview } from '../../../services/reviews';
+import { toast } from 'sonner';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);
@@ -97,10 +98,11 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                 setLoading(false);
                 setShowDisputeForm(false);
                 setDisputeSubmitted(true);
+                toast.success('Dispute submitted.')
             }
         } catch (error) {
             console.error('Error logging dispute:', error);
-            alert('An error occurred while logging the dispute.');
+            toast.error('An error occurred while logging the dispute. Please try again.');
         }
     };
 
@@ -138,13 +140,13 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                 musicianHasReviewed: reviewer === 'musician',
                 venueHasReviewed: reviewer === 'venue',
             }));
-            alert('Review submitted successfully!');
+            toast.success('Review submitted!');
             setRating(0);
             setReviewText('');
             onClose(true);
         } catch (error) {
             console.error('Error submitting review:', error);
-            alert('An error occurred while submitting the review.');
+            toast.error('An error occurred while submitting the review. Please try again.');
         }
     };
 

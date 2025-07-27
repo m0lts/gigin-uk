@@ -111,6 +111,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
 
     const handleMusicianRequest = async () => {
         try {
+
           const profile = await getMusicianProfileByMusicianId(musicianId);
           if (!profile) throw new Error('Musician profile not found');
           await createVenueRequest({

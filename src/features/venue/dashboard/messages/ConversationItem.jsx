@@ -56,7 +56,7 @@ export const ConversationItem = ({
               )}
             </div>
             <div className='conversation-name'>
-              <h3 className='conversation-title-text'>
+              <h4 className='conversation-title-text'>
                 {isBandConversation
                   ? otherParticipant?.role === 'venue'
                     ? otherParticipant?.accountName || 'Venue'
@@ -65,12 +65,12 @@ export const ConversationItem = ({
                 {otherParticipant?.venueName && (
                   <span> - {otherParticipant.venueName}</span>
                 )}
-              </h3>
-              <h4 className='conversation-title-comp'>
+              </h4>
+              <h5 className='conversation-title-comp'>
                 {isBandConversation
                   ? 'Band'
                   : 'Musician'}
-              </h4>
+              </h5>
             </div>
           </div>
           {hasUnreadMessages && <div className='notification-dot'></div>}

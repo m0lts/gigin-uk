@@ -18,11 +18,12 @@ import { postMultipleGigs } from '@services/gigs';
 import { toast } from 'sonner';
 import { OpenMicGig } from './OpenMic';
 import { TicketedGig } from './TicketedGig';
-import { Timestamp } from 'firebase/firestore';
+import { GeoPoint, Timestamp } from 'firebase/firestore';
 import { formatDate } from '@services/utils/dates';
 import { getMusicianProfileByMusicianId } from '../../../services/musicians';
 import { sendGigInvitationMessage } from '../../../services/messages';
 import { getOrCreateConversation } from '../../../services/conversations';
+import { geohashForLocation } from 'geofire-common';
 
 export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user }) => {
     const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
@@ -402,6 +403,38 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         }
     };
 
+    const getStartDateTime = (date, time) => {
+        if (!date || !time) return null;
+      
+        const datePart = new Date(date);
+        const [hours, minutes] = time.split(':').map(Number);
+        datePart.setHours(hours);
+        datePart.setMinutes(minutes);
+        datePart.setSeconds(0);
+      
+        return Timestamp.fromDate(datePart);
+    };
+      
+    const getGeoField = (coordinates) => {
+        if (!coordinates || coordinates.length !== 2) return null;
+      
+        const [lng, lat] = coordinates;
+        const geopoint = new GeoPoint(lat, lng);
+        const geohash = geohashForLocation([lat, lng]).substring(0, 8);
+      
+        return {
+          geopoint,
+          geohash,
+        };
+      };
+
+    const getBudgetValue = (budget) => {
+        if (typeof budget !== 'string') return null;
+        const numericPart = budget.replace(/[^0-9.]/g, '');
+        const parsed = parseFloat(numericPart);
+        return isNaN(parsed) ? null : parsed;
+      };
+
     const handlePostGig = async () => {
         setLoading(true);
         try {
@@ -413,43 +446,49 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 const endDate = formData.repeatData.endDate ? new Date(formData.repeatData.endDate) : null;
                 let i = 0;
                 while (true) {
-                let newDate;
-                switch (repeatType) {
-                    case 'daily':
-                    newDate = addDays(startDate, i);
-                    break;
-                    case 'weekly':
-                    newDate = addWeeks(startDate, i);
-                    break;
-                    case 'monthly':
-                    newDate = addMonths(startDate, i);
-                    break;
-                    default:
-                    newDate = startDate;
-                }
-                const localDate = new Date(newDate.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-                if (endDate && localDate > endDate) {
-                    break;
-                }
-                const newGig = {
-                    ...formData,
-                    gigId: uuidv4(),
-                    date: localDate,
-                    createdAt: new Date(),
-                    complete: true,
-                };
-                delete newGig.repeatData;
-                gigDocuments.push(newGig);
-                i++;
-                if (endAfter && i >= endAfter) {
-                    break;
-                }
+                    let newDate;
+                    switch (repeatType) {
+                        case 'daily':
+                        newDate = addDays(startDate, i);
+                        break;
+                        case 'weekly':
+                        newDate = addWeeks(startDate, i);
+                        break;
+                        case 'monthly':
+                        newDate = addMonths(startDate, i);
+                        break;
+                        default:
+                        newDate = startDate;
+                    }
+                    const localDate = new Date(newDate.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+                    if (endDate && localDate > endDate) {
+                        break;
+                    }
+                    const newGig = {
+                        ...formData,
+                        gigId: uuidv4(),
+                        date: localDate,
+                        createdAt: new Date(),
+                        complete: true,
+                        startDateTime: getStartDateTime(localDate, formData.startTime),
+                        ...getGeoField(formData.coordinates),
+                        budgetValue: getBudgetValue(formData.budget),
+                    };
+                    delete newGig.repeatData;
+                    gigDocuments.push(newGig);
+                    i++;
+                    if (endAfter && i >= endAfter) {
+                        break;
+                    }
                 }
             } else {
                 const singleGig = {
                     ...formData,
                     createdAt: new Date(),
                     complete: true,
+                    startDateTime: getStartDateTime(formData.date, formData.startTime),
+                    ...getGeoField(formData.coordinates),
+                    budgetValue: getBudgetValue(formData.budget),
                 };
                 if (buildingForMusician) {
                     const invitationPackage = {
@@ -535,6 +574,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 date: localDate,
                 complete: false,
                 createdAt: new Date(),
+                startDateTime: getStartDateTime(localDate, formData.startTime),
+                ...getGeoField(formData.coordinates),
+                budgetValue: getBudgetValue(formData.budget),
               };
               delete newGig.repeatData;
               gigDocuments.push(newGig);
@@ -547,6 +589,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
             const singleGig = {
               ...gigDataPacket,
               createdAt: new Date(),
+              startDateTime: getStartDateTime(formData.date, formData.startTime),
+              ...getGeoField(formData.coordinates),
+              budgetValue: getBudgetValue(formData.budget),
             };
             delete singleGig.repeatData;
             gigDocuments.push(singleGig);

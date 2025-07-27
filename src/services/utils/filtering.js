@@ -1,5 +1,15 @@
 import { Timestamp } from 'firebase/firestore';
 
+export const getLocalGigDateTime = (gig) => {
+  const dateObj = gig.date.toDate(); // Firestore Timestamp
+  const [hours, minutes] = gig.startTime.split(':').map(Number);
+  dateObj.setHours(hours);
+  dateObj.setMinutes(minutes);
+  dateObj.setSeconds(0);
+  dateObj.setMilliseconds(0);
+  return dateObj;
+};
+
 /**
  * Filters a list of gigs to only include gigs with a future date.
  *
@@ -53,16 +63,6 @@ export const filterInvitableGigsForMusician = (gigs, musicianId) => {
         applicant.id === musicianId && applicant.status !== 'Declined'
       )
     );
-};
-
-export const getLocalGigDateTime = (gig) => {
-  const dateObj = gig.date.toDate(); // Firestore Timestamp
-  const [hours, minutes] = gig.startTime.split(':').map(Number);
-  dateObj.setHours(hours);
-  dateObj.setMinutes(minutes);
-  dateObj.setSeconds(0);
-  dateObj.setMilliseconds(0);
-  return dateObj;
 };
 
 
