@@ -12,25 +12,28 @@ import { useGigs } from '@context/GigsContext';
 import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { openInNewTab } from '../../../services/utils/misc';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { FilterIconEmpty, SearchIcon } from '../../shared/ui/extras/Icons';
+import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
+import { getOrCreateConversation } from '../../../services/conversations';
+import { getVenueProfileById } from '../../../services/venues';
+import { updateMusicianCancelledGig } from '../../../services/musicians';
+import { revertGigApplication } from '../../../services/gigs';
+import { toast } from 'sonner';
 
 
-export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandProfiles }) => {
+export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandProfiles, setGigs, setGigApplications }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchParams] = useSearchParams();
     const [sortOrder, setSortOrder] = useState('asc');
     const [gigDocuments, setGigDocuments] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [showGigHandbook, setShowGigHandbook] = useState(false);
     const [gigForHandbook, setGigForHandbook] = useState(null);
     const [usersConfirmedGigs, setUsersConfirmedGigs] = useState([]);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-    const [allProfiles, setAllProfiles] = useState([
-        ...(bandProfiles || []),
-        ...(musicianProfile ? [musicianProfile] : [])
-      ]);
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [openOptionsGigId, setOpenOptionsGigId] = useState(null);
+    const [userCancelling, setUserCancelling] = useState(false);
     const selectedProfile = searchParams.get('profile') || '';
     const selectedDate = searchParams.get('date') || '';
     const selectedStatus = searchParams.get('status') || 'all';
@@ -39,21 +42,26 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
 
     useEffect(() => {
         const filterGigs = () => {
-            setLoading(true);
-            const confirmedGigs = filteredGigs.filter(gig =>
+            const confirmedGigs = gigs.filter(gig =>
                 gig.applicants.some(applicant => applicant.id === musicianId && applicant.status === 'confirmed')
             );
             setGigDocuments(gigs);
             setUsersConfirmedGigs(confirmedGigs);
-            setLoading(false);
         };
         if (gigApplications && gigApplications.length > 0) {
             filterGigs();
-        } else {
-            setGigDocuments([]);
-            setLoading(false);
         }
     }, [gigApplications, gigs]);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+          if (!e.target.closest('.options-cell')) {
+            setOpenOptionsGigId(null);
+          }
+        };
+        window.addEventListener('click', handleClickOutside);
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, []);
 
 
     const getGigStatus = (gig) => {
@@ -74,7 +82,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                 return { icon: <TickIcon />, text: 'Confirmed' };
             }
             if (applicant.status === 'accepted') {
-                return { icon: <ClockIcon />, text: 'Waiting for Venue Payment' };
+                return { icon: <ClockIcon />, text: 'Waiting for Payment Confirmation' };
             }
             if (applicant.status === 'pending') {
                 return { icon: <ClockIcon />, text: 'Pending' };
@@ -82,42 +90,48 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
             if (applicant.status === 'declined') {
                 return { icon: <RejectedIcon />, text: 'Declined' };
             }
+        } else {
+            return { icon: <PreviousIcon />, text: 'Previous' };
         }
-        return { icon: <PreviousIcon />, text: 'Previous' };
     };
 
-    const now = useMemo(() => new Date(), []);
+    const now = new Date();
+
+    const allProfiles = useMemo(() => [
+        ...(bandProfiles || []),
+        ...(musicianProfile ? [musicianProfile] : [])
+    ], [musicianProfile, bandProfiles])
   
     const normalizedGigs = useMemo(() => {
-      return gigs.map(gig => {
-        const dateObj = gig.date.toDate();
-        const [hours, minutes] = gig.startTime.split(':').map(Number);
-        dateObj.setHours(hours);
-        dateObj.setMinutes(minutes);
-        dateObj.setSeconds(0);
-        dateObj.setMilliseconds(0);
-        const gigDateTime = new Date(dateObj); // local datetime
-    
-        const isoDate = gigDateTime.toISOString().split('T')[0];
-    
-        const acceptedApplicant = gig.applicants?.some(app => app.status === 'confirmed');
-        let status = 'previous';
-    
-        if (gigDateTime > now) {
-          if (acceptedApplicant) status = 'confirmed';
-          else if (gig.status === 'open') status = 'upcoming';
-          else status = 'closed';
-        }
-    
-        return {
-          ...gig,
-          dateObj: gigDateTime,
-          dateIso: isoDate,
-          dateTime: gigDateTime,
-          status,
-        };
-      });
-    }, [gigs, now]);
+        return gigs.map(gig => {
+          const dateObj = gig.date.toDate();
+          const [hours, minutes] = gig.startTime.split(':').map(Number);
+          dateObj.setHours(hours, minutes, 0, 0);
+          const gigDateTime = new Date(dateObj);
+          const isoDate = gigDateTime.toISOString().split('T')[0];
+      
+          const profileId = selectedProfile || musicianId;
+      
+          const applicant = gig.applicants?.find(app => app.id === profileId);
+          const appStatus = applicant?.status;
+      
+          let status = 'previous';
+          if (gigDateTime > now) {
+            if (appStatus === 'confirmed') status = 'confirmed';
+            else if (appStatus === 'accepted' || appStatus === 'pending') status = 'pending'; // Grouped
+            else if (!appStatus && gig.status === 'open') status = 'upcoming';
+            else status = 'closed';
+          }
+      
+          return {
+            ...gig,
+            dateObj: gigDateTime,
+            dateIso: isoDate,
+            dateTime: gigDateTime,
+            status,
+          };
+        });
+      }, [gigs, now, selectedProfile, musicianId]);
 
     const handleSearchChange = (e) => setSearchQuery(e.target.value);
   
@@ -130,10 +144,11 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
     const filteredGigs = useMemo(() => {
       return normalizedGigs.filter(gig => {
         const matchesSearch = searchQuery === '' || gig.gigName.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesProfile = selectedProfile === '' || gig.venueId === selectedProfile;
+        const matchesProfile =
+        selectedProfile === '' ||
+        gig.applicants?.some(app => app.id === selectedProfile);
         const matchesDate = selectedDate === '' || gig.dateIso === selectedDate;
         const matchesStatus = selectedStatus === 'all' || gig.status === selectedStatus;
-  
         return matchesSearch && matchesProfile && matchesDate && matchesStatus;
       });
     }, [normalizedGigs, searchQuery, selectedProfile, selectedDate, selectedStatus]);
@@ -162,6 +177,52 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
 
     const formatFee = (fee) => {
         return fee === '£' ? 'No Fee' : fee;
+    };
+
+    const toggleOptionsMenu = (gigId) => {
+        setOpenOptionsGigId(prev => (prev === gigId ? null : gigId));
+    };
+
+    const closeOptionsMenu = () => {
+        setOpenOptionsGigId(null);
+    };
+
+    const handleContactVenue = async (musicianProfile, gigData, venueId) => {
+        try {
+          const venueProfile = await getVenueProfileById(venueId);
+          const fullMusicianProfile = allProfiles.find(
+            (prof) => prof.id === musicianProfile.profileId
+          );
+      
+          if (!fullMusicianProfile) {
+            throw new Error('Full musician profile not found.');
+          }
+      
+          const conversationId = await getOrCreateConversation(
+            fullMusicianProfile,
+            gigData,
+            venueProfile
+          );
+      
+          navigate(`/messages?conversationId=${conversationId}`);
+        } catch (error) {
+          console.error('Failed to contact venue:', error);
+        }
+    };
+
+    const handleCancelGigApplication = async (musicianId, gigData) => {
+        try {
+          await updateMusicianCancelledGig(musicianId, gigData.gigId);
+          await revertGigApplication(gigData, musicianId);
+      
+          setGigs(prev => prev.filter(g => g.gigId !== gigData.gigId));
+          setGigApplications(prev => prev.filter(app => app.gigId !== gigData.gigId));
+      
+          toast.success('Gig application removed.');
+        } catch (error) {
+          console.error(error);
+          toast.error('Failed to cancel application. Please try again.');
+        }
       };
 
     return (
@@ -176,8 +237,8 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                         <button className={`btn ${selectedStatus === 'confirmed' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'confirmed')}>
                             Confirmed
                         </button>
-                        <button className={`btn ${selectedStatus === 'upcoming' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'upcoming')}>
-                            Upcoming
+                        <button className={`btn ${selectedStatus === 'pending' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'pending')}>
+                            Pending
                         </button>
                         <button className={`btn ${selectedStatus === 'previous' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'previous')}>
                             Previous
@@ -185,7 +246,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                     </div>
                     {windowWidth >= 1400 ? (
                         <>
-                        <span className="separator"></span>
+                        {/* <span className="separator"></span>
                         <div className="search-bar-container">
                             <SearchIcon />
                             <input
@@ -196,7 +257,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                             className='search-bar'
                             aria-label='Search gigs'
                             />
-                        </div>
+                        </div> */}
                         <span className="separator"></span>
                         <input
                             type='date'
@@ -207,17 +268,15 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                         />
                         <span className="separator"></span>
                         <select
-                            id='venueSelect'
+                            id='profileSelect'
                             value={selectedProfile}
                             onChange={(e) => updateUrlParams('profile', e.target.value)}
                         >
                             <option value=''>Filter by Profile</option>
                             {allProfiles.map((profile) => (
-                            <option value={profile.musicianId} key={profile.musicianId}>{profile.name}</option>
+                                <option value={profile.musicianId} key={profile.musicianId}>{profile.name}</option>
                             ))}
                         </select>
-                        <div className="spacer" />
-                        <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
                         </>
                     ) : (
                         <>
@@ -226,7 +285,6 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                             <FilterIconEmpty />
                             Filters
                         </button>
-                        <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
                         </>
                     )}
                 </div>
@@ -254,9 +312,6 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                 )}
             </div>
             <div className='body gigs musician'>
-                {loading ? (
-                    <p>Loading gigs...</p>
-                ) : (
                     <table>
                         <thead>
                             <tr>
@@ -266,7 +321,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                     </th>
                                 )}
                                 <th id='date'>
-                                    Date and Time
+                                    Time and Date
                                     <button className='sort btn text' onClick={toggleSortOrder}>
                                         <SortIcon />
                                     </button>
@@ -297,13 +352,28 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                 </td>
                                             </tr>
                                         )}
-                                        <tr>
+                                        <tr onClick={
+                                            gigStatus.text.toLowerCase() === 'confirmed'
+                                                ? () => openGigHandbook(gig)
+                                                : (e) => openInNewTab(`/gig/${gig.gigId}`, e)
+                                        }>
                                             {musicianProfile.bands && appliedProfile && (
                                                 <td className="applied-profile-name">
                                                     {appliedProfile.name}
                                                 </td>
                                             )}
-                                            <td>{gig.startDateTime.toDate().toLocaleDateString('en-GB')}</td>
+                                            <td>
+                                            {gig.startDateTime.toDate().toLocaleTimeString('en-GB', {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                hour12: false,
+                                            })}{' - '}
+                                            {gig.startDateTime.toDate().toLocaleDateString('en-GB', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                year: 'numeric',
+                                            })}
+                                            </td>
                                             <td>{gig.venue.venueName}</td>
                                             <td>{gig.kind}</td>
                                             <td className='centre'>
@@ -313,28 +383,37 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             </td>
                                             <td
                                                 className={`status-box ${
-                                                    gigStatus.text.toLowerCase() === 'waiting for venue payment' ? 'pending' : gigStatus.text.toLowerCase()
+                                                    gigStatus.text.toLowerCase() === 'waiting for payment confirmation' ? 'pending' : gigStatus.text.toLowerCase()
                                                 }`}
                                             >
                                                 <div
                                                     className={`status ${
-                                                        gigStatus.text.toLowerCase() === 'waiting for venue payment' ? 'pending' : gigStatus.text.toLowerCase()
+                                                        gigStatus.text.toLowerCase() === 'waiting for payment confirmation' ? 'pending' : gigStatus.text.toLowerCase()
                                                     }`}
                                                 >
                                                     {gigStatus.icon} {gigStatus.text}
                                                 </div>
                                             </td>
-                                            <td>
-                                                <button
-                                                    className='btn text'
-                                                    onClick={
-                                                        gigStatus.text.toLowerCase() === 'confirmed'
-                                                            ? () => openGigHandbook(gig)
-                                                            : (e) => openInNewTab(`/gig/${gig.gigId}`, e)
-                                                    }
-                                                >
-                                                    See Gig Info
+                                            <td className="options-cell" onClick={(e) => e.stopPropagation()}>
+                                                <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
+                                                    <OptionsIcon />
                                                 </button>
+                                                {openOptionsGigId === gig.gigId && (
+                                                    <div className="options-dropdown">
+                                                    <button onClick={() => { closeOptionsMenu(); navigate(`/venues/${gig.venueId}`) }}>View Venue Page <NewTabIcon /> </button>
+                                                    <button onClick={() => {
+                                                        closeOptionsMenu();
+                                                        handleContactVenue(appliedProfile, gig, gig.venueId);
+                                                    }}>
+                                                        Contact Venue <MailboxFullIcon />
+                                                    </button>
+                                                    {(gigStatus.text === 'Confirmed' && gig.startDateTime.toDate() > now) ? (
+                                                        <button onClick={() => { closeOptionsMenu(); setUserCancelling(true); setGigForHandbook(gig); setShowGigHandbook(true) }} className='danger'>Cancel Gig <CancelIcon /></button>
+                                                    ) : ((gigStatus.text === 'Pending' || gigStatus.text === 'Waiting for Payment Confirmation') && gig.startDateTime.toDate() > now) && (
+                                                        <button onClick={() => { closeOptionsMenu(); handleCancelGigApplication(appliedProfile.profileId, gig) }} className='danger'>Remove Application <CancelIcon /></button>
+                                                    )}
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     </React.Fragment>
@@ -355,16 +434,14 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                             )}
                         </tbody>
                     </table>
-                )}
             </div>
             {showGigHandbook && (
                 <GigHandbook 
                     setShowGigHandbook={setShowGigHandbook}
-                    showGigHandbook={showGigHandbook}
-                    setGigForHandbook={setGigForHandbook}
                     gigForHandbook={gigForHandbook}
-                    usersConfirmedGigs={usersConfirmedGigs}
                     musicianId={musicianId}
+                    showConfirmation={userCancelling}
+                    setShowConfirmation={setUserCancelling}
                 />
             )}
         </>

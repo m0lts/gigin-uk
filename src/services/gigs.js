@@ -619,6 +619,22 @@ export const revertGigAfterCancellation = async (gigData, musicianId, cancellati
 };
 
 /**
+ * Reverts a gig to an open state after application removed and removes the musician from the applicant list.
+ * @param {object} gigId - The full gig object.
+ * @param {string} musicianId - The ID of the cancelling musician.
+ * @returns {Promise<void>}
+ */
+export const revertGigApplication = async (gigData, musicianId) => {
+  const gigRef = doc(firestore, 'gigs', gigData.gigId);
+  const updatedApplicants = gigData.applicants.filter(app => app.id !== musicianId);
+  await updateDoc(gigRef, {
+    applicants: updatedApplicants,
+    paid: false,
+    status: 'open',
+  });
+};
+
+/**
  * Reverts a gig to a closed state after cancellation and removes the musician from the applicant list.
  * @param {object} gigData - The full gig object.
  * @param {string} musicianId - The ID of the cancelling musician.

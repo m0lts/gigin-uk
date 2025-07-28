@@ -18,12 +18,11 @@ import { logGigCancellation, revertGigAfterCancellation } from '../../../service
 import { updateMusicianCancelledGig } from '../../../services/musicians';
 
 
-export const GigHandbook = ({ setShowGigHandbook, showGigHandbook, setGigForHandbook, gigForHandbook, usersConfirmedGigs, musicianId }) => {
+export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation }) => {
 
     const { user } = useAuth();
 
     const [loading, setLoading] = useState(false);
-    const [showConfirmation, setShowConfirmation] = useState(false);
     const [showPromoteModal, setShowPromoteModal] = useState(false);
     const [askCancellationReason, setAskCancellationReason] = useState(false);
     const [cancellationReason, setCancellationReason] = useState('');

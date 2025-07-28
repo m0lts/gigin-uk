@@ -278,8 +278,15 @@ export const updateBandMembersGigApplications = async (band, gigId) => {
  */
 export const updateMusicianCancelledGig = async (musicianId, gigId) => {
   const musicianRef = doc(firestore, 'musicianProfiles', musicianId);
+  const snapshot = await getDoc(musicianRef);
+
+  if (!snapshot.exists()) throw new Error('Musician profile not found.');
+
+  const data = snapshot.data();
+  const updatedGigApplications = (data.gigApplications || []).filter(app => app.gigId !== gigId);
+
   await updateDoc(musicianRef, {
-    gigApplications: arrayRemove(gigId),
+    gigApplications: updatedGigApplications,
     confirmedGigs: arrayRemove(gigId),
   });
 };

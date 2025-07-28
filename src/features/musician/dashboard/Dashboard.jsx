@@ -26,7 +26,9 @@ export const MusicianDashboard = ({ user }) => {
       loading,
       musicianProfile,
       gigApplications,
+      setGigApplications,
       gigs,
+      setGigs,
       gigToReview,
       showReviewModal,
       setShowReviewModal,
@@ -104,7 +106,7 @@ export const MusicianDashboard = ({ user }) => {
                 <Routes>
                   <Route index element={<Overview user={user} musicianProfile={musicianProfile} gigApplications={gigApplications} gigs={gigs} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} />} />
                   <Route path='profile' element={<ProfileTab musicianProfile={musicianProfile} />} />
-                  <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} />} />
+                  <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} />} />
                   <Route path='bands' element={<Bands musicianProfile={musicianProfile} />} />
                   <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} />} />
                   <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />

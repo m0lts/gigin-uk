@@ -35,7 +35,7 @@ export const getOrCreateConversation = async (musicianProfile, gigData, venuePro
   const conversationsRef = collection(firestore, 'conversations');
   const conversationQuery = query(
     conversationsRef,
-    where('participants', 'array-contains', bandId), // only search by band ID
+    where('participants', 'array-contains', bandId),
     where('gigId', '==', gigData.gigId)
   );
   const conversationSnapshot = await getDocs(conversationQuery);

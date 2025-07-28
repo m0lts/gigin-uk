@@ -31,6 +31,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
           return;
         }
         setMusicianProfile(profile);
+        console.log(profile)
         const applications = profile.gigApplications || [];
         setGigApplications(applications);
         if (applications.length > 0) {
@@ -123,7 +124,9 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         loading,
         musicianProfile,
         gigApplications,
+        setGigApplications,
         gigs,
+        setGigs,
         gigToReview,
         gigsToReview,
         setGigsToReview,
