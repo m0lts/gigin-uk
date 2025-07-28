@@ -2,12 +2,15 @@ import { useEffect } from 'react';
 import { Header } from '@features/musician/components/Header'
 import { useAuth } from '@hooks/useAuth'
 import '@styles/shared/dashboard.styles.css'
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { MusicianDashboardProvider } from '../context/MusicianDashboardContext';
 
 export const MusicianDashboardLayout = ({ children, setAuthModal, setAuthType, user, setAuthClosable }) => {
 
     const { loading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const newUser = location.state?.newUser;
 
     useEffect(() => {
         if (!loading && !user) {
@@ -23,17 +26,11 @@ export const MusicianDashboardLayout = ({ children, setAuthModal, setAuthType, u
         }
     }, [user, loading])
 
-
     return (
-        <section className='dashboard'>
-            <Header 
-                setAuthType={setAuthType}
-                setAuthModal={setAuthModal}
-                user={user}
-            />
-            <main className='main'>
+        <MusicianDashboardProvider user={user}>
+            <section className="dashboard">
                 { children }
-            </main>
-        </section>
+            </section>
+        </MusicianDashboardProvider>
     )
-}
+};

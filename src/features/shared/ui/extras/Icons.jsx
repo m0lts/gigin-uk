@@ -13,7 +13,7 @@ import { faPeopleGroup as faPeopleGroupSolid } from '@fortawesome/free-solid-svg
 import { faPeopleRoof as faPeopleRoofLight } from '@fortawesome/pro-regular-svg-icons';
 import { faPeopleRoof as faPeopleRoofSolid } from '@fortawesome/free-solid-svg-icons';
 import { faHouseWindow as faHouseWindowLight } from '@fortawesome/pro-regular-svg-icons';
-import { faHouseWindow as faHouseWindowSolid } from '@fortawesome/pro-solid-svg-icons';
+import { faHouseWindow as faHouseWindowSolid, faAddressCard as faAddressCardSolid } from '@fortawesome/pro-solid-svg-icons';
 import { faCalendar as faCalendarLight } from '@fortawesome/pro-regular-svg-icons';
 import { faCalendar as faCalendarSolid } from '@fortawesome/pro-solid-svg-icons';
 import { faRectanglesMixed as faGridHorizontalLight } from '@fortawesome/pro-regular-svg-icons';
@@ -376,6 +376,11 @@ export const MailboxFullIconSolid = () => {
 export const ProfileIcon = () => {
     return (
         <FontAwesomeIcon icon={faAddressCard} className='icon' />
+    )
+}
+export const ProfileIconSolid = () => {
+    return (
+        <FontAwesomeIcon icon={faAddressCardSolid} className='icon' />
     )
 }
 export const InviteIcon = () => {

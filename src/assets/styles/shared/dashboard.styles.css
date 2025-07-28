@@ -9,6 +9,7 @@
     position: relative;
     display: grid;
     grid-template-columns: 275px auto;
+    overflow: hidden;
 }
 
 

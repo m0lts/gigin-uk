@@ -60,42 +60,47 @@ export const Bands = ({ musicianProfile }) => {
   }
 
   return (
-    <div className="bands-page">
-      <div className="entry-text">
-        <h1>Bands, Done Better<span>.</span></h1>
-        <p>
-          Every musician signs up individually, then joins their band here. That means no more shared logins, smoother gig applications, and automatic payout splits. Whether you’re a duo or a 10-piece funk machine, everyone stays in the loop — and finding a last-minute fill-in is just a few clicks away.
-        </p>
+    <>
+      <div className="head">
+        <h1>Bands</h1>
       </div>
+      <div className="body bands-page">
+        <div className="entry-text">
+          <h1>Bands, Done Better<span>.</span></h1>
+          <p>
+            Every musician signs up individually, then joins their band here. That means no more shared logins, smoother gig applications, and automatic payout splits. Whether you’re a duo or a 10-piece funk machine, everyone stays in the loop — and finding a last-minute fill-in is just a few clicks away.
+          </p>
+        </div>
 
-      <div className="entry-actions">
-        <div className="card" onClick={() => navigate('/dashboard/bands/create')}>
-          <PlusIcon />
-          <h4 className="text">Create</h4>
-        </div>
-        <div className="card" onClick={() => navigate('/dashboard/bands/join')}>
-          <PeopleGroupIcon />
-          <h4 className="text">Join</h4>
-        </div>
-      </div>
-      {bandData.length > 0 && (
-        <div className="band-list">
-          <h2>Your Bands</h2>
-          <div className="band-cards">
-            {bandData.map(band => (
-              <div
-                key={band.id}
-                className="band-card"
-                onClick={() => navigate(`/dashboard/bands/${band.id}`, { state: { band } })}
-              >
-                <img className='band-img' src={band.picture} alt={band.name} />
-                <h1 className='band-name'>{band.name}</h1>
-              </div>
-            ))}
+        <div className="entry-actions">
+          <div className="card" onClick={() => navigate('/dashboard/bands/create')}>
+            <PlusIcon />
+            <h4 className="text">Create</h4>
+          </div>
+          <div className="card" onClick={() => navigate('/dashboard/bands/join')}>
+            <PeopleGroupIcon />
+            <h4 className="text">Join</h4>
           </div>
         </div>
-      )}
+        {bandData.length > 0 && (
+          <div className="band-list">
+            <h2>Your Bands</h2>
+            <div className="band-cards">
+              {bandData.map(band => (
+                <div
+                  key={band.id}
+                  className="band-card"
+                  onClick={() => navigate(`/dashboard/bands/${band.id}`, { state: { band } })}
+                >
+                  <img className='band-img' src={band.picture} alt={band.name} />
+                  <h1 className='band-name'>{band.name}</h1>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-    </div>
+      </div>
+    </>
   );
 };

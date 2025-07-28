@@ -245,7 +245,11 @@ export const fetchNearbyGigs = async ({
       return true;
     })
     .sort((a, b) => a.startDateTime?.seconds - b.startDateTime?.seconds)
-    .slice(0, limitCount);
+    .slice(0, limitCount)
+    .map(gig => ({
+      ...gig,
+      budget: gig.budget === '£' ? 'No Fee' : gig.budget
+    }));
 
   const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
 
@@ -338,7 +342,7 @@ export const subscribeToUpcomingOrRecentGigs = (venueIds, callback) => {
 export const getGigById = async (gigId) => {
   const gigRef = doc(firestore, 'gigs', gigId);
   const snap = await getDoc(gigRef);
-  return snap.exists() ? { id: snap.id, ref: gigRef, ...snap.data() } : null;
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 };
 
 /**

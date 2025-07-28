@@ -21,7 +21,6 @@ import {
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { useGigs } from '@context/GigsContext';
 import { getVenueProfileById } from '@services/venues';
 import { updateMusicianGigApplications } from '@services/musicians';
 import { applyToGig, negotiateGigFee } from '@services/gigs';
@@ -35,7 +34,7 @@ import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { getMusicianProfilesByIds, updateBandMembersGigApplications } from '../../services/musicians';
 import { getBandMembers } from '../../services/bands';
-import { acceptGigOffer } from '../../services/gigs';
+import { acceptGigOffer, getGigById } from '../../services/gigs';
 import { getMostRecentMessage, sendGigAcceptedMessage } from '../../services/messages';
 import { toast } from 'sonner';
 import { sendEmail } from '../../services/emails';
@@ -49,8 +48,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token'); 
     const venueVisiting = searchParams.get('venue');
-
-    const { gigs } = useGigs();
 
     const [gigData, setGigData] = useState(null);
     const [venueProfile, setVenueProfile] = useState(null);
@@ -103,47 +100,35 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     
     useEffect(() => {
         const filterGigData = async () => {
-            if (!gigs || !gigId) return;
-            const gig = gigs.find(gig => gig.id === gigId);
-            if (gig) {
-                setGigData(gig);
-            
-                if (gig?.privateApplications) {
-                    const savedToken = gig.privateApplicationToken;
-            
-                    // Check if inviteToken matches the token stored in the gig doc
-                    const isTokenValid = !!inviteToken && inviteToken === savedToken;
-            
-                    // Check if inviteToken *is* one of the user's musician profile IDs
-                    const validMusicianProfile = validProfiles?.find(
-                        profile => profile.musicianId === inviteToken
-                    );
-                    const isMusicianValid = !!validMusicianProfile;
-            
-                    if (!isTokenValid && !isMusicianValid) {
-                        // Neither a token match nor a matching musician profile
-                        setHasAccessToPrivateGig(false);
-                    } else {
-                        // Grant access
-                        setHasAccessToPrivateGig(true);
+            if (!gigId) return;
+            const gig = await getGigById(gigId);
+            if (!gig) return;
+            setGigData(gig);
+            if (gig?.privateApplications) {
+                const savedToken = gig.privateApplicationToken;
+                const isTokenValid = !!inviteToken && inviteToken === savedToken;
+                const validMusicianProfile = validProfiles?.find(
+                    profile => profile.musicianId === inviteToken
+                );
+                const isMusicianValid = !!validMusicianProfile;
+                if (!isTokenValid && !isMusicianValid) {
+                    setHasAccessToPrivateGig(false);
+                } else {
+                    setHasAccessToPrivateGig(true);
+                    setInvitedToGig(true);
+                    if (isMusicianValid) {
+                        setSelectedProfile(validMusicianProfile);
+                        setAccessTokenIsMusicianProfile(true);
                         setInvitedToGig(true);
-                        if (isMusicianValid) {
-                            // If the token matches a musician profile, select that one and flag it
-                            setSelectedProfile(validMusicianProfile);
-                            setAccessTokenIsMusicianProfile(true); // <-- important for later
-                            setInvitedToGig(true);
-                        }
                     }
                 }
             }
             const musicianId = user?.musicianProfile?.musicianId;
             const bandIds = user?.musicianProfile?.bands || [];
-
             if (musicianId && gig?.applicants?.length > 0) {
                 const matchingApplicant = gig.applicants.find(
                     app => app.id === musicianId || bandIds.includes(app.id)
                 );
-            
                 if (matchingApplicant) {
                     if (matchingApplicant.invited) {
                         setUserAppliedToGig(false);
@@ -161,10 +146,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 const venue = await getVenueProfileById(gig.venueId);
                 if (venue) setVenueProfile(venue);
             }
-            const similarGigsList = gigs
-            .filter(g => g.id !== gigId && getLocalGigDateTime(g) > new Date() && !g.confirmed)
-            .map(g => ({ id: g.id, ...g }));
-            setSimilarGigs(similarGigsList);
+            // const similarGigsList = gigs
+            // .filter(g => g.id !== gigId && getLocalGigDateTime(g) > new Date() && !g.confirmed)
+            // .map(g => ({ id: g.id, ...g }));
+            // setSimilarGigs(similarGigsList);
             setLoading(false)
         }
 
@@ -202,15 +187,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         if (user?.musicianProfile && user?.musicianProfile?.bands.length > 0) {
             fetchBandData();
         }
-    }, [gigs, gigId, user, venueVisiting, inviteToken, multipleProfiles]);
+    }, [gigId, user, venueVisiting, inviteToken, multipleProfiles]);
 
     useEffect(() => {
         if (!selectedProfile || !gigData) return;
-    
         const applicant = gigData.applicants?.find(
             app => app.id === selectedProfile.musicianId
         );
-    
         if (applicant) {
             if (applicant.invited) {
                 setUserAppliedToGig(false);
@@ -772,8 +755,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                             <div className='action-box'>
                                 <div className='action-box-info'>
                                     <div className='action-box-budget'>
-                                        <h1>{gigData.budget}</h1>
-                                        <p>gig fee</p>
+                                        {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
+                                            <h1>{gigData.kind}</h1>
+                                        ) : (
+                                            <>
+                                                <h1>{gigData.budget}</h1>
+                                                <p>gig fee</p>
+                                            </>
+                                        )}
                                     </div>
                                     <div className='action-box-duration'>
                                         <h4>{formatDuration(gigData.duration)}</h4>
@@ -784,21 +773,23 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                         <h3>{formatDate(gigData.date)}, {gigData.startTime}</h3>
                                     </div>
                                 </div>
-                                <div className='action-box-fees'>
-                                    <div className='action-box-service-fee'>
-                                        <p>Service Fee</p>
-                                        <p>£{calculateServiceFee(gigData.budget)}</p>
+                                {!(gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig') && (
+                                    <div className='action-box-fees'>
+                                        <div className='action-box-service-fee'>
+                                            <p>Service Fee</p>
+                                            <p>£{calculateServiceFee(gigData.budget)}</p>
+                                        </div>
+                                        <div className='action-box-total-income'>
+                                            <p>Total Income</p>
+                                            <p>£{calculateTotalIncome(gigData.budget)}</p>
+                                        </div>
                                     </div>
-                                    <div className='action-box-total-income'>
-                                        <p>Total Income</p>
-                                        <p>£{calculateTotalIncome(gigData.budget)}</p>
-                                    </div>
-                                </div>
+                                )}
                                 {!(user?.venueProfiles?.length > 0 && (!user.musicianProfile)) && hasAccessToPrivateGig && !venueVisiting && (
                                     <>
                                         {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && (
                                             <div className="profile-select-wrapper">
-                                                <label htmlFor="profileSelect" className="profile-select-label">You are applying as:</label>
+                                                <label htmlFor="profileSelect" className="profile-select-label">Applying as:</label>
                                                 <select
                                                 id="profileSelect"
                                                 className="input"

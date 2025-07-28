@@ -95,7 +95,7 @@ export const VenueDashboard = ({ user }) => {
               user={user}
               newMessages={newMessages}
             />
-            <div className='window venue'>
+            <div className='window venues'>
                 {location.pathname !== '/venues/dashboard' && (
                     <div className="breadcrumbs">
                         {breadcrumbs.map((crumb, index) => (

@@ -49,6 +49,25 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             clusterMaxZoom: 14,
             clusterRadius: 50,
           });
+
+          map.addLayer({
+            id: 'clusters-shadow',
+            type: 'circle',
+            source: 'gigs',
+            filter: ['has', 'point_count'],
+            paint: {
+              'circle-color': 'rgba(0, 0, 0, 0.07)', // soft grey shadow
+              'circle-radius': [
+                'step',
+                ['get', 'point_count'],
+                16, 5,
+                20, 10,
+                24, 25,
+                28
+              ],
+              'circle-blur': 1.2,
+            },
+          });
     
           map.addLayer({
             id: 'clusters',
@@ -56,16 +75,16 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             source: 'gigs',
             filter: ['has', 'point_count'],
             paint: {
-              'circle-color': 'white',
+              'circle-color': '#1A1A1A',
               'circle-radius': [
                 'step',
                 ['get', 'point_count'],
-                15, 5,
-                20, 10,
-                40,
+                12, 5,
+                16, 10,
+                20, 25,
+                24
               ],
-              'circle-stroke-color': 'rgba(0,0,0,0.15)',
-              'circle-stroke-width': 2,
+              'circle-stroke-width': 0,
             },
           });
     
@@ -75,12 +94,15 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             source: 'gigs',
             filter: ['has', 'point_count'],
             layout: {
-              'text-field': 'x{point_count_abbreviated}',
+              'text-field': '{point_count_abbreviated}',
               'text-font': ['DM Sans Bold'],
-              'text-size': 14,
+              'text-size': 13,
+              'text-anchor': 'center',
             },
             paint: {
-              'text-color': '#333',
+              'text-color': '#FFFFFF',
+              'text-halo-color': '#1A1A1A',
+              'text-halo-width': 1.5,
             },
           });
     
@@ -90,10 +112,11 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             source: 'gigs',
             filter: ['!', ['has', 'point_count']],
             paint: {
-              'circle-color': 'white',
-              'circle-radius': 25,
-              'circle-stroke-color': 'rgba(255, 108, 75, 0.5)',
-              'circle-stroke-width': 2,
+              'circle-color': '#FF6C4B',
+              'circle-radius': 5,
+              'circle-blur': 0.3,
+              'circle-opacity': 1,
+              'circle-stroke-width': 0,
             },
           });
     
@@ -106,11 +129,14 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
               'text-field': ['get', gigMarkerDisplay],
               'text-font': ['DM Sans Bold'],
               'text-size': 14,
-              'text-offset': [0, -0.5],
               'text-anchor': 'top',
+              'text-offset': [0, 0.5],
             },
             paint: {
-              'text-color': '#111',
+              'text-color': '#111111',
+              'text-halo-color': '#FFFFFF',
+              'text-halo-width': 1,
+              'text-halo-blur': 0.5,
             },
           });
     
@@ -119,16 +145,23 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
               layers: ['unclustered-point'],
             });
           
-            const gigId = features[0]?.properties?.gigId;
-            const gig = upcomingGigs.find(g => g.gigId === gigId);
+            if (!features.length) return;
           
-            if (gig) {
-              setClickedGigs(prev => {
-                const exists = prev.some(g => g.gigId === gig.gigId);
-                if (exists) return prev;
-                return [...prev, gig];
+            const clickedFeature = features[0];
+            const [lng, lat] = clickedFeature.geometry.coordinates;
+          
+            const gigsAtSameCoords = upcomingGigs.filter(g => {
+              const [gLng, gLat] = g.coordinates;
+              return Math.abs(gLng - lng) < 0.000001 && Math.abs(gLat - lat) < 0.000001;
+            });
+          
+            setClickedGigs(prev => {
+              const uniqueById = {};
+              [...prev, ...gigsAtSameCoords].forEach(g => {
+                uniqueById[g.gigId] = g;
               });
-            }
+              return Object.values(uniqueById);
+            });
           });
 
           map.on('click', 'clusters', (e) => {
@@ -164,16 +197,19 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
               });
             });
           });
+
+          map.on('mouseenter', 'unclustered-point', () => {
+            map.getCanvas().style.cursor = 'pointer';
+          });
+          map.on('mouseleave', 'unclustered-point', () => {
+            map.getCanvas().style.cursor = '';
+          });
+          
         });
     
         setMapInstance(map);
         return () => map.remove();
       }, [upcomingGigs, loading, gigMarkerDisplay]);
-        
-    const handleCloseGig = (gig, e) => {
-        e.stopPropagation();
-        setClickedGigs(prevGigs => prevGigs.filter(g => g.gigId !== gig.gigId));
-    };
 
     function formatGigRange(gigStartTime, duration) {
         const [startHour, startMinute] = gigStartTime.split(':').map(Number);

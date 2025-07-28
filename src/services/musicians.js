@@ -78,7 +78,7 @@ export const subscribeToMusicianProfile = (musicianId, callback, onError) => {
     ref,
     (snap) => {
       if (snap.exists()) {
-        callback({ id: snap.id, ref, ...snap.data() });
+        callback({ id: snap.id, ...snap.data() });
       } else {
         callback(null);
       }
