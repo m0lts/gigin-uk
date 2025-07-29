@@ -18,7 +18,7 @@ import { logGigCancellation, revertGigAfterCancellation } from '../../../service
 import { updateMusicianCancelledGig } from '../../../services/musicians';
 
 
-export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation }) => {
+export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation, fromOptionsMenu, setFromOptionsMenu }) => {
 
     const { user } = useAuth();
 
@@ -32,13 +32,16 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
         containerRef: mapContainerRef,
         coordinates: gigForHandbook?.coordinates,
         zoom: 15,
-        markers: gigForHandbook && !showConfirmation ? [gigForHandbook] : [],
+        addMarker: true,
+        reinitKey: showConfirmation ? 'confirming' : 'active',
       });
 
     const handleModalClick = (e) => {
         if (loading) return;
         if (e.target.className === 'modal') {
             setShowGigHandbook(false);
+            setAskCancellationReason(false);
+            setShowConfirmation(false);
         }
     };
 
@@ -59,7 +62,7 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
     };
 
     const formatGenres = (genres) => {
-        if (genres.length === 0) return '';
+        if (genres.length === 0) return 'No Specific Genre Requested';
         if (genres.length === 1) return genres[0];
         const copiedGenres = [...genres];
         const lastGenre = copiedGenres.pop();
@@ -133,6 +136,10 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
     
     const handleCancelNo = () => {
         setShowConfirmation(false);
+        setAskCancellationReason(false);
+        if (fromOptionsMenu) {
+            setShowGigHandbook(false);
+        }
     };
 
     return (
@@ -146,37 +153,44 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                             <LoadingThreeDots />
                         </>
                     ) : !askCancellationReason ? (
-                        <>
-                            <h3>Are you sure you want to cancel this gig?</h3>
-                            <p>The venue will be refunded the gig fee and the gig re-listed.</p>
+                        <> 
+                            <div className="head">
+                                <h3>Are you sure you want to cancel this gig?</h3>
+                                <p>The venue will be refunded the gig fee and the gig re-listed.</p>
+                            </div>
                             <div className='two-buttons'>
                                 <button className='btn danger' onClick={() => setAskCancellationReason(true)}>
-                                    Yes
+                                    Yes, Cancel Gig
                                 </button>
-                                <button className='btn secondary' onClick={handleCancelNo}>
+                                <button className='btn tertiary' onClick={handleCancelNo}>
                                     No
                                 </button>
                             </div>
                         </>
                     ) : askCancellationReason && (
                         <>
-                            <h3>Why are you cancelling?</h3>
-                            <select id='cancellation-reason' value={cancellationReason} onChange={(e) => setCancellationReason(e.target.value)}>
-                                <option value=''>Select a reason</option>
-                                <option value='fee'>Fee Dispute</option>
-                                <option value='availability'>Availability</option>
-                                <option value='double-booking'>Double Booking</option>
-                                <option value='personal-reasons'>Personal Reasons</option>
-                                <option value='illness'>Illness</option>
-                                <option value='information'>Not Enough Information</option>
-                                <option value='other'>Other</option>
-                            </select>
+                            <div className="head">
+                                <h3>Why are you cancelling?</h3>
+                                <p>Please select a reason for the cancellation.</p>
+                            </div>
+                            <div className="body">
+                                <select id='cancellation-reason' value={cancellationReason} onChange={(e) => setCancellationReason(e.target.value)}>
+                                    <option value=''>Select a reason</option>
+                                    <option value='fee'>Fee Dispute</option>
+                                    <option value='availability'>Availability</option>
+                                    <option value='double-booking'>Double Booking</option>
+                                    <option value='personal-reasons'>Personal Reasons</option>
+                                    <option value='illness'>Illness</option>
+                                    <option value='information'>Not Enough Information</option>
+                                    <option value='other'>Other</option>
+                                </select>
+                            </div>
                             <div className='two-buttons'>
                                 <button className='btn danger' onClick={handleConfirmCancel} disabled={!cancellationReason}>
-                                    Confirm
+                                    Confirm Cancellation
                                 </button>
                                 <button className='btn secondary' onClick={handleCancelNo}>
-                                    Cancel
+                                    Go Back
                                 </button>
                             </div>
                         </>
@@ -191,7 +205,7 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                         </figure>
                         <div className='names-div'>
                             <h2>{gigForHandbook.venue.venueName}</h2>
-                            <h6>{gigForHandbook.accountName}</h6>
+                            <h6>Hosted By: {gigForHandbook.accountName}</h6>
                         </div>
                     </div>
                     <div className='musician-actions'>
@@ -218,7 +232,7 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                         </div>
                         <div className='info-cont'>
                             <h3 className='subject'>Agreed Fee</h3>
-                            <h3 className='text'>{gigForHandbook.agreedFee}</h3>
+                            <h3 className='text'>{gigForHandbook.agreedFee === '£' ? 'No Fee' : gigForHandbook.agreedFee}</h3>
                         </div>
                         <div className='info-cont'>
                             <h3 className='subject'>Requested Genres</h3>
@@ -235,23 +249,26 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                                 </button>
                             </div>
                             <h4>{gigForHandbook.venue.address}</h4>
-                            <div ref={mapContainerRef} className='map-container' />
+                            <div
+                                ref={mapContainerRef}
+                                className="map-container"
+                            />
                         </div>
-                        <div className='info-box fee-clearance'>
-                            <h3>Fee Clearance Date</h3>
-                            {gigForHandbook.disputeClearingTime && (
-                                (() => {
-                                    const { day, month, year, time } = splitDateAndTime(gigForHandbook.disputeClearingTime);
-                                    return (
-                                        <div className='fee-clearance-details'>
-                                            <div className='date'>{day}<span className='ordinal-suffix'>{getOrdinalSuffix(day)}</span></div>
-                                            <div className='month'>{month} {year}, {time}</div>
-                                        </div>
-                                    );
-                                })()
-                            )}
-                        </div>
-                        <div className='info-box extra-information'>
+                        
+                        {gigForHandbook.disputeClearingTime && (() => {
+                            const { day, month, year, time } = splitDateAndTime(gigForHandbook.disputeClearingTime);
+                            return (
+                                <div className='info-box fee-clearance'>
+                                <h3>Fee Clearance Date</h3>
+                                <div className='fee-clearance-details'>
+                                    <div className='date'>{day}<span className='ordinal-suffix'>{getOrdinalSuffix(day)}</span></div>
+                                    <div className='month'>{month} {year}, {time}</div>
+                                </div>
+                                </div>
+                            );
+                        })()}
+
+                        <div className={`info-box extra-information ${!gigForHandbook.disputeClearingTime ? 'full' : ''}`}>
                             <h3>Extra Information</h3>
                             <p>{gigForHandbook.extraInformation === '' ? 'No extra information.' : gigForHandbook.extraInformation}</p>
                         </div>

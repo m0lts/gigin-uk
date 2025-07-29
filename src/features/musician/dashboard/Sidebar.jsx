@@ -51,13 +51,6 @@ export const Sidebar = ({ user, newMessages }) => {
           iconActive: <CalendarIconSolid />,
         },
         {
-          path: '/dashboard/messages',
-          label: 'Messages',
-          icon: !newMessages ? <MailboxEmptyIcon /> : <MailboxFullIcon />,
-          iconActive: !newMessages ? <MailboxEmptyIconSolid /> : <MailboxFullIconSolid />,
-          notification: newMessages,
-        },
-        {
           path: '/dashboard/bands',
           label: 'Bands',
           icon: <PeopleGroupIcon />,

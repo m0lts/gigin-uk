@@ -17,6 +17,7 @@ import { listenToUserConversations } from '../../../services/conversations';
 import { mergeAndSortConversations } from '@services/utils/filtering';
 import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { RightChevronIcon } from '../../shared/ui/extras/Icons';
+import { TopBar } from './TopBar';
 
 
 export const MusicianDashboard = ({ user }) => {
@@ -82,6 +83,7 @@ export const MusicianDashboard = ({ user }) => {
             newMessages={newMessages}
           />
            <div className='window musicians'>
+              <TopBar user={user} />
                {location.pathname !== '/dashboard' && (
                   <div className="breadcrumbs">
                       {breadcrumbs.map((crumb, index) => (

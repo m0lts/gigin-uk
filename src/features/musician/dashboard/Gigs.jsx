@@ -34,6 +34,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [openOptionsGigId, setOpenOptionsGigId] = useState(null);
     const [userCancelling, setUserCancelling] = useState(false);
+    const [fromOptionsMenu, setFromOptionsMenu] = useState(false);
     const selectedProfile = searchParams.get('profile') || '';
     const selectedDate = searchParams.get('date') || '';
     const selectedStatus = searchParams.get('status') || 'all';
@@ -408,7 +409,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                         Contact Venue <MailboxFullIcon />
                                                     </button>
                                                     {(gigStatus.text === 'Confirmed' && gig.startDateTime.toDate() > now) ? (
-                                                        <button onClick={() => { closeOptionsMenu(); setUserCancelling(true); setGigForHandbook(gig); setShowGigHandbook(true) }} className='danger'>Cancel Gig <CancelIcon /></button>
+                                                        <button onClick={() => { closeOptionsMenu(); setUserCancelling(true); setGigForHandbook(gig); setShowGigHandbook(true); setFromOptionsMenu(true) }} className='danger'>Cancel Gig <CancelIcon /></button>
                                                     ) : ((gigStatus.text === 'Pending' || gigStatus.text === 'Waiting for Payment Confirmation') && gig.startDateTime.toDate() > now) && (
                                                         <button onClick={() => { closeOptionsMenu(); handleCancelGigApplication(appliedProfile.profileId, gig) }} className='danger'>Remove Application <CancelIcon /></button>
                                                     )}
@@ -422,12 +423,8 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                         ) : (
                             <tr className='no-gigs'>
                                 <td className='data' colSpan={7}>
-                                    <div className='flex'>
-                                        <CalendarIconSolid />
-                                        <h4>No gigs to show.</h4>
-                                        <button className='btn secondary' onClick={() => navigate('/find-a-gig')}>
-                                            Find Gigs
-                                        </button>
+                                    <div className='flex' style={{ margin: '1rem 0'}}>
+                                        <h4>No Gigs to Show</h4>
                                     </div>
                                 </td>
                             </tr>
@@ -442,6 +439,8 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                     musicianId={musicianId}
                     showConfirmation={userCancelling}
                     setShowConfirmation={setUserCancelling}
+                    fromOptionsMenu={fromOptionsMenu}
+                    setFromOptionsMenu={setFromOptionsMenu}
                 />
             )}
         </>

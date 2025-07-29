@@ -23,6 +23,7 @@ export const useMapbox = ({
   token = import.meta.env.DEV ? 
   'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
   : import.meta.env.VITE_MAPBOX_TOKEN,
+  reinitKey
 }) => {
   useEffect(() => {
     if (!shouldInit || !coordinates || !containerRef.current) return;
@@ -41,5 +42,5 @@ export const useMapbox = ({
     }
 
     return () => map.remove();
-  }, [containerRef, coordinates, shouldInit, token, style, zoom, addMarker]);
+  }, [containerRef, coordinates, shouldInit, token, style, zoom, addMarker, reinitKey]);
 };
