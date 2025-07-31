@@ -76,20 +76,16 @@ export const ProfileCreator = () => {
 
     useEffect(() => {
         if (!musicianProfile) return;
-      
         const checkForSavedProfile = async () => {
           const isBand = musicianProfile.bandProfile === true;
-      
           setFormData((prev) => ({
             ...prev,
             ...musicianProfile,
             bandProfile: isBand,
           }));
-      
           const startingStep = isBand ? 3 : (musicianProfile.currentStep || 1);
           setStage(startingStep);
         };
-      
         checkForSavedProfile();
       }, [musicianProfile]);
 

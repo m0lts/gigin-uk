@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
     FaceFrownIcon,
@@ -13,38 +13,32 @@ import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { useMapbox } from '@hooks/useMapbox';
 import { openInNewTab } from '@services/utils/misc';
 import { formatFeeDate } from '@services/utils/dates';
-import { AllGigsIcon, CoinsIconSolid, LocationPinIcon, NextGigIcon } from '../../shared/ui/extras/Icons';
+import { AllGigsIcon, CoinsIconSolid, ExclamationIcon, LocationPinIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { getVenueProfileById } from '../../../services/venues';
+import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { FeedbackSection } from '../../venue/dashboard/FeedbackSection';
+import { toast } from 'sonner';
+import { submitReview } from '../../../services/reviews';
 
-export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToReview, setGigsToReview }) => {
+export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToReview, setGigsToReview, bandProfiles, unseenInvites }) => {
 
     const navigate = useNavigate();
-    const mapContainerRef = useRef(null);
 
-    const [loading, setLoading] = useState(false);
-    const [allGigDocuments, setAllGigDocuments] = useState([]);
-    const [paidGigs, setPaidGigs] = useState([]);
-    const [confirmedGigs, setConfirmedGigs] = useState([]);
     const [nextGig, setNextGig] = useState(null);
-    const [nextGigVenue, setNextGigVenue] = useState(null);
     const [venuesToReview, setVenuesToReview] = useState(null);
     const [showGigHandbook, setShowGigHandbook] = useState(false);
     const [showSocialsModal, setShowSocialsModal] = useState(false);
     const [justReviewed, setJustReviewed] = useState(false);
+    const [ratings, setRatings] = useState({});
+    const [reviewTexts, setReviewTexts] = useState({});
+    const [submittingReviews, setSubmittingReviews] = useState({});
 
     useEffect(() => {
         const filterGigs = () => {
-            setLoading(true);
             if (!musicianProfile || !gigs) {
                 console.warn('Musician profile or gigs data is missing.');
-                setLoading(false);
                 return;
             }
-            const clearedFeeGigIds = musicianProfile.clearedFees?.map((fee) => fee.gigId) || [];
-            const filteredGigs = gigs.filter(gig =>
-                gigApplications?.some(app => app.gigId === gig.gigId) || false
-              );
-            const paidGigs = gigs.filter(gig => clearedFeeGigIds.includes(gig.gigId));
             const confirmedGigs = gigs.filter(gig => musicianProfile.confirmedGigs?.includes(gig.gigId) || false);
             const nextGig = confirmedGigs
                 .filter((gig) => {
@@ -56,37 +50,16 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                     const bDateTime = new Date(b.startDateTime);
                     return aDateTime - bDateTime;
                 })[0];
-            const sortedConfirmedGigs = confirmedGigs.sort((a, b) => a.startDateTime.toDate() - b.startDateTime.toDate());
-            const sortedFilteredGigs = filteredGigs.sort((a, b) => a.startDateTime.toDate() - b.startDateTime.toDate());
-            setAllGigDocuments(sortedFilteredGigs);
-            setConfirmedGigs(sortedConfirmedGigs);
-            setPaidGigs(paidGigs);
             setNextGig(nextGig);
-            setLoading(false);
         };
 
         if (gigApplications && gigApplications.length > 0) {
             filterGigs();
-        } else {
-            setAllGigDocuments([]);
-            setConfirmedGigs([]);
-            setPaidGigs([]);
-            setLoading(false);
         }
     }, [gigApplications, gigs]);
 
+
     useEffect(() => {
-        const fetchVenueProfile = async () => {
-            if (!nextGig?.applicants) return;
-            const confirmedApplicant = nextGig.applicants.find(applicant => applicant.status === 'confirmed');
-            if (!confirmedApplicant) return;
-            try {
-                const profile = await getVenueProfileById(nextGig.venueId);
-                setNextGigVenue(profile);
-            } catch (error) {
-                console.error('Error fetching musician profile:', error);
-            }
-        };
         const fetchVenuesToReview = async () => {
             if (!gigsToReview || gigsToReview.length < 1) return;
             try {
@@ -111,12 +84,60 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
           if (gigsToReview?.length > 0) fetchVenuesToReview();
       }, [nextGig, gigsToReview, justReviewed]);
 
-    const toggleSortOrder = () => {
-        setSortOrder((prevOrder) => (prevOrder === 'desc' ? 'asc' : 'desc'));
-    };
-
     const formatName = (name) => {
         return name.split(' ')[0];
+    };
+
+    const handleRatingChange = (musicianId, star) => {
+        setRatings(prev => ({ ...prev, [musicianId]: star }));
+    };
+      
+      const handleReviewTextChange = (musicianId, text) => {
+        setReviewTexts(prev => ({ ...prev, [musicianId]: text }));
+    };
+
+    const handleSubmitReview = async (venueId, gigData) => {
+        setSubmittingReviews(prev => ({ ...prev, [venueId]: true }));
+        try {
+            const ratingValue = ratings[venueId];
+            const reviewTextValue = reviewTexts[venueId];
+            if (!ratingValue) {
+                toast.info('Please add a star rating.');
+                return;
+            };
+            let resolvedMusicianId = gigData.applicants?.find(app => app.id === musicianProfile.id)?.id;
+            if (!resolvedMusicianId && Array.isArray(bandProfiles)) {
+                for (const bandProfileId of bandProfiles) {
+                    const match = gigData.applicants?.find(app => app.id === bandProfileId);
+                    if (match) {
+                        resolvedMusicianId = match.id;
+                        break;
+                    }
+                }
+            }
+            if (!resolvedMusicianId) {
+                throw new Error('Unable to resolve musician ID from gig applicants.');
+            }
+            await submitReview({
+                reviewer: 'musician',
+                venueId: venueId,
+                musicianId: resolvedMusicianId,
+                gigId: gigData.gigId,
+                rating: ratingValue,
+                reviewText: reviewTextValue,
+                profile: gigData.musicianProfile,
+            });
+            toast.success('Review submitted. Thank you!');
+            setGigsToReview((prev) => prev.filter(g => g.gigId !== gigData.gigId));
+            setRatings((prev) => ({ ...prev, [venueId]: 0 }));
+            setReviewTexts((prev) => ({ ...prev, [venueId]: '' }));
+            setJustReviewed(true);
+        } catch (error) {
+            console.error('Error submitting review:', error);
+            toast.error('Review submission failed. Please try again.');
+        } finally {
+            setSubmittingReviews(prev => ({ ...prev, [venueId]: false }));
+        }
     };
 
     const howToSteps = [
@@ -138,8 +159,6 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
         }
     ];
 
-    console.log(venuesToReview)
-
     return (
         <>
             <div className="head">
@@ -150,18 +169,12 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                     <h2>Hi {formatName(user.name)}!</h2>
                     <h4>Ready to tear up the music scene?</h4>
                 </div>
-                {/* {newApplicationsGigs.length > 0 && (
-                    <div className="new-applications" onClick={() => navigate('/venues/dashboard/gigs')}>
+                {unseenInvites.length > 0 && (
+                    <div className="new-applications" onClick={() => navigate('/dashboard/gigs')}>
                         <ExclamationIcon />
-                        <h4>You have {newApplicationsGigs.length || 3} new gig applications.</h4>
+                        <h4>You have {unseenInvites.length || 0} unseen gig invites.</h4>
                     </div>
-                )} */}
-                {/* {musicianRequests.length > 0 && (
-                    <div className="new-applications" onClick={() => navigate('/venues/dashboard/gigs?showRequests=true')}>
-                        <ExclamationIcon />
-                        <h4>You have {musicianRequests.length || 3} new musician requests.</h4>
-                    </div>
-                )} */}
+                )}
                 <div className="quick-buttons">
                     <div className="quick-button" onClick={() => navigate('/find-a-gig')}>
                         <TelescopeIcon />
@@ -182,7 +195,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                     )}
                     <div className="quick-button" onClick={() => navigate('/dashboard/gigs')}>
                         <AllGigsIcon />
-                        <span className='quick-button-text'>All Gigs</span>
+                        <span className='quick-button-text'>Gig Applications</span>
                     </div>
                 </div>
 
@@ -192,6 +205,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                         <div className="musicians-to-review">
                             {venuesToReview.map((venue) => {
                                 const id = venue.venueProfile.venueId;
+                                
                                 const currentRating = ratings[id] || 0;
                                 const currentText = reviewTexts[id] || '';
 
@@ -199,7 +213,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                                     <div className="musician-to-review" key={id}>
                                         <div className="musician-info">
                                             <figure className="musician-img-cont">
-                                                <img className="musician-img" src={venue.venueProfile.picture} alt={venue.venueProfile.name} />
+                                                <img className="musician-img" src={venue.venueProfile.photos[0]} alt={venue.venueProfile.name} />
                                             </figure>
                                             <div className="musician-name">
                                                 <h3>{venue.venueProfile.name}</h3>
@@ -226,13 +240,17 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                                                 className='textarea'
                                             />
                                         </div>
-                                        <button
-                                            className='btn primary'
-                                            onClick={() => handleSubmitReview(id, venue)}
-                                            disabled={submittingReviews[id]}
-                                        >
-                                            {submittingReviews[id] ? <LoadingThreeDots /> : 'Submit Review'}
-                                        </button>
+                                        {submittingReviews[id] ? (
+                                            <LoadingThreeDots />
+                                        ) : (
+                                            <button
+                                                className='btn primary'
+                                                onClick={() => handleSubmitReview(id, venue)}
+                                                disabled={submittingReviews[id]}
+                                            >
+                                                Submit Review
+                                            </button>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -252,6 +270,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                         </div>
                     </div>
                 )}
+                <FeedbackSection user={user} />
                 {showGigHandbook && (
                     <GigHandbook
                         setShowGigHandbook={setShowGigHandbook}

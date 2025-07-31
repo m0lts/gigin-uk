@@ -4,6 +4,7 @@ import { acceptBandInvite } from '@services/bands';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { joinBandByPassword, getBandByPassword } from '@services/bands';
+import { toast } from 'sonner';
 
 export const JoinBand = () => {
     const { user } = useAuth();
@@ -22,7 +23,7 @@ export const JoinBand = () => {
       const joinViaLink = async () => {
         if (!user) {
           setError('You must be logged in to join a band.');
-          console.log('user errror')
+          console.log('user error')
           return;
         }
         if (!user.musicianProfile?.musicianId) {
@@ -57,6 +58,7 @@ export const JoinBand = () => {
         const band = await getBandByPassword(code.trim().toLowerCase());
         setBand(band);
         setStatus('idle');
+        toast.success("You're in the band!")
       } catch (err) {
         setStatus('error');
         setMessage(err.message);
@@ -69,6 +71,7 @@ export const JoinBand = () => {
         setLoading(true);
         await joinBandByPassword(band.id, user.musicianProfile);
         navigate('/dashboard/bands', { replace: true });
+        toast.success("You're in the band!")
       } catch (err) {
         console.error(err);
         setStatus('error');

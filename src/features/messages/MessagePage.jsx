@@ -1,5 +1,5 @@
 import '@styles/shared/messages.styles.css'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@hooks/useAuth';
 import { 
     HouseIconLight,
@@ -22,12 +22,11 @@ import { ArchiveIcon, InboxIcon, SaveIcon, SendMessageIcon } from '../shared/ui/
 import { updateConversationDocument } from '../../services/conversations';
 
 export const MessagePage = () => {
+
     const { user } = useAuth();
     const navigate = useNavigate();
-    const [newMessages, setNewMessages] = useState(false);
     const [conversations, setConversations] = useState([]);
     const [gigData, setGigData] = useState();
-    const [activeConversation, setActiveConversation] = useState(null);
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const paramsConversationId = queryParams.get('conversationId');
@@ -41,81 +40,40 @@ export const MessagePage = () => {
 
     useEffect(() => {
         if (!user) return;
-      
         const unsubscribe = listenToUserConversations(user, (updatedConversations, docChanges) => {
-          setConversations(prev => {
-            const merged = [...prev];
-            updatedConversations.forEach(newConv => {
-              if (newConv.status !== 'archived') {
-                const index = merged.findIndex(c => c.id === newConv.id);
-                if (index !== -1) {
-                  merged[index] = newConv;
-                } else {
-                  merged.push(newConv);
-                }
-              }
-            });
-            merged.sort((a, b) => {
-              const aTime = a.lastMessageTimestamp?.seconds || 0;
-              const bTime = b.lastMessageTimestamp?.seconds || 0;
-              return bTime - aTime;
-            });
-            return merged;
-          });
-      
-          setArchivedConversations(prev => {
-            const merged = [...prev];
-            updatedConversations.forEach(newConv => {
-              if (newConv.status === 'archived') {
-                const index = merged.findIndex(c => c.id === newConv.id);
-                if (index !== -1) {
-                  merged[index] = newConv;
-                } else {
-                  merged.push(newConv);
-                }
-              }
-            });
-            merged.sort((a, b) => {
-              const aTime = a.lastMessageTimestamp?.seconds || 0;
-              const bTime = b.lastMessageTimestamp?.seconds || 0;
-              return bTime - aTime;
-            });
-            return merged;
-          });
-      
-          docChanges.forEach(change => {
-            if (change.type === 'added') {
-              setNewMessages(true);
-            }
-          });
+            const open = updatedConversations
+                .filter(c => c.status !== 'archived')
+                .sort((a, b) => (b.lastMessageTimestamp?.seconds || 0) - (a.lastMessageTimestamp?.seconds || 0));
+            setConversations(open);
+            const archived = updatedConversations
+                .filter(c => c.status === 'archived')
+                .sort((a, b) => (b.lastMessageTimestamp?.seconds || 0) - (a.lastMessageTimestamp?.seconds || 0));
+            setArchivedConversations(archived);
         });
-      
         return unsubscribe;
-      }, [user]);
+    }, [user]);
+
+    const activeConversation = useMemo(() => {
+        if (!paramsConversationId || conversations.length === 0) return null;
+        return conversations.find(c => c.id === paramsConversationId) || null;
+    }, [conversations, paramsConversationId]);
 
     useEffect(() => {
-        const updateViewed = async () => {
-            if (paramsConversationId && user?.uid) {
-            try {
-                await updateConversationLastViewed(paramsConversationId, user.uid);
-            } catch (err) {
-                console.error('Error updating last viewed timestamp:', err);
-            }
-            }
-        };
-        updateViewed();
-    }, [paramsConversationId, user]);
+        if (!user || !activeConversation) return;
+        const lastViewed = activeConversation.lastViewed?.[user.uid]?.seconds || 0;
+        const lastMessageTime = activeConversation.lastMessageTimestamp?.seconds || 0;
+        if (lastMessageTime > lastViewed && activeConversation.lastMessageSenderId !== user.uid) {
+          updateConversationLastViewed(activeConversation.id, user.uid).catch(err =>
+            console.error('Error updating last viewed timestamp:', err)
+          );
+        }
+    }, [activeConversation, user]);
     
     useEffect(() => {
-        if (conversations.length === 0) return;
-        const matched = conversations.find(c => c.id === paramsConversationId);
-        if (matched) {
-          setActiveConversation(matched);
-        } else if (!paramsConversationId) {
-          const fallbackId = conversations[0]?.id;
-          if (fallbackId) navigate(`/messages?conversationId=${fallbackId}`);
+        if (!paramsConversationId && conversations.length > 0) {
+          navigate(`/messages?conversationId=${conversations[0].id}`);
         }
-    }, [conversations, paramsConversationId, navigate]);
+    }, [paramsConversationId, conversations, navigate]);
 
     const handleSelectConversation = async (conversationId, musicianId, gigId) => {
         navigate(`/messages?conversationId=${conversationId}`);
@@ -127,11 +85,11 @@ export const MessagePage = () => {
         await updateConversationDocument(conversation.id, {
           status: shouldArchive ? 'archived' : 'open',
         });
-      };
+    };
 
     const handleShowArchived = () => {
         setShowArchived(prev => !prev);
-      };
+    };
 
     if (conversations.length > 0) {
         return (

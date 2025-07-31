@@ -21,10 +21,11 @@ import { payoutToBankAccount, transferStripeFunds } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatFeeDate } from '@services/utils/dates';
+import { toast } from 'sonner';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-export const Finances = ({ musicianProfile, setMusicianProfile }) => {
+export const Finances = ({ musicianProfile }) => {
     const [sortOrder, setSortOrder] = useState('desc');
     const [feesToDisplay, setFeesToDisplay] = useState([]);
     const [pendingTotal, setPendingTotal] = useState(0);
@@ -154,20 +155,20 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
         setPayingOut(true);
         const amountToWithdraw = musicianProfile.withdrawableEarnings;
         if (!amountToWithdraw || amountToWithdraw <= 0) {
-          alert('No funds available to withdraw.');
+          toast.error('No funds available to withdraw.');
           return;
         }
         try {
             const success = await payoutToBankAccount(musicianProfile.musicianId, amountToWithdraw);
             if (success) {
-              alert('Payout successful!');
+              toast.success('Payout successful!');
               window.location.reload();
             } else {
-              alert('Payout failed. Please try again.');
+              toast.error('Payout failed. Please try again.');
             }
         } catch (error) {
           console.error('Error processing payout:', error);
-          alert('An error occurred while processing the payout. Please try again later.');
+          toast.error('An error occurred while processing the payout. Please try again later.');
         } finally {
             setPayingOut(false);
         }
@@ -212,7 +213,7 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                                                 await updateMusicianProfile(musicianProfile.musicianId, { stripeAccountId: account });
                                             }
                                             if (error) {
-                                            setError(true);
+                                                setError(true);
                                             }
                                         });
                                     }}
@@ -227,21 +228,21 @@ export const Finances = ({ musicianProfile, setMusicianProfile }) => {
                                         setOnboardingExited(true);
                                         try {
                                             await updateMusicianProfile(musicianProfile.musicianId, {bankDetailsAdded: true});
-                                            setMusicianProfile(...prev => ({...prev, bankDetailsAdded: true}));
                                             const musicianDoc = await getMusicianProfileByMusicianId(musicianProfile.musicianId);
                                             const withdrawableFunds = musicianDoc.withdrawableFunds;
                                             if (withdrawableFunds && withdrawableFunds > 1) {
                                                 const success = await transferStripeFunds(musicianProfile.stripeAccountId, withdrawableFunds * 100);
                                                 if (success) {
                                                     await clearMusicianBalance(musicianProfile.musicianId);
-                                                    setMusicianProfile(prev => ({ ...prev, withdrawableFunds: 0 }));
                                                 } else {
                                                     console.error('Error transferring funds to Stripe account.');
                                                 }
                                             }
+                                            toast.success('Stripe Account Linked!')
                                             window.location.reload();
                                         } catch (error) {
                                             console.error('Error updating musician profile:', error);
+                                            toast.error('Error connecting Stripe account. Please try again.')
                                         }
                                     }}
                                 />

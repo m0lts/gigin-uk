@@ -196,13 +196,15 @@
 
 .header .notification-dot {
     position: absolute;
-    top:-10px;
-    right:-7px;
+    top:-8px;
+    right:-3px;
 }
 
 .header .notification-dot .icon {
     color: var(--gn-orange);
+    font-size: 0.75rem;
 }
+
 
 
 /* FEEDBACK */

@@ -151,7 +151,7 @@ export const subscribeToBandProfileWithMusicianProfile = (bandId, callback, onEr
         const musicianSnap = await getDoc(musicianRef);
 
         const bandMusicianProfile = musicianSnap.exists() && musicianSnap.data().bandProfile
-          ? { id: musicianSnap.id, ref: musicianRef, ...musicianSnap.data() }
+          ? { id: musicianSnap.id, ...musicianSnap.data() }
           : null;
 
         callback({ band: bandData, bandMusicianProfile });
@@ -177,7 +177,7 @@ export const getBandDataOnly = async (bandId) => {
 
   if (!bandSnap.exists()) return null;
 
-  const bandData = { id: bandSnap.id, ref: bandRef, ...bandSnap.data() };
+  const bandData = { id: bandSnap.id, ...bandSnap.data() };
   return bandData;
 };
 
@@ -202,7 +202,7 @@ export const getBandsByMusicianId = async (musicianId) => {
       const musicianSnap = await getDoc(musicianProfileRef);
 
       const bandProfile = musicianSnap.exists() && musicianSnap.data().bandProfile
-        ? { id: musicianSnap.id, ref: musicianProfileRef, ...musicianSnap.data() }
+        ? { id: musicianSnap.id, ...musicianSnap.data() }
         : null;
 
       return { ...bandData, bandProfile };

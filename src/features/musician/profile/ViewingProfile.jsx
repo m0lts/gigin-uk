@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom'
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
-import { arrayUnion } from 'firebase/firestore';
+import { arrayRemove, arrayUnion } from 'firebase/firestore';
 import { OverviewTab } from '@features/musician/profile/OverviewTab';
 import { MusicTab } from '@features/musician/profile/MusicTab';
 import { ReviewsTab } from '@features/musician/profile/ReviewsTab';
@@ -12,7 +12,6 @@ import {
     SavedIcon,
     StarIcon,
     TickIcon } from '@features/shared/ui/extras/Icons';
-import { useGigs } from '@context/GigsContext';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { getMusicianProfileByMusicianId, updateMusicianProfile } from '@services/musicians';
@@ -33,21 +32,16 @@ import { toast } from 'sonner';
 export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
 
     const { musicianId, gigId } = useParams();
-    const { gigs } = useGigs();
     const navigate = useNavigate();
-
     const [musicianProfile, setMusicianProfile] = useState();
-    const [applicantData, setApplicantData] = useState();
     const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(true);
     const [padding, setPadding] = useState('5%');
-
     const [musicianSaved, setMusicianSaved] = useState(false);
     const [savingMusician, setSavingMusician] = useState(false);
     const [inviteMusicianModal, setInviteMusicianModal] = useState(false);
     const [usersGigs, setUsersGigs] = useState([]);
     const [selectedGig, setSelectedGig] = useState();
-    const [invitedMusician, setInvitedMusician] = useState(false);
     const [band, setBand] = useState(null);
     const [bandMembers, setBandMembers] = useState(null);
 
@@ -60,14 +54,6 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 if (musician.bandProfile) {
                     const bandData = await getBandDataOnly(musician.musicianId);
                     setBand(bandData);
-                }
-                if (gigs) {
-                    const currentGig = gigs.find(gig => gig.gigId === gigId);
-                    const applicant = currentGig?.applicants.find(applicant => applicant.id === musician.musicianId);
-                    setApplicantData(applicant);
-                    if (applicant?.invited) {
-                        setInvitedMusician(true);
-                    }
                 }
             } catch (error) {
                 console.error('Error fetching musician profile', error);
@@ -86,7 +72,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
         fetchMusicianProfile();
         getSavedMusicians();
 
-    }, [musicianId, gigId, gigs]);
+    }, [musicianId, gigId]);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -125,8 +111,28 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
               savedMusicians: arrayUnion(musicianId),
             });
             setMusicianSaved(true);
+            toast.success('Musician Saved.')
           } catch (error) {
             console.error('Error saving musician:', error);
+            toast.error('Failed to save musician. Please try again.')
+          } finally {
+            setSavingMusician(false);
+          }
+        }
+    };
+
+    const handleUnsaveMusician = async () => {
+        if (user && musicianId) {
+          setSavingMusician(true);
+          try {
+            await updateUserDocument(user.uid, {
+              savedMusicians: arrayRemove(musicianId),
+            });
+            setMusicianSaved(false);
+            toast.success('Musician Unsaved.')
+          } catch (error) {
+            console.error('Error saving musician:', error);
+            toast.error('Failed to unsave musician. Please try again.')
           } finally {
             setSavingMusician(false);
           }
@@ -145,12 +151,9 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             .flatMap(venueProfile => venueProfile.gigs || []);
         try {
             const fetchedGigs = await getGigsByIds(gigIds);
-            const futureGigs = filterFutureGigs(fetchedGigs);
             const availableGigs = filterInvitableGigsForMusician(fetchedGigs, musicianId);
-            if (availableGigs.length > 0) {
-                setInviteMusicianModal(true);
-                setUsersGigs(futureGigs)
-            }
+            setInviteMusicianModal(true);
+            setUsersGigs(availableGigs)
         } catch (error) {
             console.error('Error fetching future gigs:', error);
             toast.error('We encountered an error. Please try again.')
@@ -187,9 +190,10 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 text: `${venueToSend.accountName} has invited you to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
             })
             setInviteMusicianModal(false);
-            setInvitedMusician(true);
+            toast.success(`Invite sent to ${musicianProfile.name}`)
         } catch (error) {
             console.error('Error while creating or fetching conversation:', error);
+            toast.error('Error inviting musician. Please try again.')
         }
     };
 
@@ -273,35 +277,33 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                             )} */}
                         {user.venueProfiles.length > 0 && (
                             <div className='profile-actions venue'>
-                                    {invitedMusician ? (
-                                    <button className='btn primary' onClick={handleInviteMusician}>
-                                        <TickIcon />
-                                        Invited
-                                    </button>
-                                    ) : (
-                                        <button className='btn primary' onClick={handleInviteMusician}>
-                                            <InviteIcon />
-                                            Invite
-                                        </button>
-    
-                                    )}
-                                <button className='btn secondary' onClick={handleSaveMusician} disabled={user?.savedMusicians?.includes(musicianId)}>
-                                    {musicianSaved ? (
-                                        <>
-                                            <SavedIcon />
-                                            Saved
-                                        </>
-                                    ) : (
-                                        savingMusician ? (
-                                            <LoadingThreeDots />
-                                        ) : (
-                                            <>
-                                                <SaveIcon />
-                                                Save
-                                            </>
-                                        )
-                                    )}
+                                <button className='btn primary' onClick={handleInviteMusician}>
+                                    <InviteIcon />
+                                    Invite
                                 </button>
+                                    {!musicianSaved ? (
+                                        <button className='btn secondary' onClick={handleSaveMusician}>
+                                            {savingMusician ? (
+                                                <LoadingThreeDots />
+                                            ) : (
+                                                <>
+                                                    <SaveIcon />
+                                                    Save
+                                                </>
+                                            )}
+                                        </button>
+                                    ) : (
+                                        <button className='btn secondary' onClick={handleUnsaveMusician}>
+                                            {savingMusician ? (
+                                                <LoadingThreeDots />
+                                            ) : (
+                                                <>
+                                                    <SavedIcon />
+                                                    Unsave
+                                                </>
+                                            )}
+                                        </button>   
+                                    )}
                             </div>
                         )}
                     </div>
@@ -328,12 +330,22 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             {inviteMusicianModal && (
                 <div className='modal'>
                     <div className='modal-content'>
-                        <h2>Select a gig to invite {musicianProfile.name} to play at.</h2>
+                        <div className="head">
+                            <h2>Invite {musicianProfile.name} to a Gig</h2>
+                            {usersGigs.length > 0 ? (
+                                <p>Select a gig you've already posted, or click 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
+                            ) : (
+                                <p>You have no gig posts availabe for invitation to. You can create one by clicking 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
+                            )}
+                        </div>
                         <div className='gig-selection'>
                             {usersGigs.length > 0 && (
                                 usersGigs.map((gig, index) => (
                                     <div className={`card ${selectedGig === gig ? 'selected' : ''}`} key={index} onClick={() => setSelectedGig(gig)}>
-                                        <h4 className='text'>{gig.venue.venueName}</h4>
+                                        <div className="gig-details">
+                                            <h4 className='text'>{gig.gigName}</h4>
+                                            <h5>{gig.venue.venueName}</h5>
+                                        </div>
                                         <p className='sub-text'>{formatDate(gig.date, 'short')} - {gig.startTime}</p>
                                     </div>
                                 ))
@@ -343,7 +355,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                             Build New Gig For Musician
                         </button>
                         <div className='two-buttons'>
-                            <button className='btn secondary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>
+                            <button className='btn tertiary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>
                             <button className='btn primary' disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
                         </div>
                     </div>

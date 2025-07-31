@@ -21,12 +21,13 @@ import {
     TicketIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth';
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { listenToUserConversations } from '@services/conversations';
 import { submitUserFeedback } from '@services/reports';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 
-export const TopBar = ({ user }) => {
+export const TopBar = ({ user, bandProfiles }) => {
     
     const { logout } = useAuth();
     const navigate = useNavigate();
@@ -35,6 +36,8 @@ export const TopBar = ({ user }) => {
     const [newMessages, setNewMessages] = useState(false);
     const menuRef = useRef(null);
     const buttonRef = useRef(null);
+    const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'musician', bandProfiles), [location.pathname]);
+
 
     useEffect(() => {
         if (!user) return;
@@ -81,34 +84,56 @@ export const TopBar = ({ user }) => {
     
     return (
         <header className='top-bar'>
-            <div className='buttons'>
-                <Link className='link' to={'/find-a-gig'}>
-                    <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                        <TelescopeIcon />
-                        Find A Gig
-                    </button>
-                </Link>
-                        {newMessages ? (
-                            <Link className='link' to={'/messages'}>
-                                <button className='btn secondary messages'>
-                                    <span className='notification-dot'><DotIcon /></span>
-                                    <MailboxFullIcon />
-                                    Messages
-                                </button>
-                            </Link>
-                        ) : (
-                            <Link className='link' to={'/messages'}>
-                                <button className='btn secondary'>
-                                    <MailboxEmptyIcon />
-                                    Messages
-                                </button>
-                            </Link>
-                        )}
+                {location.pathname !== '/dashboard' && (
+                  <div className="breadcrumbs">
+                      {breadcrumbs.map((crumb, index) => (
+                          <React.Fragment key={crumb.path}>
+                          <div className="breadcrumb">
+                              {index !== breadcrumbs.length - 1 ? (
+                              <Link to={crumb.path} className='breadcrumb-link'>{crumb.label}</Link>
+                              ) : (
+                                <p className='breadcrumb-text'>{crumb.label}</p>
+                              )}
+                          </div>
+                          {index !== breadcrumbs.length - 1 && (
+                              <div className="breadcrumb-separator">
+                              <RightChevronIcon />
+                              </div>
+                          )}
+                          </React.Fragment>
+                      ))}
+                  </div>
+              )}
+            <div className="right">
+                <div className='buttons'>
+                    <Link className='link' to={'/find-a-gig'}>
+                        <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
+                            <TelescopeIcon />
+                            Find A Gig
+                        </button>
+                    </Link>
+                            {newMessages ? (
+                                <Link className='link' to={'/messages'}>
+                                    <button className='btn secondary messages'>
+                                        <MailboxFullIcon />
+                                        Messages
+                                        <span className='notification-dot'><DotIcon /></span>
+                                    </button>
+                                </Link>
+                            ) : (
+                                <Link className='link' to={'/messages'}>
+                                    <button className='btn secondary'>
+                                        <MailboxEmptyIcon />
+                                        Messages
+                                    </button>
+                                </Link>
+                            )}
+                </div>
+                <button className={`btn account-btn ${accountMenu ? 'active' : ''}`} onClick={() => setAccountMenu(!accountMenu)} ref={buttonRef}>
+                    <h4 className='withdrawable-earnings'>£{user?.musicianProfile?.withdrawableEarnings ? parseFloat(user.musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h4>
+                    <UserIcon />
+                </button>
             </div>
-            <button className={`btn account-btn ${accountMenu ? 'active' : ''}`} onClick={() => setAccountMenu(!accountMenu)} ref={buttonRef}>
-                <h4 className='withdrawable-earnings'>£{user?.musicianProfile?.withdrawableEarnings ? parseFloat(user.musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h4>
-                <UserIcon />
-            </button>
             {accountMenu && (
                     <nav className='account-menu' ref={menuRef}>
                         <div className='item name-and-email no-margin'>

@@ -15,17 +15,13 @@ export const useAuth = () => {
       if (firebaseUser) {
         try {
           const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-
-          // Real-time listener for user document
           const unsubscribeUserDoc = onSnapshot(userDocRef, async (userDocSnapshot) => {
             const userData = { uid: firebaseUser.uid, ...userDocSnapshot.data(), email: firebaseUser.email };
             let userMusicianProfile = null;
             let userVenueProfiles = [];
-
             if (userData.musicianProfile && userData.musicianProfile.length > 0) {
               const musicianProfileRef = doc(firestore, 'musicianProfiles', userData.musicianProfile[0]);
               const musicianProfileDoc = await getDoc(musicianProfileRef);
-
               if (musicianProfileDoc.exists()) {
                 userMusicianProfile = musicianProfileDoc.data();
                 userData.musicianProfile = userMusicianProfile;
@@ -33,7 +29,6 @@ export const useAuth = () => {
             } else {
               delete userData.musicianProfile;
             }
-
             if (userData.venueProfiles && userData.venueProfiles.length > 0) {
               const venueProfilePromises = userData.venueProfiles.map(async (venueProfileId) => {
                 const venueProfileRef = doc(firestore, 'venueProfiles', venueProfileId);
@@ -43,34 +38,30 @@ export const useAuth = () => {
                 }
                 return null;
               });
-
               userVenueProfiles = await Promise.all(venueProfilePromises);
               userData.venueProfiles = userVenueProfiles.filter(profile => profile !== null);
             }
             setUser(userData);
-            setLoading(false); // Set loading to false only when data is successfully fetched
+            setLoading(false);
           });
-
-          // Cleanup function to unsubscribe from user document updates
           return () => {
             unsubscribeUserDoc();
-            setLoading(false); // Ensure loading is set to false when unsubscribing
+            setLoading(false);
           };
         } catch (error) {
           console.error('Error fetching user data:', error);
           setUser(null);
-          setLoading(false); // Set loading to false on error
+          setLoading(false);
         }
       } else {
         setUser(null);
-        setLoading(false); // Set loading to false if no user is logged in
+        setLoading(false);
       }
     });
 
-    // Cleanup function to unsubscribe from auth state changes
     return () => {
       unsubscribeAuth();
-      setLoading(false); // Ensure loading is set to false when unsubscribing from auth changes
+      setLoading(false);
     };
   }, [navigate]);
   

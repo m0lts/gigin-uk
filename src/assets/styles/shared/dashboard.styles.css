@@ -126,6 +126,10 @@
     align-items: center;
 }
 
+.dashboard .sidebar.musician .logo {
+    margin-bottom: 1rem;
+}
+
 .dashboard .sidebar .logo-text {
     font-family: var(--gn-logo-font);
 }
@@ -273,6 +277,7 @@
 
 .dashboard .sidebar .menu-item .notification .icon {
     font-size: 0.5rem;
+    color: var(--gn-orange);
 }
 
 .dashboard .sidebar .menu-item:first-of-type {

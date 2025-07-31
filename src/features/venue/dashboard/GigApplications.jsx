@@ -519,7 +519,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </button>
                                                         )
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant.invited && (
                                                         <>
                                                             <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
                                                                 <TickIcon />
@@ -530,6 +530,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                                 Decline
                                                             </button>
                                                         </>
+                                                    )}
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && applicant.invited && (
+                                                        <div className='status-box'>
+                                                            <div className='status upcoming'>
+                                                                <ClockIcon />
+                                                                Musician Invited
+                                                            </div>
+                                                        </div>
                                                     )}
                                                     {status === 'declined' && (
                                                         <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.id)}}>

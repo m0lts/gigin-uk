@@ -11,6 +11,7 @@ import { updateMusicianProfile } from '@services/musicians';
 import { generateBandPassword } from '@services/utils/validation';
 import { arrayUnion } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export const BandCreator = ({ musicianProfile }) => {
     const { user } = useAuth();
@@ -88,8 +89,10 @@ export const BandCreator = ({ musicianProfile }) => {
         navigate(`/dashboard/bands/${formData.bandId}`, {
           state: { band: updatedFormData },
         });
+        toast.success('Band created!')
       } catch (e) {
         console.error('Error submitting band:', e);
+        toast.error('Error creating band. Please try again.')
       }
     };
 

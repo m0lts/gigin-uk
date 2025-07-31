@@ -52,8 +52,11 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
             return dateObj;
         };
         const newApplications = gigs.filter(gig =>
-            gig.applicants.some(applicant => applicant.viewed === false || applicant.viewed === undefined)
-        );
+            gig.applicants.some(applicant =>
+              (applicant.viewed === false || applicant.viewed === undefined) &&
+              applicant.invited !== true
+            )
+          );
         const confirmedGigsLocal = gigs.filter(gig =>
             gig.applicants.some(applicant => applicant.status === 'confirmed')
         );

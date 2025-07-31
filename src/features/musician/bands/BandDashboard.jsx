@@ -9,8 +9,9 @@ import { MusicTab } from '../profile/MusicTab';
 import { ReviewsTab } from '../profile/ReviewsTab';
 import { updateMusicianProfile } from '@services/musicians';
 import { BandMembersTab } from './BandMembersTab';
+import { toast } from 'sonner';
 
-export const BandDashboard = ({ musicianProfile }) => {
+export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) => {
   const { bandId } = useParams();
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -19,32 +20,29 @@ export const BandDashboard = ({ musicianProfile }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [bandMembers, setBandMembers] = useState(null);
   const [editingMedia, setEditingMedia] = useState(false);
-  const [localVideos, setLocalVideos] = useState([]);
-  const [localTracks, setLocalTracks] = useState([]);
+  const [localVideos, setLocalVideos] = useState(band?.videos || []);
+  const [localTracks, setLocalTracks] = useState(band?.tracks || []);
 
   useEffect(() => {
-    if (!band && musicianProfile?.musicianId) {
-      getBandsByMusicianId(musicianProfile.musicianId).then((bands) => {
-        const found = bands.find((b) => b.id === bandId);
-        if (found) {
-          setBand(found);
-          setActiveTab(!band.bandProfile.completed ? 'members' : 'overview')
-        } else {
-          navigate('/dashboard/bands')
-        };
-      });
-    } else {
-      setBand(state?.band);
-      setLocalVideos(state?.band.bandProfile?.videos || []);
-      setLocalTracks(state?.band.bandProfile?.tracks || [])
+    if (!band) {
+      console.log('manual fetch')
+      const found = bandProfiles.find((b) => b.id === bandId);
+      if (found) {
+        setBand(found);
+        setLocalVideos(found.videos);
+        setLocalTracks(found.tracks);
+        setActiveTab(!band.completed ? 'members' : 'overview')
+      } else {
+        navigate('/dashboard/bands')
+      };
     }
-  }, [band, bandId, musicianProfile]);
+  }, [band, bandId]);
 
-  useEffect(() => {
-    if (!band.bandProfile?.completed && activeTab !== 'members') {
-      setActiveTab('members');
-    }
-  }, [band, activeTab]);
+  // useEffect(() => {
+  //   if (!band.completed && activeTab !== 'members') {
+  //     setActiveTab('members');
+  //   }
+  // }, [band, activeTab]);
 
   const saveChanges = async () => {
     try {
@@ -53,18 +51,10 @@ export const BandDashboard = ({ musicianProfile }) => {
             tracks: localTracks,
         });
         setEditingMedia(false);
+        toast.success('Changes saved.')
     } catch (err) {
         console.error('Error saving changes:', err);
-    }
-};
-
-  const refreshBandInfo = async () => {
-    try {
-      const bands = await getBandsByMusicianId(musicianProfile.musicianId);
-      const updated = bands.find((b) => b.id === bandId);
-      if (updated) setBand(updated);
-    } catch (err) {
-      console.error('Failed to refresh band info:', err);
+        toast.error('Error saving changes. Please try again.')
     }
   };
 
@@ -74,11 +64,11 @@ export const BandDashboard = ({ musicianProfile }) => {
     try {
       setLoading(true);
       await leaveBand(band.id, musicianProfile.musicianId, musicianProfile.userId);
-      alert('You’ve successfully left the band.');
+      toast.success('Successfully left the band.');
       navigate('/dashboard/bands');
     } catch (err) {
       console.error('Failed to leave band:', err);
-      alert('Failed to leave the band. Please try again.');
+      toast.error('Failed to leave the band. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -92,11 +82,11 @@ export const BandDashboard = ({ musicianProfile }) => {
     try {
       setLoading(true);
       await deleteBand(band.id);
-      alert('The band has been deleted successfully.');
+      toast.success('Band deleted.');
       navigate('/dashboard/bands');
     } catch (err) {
       console.error('Failed to delete band:', err);
-      alert('Failed to delete the band. Please try again.');
+      toast.error('Failed to delete band. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -107,7 +97,7 @@ export const BandDashboard = ({ musicianProfile }) => {
   }
 
   const renderActiveTabContent = () => {
-    if (!band.bandProfile?.completed && activeTab !== 'members') {
+    if (!band.completed && activeTab !== 'members') {
       return (
         <div className="tab-locked">
           <p>Please complete your band profile to access this section.</p>
@@ -117,7 +107,7 @@ export const BandDashboard = ({ musicianProfile }) => {
   
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab musicianData={band.bandProfile} />;
+        return <OverviewTab musicianData={band} />;
       case 'members':
         return (
           <BandMembersTab
@@ -125,7 +115,7 @@ export const BandDashboard = ({ musicianProfile }) => {
             bandMembers={bandMembers}
             setBandMembers={setBandMembers}
             musicianId={musicianProfile.musicianId}
-            refreshBandInfo={refreshBandInfo}
+            refreshBandInfo={refreshData}
           />
         );
       case 'music':
@@ -135,22 +125,21 @@ export const BandDashboard = ({ musicianProfile }) => {
             tracks={localTracks}
             setVideos={setLocalVideos}
             setTracks={setLocalTracks}
-            musicianId={band.bandProfile.musicianId}
+            musicianId={band.musicianId}
             editingMedia={editingMedia}
             setEditingMedia={setEditingMedia}
           />
         );
       case 'reviews':
-        return <ReviewsTab profile={band.bandProfile} />;
+        return <ReviewsTab profile={band} />;
       default:
         return null;
     }
   };
 
   const editMusicianProfileRedirect = () => {
-    if (!band.bandProfile) return;
-    const { ref, ...bandProfile } = band.bandProfile;
-    navigate('/create-profile', { state: { musicianProfile: bandProfile } });
+    if (!band) return;
+    navigate('/create-profile', { state: { musicianProfile: band } });
   };
 
   const handleProfileNavigation = () => {
@@ -159,7 +148,7 @@ export const BandDashboard = ({ musicianProfile }) => {
             musicianProfile: {
               name: band.name,
               picture: band.picture,
-              musicianId: band.id,
+              musicianId: band.bandId,
               email: band.email,
               bandProfile: true,
               musicianType: 'Band'
@@ -208,7 +197,7 @@ export const BandDashboard = ({ musicianProfile }) => {
               </div>
           </div>
         </div>
-        {!band.bandProfile?.completed ? (
+        {!band.completed ? (
             <div className="profile-incomplete">
                 <h2>Please add some more information before applying to gigs.</h2>
                 <button className='btn primary-alt' onClick={handleProfileNavigation}>
@@ -217,7 +206,7 @@ export const BandDashboard = ({ musicianProfile }) => {
             </div>
         ) : (
           <div className="profile-actions">
-            {band.admin.musicianId === musicianProfile.musicianId ? (
+            {band.bandInfo.admin.musicianId === musicianProfile.musicianId ? (
               <button className="btn danger" onClick={handleDeleteBand}><DeleteIcon /></button>
             ) : (
               <button className="btn danger" onClick={handleLeaveBand}><DoorIcon /></button>
@@ -228,17 +217,17 @@ export const BandDashboard = ({ musicianProfile }) => {
         <div className='profile-view band'>
         <nav className='profile-tabs band'>
           <div className="left-side">
-            {band.bandProfile?.completed && (
+            {band.completed && (
               <>
                 <p
-                  onClick={() => band.bandProfile.completed && setActiveTab('overview')}
-                  className={`profile-tab ${activeTab === 'overview' ? 'active' : ''} ${!band.bandProfile.completed ? 'disabled' : ''}`}
+                  onClick={() => band.completed && setActiveTab('overview')}
+                  className={`profile-tab ${activeTab === 'overview' ? 'active' : ''} ${!band.completed ? 'disabled' : ''}`}
                 >
                   Overview
                 </p>
                 <p
-                  onClick={() => band.bandProfile.completed && setActiveTab('music')}
-                  className={`profile-tab ${activeTab === 'music' ? 'active' : ''} ${!band.bandProfile.completed ? 'disabled' : ''}`}
+                  onClick={() => band.completed && setActiveTab('music')}
+                  className={`profile-tab ${activeTab === 'music' ? 'active' : ''} ${!band.completed ? 'disabled' : ''}`}
                 >
                   Music
                 </p>
@@ -250,17 +239,17 @@ export const BandDashboard = ({ musicianProfile }) => {
             >
               Band Members
             </p>
-            {band.bandProfile?.completed && (
+            {band.completed && (
               <p
-                onClick={() => band.bandProfile.completed && setActiveTab('reviews')}
-                className={`profile-tab ${activeTab === 'reviews' ? 'active' : ''} ${!band.bandProfile.completed ? 'disabled' : ''}`}
+                onClick={() => band.completed && setActiveTab('reviews')}
+                className={`profile-tab ${activeTab === 'reviews' ? 'active' : ''} ${!band.completed ? 'disabled' : ''}`}
               >
                 Reviews
               </p>
              )}
           </div>
           <div className="right-side">
-            {editingMedia && band.bandProfile?.completed && (
+            {editingMedia && band.completed && (
               <button className='btn primary-alt' onClick={saveChanges}>
                 Save Changes
               </button>

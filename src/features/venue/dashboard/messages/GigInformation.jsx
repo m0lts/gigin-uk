@@ -18,6 +18,7 @@ import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
 import { toast } from 'sonner';
+import { WeddingIcon } from '../../../shared/ui/extras/Icons';
 
 export const GigInformation = ({ gigId, gigData, setGigData, venueGigs = [] }) => {
 

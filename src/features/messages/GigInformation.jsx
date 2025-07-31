@@ -17,6 +17,7 @@ import { getVenueProfileById } from '@services/venues';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
+import { WeddingIcon } from '../shared/ui/extras/Icons';
 
 export const GigInformation = ({ gigId, gigData, setGigData }) => {
 
@@ -97,7 +98,6 @@ export const GigInformation = ({ gigId, gigData, setGigData }) => {
     };
 
     if (gigData) {
-
         return (
             <>
                 <div className='venue'>

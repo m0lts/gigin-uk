@@ -113,18 +113,35 @@
     color: var(--gn-red);
 }
 
+.musician-profile-page .modal .modal-content {
+    max-width: 300px;
+}
+
+.musician-profile-page .modal .head {
+    margin-bottom: 1rem;
+}
+
+.musician-profile-page .modal .head h2 {
+    margin-bottom: 0.5rem;
+}
+
 .musician-profile-page .modal .gig-selection {
-    width:75%;
-    max-height: 250px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    padding: 0.5rem;
+    width: 100%;
+    max-height: 50vh;
+    overflow-y: scroll;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+}
+
+.musician-profile-page .modal .gig-selection::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .musician-profile-page .modal .gig-selection .card {
-    position: relative;
     border:1px solid var(--gn-grey-400);
-    background-color: var(--gn-white);
-    border-radius: var(--gn-btn-border-radius);
+    outline:1px solid transparent;
+    border-radius: 0.5rem;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -132,6 +149,7 @@
     padding:0.5rem;
     padding-right: 1.5rem;
     gap:5px;
+    margin-bottom: 0.5rem;
     text-align: left;
     transition: background-color 200ms linear, border-color 200ms linear;
 }
@@ -145,12 +163,20 @@
 }
 
 .musician-profile-page .modal .gig-selection .card:hover {
-    border-color: var(--gn-orange);
+    border-color: var(--gn-off-black);
 }
 
 .musician-profile-page .modal .gig-selection .card.selected {
-    background-color: var(--gn-offset-orange);
-    border-color: var(--gn-orange);
+    border-color: var(--gn-off-black);
+    outline-color: var(--gn-off-black);
+}
+
+.musician-profile-page .modal .btn.secondary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    margin-bottom: 1rem;
 }
 
 /* PICTURE AND DETAILS */

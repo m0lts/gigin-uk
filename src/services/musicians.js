@@ -103,7 +103,7 @@ export const getMusicianProfileByUserId = async (userId) => {
     );
     const snapshot = await getDocs(q);
     const doc = snapshot.docs[0];
-    return doc ? { id: doc.id, ref: doc.ref, ...doc.data() } : null;
+    return doc ? { id: doc.id, ...doc.data() } : null;
 };
 
 /**
@@ -115,7 +115,7 @@ export const getMusicianProfileByUserId = async (userId) => {
 export const getMusicianProfileByMusicianId = async (musicianId) => {
     const ref = doc(firestore, 'musicianProfiles', musicianId);
     const snap = await getDoc(ref);
-    return snap.exists() ? { id: snap.id, ref, ...snap.data() } : null;
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 };
 
 /**
@@ -137,7 +137,7 @@ export const getMusicianProfilesByIds = async (musicianIds) => {
         where(documentId(), 'in', chunk)
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ref: doc.ref, ...doc.data() }));
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     })
   );
   return results.flat();
@@ -289,6 +289,27 @@ export const updateMusicianCancelledGig = async (musicianId, gigId) => {
     gigApplications: updatedGigApplications,
     confirmedGigs: arrayRemove(gigId),
   });
+};
+
+/**
+ * Marks an invited gig as viewed
+ * @param {string} applicantId - The ID of the applicant that's been invited.
+ * @param {string} gigId - The gig ID to update.
+ * @returns {Promise<void>}
+ */
+
+export const markInviteAsViewed = async (gigId, applicantId) => {
+  try {
+    const gigRef = doc(firestore, 'gigs', gigId);
+    const gigSnap = await getDoc(gigRef);
+    const gigData = gigSnap.data();
+    const updatedApplicants = gigData.applicants.map(app =>
+      app.id === applicantId ? { ...app, viewed: true } : app
+      );  
+    await updateDoc(gigRef, { applicants: updatedApplicants });
+  } catch (error) {
+    console.error(error)
+  }
 };
 
 

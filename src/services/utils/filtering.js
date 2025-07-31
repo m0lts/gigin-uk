@@ -60,7 +60,7 @@ export const filterAppliedGigsForMusician = (gigs, musicianId) => {
 export const filterInvitableGigsForMusician = (gigs, musicianId) => {
     return filterFutureGigs(gigs).filter(gig => 
       !gig.applicants?.some(applicant =>
-        applicant.id === musicianId && applicant.status !== 'Declined'
+        applicant.id === musicianId && (applicant.status !== 'Declined' || applicant.invited === true)
       )
     );
 };

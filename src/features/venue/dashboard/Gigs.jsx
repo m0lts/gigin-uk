@@ -485,13 +485,13 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             </div>
                           </td>
                           {windowWidth > 1268 && (
-                            <td className={`centre ${gig.applicants.some(app => !app.viewed) ? 'has-new-applications' : ''}`}>
+                            <td className={`centre ${gig.applicants.some(app => !app.viewed && app.invited !== true) ? 'has-new-applications' : ''}`}>
                               {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
                                 '-'
                               ) : (
                                 <>
-                                  {gig.applicants.some(app => !app.viewed)
-                                    ? `${gig.applicants.filter(app => !app.viewed).length} Unseen`
+                                  {gig.applicants.some(app => !app.viewed && app.invited !== true)
+                                    ? `${gig.applicants.filter(app => !app.viewed && app.invited !== true).length} Unseen`
                                     : gig.applicants.length}
                                 </>
                               )}

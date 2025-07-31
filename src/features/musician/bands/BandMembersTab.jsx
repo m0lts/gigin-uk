@@ -6,6 +6,7 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { updateBandMemberSplits, updateBandMemberPermissions, removeBandMember, updateBandAdmin } from '@services/bands';
 import { AddMember } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
+import { toast } from 'sonner';
 
 export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, refreshBandInfo, viewing = false }) => {
     const [loading, setLoading] = useState(false);
@@ -42,7 +43,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
     }, [band]);
 
     const generateInviteLink = async () => {
-        const inviteId = await createBandInvite(band.id, band.admin.musicianId);
+        const inviteId = await createBandInvite(band.id, band.bandInfo.admin.musicianId);
         return `${window.location.origin}/dashboard/bands/join?invite=${inviteId}`;
     };
 
@@ -59,7 +60,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
         try {
             await navigator.clipboard.writeText(value);
             setCopySuccess(true);
-            window.alert('Copied to clipboard.')
+            toast.success('Copied to clipboard.')
             setTimeout(() => setCopySuccess(false), 2000);
         } catch {
             console.error('Copy failed');
@@ -84,11 +85,12 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             setTimeout(() => setEmailSuccess(false), 3000);
         } catch (err) {
             console.error('Error sending invite email:', err);
+            toast.error('Failed to send invite. Please try again.')
         }
     };
     
     const handleConfirmSplits = async () => {
-        if (band.admin.musicianId !== musicianId) return;
+        if (band.bandInfo.admin.musicianId !== musicianId) return;
         const values = Object.values(splitEdits);
         const total = values.reduce((acc, val) => acc + val, 0);
         if (total !== 100) {
@@ -105,9 +107,11 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             setBandMembers(updatedMembers);
             setIsEditingSplits(false);
             setError('');
+            toast.success('Splits confirmed.')
         } catch (err) {
             console.error('Failed to update splits:', err);
             setError('Something went wrong.');
+            toast.error('Error confirming splits. Please try again.')
         } finally {
             setLoading(false);
         }
@@ -150,7 +154,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             );
       
             if (currentAdmins.length <= 1) {
-              window.alert('There must be at least one admin.');
+              toast.info('There must be at least one admin.');
               return;
             }
       
@@ -182,9 +186,9 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
         );
 
         if (!hasAdmin) {
-        setError('You must assign at least one admin.');
-        setLoading(false);
-        return;
+            setError('You must assign at least one admin.');
+            setLoading(false);
+            return;
         }
         let updatedMembers = [];
         if (!newAdminCandidate) {
@@ -202,9 +206,11 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
         setPermissionEdits({});
         setNewAdminCandidate(null);
         setError('');
+        toast.success('Band permissions edited.')
     } catch (err) {
         console.error('Failed to update permissions:', err);
         setError(err.message || 'Something went wrong.');
+        toast.error('Error changing band permissions. Please try again.')
     } finally {
         setLoading(false);
     }
@@ -218,7 +224,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
         <>
         <div className="band-tab members">
             <div className="members-header">
-                {musicianId === band.admin.musicianId && (
+                {musicianId === band.bandInfo.admin.musicianId && (
                     <div className="members-password">
                         <h2><AddMember /> Add Members</h2>
                         <h4>Send Members the Band Password (click to copy):</h4>
@@ -260,7 +266,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                     </div>
                 )}
 
-                {bandMembers?.length > 1 && musicianId === band.admin.musicianId && (
+                {bandMembers?.length > 1 && musicianId === band.bandInfo.admin.musicianId && (
                     <div className="members-buttons">
                         {!isEditingSplits && (
                             <button className="btn secondary" onClick={() => {
@@ -301,7 +307,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                                 <button
                                     className="btn primary"
                                     onClick={() => {
-                                    if (newAdminCandidate && newAdminCandidate !== band.admin.musicianId) {
+                                    if (newAdminCandidate && newAdminCandidate !== band.bandInfo.admin.musicianId) {
                                         setShowAdminConfirmModal(true);
                                     } else {
                                         handleConfirmPermissions();
@@ -337,7 +343,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                                     <h2>{member.memberName}</h2>
                                     {isEditingPermissions ? (
                                         <div className='member-permissions'>
-                                            {member.musicianProfileId !== band.admin.musicianId ? (
+                                            {member.musicianProfileId !== band.bandInfo.admin.musicianId ? (
                                                 <select
                                                     value={permissionEdits[member.musicianProfileId]?.role || member.role}
                                                     onChange={(e) =>
@@ -395,7 +401,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                                         `${member.split ?? 0}%`
                                     )}
                                 </span>
-                                {band.admin.musicianId === musicianId &&
+                                {band.bandInfo.admin.musicianId === musicianId &&
                                     bandMembers.length > 1 &&
                                     member.musicianProfileId !== musicianId && (
                                     <button

@@ -15,7 +15,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { getVenueProfileById } from '../../../services/venues';
-import { updateMusicianCancelledGig } from '../../../services/musicians';
+import { markInviteAsViewed, updateMusicianCancelledGig } from '../../../services/musicians';
 import { revertGigApplication } from '../../../services/gigs';
 import { toast } from 'sonner';
 
@@ -229,7 +229,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
     return (
         <>
             <div className='head gigs'>
-                <h1 className='title'>Gigs</h1>
+                <h1 className='title'>Gig Applications</h1>
                 <div className='filters'>
                     <div className="status-buttons">
                         <button className={`btn ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'all')}>
@@ -337,11 +337,17 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                         <tbody>
                         {sortedGigs.length > 0 ? (
                             sortedGigs.map((gig, index) => {
+                                
                                 const gigDateTime = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
                                 const isFirstPreviousGig = index > 0 && gigDateTime < new Date() && 
                                     new Date(`${sortedGigs[index - 1].date.toDate().toISOString().split('T')[0]}T${sortedGigs[index - 1].startTime}`) >= new Date();
                                 const gigStatus = getGigStatus(gig);
-                                const appliedProfile = musicianProfile.gigApplications?.find(app => app.gigId === gig.id);
+                                const appliedProfile = gigApplications?.find(app => app.gigId === gig.id);
+                                const applicant = gig.applicants.find(
+                                    (a) =>
+                                      a.id === musicianId ||
+                                      musicianProfile.bands?.includes(a.id)
+                                  );
                                 return (
                                     <React.Fragment key={gig.id}>
                                         {isFirstPreviousGig && (
@@ -357,10 +363,21 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             gigStatus.text.toLowerCase() === 'confirmed'
                                                 ? () => openGigHandbook(gig)
                                                 : (e) => openInNewTab(`/gig/${gig.gigId}`, e)
-                                        }>
-                                            {musicianProfile.bands && appliedProfile && (
+                                        }
+                                            onMouseEnter={() => {
+                                                if (applicant.invited && !applicant.viewed) {
+                                                    markInviteAsViewed(gig.gigId, applicant.id);
+                                                }
+                                            }}
+                                        >
+                                            {musicianProfile.bands && (
                                                 <td className="applied-profile-name">
-                                                    {appliedProfile.name}
+                                                    {applicant.invited && !applicant.viewed && (
+                                                        <div className="new-invite">
+                                                            <p>NEW INVITE</p>
+                                                        </div>
+                                                    )}
+                                                    {appliedProfile?.name}
                                                 </td>
                                             )}
                                             <td>

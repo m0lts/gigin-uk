@@ -5,7 +5,7 @@
  * @param {'musician' | 'venue'} userType - The type of user to determine the base path.
  * @returns {Array<{ label: string, path: string }>} - The breadcrumbs array.
  */
-export const getBreadcrumbs = (pathname, userType = 'venue') => {
+export const getBreadcrumbs = (pathname, userType = 'venue', bandProfiles = []) => {
   const base = userType === 'musician' ? '/dashboard' : '/venues/dashboard';
 
   const breadcrumbs = [
@@ -41,7 +41,13 @@ export const getBreadcrumbs = (pathname, userType = 'venue') => {
         label = 'Finances';
         break;
       default:
-        label = part.charAt(0).toUpperCase() + part.slice(1);
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(part);
+        if (isUUID) {
+          const matchedBand = bandProfiles.find(band => band.id === part);
+          label = matchedBand?.name || part;
+        } else {
+          label = part.charAt(0).toUpperCase() + part.slice(1);
+        }
     }
 
     breadcrumbs.push({ label, path: accumulatedPath });

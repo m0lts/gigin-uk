@@ -12,7 +12,7 @@ import { CalendarIconLight, CoinsIconSolid, DashboardIconLight, DashboardIconSol
 import { TextLogoMed } from '../../shared/ui/logos/Logos';
 import { FeedbackBox } from '../../venue/dashboard/FeedbackBox';
 
-export const Sidebar = ({ user, newMessages }) => {
+export const Sidebar = ({ user, newMessages, unseenInvites }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { logout } = useAuth();
@@ -46,9 +46,10 @@ export const Sidebar = ({ user, newMessages }) => {
         },
         {
           path: '/dashboard/gigs',
-          label: 'Gigs',
+          label: 'Gig Applications',
           icon: <CalendarIconLight />,
           iconActive: <CalendarIconSolid />,
+          notification: unseenInvites.length > 0,
         },
         {
           path: '/dashboard/bands',
@@ -65,44 +66,13 @@ export const Sidebar = ({ user, newMessages }) => {
     ];
 
     return (
-        <div className='sidebar'>
+        <div className='sidebar musician'>
           <div className='logo'>
             <TextLogoMed />
             <div className="beta-box">
               <p>BETA</p>
             </div>
           </div>
-          <ul className={`account-dropdown ${showDropdown ? 'open' : ''}`} onClick={() => setShowDropdown(!showDropdown)}>
-            <li className='account-dropdown-item exempt'>
-              <div>
-                <h6>Musician Dashboard</h6>
-                <div className='user-container'>
-                  <UserIcon />
-                  <div className='user-details'>
-                    <h4>{user?.name}</h4>
-                    <p>{user?.email}</p>
-                  </div>
-                </div>
-              </div>
-              {showDropdown ? <UpChevronIcon /> : <DownChevronIcon />}
-            </li>
-            {showDropdown && (
-              <>
-                {/* <li className='account-dropdown-item' onClick={() => navigate('/add-venue')}>
-                  Create a Venue Profile <VenueIcon />
-                </li> */}
-                <li className='account-dropdown-item' onClick={() => navigate('/account')}>
-                  Settings <SettingsIcon />
-                </li>
-                <li className='account-dropdown-item red' onClick={handleLogout}>
-                  Log Out <LogOutIcon />
-                </li>
-              </>
-            )}
-          </ul>
-          <button className='btn primary' onClick={() => navigate('/find-a-gig')}>
-            Find a Gig <LocationPinIcon />
-          </button>
           <ul className="menu">
             {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {
               const isActive = exact ? pathname === path : pathname.includes(path);
@@ -116,7 +86,7 @@ export const Sidebar = ({ user, newMessages }) => {
                     {isActive ? iconActive : icon} {label}
                   </span>
                   {notification ? 
-                  <span className='notification'><DotIcon /></span>
+                    <span className='notification'><DotIcon /></span>
                    : null}
                 </li>
               );

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { subscribeToMusicianProfile, getMusicianProfilesByIds } from '@services/musicians';
 import { getGigsByIds } from '@services/gigs';
 import { getBandMembers } from '@services/bands';
+import { getBandDataOnly, getBandsByMusicianId } from '../services/bands';
 
 const MusicianDashboardContext = createContext();
 
@@ -17,6 +18,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
 
   const loadedOnce = useRef(false);
   const unsubRef = useRef(null);
+  const bandUnsubsRef = useRef([]);
 
   useEffect(() => {
     if (!user || !user.musicianProfile || loadedOnce.current) return;
@@ -31,16 +33,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
           return;
         }
         setMusicianProfile(profile);
-        console.log(profile)
-        const applications = profile.gigApplications || [];
-        setGigApplications(applications);
-        if (applications.length > 0) {
-          const gigIds = applications.map((app) => app.gigId);
-          const fetchedGigs = await getGigsByIds(gigIds);
-          checkGigsForReview(fetchedGigs, profile.musicianId);
-          setGigs(fetchedGigs);
-        }
-        fetchBandProfiles(profile);
+        subscribeToBands(profile.bands);
         setLoading(false);
         loadedOnce.current = true;
       },
@@ -49,59 +42,111 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         setLoading(false);
       }
     );
-
     unsubRef.current = unsub;
     return () => unsub && unsub();
   }, [user]);
 
-  const fetchBandProfiles = async (profile) => {
-    if (!profile?.bands?.length) {
+  const subscribeToBands = (bandIds = []) => {
+    cleanupBandSubscriptions();
+    if (!bandIds.length) {
       setBandProfiles([]);
       return;
     }
+    const newUnsubs = [];
+    bandIds.forEach((bandId) => {
+      const unsub = subscribeToMusicianProfile(
+        bandId,
+        async (profile) => {
+          if (!profile || !profile.completed) return;
+          const [members, bandInfo] = await Promise.all([
+            getBandMembers(bandId),
+            getBandDataOnly(bandId),
+          ]);
 
-    try {
-      const bandProfiles = await getMusicianProfilesByIds(profile.bands);
-      const validBandProfiles = [];
+          const finalBandProfile = {
+            ...profile,
+            bandId,
+            members,
+            bandInfo,
+          };
 
-      for (const bandProfile of bandProfiles) {
-        const bandId = bandProfile.musicianId;
-        const members = await getBandMembers(bandId);
-        const userIsLeader = members.find(m => m.musicianProfileId === profile.musicianId)?.role === 'Band Leader';
-
-        if (userIsLeader && bandProfile.completed) {
-          validBandProfiles.push(bandProfile);
-        }
-      }
-
-      setBandProfiles(validBandProfiles);
-    } catch (err) {
-      console.error('Error fetching band profiles:', err);
-    }
+          setBandProfiles((prev) => {
+            const filtered = prev.filter(p => p.bandId !== bandId);
+            return [...filtered, finalBandProfile];
+          });
+        },
+        (err) => console.error(`Error subscribing to band profile ${bandId}:`, err)
+      );
+      newUnsubs.push(unsub);
+    });
+    bandUnsubsRef.current = newUnsubs;
   };
 
-  const checkGigsForReview = (gigs, musicianId) => {
-    const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const cleanupBandSubscriptions = () => {
+    bandUnsubsRef.current.forEach(unsub => unsub?.());
+    bandUnsubsRef.current = [];
+  };
 
+  useEffect(() => {
+    const run = async () => {
+      if (!musicianProfile) return;
+  
+      const ownApplications = (musicianProfile.gigApplications || []).map(app => ({
+        ...app,
+        submittedBy: 'musician',
+        profileId: musicianProfile.musicianId,
+        profileName: musicianProfile.name,
+      }));
+  
+      const bandApplications = bandProfiles.flatMap(band =>
+        (band.gigApplications || []).map(app => ({
+          ...app,
+          submittedBy: 'band',
+          profileId: band.bandId,
+          profileName: band.name,
+        }))
+      );
+  
+      const allApplications = [...ownApplications, ...bandApplications];
+      setGigApplications(allApplications);
+  
+      if (allApplications.length > 0) {
+        const gigIds = allApplications.map((app) => app.gigId);
+        const fetchedGigs = await getGigsByIds(gigIds);
+  
+        const allMusicianIds = [
+          musicianProfile.musicianId,
+          ...bandProfiles.map((band) => band.bandId),
+        ];
+  
+        checkGigsForReview(fetchedGigs, allMusicianIds);
+        setGigs(fetchedGigs);
+      }
+    };
+  
+    run();
+  }, [musicianProfile, bandProfiles]);
+
+  const checkGigsForReview = (gigs, musicianIds = []) => {
+    const now = new Date();
+  
     const eligibleGigs = gigs.filter((gig) => {
-      const gigDate = new Date(gig.startDateTime);
+      const gigDate = gig.startDateTime.toDate?.() || new Date(gig.startDateTime);
       const localReviewed = localStorage.getItem(`reviewedGig-${gig.gigId}`) === 'true';
       const dbReviewed = gig.musicianHasReviewed;
-
-      const musicianConfirmed = gig.applicants?.some(
-        (a) => a.id === musicianId && a.status === 'confirmed'
+  
+      const isConfirmedByAnyProfile = gig.applicants?.some(
+        (a) => musicianIds.includes(a.id) && a.status === 'confirmed'
       );
-
+  
       return (
-        gigDate > oneWeekAgo &&
         gigDate <= now &&
         !localReviewed &&
         !dbReviewed &&
-        musicianConfirmed
+        isConfirmedByAnyProfile
       );
     });
-
+  
     if (eligibleGigs.length > 0) {
       setGigToReview(eligibleGigs[0]);
       setGigsToReview(eligibleGigs);
@@ -117,6 +162,10 @@ export const MusicianDashboardProvider = ({ user, children }) => {
     setGigApplications([]);
     setGigs([]);
   };
+
+  console.log('PARENT MUSICIAN PROFILE:',  musicianProfile);
+  console.log('BAND PROFILES:',  bandProfiles);
+  console.log('GIG APPLICATIONS:', gigApplications);
 
   return (
     <MusicianDashboardContext.Provider
