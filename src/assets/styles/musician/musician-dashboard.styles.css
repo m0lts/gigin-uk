@@ -1514,24 +1514,47 @@
 
 /* MUSICIANS PAGE */
 
-.window.musicians .body.musicians {
+.window.musicians .body.bands {
     overflow-y: auto;
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
 
-.window.musicians .body.musicians::-webkit-scrollbar {
+.window.musicians .body.bands::-webkit-scrollbar {
     display: none;
 }
 
-.window.musicians .body.musicians.no-saved {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+.window.musicians .body.bands .entry-actions .card {
+    border:1px solid var(--gn-grey-400);
+    outline: 1px solid transparent;
+    padding:2rem;
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    box-shadow: 0 0 3px var(--gn-shadow);
+    transition: all 0.2s ease;
 }
 
-.window.musicians .body.musicians .saved-musicians .musician-card-loading {
+.window.musicians .body.bands .entry-actions .card .icon {
+    font-size: 1.5rem;
+}
+
+.window.musicians .body.bands .entry-actions .card h4 {
+    margin-bottom: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 1.25rem;
+}
+
+.window.musicians .body.bands .entry-actions .card .text {
+    color: var(--gn-grey-700);
+}
+
+.window.musicians .body.bands .entry-actions .card:hover {
+    outline-color: var(--gn-off-black);
+    border-color: var(--gn-off-black);
+}
+
+.window.musicians .body.bands .users-bands .band-card-loading {
     box-sizing: border-box;
     padding:0;
     border: none;
@@ -1539,7 +1562,7 @@
     border-radius: 1rem;
 }
 
-.window.musicians .body.musicians .saved-musicians {
+.window.musicians .body.bands .users-bands {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -1550,127 +1573,50 @@
     align-items: flex-start;
 }
 
-.window.musicians .body.musicians .musician-card {
+.window.musicians .body.bands .band-card {
     width: 100%;
     max-width: 350px;
-    height:450px;
-    max-height: 450px;
+    height:fit-content;
     box-sizing: border-box;
     background-color: var(--gn-white);
     box-shadow: 0px 0px 5px var(--gn-shadow);
     border-radius: 2rem;
-    padding: 0.5rem;
-    padding-top:0;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly;
-    gap: 5px;
-}
-
-.window.musicians .body.musicians .musician-card .media-container {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: 200px;
-    border-radius: 1.5rem;
+    justify-content: flex-start;
+    gap: 1rem;
 }
   
-.window.musicians .body.musicians .musician-card .video-thumbnail {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
-    border-radius: 1.5rem;
-}
-  
-.window.musicians .body.musicians .musician-card .video-thumbnail video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 1.5rem;
-}
-  
-.window.musicians .body.musicians .musician-card .video-thumbnail .play-icon {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    padding: 0.75rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-}
-  
-.window.musicians .body.musicians .musician-card .video-thumbnail .play-icon .icon {
-    font-size: 2.5rem;
-}
-
-.window.musicians .body.musicians .modal-content.transparent {
-    position: relative;
-    border:none;
-    height: 100%;
-    width:100%;
-    padding:0;
-    background-color: transparent;
-    box-shadow: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.window.musicians .body.musicians .modal-content video {
-    max-height: 75%;
-    max-width: 90%;
-}
-
-.window.musicians .body.musicians .modal .close {
-    position: absolute;
-    top: 1rem;
-    right: 2rem;
-    color: var(--gn-red);
-    font-size: 2rem;
-    cursor: pointer;
-}
-  
-.window.musicians .body.musicians .musician-card .media-container .profile-picture {
-    position: absolute;
-    bottom: -15px;
-    left: 10px;
-    width: 70px;
-    height: 70px;
+.window.musicians .body.bands .band-card .profile-picture {
+    width: 100px;
+    height: 100px;
     border-radius: 50%;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-shadow: 0 0 4px var(--gn-shadow);
 }
-  
-.window.musicians .body.musicians .musician-card .media-container .profile-picture img {
+
+.window.musicians .body.bands .band-card .profile-picture img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-  
-.window.musicians .body.musicians .musician-card .video-thumbnail .play-icon .icon {
-    font-size: 2.5rem;
-}
 
-.window.musicians .body.musicians .musician-card .musician-card-flex {
+.window.musicians .body.bands .band-card .band-card-flex {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-top:1.25rem;
-    margin-left: 0.5rem;
-    margin-right: 0.25rem;
 }
 
-.window.musicians .body.musicians .musician-card .musician-card-flex p {
+.window.musicians .body.bands .band-card .band-card-flex p {
     color: var(--gn-grey-700);
     font-size: 1.1rem;
 }
 
-.window.musicians .body.musicians .musician-card .genre-tags {
-    margin: 1rem auto;
+.window.musicians .body.bands .band-card .genre-tags {
     width:96%;
     display: flex;
     gap:5px;
@@ -1678,11 +1624,11 @@
     scrollbar-width: none;
 }
 
-.window.musicians .body.musicians .musician-card .genre-tags::-webkit-scrollbar {
+.window.musicians .body.bands .band-card .genre-tags::-webkit-scrollbar {
     display: none;
 }
 
-.window.musicians .body.musicians .musician-card .genre-tag {
+.window.musicians .body.bands .band-card .genre-tag {
     white-space: nowrap;
     border:1px solid var(--gn-orange);
     color: var(--gn-orange);
@@ -1692,7 +1638,7 @@
     height:fit-content;
 }
 
-.window.musicians .body.musicians .musician-card .stats-container {
+.window.musicians .body.bands .band-card .stats-container {
     padding:0 0.5rem;
     margin-bottom: 1rem;
     display: flex;
@@ -1700,37 +1646,37 @@
     justify-content: space-evenly;
 }
 
-.window.musicians .body.musicians .musician-card .stats-container .spacer {
+.window.musicians .body.bands .band-card .stats-container .spacer {
     border-left:1px solid var(--gn-grey-400);
     width:1px;
     height:20px;
 }
 
-.window.musicians .body.musicians .musician-card .stats-container .stats-box {
+.window.musicians .body.bands .band-card .stats-container .stats-box {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-.window.musicians .body.musicians .musician-card .stats-container .stats-box .large-item {
+.window.musicians .body.bands .band-card .stats-container .stats-box .large-item {
     font-size: 1.5rem;
     font-weight: 600;
     display: flex;
     align-items: center;
 }
 
-.window.musicians .body.musicians .musician-card .stats-container .stats-box .text {
+.window.musicians .body.bands .band-card .stats-container .stats-box .text {
     color: var(--gn-grey-600);
     font-size: 0.9rem;
 }
 
-.window.musicians .body.musicians .musician-card .btn.primary {
+.window.musicians .body.bands .band-card .btn.primary {
     border-radius: 1.5rem;
     width:98%;
     margin:0 auto;
 }
 
-.window.musicians .body.musicians .saved-musicians .photo img {
+.window.musicians .body.bands .saved-musicians .photo img {
     width:100%;
     height:100%;
     object-fit: cover;

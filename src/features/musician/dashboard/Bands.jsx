@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { PlusIcon, PeopleGroupIcon } from "@features/shared/ui/extras/Icons"
 import '@styles/musician/bands.styles.css'
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { PeopleGroupIconSolid, PlusIconSolid, RightChevronIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { openInNewTab } from '@services/utils/misc';
 
 
 export const Bands = ({ bandProfiles }) => {
@@ -17,40 +19,119 @@ export const Bands = ({ bandProfiles }) => {
     }
   }, [searchParams]);
 
+  const formatEarnings = (e) => {
+    if (e < 100) return '<£100';
+    if (e < 500) return '£100+';
+    if (e < 1000) return '£500+';
+    if (e < 2500) return '£1k+';
+    if (e < 5000) return '£2.5k+';
+    return '£5k+';
+};
+
   return (
     <>
       <div className="head">
-        <h1>Bands</h1>
+        <h1 className='title'>Bands</h1>
       </div>
-      <div className="body bands-page">
+      <div className="body bands">
         <div className="entry-actions">
           <div className="card" onClick={() => navigate('/dashboard/bands/create')}>
-            <PlusIcon />
-            <h4 className="text">Create</h4>
+            <PlusIconSolid />
+            <h4>Create a Band</h4>
+            <p className="text">
+              Set up your band and invite members to join. Each musician needs to create their own profile first, then they can join your band.
+            </p>
           </div>
           <div className="card" onClick={() => navigate('/dashboard/bands/join')}>
-            <PeopleGroupIcon />
-            <h4 className="text">Join</h4>
+            <PeopleGroupIconSolid />
+            <h4>Join a Band</h4>
+            <p className="text">Already in a band? Join it here using the invite link or band password your band leader shared with you.</p>
           </div>
         </div>
         {bandProfiles.length > 0 && (
-          <div className="band-list">
+          <>
             <h2>Your Bands</h2>
-            <div className="band-cards">
-              {bandProfiles.map(band => (
-                <div
-                  key={band.id}
-                  className="band-card"
-                  onClick={() => navigate(`/dashboard/bands/${band.id}`, { state: { band } })}
-                >
-                  <img className='band-img' src={band.picture} alt={band.name} />
-                  <h1 className='band-name'>{band.name}</h1>
+            <div className="users-bands">
+              {bandProfiles.map((band) => (
+                <div className='band-card' key={band.id}>
+                    <div className="profile-picture">
+                      <img src={band.picture} alt={band.name} />
+                    </div>
+                    <div className="band-card-flex">
+                        <div className="band-name-type">
+                            <h2>{band.name}</h2>
+                        </div>
+                    </div>
+                    {band.completed && (
+                      <>
+                        <div className="genre-tags">
+                            {band.genres.map((g) => (
+                                <span className="genre-tag" key={g}>
+                                    {g}
+                                </span>
+                            ))}
+                        </div>
+                        <div className="stats-container">
+                            {band?.avgReviews?.avgRating ? (
+                                <div className="stats-box avg-rating">
+                                    <span className="large-item">
+                                        <StarIcon />
+                                        {band.avgReviews.avgRating}
+                                    </span>
+                                    <span className='text'>avg rating</span>
+                                </div>
+                            ) : (
+                                <div className="stats-box avg-rating">
+                                    <span className="large-item">
+                                        <StarIcon />
+                                        -
+                                    </span>
+                                    <span className='text'>no ratings</span>
+                                </div>
+                            )}
+                            <span className="spacer"></span>
+                            {band?.totalEarnings ? (
+                                <div className="stats-box earnings">
+                                    <span className="large-item">
+                                        {formatEarnings(band.totalEarnings)}
+                                    </span>
+                                    <span className='text'>earned</span>
+                                </div>
+                            ) : (
+                                <div className="stats-box earnings">
+                                    <span className="large-item">
+                                        £0
+                                    </span>
+                                    <span className='text'>earned</span>
+                                </div>
+                            )}
+                            <span className="spacer"></span>
+                            {band?.followers ? (
+                                <div className="stats-box followers">
+                                    <span className="large-item">
+                                        {band.followers}
+                                    </span>
+                                    <span className="text">followers</span>
+                                </div>
+                            ) : (
+                                <div className="stats-box followers">
+                                    <span className="large-item">
+                                        0
+                                    </span>
+                                    <span className="text">followers</span>
+                                </div>
+                            )}
+                        </div>
+                      </>
+                    )}
+                    <button className="btn primary" onClick={() => navigate(`/dashboard/bands/${band.id}`, { state: band })}>
+                        <span>View Band Profile <RightChevronIcon /></span>
+                    </button>
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
-
       </div>
     </>
   );

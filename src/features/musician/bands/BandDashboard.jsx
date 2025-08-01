@@ -13,36 +13,35 @@ import { toast } from 'sonner';
 
 export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) => {
   const { bandId } = useParams();
-  const { state } = useLocation();
+  const location = useLocation();
+  const state = location.state;
   const navigate = useNavigate();
   const [band, setBand] = useState(state?.band || null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [bandMembers, setBandMembers] = useState(null);
+  const [bandMembers, setBandMembers] = useState(band?.members || null);
   const [editingMedia, setEditingMedia] = useState(false);
   const [localVideos, setLocalVideos] = useState(band?.videos || []);
   const [localTracks, setLocalTracks] = useState(band?.tracks || []);
 
   useEffect(() => {
     if (!band) {
-      console.log('manual fetch')
       const found = bandProfiles.find((b) => b.id === bandId);
       if (found) {
         setBand(found);
         setLocalVideos(found.videos);
         setLocalTracks(found.tracks);
-        setActiveTab(!band.completed ? 'members' : 'overview')
-      } else {
-        navigate('/dashboard/bands')
+        setBandMembers(found.members);
+        setActiveTab(!found?.completed ? 'members' : 'overview');
       };
     }
-  }, [band, bandId]);
+  }, [bandProfiles, bandId]);
 
-  // useEffect(() => {
-  //   if (!band.completed && activeTab !== 'members') {
-  //     setActiveTab('members');
-  //   }
-  // }, [band, activeTab]);
+  useEffect(() => {
+    if (!band?.completed && activeTab !== 'members') {
+      setActiveTab('members');
+    }
+  }, [band, activeTab]);
 
   const saveChanges = async () => {
     try {
@@ -104,7 +103,6 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
         </div>
       );
     }
-  
     switch (activeTab) {
       case 'overview':
         return <OverviewTab musicianData={band} />;
@@ -199,8 +197,8 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
         </div>
         {!band.completed ? (
             <div className="profile-incomplete">
-                <h2>Please add some more information before applying to gigs.</h2>
-                <button className='btn primary-alt' onClick={handleProfileNavigation}>
+                <h4>Please add some more information before applying to gigs.</h4>
+                <button className='btn primary' onClick={handleProfileNavigation}>
                     Finish Band Profile
                 </button>
             </div>

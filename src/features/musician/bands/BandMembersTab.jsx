@@ -4,7 +4,7 @@ import { sendEmail } from '@services/emails';
 import { CopyIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { updateBandMemberSplits, updateBandMemberPermissions, removeBandMember, updateBandAdmin } from '@services/bands';
-import { AddMember } from '../../shared/ui/extras/Icons';
+import { AddMember, PasswordIcon, PeopleGroupIconSolid, PlusIconSolid } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
 
@@ -23,24 +23,18 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
     const [memberToRemove, setMemberToRemove] = useState(null);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
     const [error, setError] = useState('');
+    const [memberModal, setMemberModal] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
-        const fetchMembers = async () => {
-            try {
-                const profiles = await getBandMembers(band.id);
-                setBandMembers(profiles.filter(Boolean));
-            } catch (error) {
-                console.error('Failed to fetch band members:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
+        console.log('BAND', band)
+        const isLoaded = !!band?.bandInfo;
+        setLoading(!isLoaded);
+      }, [band]);
 
-        if (band?.members?.length > 0 && !bandMembers) {
-            setLoading(true);
-            fetchMembers();
-        }
-    }, [band]);
+    if (loading) {
+        return <LoadingThreeDots />
+    }
 
     const generateInviteLink = async () => {
         const inviteId = await createBandInvite(band.id, band.bandInfo.admin.musicianId);
@@ -81,8 +75,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                 `,
             });
             setEmailToInvite('');
-            setEmailSuccess(true);
-            setTimeout(() => setEmailSuccess(false), 3000);
+            toast.success('Email Sent!')
         } catch (err) {
             console.error('Error sending invite email:', err);
             toast.error('Failed to send invite. Please try again.')
@@ -118,7 +111,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
     };
 
     const handleSplitChange = (musicianProfileId, value) => {
-        const percent = Math.max(0, Math.min(100, Number(value))); // clamp to 0–100
+        const percent = Math.max(0, Math.min(100, Number(value)));
         setSplitEdits(prev => ({
             ...prev,
             [musicianProfileId]: percent,
@@ -200,8 +193,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
         } else {
             updatedMembers = await updateBandAdmin(band.id, newAdminCandidate, permissionEdits);
         }
-        await refreshBandInfo();
-        setBandMembers(updatedMembers);
+        refreshBandInfo();
         setIsEditingPermissions(false);
         setPermissionEdits({});
         setNewAdminCandidate(null);
@@ -224,52 +216,15 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
         <>
         <div className="band-tab members">
             <div className="members-header">
-                {musicianId === band.bandInfo.admin.musicianId && (
-                    <div className="members-password">
-                        <h2><AddMember /> Add Members</h2>
-                        <h4>Send Members the Band Password (click to copy):</h4>
-                        <div className="members-password-value" onClick={() => handleCopy(band.joinPassword)}>
-                            <h6>Band Password:</h6>
-                            <h3>{band.joinPassword}</h3>
-                        </div>
-                        <br />
-                        <div className="invite-link-container">
-                            <h4>Send Members a Link:</h4>
-                            <button className="btn secondary invite-link-btn" onClick={handleCreateInvite}>
-                                Generate Invite Link
-                            </button>
-                            {inviteLink && (
-                                <div className="invite-link">
-                                    <input value={inviteLink} readOnly className="invite-link-input" />
-                                    <button className="btn secondary" onClick={() => handleCopy(inviteLink)}>
-                                        <CopyIcon />
-                                    </button>
-                                    {copySuccess && <span className="copy-success">Copied!</span>}
-                                </div>
-                            )}
-                        </div>
-                        <br />
-                        <div className="email-invite-form">
-                            <h4>Invite Members by Email:</h4>
-                            <input
-                                type="email"
-                                placeholder="Invite by email"
-                                value={emailToInvite}
-                                onChange={(e) => setEmailToInvite(e.target.value)}
-                                className="input"
-                            />
-                            <button className="btn secondary" onClick={handleSendEmailInvite}>
-                                Send Invite
-                            </button>
-                            {emailSuccess && <p className="email-success">Invite sent!</p>}
-                        </div>
-                    </div>
+                {musicianId === band?.bandInfo?.admin?.musicianId && (
+                    <button className="btn tertiary" onClick={() => setMemberModal(true)}>
+                        <PlusIconSolid /> Add Band Members
+                    </button>
                 )}
-
-                {bandMembers?.length > 1 && musicianId === band.bandInfo.admin.musicianId && (
-                    <div className="members-buttons">
+                {bandMembers?.length > 1 && musicianId === band?.bandInfo?.admin?.musicianId && (
+                    <>
                         {!isEditingSplits && (
-                            <button className="btn secondary" onClick={() => {
+                            <button className="btn tertiary" onClick={() => {
                                 const initialSplits = {};
                                 bandMembers.forEach(m => {
                                     initialSplits[m.musicianProfileId] = m.split || 0;
@@ -287,7 +242,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                         )}
 
                         {!isEditingPermissions && (
-                            <button className="btn secondary" onClick={() => {
+                            <button className="btn tertiary" onClick={() => {
                                 const initial = {};
                                 bandMembers.forEach((m) => {
                                     initial[m.musicianProfileId] = {
@@ -319,9 +274,8 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                                 {error && <p className="error">{error}</p>}
                             </>
                         )}
-                    </div>
+                    </>
                 )}
-
             </div>
 
             <ul className="member-list">
@@ -401,7 +355,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                                         `${member.split ?? 0}%`
                                     )}
                                 </span>
-                                {band.bandInfo.admin.musicianId === musicianId &&
+                                {band?.bandInfo?.admin?.musicianId === musicianId &&
                                     bandMembers.length > 1 &&
                                     member.musicianProfileId !== musicianId && (
                                     <button
@@ -479,6 +433,76 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                     Yes, Remove
                     </button>
                 </div>
+                </div>
+            </div>
+        )}
+        {memberModal && (
+            <div className="modal" onClick={() => setMemberModal(false)}>
+                <div className="modal-content members" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <PeopleGroupIconSolid />
+                        <h2>Adding Band Members</h2>
+                        <p>
+                            You have three options when adding band members:
+                        </p>
+                    </div>
+                    <div className="modal-options">
+                        <div className="option">
+                            <h3>Share Band Password</h3>
+                            <p>Send the band password to your members. Make sure to keep this password secure.</p>
+                            <div className="option-cont">
+                                <button className="btn tertiary password" onClick={() => setShowPassword(!showPassword)}>
+                                    {showPassword ? (
+                                        'Hide Password'
+                                    ) : (
+                                        'Show Password'
+                                    )}
+                                </button>
+                                {!showPassword ? (
+                                    <div className="password-value">
+                                        <PasswordIcon />
+                                    </div>
+                                ) : (
+                                    <button className="btn secondary password-value" onClick={() => handleCopy(band.bandInfo.joinPassword)}>
+                                        <h4>{band.bandInfo.joinPassword}</h4>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        <div className="option">
+                            <h3>Share an Invite Link</h3>
+                            <p>Band members can join using this secure link. You must create one link per member.</p>
+                            <div className="option-cont">
+                                <button className="btn tertiary" onClick={handleCreateInvite}>
+                                    Generate Invite Link
+                                </button>
+                                {inviteLink && (
+                                    <div className="btn secondary invite-link" onClick={() => handleCopy(inviteLink)}>
+                                        {inviteLink}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="option">
+                            <h3>Invite Via Email</h3>
+                            <p>Know your member's email addresses? Enter them below and we'll handle the rest.</p>
+                            <div className="option-cont">
+                                <input
+                                    type="email"
+                                    placeholder="Email Address"
+                                    value={emailToInvite}
+                                    onChange={(e) => setEmailToInvite(e.target.value)}
+                                    className="input"
+                                />
+                                <button className="btn tertiary email" onClick={handleSendEmailInvite}>
+                                    Send Invite
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button className="btn close" onClick={() => setMemberModal(false)}>
+                        Close
+                    </button>
                 </div>
             </div>
         )}

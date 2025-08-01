@@ -12,8 +12,10 @@ import { generateBandPassword } from '@services/utils/validation';
 import { arrayUnion } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { createMusicianProfile } from '../../../services/musicians';
 
-export const BandCreator = ({ musicianProfile }) => {
+export const BandCreator = ({ musicianProfile, refreshData }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -25,6 +27,7 @@ export const BandCreator = ({ musicianProfile }) => {
       picture: '',
     });
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
       setSearchParams({ step: stage.toString() });
@@ -62,6 +65,7 @@ export const BandCreator = ({ musicianProfile }) => {
     };
     
     const handleSubmit = async () => {
+      setLoading(true);
       try {
         const pictureFile = formData.picture;
         const pictureUrl = await uploadFileToStorage(pictureFile, `bands/${formData.bandId}/profileImg/${pictureFile.name}`);
@@ -86,13 +90,21 @@ export const BandCreator = ({ musicianProfile }) => {
         await updateMusicianProfile(musicianProfile.id, {
             bands: arrayUnion(formData.bandId)
         })
-        navigate(`/dashboard/bands/${formData.bandId}`, {
-          state: { band: updatedFormData },
-        });
-        toast.success('Band created!')
+        const musicianProfileData = {
+          ...formData,
+          picture: pictureUrl,
+        }
+        await createMusicianProfile(formData.bandId, musicianProfileData, user.uid);
+        refreshData();
+        setTimeout(() => {
+          navigate(`/dashboard/bands/${formData.bandId}`);
+          toast.success('Band created!');
+          setLoading(false)
+        }, 2000);
       } catch (e) {
         console.error('Error submitting band:', e);
         toast.error('Error creating band. Please try again.')
+        setLoading(false);
       }
     };
 
@@ -117,18 +129,27 @@ export const BandCreator = ({ musicianProfile }) => {
     ];
   
     return (
-      <div className="profile-creator band">
-        {stages[stage]}
-        <div className="bottom">
-          <div className="controls">
-            <button className="btn secondary" onClick={handlePrevious}>Back</button>
-            {stage < stages.length - 1 ? (
-              <button className="btn primary" onClick={handleNext}>Continue</button>
-            ) : (
-              <button className="btn primary" onClick={handleSubmit}>Create</button>
-            )}
+      <div className={`profile-creator band ${loading ? 'loading' : ''}`}>
+        {loading ? (
+          <div className="creating-band">
+            <LoadingThreeDots />
+            <h3>Creating your band...</h3>
           </div>
-        </div>
+        ) : (
+          <>
+            {stages[stage]}
+            <div className="bottom">
+              <div className="controls">
+                <button className="btn secondary" onClick={handlePrevious}>Back</button>
+                {stage < stages.length - 1 ? (
+                  <button className="btn primary" onClick={handleNext}>Continue</button>
+                ) : (
+                  <button className="btn primary" onClick={handleSubmit}>Create</button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   };

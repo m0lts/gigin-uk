@@ -36,8 +36,7 @@ export const TopBar = ({ user, bandProfiles }) => {
     const [newMessages, setNewMessages] = useState(false);
     const menuRef = useRef(null);
     const buttonRef = useRef(null);
-    const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'musician', bandProfiles), [location.pathname]);
-
+    const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'musician', bandProfiles), [location.pathname, bandProfiles]);
 
     useEffect(() => {
         if (!user) return;

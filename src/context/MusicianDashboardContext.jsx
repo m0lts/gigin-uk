@@ -57,7 +57,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
       const unsub = subscribeToMusicianProfile(
         bandId,
         async (profile) => {
-          if (!profile || !profile.completed) return;
+          if (!profile) return;
           const [members, bandInfo] = await Promise.all([
             getBandMembers(bandId),
             getBandDataOnly(bandId),
@@ -157,10 +157,15 @@ export const MusicianDashboardProvider = ({ user, children }) => {
   const refreshMusicianProfile = () => {
     loadedOnce.current = false;
     unsubRef.current?.();
+    cleanupBandSubscriptions();
     setLoading(true);
     setMusicianProfile(null);
+    setBandProfiles([]);
     setGigApplications([]);
     setGigs([]);
+    setGigToReview(null);
+    setGigsToReview(null);
+    setShowReviewModal(false);
   };
 
   console.log('PARENT MUSICIAN PROFILE:',  musicianProfile);

@@ -2,18 +2,20 @@
 /* PROFILE BANNER */
 
 .profile .profile-incomplete {
-    width:100%;
-    height:90%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap:1rem;
+    border:1px dashed var(--gn-grey-500);
+    border-radius: 1rem;
+    background-color: var(--gn-grey-300);
+    padding: 1rem;
+    width:fit-content;
 }
 
-.profile .profile-incomplete h2 {
-    max-width: 50%;
+.profile .profile-incomplete h4 {
     text-align: center;
+}
+
+.profile .profile-incomplete .btn {
+    width:100%;
+    margin-top: 1rem;
 }
 
 .profile .profile-view {
