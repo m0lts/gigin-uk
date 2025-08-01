@@ -3,6 +3,7 @@ import { subscribeToMusicianProfile, getMusicianProfilesByIds } from '@services/
 import { getGigsByIds } from '@services/gigs';
 import { getBandMembers } from '@services/bands';
 import { getBandDataOnly, getBandsByMusicianId } from '../services/bands';
+import { getMusicianProfileByMusicianId } from '../services/musicians';
 
 const MusicianDashboardContext = createContext();
 
@@ -154,6 +155,30 @@ export const MusicianDashboardProvider = ({ user, children }) => {
     }
   };
 
+  const refreshSingleBand = async (bandId) => {
+    try {
+      const [profile, members, bandInfo] = await Promise.all([
+        getMusicianProfileByMusicianId(bandId),
+        getBandMembers(bandId),
+        getBandDataOnly(bandId),
+      ]);
+  
+      const updatedBand = {
+        ...profile,
+        bandId,
+        members,
+        bandInfo,
+      };
+  
+      setBandProfiles((prev) => {
+        const filtered = prev.filter((b) => b.bandId !== bandId);
+        return [...filtered, updatedBand];
+      });
+    } catch (err) {
+      console.error(`Failed to refresh band ${bandId}:`, err);
+    }
+  };
+
   const refreshMusicianProfile = () => {
     loadedOnce.current = false;
     unsubRef.current?.();
@@ -188,6 +213,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         setShowReviewModal,
         bandProfiles,
         refreshMusicianProfile,
+        refreshSingleBand,
       }}
     >
       {children}

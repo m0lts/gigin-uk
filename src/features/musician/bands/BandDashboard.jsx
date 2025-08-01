@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { leaveBand } from '@services/bands';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { getBandsByMusicianId } from '@services/bands';
-import { DeleteIcon, DoorIcon, EditIcon, RemoveMember, StarIcon } from '../../shared/ui/extras/Icons';
+import { DeleteIcon, DoorIcon, EditIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { OverviewTab } from '../profile/OverviewTab';
 import { MusicTab } from '../profile/MusicTab';
@@ -25,16 +25,14 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
   const [localTracks, setLocalTracks] = useState(band?.tracks || []);
 
   useEffect(() => {
-    if (!band) {
-      const found = bandProfiles.find((b) => b.id === bandId);
-      if (found) {
-        setBand(found);
-        setLocalVideos(found.videos);
-        setLocalTracks(found.tracks);
-        setBandMembers(found.members);
-        setActiveTab(!found?.completed ? 'members' : 'overview');
-      };
-    }
+    const found = bandProfiles.find((b) => b.id === bandId);
+    if (found) {
+      setBand(found);
+      setLocalVideos(found.videos);
+      setLocalTracks(found.tracks);
+      setBandMembers(found.members);
+      setActiveTab(!found?.completed ? 'members' : 'overview');
+    };
   }, [bandProfiles, bandId]);
 
   useEffect(() => {

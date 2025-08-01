@@ -132,8 +132,15 @@
 .band-dashboard .band-tab.members .members-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 1rem;
     padding:1rem 0;
+}
+
+.band-dashboard .band-tab.members .members-header .action-buttons {
+    display: flex;
+    align-items: center;
+    gap:1rem;
 }
 
 .band-dashboard .band-tab.members .members-header .members-password {
@@ -200,7 +207,7 @@
 
 .band-dashboard .band-tab.members .member-list .member-card {
     width:100%;
-    border-radius: 0.5rem;
+    border-radius: 1rem;
     background-color: white;
     border:1px solid var(--gn-grey-300);
     display: flex;
@@ -225,18 +232,28 @@
 
 .band-dashboard .band-tab.members .member-list .member-card .member-permissions {
     display: flex;
-    align-items: center;
-    gap:1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap:0.5rem;
+    margin-top: 0.25rem;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .member-permissions .input-container .label {
+    margin-bottom: 0.1rem;
+}
+
+.band-dashboard .band-tab.members .member-list .member-card .member-permissions .input {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
 }
 
 .band-dashboard .band-tab.members .member-list .member-card .member-permissions .admin-toggle {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 1.2rem;
 }
 
-.band-dashboard .band-tab.members .member-list .member-card .member-permissions input[type="checkbox"] {
+.band-dashboard .band-tab.members .member-list .member-card .member-permissions .checkbox {
     width: 12px;
     height: 12px;
     cursor: pointer;
@@ -270,20 +287,39 @@
     outline-color: var(--gn-orange);
 }
 
-.band-dashboard .modal .modal-content.members .btn.close {
-    font-size: 1rem;
-    border:none;
-    font-weight: 500;
+
+
+/* MODALS */
+
+.band-dashboard .modal .modal-content {
+    max-width: 50vw;
 }
 
-.band-dashboard .modal .modal-content.members .modal-header .icon {
+.band-dashboard .modal .modal-content .modal-header .icon {
     font-size: 1.5rem;
     margin-bottom: 0.25rem;
 }
 
-.band-dashboard .modal .modal-content.members .modal-header p {
+.band-dashboard .modal .modal-content .modal-header p {
     margin-bottom: 1.5rem;
     margin-top: 0.5rem;
+}
+
+.band-dashboard .modal .modal-content .modal-actions {
+    display: flex;
+    gap:1rem;
+}
+
+/* CHANGE PERMISSIONS MODAL */
+
+
+
+/* ADD MEMBER MODAL */
+
+.band-dashboard .modal .modal-content.members .btn.close {
+    font-size: 1rem;
+    border:none;
+    font-weight: 500;
 }
 
 .band-dashboard .modal .modal-content.members .modal-options .option {
