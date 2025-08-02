@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { leaveBand } from '@services/bands';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { getBandsByMusicianId } from '@services/bands';
-import { DeleteIcon, DoorIcon, EditIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { OverviewTab } from '../profile/OverviewTab';
 import { MusicTab } from '../profile/MusicTab';
@@ -10,6 +10,8 @@ import { ReviewsTab } from '../profile/ReviewsTab';
 import { updateMusicianProfile } from '@services/musicians';
 import { BandMembersTab } from './BandMembersTab';
 import { toast } from 'sonner';
+import { deleteBand } from '../../../services/bands';
+import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 
 export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) => {
   const { bandId } = useParams();
@@ -23,6 +25,11 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
   const [editingMedia, setEditingMedia] = useState(false);
   const [localVideos, setLocalVideos] = useState(band?.videos || []);
   const [localTracks, setLocalTracks] = useState(band?.tracks || []);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const {
+    refreshMusicianProfile
+  } = useMusicianDashboard();
 
   useEffect(() => {
     const found = bandProfiles.find((b) => b.id === bandId);
@@ -56,13 +63,14 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
   };
 
   const handleLeaveBand = async () => {
-    const confirmLeave = window.confirm('Are you sure you want to leave this band?');
-    if (!confirmLeave) return;
     try {
       setLoading(true);
       await leaveBand(band.id, musicianProfile.musicianId, musicianProfile.userId);
-      toast.success('Successfully left the band.');
-      navigate('/dashboard/bands');
+      await refreshMusicianProfile();
+      setTimeout(() => {
+        toast.success('Left the band.');
+        navigate('/dashboard/bands');
+    }, 1500);
     } catch (err) {
       console.error('Failed to leave band:', err);
       toast.error('Failed to leave the band. Please try again.');
@@ -72,15 +80,14 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
   };
 
   const handleDeleteBand = async () => {
-    const confirmDelete = window.confirm(
-      'Are you sure you want to delete this band? This action cannot be undone.'
-    );
-    if (!confirmDelete) return;
     try {
       setLoading(true);
       await deleteBand(band.id);
-      toast.success('Band deleted.');
-      navigate('/dashboard/bands');
+      await refreshMusicianProfile();
+      setTimeout(() => {
+        toast.success('Band deleted.');
+        navigate('/dashboard/bands');
+      }, 1500);
     } catch (err) {
       console.error('Failed to delete band:', err);
       toast.error('Failed to delete band. Please try again.');
@@ -193,19 +200,22 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
               </div>
           </div>
         </div>
-        {!band.completed ? (
+        {!band.completed && band.bandInfo.admin.musicianId === musicianProfile.musicianId ? (
             <div className="profile-incomplete">
                 <h4>Please add some more information before applying to gigs.</h4>
                 <button className='btn primary' onClick={handleProfileNavigation}>
                     Finish Band Profile
                 </button>
+                <button className="btn danger" onClick={() => setShowDeleteModal(true)}>
+                  Delete Band
+                </button>
             </div>
         ) : (
           <div className="profile-actions">
             {band.bandInfo.admin.musicianId === musicianProfile.musicianId ? (
-              <button className="btn danger" onClick={handleDeleteBand}><DeleteIcon /></button>
+              <button className="btn danger" onClick={() => setShowDeleteModal(true)}>Delete Band</button>
             ) : (
-              <button className="btn danger" onClick={handleLeaveBand}><DoorIcon /></button>
+              <button className="btn danger" onClick={() => setShowLeaveModal(true)}>Leave Band</button>
             )}
         </div>
         )}
@@ -256,6 +266,60 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
                 {renderActiveTabContent()}
             </div>
         </div>
+        {showDeleteModal && (
+            <div className="modal" onClick={() => setShowDeleteModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                      <DeleteGigIcon />
+                      <h2>Delete Band?</h2>
+                      <p>
+                          Are you sure you want to delete "{band.name}"? This action cannot be undone.
+                      </p>
+                  </div>
+              <div className="modal-actions">
+                  <button className="btn tertiary" onClick={() => setShowDeleteModal(false)}>
+                      Cancel
+                  </button>
+                  <button
+                      className="btn danger"
+                      onClick={() => {
+                          handleDeleteBand();
+                          setShowDeleteModal(false);
+                      }}
+                  >
+                      Yes, Delete Band
+                  </button>
+              </div>
+              </div>
+          </div>
+        )}
+        {showLeaveModal && (
+            <div className="modal" onClick={() => setShowLeaveModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                      <DoorIcon />
+                      <h2>Leave Band?</h2>
+                      <p>
+                          Are you sure you want to leave "{band.name}"?
+                      </p>
+                  </div>
+              <div className="modal-actions">
+                  <button className="btn tertiary" onClick={() => setShowLeaveModal(false)}>
+                      Cancel
+                  </button>
+                  <button
+                      className="btn danger"
+                      onClick={() => {
+                          handleLeaveBand();
+                          setShowLeaveModal(false);
+                      }}
+                  >
+                      Yes, Leave Band
+                  </button>
+              </div>
+              </div>
+          </div>
+        )}
     </div>
   );
 };

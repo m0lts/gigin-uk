@@ -33,7 +33,6 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
     const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
-        console.log('BAND', band)
         const isLoaded = !!band?.bandInfo;
         setLoading(!isLoaded);
       }, [band]);
@@ -403,8 +402,8 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             </ul>
         </div>
         {showAdminConfirmModal && (
-            <div className="modal">
-                <div className="modal-content">
+            <div className="modal" onClick={() => setShowAdminConfirmModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <div className="modal-header">
                         <KeyIcon />
                         <h2>Transfer Admin Role?</h2>
@@ -434,8 +433,8 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             </div>
         )}
         {showRemoveModal && memberToRemove && (
-            <div className="modal">
-                <div className="modal-content">
+            <div className="modal" onClick={() => setShowRemoveModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <div className="modal-header">
                         <RemoveMemberIcon />
                         <h2>Remove Member?</h2>

@@ -202,6 +202,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
       value={{
         loading,
         musicianProfile,
+        setMusicianProfile,
         gigApplications,
         setGigApplications,
         gigs,

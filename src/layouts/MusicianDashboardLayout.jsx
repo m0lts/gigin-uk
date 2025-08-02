@@ -13,16 +13,25 @@ export const MusicianDashboardLayout = ({ children, setAuthModal, setAuthType, u
     const newUser = location.state?.newUser;
 
     useEffect(() => {
+        console.log(user)
         if (!loading && !user) {
             setAuthModal(true);
             setAuthClosable(false);
+            return;
+        }
+        if (loading && !user) {
+            setAuthModal(true);
+            setAuthClosable(false);
+            return;
         }
         if (user && !user.musicianProfile) {
-            navigate('/create-profile')
+            navigate('/create-profile');
+            return;
         }
         if (user.musicianProfile && !user.musicianProfile.completed) {
             const musicianProfile = user.musicianProfile;
-            navigate('/create-profile', { state: { musicianProfile } })
+            navigate('/create-profile', { state: { musicianProfile } });
+            return;
         }
     }, [user, loading])
 

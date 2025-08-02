@@ -5,6 +5,7 @@ import { useAuth } from '@hooks/useAuth';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { joinBandByPassword, getBandByPassword } from '@services/bands';
 import { toast } from 'sonner';
+import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 
 export const JoinBand = () => {
     const { user } = useAuth();
@@ -17,13 +18,17 @@ export const JoinBand = () => {
     const [code, setCode] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    const {
+      refreshMusicianProfile
+    } = useMusicianDashboard();
   
     useEffect(() => {
       if (!inviteId || user === undefined) return;
       const joinViaLink = async () => {
         if (!user) {
           setError('You must be logged in to join a band.');
-          console.log('user error')
+          console.log('user error');
           return;
         }
         if (!user.musicianProfile?.musicianId) {
@@ -37,10 +42,12 @@ export const JoinBand = () => {
           await acceptBandInvite(inviteId, user.musicianProfile);
           setStatus('success');
           setMessage('You’ve successfully joined the band!');
+          toast.success('Joined Band!')
           navigate('/dashboard/bands', { replace: true });
         } catch (err) {
           setStatus('error');
           setMessage(err.message);
+          toast.error('Failed to join band. Please try again.')
         }
       };
     
@@ -56,9 +63,13 @@ export const JoinBand = () => {
       setStatus('loading');
       try {
         const band = await getBandByPassword(code.trim().toLowerCase());
+        if (band.members.includes(user.musicianProfile.musicianId)) {
+          toast.error("You're already a member of this band.");
+          setStatus('idle')
+          return;
+        }
         setBand(band);
         setStatus('idle');
-        toast.success("You're in the band!")
       } catch (err) {
         setStatus('error');
         setMessage(err.message);
@@ -70,13 +81,17 @@ export const JoinBand = () => {
       try {
         setLoading(true);
         await joinBandByPassword(band.id, user.musicianProfile);
-        navigate('/dashboard/bands', { replace: true });
-        toast.success("You're in the band!")
+        await refreshMusicianProfile();
+        setTimeout(() => {
+          navigate(`/dashboard/bands/${band.id}`, { replace: true });
+          toast.success("Joined band.")
+          setLoading(false);
+        }, 1500);
       } catch (err) {
         console.error(err);
         setStatus('error');
         setMessage('Failed to join band.');
-      } finally {
+        toast.error('Failed to join band. Please try again.')
         setLoading(false);
       }
     };
@@ -107,7 +122,7 @@ export const JoinBand = () => {
               className={`input ${status === 'error' ? 'error' : ''}`}
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Enter band join code"
+              placeholder="Enter Band Password"
             />
             {status === 'error' && <p style={{ color: 'red' }} className="error">{message}</p>}
             <button className="btn primary" onClick={handleManualCodeSubmit}>

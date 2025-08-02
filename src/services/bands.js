@@ -604,27 +604,26 @@ export const leaveBand = async (bandId, musicianProfileId, userId) => {
  * @param {string} bandId - The band document ID.
  */
 export const deleteBand = async (bandId) => {
-  const batch = writeBatch(firestore);
-  const bandRef = doc(firestore, 'bands', bandId);
-  const membersRef = collection(firestore, `bands/${bandId}/members`);
-  const membersSnap = await getDocs(membersRef);
-
-  // Remove band from each user's and musician's band arrays
-  for (const memberDoc of membersSnap.docs) {
-    const member = memberDoc.data();
-    const musicianRef = doc(firestore, 'musicianProfiles', member.musicianProfileId);
-    const userRef = doc(firestore, 'users', member.memberUserId);
-    batch.update(musicianRef, {
-      bands: member.musicianProfileId ? arrayRemove(bandId) : [],
-    });
-    batch.update(userRef, {
-      bands: member.memberUserId ? arrayRemove(bandId) : [],
-    });
-    batch.delete(memberDoc.ref); // Delete from /bands/{bandId}/members
+  try {
+    const batch = writeBatch(firestore);
+    const bandRef = doc(firestore, 'bands', bandId);
+    const membersRef = collection(firestore, `bands/${bandId}/members`);
+    const membersSnap = await getDocs(membersRef);
+    for (const memberDoc of membersSnap.docs) {
+      const member = memberDoc.data();
+      const musicianRef = doc(firestore, 'musicianProfiles', member.musicianProfileId);
+      const userRef = doc(firestore, 'users', member.memberUserId);
+      batch.update(musicianRef, {
+        bands: member.musicianProfileId ? arrayRemove(bandId) : [],
+      });
+      batch.update(userRef, {
+        bands: member.memberUserId ? arrayRemove(bandId) : [],
+      });
+      batch.delete(memberDoc.ref);
+    }
+    batch.delete(bandRef);
+    await batch.commit();
+  } catch (error) {
+    console.error(error)
   }
-
-  // Delete the band document itself
-  batch.delete(bandRef);
-
-  await batch.commit();
 };

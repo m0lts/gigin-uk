@@ -100,7 +100,6 @@ input:-webkit-autofill {
 
 .auth-form .password.focused {
     border: 2px solid var(--gn-off-black);
-    background-color: var(--gn-off-black);
 }
 
 .auth-form #password:-webkit-autofill {
