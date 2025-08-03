@@ -3,7 +3,7 @@ import { Sidebar } from './Sidebar'
 import React, { useState, useEffect, useCallback } from 'react'
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import '@styles/musician/musician-dashboard.styles.css'
-import { ProfileTab } from './Profile';
+import { Profile } from './Profile';
 import { Gigs } from './Gigs';
 import { Bands } from './Bands';
 import { Finances } from './Finances';
@@ -107,12 +107,12 @@ export const MusicianDashboard = ({ user }) => {
                <div className="output">
                 <Routes>
                   <Route index element={<Overview user={user} musicianProfile={musicianProfile} gigApplications={gigApplications} gigs={gigs} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} bandProfiles={bandProfiles} unseenInvites={unseenInvites} setUnseenInvites={setUnseenInvites} />} />
-                  <Route path='profile' element={<ProfileTab musicianProfile={musicianProfile} user={user} />} />
+                  <Route path='profile' element={<Profile musicianProfile={musicianProfile} user={user} />} />
                   <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} />} />
                   <Route path='bands' element={<Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
                   <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
                   <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />
-                  <Route path="bands/:bandId" element={<BandDashboard musicianProfile={musicianProfile} bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
+                  <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
                   <Route path='finances' element={<Finances musicianProfile={musicianProfile} />} />
                 </Routes>
                </div>

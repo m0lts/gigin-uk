@@ -12,8 +12,9 @@ import { BandMembersTab } from './BandMembersTab';
 import { toast } from 'sonner';
 import { deleteBand } from '../../../services/bands';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
+import { ProfileForm } from '../dashboard/profile-form/ProfileForm';
 
-export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) => {
+export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData }) => {
   const { bandId } = useParams();
   const location = useLocation();
   const state = location.state;
@@ -110,7 +111,7 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
     }
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab musicianData={band} />;
+        return <ProfileForm musicianProfile={band} user={user} band={true} />;
       case 'members':
         return (
           <BandMembersTab
@@ -121,20 +122,6 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
             refreshBandInfo={refreshData}
           />
         );
-      case 'music':
-        return (
-          <MusicTab
-            videos={localVideos}
-            tracks={localTracks}
-            setVideos={setLocalVideos}
-            setTracks={setLocalTracks}
-            musicianId={band.musicianId}
-            editingMedia={editingMedia}
-            setEditingMedia={setEditingMedia}
-          />
-        );
-      case 'reviews':
-        return <ReviewsTab profile={band} />;
       default:
         return null;
     }
@@ -229,13 +216,7 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
                   onClick={() => band.completed && setActiveTab('overview')}
                   className={`profile-tab ${activeTab === 'overview' ? 'active' : ''} ${!band.completed ? 'disabled' : ''}`}
                 >
-                  Overview
-                </p>
-                <p
-                  onClick={() => band.completed && setActiveTab('music')}
-                  className={`profile-tab ${activeTab === 'music' ? 'active' : ''} ${!band.completed ? 'disabled' : ''}`}
-                >
-                  Music
+                  Band Profile
                 </p>
               </>
             )}
@@ -245,14 +226,6 @@ export const BandDashboard = ({ musicianProfile, bandProfiles, refreshData }) =>
             >
               Band Members
             </p>
-            {band.completed && (
-              <p
-                onClick={() => band.completed && setActiveTab('reviews')}
-                className={`profile-tab ${activeTab === 'reviews' ? 'active' : ''} ${!band.completed ? 'disabled' : ''}`}
-              >
-                Reviews
-              </p>
-             )}
           </div>
           <div className="right-side">
             {editingMedia && band.completed && (

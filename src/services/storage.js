@@ -104,6 +104,26 @@ export const uploadVideosWithThumbnails = async (mediaFiles, musicianId, folder,
   return Promise.all(mediaFiles.map(uploadOne));
 };
 
+export const uploadFileWithProgress = (file, path, onProgress) => {
+  return new Promise((resolve, reject) => {
+    const storageRef = ref(storage, path);
+    const task = uploadBytesResumable(storageRef, file);
+
+    task.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        if (onProgress) onProgress(progress);
+      },
+      reject,
+      async () => {
+        const downloadUrl = await getDownloadURL(task.snapshot.ref);
+        resolve(downloadUrl);
+      }
+    );
+  });
+};
+
 /**
  * Uploads track files to Firebase Storage and returns their download URLs.
  * @param {Array<{ file: File, title: string }>} mediaFiles
@@ -171,3 +191,24 @@ export const deleteFolderFromStorage = async (path) => {
   };
 
 
+/**
+ * Deletes a file from Firebase Cloud Storage given its public URL.
+ * @param {string} fileUrl - The full download URL of the file to delete.
+ * @returns {Promise<void>} Resolves when deletion is successful.
+ */
+export const deleteFileFromStorage = async (fileUrl) => {
+  if (!fileUrl) throw new Error('No file URL provided');
+
+  try {
+    // Convert the public URL to a Storage path
+    const { pathname } = new URL(fileUrl);
+    const pathSegments = pathname.split('/o/')[1]; // everything after `/o/`
+    const cleanPath = decodeURIComponent(pathSegments.split('?')[0]); // remove query string
+
+    const fileRef = ref(storage, cleanPath);
+    await deleteObject(fileRef);
+  } catch (error) {
+    console.error('Failed to parse or delete storage path:', error);
+    throw error;
+  }
+};
