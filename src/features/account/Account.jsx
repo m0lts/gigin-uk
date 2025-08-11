@@ -216,7 +216,7 @@ export const Account = () => {
                 for (const { id } of musicianReviews) {
                   await deleteReview(id);
                 }
-                const conversations = await getConversationsByParticipants(participantIds);
+                const conversations = await getConversationsByParticipants(musicianId);
                 for (const { id } of conversations) {
                     await deleteConversation(id);
                 }
@@ -360,14 +360,14 @@ export const Account = () => {
                                     <button
                                         className='btn tertiary'
                                         onClick={() =>
-                                            navigate('/create-profile', { state: { musicianProfile: user.musicianProfile } })
+                                            navigate('/dashboard/profile')
                                         }
                                     >
                                         <EditIcon />
                                     </button>
                                     <button
                                         className='btn danger'
-                                        onClick={() => handleDeleteMusicianProfile(user.musicianProfile.id)}
+                                        onClick={() => handleDeleteMusicianProfile(user.musicianProfile.musicianId)}
                                     >
                                         Delete Profile
                                     </button>

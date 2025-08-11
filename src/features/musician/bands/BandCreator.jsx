@@ -14,6 +14,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { createMusicianProfile } from '../../../services/musicians';
+import '@styles/musician/profile-creator.styles.css';
 
 export const BandCreator = ({ musicianProfile, refreshData }) => {
     const { user } = useAuth();
@@ -132,8 +133,8 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
       <div className={`profile-creator band ${loading ? 'loading' : ''}`}>
         {loading ? (
           <div className="creating-band">
+            <h2>Creating your band...</h2>
             <LoadingThreeDots />
-            <h3>Creating your band...</h3>
           </div>
         ) : (
           <>

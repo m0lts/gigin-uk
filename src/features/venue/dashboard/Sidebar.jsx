@@ -104,7 +104,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
         </li>
         {showDropdown && (
           <>
-            {/* <li className='account-dropdown-item' onClick={() => navigate('/create-profile')}>
+            {/* <li className='account-dropdown-item' onClick={() => navigate('/dashboard')}>
               Create a Musician Profile <GuitarsIcon />
             </li> */}
             <li className='account-dropdown-item' onClick={() => navigate('/account')}>

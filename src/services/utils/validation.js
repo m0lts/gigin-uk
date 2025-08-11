@@ -16,28 +16,49 @@ export const validateMusicianUser = ({
   setAuthType,
   setNoProfileModal,
   setIncompleteMusicianProfile,
-  profile, // optional override
+  profile,
 }) => {
   if (!user) {
-    setAuthModal(true);
-    setAuthType('login');
+    setAuthModal?.(true);
+    setAuthType?.('login');
     return { valid: false };
   }
-
-  const musicianProfile = profile || user.musicianProfile;
-  if (!musicianProfile) {
-    setNoProfileModal(true);
-    return { valid: false };
+  const p =
+  profile ||
+  user?.musicianProfile ||
+  null;
+  const { canApply, reasons } = getMusicianEligibility(p);
+  if (!canApply) {
+    setNoProfileModal?.(true);
+    setIncompleteMusicianProfile?.(p || null);
+    return { valid: false, reasons };
   }
-
-  if (!musicianProfile.completed) {
-    setNoProfileModal(true);
-    setIncompleteMusicianProfile?.(musicianProfile);
-    return { valid: false };
-  }
-
-  return { valid: true, musicianProfile };
+  return { valid: true, musicianProfile: p };
 };
+
+
+/**
+ * Business rule: what makes a musician eligible to apply to gigs?
+ * Keep this pure and framework-agnostic.
+ * Extend later with moderation/bans/verifications without touching UI.
+ *
+ * @param {object|null} profile
+ * @returns {{ canApply: boolean, reasons: string[] }}
+ */
+export function getMusicianEligibility(profile) {
+  if (!profile) {
+    return { canApply: false, reasons: ['No musician profile found'] };
+  }
+  const reasons = [];
+  const hasName = typeof profile.name === 'string' && profile.name.trim().length >= 2;
+  const hasPhoto = !!profile.picture;
+  if (!hasName) reasons.push('Add a stage name');
+  if (!hasPhoto) reasons.push('Add a profile photo');
+  if (profile.status === 'banned') reasons.push('Your account is restricted');
+  if (profile.photoModeration === 'rejected') reasons.push('Upload a new profile photo');
+  return { canApply: reasons.length === 0, reasons };
+}
+
 
 /**
  * Checks if the user is authenticated and has at least one venue profile.
@@ -69,10 +90,26 @@ export const validateVenueUser = ({
   return { valid: true, venueProfiles: user.venueProfiles };
 };
 
-const adjectives = ['brave', 'silly', 'quiet', 'noisy', 'happy', 'grumpy', 'eager', 'gentle', 'swift', 'bold'];
-const nouns = ['elephant', 'rocket', 'banana', 'violin', 'book', 'storm', 'piano', 'zebra', 'camera', 'island', 'light', 'desk', 'coffee', 'speaker'];
+
+
+const adjectives = [
+  'brave', 'silly', 'quiet', 'noisy', 'happy', 'grumpy', 'eager', 'gentle', 'swift', 'bold',
+  'clever', 'fuzzy', 'witty', 'curious', 'bubbly', 'zany', 'sleepy', 'fiery', 'mellow', 'quirky',
+  'stormy', 'shiny', 'fierce', 'jolly', 'whimsical', 'frosty', 'spicy', 'dizzy', 'cranky', 'fancy',
+  'feathered', 'graceful', 'dusty', 'fluffy', 'prickly', 'cheeky', 'drowsy', 'lively', 'jazzy', 'rowdy',
+  'frozen', 'bashful', 'twinkly', 'sunny', 'moody', 'sassy', 'crafty', 'vivid', 'mystic', 'daring'
+];
+
+const nouns = [
+  'elephant', 'rocket', 'banana', 'violin', 'book', 'storm', 'piano', 'zebra', 'camera', 'island',
+  'light', 'desk', 'coffee', 'speaker', 'panther', 'comet', 'drum', 'jungle', 'owl', 'lantern',
+  'castle', 'tulip', 'marble', 'bison', 'mango', 'canyon', 'pebble', 'helmet', 'wagon', 'dragon',
+  'hammock', 'glacier', 'cookie', 'feather', 'tornado', 'pumpkin', 'skater', 'sunset', 'scooter', 'pirate',
+  'cloud', 'bongo', 'robot', 'cactus', 'wizard', 'anvil', 'guitar', 'meteor', 'waffle', 'flamingo'
+];
 
 export const generateBandPassword = () => {
   const random = (arr) => arr[Math.floor(Math.random() * arr.length)];
   return `${random(adjectives)}-${random(nouns)}-${random(nouns)}`;
 };
+

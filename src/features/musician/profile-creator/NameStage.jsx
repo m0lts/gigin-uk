@@ -12,9 +12,8 @@ export const NameStage = ({ data, onChange, user, band = false }) => {
 
     return (
         <div className='stage name'>
-            <h3 className='section-title'>{band === true ? 'Create Band' : 'Details'}</h3>
             <div className='body'>
-                <h1>{band === true ? "What's Your Band Called?" : "What's Your Stage Name?"}</h1>
+                <h2>{band === true ? "What's Your Band Called?" : "What's Your Stage Name?"}</h2>
                 <input
                     className='input name'
                     type='text'

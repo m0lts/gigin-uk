@@ -164,7 +164,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 </Link>
                             )}
                             <div className='break' />
-                            {/* <Link to={'/create-profile'} className='item no-margin link'>
+                            {/* <Link onClick={() => setShowProfileModal(true)} className='item no-margin link'>
                                 Create a Musician Profile
                                 <GuitarsIcon />
                             </Link> */}

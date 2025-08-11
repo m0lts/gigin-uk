@@ -51,13 +51,6 @@ export const MusicianDashboard = ({ user }) => {
       if (location.state?.buildingForMusician) setBuildingForMusician(true);
       if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
     }, [location]);
-  
-  
-    useEffect(() => {
-      if (!loading && !musicianProfile && user && !user.musicianProfile) {
-        navigate('/musician/create-profile');
-      }
-    }, [loading, musicianProfile, user]);
 
     useEffect(() => {
       if (!user) return;

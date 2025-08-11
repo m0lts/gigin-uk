@@ -25,6 +25,7 @@ import { useState, useEffect } from 'react'
 import { listenToUserConversations } from '@services/conversations';
 import { submitUserFeedback } from '@services/reports';
 import { useResizeEffect } from '@hooks/useResizeEffect';
+import { ProfileCreator } from '../profile-creator/ProfileCreator';
 
 export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     
@@ -42,6 +43,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
 
     const [newMessages, setNewMessages] = useState(false);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [showProfileModal, setShowProfileModal] = useState(false);
 
     useResizeEffect((width) => {
         setWindowWidth(width);
@@ -180,12 +182,10 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                             </Link>
                                         )
                                     ) : (
-                                        <Link className='link' to={'/create-profile'}>
-                                            <button className='btn secondary'>
-                                                <GuitarsIcon />
-                                                Create Musician Profile
-                                            </button>
-                                        </Link>
+                                        <button className='btn secondary' onClick={() => setShowProfileModal(true)}>
+                                            <GuitarsIcon />
+                                            Create Musician Profile
+                                        </button>
                                     )}
                                 </>
                             )}
@@ -253,7 +253,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 </Link>
                             )}
                             <div className='break' />
-                            <Link className='link item no-margin' to={'/create-profile'}>
+                            <Link className='link item no-margin' onClick={() => setShowProfileModal(true)}>
                                 Create a Musician Profile
                                 <GuitarsIcon />
                             </Link>
@@ -298,7 +298,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                         <DashboardIconLight />
                                     </Link>
                                 ) : (
-                                    <Link className='link item' to={'/create-profile'}>
+                                    <Link className='link item' onClick={() => setShowProfileModal(true)}>
                                         Create Musician Profile
                                         <GuitarsIcon />
                                     </Link>
@@ -377,6 +377,9 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                         </button>
                     </nav>
                 </>
+            )}
+            {showProfileModal && (
+                <ProfileCreator user={user} setShowModal={setShowProfileModal} />
             )}
         </header>
     )

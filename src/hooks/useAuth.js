@@ -43,6 +43,7 @@ export const useAuth = () => {
             }
             setUser(userData);
             setLoading(false);
+            console.log('User:', userData)
           });
           return () => {
             unsubscribeUserDoc();

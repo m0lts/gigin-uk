@@ -5,6 +5,7 @@ import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth'
 import { useState, useEffect } from 'react'
 import { listenToUserConversations } from '@services/conversations';
+import { ProfileCreator } from '../../musician/profile-creator/ProfileCreator';
 
 export const Header = ({ setAuthModal, setAuthType, user }) => {
     
@@ -20,6 +21,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
     });
     const [feedbackLoading, setFeedbackLoading] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -80,12 +82,10 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                     </div>
                     <div className='right'>
                         <div className='buttons'>
-                            <Link className='link' to={'/create-profile'}>
-                                    <button className='btn secondary'>
-                                        <GuitarsIcon />
-                                        Create a Musician Profile
-                                    </button>
-                            </Link>
+                            <button className='btn secondary' onClick={() => setShowProfileModal(true)}>
+                                <GuitarsIcon />
+                                Create a Musician Profile
+                            </button>
                             {location.pathname !== '/find-a-gig' && (
                                 <Link className='link' to={'/find-a-gig'}>
                                     <button className='btn secondary'>
@@ -95,9 +95,9 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 </Link>
                             )}
                             <Link className='link' to={'/venues'}>
-                                    <button className='btn text'>
-                                        I'm a Venue
-                                    </button>
+                                <button className='btn text'>
+                                    I'm a Venue
+                                </button>
                             </Link>
                         </div>
                         <button className='btn icon' onClick={() => setAccountMenu(!accountMenu)}>
@@ -116,12 +116,12 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                                 Find a Gig
                                 <TelescopeIcon />
                             </Link>
-                            <Link to={'/create-profile'} className='item link'>
+                            <Link onClick={() => setShowProfileModal(true)} className='item link'>
                                 Create Musician Profile
                                 <GuitarsIcon />
                             </Link>
                             <div className='break' />
-                            <h6 className='title'>VEnues</h6>
+                            <h6 className='title'>Venues</h6>
                             <Link to={'/venues'} className='item link'>
                                 I'm a Venue
                                 <VenueBuilderIcon />
@@ -146,6 +146,9 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                         </button>
                     </nav>
                 </>
+            )}
+            {showProfileModal && (
+                <ProfileCreator user={user} setShowModal={setShowProfileModal} />
             )}
         </header>
     )

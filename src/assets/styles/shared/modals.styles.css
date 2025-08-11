@@ -73,6 +73,27 @@
     text-align: center;
 }
 
+.modal-header {
+    margin-bottom: 1.5rem;
+}
+
+.modal-header .icon {
+    font-size: 1.5rem;
+}
+
+.modal-header h2 {
+    margin: 0.25rem 0;
+}
+
+.modal-header p {
+    color: var(--gn-grey-700);
+}
+
+.modal-buttons {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
 
 
 /* AUTH MODAL */

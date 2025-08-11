@@ -5,12 +5,15 @@ export const ProfilePictureStage = ({ data, onChange, band = false }) => {
     const [preview, setPreview] = useState('');
 
     useEffect(() => {
+        let url;
         if (typeof data === 'string') {
-            setPreview(data);
+          setPreview(data);
         } else if (data instanceof File) {
-            setPreview(URL.createObjectURL(data));
+          url = URL.createObjectURL(data);
+          setPreview(url);
         }
-    }, [data]);
+        return () => { if (url) URL.revokeObjectURL(url); };
+      }, [data]);
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
@@ -22,9 +25,8 @@ export const ProfilePictureStage = ({ data, onChange, band = false }) => {
 
     return (
         <div className='stage photo'>
-            <h3 className='section-title'>{band === true ? 'Create Band' : 'Details'}</h3>
             <div className='body'>
-                <h1>{band === true ? 'Upload a Band Profile Picture' : 'Upload a Profile Picture'}</h1>
+                <h2>{band === true ? 'Upload a Band Profile Picture' : 'Upload a Profile Picture'}</h2>
                 <div className='image-container'>
                     <input
                         className='input photo'

@@ -6,6 +6,7 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { joinBandByPassword, getBandByPassword } from '@services/bands';
 import { toast } from 'sonner';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
+import { ProfileCreator } from '../profile-creator/ProfileCreator';
 
 export const JoinBand = () => {
     const { user } = useAuth();
@@ -18,6 +19,7 @@ export const JoinBand = () => {
     const [code, setCode] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
 
     const {
       refreshMusicianProfile
@@ -32,9 +34,7 @@ export const JoinBand = () => {
           return;
         }
         if (!user.musicianProfile?.musicianId) {
-          navigate('/create-profile', {
-            state: { redirectToInvite: inviteId },
-          });
+          setShowProfileModal(true);
           return;
         }
         setStatus('loading');
@@ -132,6 +132,9 @@ export const JoinBand = () => {
               Back
             </button>
           </div>
+        )}
+        {showProfileModal && (
+          <ProfileCreator user={user} setShowModal={setShowProfileModal} closable={false}/>
         )}
       </div>
     );

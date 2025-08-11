@@ -38,12 +38,15 @@ import { acceptGigOffer, getGigById } from '../../services/gigs';
 import { getMostRecentMessage, sendGigAcceptedMessage } from '../../services/messages';
 import { toast } from 'sonner';
 import { sendEmail } from '../../services/emails';
-import { NewTabIcon, SaveIcon, ShareIcon } from '../shared/ui/extras/Icons';
+import { NewTabIcon, ProfileIconSolid, SaveIcon, ShareIcon } from '../shared/ui/extras/Icons';
 import { openInNewTab } from '../../services/utils/misc';
+import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
+import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
 
 export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const { gigId } = useParams();
     const navigate = useNavigate();
+    const { canApply, reasons, loading: eligibilityLoading } = useMusicianEligibility(user);
 
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token'); 
@@ -72,6 +75,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [accessTokenIsMusicianProfile, setAccessTokenIsMusicianProfile] = useState(false);
     const [invitedToGig, setInvitedToGig] = useState(false);
     const [userAcceptedInvite, setUserAcceptedInvite] = useState(false);
+    const [showCreateProfileModal, setShowCreateProfileModal] = useState(false);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -184,7 +188,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
           };
 
         filterGigData();
-        if (user?.musicianProfile && user?.musicianProfile?.bands.length > 0) {
+        if (user?.musicianProfile && user?.musicianProfile?.bands?.length > 0) {
             fetchBandData();
         }
     }, [gigId, user, venueVisiting, inviteToken, multipleProfiles]);
@@ -868,14 +872,34 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             </section>
 
             {noProfileModal && (
-                <div className='modal'>
-                    <div className='modal-content'>
-                        <h2>No Complete Musician Profile Found</h2>
-                        <p style={{ textAlign: 'center' }}>Please create or finish your profile before applying to gigs.</p>
-                        <div className='two-buttons'>
-                            <button className='btn secondary' onClick={() => setNoProfileModal(false)}>Cancel</button>
-                            <button className='btn primary' onClick={() => navigate('/create-profile', { state: { incompleteMusicianProfile } })}>Create Profile</button>
-                        </div>
+                <div className='modal' onClick={() => setNoProfileModal(false) }>
+                    <div className='modal-content' onClick={(e) => e.stopPropagation() } style={{ maxWidth: 500 }}>
+                        {user.musicianProfile ? (
+                            <>
+                                <div className="modal-header">
+                                    <ProfileIconSolid />
+                                    <h2>Finish Your Musician Profile First</h2>
+                                    <p>Please finish your profile before applying to gigs. All you have to do is save a profile picture.</p>
+                                </div>
+                                <div className='modal-buttons'>
+                                    <button className='btn tertiary' onClick={() => setNoProfileModal(false)}>Cancel</button>
+                                    <button className='btn primary' onClick={() => { setShowCreateProfileModal(true); setNoProfileModal(false) }}>Finish Profile</button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="modal-header">
+                                    <ProfileIconSolid />
+                                    <h2>Create a Musician Profile First</h2>
+                                    <p>Please create your profile before applying to gigs. It'll take 2 minutes to get you applying to gigs.</p>
+                                </div>
+                                <div className='modal-buttons'>
+                                    <button className='btn tertiary' onClick={() => setNoProfileModal(false)}>Cancel</button>
+                                    <button className='btn primary' onClick={() => { setShowCreateProfileModal(true); setNoProfileModal(false) }}>Create Profile</button>
+                                </div>
+
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -894,6 +918,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 </div>
             )}
 
+            {showCreateProfileModal && (
+                <ProfileCreator user={user} setShowModal={setShowCreateProfileModal} />
+            )}
         </div>
     );
 };
