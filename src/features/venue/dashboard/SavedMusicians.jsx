@@ -114,97 +114,120 @@ export const SavedMusicians = ({ user }) => {
         <div className='body musicians'>
             {!loading ? (
                 <div className='saved-musicians'>
-                    {savedMusicians.map((musician) => (
-                        <div className='musician-card' key={musician.id}>
-                            <div className="media-container">
-                                <figure className="video-thumbnail" onClick={() => openVideoModal(musician.videos[0])}>
-                                    <video
-                                        src={musician.videos[0]}
-                                        muted
-                                        playsInline
-                                        preload="metadata"
-                                        poster={musician.videos[0].thumbnail}
-                                    />
-                                    <div className="play-icon">
-                                        <PlayIcon />
+                    {savedMusicians.map((musician) => {
+                        if (!musician) return null;
+
+                        const {
+                            id,
+                            name = 'Unnamed',
+                            picture,
+                            genres = [],
+                            musicianType = '',
+                            videos = [],
+                            avgReviews,
+                            totalEarnings,
+                            followers,
+                        } = musician;
+
+                        const firstVideo = videos[0];
+                        const videoSrc =
+                        typeof firstVideo === 'string'
+                            ? firstVideo
+                            : firstVideo?.file || firstVideo?.url || null;
+                        const videoThumb =
+                        typeof firstVideo === 'object' ? firstVideo?.thumbnail : undefined;
+
+                        const completedMusician =
+                        !!videoSrc && genres.length > 0 && !!musicianType;
+
+                        return (
+                        <div className='musician-card' key={id}>
+                            <div className={`media-container ${!videoSrc ? 'empty' : ''}`}>
+                                {videoSrc ? (
+                                    <figure className="video-thumbnail" onClick={() => openVideoModal(firstVideo)}>
+                                        <video
+                                            src={videoSrc}
+                                            muted
+                                            playsInline
+                                            preload="metadata"
+                                            poster={videoThumb}
+                                        />
+                                        <div className="play-icon">
+                                            <PlayIcon />
+                                        </div>
+                                    </figure>
+                                ) : (!videoSrc && picture) && (
+                                    <figure className="profile-picture-only">
+                                        <img src={picture} alt={name} />
+                                    </figure>
+                                )}
+
+                                {(videoSrc && picture) && (
+                                    <div className="profile-picture">
+                                        <img src={picture} alt={name} />
                                     </div>
-                                </figure>
-                                <div className="profile-picture">
-                                    <img src={musician.picture} alt={musician.name} />
-                                </div>
+                                )}
                             </div>
+
                             <div className="musician-card-flex">
                                 <div className="musician-name-type">
-                                    <h2>{musician.name}</h2>
-                                    <p>{musician.musicianType}</p>
+                                    <h2>{name}</h2>
+                                    <p>{musicianType}</p>
                                 </div>
                                 <button className="btn icon-box" onClick={() => handleMusicianUnsave(musician)}>
                                     <SavedIcon />
                                 </button>
                             </div>
-                            <div className="genre-tags">
-                                {musician.genres.map((g) => (
-                                    <span className="genre-tag" key={g}>
-                                        {g}
-                                    </span>
-                                ))}
-                            </div>
+
+                            {genres.length > 0 && (
+                                <div className="genre-tags">
+                                    {genres.map((g) => (
+                                    <span className="genre-tag" key={g}>{g}</span>
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="stats-container">
-                                {musician?.avgReviews?.avgRating ? (
+                                {/* avg rating */}
+                                {avgReviews?.avgRating ? (
                                     <div className="stats-box avg-rating">
-                                        <span className="large-item">
-                                            <StarIcon />
-                                            {musician.avgReviews.avgRating}
-                                        </span>
-                                        <span className='text'>avg rating</span>
+                                    <span className="large-item"><StarIcon />{avgReviews.avgRating}</span>
+                                    <span className='text'>avg rating</span>
                                     </div>
                                 ) : (
                                     <div className="stats-box avg-rating">
-                                        <span className="large-item">
-                                            <StarIcon />
-                                            -
-                                        </span>
-                                        <span className='text'>no ratings</span>
+                                    <span className="large-item"><StarIcon />-</span>
+                                    <span className='text'>no ratings</span>
                                     </div>
                                 )}
+
                                 <span className="spacer"></span>
-                                {musician?.totalEarnings ? (
-                                    <div className="stats-box earnings">
-                                        <span className="large-item">
-                                            {formatEarnings(musician.totalEarnings)}
-                                        </span>
-                                        <span className='text'>earned</span>
-                                    </div>
-                                ) : (
-                                    <div className="stats-box earnings">
-                                        <span className="large-item">
-                                            £0
-                                        </span>
-                                        <span className='text'>earned</span>
-                                    </div>
-                                )}
+
+                                {/* earnings */}
+                                <div className="stats-box earnings">
+                                    <span className="large-item">{totalEarnings ? formatEarnings(totalEarnings) : '£0'}</span>
+                                    <span className='text'>earned</span>
+                                </div>
+
                                 <span className="spacer"></span>
-                                {musician?.followers ? (
-                                    <div className="stats-box followers">
-                                        <span className="large-item">
-                                            {musician.followers}
-                                        </span>
-                                        <span className="text">followers</span>
-                                    </div>
-                                ) : (
-                                    <div className="stats-box followers">
-                                        <span className="large-item">
-                                            0
-                                        </span>
-                                        <span className="text">followers</span>
-                                    </div>
-                                )}
+
+                                {/* followers */}
+                                <div className="stats-box followers">
+                                    <span className="large-item">{followers ?? 0}</span>
+                                    <span className="text">followers</span>
+                                </div>
                             </div>
-                            <button className="btn primary" onClick={(e) => openInNewTab(`/${musician.id}/null`, e)}>
+
+                            <button
+                                className="btn primary"
+                                onClick={(e) => openInNewTab(`/${encodeURIComponent(id)}/null`, e)}
+                                disabled={!id}
+                            >
                                 <span>View Profile</span>
                             </button>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <div className='saved-musicians'>

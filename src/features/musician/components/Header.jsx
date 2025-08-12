@@ -152,9 +152,9 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                     </div>
                     <div className='right'>
                         <div className='buttons'>
-                            <button className='btn text' onClick={() => setFeedbackForm(!feedbackForm)}>
+                            {/* <button className='btn text' onClick={() => setFeedbackForm(!feedbackForm)}>
                                 Feedback
-                            </button>
+                            </button> */}
                             {user.venueProfiles && !user.musicianProfile ? (
                                 <Link className='link' to={'/venues/dashboard'}>
                                     <button className='btn secondary'>

@@ -540,7 +540,7 @@
     border: 1px solid var(--gn-grey-300);
     border-radius: 0.5rem;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-    padding: 0.5rem 0;
+    padding: 0.5rem 0.4rem;
     min-width: 300px;
     z-index: 1;
     display: flex;
@@ -552,8 +552,6 @@
     border: none;
     text-align: left;
     padding: 0.5rem;
-    width: 90%;
-    margin:0 auto;
     border-radius: 0.5rem;
     font-weight: 400;
     color: var(--gn-off-black);
@@ -954,6 +952,137 @@
     display: none;
 }
 
+.window.venues .body.musicians .filters {
+    display: flex;
+    justify-content: flex-start;
+    gap:1rem;
+    align-items: center;
+    width:100%;
+    padding-top:0.1rem;
+}
+
+.window.venues .body.musicians .filters.ext {
+    margin-top:1rem;
+}
+
+.window.venues .body.musicians .separator {
+    border-left:1px solid var(--gn-grey-500);
+    margin: 0 2px;
+    height:20px;
+}
+
+.window.venues .body.musicians .filters:last-of-type {
+    margin-top: 1rem;
+}
+
+.window.venues .body.musicians .filters {
+    margin-bottom: 1rem;
+}
+
+.window.venues .body.musicians .status-buttons {
+    width:fit-content;
+    display: flex;
+    align-items: center;
+    gap:2px;
+    background-color: var(--gn-grey-300);
+    padding:3px;
+    border-radius: 0.5rem;
+}
+
+.window.venues .body.musicians .status-buttons .btn {
+    background-color: transparent;
+    border:none;
+    padding:5px 10px;
+    font-weight: 400;
+    border-radius: 5px;
+    color: var(--gn-grey-700);
+    box-shadow: none;
+    transition: all 200ms ease-in-out;
+}
+
+.window.venues .body.musicians .status-buttons .btn.active {
+    background-color: var(--gn-white);
+    color: var(--gn-black);
+    box-shadow: 0 0 5px var(--gn-grey-400);
+}
+.window.venues .body.musicians .status-buttons .btn:hover {
+    background-color: var(--gn-grey-350);
+}
+
+.window.venues .body.musicians .filters select,
+.window.venues .body.musicians .filters .date-select {
+    background-color: var(--gn-grey-300);
+    font-weight: 400;
+    color: var(--gn-grey-700);
+    padding:0.5rem;
+    border:none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    width:fit-content;
+    outline: 1px solid transparent;
+    transition: outline 200ms linear;
+}
+
+.window.venues .body.musicians .filters select option {
+    font-weight: 400;
+}
+
+.window.venues .body.musicians .filters select:focus,
+.window.venues .body.musicians .filters .date-select:focus {
+    outline:1px solid var(--gn-off-black);
+}
+
+.window.venues .body.musicians .filters .search-bar-container {
+    width: 220px;
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--gn-grey-300);
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    transition: border-color 150ms ease;
+    cursor: text;
+}
+
+.window.venues .body.musicians .filters .search-bar {
+    flex: 1;
+    background-color: transparent;
+    border: none;
+    font-size: 1rem;
+    color: var(--gn-off-black);
+    font-weight: 400;
+    outline: none;
+}
+
+.window.venues .body.musicians .filters .search-bar:focus-visible + .search-bar-container,
+.window.venues .body.musicians .filters .search-bar-container:focus-within {
+    border-color: var(--gn-off-black);
+}
+
+.window.venues .body.musicians .filters .spacer {
+    flex-grow: 1;
+}
+
+.window.venues .body.musicians .filters .btn.tertiary {
+    display: flex;
+    align-items: center;
+    gap:0.5rem;
+    font-weight: 400;
+    color: var(--gn-grey-700);
+}
+
+.window.venues .body.musicians .filters .btn.tertiary:hover {
+    background-color: var(--gn-grey-350);
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.window.venues .body.musicians .filters .btn.tertiary.open {
+    background-color: var(--gn-grey-350);
+    color:var(--gn-black);
+}
+
 .window.venues .body.musicians.no-saved {
     display: flex;
     align-items: center;
@@ -983,14 +1112,13 @@
 .window.venues .body.musicians .musician-card {
     width: 100%;
     max-width: 350px;
-    height:450px;
+    height:fit-content;
     max-height: 450px;
     box-sizing: border-box;
     background-color: var(--gn-white);
     box-shadow: 0px 0px 5px var(--gn-shadow);
     border-radius: 2rem;
     padding: 0.5rem;
-    padding-top:0;
     display: flex;
     flex-direction: column;
     justify-content: space-evenly;
@@ -1002,6 +1130,26 @@
     width: 100%;
     aspect-ratio: 16 / 9;
     max-height: 200px;
+    border-radius: 1.5rem;
+}
+
+.window.venues .body.musicians .musician-card .media-container.empty {
+    position: relative;
+    width: 100%;
+    border-radius: 1.5rem;
+}
+
+.window.venues .body.musicians .musician-card .media-container.empty .profile-picture-only {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 1.5rem;
+}
+
+.window.venues .body.musicians .musician-card .media-container.empty .profile-picture-only img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-radius: 1.5rem;
 }
   

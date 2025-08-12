@@ -20,106 +20,105 @@ import { TopBar } from './TopBar';
 
 
 export const MusicianDashboard = ({ user }) => {
-    const navigate = useNavigate();
 
-    const {
-      loading,
-      musicianProfile,
-      gigApplications,
-      setGigApplications,
-      gigs,
-      setGigs,
-      gigToReview,
-      showReviewModal,
-      setShowReviewModal,
-      bandProfiles,
-      gigsToReview,
-      setGigsToReview,
-      refreshMusicianProfile,
-    } = useMusicianDashboard();
+  const {
+    loading,
+    musicianProfile,
+    gigApplications,
+    setGigApplications,
+    gigs,
+    setGigs,
+    gigToReview,
+    showReviewModal,
+    setShowReviewModal,
+    bandProfiles,
+    gigsToReview,
+    setGigsToReview,
+    refreshMusicianProfile,
+  } = useMusicianDashboard();
 
-    const [newMessages, setNewMessages] = useState(false);
-    const [conversations, setConversations] = useState([]);
-    const [unseenInvites, setUnseenInvites] = useState([]);
-    const [refreshInvites, setRefreshInvites] = useState(true);
+  const [newMessages, setNewMessages] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  const [unseenInvites, setUnseenInvites] = useState([]);
+  const [refreshInvites, setRefreshInvites] = useState(true);
 
-    const location = useLocation();
-  
-    useEffect(() => {
-      if (location.state?.newUser) setShowWelcomeModal(true);
-      if (location.state?.showGigPostModal) setGigPostModal(true);
-      if (location.state?.buildingForMusician) setBuildingForMusician(true);
-      if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
-    }, [location]);
+  const location = useLocation();
 
-    useEffect(() => {
-      if (!user) return;
-      const unsubscribe = listenToUserConversations(user, (updatedConversations) => {
-        setConversations(prev => mergeAndSortConversations(prev, updatedConversations));
-        const hasUnread = updatedConversations.some((conv) => {
-          const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
-          const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
-          const isNotSender = conv.lastMessageSenderId !== user.uid;
-          return lastMessage > lastViewed && isNotSender;
-        });
-        setNewMessages(hasUnread);
+  useEffect(() => {
+    if (location.state?.newUser) setShowWelcomeModal(true);
+    if (location.state?.showGigPostModal) setGigPostModal(true);
+    if (location.state?.buildingForMusician) setBuildingForMusician(true);
+    if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
+  }, [location]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = listenToUserConversations(user, (updatedConversations) => {
+      setConversations(prev => mergeAndSortConversations(prev, updatedConversations));
+      const hasUnread = updatedConversations.some((conv) => {
+        const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
+        const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
+        const isNotSender = conv.lastMessageSenderId !== user.uid;
+        return lastMessage > lastViewed && isNotSender;
       });
-      return unsubscribe;
-    }, [user]);
+      setNewMessages(hasUnread);
+    });
+    return unsubscribe;
+  }, [user]);
 
-    useEffect(() => {
-      if (gigs.length > 0) filterInvites();
-    }, [gigs])
+  useEffect(() => {
+    if (gigs.length > 0) filterInvites();
+  }, [gigs])
 
-    const filterInvites = useCallback(() => {
-      if (!gigs && !refreshInvites) return;
-      const gigInvites = gigs
-        .map((gig) => {
-          const invitedApplicant = gig.applicants.find(
-            (app) => app.invited === true && (app.viewed === false || !app.viewed)
-          );
-          return invitedApplicant ? { gigId: gig.gigId, ...invitedApplicant } : null;
-        })
-        .filter(Boolean);
-      setUnseenInvites(gigInvites);
-      setRefreshInvites(false);
-    }, [gigs, refreshInvites]);
-  
-    if (loading) return <LoadingScreen />;
+  const filterInvites = useCallback(() => {
+    if (!gigs && !refreshInvites) return;
+    const gigInvites = gigs
+      .map((gig) => {
+        const invitedApplicant = gig.applicants.find(
+          (app) => app.invited === true && (app.viewed === false || !app.viewed)
+        );
+        return invitedApplicant ? { gigId: gig.gigId, ...invitedApplicant } : null;
+      })
+      .filter(Boolean);
+    setUnseenInvites(gigInvites);
+    setRefreshInvites(false);
+  }, [gigs, refreshInvites]);
 
-    return (
-      <>
-          {loading && <LoadingScreen />}
-           <Sidebar
-            user={user}
-            newMessages={newMessages}
-            unseenInvites={unseenInvites}
-          />
-           <div className='window musicians'>
-              <TopBar user={user} bandProfiles={bandProfiles} />
-               <div className="output">
-                <Routes>
-                  <Route index element={<Overview user={user} musicianProfile={musicianProfile} gigApplications={gigApplications} gigs={gigs} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} bandProfiles={bandProfiles} unseenInvites={unseenInvites} setUnseenInvites={setUnseenInvites} />} />
-                  <Route path='profile' element={<Profile musicianProfile={musicianProfile} user={user} />} />
-                  <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} />} />
-                  <Route path='bands' element={<Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
-                  <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
-                  <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />
-                  <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
-                  <Route path='finances' element={<Finances musicianProfile={musicianProfile} />} />
-                </Routes>
-               </div>
-           </div>
-        {showReviewModal && gigToReview && (
-          <ReviewModal
-            gigData={gigToReview}
-            reviewer="musician"
-            onClose={() => {
-              setShowReviewModal(false);
-              localStorage.setItem(`reviewedGig-${gigToReview.gigId}`, 'true');
-            }}
-          />
-        )}
-      </>
-    );
+  if (loading) return <LoadingScreen />;
+
+  return (
+    <>
+        {loading && <LoadingScreen />}
+          <Sidebar
+          user={user}
+          newMessages={newMessages}
+          unseenInvites={unseenInvites}
+        />
+          <div className='window musicians'>
+            <TopBar user={user} bandProfiles={bandProfiles} />
+              <div className="output">
+              <Routes>
+                <Route index element={<Overview user={user} musicianProfile={musicianProfile} gigApplications={gigApplications} gigs={gigs} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} bandProfiles={bandProfiles} unseenInvites={unseenInvites} setUnseenInvites={setUnseenInvites} />} />
+                <Route path='profile' element={<Profile musicianProfile={musicianProfile} user={user} />} />
+                <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} />} />
+                <Route path='bands' element={<Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
+                <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
+                <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />
+                <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
+                <Route path='finances' element={<Finances musicianProfile={musicianProfile} />} />
+              </Routes>
+              </div>
+          </div>
+      {showReviewModal && gigToReview && (
+        <ReviewModal
+          gigData={gigToReview}
+          reviewer="musician"
+          onClose={() => {
+            setShowReviewModal(false);
+            localStorage.setItem(`reviewedGig-${gigToReview.gigId}`, 'true');
+          }}
+        />
+      )}
+    </>
+  );
 }

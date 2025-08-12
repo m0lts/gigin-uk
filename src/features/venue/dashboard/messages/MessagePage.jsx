@@ -241,9 +241,6 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                     <div className='message-page no-messages'>
                         <MailboxEmptyIcon />
                         <h3>You have no messages</h3>
-                        <button className='btn secondary' onClick={() => navigate(-1)}>
-                            Go Back
-                        </button>
                     </div>
                 )}
                 {(showGigModal && activeConversation) && (

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import '@styles/musician/musician-profile.styles.css'
-import { BackgroundMusicIcon, CameraIcon, EditIcon, ErrorIcon, FacebookIcon, InstagramIcon, MediaIcon, MicrophoneIconSolid, MicrophoneLinesIcon, MoreInformationIcon, Mp3Icon, Mp4Icon, MusicianIconSolid, ProfileIconSolid, SocialMediaIcon, SoundcloudIcon, SpotifyIcon, StarIcon, TickIcon, TwitterIcon, VideoIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
+import { BackgroundMusicIcon, CameraIcon, DownChevronIcon, EditIcon, ErrorIcon, FacebookIcon, InstagramIcon, MediaIcon, MicrophoneIconSolid, MicrophoneLinesIcon, MoreInformationIcon, Mp3Icon, Mp4Icon, MusicianIconSolid, ProfileIconSolid, SocialMediaIcon, SoundcloudIcon, SpotifyIcon, StarIcon, TickIcon, TwitterIcon, UpChevronIcon, VideoIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
 import { sendEmail } from '@services/emails';
 import { v4 as uuidv4 } from 'uuid';
 import { updateUserDocument } from '@services/users';
@@ -53,7 +53,8 @@ export const ProfileForm = ({ user, musicianProfile, band = false }) => {
         bandProfile: false,
     });
     const [showModal, setShowModal] = useState(false);
-    const [currentIndex, setCurrentIndex] = useState(null)
+    const [currentIndex, setCurrentIndex] = useState(null);
+    const [expand, setExpand] = useState(['your-sound', 'media-upload', 'further-information', 'social-media']);
     const [uploadingProfile, setUploadingProfile] = useState(false);
     const [savingProfile, setSavingProfile] = useState(false);
     const [videoUploadProgress, setVideoUploadProgress] = useState(0);
@@ -304,8 +305,6 @@ export const ProfileForm = ({ user, musicianProfile, band = false }) => {
           };
         });
       };
-
-      console.log(formData)
 
       const handleSetShowcaseVideo = (index) => {
         setFormData((prev) => {
@@ -610,52 +609,76 @@ export const ProfileForm = ({ user, musicianProfile, band = false }) => {
         setShowModal(false);
     };
 
+    const toggleSection = (section) => {
+        setExpand(prev =>
+          prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]
+        );
+      };
+
+    const isPrimaryOpen = expand.includes('primary-information');
 
     return (
         <>
             <div className={`profile-form ${band ? 'band' : ''}`}>
                 <div className="profile-section">
-                    <div className="section-header">
+
+                    {/* COLLAPSED HEADER (shown when NOT expanded) */}
+                    {!isPrimaryOpen && (
+                    <button
+                        className="btn secondary"
+                        onClick={() => toggleSection('primary-information')}
+                        aria-expanded={false}
+                        aria-controls="primary-information-panel"
+                    >
+                        Edit Name and Profile Picture
+                        <EditIcon />
+                    </button>
+                    )}
+
+                    {/* EXPANDED CONTENT */}
+                    {isPrimaryOpen && (
+                    <>
+                        <div className="section-header">
                         <ProfileIconSolid />
                         <h3>Primary Information</h3>
-                        <p>Enter your profile name and picture below. You must complete this section in order to apply to gigs.</p>
-                    </div>
-                    <div className="input-container name">
-                        <label htmlFor="name" className='label'>Whats your stage name?</label>
+                        <p>
+                            Enter your profile name and picture below. You must complete this section in order to apply to gigs.
+                        </p>
+                        </div>
+
+                        <div className="input-container name">
+                        <label htmlFor="name" className="label">Whats your stage name?</label>
                         <input
-                            className='input name'
-                            type='text'
-                            id='name'
+                            className="input name"
+                            type="text"
+                            id="name"
                             value={formData.name}
                             onChange={(e) => handleChange('name', e.target.value)}
                         />
                         {!band && (
-                            <button className='btn tertiary' onClick={() => handleChange('name', user.name)}>
-                                Use Account Name: {user.name}
+                            <button
+                            className="btn tertiary"
+                            onClick={() => handleChange('name', user.name)}
+                            >
+                            Use Account Name: {user.name}
                             </button>
                         )}
-                    </div>
-                    <div className='input-container photo'>
+                        </div>
+
+                        <div className="input-container photo">
                         <h6 className="label">Upload a Profile Picture</h6>
                         {preview && (
-                            <div
-                            className='image-preview'
-                            style={{ backgroundImage: `url(${preview})` }}
-                            />
+                            <div className="image-preview" style={{ backgroundImage: `url(${preview})` }} />
                         )}
-                        <label htmlFor="profilePicture" className='upload-button'>
+                        <label htmlFor="profilePicture" className="upload-button">
                             <CameraIcon className="icon" />
-                            {preview ? (
-                                'Change Profile Picture'
-                            ) : (
-                                'Upload a Profile Picture Here'
-                            )}
+                            {preview ? 'Change Profile Picture' : 'Upload a Profile Picture Here'}
                         </label>
                         <input
                             id="profilePicture"
-                            className='hidden-file-input'
-                            type='file'
-                            accept='image/*'
+                            className="hidden-file-input"
+                            type="file"
+                            accept="image/*"
                             onChange={(e) => {
                             const file = e.target.files[0];
                             if (file) {
@@ -665,7 +688,10 @@ export const ProfileForm = ({ user, musicianProfile, band = false }) => {
                             }
                             }}
                         />
-                    </div>
+                        </div>
+                    </>
+                    )}
+
                 </div>
                 <div className="profile-section">
                     <div className="section-header">
@@ -793,7 +819,9 @@ export const ProfileForm = ({ user, musicianProfile, band = false }) => {
 
                     {/* Video Section */}
                     <div className="media-section">
-                    <h6 className="label">Your Videos</h6>
+                        {videoUploads.length > 0 && (
+                            <h6 className="label">Your Videos</h6>
+                        )}
 
                     <div className="upload-progress-list">
                         {videoUploads.map((upload, index) => (
@@ -914,7 +942,9 @@ export const ProfileForm = ({ user, musicianProfile, band = false }) => {
                     </div>
 
                     <div className="media-section">
-                        <h6 className="label">Your Tracks</h6>
+                        {trackUploads.length > 0 && (
+                            <h6 className="label">Your Tracks</h6>
+                        )}
 
                         <div className="upload-progress-list">
                             {trackUploads.map((upload, index) => (
@@ -1036,6 +1066,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false }) => {
                             <div className="selections">
                                 {['5 miles', '25 miles', '50 miles', '100 miles', 'Nationwide'].map((distance) => (
                                     <div
+                                        key={distance}
                                         className={`selection-card ${formData.location.travelDistance === distance ? 'selected' : ''}`}
                                         onClick={() => handleNestedChange('location', 'travelDistance', distance)}
                                     >
@@ -1059,6 +1090,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false }) => {
                             <div className="selections">
                                 {['Less than 1 year', '1-2 years', '2-5 years', '5+ years'].map((exp) => (
                                     <div
+                                        key={exp}
                                         className={`selection-card ${formData.bio.experience === exp ? 'selected' : ''}`}
                                         onClick={() => handleNestedChange('bio', 'experience', exp)}
                                     >

@@ -1,4 +1,4 @@
-import '@styles/shared/messages.styles.css'
+import '@styles/musician/messages.styles.css'
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@hooks/useAuth';
 import { 
@@ -18,8 +18,8 @@ import {
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatDate } from '@services/utils/dates';
-import { ArchiveIcon, InboxIcon, SaveIcon, SendMessageIcon } from '../shared/ui/extras/Icons';
-import { updateConversationDocument } from '../../services/conversations';
+import { ArchiveIcon, InboxIcon, SaveIcon, SendMessageIcon } from '@features/shared/ui/extras/Icons';
+import { updateConversationDocument } from '@services/conversations';
 
 export const MessagePage = () => {
 
@@ -99,7 +99,7 @@ export const MessagePage = () => {
                         <h2>Messages</h2>
                         <button className="btn secondary" onClick={handleShowArchived}>
                             {showArchived ? <InboxIcon /> : <ArchiveIcon />}
-                            {showArchived ? 'Back to Inbox' : 'View Archived'}
+                            {showArchived ? 'Inbox' : 'Archive'}
                         </button>
                     </div>
                     <ul className='conversations-list'>
@@ -151,18 +151,15 @@ export const MessagePage = () => {
                                         <div className='conversation-text'>
                                             <div className='conversation-title'>
                                                 <h3 className='conversation-title-text'>
-                                                {isBandConversation
-                                                    ? (otherParticipant?.role === 'venue'
-                                                        ? otherParticipant?.accountName || 'Venue'
-                                                        : bandAccount?.accountName || 'Band')
-                                                    : musicianAccount?.accountName || 'Musician'}
-                                                {otherParticipant?.venueName && (
-                                                    <span> - {otherParticipant.venueName}</span>
-                                                )}
+                                                    {isBandConversation
+                                                        ? (otherParticipant?.role === 'venue'
+                                                            ? otherParticipant?.accountName || 'Venue'
+                                                            : bandAccount?.accountName || 'Band')
+                                                        : musicianAccount?.accountName || 'Musician'}
                                                 </h3>
                                                 {showArchived ? (
                                                     <button
-                                                    className='btn tertiary'
+                                                    className='btn text'
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleArchiveConversation(conversation, false); // Restore to inbox
@@ -172,7 +169,7 @@ export const MessagePage = () => {
                                                     </button>
                                                 ) : (
                                                     <button
-                                                    className='btn tertiary'
+                                                    className='btn text'
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleArchiveConversation(conversation, true); // Archive
@@ -181,9 +178,7 @@ export const MessagePage = () => {
                                                     <ArchiveIcon />
                                                     </button>
                                                 )}
-                                                {hasUnreadMessages && <div className='notification-dot'></div>}
                                             </div>
-                                            <h4 className='gig-date'>{conversation.gigDate && formatDate(conversation.gigDate)}</h4>
                                             <div className='conversation-details'>
                                                 <p className='last-message-preview'>
                                                     {conversation.lastMessage}
@@ -193,11 +188,12 @@ export const MessagePage = () => {
                                                 </h6>
                                             </div>
                                         </div>
+                                        {hasUnreadMessages && <div className='notification-dot'></div>}
                                     </li>
                                 );
                             })
                         ) : (
-                            <p>No messages yet.</p>
+                            <h4>You have no messages.</h4>
                         )}
                     </ul>
                 </div>
@@ -271,9 +267,6 @@ export const MessagePage = () => {
             <div className='message-page no-messages'>
                 <MailboxEmptyIcon />
                 <h3>You have no messages</h3>
-                <button className='btn secondary' onClick={() => navigate(-1)}>
-                    Go Back
-                </button>
             </div>
         )
     }

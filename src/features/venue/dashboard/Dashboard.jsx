@@ -34,6 +34,7 @@ export const VenueDashboard = ({ user }) => {
       requests,
       setRequests,
       stripe: { customerDetails, savedCards, receipts },
+      setStripe,
       refreshData,
       refreshGigs,
       refreshTemplates,
@@ -125,7 +126,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='my-venues' element={<Venues venues={venueProfiles} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
-                        <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} venues={venueProfiles} />} />
+                        <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />
                     </Routes>
                 </div>
             </div>

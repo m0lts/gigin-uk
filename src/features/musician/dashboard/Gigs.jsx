@@ -337,7 +337,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                         <tbody>
                         {sortedGigs.length > 0 ? (
                             sortedGigs.map((gig, index) => {
-                                
+                                // console.log(`${gig.gigName},`, gig)
                                 const gigDateTime = new Date(`${gig.date.toDate().toISOString().split('T')[0]}T${gig.startTime}`);
                                 const isFirstPreviousGig = index > 0 && gigDateTime < new Date() && 
                                     new Date(`${sortedGigs[index - 1].date.toDate().toISOString().split('T')[0]}T${sortedGigs[index - 1].startTime}`) >= new Date();
@@ -362,7 +362,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                         <tr onClick={
                                             gigStatus.text.toLowerCase() === 'confirmed'
                                                 ? () => openGigHandbook(gig)
-                                                : (e) => openInNewTab(`/gig/${gig.gigId}`, e)
+                                                : (e) => openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile.profileId}`, e)
                                         }
                                             onMouseEnter={() => {
                                                 if (applicant.invited && !applicant.viewed) {

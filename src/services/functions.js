@@ -110,7 +110,7 @@ export const createStripePaymentMethod = async (stripe, cardElement, name, addre
 export const saveStripePaymentMethod = async (paymentMethodId) => {
     const savePaymentMethod = httpsCallable(functions, 'savePaymentMethod');
     const response = await savePaymentMethod({ paymentMethodId });
-    return response.data.success || false;
+    return response;
 };
 
 /**
@@ -131,7 +131,7 @@ export const deleteSavedCard = async (cardId) => {
  */
 export const changeDefaultCard = async (cardId) => {
   const defaultCard = httpsCallable(functions, 'setDefaultPaymentMethod');
-  const response = await defaultCard({ cardId });
+  const response = await defaultCard({ paymentMethodId: cardId });
   return response.data;
 };
 

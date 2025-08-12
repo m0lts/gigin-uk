@@ -23,6 +23,8 @@ export const ListView = ({ upcomingGigs, location }) => {
         return R * c;
     };
 
+    console.log(upcomingGigs)
+
     return (
         <div className='list'>
             {upcomingGigs.length > 0 ? (
@@ -50,7 +52,7 @@ export const ListView = ({ upcomingGigs, location }) => {
                                         <p className='text'>{formatDate(gig.date)}</p>
                                         <p className='text'>{gig.startTime}</p>
                                     </span>
-                                    <h3 className='fee'>{gig.budget !== '£' ? `${gig.budget} gig fee` : 'No Fee'}</h3>
+                                    <h3 className='fee'>{gig.budget !== 'No Fee' ? `${gig.budget}` : 'No Fee'}</h3>
                                 </div>
                             </div>
                         )

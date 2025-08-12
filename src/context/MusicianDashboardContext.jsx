@@ -193,10 +193,6 @@ export const MusicianDashboardProvider = ({ user, children }) => {
     setShowReviewModal(false);
   };
 
-  console.log('PARENT MUSICIAN PROFILE:',  musicianProfile);
-  console.log('BAND PROFILES:',  bandProfiles);
-  console.log('GIG APPLICATIONS:', gigApplications);
-
   return (
     <MusicianDashboardContext.Provider
       value={{

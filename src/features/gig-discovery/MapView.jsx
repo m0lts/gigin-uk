@@ -14,9 +14,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
     useEffect(() => {
       if (!mapContainerRef.current || !upcomingGigs.length) return;
 
-        mapboxgl.accessToken = import.meta.env.DEV
-          ? 'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
-          : import.meta.env.VITE_MAPBOX_TOKEN;
+        mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
     
         const map = new mapboxgl.Map({
           container: mapContainerRef.current,
@@ -113,7 +111,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             filter: ['!', ['has', 'point_count']],
             paint: {
               'circle-color': '#FF6C4B',
-              'circle-radius': 5,
+              'circle-radius': 8,
               'circle-blur': 0.3,
               'circle-opacity': 1,
               'circle-stroke-width': 0,
@@ -139,30 +137,50 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
               'text-halo-blur': 0.5,
             },
           });
+
+          map.addLayer({
+            id: 'unclustered-hit',
+            type: 'circle',
+            source: 'gigs',
+            filter: ['!', ['has', 'point_count']],
+            paint: {
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                5, 18,
+                10, 22,
+                14, 26
+              ],
+              'circle-color': '#fff',
+              'circle-opacity': 0
+            }
+          });
     
-          map.on('click', 'unclustered-point', (e) => {
-            const features = map.queryRenderedFeatures(e.point, {
-              layers: ['unclustered-point'],
-            });
+          const handleUnclusteredClick = (e) => {
+            const padding = 10;
+            const p1 = new mapboxgl.Point(e.point.x - padding, e.point.y - padding);
+            const p2 = new mapboxgl.Point(e.point.x + padding, e.point.y + padding);
           
+            const features = map.queryRenderedFeatures([p1, p2], {
+              layers: ['unclustered-point', 'unclustered-hit', 'unclustered-point-label'],
+            });
             if (!features.length) return;
           
-            const clickedFeature = features[0];
-            const [lng, lat] = clickedFeature.geometry.coordinates;
+            const ids = new Set(
+              features.map(f => f.properties?.gigId).filter(Boolean)
+            );
           
-            const gigsAtSameCoords = upcomingGigs.filter(g => {
-              const [gLng, gLat] = g.coordinates;
-              return Math.abs(gLng - lng) < 0.000001 && Math.abs(gLat - lat) < 0.000001;
-            });
+            const gigsToAdd = upcomingGigs.filter(g => ids.has(g.gigId));
           
             setClickedGigs(prev => {
-              const uniqueById = {};
-              [...prev, ...gigsAtSameCoords].forEach(g => {
-                uniqueById[g.gigId] = g;
-              });
-              return Object.values(uniqueById);
+              const byId = Object.fromEntries(prev.map(g => [g.gigId, g]));
+              gigsToAdd.forEach(g => { byId[g.gigId] = g; });
+              return Object.values(byId);
             });
-          });
+          };
+
+          map.on('click', 'unclustered-hit', handleUnclusteredClick);
+          map.on('click', 'unclustered-point', handleUnclusteredClick);
+          map.on('click', 'unclustered-point-label', handleUnclusteredClick);
 
           map.on('click', 'clusters', (e) => {
             const features = map.queryRenderedFeatures(e.point, {
@@ -202,6 +220,12 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             map.getCanvas().style.cursor = 'pointer';
           });
           map.on('mouseleave', 'unclustered-point', () => {
+            map.getCanvas().style.cursor = '';
+          });
+          map.on('mouseenter', 'unclustered-hit', () => {
+            map.getCanvas().style.cursor = 'pointer';
+          });
+          map.on('mouseleave', 'unclustered-hit', () => {
             map.getCanvas().style.cursor = '';
           });
           

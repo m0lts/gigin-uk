@@ -43,7 +43,6 @@ export const useAuth = () => {
             }
             setUser(userData);
             setLoading(false);
-            console.log('User:', userData)
           });
           return () => {
             unsubscribeUserDoc();
@@ -108,6 +107,7 @@ export const useAuth = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
       await setDoc(doc(firestore, 'users', userCredential.user.uid), {
         name: credentials.name,
+        email: credentials.email,
         marketingConsent: marketingConsent,
       });
       setUser({ uid: userCredential.user.uid, ...credentials });

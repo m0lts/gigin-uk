@@ -29,7 +29,6 @@
 .profile .profile-view.band {
     margin: 0.5rem 2rem;
     border-radius: 1rem;
-    min-height:100%;
     background: none;
     border:none;
     box-shadow: none;
@@ -277,12 +276,6 @@
 .profile .profile-tab.active {
     font-weight: 600;
     border-bottom: 2px solid var(--gn-black);
-}
-
-
-/* PROFILE SECTIONS */
-.profile .profile-sections {
-    padding-bottom: 5rem;
 }
 
 /* OVERVIEW */
@@ -787,10 +780,15 @@
 
 /* NEW */
 
+.profile .profile-form .profile-section .btn.secondary {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
 .profile .profile-form .profile-section {
     border-bottom: 1px solid var(--gn-grey-400);
-    padding-bottom: 2rem;
-    padding-left: 0.1rem;
+    padding: 1rem 0.1rem;
 }
 
 .profile .profile-form .profile-section:last-of-type {
@@ -799,7 +797,6 @@
 
 .profile .profile-form .section-header {
     margin: 1rem 0;
-    margin-top: 2rem;
 }
 
 .profile .profile-form .section-header .icon {
@@ -967,7 +964,6 @@
     border: 1px dashed var(--gn-grey-400);
     border-radius: 0.5rem;
     background-color: var(--gn-grey-300);
-    color: var(--gn-grey-700);
     margin-bottom: 1rem;
 }
 

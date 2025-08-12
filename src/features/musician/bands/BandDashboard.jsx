@@ -133,10 +133,7 @@ export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData
           </figure>
           <div className='profile-details'>
               <div className='name'>
-                  <h1>{band.name}</h1>
-                  <button className='btn icon' onClick={() => setActiveTab('profile')}>
-                      <EditIcon />
-                  </button>
+                <h1>{band.name}</h1>
               </div>
               <h4>Band</h4>
               <div className='data'>

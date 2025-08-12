@@ -12,6 +12,7 @@ import AmexIcon from '@assets/images/amex.png';
 import '@styles/shared/card-details.styles.css'
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading'
 import { createStripePaymentMethod, saveStripePaymentMethod } from '@services/functions';
+import { toast } from 'sonner';
 
 
 // Card input form component
@@ -27,7 +28,7 @@ export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNe
         city: '',
         state: '',
         postal_code: '',
-        country: 'GB', // Default country
+        country: 'GB',
       },
     });
     const [cardBrand, setCardBrand] = useState('unknown');
@@ -41,7 +42,6 @@ export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNe
     };
 
     const handleCardNumberChange = (event) => {
-        // Update card brand and completion status
         setCardBrand(event.brand || 'unknown');
         setCardComplete((prev) => ({ ...prev, number: event.complete }));
     };
@@ -74,35 +74,41 @@ export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNe
       setLoading(true);
       const cardElement = elements.getElement(CardNumberElement);
       try {
-        const formattedPaymentMethod = await createStripePaymentMethod(
+        const pm = await createStripePaymentMethod(
           stripe,
           cardElement,
           name,
           billingDetails.address
         );
         if (activityType === 'adding card') {
-          const success = await saveStripePaymentMethod(formattedPaymentMethod.id);
-          if (success) {
+          const { data } = await saveStripePaymentMethod(pm.id);
+          if (data.success) {
+            const savedPm = data.paymentMethodUpdate || pm;
+            const newDefaultId =
+              data.customerUpdate?.invoice_settings?.default_payment_method || savedPm.id;
+            setNewCardSaved({
+              ...savedPm,
+              default: savedPm.id === newDefaultId,
+              __newDefaultId: newDefaultId,
+            });
             setSaveCardModal(false);
-            setNewCardSaved(true);
+            toast.success('Card saved.');
           } else {
-            alert('Failed to save card details.');
+            toast.error('Error saving card details. Please try again.');
             setSaveCardModal(false);
           }
         } else if (activityType === 'making payment') {
-          setCardDetails((prev) => [...prev, formattedPaymentMethod]);
+          setCardDetails((prev) => [...prev, pm]);
           setAddingNewCard(false);
-          if (saveCard) {
-            await saveStripePaymentMethod(formattedPaymentMethod.id);
-          }
+          if (saveCard) await saveStripePaymentMethod(pm.id);
         }
       } catch (err) {
-          console.error('Error processing card:', err);
-          alert('An error occurred. Please try again.');
+        console.error('Error processing card:', err);
+        toast.error('An error occurred. Please try again.');
       } finally {
-          setLoading(false);
+        setLoading(false);
       }
-  };
+    };
 
 return (
     <form className='card-details-form'>

@@ -28,7 +28,7 @@ import { changeDefaultCard } from '../../../services/functions';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 
-export const Finances = ({ savedCards, receipts, customerDetails, setSavedCards, venues }) => {
+export const Finances = ({ savedCards, receipts, customerDetails, setStripe, venues }) => {
 
   const [sortOrder, setSortOrder] = useState('desc');
   const [addCardModal, setAddCardModal] = useState(false);
@@ -49,10 +49,23 @@ const toggleMenu = (cardId) => {
 
 
   useEffect(() => {
-    if (newCardSaved) {
-      window.location.reload();
-    }
-  }, [newCardSaved])
+    if (!newCardSaved) return;
+  
+    setStripe((prev) => {
+      const newDefaultId = newCardSaved.__newDefaultId || newCardSaved.id;
+      const byId = new Map((prev.savedCards || []).map(c => [c.id, c]));
+      byId.set(newCardSaved.id, { ...newCardSaved });
+      const nextCards = Array.from(byId.values()).map(c => ({
+        ...c,
+        default: c.id === newDefaultId,
+      }));
+      nextCards.sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
+      return { ...prev, savedCards: nextCards };
+    });
+  
+    // Clear the flag/object once consumed (optional)
+    // setNewCardSaved(null);
+  }, [newCardSaved, setStripe]);
 
   const formatReceiptCharge = (amount) => {
     return (amount / 100).toFixed(2);
@@ -85,27 +98,39 @@ const toggleMenu = (cardId) => {
       if (!window.confirm('Are you sure you want to delete this card?')) {
         return;
       }
+      toast.info('Deleting card...')
+      setOpenMenuId(null);
       const result = await deleteSavedCard(cardId);
       if (result.success) {
-        toast.success("Card removed.");
-        setSavedCards((prevCards) => prevCards.filter((card) => card.id !== cardId));
+        toast.success("Card deleted.");
+        setStripe((prev) => ({
+          ...prev,
+          savedCards: prev.savedCards.filter((card) => card.id !== cardId),
+        }));
       } else {
-        toast.error("Failed to remove card. Please try again.");
+        toast.error("Failed to delete card. Please try again.");
       }
     } catch (error) {
       console.error('Error deleting card:', error);
-      toast.error("Failed to remove card");
     }
   };
 
-  const handleMakeDefault = async (card) => {
+  const handleMakeDefault = async (cardId) => {
     try {
-      await changeDefaultCard(card.id);
-      toast.success("Card set as default");
+      toast.info('Changing default payment method...')
       setOpenMenuId(null);
+      await changeDefaultCard(cardId);
+      setStripe((prev) => ({
+        ...prev,
+        savedCards: prev.savedCards.map((c) => ({
+          ...c,
+          default: c.id === cardId,
+        })),
+      }));
+      toast.success("Card set as default.");
     } catch (err) {
-      console.error(err);
       toast.error("Failed to set default card. Please try again.");
+      console.error(err);
     }
   };
 
@@ -166,7 +191,9 @@ const toggleMenu = (cardId) => {
                 
                 {openMenuId === card.id && (
                   <div className="card-menu">
-                    <button className='btn secondary' onClick={() => handleMakeDefault(card)}>Make Default <CardIcon /></button>
+                    {!card.default && (
+                      <button className='btn secondary' onClick={() => handleMakeDefault(card.id)}>Make Default <CardIcon /></button>
+                    )}
                     <button className='btn danger' onClick={() => handleDeleteCard(card.id)}>Delete Card <DeleteGigIcon /></button>
                   </div>
                 )}
@@ -186,7 +213,7 @@ const toggleMenu = (cardId) => {
                 />
               </div>
 
-              {card.customer.default_source === card.card.id && (
+              {card.default && (
                 <span className="card-default">Default</span>
               )}
             </li>
@@ -242,7 +269,11 @@ const toggleMenu = (cardId) => {
     {addCardModal && (
       <div className='modal'>
         <div className='modal-content'>
-          <h2>Add A Payment Method</h2>
+          <div className="modal-header">
+            <CardIcon />
+            <h2>Add New Payment Method</h2>
+            <p>Save a card to your account to make future gig payments quicker.</p>
+          </div>
             <CardForm activityType={'adding card'} setSaveCardModal={setAddCardModal} setNewCardSaved={setNewCardSaved} />
           <button className='btn tertiary close' onClick={() => setAddCardModal(false)}>
             Close

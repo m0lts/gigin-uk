@@ -21,7 +21,7 @@ import { GigPage } from '@features/gig-discovery/GigPage';
 import { MusicianDashboard } from '@features/musician/dashboard/Dashboard';
 import { ProfileCreator } from '@features/musician/profile-creator/ProfileCreator';
 import { MusicianProfile } from '@features/musician/profile/ViewingProfile';
-import { MessagePage } from '@features/messages/MessagePage';
+import { MessagePage } from '@features/musician/messages/MessagePage';
 import { MessagesLayout } from '@layouts/MessagesLayout';
 import { VenueDashboardLayout } from '@layouts/VenueDashboardLayout';
 import { Account } from '@features/account/Account';

@@ -10,7 +10,10 @@ export const Profile = ({ musicianProfile, user }) => {
     return (
         <>
             <div className="head">
-                <h1 className='title'>Your Profile</h1>
+                <div className="profile-primary-info">
+                    <img src={musicianProfile.picture} alt={musicianProfile.name} />
+                    <h1 className='title'>{musicianProfile.name}</h1>
+                </div>
                 <button className="btn tertiary" onClick={() => setShowPreview(!showPreview)}>
                     {!showPreview ? (
                         'Preview Profile'

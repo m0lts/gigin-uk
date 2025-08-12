@@ -25,9 +25,7 @@ export const VenueDetails = ({ formData, handleInputChange, setStepError, stepEr
     const [coordinatesError, setCoordinatesError] = useState(false);
     const [errorField, setErrorField] = useState(null);
 
-    const mapboxToken = import.meta.env.DEV ? 
-    'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
-    : import.meta.env.VITE_MAPBOX_TOKEN;
+    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
     useEffect(() => {
         if (locationAddress !== formData.address) {

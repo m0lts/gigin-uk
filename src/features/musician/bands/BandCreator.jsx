@@ -9,7 +9,7 @@ import { createBandProfile } from '@services/bands';
 import { updateUserDocument } from '@services/users';
 import { updateMusicianProfile } from '@services/musicians';
 import { generateBandPassword } from '@services/utils/validation';
-import { arrayUnion } from 'firebase/firestore';
+import { Timestamp, arrayUnion } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
@@ -64,6 +64,11 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
         setStage(prev => prev - 1);
       }
     };
+
+    const generateSearchKeywords = (name) => {
+      const lower = name.toLowerCase();
+      return Array.from({ length: lower.length }, (_, i) => lower.slice(0, i + 1));
+    };
     
     const handleSubmit = async () => {
       setLoading(true);
@@ -74,8 +79,6 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
         const updatedFormData = {
           ...formData,
           picture: pictureUrl,
-          completed: false,
-          bandProfile: false,
           email: user?.email,
           joinPassword: bandPassword,
           admin: {
@@ -91,9 +94,16 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
         await updateMusicianProfile(musicianProfile.id, {
             bands: arrayUnion(formData.bandId)
         })
+        const keywords = generateSearchKeywords(formData.name);
         const musicianProfileData = {
           ...formData,
           picture: pictureUrl,
+          email: user?.email,
+          musicianType: 'Band',
+          bandProfile: true,
+          searchKeywords: keywords,
+          updatedAt: Timestamp.now(),
+          createdAt: Timestamp.now()
         }
         await createMusicianProfile(formData.bandId, musicianProfileData, user.uid);
         refreshData();

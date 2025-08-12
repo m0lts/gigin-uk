@@ -4,7 +4,7 @@ import {
     RejectedIcon,
     SendMessageIcon,
     TickIcon } from '@features/shared/ui/extras/Icons';
-import '@styles/shared/messages.styles.css';
+import '@styles/musician/messages.styles.css';
 import { PaymentModal } from '@features/venue/components/PaymentModal'
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useNavigate } from 'react-router-dom';
@@ -531,7 +531,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 </>
                             ) : message.type === 'announcement' ? (
                                 <>
-                                {message.status === 'awaiting payment' && userRole === 'venue' ? (
+                                {(gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig') ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>The venue has accepted the musician's application. No payment is required for this gig.</h4>
+                                    </>
+                                ) : message.status === 'awaiting payment' && userRole === 'venue' ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>

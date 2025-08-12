@@ -24,4 +24,6 @@ dist-ssr
 *.sw?
 .vercel
 .env
+.env.production
+.env.development
 functions/service-account.json

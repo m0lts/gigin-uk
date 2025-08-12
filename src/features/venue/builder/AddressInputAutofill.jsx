@@ -23,9 +23,7 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
         [setFeature, setLocationAddress, setLocationCoordinates]
     );
 
-    const mapboxToken = import.meta.env.DEV ? 
-    'pk.eyJ1IjoiZ2lnaW4iLCJhIjoiY2xwNDQ2ajFwMWRuNzJxczZqNHlvbHg3ZCJ9.nR_HaL-dWRkUhOgBnmbyjg'
-    : import.meta.env.VITE_MAPBOX_TOKEN;
+    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 
     const handleGeocodeAddress = async (address) => {

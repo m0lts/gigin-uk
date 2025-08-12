@@ -4,7 +4,7 @@ import {
     RejectedIcon,
     SendMessageIcon,
     TickIcon } from '@features/shared/ui/extras/Icons';
-import '@styles/shared/messages.styles.css';
+import '@styles/musician/messages.styles.css';
 import { PaymentModal } from '@features/venue/components/PaymentModal'
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useNavigate } from 'react-router-dom';

@@ -18,7 +18,9 @@
     }
 }
 
-.body.messages.no-messages {
+.body.messages .no-messages {
+    grid-column-start: 1;
+    grid-column-end: 3;
     width: 100%;
     height: 100%;
     display: flex;
@@ -27,8 +29,12 @@
     justify-content: center;
 }
 
-.body.messages.no-messages .icon {
+.body.messages .no-messages .icon {
     font-size: 5rem;
+}
+
+.body.messages .no-messages h3 {
+    color: var(--gn-black);
 }
 
 .body.messages .column {

@@ -1,5 +1,5 @@
 const {onRequest, onCall} = require("firebase-functions/v2/https");
-const functions = require("firebase-functions");
+const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {
   getFirestore,
   Timestamp,
@@ -7,8 +7,6 @@ const {
 } = require("firebase-admin/firestore");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const stripeProductionKey = defineSecret("STRIPE_PRODUCTION_KEY");
-const endpointSecret = defineSecret("STRIPE_PROD_WEBHOOK");
 const Stripe = require("stripe");
 const cors = require("cors")({origin: true});
 const {GoogleAuth} = require("google-auth-library");
@@ -22,31 +20,110 @@ if (!admin.apps.length) {
 
 const db = getFirestore();
 
-exports.createStripeCustomer =
-functions.auth.user().onCreate(async (user) => {
-  try {
-    const {uid, email} = user;
-    const stripeApiKey = functions.config().stripe.production;
-    const stripe = new Stripe(stripeApiKey);
-    const customer = await stripe.customers.create({email});
-    await db.collection("users").doc(uid).set(
-        {
-          stripeCustomerId: customer.id,
-        },
-        {merge: true},
-    );
-    console.log(`Stripe customer created for: ${uid}`);
-  } catch (error) {
-    console.error("Error creating Stripe customer:", error);
-    throw new functions.https.HttpsError(
-        "internal", "Failed to create Stripe customer",
-    );
+const stripeLiveKey = defineSecret("STRIPE_PRODUCTION_KEY");
+const stripeTestKey = defineSecret("STRIPE_TEST_KEY");
+const whLive = defineSecret("STRIPE_PROD_WEBHOOK");
+const whTest = defineSecret("STRIPE_WEBHOOK_SECRET");
+
+const PROJECT_ID =
+process.env.GCLOUD_PROJECT ||
+JSON.parse(process.env.FIREBASE_CONFIG || "{}").projectId;
+const IS_PROD = PROJECT_ID === "giginltd-16772";
+
+/**
+ * Retrieves the appropriate Stripe API key for the current environment.
+ *
+ * In production (`IS_PROD` true),
+ * returns the live Stripe secret key from Secret Manager.
+ * In development, returns the test Stripe secret key from Secret Manager.
+ *
+ * @return {string} Stripe API secret key for the current environment.
+ * @throws {Error} If the secret value is not defined in Secret Manager.
+ */
+function getStripeKey() {
+  return IS_PROD ? stripeLiveKey.value() : stripeTestKey.value();
+}
+
+/**
+ * Retrieves the appropriate Stripe
+ * webhook signing secret for the current environment.
+ *
+ * In production (`IS_PROD` true), returns
+ * the live webhook secret from Secret Manager.
+ * In development, returns the test webhook secret from Secret Manager.
+ *
+ * @return {string} Stripe webhook signing secret for the current environment.
+ * @throws {Error} If the secret value is not defined in Secret Manager.
+ */
+function getWebhookSecret() {
+  return IS_PROD ? whLive.value() : whTest.value();
+}
+
+/**
+ * Ensures that the correct type of Stripe API
+ * key is being used in the current environment.
+ *
+ * - Throws an error if the development
+ * environment is using a live (`sk_live_`) key.
+ * - Throws an error if the production
+ * environment is using a test (`sk_test_`) key.
+ *
+ * This prevents accidental use of real Stripe
+ * credentials in development, or test credentials in production.
+ *
+ * @param {string} key - The Stripe API secret key to validate.
+ * @throws {Error} If the key type does not match the current environment.
+ */
+function sanityCheckKey(key) {
+  const s = String(key || "");
+  if (!IS_PROD && s.startsWith("sk_live_")) {
+    throw new Error("Dev using LIVE Stripe key. Check secrets in project.");
   }
-});
+  if (IS_PROD && s.startsWith("sk_test_")) {
+    throw new Error("Prod using TEST Stripe key. Check secrets in project.");
+  }
+}
+
+exports.createStripeCustomer = onDocumentCreated(
+    {
+      region: "europe-west3",
+      document: "users/{uid}",
+      secrets: [stripeLiveKey, stripeTestKey],
+      maxInstances: 3,
+    },
+    async (event) => {
+      const uid = event.params.uid;
+      const snap = event.data;
+      if (!snap) return;
+      const userData = snap.data() || {};
+      if (userData.stripeCustomerId) {
+        console.log(`User ${uid} already has stripeCustomerId, skipping.`);
+        return;
+      }
+      const key = getStripeKey();
+      sanityCheckKey(key);
+      const stripe = new Stripe(key);
+      let email = userData.email;
+      if (!email) {
+        const authUser = await admin.auth().getUser(uid).catch(() => null);
+        email = authUser.email || null;
+      }
+      if (!email) {
+        console.warn(`No email for uid ${uid}; cannot create Stripe customer.`);
+        return;
+      }
+      const customer = await stripe.customers.create({email, metadata: {uid}});
+      await admin.firestore().collection("users").doc(uid).set(
+          {stripeCustomerId: customer.id},
+          {merge: true},
+      );
+      console.log(`Stripe customer created for ${uid}: ${customer.id}`);
+    },
+);
 
 exports.savePaymentMethod = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -57,20 +134,24 @@ exports.savePaymentMethod = onCall(
       }
       const userId = request.auth.uid;
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
         const userDoc =
     await db.collection("users").doc(userId).get();
         const customerId = userDoc.data().stripeCustomerId;
         if (!customerId) {
           throw new Error("Stripe customer ID not found for this user.");
         }
+        const paymentMethodUpdate =
         await stripe.paymentMethods
             .attach(paymentMethodId, {customer: customerId});
+        const customerUpdate =
         await stripe.customers.update(customerId, {
           invoice_settings:
       {default_payment_method: paymentMethodId},
         });
-        return {success: true};
+        return {success: true, paymentMethodUpdate, customerUpdate};
       } catch (error) {
         console.error("Error saving payment method:", error);
         throw new Error("Failed to save payment method.");
@@ -79,40 +160,36 @@ exports.savePaymentMethod = onCall(
 
 exports.setDefaultPaymentMethod = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 60,
     },
     async (request) => {
       const {paymentMethodId} = request.data;
-
       if (!request.auth) {
         throw new Error("Unauthenticated request. User must be signed in.");
       }
-
       const userId = request.auth.uid;
-
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
         const userRef = db.collection("users").doc(userId);
         const userSnap = await userRef.get();
-
         if (!userSnap.exists) {
           throw new Error("User document not found.");
         }
-
         const {stripeCustomerId} = userSnap.data();
         if (!stripeCustomerId) {
           throw new Error("Stripe customer ID not found for this user.");
         }
-
+        const updatedCustomer =
         await stripe.customers.update(stripeCustomerId, {
           invoice_settings: {
             default_payment_method: paymentMethodId,
           },
         });
-
-        return {success: true};
+        return {success: true, updatedCustomer};
       } catch (error) {
         console.error("Error setting default payment method:", error);
         throw new Error("Failed to set default payment method.");
@@ -122,7 +199,7 @@ exports.setDefaultPaymentMethod = onCall(
 
 exports.getSavedCards = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -139,7 +216,9 @@ exports.getSavedCards = onCall(
         throw new Error("Stripe customer ID not found.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
         const paymentMethods =
     await stripe.paymentMethods.list({
       customer: customerId,
@@ -154,7 +233,7 @@ exports.getSavedCards = onCall(
 
 exports.confirmPayment = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -181,7 +260,9 @@ exports.confirmPayment = onCall(
         throw new Error("Stripe customer ID not found.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
         const acceptedMusician =
     gigData.applicants.find(
         (applicant) => applicant.status === "accepted",
@@ -227,7 +308,7 @@ exports.confirmPayment = onCall(
 
 exports.getCustomerData = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -244,25 +325,32 @@ exports.getCustomerData = onCall(
         throw new Error("Stripe customer ID not found.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
-        const customer =
-    await stripe.customers.retrieve(customerId);
-        const paymentMethods = await stripe.paymentMethods.list({
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
+        const customer = await stripe.customers.retrieve(customerId, {
+          expand: ["invoice_settings.default_payment_method", "default_source"],
+        });
+        const pmList = await stripe.paymentMethods.list({
           customer: customerId,
           type: "card",
         });
-        const charges = await stripe.charges.list({
-          customer: customerId,
-          limit: 100,
-        });
-        const receipts = charges.data
-            .filter(
-                (charge) => charge.status === "succeeded" && charge.receipt_url,
-            );
+        const charges =
+        await stripe.charges.list({customer: customerId, limit: 100});
+        const receipts = charges.data.filter(
+            (c) => c.status === "succeeded" && c.receipt_url,
+        );
+        const defaultPmId =
+        customer.invoice_settings.default_payment_method.id || null;
+        const defaultSourceId =
+        customer.default_source || null;
+
         return {
           customer,
           receipts,
-          paymentMethods: paymentMethods.data,
+          paymentMethods: pmList.data,
+          defaultPaymentMethodId: defaultPmId,
+          defaultSourceId,
         };
       } catch (error) {
         console.error("Error fetching customer data:", error);
@@ -272,7 +360,7 @@ exports.getCustomerData = onCall(
 
 exports.deleteCard = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -299,7 +387,9 @@ exports.deleteCard = onCall(
         );
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
         await stripe.paymentMethods.detach(cardId);
         return {success: true};
       } catch (error) {
@@ -312,7 +402,7 @@ exports.deleteCard = onCall(
 
 exports.processRefund = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -327,7 +417,9 @@ exports.processRefund = onCall(
         throw new Error("Missing transactionId parameter.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
         await stripe.refunds.create({
           payment_intent: transactionId,
         });
@@ -372,17 +464,19 @@ exports.cancelCloudTask = onCall(
 exports.stripeWebhook = onRequest(
     {
       maxInstances: 3,
-      secrets: [stripeProductionKey, endpointSecret],
+      secrets: [whLive, whTest, stripeLiveKey, stripeTestKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
       const sig = req.headers["stripe-signature"];
-      const stripe = new Stripe(stripeProductionKey.value());
+      const key = getStripeKey();
+      sanityCheckKey(key);
+      const stripe = new Stripe(key);
       let event;
-      const prodEndpointSecret = endpointSecret.value();
+      const endpointSecret = getWebhookSecret();
       try {
         event =
-    stripe.webhooks.constructEvent(req.rawBody, sig, prodEndpointSecret);
+    stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
       } catch (err) {
         console.error(
             "Webhook signature verification failed:", err.message,
@@ -446,7 +540,7 @@ exports.stripeWebhook = onRequest(
 
 exports.clearPendingFee = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -475,7 +569,9 @@ exports.clearPendingFee = onRequest(
         res.status(400).send("Invalid payload.");
         return;
       }
-      const stripe = new Stripe(stripeProductionKey.value());
+      const key = getStripeKey();
+      sanityCheckKey(key);
+      const stripe = new Stripe(key);
       try {
         const firestore = getFirestore();
         const musicianProfileRef =
@@ -585,7 +681,6 @@ exports.clearPendingFee = onRequest(
 
 exports.intermediateTaskQueue = onRequest(
     {
-      secrets: [stripeProductionKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -655,7 +750,6 @@ exports.intermediateTaskQueue = onRequest(
 
 exports.intermediateMessageQueue = onRequest(
     {
-      secrets: [stripeProductionKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -740,7 +834,6 @@ exports.intermediateMessageQueue = onRequest(
 
 exports.automaticReviewMessage = onRequest(
     {
-      secrets: [stripeProductionKey],
       timeoutSeconds: 3600,
     },
     async (req, res) => {
@@ -839,7 +932,7 @@ exports.automaticReviewMessage = onRequest(
 
 exports.stripeAccountSession = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -849,7 +942,9 @@ exports.stripeAccountSession = onRequest(
           return res.status(405).send("Method Not Allowed");
         }
         try {
-          const stripe = new Stripe(stripeProductionKey.value());
+          const key = getStripeKey();
+          sanityCheckKey(key);
+          const stripe = new Stripe(key);
           const {account} = req.body;
           const accountSession = await stripe.accountSessions.create({
             account: account,
@@ -872,7 +967,7 @@ exports.stripeAccountSession = onRequest(
 
 exports.stripeAccount = onRequest(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -887,7 +982,9 @@ exports.stripeAccount = onRequest(
             res.status(400).send({error: "Musician ID is required."});
             return;
           }
-          const stripe = new Stripe(stripeProductionKey.value());
+          const key = getStripeKey();
+          sanityCheckKey(key);
+          const stripe = new Stripe(key);
           const account = await stripe.accounts.create({
             capabilities: {
               transfers: {requested: true},
@@ -929,7 +1026,7 @@ exports.stripeAccount = onRequest(
 
 exports.transferFunds = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -943,7 +1040,9 @@ exports.transferFunds = onCall(
         throw new Error("Missing required parameters.");
       }
       try {
-        const stripe = new Stripe(stripeProductionKey.value());
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
         const transfer = await stripe.transfers.create({
           amount,
           currency: "gbp",
@@ -959,7 +1058,7 @@ exports.transferFunds = onCall(
 
 exports.changeBankDetails = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
@@ -974,7 +1073,9 @@ exports.changeBankDetails = onCall(
           return;
         }
         try {
-          const stripe = new Stripe(stripeProductionKey.value());
+          const key = getStripeKey();
+          sanityCheckKey(key);
+          const stripe = new Stripe(key);
           const accountLink = await stripe.accountLinks.create({
             account: accountId,
             refresh_url: "https://gigin.ltd/dashboard/finances",
@@ -994,12 +1095,14 @@ exports.changeBankDetails = onCall(
 
 exports.payoutToBankAccount = onCall(
     {
-      secrets: [stripeProductionKey],
+      secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
       timeoutSeconds: 3600,
     },
     async (request) => {
-      const stripe = new Stripe(stripeProductionKey.value());
+      const key = getStripeKey();
+      sanityCheckKey(key);
+      const stripe = new Stripe(key);
       const {musicianId, amount} = request.data;
       const {auth} = request;
       if (!auth) {
@@ -1786,6 +1889,30 @@ exports.clearPendingFee = onRequest(
     }
   },
 );
+
+exports.createStripeCustomer =
+functions.auth.user().onCreate(async (user) => {
+  try {
+    const {uid, email} = user;
+    const mode = functions.config().stripe.mode;
+    const key = functions.config().stripe.key;
+    if (!key) throw new Error(`Stripe key missing (mode: ${mode})`);
+    const stripe = new Stripe(key);
+    const customer = await stripe.customers.create({email});
+    await db.collection("users").doc(uid).set(
+        {
+          stripeCustomerId: customer.id,
+        },
+        {merge: true},
+    );
+    console.log(`Stripe customer created for: ${uid}`);
+  } catch (error) {
+    console.error("Error creating Stripe customer:", error);
+    throw new functions.https.HttpsError(
+        "internal", "Failed to create Stripe customer",
+    );
+  }
+});
 
 // ======= END OF IGNORED FUNCTION =======
 /* eslint-enable */

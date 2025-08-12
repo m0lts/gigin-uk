@@ -599,11 +599,17 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
               </tbody>
             </table>
           ) : (
-            <div className="musician-requests">
-              {visibleRequests.map((request) => (
-                <RequestCard key={request.id} request={request} handleRemoveRequest={handleRemoveRequest} openBuildGigModal={openBuildGigModal} venues={venues} />
-              ))}
+            visibleRequests.length > 0 ? (
+              <div className="musician-requests">
+                {visibleRequests.map((request) => (
+                  <RequestCard key={request.id} request={request} handleRemoveRequest={handleRemoveRequest} openBuildGigModal={openBuildGigModal} venues={venues} />
+                ))}
+              </div>
+            ) : (
+              <div className="musician-requests">
+                <h4 style={{ textAlign: 'center', marginTop: '5rem'}}>No Requests</h4>
             </div>
+            )
           )}
             {confirmModal && (
                 <div className="modal confirm">

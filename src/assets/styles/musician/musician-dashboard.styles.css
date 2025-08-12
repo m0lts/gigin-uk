@@ -1406,6 +1406,21 @@
     gap:5px;
 }
 
+/* PROFILE */
+.window.musicians .head .profile-primary-info {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+    padding-bottom: 1rem;
+}
+
+.window.musicians .head .profile-primary-info img {
+    object-fit: cover;
+    width:75px;
+    height:75px;
+    border-radius: 50%;
+}
+
 
 /* VENUES */
 
@@ -1686,7 +1701,8 @@
 
 .window.musicians .body.finances .top-section {
     display: grid;
-    grid-template-columns: 250px auto;
+    grid-template-columns: repeat(2, auto);
+    margin-bottom: 1rem;
 }
 
 .window.musicians .body.finances .top-section .expenditure-card {
@@ -1723,6 +1739,16 @@
     margin:0;
 }
 
+.window.musicians .body.finances .top-section .expenditure-card .no-bank-details-added {
+    border: 1px solid var(--gn-red);
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+}
+
 .window.musicians .body.finances .top-section .expenditure-text h5 {
     font-weight: 500;
     color: var(--gn-grey-700);
@@ -1738,145 +1764,97 @@
     width:fit-content;
 }
 
-.window.musicians .body.finances .saved-cards {
-    margin:2rem 0;
-}
-
-.window.musicians .body.finances .saved-cards .card-list {
+.window.musicians .body.finances .connect-account {
+    background-color: var(--gn-grey-300);
+    border-radius: 1rem;
+    flex: 1;
     display: flex;
-    overflow-x: scroll;
-    gap: 1.5rem;
-    padding: 1.5rem;
-    scrollbar-width:none;
-}
-
-.window.musicians.dashboard .overview .grid-tile::-webkit-scrollbar {
-    display: none;
-}
-  
-.window.musicians .body.finances .saved-cards .styled-card {
-    width: 280px;
-    min-width: 280px;
-    height: 160px;
-    border-radius: 16px;
-    color: white;
-    padding: 1.2rem;
-    position: relative;
-    display: flex;
+    gap:1rem;
     flex-direction: column;
-    justify-content: space-between;
-    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-    background: linear-gradient(135deg, #3a3a3a, #1e1e1e); /* fallback default */
-}
-  
-.window.musicians .body.finances .saved-cards .styled-card.visa {
-    background: linear-gradient(135deg, #1f1c2c, #928dab);
-}
-  
-.window.musicians .body.finances .saved-cards .styled-card.mastercard {
-    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-}
-  
-.window.musicians .body.finances .saved-cards .card-top {
-    position: relative;
-  }
-  
-.window.musicians .body.finances .saved-cards .dots {
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 0 0.5rem;
-}
-  
-.window.musicians .body.finances .saved-cards .card-menu {
-    position: absolute;
-    width:150px;
-    top: 2rem;
-    left:0;
-    background: white;
-    color: black;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-  
-.window.musicians .body.finances .saved-cards .card-menu .btn {
-    border: none;
-    border-radius: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    width: 100%;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.window.musicians .body.finances .saved-cards .card-menu button:hover {
-    background-color: #f5f5f5;
-}
-  
-.window.musicians .body.finances .saved-cards .app-logo {
-    width: 30px;
-    height: 30px;
-}
-  
-.window.musicians .body.finances .saved-cards .card-number {
-    font-size: 1.3rem;
-    letter-spacing: 2px;
-    margin: 0.5rem 0;
-}
-  
-.window.musicians .body.finances .saved-cards .card-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-  
-.window.musicians .body.finances .saved-cards .card-info {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.85rem;
-}
-  
-.window.musicians .body.finances .saved-cards .brand-logo {
-    width: 40px;
-}
-  
-.window.musicians .body.finances .saved-cards .card-default {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: var(--gn-green);
-    color: #000;
-    font-size: 0.7rem;
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-weight: 600;
-}
-  
-.window.musicians .body.finances .saved-cards .add-card {
-    background: #f4f4f4;
-    color: #333;
-    display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
+    padding: 2rem 0;
 }
-  
-.window.musicians .body.finances .saved-cards .add-card-content {
+
+.window.musicians .body.finances .connect-account .title {
+    width:95%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+.window.musicians .body.finances .connect-account .title .text .icon {
+    font-size: 2rem;
+}
+
+.window.musicians .body.finances .connect-account .title .btn.secondary {
+    display: flex;
+    align-items: center;
+    gap:0.5rem;
+}
+
+.window.musicians .body.finances .connect-account .title .more-information {
+    cursor: pointer;
+    position: absolute;
+    right:0;
+    top:0;
+    max-width: 300px;
+    background-color: var(--gn-white);
+    border:1px solid var(--gn-grey-350);
+    border-radius: 0.5rem;
+    padding:0.75rem;
+    z-index: 1;
+}
+
+.window.musicians .body.finances .connect-account .title .more-information .icon {
+    margin-bottom: 0.5rem;
+}
+
+.window.musicians .body.finances .connect-account .title .more-information .text-information {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap:0.5rem;
 }
 
-.window.musicians .body.finances .saved-cards .add-card-content .icon {
-    font-size: 1.5rem;
+.window.musicians .body.finances .connect-account .title .more-information .text-information p {
+    font-weight: 500;
+}
+
+.window.musicians .body.finances .connect-account .title .more-information .text-information .link {
+    background-color: var(--gn-grey-300);
+    padding:0.5rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.window.musicians .body.finances .connect-account .stripe-window {
+    max-width: 95%;
+    display: flex;
+    gap:0.5rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.window.musicians .body.finances .connect-account .stripe-window.stripe-active {
+    justify-content: flex-start;
+}
+
+.window.musicians .body.finances .connect-account .stripe-window .icon {
+    font-size: 2rem;
+}
+
+.window.musicians .body.finances .connect-account .stripe-window {
+    min-width: 95%;
+    flex: 1;
+}
+
+.window.musicians .body.finances .connect-account .stripe-window .btn.primary {
+    margin-top: 1rem;
 }
 
 .window.musicians .body.finances table {

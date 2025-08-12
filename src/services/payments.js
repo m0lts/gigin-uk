@@ -20,12 +20,24 @@ import { fetchCustomerData } from '@services/functions';
 /*** READ OPERATIONS ***/
 
 export const fetchStripeCustomerData = async () => {
-  const response = await fetchCustomerData();
-  const { customer, receipts, paymentMethods } = response;
+  const { customer, receipts = [], paymentMethods = [], defaultPaymentMethodId, defaultSourceId } =
+    await fetchCustomerData();
+
+  // Mark default and keep original fields intact
+  const savedCards = paymentMethods.map(pm => ({
+    ...pm,
+    default: pm.id === defaultPaymentMethodId
+  }));
+
+  // (Optional) put default first
+  savedCards.sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
+
   return {
     customerDetails: customer,
-    savedCards: paymentMethods,
-    receipts: receipts.filter((r) => r.metadata.gigId),
+    savedCards,
+    receipts: receipts.filter(r => r?.metadata?.gigId),
+    defaultPaymentMethodId,
+    defaultSourceId
   };
 };
 

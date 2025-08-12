@@ -46,11 +46,11 @@ import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
 export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const { gigId } = useParams();
     const navigate = useNavigate();
-    const { canApply, reasons, loading: eligibilityLoading } = useMusicianEligibility(user);
 
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token'); 
     const venueVisiting = searchParams.get('venue');
+    const appliedProfile = searchParams.get('appliedAs');
 
     const [gigData, setGigData] = useState(null);
     const [venueProfile, setVenueProfile] = useState(null);
@@ -171,7 +171,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 try {
                   const members = await getBandMembers(bandId);
                   const userMember = members.find(m => m.musicianProfileId === user.musicianProfile.musicianId);
-                  if (userMember?.role === 'Band Leader' && bandProfile.completed) {
+                  if (userMember?.role === 'Band Leader') {
                     validBandProfiles.push(stripFirestoreRefs(bandProfile));
                   }
                 } catch (err) {
@@ -180,13 +180,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
               }
           
               const combinedProfiles = [...validBandProfiles, user.musicianProfile];
+              const correctAppliedProfile = combinedProfiles.find(prof => prof.id === appliedProfile);
               setMultipleProfiles(combinedProfiles.length > 1);
               setValidProfiles(combinedProfiles);
+              setSelectedProfile(correctAppliedProfile);
             } catch (err) {
               console.error('Error fetching band data:', err);
             }
           };
-
         filterGigData();
         if (user?.musicianProfile && user?.musicianProfile?.bands?.length > 0) {
             fetchBandData();

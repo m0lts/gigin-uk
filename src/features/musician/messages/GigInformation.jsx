@@ -17,7 +17,7 @@ import { getVenueProfileById } from '@services/venues';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
-import { WeddingIcon } from '../shared/ui/extras/Icons';
+import { WeddingIcon } from '@features/shared/ui/extras/Icons';
 
 export const GigInformation = ({ gigId, gigData, setGigData }) => {
 
@@ -101,49 +101,50 @@ export const GigInformation = ({ gigId, gigData, setGigData }) => {
         return (
             <>
                 <div className='venue'>
+                    <h2>{gigData.venue.venueName}</h2>
                     <figure className='photo'>
                         <img src={gigData.venue.photo} alt={`${gigData.venue.venueName} Photo`} />
                     </figure>
-                    <h2>{gigData.venue.venueName}</h2>
                 </div>
-                <div className='date-and-time'>
-                    <h3>{formatDate(gigData.date)}</h3>
-                    <h3>{formatDurationSpan(gigData.startTime, gigData.duration)}</h3>
+                <div className='primary-info'>
+                    <h3>{gigData.gigName}</h3>
+                    <div className="date-and-time">
+                        <h4>{formatDurationSpan(gigData.startTime, gigData.duration)}, {formatDate(gigData.date)}</h4>
+                    </div>
                 </div>
                 <div className='location'>
-                    <h4>{gigData.venue.address}</h4>
+                    <h5>{gigData.venue.address}</h5>
                 </div>
-                <div className='budgets'>
-                    <div className='budget-container'>
-                        <h6>{gigData.agreedFee ? 'Gig Fee' : 'Venue Budget'}</h6>
-                        <h2 style={{ textDecoration: gigData.negotiatedFee ? 'line-through' : 'none' }}>{gigData.agreedFee ? gigData.agreedFee : gigData.budget}</h2>                    </div>
-                    {gigData.negotiatedFee && (
+                {gigData.kind !== 'Open Mic' && (
+                    <div className='budgets'>
                         <div className='budget-container'>
-                            <h6>Negotiated Fee:</h6>
-                            <h2>£{gigData.negotiatedFee}</h2>
-                        </div>
-                    )}
-                </div>
+                            <h6>{gigData.agreedFee ? 'Gig Fee' : 'Venue Budget'}</h6>
+                            <h2 style={{ textDecoration: gigData.negotiatedFee ? 'line-through' : 'none' }}>{gigData.agreedFee ? gigData.agreedFee : gigData.budget}</h2>                    </div>
+                        {gigData.negotiatedFee && (
+                            <div className='budget-container'>
+                                <h6>Negotiated Fee:</h6>
+                                <h2>£{gigData.negotiatedFee}</h2>
+                            </div>
+                        )}
+                    </div>
+                )}
                 <div className='details'>
                     <div className='details-list'>
                         <div className='detail'>
                             <h6>Performer</h6>
                             <div className='data'>
-                                {performerIcon(gigData.gigType)}
                                 <p>{gigData.gigType}</p>
                             </div>
                         </div>
                         <div className='detail'>
                             <h6>Audience</h6>
                             <div className='data'>
-                                {privacyIcon(gigData.privacy)}
                                 <p>{gigData.privacy}</p>
                             </div>
                         </div>
                         <div className='detail'>
                             <h6>Type</h6>
                             <div className='data'>
-                                {typeIcon(gigData.kind)}
                                 <p>{gigData.kind}</p>
                             </div>
                         </div>
@@ -151,7 +152,6 @@ export const GigInformation = ({ gigId, gigData, setGigData }) => {
                             <div className='detail'>
                                 <h6>Genres</h6>
                                 <div className='data'>
-                                    <SpeakersIcon />
                                     <p>{formatGenres(gigData.genre)}</p>
                                 </div>
                             </div>
@@ -159,7 +159,6 @@ export const GigInformation = ({ gigId, gigData, setGigData }) => {
                             <div className='detail'>
                                 <h6>Genres</h6>
                                 <div className='data'>
-                                    <SpeakersIcon />
                                     <p>No Preference</p>
                                 </div>
                             </div>
