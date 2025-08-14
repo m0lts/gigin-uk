@@ -193,4 +193,23 @@ export const cancelGigAndRefund = async ({ taskNames, transactionId }) => {
     if (transactionId) {
       await processRefund({ transactionId });
     }
-  };
+};
+
+/**
+ * Delete a Stripe Connect account for a musicianId.
+ * Will fail if the connected account has a positive available balance.
+ * @param {string} musicianId
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+export const deleteStripeConnectAccount = async (musicianId) => {
+  const fn = httpsCallable(functions, 'deleteStripeConnectedAccount');
+  const res = await fn({musicianId});
+  return res.data;
+};
+
+/** Get status for a Stripe Connect account. */
+export const getConnectAccountStatus = async () => {
+  const fn = httpsCallable(functions, 'getConnectAccountStatus');
+  const { data } = await fn();
+  return data;
+};

@@ -946,10 +946,14 @@ exports.stripeAccountSession = onRequest(
           sanityCheckKey(key);
           const stripe = new Stripe(key);
           const {account} = req.body;
+          if (!account) {
+            return res.status(400).json({error: "Missing data"});
+          }
           const accountSession = await stripe.accountSessions.create({
             account: account,
             components: {
               account_onboarding: {enabled: true},
+              account_management: {enabled: true},
             },
           });
           res.json({
@@ -1056,6 +1060,50 @@ exports.transferFunds = onCall(
     },
 );
 
+exports.deleteStripeConnectedAccount = onCall(
+    {
+      secrets: [stripeLiveKey, stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
+    async (request) => {
+      const {auth, data} = request;
+      if (!auth) throw new Error("User must be authenticated.");
+      const {musicianId} = data || {};
+      if (!musicianId) throw new Error("Missing musicianId.");
+      const musicRef = db.collection("musicianProfiles").doc(musicianId);
+      const musicSnap = await musicRef.get();
+      if (!musicSnap.exists) throw new Error("Musician profile not found.");
+      const {userId} = musicSnap.data();
+      if (userId !== auth.uid) throw new Error("Not authorized.");
+      const {stripeAccountId} = musicSnap.data();
+      if (!stripeAccountId) {
+        return {success: true, message: "No Stripe account attached."};
+      }
+      const key = getStripeKey();
+      sanityCheckKey(key);
+      const stripe = new Stripe(key);
+      const balance =
+      await stripe.balance.retrieve({stripeAccount: stripeAccountId});
+      const availableTotal =
+    (balance.available || []).reduce((sum, b) => sum + (b.amount || 0), 0);
+      if (availableTotal > 0) {
+        return {
+          success: false,
+          message: "Please withdraw your available " +
+          "balance before deleting your account.",
+        };
+      }
+      await stripe.accounts.del(stripeAccountId);
+      await musicRef.update({
+        stripeAccountId: admin.firestore.FieldValue.delete(),
+        bankDetailsAdded: false,
+        withdrawableEarnings: 0,
+      });
+      return {success: true};
+    },
+);
+
 exports.changeBankDetails = onCall(
     {
       secrets: [stripeLiveKey, stripeTestKey],
@@ -1092,6 +1140,126 @@ exports.changeBankDetails = onCall(
         }
       });
     });
+
+exports.getConnectAccountStatus = onCall(
+    {
+      region: "europe-west3",
+      secrets: [stripeLiveKey, stripeTestKey],
+      timeoutSeconds: 60,
+    },
+    async (req) => {
+      try {
+        if (!req.auth) throw new Error("Unauthenticated");
+        const uid = req.auth.uid;
+        const userSnap = await db.collection("users").doc(uid).get();
+        if (!userSnap.exists) throw new Error("User not found");
+        const userData = userSnap.data() || {};
+        let musicianId = null;
+        if (
+          Array.isArray(userData.musicianProfile) &&
+          userData.musicianProfile.length
+        ) {
+          musicianId = userData.musicianProfile[0];
+        }
+        if (!musicianId) {
+          return {
+            exists: false,
+            status: "no_account",
+            reason: "no_musician_profile",
+          };
+        }
+        const musicianSnap =
+        await db.collection("musicianProfiles").doc(musicianId).get();
+        if (!musicianSnap.exists) {
+          return {
+            exists: false,
+            status: "no_account",
+            reason: "profile_not_found",
+          };
+        }
+        const musicianProfile = musicianSnap.data() || {};
+        if (!musicianProfile.stripeAccountId) {
+          return {exists: false, status: "no_account"};
+        }
+        const accountId = musicianProfile.stripeAccountId;
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
+        const account = await stripe.accounts.retrieve(accountId);
+        const reqs = account.requirements;
+        const currentlyDueArr = reqs.currently_due;
+        const pastDueArr = reqs.past_due;
+        const pendingVerificationArr = reqs.pending_verification;
+        const eventuallyDueArr = reqs.eventually_due;
+        const disabledReason = reqs.disabled_reason;
+        const verification = account.individual.verification;
+        const verificationStatus = verification.status;
+        const verificationDetails = verification.details;
+        const verificationCode = verification.details_code;
+        let status = "all_good";
+        if (
+          pastDueArr.length > 0 ||
+          disabledReason ||
+          currentlyDueArr.length > 0
+        ) {
+          status = "urgent";
+        } else if (
+          verificationStatus === "unverified" ||
+          eventuallyDueArr.length > 0
+        ) {
+          status = "warning";
+        }
+        const actions = Array.from(new Set([
+          ...currentlyDueArr,
+          ...pastDueArr,
+          ...pendingVerificationArr,
+          ...eventuallyDueArr,
+        ]));
+        const needsOnboarding =
+        (currentlyDueArr.length > 0) ||
+        (pastDueArr.length > 0) ||
+        !account.details_submitted;
+        let resolveUrl = null;
+        if (status !== "all_good" || needsOnboarding) {
+          const link = await stripe.accountLinks.create({
+            account: accountId,
+            refresh_url: "https://gigin.ltd/dashboard/finances?retry=true",
+            return_url: "https://gigin.ltd/dashboard/finances?done=true",
+            type: needsOnboarding ? "account_onboarding" : "account_update",
+          });
+          resolveUrl = link.url;
+        }
+        return {
+          exists: true,
+          status,
+          counts: {
+            currentlyDue: currentlyDueArr.length,
+            pastDue: pastDueArr.length,
+            eventuallyDue: eventuallyDueArr.length,
+          },
+          payoutsEnabled: !!account.payouts_enabled,
+          disabledReason,
+          actions,
+          verification: {
+            status: verificationStatus,
+            details: verificationDetails,
+            code: verificationCode,
+          },
+          resolveUrl,
+          raw: {
+            detailsSubmitted: account.details_submitted,
+            capabilities: account.capabilities,
+          },
+        };
+      } catch (error) {
+        console.error("getConnectAccountStatus error:", error);
+        throw new Error(
+          typeof error.message === "string" ?
+          error.message : "Unknown error",
+        );
+      }
+    },
+);
 
 exports.payoutToBankAccount = onCall(
     {
