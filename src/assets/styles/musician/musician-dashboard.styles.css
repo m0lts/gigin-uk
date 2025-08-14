@@ -1932,6 +1932,13 @@
     justify-content: flex-end;
     gap:0.5rem;
     padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s linear;
+}
+
+.window.musicians .body.finances .information-grid .information-item:hover {
+    background-color: var(--gn-grey-350);
+    box-shadow: 0 0 2px var(--gn-shadow);
 }
 
 .window.musicians .body.finances .information-grid .information-item .icon {
@@ -2100,4 +2107,63 @@
 .window.musicians .body.finances .modal.stripe-account .modal-content .modal-body {
     padding: 0 2rem;
     padding-bottom: 2rem;
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content {
+    max-width: 500px;
+    overflow-y: scroll;
+    position: relative;
+    padding:0;
+    /* Hide scrollbar for Webkit browsers (Chrome, Safari, Edge) */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content .modal-header {
+    position: sticky;
+    top:0;
+    left:0;
+    width:100%;
+    background-color: var(--gn-white);
+    padding:2rem;
+    padding-top: 3rem;
+    padding-bottom: 1rem;
+    z-index: 1;
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content .modal-header .icon {
+    font-size: 2rem;
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content .modal-body {
+    padding: 0 2rem;
+    padding-bottom: 2rem;
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content .modal-body ol,
+.window.musicians .body.finances .modal.more-information .modal-content .modal-body ul {
+    padding:0 1rem;
+    list-style-type: none;
+    display: flex;
+    flex-direction: column;
+    gap:0.5rem;
+    margin: 1rem 0;
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content .modal-body .no-padding {
+    padding: 0;
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content .modal-body strong {
+    font-weight: 600;
+}
+
+.window.musicians .body.finances .modal.more-information .modal-content .modal-body hr {
+    border: none;
+    border-top: 1px solid var(--gn-grey-400);
+    margin: 1.5rem 0;
 }

@@ -35,6 +35,8 @@ export const Finances = ({ musicianProfile }) => {
     const [deleting, setDeleting] = useState(false);
     const [acctStatus, setAcctStatus] = useState(null);
     const [acctStatusLoading, setAcctStatusLoading] = useState(false);
+    const [paymentSystemModal, setPaymentSystemModal] = useState(false);
+    const [stripeSystemModal, setStripeSystemModal] = useState(false);
 
     useResizeEffect((width) => {
         setWindowWidth(width);
@@ -355,12 +357,12 @@ export const Finances = ({ musicianProfile }) => {
                     )}
                     {musicianProfile.bankDetailsAdded && (
                         <div className="information-grid">
-                            <div className="information-item">
+                            <div className="information-item" onClick={() => setPaymentSystemModal(true)}>
                                 <PaymentSystemIcon />
                                 <h3>How The Gigin Payment System Works</h3>
-                                <p>Learn how the Gigin payment system works and how to withdraw your gig earnings!.</p>
+                                <p>Learn how the Gigin payment system works and how to withdraw your gig earnings!</p>
                             </div>
-                            <div className="information-item">
+                            <div className="information-item" onClick={() => setStripeSystemModal(true)}>
                                 <StripeIcon />
                                 <h3>How Stripe Securely Manages Your Funds</h3>
                                 <p>Learn how Gigin uses Stripe to handle your gig payments and how your information is securely stored.</p>
@@ -458,6 +460,199 @@ export const Finances = ({ musicianProfile }) => {
                             </div>
                             </div>
                         </div>
+                    )}
+                    {paymentSystemModal && (
+                        <div className="modal more-information" onClick={() => setPaymentSystemModal(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <PaymentSystemIcon />
+                                    <h2>How The Gigin Payment System Works</h2>
+                                    <button className="btn close tertiary" onClick={() => setPaymentSystemModal(false)}>Close</button>
+                                </div>
+                                <div className="modal-body">
+                                    <p>
+                                        <strong>Note:</strong> The Gigin payment system applies only to gigs where a venue
+                                        is paying a fee to the musician or band. Open mic nights, charity events, and
+                                        ticketed gigs where payment comes from ticket sales do not use this process.
+                                    </p>
+                                    <hr />
+                                    <p>
+                                        Our goal is to make sure that musicians get paid fairly, on time, and securely —
+                                        and that venues have the peace of mind that funds are only released when the gig
+                                        has been performed as agreed. This is why all gig payments go through our
+                                        partnership with Stripe, one of the world’s most trusted payment providers.
+                                    </p>
+                                    <hr />
+                                    <ol>
+                                        <li>
+                                        <strong cl>1. Gig Application Accepted</strong><br />
+                                        Once a venue accepts your gig application, we automatically prepare the secure
+                                        payment process in the background.
+                                        <br />
+                                        This ensures that as soon as both parties
+                                        agree to the gig, the financial side is ready to go.
+                                        </li>
+
+                                        <li>
+                                        <strong>2. Venue Pays the Gig Fee</strong><br />
+                                        The venue pays the agreed gig fee through Gigin. This payment is made before
+                                        the performance date, so you can be confident that the money is already set
+                                        aside and ready for release after the event.
+                                        </li>
+
+                                        <li>
+                                        <strong>3. Funds Held in Secure Escrow</strong><br />
+                                        Once the venue pays, the funds don’t go straight to the musician immediately.
+                                        Instead, Stripe securely holds the payment in what’s effectively an “escrow”
+                                        account. This protects both sides — the venue knows they won’t pay for a gig
+                                        that doesn’t happen, and the musician knows the money can’t be pulled back once
+                                        the gig is complete.
+                                        </li>
+
+                                        <li>
+                                        <strong>4. Post-Gig Release</strong><br />
+                                        After the gig takes place, there’s a 48-hour window where either the musician
+                                        or the venue can raise a dispute if something didn’t go to plan (for example,
+                                        if the gig was cancelled last-minute or there was a serious issue with the
+                                        performance). If no dispute is raised during this period, Stripe automatically
+                                        releases the funds to your connected Stripe account.
+                                        </li>
+
+                                        <li>
+                                        <strong>5. Withdrawable Funds</strong><br />
+                                        Once Stripe releases the funds, they will appear in your Gigin finances under
+                                        <em>“Withdrawable Funds”</em>. This means the money is now yours to withdraw at
+                                        any time — you’re not required to withdraw it immediately, so you can let
+                                        payments build up if you prefer.
+                                        </li>
+
+                                        <li>
+                                        <strong>6. Transfer to Your Bank</strong><br />
+                                        When you choose to withdraw your balance, Stripe transfers the funds directly
+                                        to the bank account you’ve set up in your Stripe Connect account. Bank
+                                        transfers usually arrive within 1–2 working days, depending on your bank.
+                                        </li>
+                                    </ol>
+                                    <hr />
+                                    <p>
+                                        This process has been designed to keep things fair, transparent, and secure for
+                                        both musicians and venues. With Stripe’s trusted infrastructure handling all
+                                        transactions, you can focus on the music while we take care of the payments.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {stripeSystemModal && (
+                        <div className="modal more-information" onClick={() => setStripeSystemModal(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <StripeIcon />
+                            <h2>How Stripe Securely Manages Your Funds</h2>
+                            <button className="btn close tertiary" onClick={() => setStripeSystemModal(false)}>Close</button>
+                        </div>
+                        <div className="modal-body">
+                            <p>
+                                Your Gigin payments are processed and held by <strong>Stripe</strong>, one of the
+                                world’s most trusted online payment providers. Stripe handles payments for
+                                millions of businesses — from small creators to large companies like Amazon,
+                                Booking.com, and Shopify — and is authorised and regulated as a licensed payment
+                                institution.
+                            </p>
+                            <br />
+                            <p>
+                                When you connect your bank account to Gigin, you’re actually creating a{" "}
+                                <strong>Stripe Connect account</strong> in your name.
+                                This account is completely separate from Gigin’s own finances and is owned and
+                                controlled by you.
+                            </p>
+                            <hr />
+                            <h3>How Stripe Protects Your Money</h3>
+                            <ul>
+                                <li>
+                                <strong>Funds are ring-fenced:</strong> Money paid for your gigs never touches
+                                Gigin’s bank accounts. It is held securely by Stripe until it’s ready to be
+                                released to you.
+                                </li>
+                                <li>
+                                <strong>Regulated & compliant:</strong> Stripe is regulated by the Financial
+                                Conduct Authority (FCA) in the UK and must follow strict security and compliance
+                                requirements.
+                                </li>
+                                <li>
+                                <strong>Bank-level security:</strong> All data — including your personal details
+                                and bank account — is encrypted. Stripe uses the same security protocols as
+                                major banks.
+                                </li>
+                            </ul>
+                            <hr />
+                            <h3>How Your Funds Move</h3>
+                            <ol>
+                                <li>
+                                    <strong>1. </strong>
+                                Gig payment is made by the venue and held in your Stripe Connect account balance.
+                                </li>
+                                <li>
+                                <strong>2. </strong>
+                                Funds are only released once the gig has been performed and the dispute period
+                                has passed.
+                                </li>
+                                <li>
+                                <strong>3. </strong>
+                                Once released, you can withdraw your funds to your bank account at any time.
+                                </li>
+                            </ol>
+
+                            <p>
+                                This means you’re always in control — Gigin never has the ability to block or
+                                take your money. Stripe acts as the secure middle-man, ensuring that both sides
+                                are protected.
+                            </p>
+
+                            <hr />
+
+                            <h3>More About Stripe</h3>
+                            <ul className='no-padding'>
+                                <li>
+                                Learn more about{" "}
+                                <a
+                                    href="https://stripe.com/gb/connect"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Stripe Connect
+                                </a>
+                                </li>
+                                <li>
+                                Read Stripe’s{" "}
+                                <a
+                                    href="https://stripe.com/docs/security/stripe"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Security Overview
+                                </a>
+                                </li>
+                                <li>
+                                View Stripe’s{" "}
+                                <a
+                                    href="https://stripe.com/gb/privacy"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Privacy Policy
+                                </a>
+                                </li>
+                            </ul>
+
+                            <p>
+                                With Stripe managing your funds, you get bank-level security, global compliance,
+                                and the peace of mind that your money is safe from the moment it’s paid until it
+                                arrives in your bank account.
+                            </p>
+                        </div>
+                        </div>
+                    </div>
                     )}
             </div>
         </>
