@@ -11,7 +11,10 @@ import {
   deleteDoc,
   onSnapshot,
   Timestamp,
-  orderBy
+  orderBy,
+  writeBatch,
+  limit,
+  startAfter
 } from 'firebase/firestore';
 import { formatDate } from './utils/dates';
 import { getBandMembers } from './bands';
@@ -262,6 +265,87 @@ export const markGigApplicantAsViewed = async (gigId, musicianId) => {
     );
     await updateDoc(gigRef, { applicants: updatedApplicants });
 };
+
+/**
+ * For every conversation with this venue in `participants`:
+ * - Update `accountNames[]` entry (participantId == venueId):
+ *     * accountName -> newAccountName
+ *     * accountId   -> toUserId (if it equals fromUserId)
+ * - Flip `lastMessageSenderId` if needed.
+ * - In subcollection `messages`, rewrite all docs where senderId == fromUserId -> toUserId.
+ *
+ * @param {Object} params
+ * @param {string} params.venueId
+ * @param {string} params.fromUserId
+ * @param {string} params.toUserId
+ * @param {string} params.newAccountName
+ * @returns {Promise<{conversationsUpdated:number,messagesUpdated:number}>}
+ */
+export async function rewriteVenueConversationsAndMessages({
+  venueId, fromUserId, toUserId, newAccountName,
+}) {
+  const convosCol = collection(firestore, 'conversations');
+  const pageSize = 100;
+  let lastDoc = null;
+  let conversationsUpdated = 0;
+  let messagesUpdated = 0;
+  for (;;) {
+    let q = query(convosCol, where('participants', 'array-contains', venueId), limit(pageSize));
+    if (lastDoc) q = query(convosCol, where('participants', 'array-contains', venueId), startAfter(lastDoc), limit(pageSize));
+    const snap = await getDocs(q);
+    if (snap.empty) break;
+    const convoBatch = writeBatch(firestore);
+    const convoDocs = snap.docs;
+    for (const c of convoDocs) {
+      const data = c.data() || {};
+      let nextAccountNames = data.accountNames;
+      if (Array.isArray(nextAccountNames)) {
+        nextAccountNames = nextAccountNames.map((entry) => {
+          if (entry?.participantId === venueId) {
+            const next = { ...entry };
+            if (typeof newAccountName === 'string' && newAccountName.length) {
+              next.accountName = newAccountName;
+            }
+            if (next.accountId === fromUserId) {
+              next.accountId = toUserId;
+            }
+            return next;
+          }
+          return entry;
+        });
+      }
+      const convoUpdate = {};
+      if (Array.isArray(nextAccountNames)) convoUpdate.accountNames = nextAccountNames;
+      if (data.lastMessageSenderId === fromUserId) {
+        convoUpdate.lastMessageSenderId = toUserId;
+      }
+      if (Object.keys(convoUpdate).length) {
+        convoBatch.update(c.ref, convoUpdate);
+        conversationsUpdated += 1;
+      }
+    }
+    await convoBatch.commit();
+    for (const c of convoDocs) {
+      const messagesCol = collection(firestore, 'conversations', c.id, 'messages');
+      let mLastDoc = null;
+      for (;;) {
+        let mq = query(messagesCol, where('senderId', '==', fromUserId), limit(400));
+        if (mLastDoc) mq = query(messagesCol, where('senderId', '==', fromUserId), startAfter(mLastDoc), limit(400));
+        const mSnap = await getDocs(mq);
+        if (mSnap.empty) break;
+        const mBatch = writeBatch(firestore);
+        mSnap.docs.forEach((m) => {
+          mBatch.update(m.ref, { senderId: toUserId });
+          messagesUpdated += 1;
+        });
+        await mBatch.commit();
+        mLastDoc = mSnap.docs[mSnap.docs.length - 1];
+      }
+    }
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+  return { conversationsUpdated, messagesUpdated };
+}
 
 /*** DELETE OPERATIONS ***/
 

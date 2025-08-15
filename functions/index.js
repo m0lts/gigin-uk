@@ -1,3 +1,4 @@
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onRequest, onCall} = require("firebase-functions/v2/https");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {
@@ -245,6 +246,7 @@ exports.confirmPayment = onCall(
         gigData,
         gigDate,
         paymentMessageId,
+        musicianProfileId,
       } = request.data;
       if (!auth) {
         throw new Error("User must be authenticated.");
@@ -252,6 +254,7 @@ exports.confirmPayment = onCall(
       if (!paymentMethodId) {
         throw new Error("Payment method ID is required.");
       }
+      if (!gigData.gigId) throw new Error("Missing gig data.");
       const userId = auth.uid;
       const userDoc =
   await admin.firestore().collection("users").doc(userId).get();
@@ -265,26 +268,91 @@ exports.confirmPayment = onCall(
         const stripe = new Stripe(key);
         const acceptedMusician =
     gigData.applicants.find(
-        (applicant) => applicant.status === "accepted",
+        (applicant) => applicant.status === "accepted" &&
+        applicant.id === musicianProfileId,
     );
-        const musicianId = acceptedMusician ? acceptedMusician.id : null;
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: amountToCharge,
-          currency: "gbp",
-          customer: customerId,
-          payment_method: paymentMethodId,
-          off_session: true,
-          confirm: true,
-          metadata: {
-            gigId: gigData.gigId,
-            time: gigData.startTime,
-            date: gigDate,
-            venueName: gigData.venue.venueName,
-            venueId: gigData.venueId,
-            musicianId: musicianId,
-            paymentMessageId: paymentMessageId,
-          },
+        if (acceptedMusician.id !== musicianProfileId) {
+          throw new Error("Accepted applicant doesn't match musician ID.");
+        }
+        const applicantId = acceptedMusician.id;
+        const applicantType = acceptedMusician.type || "musician";
+        let recipientMusicianId = applicantId;
+        if (applicantType === "band") {
+          const bandSnap =
+          await admin
+              .firestore()
+              .collection("musicianProfiles")
+              .doc(applicantId)
+              .get();
+          if (!bandSnap.exists) {
+            throw new Error(`Band profile ${applicantId} not found.`);
+          }
+          const band = bandSnap.data() || {};
+          recipientMusicianId = band.bandInfo.admin.musicianId;
+          if (!recipientMusicianId) {
+            throw new Error(
+                `Band ${applicantId} missing admin/owner musician id.`,
+            );
+          }
+        }
+        const idempotencyKey =
+        `gig:${gigData.gigId}:msg:${paymentMessageId || "none"}`;
+        const paymentIntent = await stripe.paymentIntents.create(
+            {
+              amount: amountToCharge,
+              currency: "gbp",
+              customer: customerId,
+              payment_method: paymentMethodId,
+              off_session: true,
+              confirm: true,
+              metadata: {
+                gigId: gigData.gigId,
+                time: gigData.startTime,
+                date: gigDate,
+                venueName: gigData.venue.venueName,
+                venueId: gigData.venueId,
+                applicantId,
+                applicantType,
+                recipientMusicianId,
+                paymentMessageId,
+              },
+            },
+            {idempotencyKey},
+        );
+        const db = admin.firestore();
+        const gigRef = db.collection("gigs").doc(gigData.gigId);
+
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(gigRef);
+          if (!snap.exists) {
+            throw new Error(
+                `Gig ${gigData.gigId} not found while marking payment.`,
+            );
+          }
+          const data = snap.data() || {};
+          const applicants =
+          Array.isArray(data.applicants) ? data.applicants : [];
+          const updatedApplicants = applicants.map((a) =>
+            a.id === applicantId ?
+            {...a, status: "payment processing"} :
+            {...a},
+          );
+          tx.update(gigRef, {
+            applicants: updatedApplicants,
+            paymentStatus: paymentIntent.status || "processing",
+            paymentIntentId: paymentIntent.id,
+            paid: false,
+          });
         });
+        await db.collection("payments").doc(paymentIntent.id).set({
+          gigId: gigData.gigId,
+          applicantId,
+          recipientMusicianId,
+          venueId: gigData.venueId,
+          status: "processing",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastCheckedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
         return {success: true, paymentIntent};
       } catch (error) {
         console.error("Error confirming payment:", error);
@@ -340,11 +408,13 @@ exports.getCustomerData = onCall(
         const receipts = charges.data.filter(
             (c) => c.status === "succeeded" && c.receipt_url,
         );
-        const defaultPmId =
-        customer.invoice_settings.default_payment_method.id || null;
-        const defaultSourceId =
-        customer.default_source || null;
-
+        const defaultPm = customer.invoice_settings.default_payment_method;
+        let defaultPmId;
+        let defaultSourceId;
+        if (defaultPm) {
+          defaultPmId = defaultPm.id;
+          defaultSourceId = customer.default_source || null;
+        }
         return {
           customer,
           receipts,
@@ -408,22 +478,22 @@ exports.processRefund = onCall(
     },
     async (request) => {
       const {auth} = request;
-      const {transactionId} = request.data;
+      const {paymentIntentId} = request.data;
       if (!auth) {
         throw new Error("unauthenticated", "User must be authenticated.");
       }
-      if (!transactionId) {
+      if (!paymentIntentId) {
         console.error("Transaction ID is required for a refund.");
-        throw new Error("Missing transactionId parameter.");
+        throw new Error("Missing paymentIntentId parameter.");
       }
       try {
         const key = getStripeKey();
         sanityCheckKey(key);
         const stripe = new Stripe(key);
         await stripe.refunds.create({
-          payment_intent: transactionId,
+          payment_intent: paymentIntentId,
         });
-        console.log(`Refund created for transaction: ${transactionId}`);
+        console.log(`Refund created for transaction: ${paymentIntentId}`);
         return {success: true};
       } catch (error) {
         console.error("Error processing refund:", error.message);
@@ -488,9 +558,17 @@ exports.stripeWebhook = onRequest(
         switch (event.type) {
           case "payment_intent.succeeded":
             await handlePaymentSuccess(event.data.object);
+            await db.collection("payments").doc(event.data.object.id).set({
+              status: "succeeded",
+              lastCheckedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, {merge: true});
             break;
           case "payment_intent.payment_failed":
             await handlePaymentFailure(event.data.object);
+            await db.collection("payments").doc(event.data.object.id).set({
+              status: "failed",
+              lastCheckedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, {merge: true});
             break;
           case "account.updated":
             if (
@@ -544,77 +622,78 @@ exports.clearPendingFee = onRequest(
       timeoutSeconds: 3600,
     },
     async (req, res) => {
-      const {
-        musicianId,
-        gigId,
-        amount,
-        disputeClearingTime,
-        venueId,
-        gigDate,
-        gigTime,
-        musicianEmail,
-        musicianName,
-        venueName,
-      } = req.body;
-      if (
-        !musicianId ||
-      !gigId ||
-      !disputeClearingTime ||
-      !venueId ||
-      !gigDate ||
-      !gigTime ||
-      !amount
-      ) {
-        console.error("Invalid payload received in task.");
-        res.status(400).send("Invalid payload.");
-        return;
-      }
-      const key = getStripeKey();
-      sanityCheckKey(key);
-      const stripe = new Stripe(key);
       try {
-        const firestore = getFirestore();
-        const musicianProfileRef =
-      firestore.collection("musicianProfiles").doc(musicianId);
-        const musicianDoc = await musicianProfileRef.get();
-        if (!musicianDoc.exists) {
+        const {
+          musicianId,
+          applicantId,
+          paymentIntentId,
+          gigId,
+          amount,
+          disputeClearingTime,
+          venueId,
+          gigDate,
+          gigTime,
+          musicianEmail,
+          musicianName,
+          venueName,
+        } = req.body || {};
+        if (
+          !musicianId || !paymentIntentId || !gigId ||
+            !venueId || !gigDate || !gigTime ||
+            !amount || !disputeClearingTime ||
+            !applicantId
+        ) {
+          console.error("Invalid payload received in task.", req.body);
+          return res.status(400).send("Invalid payload.");
+        }
+        const db = getFirestore();
+        const musicianRef = db.collection("musicianProfiles").doc(musicianId);
+        const pendingDocRef =
+        musicianRef.collection("pendingFees").doc(paymentIntentId);
+        const [musicianSnap, gigSnap, pendingDocSnap] = await Promise.all([
+          musicianRef.get(),
+          db.collection("gigs").doc(gigId).get(),
+          pendingDocRef.get(),
+        ]);
+        if (!musicianSnap.exists) {
           console.error(`Musician doc ${musicianId} not found.`);
-          res.status(400).send(`Musician doc ${musicianId} not found.`);
-          return;
+          return res.status(400).send(`Musician doc ${musicianId} not found.`);
         }
-        const musicianData = musicianDoc.data();
-        const stripeAccountId = musicianData.stripeAccountId;
-        const pendingFees = musicianData.pendingFees || [];
-        const clearedFee = pendingFees.find((fee) => fee.gigId === gigId);
-        if (!clearedFee) {
-          console.error(`Fee for gig ${gigId} already cleared or not found.`);
-          res.status(400).send(`Fee for gig ${gigId} already cleared.`);
-          return;
-        }
-        const gigRef = firestore.collection("gigs").doc(gigId);
-        const gigDoc = await gigRef.get();
-        if (!gigDoc.exists) {
+        if (!gigSnap.exists) {
           console.error(`Gig ${gigId} not found.`);
-          res.status(400).send(`Gig ${gigId} not found.`);
-          return;
+          return res.status(400).send(`Gig ${gigId} not found.`);
         }
-        const gigData = gigDoc.data();
-        if (clearedFee.disputeLogged || gigData.disputeLogged) {
+        if (!pendingDocSnap.exists) {
+          console.error(
+              `Pending fee doc ${paymentIntentId} not found for gig ${gigId}.`,
+          );
+          return res.status(400).send(
+              `Fee for gig ${gigId} already cleared or not found.`,
+          );
+        }
+        const musician = musicianSnap.data() || {};
+        const gig = gigSnap.data() || {};
+        const pendingFee = pendingDocSnap.data() || {};
+        if (gig.disputeLogged || pendingFee.disputeLogged) {
           console.error(`Dispute logged for gig ${gigId}`);
-          res.status(400).send(`Dispute logged for gig ${gigId}`);
-          return;
+          return res.status(400).send(`Dispute logged for gig ${gigId}`);
         }
+        const key = getStripeKey();
+        sanityCheckKey(key);
+        const stripe = new Stripe(key);
         let stripeTransferId = null;
+        const stripeAccountId = musician.stripeAccountId;
         if (stripeAccountId) {
           const transfer = await stripe.transfers.create({
-            amount: Math.round(amount * 100),
+            amount: Math.round(Number(amount) * 100),
             currency: "gbp",
             destination: stripeAccountId,
             metadata: {
               musicianId,
+              applicantId,
               gigId,
-              description:
-            "Gig fee transferred after dispute period cleared",
+              paymentIntentId,
+              description: "Gig fee transferred after dispute period cleared",
             },
           });
           console.log(`Stripe transfer successful: ${transfer.id}`);
@@ -622,55 +701,95 @@ exports.clearPendingFee = onRequest(
         } else {
           console.log(`Musician ${musicianId} has no Stripe account`);
         }
-        const updatedApplications =
-        gigData.applicants.map((application) => {
-          if (application.id === musicianId) {
-            return {...application, status: "paid"};
-          }
-          return {application};
-        });
-        await gigRef.update({
+        const clearedDocRef =
+        musicianRef.collection("clearedFees").doc(paymentIntentId);
+        const clearedPayload = {
+          ...pendingFee,
+          status: "cleared",
+          feeCleared: true,
+          stripeTransferId: stripeTransferId || null,
+          clearedAt: Timestamp.now(),
+          recipientMusicianId: musicianId,
+          applicantId,
+        };
+        const batch = db.batch();
+        batch.set(clearedDocRef, clearedPayload);
+        batch.delete(pendingDocRef);
+        const updatedApplicants = (gig.applicants || []).map((application) =>
+            application.id === applicantId ?
+              {...application, status: "paid"} :
+              {...application},
+        );
+        batch.update(gigSnap.ref, {
           musicianFeeStatus: "cleared",
-          applicants: updatedApplications,
+          applicants: updatedApplicants,
         });
-        const updatedPendingFees =
-      pendingFees.filter((fee) => fee.gigId !== gigId);
-        const clearedFees = musicianData.clearedFees || [];
-        const updatedClearedFees = [
-          ...clearedFees,
-          {
-            ...clearedFee,
-            feeCleared: true,
-            status: "cleared",
-            stripeTransferId,
-          },
-        ];
-        const totalEarnings = (musicianData.totalEarnings || 0) + amount;
-        const withdrawableEarnings =
-      (musicianData.withdrawableEarnings || 0) + amount;
-        await musicianProfileRef.update({
-          pendingFees: updatedPendingFees,
-          clearedFees: updatedClearedFees,
-          totalEarnings: totalEarnings,
-          withdrawableEarnings: withdrawableEarnings,
-        });
-        const mailRef = firestore.collection("mail");
+        const amt = Number(amount) || 0;
+        batch.set(
+            musicianRef,
+            {
+              totalEarnings: FieldValue.increment(amt),
+              withdrawableEarnings: FieldValue.increment(amt),
+              pendingFunds: FieldValue.increment(-amt),
+            },
+            {merge: true},
+        );
+        await batch.commit();
+        if (applicantId === musicianId) {
+          let clearedCount = 0;
+          try {
+            const agg =
+            await musicianRef.collection("clearedFees").count().get();
+            clearedCount = agg.data().count || 0;
+          } catch (err) {
+            const snap = await musicianRef.collection("clearedFees").get();
+            clearedCount = snap.size;
+          }
+          await musicianRef.set({gigsPerformed: clearedCount}, {merge: true});
+        } else {
+          const performerRef =
+          db.collection("musicianProfiles").doc(applicantId);
+          let clearedCount = 0;
+          try {
+            const agg =
+            await performerRef.collection("clearedFees").count().get();
+            clearedCount = agg.data().count || 0;
+          } catch (err) {
+            const snap = await performerRef.collection("clearedFees").get();
+            clearedCount = snap.size;
+          }
+          await performerRef.set({gigsPerformed: clearedCount}, {merge: true});
+        }
+        const mailRef = db.collection("mail");
         await mailRef.add({
           to: musicianEmail,
           message: {
             subject: "Your gig fee is available!",
-            text: `We have just cleared your gig fee.
-             You can now withdraw it to your bank account.`,
+            text:
+                "We have just cleared your gig fee. " +
+                "You can now withdraw it to your bank account.",
             html: `
-                  <p>Hi ${musicianName},</p>
-                  <p>We hope your gig at
-                   <strong>${venueName}</strong> went well!</p>
-                  <p><a href="https://gigin.ltd">Log on to Gigin</a> to withdraw it to your bank account.</p>
-                  <p>Thanks,<br />The Gigin Team</p>
+                <p>Hi ${musicianName},</p>
+                <p>
+                We hope your gig at <strong>${venueName}</strong> went well!
+                </p>
+                <p>
+                ${applicantId !== musicianId ?
+                  "You are the band admin - it is your responsibility " +
+                  "to split these funds between your band members" :
+                  ""}
+                </p>
+                <p>
+                Your fee has been cleared and is available in your Gigin wallet.
+                </p>
+                <p><a href="https://gigin.ltd/finances">Log in to Gigin</a> to withdraw it to your bank account.</p>
+                <p>Thanks,<br />The Gigin Team</p>
               `,
           },
         });
-        console.log(`Fee cleared for musician ${musicianId}, gig ${gigId}.`);
+        console.log(
+            `Fee cleared for recipient ${musicianId}, gig ${gigId}.`,
+        );
         res.status(200).send({success: true});
       } catch (error) {
         console.error("Error clearing fee:", error);
@@ -679,6 +798,7 @@ exports.clearPendingFee = onRequest(
     },
 );
 
+
 exports.intermediateTaskQueue = onRequest(
     {
       timeoutSeconds: 3600,
@@ -686,10 +806,11 @@ exports.intermediateTaskQueue = onRequest(
     async (req, res) => {
       const {
         musicianId,
+        applicantId,
         gigId,
         venueId,
         disputeClearingTime,
-        transactionId,
+        paymentIntentId,
         ...rest
       } = req.body;
       const targetDate = new Date(disputeClearingTime);
@@ -711,10 +832,11 @@ exports.intermediateTaskQueue = onRequest(
           taskName = await createCloudTask(
               {
                 musicianId,
+                applicantId,
                 gigId,
                 venueId,
                 disputeClearingTime,
-                transactionId,
+                paymentIntentId,
                 ...rest,
               },
               maxAllowedDate,
@@ -726,10 +848,11 @@ exports.intermediateTaskQueue = onRequest(
           taskName = await createCloudTask(
               {
                 musicianId,
+                applicantId,
                 gigId,
                 venueId,
                 disputeClearingTime,
-                transactionId,
+                paymentIntentId,
                 ...rest,
               },
               targetDate,
@@ -755,12 +878,13 @@ exports.intermediateMessageQueue = onRequest(
     async (req, res) => {
       const {
         musicianId,
+        applicantId,
         gigId,
         venueId,
         gigDate,
         gigTime,
         amount,
-        transactionId,
+        paymentIntentId,
         disputeClearingTime,
         ...rest
       } = req.body;
@@ -788,12 +912,13 @@ exports.intermediateMessageQueue = onRequest(
           taskName = await createCloudTask(
               {
                 musicianId,
+                applicantId,
                 gigId,
                 venueId,
                 gigDate,
                 gigTime,
                 amount,
-                transactionId,
+                paymentIntentId,
                 disputeClearingTime,
                 ...rest,
               },
@@ -806,12 +931,13 @@ exports.intermediateMessageQueue = onRequest(
           taskName = await createCloudTask(
               {
                 musicianId,
+                applicantId,
                 gigId,
                 venueId,
                 gigDate,
                 gigTime,
                 amount,
-                transactionId,
+                paymentIntentId,
                 disputeClearingTime,
                 ...rest,
               },
@@ -839,6 +965,7 @@ exports.automaticReviewMessage = onRequest(
     async (req, res) => {
       const {
         musicianId,
+        applicantId,
         gigId,
         disputeClearingTime,
         venueId,
@@ -852,7 +979,8 @@ exports.automaticReviewMessage = onRequest(
     !gigId ||
     !disputeClearingTime ||
     !venueId ||
-    !musicianName
+    !musicianName ||
+    !applicantId
       ) {
         console.error("Invalid payload received in task.");
         res.status(400).send("Invalid payload.");
@@ -863,7 +991,7 @@ exports.automaticReviewMessage = onRequest(
         const conversationsRef = firestore.collection("conversations");
         const conversationQuery = conversationsRef
             .where("gigId", "==", gigId)
-            .where("participants", "array-contains", musicianId);
+            .where("participants", "array-contains", applicantId);
         const conversationsSnapshot = await conversationQuery.get();
         const conversationDoc = conversationsSnapshot.docs[0];
         const conversationId = conversationDoc.id;
@@ -1442,6 +1570,90 @@ exports.uploadMediaFiles = onCall(
       }
     });
 
+exports.sweepPayments = onSchedule(
+    {
+      schedule: "every 10 minutes",
+      timeZone: "Etc/UTC",
+      timeoutSeconds: 300,
+      memory: "256MiB",
+    },
+    async () => {
+      const db = getFirestore();
+      const stripe = new Stripe(getStripeKey());
+      const cutoff = new Date(Date.now() - 10 * 60 * 1000);
+      const pageSize = 100;
+      const lockRef = db.collection("_internal").doc("paymentsSweeperLock");
+      const now = Date.now();
+      const lockTtlMs = 4 * 60 * 1000;
+      const lockSnap = await lockRef.get();
+      if (lockSnap.exists && lockSnap.data().expiresAt > now) {
+        console.log("Sweeper already running, skipping.");
+        return;
+      }
+      await lockRef.set({expiresAt: now + lockTtlMs}, {merge: true});
+      try {
+        let lastDoc = null;
+        let processed = 0;
+        let stopLoop = true;
+        while (stopLoop) {
+          let q = db
+              .collection("payments")
+              .where("status", "==", "processing")
+              .where("createdAt", "<=", cutoff)
+              .orderBy("createdAt", "asc")
+              .limit(pageSize);
+          if (lastDoc) q = q.startAfter(lastDoc);
+          const snap = await q.get();
+          if (snap.empty) {
+            stopLoop = false;
+            break;
+          }
+          for (const doc of snap.docs) {
+            const piId = doc.id;
+            try {
+              const pi = await stripe.paymentIntents.retrieve(piId);
+              if (pi.status === "succeeded") {
+                await handlePaymentSuccess(pi);
+                await doc.ref.set(
+                    {
+                      status: "succeeded",
+                      lastCheckedAt: FieldValue.serverTimestamp(),
+                    },
+                    {merge: true},
+                );
+              } else if (
+                pi.status === "requires_payment_method" ||
+                  pi.status === "canceled"
+              ) {
+                await handlePaymentFailure(pi);
+                await doc.ref.set(
+                    {
+                      status: "failed",
+                      lastCheckedAt: FieldValue.serverTimestamp(),
+                    },
+                    {merge: true},
+                );
+              } else {
+                await doc.ref.set(
+                    {lastCheckedAt: FieldValue.serverTimestamp()},
+                    {merge: true},
+                );
+              }
+              processed++;
+            } catch (err) {
+              console.error(`Error reconciling PI ${piId}:`, err);
+            }
+          }
+          lastDoc = snap.docs[snap.docs.length - 1];
+          stopLoop = snap.size === pageSize;
+        }
+        console.log(`Sweeper done. Processed ~${processed} items.`);
+      } finally {
+        await lockRef.set({expiresAt: 0}, {merge: true});
+      }
+    },
+);
+
 let auth;
 
 // [START v2GetFunctionUri]
@@ -1507,22 +1719,23 @@ const getFunctionUrl = async (name, location="us-central1") => {
 
 const handlePaymentSuccess = async (paymentIntent) => {
   const gigId = paymentIntent.metadata.gigId;
-  const musicianId = paymentIntent.metadata.musicianId;
+  const applicantId = paymentIntent.metadata.applicantId;
+  const recipientMusicianId = paymentIntent.metadata.recipientMusicianId;
   const venueId = paymentIntent.metadata.venueId;
   const gigTime = paymentIntent.metadata.time;
   const gigDate = paymentIntent.metadata.date;
-  const transactionId = paymentIntent.id;
+  const paymentIntentId = paymentIntent.id;
   const formattedGigDate = new Date(gigDate);
   const [hours, minutes] = gigTime.split(":").map(Number);
   formattedGigDate.setHours(hours);
   formattedGigDate.setMinutes(minutes);
   formattedGigDate.setSeconds(0);
   const disputePeriodDate =
-  new Date(formattedGigDate.getTime() + 24 * 60 * 60 * 1000);
+  new Date(formattedGigDate.getTime() + 48 * 60 * 60 * 1000);
   const maxAllowedDate = new Date(Date.now() + 720 * 60 * 60 * 1000);
   const gigStartDate =
   new Date(formattedGigDate.getTime());
-  if (!gigId || !musicianId || !venueId) {
+  if (!gigId || !applicantId || !recipientMusicianId || !venueId) {
     console.error("Missing required metadata in paymentIntent");
     return;
   }
@@ -1534,16 +1747,19 @@ const handlePaymentSuccess = async (paymentIntent) => {
       throw new Error(`Gig with ID ${gigId} not found`);
     }
     const gigData = gigDoc.data();
-    const updatedApplicants =
-    gigData.applicants.map((applicant) => {
-      if (applicant.id === musicianId) {
-        return {...applicant, status: "confirmed"};
-      }
-      return {...applicant};
-    });
+    const feeAmount = (() => {
+      const raw = typeof gigData.agreedFee === "string" ?
+        gigData.agreedFee.replace("£", "").trim() :
+        gigData.agreedFee;
+      const n = Number(raw);
+      return Math.round(n * 0.95 * 100) / 100;
+    })();
+    const updatedApplicants = (gigData.applicants || []).map((a) =>
+      a.id === applicantId ? {...a, status: "confirmed"} : {...a},
+    );
     const venueName = gigData.venue.venueName;
     const musicianProfileRef = admin.firestore()
-        .collection("musicianProfiles").doc(musicianId);
+        .collection("musicianProfiles").doc(recipientMusicianId);
     const musicianProfileSnap = await musicianProfileRef.get();
     const musicianProfile = musicianProfileSnap.data();
     const musicianName = musicianProfile.name;
@@ -1554,34 +1770,31 @@ const handlePaymentSuccess = async (paymentIntent) => {
     const venueProfile = venueProfileSnap.data();
     const venueEmail = venueProfile.email;
     const gigFeePayload = {
-      musicianId,
+      musicianId: recipientMusicianId,
+      applicantId,
       gigId,
       venueId,
       gigDate,
       gigTime,
-      amount:
-      parseFloat(
-          (parseFloat(gigData.agreedFee.replace("£", "")) * 0.95).toFixed(2),
-      ),
+      amount: feeAmount,
       disputeClearingTime:
         Timestamp.fromDate(disputePeriodDate).toMillis(),
       musicianEmail,
       musicianName,
       venueName,
+      paymentIntentId: paymentIntentId,
     };
     const automaticMessagePayload = {
-      musicianId,
+      musicianId: recipientMusicianId,
+      applicantId,
       gigId,
       venueId,
       gigDate,
       gigTime,
-      amount:
-      parseFloat(
-          (parseFloat(gigData.agreedFee.replace("£", "")) * 0.95).toFixed(2),
-      ),
+      amount: feeAmount,
       disputeClearingTime:
         Timestamp.fromDate(disputePeriodDate).toMillis(),
-      transactionId,
+      paymentIntentId,
       musicianName,
       musicianEmail,
       venueEmail,
@@ -1638,7 +1851,7 @@ const handlePaymentSuccess = async (paymentIntent) => {
     }
     await gigRef.update({
       applicants: updatedApplicants,
-      transactionId: transactionId,
+      paymentIntentId: paymentIntentId,
       status: "closed",
       paid: true,
       paymentStatus: "succeeded",
@@ -1648,28 +1861,45 @@ const handlePaymentSuccess = async (paymentIntent) => {
       clearPendingFeeTaskName: feeTaskName,
       automaticMessageTaskName: messageTaskName,
     });
-    await musicianProfileRef.update({
-      confirmedGigs: FieldValue.arrayUnion(gigId),
-      pendingFees: FieldValue.arrayUnion({
-        gigId: gigId,
-        venueId: venueId,
-        amount: parseFloat(
-            (parseFloat(
-                gigData.agreedFee.replace("£", ""),
-            ) * 0.95).toFixed(2),
-        ),
+    const pendingFeeDocRef = admin
+        .firestore()
+        .collection("musicianProfiles")
+        .doc(recipientMusicianId)
+        .collection("pendingFees")
+        .doc(paymentIntentId);
+    const existing = await pendingFeeDocRef.get();
+    if (!existing.exists) {
+      await pendingFeeDocRef.set({
+        paymentIntentId,
+        gigId,
+        venueId,
+        amount: feeAmount,
         currency: paymentIntent.currency || "gbp",
-        timestamp: timestamp,
-        gigDate: gigDate,
-        gigTime: gigTime,
+        timestamp,
+        gigDate,
+        gigTime,
         disputeClearingTime: Timestamp.fromDate(disputePeriodDate),
         disputeLogged: false,
         disputeDetails: null,
         status: "pending",
         feeCleared: false,
-        paymentIntentId: paymentIntent.id,
-      }),
-    });
+        musicianName,
+        musicianEmail,
+        venueName,
+      });
+      await musicianProfileRef.set(
+          {
+            confirmedGigs: FieldValue.arrayUnion(gigId),
+            pendingFunds: FieldValue.increment(feeAmount),
+          },
+          {merge: true},
+      );
+    } else {
+      await musicianProfileRef.set(
+          {confirmedGigs: FieldValue.arrayUnion(gigId)},
+          {merge: true},
+      );
+    }
     const conversationsRef =
     admin.firestore().collection("conversations");
     const conversationsSnapshot =
@@ -1679,7 +1909,7 @@ const handlePaymentSuccess = async (paymentIntent) => {
       const conversationData = conversationDoc.data();
       const isVenueAndMusicianConversation =
         conversationData.participants.includes(venueId) &&
-        conversationData.participants.includes(musicianId);
+        conversationData.participants.includes(applicantId);
       const messagesRef = admin.firestore().collection("conversations")
           .doc(conversationId).collection("messages");
       if (isVenueAndMusicianConversation) {
@@ -1805,9 +2035,9 @@ const generateCalendarLink = ({
 const handlePaymentFailure = async (failedIntent) => {
   const gigId = failedIntent.metadata.gigId;
   const venueId = failedIntent.metadata.venueId;
-  const musicianId = failedIntent.metadata.musicianId;
-  const transactionId = failedIntent.id;
-  if (!gigId || !venueId || !musicianId) {
+  const applicantId = failedIntent.metadata.applicantId;
+  const paymentIntentId = failedIntent.id;
+  if (!gigId || !venueId || !applicantId) {
     console.error("Missing required metadata in failedIntent");
     return;
   }
@@ -1817,18 +2047,20 @@ const handlePaymentFailure = async (failedIntent) => {
     await gigRef.update({
       paymentStatus: "failed",
       paid: false,
-      transactionId,
+      paymentIntentId,
       status: "open",
     });
     const conversationsRef = admin.firestore().collection("conversations");
-    const conversationQuery = conversationsRef
+    const convoSnap = conversationsRef
         .where("gigId", "==", gigId)
-        .where("participants", "array-contains", venueId)
-        .where("participants", "array-contains", musicianId);
-    const conversationsSnapshot = await conversationQuery.get();
-    if (!conversationsSnapshot.empty) {
-      const conversationDoc = conversationsSnapshot.docs[0];
-      const conversationId = conversationDoc.id;
+        .where("participants", "array-contains", venueId);
+    const convoDoc = convoSnap.docs.find((d) => {
+      const data = d.data() || {};
+      const participants = data.participants || [];
+      return Array.isArray(participants) && participants.includes(applicantId);
+    });
+    if (convoDoc) {
+      const conversationId = convoDoc.id;
       const messagesRef = admin
           .firestore()
           .collection("conversations")

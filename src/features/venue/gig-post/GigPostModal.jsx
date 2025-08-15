@@ -25,7 +25,7 @@ import { sendGigInvitationMessage } from '../../../services/messages';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { geohashForLocation } from 'geofire-common';
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData }) => {
     const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
@@ -96,17 +96,14 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
 
     useEffect(() => {
         if (buildingForMusician && buildingForMusicianData) {
-            console.log(buildingForMusicianData)
           const { type, genres, venueId } = buildingForMusicianData;
-      
           const matchedVenue = venueId
             ? venueProfiles.find(v => v.venueId === venueId)
             : null;
-      
           setFormData(prev => ({
             ...prev,
             gigType: type,
-            genre: genres,
+            genre: genres ? genres : [],
             venueId: venueId || '',
             venue: matchedVenue
               ? {
@@ -497,6 +494,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                         fee: formData.budget || '£0',
                         status: 'pending',
                         invited: true,
+                        type: buildingForMusicianData.bandProfile ? 'band' : 'musician'
                     }
                     if (!Array.isArray(singleGig.applicants)) {
                         singleGig.applicants = [];
@@ -507,19 +505,22 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 gigDocuments.push(singleGig);
             }
           await postMultipleGigs(formData.venueId, gigDocuments)
-          setLoading(false);
           if (buildingForMusician) {
-            const venueToSend = user.venueProfiles.find(venue => venue.id === formData.venueId);
-            const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
-            const conversationId = await getOrCreateConversation(musicianProfile, formData, venueToSend, 'invitation');
-            await sendGigInvitationMessage(conversationId, {
-                senderId: user.uid,
-                text: `${venueToSend.accountName} has invited you to play at their gig at ${formData.venue.venueName} on the ${formatDate(formData.date)} for ${formData.budget}.
-                ${formData.privateApplicationsLink ? `Follow this link to apply: ${formData.privateApplicationsLink}` : ''}`,
-            })
-          }
-          toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`)
-          setGigPostModal(false);
+              const venueToSend = user.venueProfiles.find(venue => venue.id === formData.venueId);
+              const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
+              const conversationId = await getOrCreateConversation(musicianProfile, formData, venueToSend, 'invitation');
+              await sendGigInvitationMessage(conversationId, {
+                  senderId: user.uid,
+                  text: `${venueToSend.accountName} has invited you to play at their gig at ${formData.venue.venueName} on the ${formatDate(formData.date)} for ${formData.budget}.
+                  ${formData.privateApplicationsLink ? `Follow this link to apply: ${formData.privateApplicationsLink}` : ''}`,
+                })
+              setBuildingForMusician(false);
+              setBuildingForMusicianData(false);
+            }
+            resetFormData();
+            toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`)
+            setGigPostModal(false);
+            setLoading(false);
         } catch (error) {
           setLoading(false);
           toast.error('Error posting gig. Please try again.')

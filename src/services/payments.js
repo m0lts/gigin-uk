@@ -41,6 +41,48 @@ export const fetchStripeCustomerData = async () => {
   };
 };
 
+/**
+ * Listen for real-time updates to a payment's status in Firestore.
+ * 
+ * This function subscribes to changes on the `payments/{paymentIntentId}` document.
+ * When the status field changes, it calls the provided callback with the new status.
+ * 
+ * @param {string} paymentIntentId - The Stripe PaymentIntent ID to listen for.
+ * @param {(status: 'processing' | 'succeeded' | 'failed', data: object) => void} callback 
+ *        Function to run when the payment status changes. Receives the status string and full document data.
+ * @returns {Function} Unsubscribe function to stop listening for changes.
+ * 
+ * @example
+ * const unsubscribe = listenToPaymentStatus('pi_123456', (status, data) => {
+ *   console.log('Payment status:', status);
+ *   if (status === 'succeeded') {
+ *     // Show success UI
+ *   }
+ * });
+ * 
+ * // Later...
+ * unsubscribe();
+ */
+export const listenToPaymentStatus = (paymentIntentId, callback) => {
+  if (!paymentIntentId) {
+    console.warn('listenToPaymentStatus called without a paymentIntentId');
+    return () => {};
+  }
+
+  const ref = doc(firestore, 'payments', paymentIntentId);
+
+  return onSnapshot(ref, (snap) => {
+    if (!snap.exists()) {
+      console.warn(`No payment document found for ${paymentIntentId}`);
+      return;
+    }
+    const data = snap.data();
+    callback(data.status, data);
+  }, (err) => {
+    console.error('Error listening to payment status:', err);
+  });
+};
+
 
 /*** UPDATE OPERATIONS ***/
 
@@ -55,3 +97,35 @@ export const clearMusicianBalance = async (musicianId) => {
     await updateDoc(musicianRef, { withdrawableFunds: 0 });
 };
 
+/**
+	•	Find the pending fee doc for a gig under a musician profile.
+	•	Looks up: musicianProfiles/{musicianId}/pendingFees where gigId == {gigId}
+	•	@param {string} musicianId
+	•	@param {string} gigId
+	•	@returns {Promise<{docId: string, data: object} | null>}
+*/
+export const findPendingFeeByGigId = async (musicianId, gigId) => {
+  const colRef = collection(firestore, 'musicianProfiles', musicianId, 'pendingFees');
+  const q = query(colRef, where('gigId', '==', gigId), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { docId: d.id, data: d.data() };
+  };
+  
+/**
+  •	Mark a pending fee as “in dispute” and clear its clearing time.
+  •	@param {string} musicianId
+  •	@param {string} docId - pendingFees document ID (typically the PaymentIntent id)
+  •	@param {object} updates - extra fields to write (e.g., { disputeReason, details })
+  •	@returns {Promise}
+*/
+export const markPendingFeeInDispute = async (musicianId, docId, updates = {}) => {
+    const ref = doc(firestore, 'musicianProfiles', musicianId, 'pendingFees', docId);
+    await updateDoc(ref, {
+      disputeLogged: true,
+      status: 'in dispute',
+      disputeClearingTime: null,
+      ...updates,
+    });
+};

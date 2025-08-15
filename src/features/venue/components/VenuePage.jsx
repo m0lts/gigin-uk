@@ -62,24 +62,33 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     useEffect(() => {
         if (!venueId) return;
         const fetchVenueAndGigs = async () => {
-            setLoading(true)
+            setLoading(true);
             try {
-                const profile = await getVenueProfileById(venueId);  
-                setVenueData(profile);
-                const gigs = await getGigsByVenueId(venueId);
-                const now = new Date();
-                const futureGigs = gigs.filter(gig => {
-                    const gigDate = gig.date?.toDate?.() ?? gig.date;
-                    return gigDate > now;
+              const profile = await getVenueProfileById(venueId);
+              setVenueData(profile);
+        
+              const gigs = await getGigsByVenueId(venueId);
+              const now = new Date();
+        
+              const futureGigs = gigs
+                .filter(gig => {
+                  const startDateTime = gig.startDateTime?.toDate?.() ?? gig.startDateTime;
+                  return startDateTime > now;
+                })
+                .sort((a, b) => {
+                  const aDate = a.startDateTime?.toDate?.() ?? a.startDateTime;
+                  const bDate = b.startDateTime?.toDate?.() ?? b.startDateTime;
+                  return aDate - bDate;
                 });
-
-                setVenueGigs(futureGigs);
+        
+              setVenueGigs(futureGigs);
+        
             } catch (error) {
-                console.error('Error loading venue profile or gigs:', error);
+              console.error('Error loading venue profile or gigs:', error);
             } finally {
-                setLoading(false);
+              setLoading(false);
             }
-        };
+          };
         fetchVenueAndGigs();
     }, [venueId]);
     

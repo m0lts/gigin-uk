@@ -797,6 +797,13 @@
     align-items:flex-start;
 }
 
+.window.musicians .head.gigs .title-container {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 .window.musicians .gigs .filters {
     display: flex;
     justify-content: flex-start;
@@ -2000,6 +2007,7 @@
 }
 
 .window.musicians .body.finances table .status-box {
+    width:100%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2007,15 +2015,28 @@
 
 .window.musicians .body.finances table .status {
     font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    text-transform: capitalize;
+  
+    /* Prevent jumpiness */
+    white-space: nowrap;
+    min-width: 16ch;                 /* reserve space for "Releasing in 00h 00m 00s" */
+    font-variant-numeric: tabular-nums;   /* use tabular digits */
+    font-feature-settings: 'tnum' 1, 'lnum' 1; /* fallback if needed */
+    line-height: 1.2;                /* consistent height */
+  }
+  
+  /* Center the status cell content */
+  .window.musicians .body.finances table .status-box {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap:5px;
-    padding:5px;
-    width:fit-content;
-    border-radius: 5px;
-    text-transform: capitalize;
-}
+  }
 
 .window.musicians .body.finances table .status.succeeded {
     border:1px solid rgb(0, 219, 0);

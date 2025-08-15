@@ -12,8 +12,11 @@ import {
   onSnapshot,
   Timestamp,
   orderBy,
-  setDoc
+  setDoc,
+  runTransaction
 } from 'firebase/firestore';
+import { updateVenueGigsAccountName } from './gigs';
+import { rewriteVenueConversationsAndMessages } from './conversations';
 
 /*** CREATE OPERATIONS ***/
 
@@ -222,6 +225,111 @@ export const removeVenueRequest = async (requestId) => {
     updatedAt: new Date()
   });
 };
+
+/**
+ * Build the lightweight venue summary object stored in a user's venueProfiles array.
+ * Adjust fields to match what your Account UI expects (id, name, address, photos...).
+ * @param {string} venueId
+ * @param {object} data - venue profile doc data
+ * @returns {{id:string, name:string, address?:string, photos?:string[]}}
+ */
+function makeVenueSummary(venueId, data) {
+  return {
+    id: venueId,
+    name: data.name || data.venueName || 'Untitled Venue',
+    address: data.address || '',
+    photos: Array.isArray(data.photos) ? data.photos : [],
+  };
+}
+
+/**
+ * Transfer ownership of a venue profile (ID-only lists in users docs).
+ *
+ * Effects (atomically in a transaction):
+ * - Updates venueProfiles/{venueId}: sets userId, accountName, email to new owner's data.
+ * - Removes venueId from users/{fromUserId}.venueProfiles (array of strings).
+ * - Adds venueId to users/{toUserId}.venueProfiles (array of strings, no duplicates).
+ *
+ * @param {Object} params
+ * @param {string} params.venueId - Venue profile document ID being transferred.
+ * @param {string} params.fromUserId - Current owner’s user document ID.
+ * @param {string} params.toUserId - New owner’s user document ID.
+ * @returns {Promise<{venueId:string, fromUserId:string, toUserId:string}>}
+ * @throws {Error} If docs are missing, ownership invalid, or the transaction fails.
+ */
+export async function transferVenueOwnership({ venueId, fromUserId, toUserId }) {
+  if (!venueId || !fromUserId || !toUserId) {
+    throw new Error('venueId, fromUserId, and toUserId are required');
+  }
+  if (fromUserId === toUserId) {
+    throw new Error('Source and destination users are the same');
+  }
+
+  const venueRef = doc(firestore, 'venueProfiles', venueId);
+  const fromUserRef = doc(firestore, 'users', fromUserId);
+  const toUserRef = doc(firestore, 'users', toUserId);
+
+  await runTransaction(firestore, async (tx) => {
+    const venueSnap = await tx.get(venueRef);
+    const fromUserSnap = await tx.get(fromUserRef);
+    const toUserSnap = await tx.get(toUserRef);
+
+    if (!venueSnap.exists()) throw new Error(`Venue ${venueId} not found`);
+    if (!fromUserSnap.exists()) throw new Error(`From user ${fromUserId} not found`);
+    if (!toUserSnap.exists()) throw new Error(`To user ${toUserId} not found`);
+
+    const venue = venueSnap.data() || {};
+    const fromUser = fromUserSnap.data() || {};
+    const toUser = toUserSnap.data() || {};
+
+    // Validate current ownership
+    if (venue.userId !== fromUserId) {
+      throw new Error('Current user does not own this venue');
+    }
+
+    // Users store venue IDs (strings), not objects
+    const fromList = Array.isArray(fromUser.venueProfiles) ? fromUser.venueProfiles : [];
+    const toList = Array.isArray(toUser.venueProfiles) ? toUser.venueProfiles : [];
+
+    // Remove from source (if present)
+    const nextFromList = fromList.filter((id) => id !== venueId);
+
+    // Add to destination (no duplicates)
+    const alreadyThere = toList.includes(venueId);
+    const nextToList = alreadyThere ? toList : [...toList, venueId];
+
+    // Update venue doc to reflect new owner (and surface owner’s display fields)
+    const newAccountName = toUser.name ?? venue.accountName ?? '';
+    const newEmail = toUser.email ?? venue.email ?? '';
+
+    tx.update(venueRef, {
+      userId: toUserId,
+      accountName: newAccountName,
+      email: newEmail,
+    });
+
+    // Update user docs
+    tx.update(fromUserRef, { venueProfiles: nextFromList });
+    tx.update(toUserRef, { venueProfiles: nextToList });
+  });
+
+  const toUserSnap = await getDoc(doc(firestore, 'users', toUserId));
+  const toUser = toUserSnap.data() || {};
+  const newAccountName = toUser.name || '';
+
+  // 3) Update gigs' denormalized accountName
+  await updateVenueGigsAccountName(venueId, newAccountName);
+
+  // 4) Rewrite conversations & messages
+  await rewriteVenueConversationsAndMessages({
+    venueId,
+    fromUserId,
+    toUserId,
+    newAccountName,
+  });
+
+  return { venueId, fromUserId, toUserId, newAccountName };
+}
 
 /*** DELETE OPERATIONS ***/
 

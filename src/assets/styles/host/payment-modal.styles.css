@@ -4,6 +4,11 @@
 
 .payment.modal .modal-content {
     overflow: hidden;
+    max-width: 500px;
+}
+
+.payment.modal .modal-header.card {
+    margin-bottom: 0.5rem;
 }
 
 .payment.modal .payment-details {
@@ -17,6 +22,7 @@
     align-items: center;
     justify-content: center;
     gap:10px;
+    margin-bottom: 2rem;
 }
 
 .payment.modal .payment-details .payment-line {
@@ -41,6 +47,7 @@
     align-items: center;
     gap:10px;
     margin: 1rem 0;
+    margin-bottom: 2rem;
 }
 
 .payment.modal .card-list .card-item {
@@ -90,6 +97,10 @@
     font-size: 0.8rem;
 }
 
+.payment.modal .pay-btn {
+    width: 100%;
+}
+
 .payment.modal .payment-success,
 .payment.modal .making-payment {
     display: flex;
@@ -100,4 +111,8 @@
 
 .payment.modal .payment-success .icon {
     font-size: 4rem;
+}
+
+.payment.modal .back-button {
+    margin-bottom: 1rem;
 }

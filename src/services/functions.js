@@ -18,21 +18,27 @@ export const fetchSavedCards = async () => {
  * @param {Object} options.gigData - The full gig object.
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
-export const confirmGigPayment = async ({ cardId, gigData }) => {
+export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId }) => {
+  try {
     if (!gigData?.agreedFee) throw new Error('Missing agreed fee');
     let amount = typeof gigData.agreedFee === 'string'
       ? parseFloat(gigData.agreedFee.replace('£', ''))
       : gigData.agreedFee;
     const amountToCharge = Math.round(amount * 1.05 * 100);
-    const gigDate = gigData.date.toDate();
+    const gigDate = gigData.startDateTime.toDate();
     const confirmPayment = httpsCallable(functions, 'confirmPayment');
     const response = await confirmPayment({
       paymentMethodId: cardId,
       amountToCharge,
       gigData,
       gigDate,
+      musicianProfileId,
     });
     return response.data;
+  } catch (error) {
+    console.error(error)
+    return error;
+  }
   };
 
 /**
@@ -191,7 +197,7 @@ export const cancelGigAndRefund = async ({ taskNames, transactionId }) => {
     }
   
     if (transactionId) {
-      await processRefund({ transactionId });
+      await processRefund({ paymentIntentId: transactionId });
     }
 };
 

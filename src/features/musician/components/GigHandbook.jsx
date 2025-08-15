@@ -45,6 +45,16 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
         }
     };
 
+    const getOrdinalSuffix = (day) => {
+        if (day > 3 && day < 21) return 'th';
+        switch (day % 10) {
+          case 1: return 'st';
+          case 2: return 'nd';
+          case 3: return 'rd';
+          default: return 'th';
+        }
+    };
+
     const splitDateAndTime = (timestamp) => {
         const date = timestamp.toDate();
         const day = date.getDate();
@@ -108,7 +118,7 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
             ];
             await cancelGigAndRefund({
                 taskNames,
-                transactionId: gigForHandbook.transactionId,
+                transactionId: gigForHandbook.paymentIntentId,
             });
             const gigId = gigForHandbook.gigId;
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);

@@ -12,6 +12,7 @@ import { sendEmail } from '@services/emails';
 import { cancelTask } from '@services/functions';
 import { submitReview } from '../../../services/reviews';
 import { toast } from 'sonner';
+import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/payments';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);
@@ -75,12 +76,15 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     musicianFeeStatus: 'in dispute',
                     venueHasReviewed: false,
                 });
-                const updatedPendingFees = musicianProfile.pendingFees.map(fee =>
-                    fee.gigId === gigData.gigId
-                      ? { ...fee, disputeLogged: true, status: 'in dispute', disputeClearingTime: null, disputeReason }
-                      : fee
-                );
-                await updateMusicianProfile(musicianProfile.musicianId, updatedPendingFees)
+                const match = await findPendingFeeByGigId(musicianProfile.musicianId, gigData.gigId);
+                if (match) {
+                    await markPendingFeeInDispute(musicianProfile.musicianId, match.docId, {
+                        disputeReason,
+                        disputeDetails: disputeText || null,
+                    });
+                } else {
+                console.warn('No pending fee doc found for this gig to mark as disputed.');
+                }
                 const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'dispute');
                 await sendDisputeMessage(conversationId, gigData.venue.venueName);
                 await sendEmail({

@@ -12,6 +12,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
   const [musicianProfile, setMusicianProfile] = useState(null);
   const [gigApplications, setGigApplications] = useState([]);
   const [gigs, setGigs] = useState([]);
+  const [savedGigs, setSavedGigs] = useState([]);
   const [gigToReview, setGigToReview] = useState(null);
   const [gigsToReview, setGigsToReview] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -63,14 +64,12 @@ export const MusicianDashboardProvider = ({ user, children }) => {
             getBandMembers(bandId),
             getBandDataOnly(bandId),
           ]);
-
           const finalBandProfile = {
             ...profile,
             bandId,
             members,
             bandInfo,
           };
-
           setBandProfiles((prev) => {
             const filtered = prev.filter(p => p.bandId !== bandId);
             return [...filtered, finalBandProfile];
@@ -91,14 +90,12 @@ export const MusicianDashboardProvider = ({ user, children }) => {
   useEffect(() => {
     const run = async () => {
       if (!musicianProfile) return;
-  
       const ownApplications = (musicianProfile.gigApplications || []).map(app => ({
         ...app,
         submittedBy: 'musician',
         profileId: musicianProfile.musicianId,
         profileName: musicianProfile.name,
       }));
-  
       const bandApplications = bandProfiles.flatMap(band =>
         (band.gigApplications || []).map(app => ({
           ...app,
@@ -107,24 +104,26 @@ export const MusicianDashboardProvider = ({ user, children }) => {
           profileName: band.name,
         }))
       );
-  
       const allApplications = [...ownApplications, ...bandApplications];
       setGigApplications(allApplications);
-  
-      if (allApplications.length > 0) {
-        const gigIds = allApplications.map((app) => app.gigId);
-        const fetchedGigs = await getGigsByIds(gigIds);
-  
-        const allMusicianIds = [
-          musicianProfile.musicianId,
-          ...bandProfiles.map((band) => band.bandId),
-        ];
-  
+      const ownSaved = musicianProfile.savedGigs || [];
+      const bandSaved = (bandProfiles || []).flatMap(b => b.savedGigs || []);
+      const savedGigIds = [...new Set([...ownSaved, ...bandSaved])];
+      const applicationGigIds = [...new Set(allApplications.map(a => a.gigId))];
+      const [fetchedGigs, fetchedSavedGigs] = await Promise.all([
+        applicationGigIds.length ? getGigsByIds(applicationGigIds) : Promise.resolve([]),
+        savedGigIds.length ? getGigsByIds(savedGigIds) : Promise.resolve([]),
+      ]);
+      const allMusicianIds = [
+        musicianProfile.musicianId,
+        ...(bandProfiles || []).map(b => b.bandId),
+      ];
+      if (fetchedGigs.length) {
         checkGigsForReview(fetchedGigs, allMusicianIds);
-        setGigs(fetchedGigs);
       }
+      setGigs(fetchedGigs);
+      setSavedGigs(fetchedSavedGigs);
     };
-  
     run();
   }, [musicianProfile, bandProfiles]);
 
@@ -188,6 +187,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
     setBandProfiles([]);
     setGigApplications([]);
     setGigs([]);
+    setSavedGigs([]);
     setGigToReview(null);
     setGigsToReview(null);
     setShowReviewModal(false);
@@ -211,6 +211,8 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         bandProfiles,
         refreshMusicianProfile,
         refreshSingleBand,
+        savedGigs,
+        setSavedGigs
       }}
     >
       {children}

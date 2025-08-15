@@ -35,6 +35,8 @@ export const MusicianDashboard = ({ user }) => {
     gigsToReview,
     setGigsToReview,
     refreshMusicianProfile,
+    savedGigs,
+    setSavedGigs
   } = useMusicianDashboard();
 
   const [newMessages, setNewMessages] = useState(false);
@@ -100,7 +102,7 @@ export const MusicianDashboard = ({ user }) => {
               <Routes>
                 <Route index element={<Overview user={user} musicianProfile={musicianProfile} gigApplications={gigApplications} gigs={gigs} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} bandProfiles={bandProfiles} unseenInvites={unseenInvites} setUnseenInvites={setUnseenInvites} />} />
                 <Route path='profile' element={<Profile musicianProfile={musicianProfile} user={user} />} />
-                <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} />} />
+                <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} savedGigs={savedGigs} setSavedGigs={setSavedGigs} />} />
                 <Route path='bands' element={<Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
                 <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
                 <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />

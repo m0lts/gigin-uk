@@ -27,6 +27,7 @@ import { BandMembersTab } from '../bands/BandMembersTab';
 import { getBandDataOnly } from '../../../services/bands';
 import { filterInvitableGigsForMusician } from '../../../services/utils/filtering';
 import { toast } from 'sonner';
+import { InviteIconSolid } from '../../shared/ui/extras/Icons';
 
 
 export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
@@ -187,7 +188,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueToSend, 'invitation');
             await sendGigInvitationMessage(conversationId, {
                 senderId: user.uid,
-                text: `${venueToSend.accountName} has invited you to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
+                text: `${venueToSend.accountName} invited ${musicianProfile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
             })
             setInviteMusicianModal(false);
             toast.success(`Invite sent to ${musicianProfile.name}`)
@@ -204,7 +205,8 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 type: musicianProfile.musicianType,
                 plays: musicianProfile.musicType,
                 genres: musicianProfile.genres,
-                name: musicianProfile.name
+                name: musicianProfile.name,
+                bandProfile: musicianProfile.bandProfile,
             },
             buildingForMusician: true,
             showGigPostModal: true,
@@ -243,7 +245,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                                     {musicianProfile.avgReviews && (
                                         <h6><StarIcon /> {musicianProfile.avgReviews.avgRating} ({musicianProfile.avgReviews.totalReviews})</h6>
                                     )}
-                                    <h6>{musicianProfile.clearedFees ? musicianProfile.clearedFees.length : '0'} gigs played</h6>
+                                    <h6>{musicianProfile?.gigsPerformed || '0'} gigs played</h6>
                                 </div>
                                 <div className='genre-tags'>
                                     {musicianProfile.genres && musicianProfile.genres.map((genre, index) => (
@@ -330,12 +332,13 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             {inviteMusicianModal && (
                 <div className='modal'>
                     <div className='modal-content'>
-                        <div className="head">
-                            <h2>Invite {musicianProfile.name} to a Gig</h2>
+                        <div className="modal-header">
+                            <InviteIconSolid />
+                            <h2>Invite {musicianProfile.name} to a Gig?</h2>
                             {usersGigs.length > 0 ? (
                                 <p>Select a gig you've already posted, or click 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
                             ) : (
-                                <p>You have no gig posts availabe for invitation to. You can create one by clicking 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
+                                <p>You have no gig posts availabe for invitation. You can create one by clicking 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
                             )}
                         </div>
                         <div className='gig-selection'>

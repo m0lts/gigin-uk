@@ -17,7 +17,8 @@ import {
   documentId,
   writeBatch,
   limit,
-  startAfter
+  startAfter,
+  arrayUnion
 } from 'firebase/firestore';
 import { getBandDataOnly, getBandMembers } from './bands';
 
@@ -190,6 +191,31 @@ export const fetchMusiciansPaginated = async ({ lastDocId, limitCount = 50, type
   return { musicians, lastDocId: lastDoc };
 };
 
+/**
+ * Fetches the cleared and pending fees for a given musician profile from their
+ * respective subcollections in Firestore.
+ *
+ * @param {string} musicianProfileId - The Firestore document ID of the musician profile.
+ * @returns {Promise<{ clearedFees: Array<Object>, pendingFees: Array<Object> }>} 
+ * An object containing arrays of cleared and pending fee objects.
+ *
+ * @throws {Error} If fetching from Firestore fails.
+ */
+export const getMusicianFees = async (musicianProfileId) => {
+  if (!musicianProfileId) {
+      throw new Error("musicianProfileId is required to fetch fees");
+  }
+  const clearedFeesRef = collection(firestore, `musicianProfiles/${musicianProfileId}/clearedFees`);
+  const pendingFeesRef = collection(firestore, `musicianProfiles/${musicianProfileId}/pendingFees`);
+  const [clearedSnapshot, pendingSnapshot] = await Promise.all([
+      getDocs(clearedFeesRef),
+      getDocs(pendingFeesRef)
+  ]);
+  const clearedFees = clearedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const pendingFees = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return { clearedFees, pendingFees };
+};
+
 /*** UPDATE OPERATIONS ***/
 
 /**
@@ -312,6 +338,51 @@ export const markInviteAsViewed = async (gigId, applicantId) => {
   }
 };
 
+/**
+ * Saves a gig ID to the `savedGigs` array for all provided musician/band profiles.
+ * @async
+ * @param {string} gigId - The ID of the gig to save.
+ * @param {string[]} profileIds - Array of musician or band profile IDs to update.
+ * @returns {Promise<void>} Resolves when all updates are complete.
+ * @throws {Error} If the update to Firestore fails.
+ */
+export async function saveGigToMusicianProfile(gigId, profileIds) {
+  try {
+    const updates = profileIds.map(async (id) => {
+      const profileRef = doc(firestore, 'musicianProfiles', id);
+      await updateDoc(profileRef, {
+        savedGigs: arrayUnion(gigId),
+      });
+    });
+    await Promise.all(updates);
+  } catch (error) {
+    console.error('Error saving gig to musician profile(s):', error);
+    throw error;
+  }
+}
+
+/**
+ * Removes a gig ID from the `savedGigs` array for all provided musician/band profiles.
+ * @async
+ * @param {string} gigId - The ID of the gig to remove.
+ * @param {string[]} profileIds - Array of musician or band profile IDs to update.
+ * @returns {Promise<void>} Resolves when all updates are complete.
+ * @throws {Error} If the update to Firestore fails.
+ */
+export async function unSaveGigFromMusicianProfile(gigId, profileIds) {
+  try {
+    const updates = profileIds.map(async (id) => {
+      const profileRef = doc(firestore, 'musicianProfiles', id);
+      await updateDoc(profileRef, {
+        savedGigs: arrayRemove(gigId),
+      });
+    });
+    await Promise.all(updates);
+  } catch (error) {
+    console.error('Error removing gig from musician profile(s):', error);
+    throw error;
+  }
+}
 
 /*** DELETE OPERATIONS ***/
 

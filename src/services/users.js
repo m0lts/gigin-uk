@@ -29,6 +29,19 @@ export const getUserById = async (userId) => {
     return snap.exists() ? { id: snap.id, ref: userRef, ...snap.data() } : null;
 };
 
+/**
+ * Looks up a user by email (case-sensitive by default).
+ * @param {string} email
+ * @returns {Promise<{id:string, data:object} | null>}
+ */
+export async function getUserByEmail(email) {
+  const q = query(collection(firestore, 'users'), where('email', '==', email));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const docSnap = snap.docs[0];
+  return { id: docSnap.id, data: docSnap.data() };
+}
+
 
 /*** UPDATE OPERATIONS ***/
 

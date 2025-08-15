@@ -414,15 +414,18 @@
 
 .body.messages .message .counter-offer.received .input-group {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    gap:1rem;
+    gap:2px;
+}
+
+.body.messages .message .counter-offer.received .input-group .btn {
+    width:100%;
 }
 
 .body.messages .message .counter-offer .input {
-    width:100px;
+    width:150px;
     padding:5px 10px;
-    text-align: center;
 }
 
 .body.messages .status-box {

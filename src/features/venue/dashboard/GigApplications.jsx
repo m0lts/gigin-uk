@@ -50,6 +50,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
     const [showPromoteModal, setShowPromoteModal] = useState(false);
     const [showDeleteConfirmationModal, setShowDeleteConfirmationModal] = useState(false);
     const [showCloseGigModal, setShowCloseGigModal] = useState(false);
+    const [watchPaymentIntentId, setWatchPaymentIntentId] = useState(null);
 
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
@@ -249,11 +250,20 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true);
         try {
-            const result = await confirmGigPayment({ cardId, gigData: gigInfo });
+            const result = await confirmGigPayment({ cardId, gigData: gigInfo, musicianProfileId });
             if (result.success) {
+                const piId = result?.paymentIntent?.id;
+                if (piId) setWatchPaymentIntentId(piId);
                 setPaymentSuccess(true);
-                setGigInfo(prev => ({ ...prev, status: 'payment processing' }));
-                toast.info("We are processing your payment...")
+                setGigInfo(prev => ({
+                    ...prev,
+                    applicants: prev.applicants.map(applicant =>
+                        applicant.id === musicianProfileId
+                            ? { ...applicant, status: 'payment processing' }
+                            : applicant
+                    )
+                }));
+                toast.info("Processing your payment...")
             } else {
                 setPaymentSuccess(false);
                 toast.error(result.error || 'Payment failed. Please try again.');
@@ -263,8 +273,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             setMusicianProfileId(null);
             setPaymentSuccess(false);
             toast.error('An error occurred while processing the payment. Please try again.');
-        } finally {
-            setMakingPayment(false);
         }
     };
 
@@ -417,15 +425,21 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                             </td>
                                             {windowWidth > 880 && (
                                                 <td className='genres'>
-                                                    {profile.genres
-                                                        .filter(genre => !genre.includes(' '))
-                                                        .map((genre, index) => (
-                                                            <span key={index} className='genre-tag'>{genre}</span>
-                                                        ))}
+                                                    {profile?.genres ? (
+                                                        <>
+                                                            {profile.genres
+                                                                .filter(genre => !genre.includes(' '))
+                                                                .map((genre, index) => (
+                                                                    <span key={index} className='genre-tag'>{genre}</span>
+                                                            ))}
+                                                        </>
+                                                    ) : (
+                                                        'N/A'
+                                                    )}
                                                 </td>
                                             )}
                                             {windowWidth > 1268 && (
-                                                <td>{profile.reviews && profile.reviews.length > 0 ? (
+                                                <td>{profile?.reviews && profile?.reviews.length > 0 ? (
                                                     <>
                                                         <StarIcon /> 
                                                         {profile.avgReviews.avgRating}
@@ -544,6 +558,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             Negotiate Fee
                                                         </button>
                                                     )}
+                                                    {status === 'payment processing' && (
+                                                        <div className='status-box'>
+                                                            <div className='status upcoming'>
+                                                                <ClockIcon />
+                                                                Payment Processing
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             )}
                                         </tr>
@@ -573,13 +595,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 <PaymentModal 
                     savedCards={savedCards}
                     onSelectCard={handleSelectCard}
-                    onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false), setMusicianProfileId(null)}}
+                    onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false), setMusicianProfileId(null); setWatchPaymentIntentId(null)}}
                     gigData={gigInfo}
                     setMakingPayment={setMakingPayment}
                     makingPayment={makingPayment}
                     setPaymentSuccess={setPaymentSuccess}
                     paymentSuccess={paymentSuccess}
                     setSavedCards={setSavedCards}
+                    paymentIntentId={watchPaymentIntentId}
                 />
             )}
             {showReviewModal && (

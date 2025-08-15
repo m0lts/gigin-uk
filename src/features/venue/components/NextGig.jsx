@@ -105,7 +105,7 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 ];
                 await cancelGigAndRefund({
                     taskNames,
-                    transactionId: nextGig.transactionId,
+                    transactionId: nextGig.paymentIntentId,
                 });
             }
             const handleMusicianCancellation = async (musician) => {

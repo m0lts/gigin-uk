@@ -130,7 +130,7 @@ export const OverviewTab = ({musicianData}) => {
                 <div className='info-box'>
                     <h2>Watch</h2>
                     <div className='video-thumbnail' onClick={() => openModal()}>
-                        {musicianData.videos && musicianData.videos.length > 0 ? (
+                        {musicianData?.videos && musicianData.videos.length > 0 ? (
                             musicianData.videos[0].thumbnail === 'uploading...' ? (
                                 <>
                                     <h3>Uploading your videos...</h3>
@@ -148,7 +148,7 @@ export const OverviewTab = ({musicianData}) => {
                         ) : (
                             <p>No videos available.</p>
                         )}
-                        {musicianData.videos[0].thumbnail !== 'uploading...' && (
+                        {musicianData?.videos && musicianData.videos[0].thumbnail !== 'uploading...' && (
                             <PlayIcon />
                         )}
                     </div>
@@ -156,80 +156,88 @@ export const OverviewTab = ({musicianData}) => {
                 <div className='info-box'>
                     <h2>Bio</h2>
                     <div className='text bio'>
-                        <p>{musicianData.bio.text}</p>
+                        <p>{musicianData?.bio && musicianData.bio.text}</p>
                     </div>
                 </div>
             </div>
             <div className='overview-middle box-style'>
-                {windowWidth > 1268 && (
-                <h6 className='data'>
-                    <MapIcon /> {musicianData.location.city} <DotIcon /> {musicianData.location.travelDistance}
-                </h6>
+                {windowWidth > 1268 && musicianData?.location && (
+                    <h6 className='data'>
+                        <MapIcon /> {musicianData.location.city} <DotIcon /> {musicianData.location.travelDistance}
+                    </h6>
                 )}
-                <h6 className='data'>
-                    <BackgroundMusicIcon /> {musicianData.musicType === 'Both' ? 'Both Covers and Originals' : musicianData.musicType}
-                </h6>
-                <h6 className='data'>
-                    <ShootingStarIcon />
-                    {musicianData.bio.experience === 'less than 1 year' ? (
-                        <>Up and Comer</>
-                    ) : musicianData.bio.experience === '1-2 years' ? (
-                        <>Rising Star</>
-                    ) : musicianData.bio.experience === '2-5 years' ? (
-                        <>Seasoned Performer</>
-                    ) : musicianData.bio.experience === '5+ years' && (
-                        <>Veteran Performer</>
-                    )}
-                </h6>
+                {musicianData?.musicType && (
+                    <h6 className='data'>
+                        <BackgroundMusicIcon /> {musicianData.musicType === 'Both' ? 'Both Covers and Originals' : musicianData.musicType}
+                    </h6>
+                )}
+                {musicianData?.bio && (
+                    <h6 className='data'>
+                        <ShootingStarIcon />
+                        {musicianData.bio.experience === 'less than 1 year' ? (
+                            <>Up and Comer</>
+                        ) : musicianData.bio.experience === '1-2 years' ? (
+                            <>Rising Star</>
+                        ) : musicianData.bio.experience === '2-5 years' ? (
+                            <>Seasoned Performer</>
+                        ) : musicianData.bio.experience === '5+ years' && (
+                            <>Veteran Performer</>
+                        )}
+                    </h6>
+                )}
             </div>
             <div className='overview-bottom'>
-                <div className='info-box'>
-                    <h2>Sound</h2>
-                    <ul className='box-style list'>
-                        {musicianData.instruments.map((instrument, index) => (
-                            <li className='sound-item' key={index}>
-                                <h4>{instrument}</h4>
-                                {getInstrumentIcon(instrument)}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div className='info-box'>
-                    <h2>Type</h2>
-                    <div className='box-style musician-type'>
-                        {musicianData.musicianType === 'DJ' ? <ClubIcon /> : <GuitarsIcon />}
-                        <h3>
-                            {musicianData.musicianType}
-                        </h3>
+                {musicianData?.instruments && (
+                    <div className='info-box'>
+                        <h2>Sound</h2>
+                        <ul className='box-style list'>
+                            {musicianData.instruments.map((instrument, index) => (
+                                <li className='sound-item' key={index}>
+                                    <h4>{instrument}</h4>
+                                    {getInstrumentIcon(instrument)}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
-                </div>
+                )}
+                {musicianData?.musicType && (
+                    <div className='info-box'>
+                        <h2>Type</h2>
+                        <div className='box-style musician-type'>
+                            {musicianData.musicianType === 'DJ' ? <ClubIcon /> : <GuitarsIcon />}
+                            <h3>
+                                {musicianData.musicianType}
+                            </h3>
+                        </div>
+                    </div>
+                )}
                 <div className='social-media-links list'>
-                    {musicianData.socialMedia.facebook && (
+                    {musicianData?.socialMedia?.facebook && (
                             <a className='link' href={musicianData.socialMedia.facebook} target='_blank' rel='noopener noreferrer'>
                                 <FacebookIcon /> Facebook
                             </a>
                     )}
-                    {musicianData.socialMedia.instagram && (
+                    {musicianData?.socialMedia?.instagram && (
                             <a className='link' href={musicianData.socialMedia.instagram} target='_blank' rel='noopener noreferrer'>
                                 <InstagramIcon /> Instagram
                             </a>
                     )}
-                    {musicianData.socialMedia.twitter && (
+                    {musicianData?.socialMedia?.twitter && (
                             <a className='link' href={musicianData.socialMedia.twitter} target='_blank' rel='noopener noreferrer'>
                                 <TwitterIcon /> X
                             </a>
                     )}
-                    {musicianData.socialMedia.spotify && (
+                    {musicianData?.socialMedia?.spotify && (
                             <a className='link' href={musicianData.socialMedia.spotify} target='_blank' rel='noopener noreferrer'>
                                 <SpotifyIcon /> Spotify
                             </a>
                     )}
-                    {musicianData.socialMedia.youtube && (
+                    {musicianData?.socialMedia?.youtube && (
                             <a className='link' href={musicianData.socialMedia.youtube} target='_blank' rel='noopener noreferrer'>
                                 <YoutubeIcon /> Youtube
                             </a>
                     )}
-                    {musicianData.socialMedia.soundcloud && (
+                    {musicianData?.socialMedia?.soundcloud && (
                             <a className='link' href={musicianData.socialMedia.soundcloud} target='_blank' rel='noopener noreferrer'>
                                 <SoundcloudIcon /> SoundCloud
                             </a>

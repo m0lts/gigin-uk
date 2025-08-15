@@ -305,22 +305,21 @@
     flex-direction: column;
 }
 
-.message-page .message.negotiation .fees {
+.body.messages .message.negotiation .fees {
     display: flex;
     gap:5px;
 }
 
-.message-page .message .counter-offer.received .input-group {
+.body.messages .message .counter-offer.received .input-group {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    gap:1rem;
+    gap:2px;
 }
 
 .message-page .message .counter-offer .input {
-    width:100px;
+    width:150px;
     padding:5px 10px;
-    text-align: center;
 }
 
 .message-page .status-box {

@@ -53,7 +53,7 @@ export const ProfilePreview = ({ musicianProfile }) => {
                                 {musicianProfile.avgReviews && (
                                     <h6><StarIcon /> {musicianProfile.avgReviews.avgRating} ({musicianProfile.avgReviews.totalReviews})</h6>
                                 )}
-                                <h6>{musicianProfile.clearedFees && musicianProfile.clearedFees.length || '0'} gigs played</h6>
+                                <h6>{musicianProfile?.gigsPerformed || '0'} gigs played</h6>
                             </div>
                             <div className='genre-tags'>
                                 {musicianProfile.genres && musicianProfile.genres.map((genre, index) => (

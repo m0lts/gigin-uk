@@ -18,7 +18,9 @@ import {
   arrayUnion,
   serverTimestamp,
   limit,
-  GeoPoint
+  GeoPoint,
+  writeBatch,
+  startAfter
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -394,8 +396,6 @@ export const getGigsByVenueIds = async (venueIds) => {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-
-
 /*** UPDATE OPERATIONS ***/
 
 /**
@@ -498,8 +498,8 @@ export const updateGigApplicants = async (gigId, updatedApplicants) => {
  * @returns {Promise<void>}
  */
 export const setGigAgreement = async (gigId, updatedApplicants, agreedFee) => {
-    const gig = await getGigById(gigId);
-    await updateDoc(gig.ref, {
+  const gigRef = doc(firestore, 'gigs', gigId);
+    await updateDoc(gigRef, {
         applicants: updatedApplicants,
         agreedFee: `${agreedFee}`,
         paid: false
@@ -525,8 +525,8 @@ export const acceptGigOffer = async (gigData, musicianProfileId, nonPayableGig =
         return { ...applicant, status: 'declined' };
       }  
     });
-    const gig = await getGigById(gigData.gigId);
-    await updateDoc(gig.ref, {
+    const gigRef = doc(firestore, 'gigs', gigData.gigId);
+    await updateDoc(gigRef, {
       applicants: updatedApplicants,
       agreedFee: `${agreedFee}`,
       paid: nonPayableGig,
@@ -546,8 +546,8 @@ export const declineGigApplication = async (gigData, musicianProfileId) => {
         ? { ...applicant, status: 'declined' }
         : { ...applicant }
     );
-    const gig = await getGigById(gigData.gigId);
-    await updateDoc(gig.ref, { applicants: updatedApplicants });
+    const gigRef = doc(firestore, 'gigs', gigData.gigId);
+    await updateDoc(gigRef, { applicants: updatedApplicants });
     return updatedApplicants;
 };
 
@@ -570,10 +570,40 @@ export const updateGigWithCounterOffer = async (gigData, musicianProfileId, newF
       }
       return { ...applicant };
     });
-    const gig = await getGigById(gigData.gigId);
-    await updateDoc(gig.ref, { applicants: updatedApplicants });
+    const gigRef = doc(firestore, 'gigs', gigData.gigId);
+    await updateDoc(gigRef, { applicants: updatedApplicants });
     return updatedApplicants;
-  };
+};
+
+/**
+ * Update `accountName` on all gigs for a venue.
+ * Paginates in batches of 400 updates.
+ *
+ * @param {string} venueId
+ * @param {string} newAccountName
+ * @returns {Promise<number>} number of gigs updated
+ */
+export async function updateVenueGigsAccountName(venueId, newAccountName) {
+  const gigsCol = collection(firestore, 'gigs');
+  const pageSize = 400;
+  let lastDoc = null;
+  let updated = 0;
+
+  for (;;) {
+    let q = query(gigsCol, where('venueId', '==', venueId), limit(pageSize));
+    if (lastDoc) q = query(gigsCol, where('venueId', '==', venueId), startAfter(lastDoc), limit(pageSize));
+    const snap = await getDocs(q);
+    if (snap.empty) break;
+    const batch = writeBatch(firestore);
+    snap.docs.forEach(d => {
+      batch.update(d.ref, { accountName: newAccountName });
+      updated += 1;
+    });
+    await batch.commit();
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+  return updated;
+}
 
 
 /*** DELETE OPERATIONS ***/

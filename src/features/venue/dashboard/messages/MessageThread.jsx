@@ -14,6 +14,9 @@ import { getVenueProfileById } from '@services/venues';
 import { getMusicianProfileByMusicianId } from '@services/musicians';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/emails';
 import { fetchSavedCards, confirmGigPayment } from '@services/functions';
+import { CalendarIconSolid } from '../../../shared/ui/extras/Icons';
+import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
+import { toast } from 'sonner';
 
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
@@ -203,6 +206,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSendCounterOffer = async (newFee, messageId) => {
         try {
             if (!gigData) return console.error('Gig data is missing');
+            const value = (newFee || '').trim();
+            const numericPart = value.replace(/£|\s/g, '');
+            const num = Number(numericPart);
+            if (!numericPart || isNaN(num) || num <= 0) {
+                toast.info('Please enter a valid value.');
+                return;
+            }
             const updatedApplicants = await updateGigWithCounterOffer(gigData, musicianProfileId, newFee);
             setGigData((prev) => ({ ...prev, applicants: updatedApplicants }));
             await sendCounterOfferMessage(
@@ -250,7 +260,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true);
         try {
-            const result = await confirmGigPayment({ cardId, gigData });
+            const result = await confirmGigPayment({ cardId, gigData, musicianProfileId });
             if (result.success) {
                 setPaymentSuccess(true);
                 setGigData((prev) => ({
@@ -259,12 +269,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 }));
             } else {
                 setPaymentSuccess(false);
-                alert(result.error || 'Payment failed. Please try again.');
+                toast.error('Payment failed. Please try again.');
             }
         } catch (error) {
             console.error('Error completing payment:', error);
             setPaymentSuccess(false);
-            alert('An error occurred while processing the payment. Please try again.');
+            toast.error('Payment failed. Please try again.');
         } finally {
             setMakingPayment(false);
         }
@@ -279,11 +289,22 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             );
             setMessages(updatedMessages);
           }
-          window.location.reload();
         } catch (error) {
           console.error('Error updating message in Firestore:', error);
         }
     };
+
+    const toDate = (val) => {
+        if (!val) return null;
+        if (val.toDate) return val.toDate();            // Firestore Timestamp
+        if (val instanceof Date) return val;
+        const d = new Date(val);                         // ISO/string/number
+        return isNaN(d.getTime()) ? null : d;
+      };
+      
+      const start = toDate(gigData?.startDateTime);
+      const durationMs = Number(gigData?.duration || 0) * 60_000;
+      const end = start ? new Date(start.getTime() + durationMs) : null;
     
     return (
         <>
@@ -544,7 +565,16 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     ) : (
                                         <>
                                             <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'Your payment split will arrive in your account 24 hours after the gig has been performed.'}</h4>
+                                            <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
+                                            <AddToCalendarButton
+                                                event={{
+                                                    title: `Gig at ${gigData.venue.venueName}`,
+                                                    start: start,
+                                                    end: end,
+                                                    description: `Gig confirmed with fee: ${gigData.agreedFee}`,
+                                                    location: gigData.venue.address,
+                                                }}
+                                            />
                                         </>
                                     )
                                 ) : message.status === 'payment failed' && userRole === 'venue' ? (

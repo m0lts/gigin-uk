@@ -56,7 +56,7 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
               (applicant.viewed === false || applicant.viewed === undefined) &&
               applicant.invited !== true
             )
-          );
+        );
         const confirmedGigsLocal = gigs.filter(gig =>
             gig.applicants.some(applicant => applicant.status === 'confirmed')
         );

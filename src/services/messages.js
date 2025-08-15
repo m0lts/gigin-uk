@@ -45,15 +45,13 @@ export const sendMessage = async (conversationId, { senderId, text }) => {
  * @param {string} conversationId - The Firestore ID of the conversation.
  * @param {Object} options - Message details.
  * @param {string} options.senderId - UID of the sender.
- * @param {string} options.receiverId - UID of the receiver.
  * @param {string} options.text - Message content.
  * @returns {Promise<void>}
  */
-export const sendGigApplicationMessage = async (conversationId, { senderId, receiverId, text, profileId, profileType }) => {
+export const sendGigApplicationMessage = async (conversationId, { senderId, text, profileId, profileType }) => {
     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     await addDoc(messagesRef, {
       senderId,
-      receiverId,
       text,
       type: 'application',
       status: 'pending',
@@ -69,16 +67,14 @@ export const sendGigApplicationMessage = async (conversationId, { senderId, rece
  * @param {string} conversationId - The Firestore ID of the conversation.
  * @param {Object} options
  * @param {string} options.senderId - UID of the musician.
- * @param {string} options.receiverId - UID of the venue.
  * @param {string|number} options.oldFee - The originally listed fee.
  * @param {string|number} options.newFee - The newly proposed fee.
  * @param {string} options.text - The message content.
  */
-export const sendNegotiationMessage = async (conversationId, { senderId, receiverId, oldFee, newFee, text }) => {
+export const sendNegotiationMessage = async (conversationId, { senderId, oldFee, newFee, text }) => {
     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     await addDoc(messagesRef, {
         senderId,
-        receiverId,
         text,
         oldFee,
         newFee,
@@ -94,7 +90,6 @@ export const sendNegotiationMessage = async (conversationId, { senderId, receive
  * @param {string} conversationId - The Firestore ID of the conversation.
  * @param {Object} options - Message details.
  * @param {string} options.senderId - UID of the sender.
- * @param {string} options.receiverId - UID of the receiver.
  * @param {string} options.text - Message content.
  * @returns {Promise<void>}
  */

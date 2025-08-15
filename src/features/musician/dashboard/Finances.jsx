@@ -16,7 +16,37 @@ import { toast } from 'sonner';
 import { BankAccountIcon, CoinsIconSolid, CopyIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, MoreInformationIcon, PaymentSystemIcon, PieChartIcon, StripeIcon, SuccessIcon, TickIcon, WarningIcon } from '../../shared/ui/extras/Icons';
 import { deleteStripeConnectAccount } from '../../../services/functions';
 import { getConnectAccountStatus } from '../../../services/functions';
+import { getMusicianFees } from '../../../services/musicians';
 
+function CountdownTimer({ targetDate }) {
+    const [label, setLabel] = React.useState("");
+  
+    React.useEffect(() => {
+      if (!targetDate) return;
+  
+      const tick = () => {
+        const now = new Date();
+        const diff = targetDate - now;
+        if (diff <= 0) {
+          setLabel("Releasing soon");
+          return true;
+        }
+        const hours   = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setLabel(`Releasing Fee in: ${hours}h ${minutes}m ${seconds}s`);
+        return false;
+      };
+        if (tick()) return;
+      const id = setInterval(() => {
+        if (tick()) clearInterval(id);
+      }, 1000);
+  
+      return () => clearInterval(id);
+    }, [targetDate]);
+  
+    return <>{label || "Calculating..."}</>;
+  }
 
 export const Finances = ({ musicianProfile }) => {
     const [sortOrder, setSortOrder] = useState('desc');
@@ -76,23 +106,25 @@ export const Finances = ({ musicianProfile }) => {
     };
 
     useEffect(() => {
-        if (musicianProfile) {
-            const combinedFees = [
-                ...(musicianProfile.pendingFees || []),
-                ...(musicianProfile.clearedFees || []),
-            ];
-            const totalPending = musicianProfile.pendingFees
-                ? musicianProfile.pendingFees.reduce((sum, fee) => sum + fee.amount, 0)
-                : 0;
-            setPendingTotal(totalPending);
-            combinedFees.sort((a, b) => {
-                const dateA = new Date(a.gigDate).getTime();
-                const dateB = new Date(b.gigDate).getTime();
-                return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-            });
-            setFeesToDisplay(combinedFees);
-        }
-    }, [musicianProfile, sortOrder]);
+        if (!musicianProfile?.id) return;
+        const fetchFees = async () => {
+            try {
+                const { clearedFees, pendingFees } = await getMusicianFees(musicianProfile.id);
+                const combinedFees = [...pendingFees, ...clearedFees];
+                const totalPending = pendingFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
+                setPendingTotal(totalPending);
+                combinedFees.sort((a, b) => {
+                    const dateA = new Date(a.gigDate).getTime();
+                    const dateB = new Date(b.gigDate).getTime();
+                    return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+                });
+                setFeesToDisplay(combinedFees);
+            } catch (error) {
+                console.error("Error fetching musician fees:", error);
+            }
+        };
+        fetchFees();
+    }, [musicianProfile?.id, sortOrder]);
 
     const toggleSortOrder = () => {
         setSortOrder((prevOrder) => (prevOrder === 'desc' ? 'asc' : 'desc'));
@@ -245,8 +277,8 @@ export const Finances = ({ musicianProfile }) => {
                         <div className="expenditure-card other">
                             <PieChartIcon />
                             <div className="expenditure-text">
-                                <h3>£{musicianProfile.totalEarnings ? parseFloat(musicianProfile.totalEarnings).toFixed(2) : '0.00'}</h3>
                                 <h5>Total Earnings</h5>
+                                <h3>£{musicianProfile.totalEarnings ? parseFloat(musicianProfile.totalEarnings).toFixed(2) : '0.00'}</h3>
                             </div>
                         </div>
                     </div>
@@ -369,11 +401,11 @@ export const Finances = ({ musicianProfile }) => {
                             </div>
                             <div className="information-item actions">
                                 {musicianProfile.stripeAccountId && stripeConnectInstance && (
-                                <button className="btn secondary information-button" onClick={() => setShowManage(true)}>
+                                <button className="btn tertiary information-button" onClick={() => setShowManage(true)}>
                                     Edit Stripe Details
                                 </button>
                                 )}
-                                <button className={`btn danger information-button`}  onClick={handleDeleteStripeAccount} disabled={deleting || musicianProfile.withdrawableEarnings > 0}>
+                                <button className={`btn tertiary information-button`}  onClick={handleDeleteStripeAccount} disabled={deleting || musicianProfile.withdrawableEarnings > 0}>
                                     {deleting ? 'Deleting Account…' : 'Delete Stripe Account'}
                                 </button>
                             </div>
@@ -387,42 +419,80 @@ export const Finances = ({ musicianProfile }) => {
                                     <tr>
                                         {windowWidth > 915 && (
                                             <th id='date'>
-                                                Date
+                                                Gig Date
                                                 <button className='sort btn text' onClick={toggleSortOrder}>
                                                     <SortIcon />
                                                 </button>
                                             </th>
                                         )}
+                                        <th>Venue</th>
                                         <th>Amount</th>
+                                        <th>Release Date</th>
                                         <th className='centre'>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {feesToDisplay.length > 0 ? (
-                                        feesToDisplay.map((fee, index) => {
-                                            return (
-                                                <tr key={index} onClick={(e) => openInNewTab(`/gig/${fee.gigId}`, e)}>
-                                                    {windowWidth > 915 && (
-                                                    <td>{formatFeeDate(fee.gigDate)}</td>
-                                                    )}
-                                                    <td>£{fee.amount.toFixed(2)}</td>
-                                                    <td className={`status-box ${fee.status === 'cleared' ? 'succeeded' : fee.status === 'in dispute' ? 'declined' : fee.status}`}>
-                                                        <div className={`status ${fee.status === 'cleared' ? 'succeeded' : fee.status === 'in dispute' ? 'declined' : fee.status}`}>
-                                                            {fee.status === 'cleared' ? 'Withdrawable' : fee.status}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    ) : (
-                                        <tr className='no-receipts'>
-                                            <td className='data' colSpan={6}>
-                                                <div className='flex'>
-                                                    <InvoiceIcon />
-                                                    <h4>No Fees</h4>
-                                                </div>
+                                {feesToDisplay.length > 0 ? (
+                                    feesToDisplay.map((fee, index) => {
+                                        const now = new Date();
+
+                                        const gigDateObj =
+                                        fee.gigDate?.toDate ? fee.gigDate.toDate() : new Date(fee.gigDate);
+
+                                        const clearingDate =
+                                        fee.disputeClearingTime?.toDate
+                                            ? fee.disputeClearingTime.toDate()
+                                            : new Date(fee.disputeClearingTime);
+
+                                        const isFutureGig   = gigDateObj > now;
+                                        const inDisputeWind = gigDateObj <= now && clearingDate > now;
+
+                                        // choose a status label or a component
+                                        let statusNode;
+                                        if (fee.status === "cleared") {
+                                        statusNode = "Withdrawable";
+                                        } else if (fee.status === "in dispute") {
+                                        statusNode = "In Dispute";
+                                        } else if (fee.status === "pending") {
+                                        if (isFutureGig) {
+                                            statusNode = "Gig Not Performed";
+                                        } else if (inDisputeWind) {
+                                            statusNode = <CountdownTimer targetDate={clearingDate} />;
+                                        } else {
+                                            statusNode = "Pending";
+                                        }
+                                        } else {
+                                        statusNode = fee.status;
+                                        }
+
+                                        const statusClass =
+                                        fee.status === "cleared"
+                                            ? "succeeded"
+                                            : fee.status === "in dispute"
+                                            ? "declined"
+                                            : fee.status;
+
+                                        return (
+                                        <tr key={fee.id || index} onClick={(e) => openInNewTab(`/gig/${fee.gigId}`, e)}>
+                                            {windowWidth > 915 && <td>{formatFeeDate(fee.gigDate, "short")}</td>}
+                                            <td>{fee.venueName}</td>
+                                            <td>£{fee.amount.toFixed(2)}</td>
+                                            <td>{formatFeeDate(fee.disputeClearingTime)}</td>
+                                            <td className={`status-box ${statusClass}`}>
+                                            <div className={`status ${statusClass}`}>{statusNode}</div>
                                             </td>
                                         </tr>
+                                        );
+                                    })
+                                    ) : (
+                                    <tr className="no-receipts">
+                                        <td className="data" colSpan={6}>
+                                        <div className="flex">
+                                            <InvoiceIcon />
+                                            <h4>No Fees</h4>
+                                        </div>
+                                        </td>
+                                    </tr>
                                     )}
                                 </tbody>
                             </table>

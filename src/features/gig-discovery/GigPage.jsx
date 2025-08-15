@@ -32,13 +32,13 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
-import { getMusicianProfilesByIds, updateBandMembersGigApplications } from '../../services/musicians';
+import { getMusicianProfilesByIds, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateBandMembersGigApplications } from '../../services/musicians';
 import { getBandMembers } from '../../services/bands';
 import { acceptGigOffer, getGigById } from '../../services/gigs';
 import { getMostRecentMessage, sendGigAcceptedMessage } from '../../services/messages';
 import { toast } from 'sonner';
 import { sendEmail } from '../../services/emails';
-import { NewTabIcon, ProfileIconSolid, SaveIcon, ShareIcon } from '../shared/ui/extras/Icons';
+import { CoinsIconSolid, NewTabIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon } from '../shared/ui/extras/Icons';
 import { openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
 import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
@@ -65,10 +65,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [incompleteMusicianProfile, setIncompleteMusicianProfile] = useState(null);
     const [userAppliedToGig, setUserAppliedToGig] = useState(false);
     const [negotiateModal, setNegotiateModal] = useState(false);
-    const [newOffer, setNewOffer] = useState();
+    const [newOffer, setNewOffer] = useState('');
     const [width, setWidth] = useState('100%');
     const [multipleProfiles, setMultipleProfiles] = useState(false);
-    const [validProfiles, setValidProfiles] = useState(null);
+    const [validProfiles, setValidProfiles] = useState();
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState(user?.musicianProfile);
     const [hasAccessToPrivateGig, setHasAccessToPrivateGig] = useState(true);
@@ -76,6 +76,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
     const [invitedToGig, setInvitedToGig] = useState(false);
     const [userAcceptedInvite, setUserAcceptedInvite] = useState(false);
     const [showCreateProfileModal, setShowCreateProfileModal] = useState(false);
+    const [gigSaved, setGigSaved] = useState(false);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -108,6 +109,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             const gig = await getGigById(gigId);
             if (!gig) return;
             setGigData(gig);
+            setValidProfiles([user?.musicianProfile])
             if (gig?.privateApplications) {
                 const savedToken = gig.privateApplicationToken;
                 const isTokenValid = !!inviteToken && inviteToken === savedToken;
@@ -146,6 +148,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                     }
                 }
             }
+            if (user.musicianProfile?.savedGigs?.includes(gig.gigId)) {
+                setGigSaved(true);
+              }
             if (gig?.venueId) {
                 const venue = await getVenueProfileById(gig.venueId);
                 if (venue) setVenueProfile(venue);
@@ -174,6 +179,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                   if (userMember?.role === 'Band Leader') {
                     validBandProfiles.push(stripFirestoreRefs(bandProfile));
                   }
+                  if (bandProfile?.savedGigs?.includes(gigData.gigId)) setGigSaved(true);
                 } catch (err) {
                   console.error(`Failed to fetch members for band ${bandId}:`, err);
                 }
@@ -380,10 +386,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             );
             await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
-                receiverId: venueProfile.userId,
                 text: musicianProfile.bandProfile
-                ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for £${gigData.budget}`}`
-                : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for £${gigData.budget}`}`,                profileId: musicianProfile.musicianId,
+                ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`
+                : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`,                profileId: musicianProfile.musicianId,
                 profileType: musicianProfile.bandProfile ? 'band' : 'musician',
             });
             await sendGigApplicationEmail({
@@ -396,8 +401,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 nonPayableGig,
             });
             setUserAppliedToGig(true);
+            toast.success('Applied to gig!')
         } catch (error) {
             console.error(error)
+            toast.error('Failed to apply to gig. Please try again.')
         } finally {
             setApplyingToGig(false);
         }
@@ -431,6 +438,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             profile: selectedProfile,
           });
         if (!valid) return;
+        const value = (newOffer || '').trim();
+        const numericPart = value.replace(/£|\s/g, '');
+        const num = Number(numericPart);
+        if (!numericPart || isNaN(num) || num <= 0) {
+            toast.info('Please enter a valid value.');
+            return;
+        }
         setApplyingToGig(true);
         try {
             const updatedApplicants = await negotiateGigFee(gigId, musicianProfile, newOffer);
@@ -446,7 +460,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             const venueName = gigData.venue?.venueName || 'the venue';
             await sendNegotiationMessage(conversationId, {
                 senderId: user.uid,
-                receiverId: venueProfile.userId,
                 oldFee: gigData.budget,
                 newFee: newOffer,
                 text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${venueName}`,
@@ -463,8 +476,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                 date: formatDate(gigData.date),
                 profileType
             });
+            toast.success('Negotiation sent to venue.')
         } catch (error) {
             console.error('Error sending negotiation message:', error);
+            toast.error('Failed to negotiate gig fee. Please try again.')
         } finally {
             setNegotiateModal(false);
             setApplyingToGig(false);
@@ -484,8 +499,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         try {
             const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'message');
             navigate(`/messages?conversationId=${conversationId}`);
+            toast.success('Message sent to venue.')
         } catch (error) {
             console.error('Error while creating or fetching conversation:', error);
+            toast.error('Failed to send message. Please try again')
         }
     };
 
@@ -531,12 +548,36 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                     <p>Thanks,<br />The Gigin Team</p>
                 `,
             })
-            toast.success('Application Accepted.')
+            toast.success('Invitation Accepted.')
         } catch (error) {
-            toast.error('Error accepting gig application. Please try again.')
+            toast.error('Error accepting gig invitation. Please try again.')
             console.error('Error updating gig document:', error);
         }
     };
+
+    const handleUnSaveGig = async () => {
+        try {
+          const profileIds = validProfiles.map(prof => prof.musicianId);
+          await unSaveGigFromMusicianProfile(gigData.gigId, profileIds);
+          setGigSaved(false);
+          toast.success('Gig Unsaved');
+        } catch (error) {
+          console.error(error);
+          toast.error('Failed to unsave gig. Please try again.');
+        }
+      };
+      
+      const handleSaveGig = async () => {
+        try {
+          const profileIds = validProfiles.map(prof => prof.musicianId);
+          await saveGigToMusicianProfile(gigData.gigId, profileIds);
+          setGigSaved(true);
+          toast.success('Gig Saved');
+        } catch (error) {
+          console.error(error);
+          toast.error('Failed to save gig. Please try again.');
+        }
+      };
     
     return (
         <div className='gig-page'>
@@ -578,12 +619,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                 <button className="btn tertiary" onClick={(e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile.id}`, e)}>
                                     See Venue Page <NewTabIcon />
                                 </button>
-                                <button className='btn tertiary'>
+                                {/* <button className='btn tertiary'>
                                     <ShareIcon />
-                                </button>
-                                <button className='btn tertiary'>
-                                    <SaveIcon />
-                                </button>
+                                </button> */}
+                                {gigSaved ? (
+                                    <button className='btn tertiary' onClick={() => handleUnSaveGig()}>
+                                        <SavedIcon />
+                                    </button>
+                                ) : (
+                                    <button className='btn tertiary' onClick={() => handleSaveGig()}>
+                                        <SaveIcon />
+                                    </button>
+                                )}
                             </div>
                         </div>
                         <div className='images-and-location'>
@@ -906,14 +953,19 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             )}
 
             {negotiateModal && (
-                <div className='modal'>
+                <div className='modal negotiation'>
                     <div className='modal-content'>
-                        <h2>Negotiate the gig fee</h2>
-                        <p style={{ textAlign: 'center' }}>Your offer:</p>
-                        <input type='text' className='input' value={newOffer} onChange={(e) => handleBudgetChange(e)} placeholder={gigData.budget} />
+                        <div className="modal-header">
+                            <CoinsIconSolid />
+                            <h2>Negotiate the Gig Fee</h2>
+                            <p>Enter a value below. If the venue accepts your negotiation, this will be the final gig fee.</p>
+                        </div>
+                        <input type='text' className='input' id='negotiation-value' value={newOffer} onChange={(e) => handleBudgetChange(e)} placeholder={`Current Fee: ${gigData.budget}`} />
                         <div className='two-buttons'>
-                            <button className='btn secondary' onClick={() => setNegotiateModal(false)}>Cancel</button>
-                            <button className='btn primary' disabled={!newOffer} onClick={handleNegotiate}>Send Offer</button>
+                            <button className='btn tertiary' onClick={() => setNegotiateModal(false)}>Cancel</button>
+                            {newOffer && (
+                                <button className='btn primary' disabled={!newOffer || newOffer === '£'} onClick={handleNegotiate}>Offer {newOffer}</button>
+                            )}
                         </div>
                     </div>
                 </div>

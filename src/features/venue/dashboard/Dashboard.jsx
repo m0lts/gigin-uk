@@ -140,6 +140,8 @@ export const VenueDashboard = ({ user }) => {
                 editGigData={editGigData}
                 buildingForMusician={buildingForMusician}
                 buildingForMusicianData={buildingForMusicianData}
+                setBuildingForMusician={setBuildingForMusician}
+                setBuildingForMusicianData={setBuildingForMusicianData}
               />
             }
             {showReviewModal && 

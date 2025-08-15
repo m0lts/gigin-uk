@@ -202,6 +202,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSendCounterOffer = async (newFee, messageId) => {
         try {
             if (!gigData) return console.error('Gig data is missing');
+            const value = (newFee || '').trim();
+            const numericPart = value.replace(/£|\s/g, '');
+            const num = Number(numericPart);
+            if (!numericPart || isNaN(num) || num <= 0) {
+                toast.info('Please enter a valid value.');
+                return;
+            }
             const updatedApplicants = await updateGigWithCounterOffer(gigData, musicianProfileId, newFee);
             setGigData((prev) => ({ ...prev, applicants: updatedApplicants }));
             await sendCounterOfferMessage(
@@ -278,7 +285,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             );
             setMessages(updatedMessages);
           }
-          window.location.reload();
         } catch (error) {
           console.error('Error updating message in Firestore:', error);
         }
@@ -531,7 +537,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 </>
                             ) : message.type === 'announcement' ? (
                                 <>
-                                {(gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig') ? (
+                                {(gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>The venue has accepted the musician's application. No payment is required for this gig.</h4>

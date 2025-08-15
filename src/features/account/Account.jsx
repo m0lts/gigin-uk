@@ -17,11 +17,12 @@ import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services
 import { deleteFolderFromStorage } from '@services/storage';
 import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/venues';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { updateUserDocument } from '../../services/users';
-import { updateVenueProfileAccountNames } from '../../services/venues';
+import { getUserByEmail, updateUserDocument } from '../../services/users';
+import { transferVenueOwnership, updateVenueProfileAccountNames } from '../../services/venues';
+import { toast } from 'sonner';
 
 export const Account = () => {
-    const { user } = useAuth();
+    const { user,  } = useAuth();
     const navigate = useNavigate();
 
     const [showNameModal, setShowNameModal] = useState(false);
@@ -34,6 +35,11 @@ export const Account = () => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [width, setWidth] = useState('100%');
+    const [venueList, setVenueList] = useState(user?.venueProfiles || []);
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [venueToTransfer, setVenueToTransfer] = useState(null);
+    const [recipientEmail, setRecipientEmail] = useState('');
+    const [transferLoading, setTransferLoading] = useState(false);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -42,6 +48,10 @@ export const Account = () => {
           setWidth('95%');
         }
     });
+
+    useEffect(() => {
+        setVenueList(user?.venueProfiles || []);
+      }, [user]);
 
     const reauthenticateUser = async () => {
         try {
@@ -309,7 +319,7 @@ export const Account = () => {
                         <>
                             <h2>Venue Profiles</h2>
                             <ul className='account-profile-list'>
-                                {user.venueProfiles.map((venue) => (
+                                {venueList.map((venue) => (
                                     <li key={venue.id} className='account-profile'>
                                         <div className='account-profile-data'>
                                             <figure className='account-profile-img'>
@@ -321,6 +331,7 @@ export const Account = () => {
                                             </div>
                                         </div>
                                         <div className='account-profile-actions'>
+
                                             <button
                                                 className='btn tertiary'
                                                 onClick={() =>
@@ -329,6 +340,16 @@ export const Account = () => {
                                             >
                                                 <EditIcon />
                                             </button>
+                                            <button
+                                                className='btn secondary'
+                                                onClick={() => {
+                                                    setVenueToTransfer(venue);
+                                                    setRecipientEmail('');
+                                                    setShowTransferModal(true);
+                                                }}
+                                                >
+                                                Transfer Ownership
+                                                </button>
                                             <button
                                                 className='btn danger'
                                                 onClick={() => handleDeleteVenueProfile(venue.id)}
@@ -465,6 +486,103 @@ export const Account = () => {
                         </div>
                     </div>
                 )}
+                {showTransferModal && (
+                    <div className="modal" onClick={() => !transferLoading && setShowTransferModal(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+
+                                <h2>Transfer Venue Ownership</h2>
+                                <p>
+                                    You’re transferring <strong>{venueToTransfer?.name}</strong> to another Gigin account.
+                                    The recipient will become the new owner and you’ll lose access to this venue.
+                                </p>
+                            </div>
+                            <div className="modal-body">
+                                <div className="input-container" style={{ marginTop: 10 }}>
+                                    <label htmlFor="recipientEmail">Recipient’s email</label>
+                                    <input
+                                    id="recipientEmail"
+                                    type="email"
+                                    className="input"
+                                    placeholder="name@example.com"
+                                    value={recipientEmail}
+                                    onChange={(e) => setRecipientEmail(e.target.value.trim())}
+                                    disabled={transferLoading}
+                                    />
+                                </div>
+
+                                <div className="notes" style={{ marginTop: 10 }}>
+                                    <small>
+                                    Tip: Make sure the recipient has already created a Gigin account with this email.
+                                    </small>
+                                </div>
+
+                                <div className="two-buttons" style={{ marginTop: 16 }}>
+                                    <button
+                                    className="btn danger"
+                                    disabled={transferLoading || !recipientEmail}
+                                    onClick={async () => {
+                                        if (!recipientEmail) return alert('Please enter a valid email.');
+                                        if (!venueToTransfer) return;
+                                        const ok = window.confirm(
+                                        `Transfer "${venueToTransfer.name}" to ${recipientEmail}? You will lose access.`
+                                        );
+                                        if (!ok) return;
+                                            setTransferLoading(true);
+                                        try {
+                                            const target = await getUserByEmail(recipientEmail);
+                                            if (!target) {
+                                                toast.error('No Gigin account found for that email.');
+                                                setTransferLoading(false);
+                                                return;
+                                            }
+                                            if (target.id === user.uid) {
+                                                toast.error('You already own this venue profile.')
+                                                setTransferLoading(false);
+                                                return;
+                                            }
+                                            toast.info('Transferring venue ownership...')
+                                            await transferVenueOwnership({
+                                                venueId: venueToTransfer.id,
+                                                fromUserId: user.uid,
+                                                toUserId: target.id,
+                                            });
+                                            setVenueList(prev => prev.filter(v => v.id !== venueToTransfer.id));
+                                            toast.success('Venue ownership transferred successfully.');
+                                            setShowTransferModal(false);
+                                            setVenueToTransfer(null);
+                                            setRecipientEmail('');
+                                            navigate('/');
+                                        } catch (err) {
+                                            console.error('Transfer failed:', err);
+                                            toast.error(`Failed to transfer venue.`);
+                                        } finally {
+                                            setTransferLoading(false);
+                                        }
+                                    }}
+                                    >
+                                    {transferLoading ? 'Transferring, please wait...' : 'Confirm Transfer'}
+                                    </button>
+                                    <button
+                                        className="btn secondary"
+                                        disabled={transferLoading}
+                                        onClick={() => setShowTransferModal(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+
+                                <button
+                                    className="btn close tertiary"
+                                    disabled={transferLoading}
+                                    onClick={() => setShowTransferModal(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    )}
             </div>
         );
     }

@@ -59,33 +59,35 @@ export const formatDate = (input, format = 'long') => {
  * @param {'long' | 'short'} weekdayFormat - Whether to use full or abbreviated weekday ('Friday' vs 'Fri')
  * @returns {string} Formatted date string like "Friday, 7th June" or "Fri, 7th June"
  */
-export const formatFeeDate = (timestamp, weekdayFormat = 'long') => {
-    if (!timestamp) {
+export const formatFeeDate = (timestamp) => {
+  if (!timestamp) {
       console.error('Invalid or undefined timestamp passed to formatFeeDate');
       return 'Invalid date';
-    }
-  
-    let date;
-    try {
+  }
+
+  let date;
+  try {
       if (timestamp.toDate) {
-        date = timestamp.toDate();
+          date = timestamp.toDate();
       } else if (timestamp instanceof Date) {
-        date = timestamp;
+          date = timestamp;
       } else if (timestamp.seconds) {
-        date = new Date(timestamp.seconds * 1000);
+          date = new Date(timestamp.seconds * 1000);
       } else {
-        date = new Date(timestamp);
+          date = new Date(timestamp);
       }
-  
+
       if (isNaN(date.getTime())) throw new Error('Invalid date object');
-    } catch (err) {
+  } catch (err) {
       console.error('Timestamp could not be converted to a valid date:', timestamp);
       return 'Invalid date';
-    }
-  
-    const day = date.getDate();
-    const weekday = date.toLocaleDateString('en-GB', { weekday: weekdayFormat });
-    const month = date.toLocaleDateString('en-GB', { month: weekdayFormat });
-  
-    return `${weekday}, ${day}${getOrdinalSuffix(day)} ${month}`;
-  };
+  }
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${day}/${month}/${year} - ${hours}:${minutes}`;
+};

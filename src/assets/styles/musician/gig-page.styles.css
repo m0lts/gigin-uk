@@ -393,6 +393,27 @@
     font-size: 2rem;
 }
 
+/* NEGOTIATE MODAL */
+
+.gig-page .modal.negotiation .modal-content {
+    max-width: 300px;
+}
+
+.gig-page .modal.negotiation .modal-content .input {
+    border:1px solid var(--gn-grey-350);
+    width:100%;
+    margin-bottom: 1rem;
+    border-radius: 1rem;
+    font-size: 1.25rem;
+    outline: 1px solid transparent;
+    transition: all 0.2s linear;
+}
+
+.gig-page .modal.negotiation .modal-content .input:focus {
+    border:1px solid var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+}
+
 
 /* SIMILAR GIGS */
 

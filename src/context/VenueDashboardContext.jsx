@@ -25,7 +25,6 @@ export const VenueDashboardProvider = ({ user, children }) => {
 
   useEffect(() => {
     if (!venueProfiles.length) return;
-  
     const venueIds = venueProfiles.map(v => v.venueId);
     const unsubscribe = subscribeToUpcomingOrRecentGigs(venueIds, (updatedGigs) => {
       setGigs(updatedGigs.filter(g => g.complete !== false));
@@ -40,20 +39,17 @@ export const VenueDashboardProvider = ({ user, children }) => {
     try {
       const { completeVenues, venueIds } = extractVenueInfo(user);
       setVenueProfiles(completeVenues);
-  
       const [gigsRes, templatesRes, requestsRes, stripeRes] = await Promise.all([
         getGigsByVenueIds(venueIds),
         getTemplatesByVenueIds(venueIds),
         getVenueRequestsByVenueIds(venueIds),
         fetchStripeCustomerData()
       ]);
-      
       applyGigs(gigsRes);
       setTemplates(templatesRes);
       const visibleRequests = requestsRes.filter(req => !req.removed);
       setRequests(visibleRequests);
       setStripe(stripeRes);
-  
       loadedOnce.current = true;
     } catch (error) {
       console.error('Venue dashboard fetch error:', error);

@@ -140,7 +140,7 @@ export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData
                   {band.bandProfile?.avgReviews && (
                       <h6><StarIcon /> {band.bandProfile?.avgReviews.avgRating} ({band.bandProfile?.avgReviews.totalReviews})</h6>
                   )}
-                  <h6>{band.bandProfile?.clearedFees && band.bandProfile?.clearedFees.length || '0'} gigs played</h6>
+                  <h6>{band.bandProfile?.gigsPerformed || '0'} gigs played</h6>
               </div>
               <div className='genre-tags'>
                   {band.bandProfile?.genres && band.bandProfile?.genres.map((genre, index) => (
