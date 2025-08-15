@@ -262,6 +262,8 @@ exports.confirmPayment = onCall(
       if (!customerId) {
         throw new Error("Stripe customer ID not found.");
       }
+      let applicantId;
+      let recipientMusicianId;
       try {
         const key = getStripeKey();
         sanityCheckKey(key);
@@ -274,9 +276,9 @@ exports.confirmPayment = onCall(
         if (acceptedMusician.id !== musicianProfileId) {
           throw new Error("Accepted applicant doesn't match musician ID.");
         }
-        const applicantId = acceptedMusician.id;
+        applicantId = acceptedMusician.id;
         const applicantType = acceptedMusician.type || "musician";
-        let recipientMusicianId = applicantId;
+        recipientMusicianId = applicantId;
         if (applicantType === "band") {
           const bandSnap =
           await admin
@@ -295,8 +297,6 @@ exports.confirmPayment = onCall(
             );
           }
         }
-        const idempotencyKey =
-        `gig:${gigData.gigId}:msg:${paymentMessageId || "none"}`;
         const paymentIntent = await stripe.paymentIntents.create(
             {
               amount: amountToCharge,
@@ -317,7 +317,6 @@ exports.confirmPayment = onCall(
                 paymentMessageId,
               },
             },
-            {idempotencyKey},
         );
         const db = admin.firestore();
         const gigRef = db.collection("gigs").doc(gigData.gigId);
@@ -355,15 +354,39 @@ exports.confirmPayment = onCall(
         }, {merge: true});
         return {success: true, paymentIntent};
       } catch (error) {
+        const pi = error.raw.payment_intent;
+        const needsSCA =
+          error.code === "authentication_required" ||
+          (pi &&
+            (pi.status === "requires_action" ||
+            pi.status === "requires_source_action" ||
+            pi.status === "requires_payment_method"));
+        if (needsSCA && pi.client_secret) {
+          await admin.firestore().collection("payments").doc(pi.id).set({
+            gigId: gigData.gigId,
+            applicantId,
+            recipientMusicianId,
+            venueId: gigData.venueId,
+            status: "requires_action",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastCheckedAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, {merge: true});
+          return {
+            success: false,
+            requiresAction: true,
+            clientSecret: pi.client_secret,
+            paymentIntentId: pi.id,
+            paymentMethodId: paymentMethodId,
+            error: "Authentication required",
+          };
+        }
         console.error("Error confirming payment:", error);
         if (error.type === "StripeCardError") {
           return {success: false, error: error.message};
         } else if (error.type === "StripeInvalidRequestError") {
           return {success: false, error: "Invalid payment request."};
         } else if (error.type === "StripeAPIError") {
-          return {
-            success: false, error: "Payment service is currently unavailable.",
-          };
+          return {success: false, error: "Payment currently unavailable."};
         } else if (error.type === "StripeConnectionError") {
           return {success: false, error: "Network error."};
         } else if (error.type === "StripeAuthenticationError") {

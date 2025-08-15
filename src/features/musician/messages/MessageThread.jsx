@@ -14,6 +14,9 @@ import { getVenueProfileById } from '@services/venues';
 import { getMusicianProfileByMusicianId } from '@services/musicians';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/emails';
 import { fetchSavedCards, confirmGigPayment } from '@services/functions';
+import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
@@ -256,21 +259,45 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true);
         try {
-            const result = await confirmGigPayment({ cardId, gigData });
-            if (result.success) {
+            const result = await confirmGigPayment({ cardId, gigData, musicianProfileId });
+            if (result.success && result.paymentIntent) {
                 setPaymentSuccess(true);
-                setGigData((prev) => ({
-                  ...prev,
-                  status: 'payment processing',
+                setGigData(prev => ({
+                    ...prev,
+                    applicants: prev.applicants.map(applicant =>
+                        applicant.id === musicianProfileId
+                            ? { ...applicant, status: 'payment processing' }
+                            : applicant
+                    )
                 }));
+                toast.info("Processing your payment...");
+            } else if (result.requiresAction && result.clientSecret) {
+                const stripe = await stripePromise;
+                const { error, paymentIntent } = await stripe.confirmCardPayment(result.clientSecret, { payment_method: result.paymentMethodId || cardId });
+                if (error) {
+                  setPaymentSuccess(false);
+                  toast.error(error.message || 'Authentication failed. Please try another card.');
+                  return;
+                }
+                setPaymentSuccess(true);
+                setGigData(prev => ({
+                    ...prev,
+                    applicants: prev.applicants.map(applicant =>
+                        applicant.id === musicianProfileId
+                            ? { ...applicant, status: 'payment processing' }
+                            : applicant
+                    )
+                }));
+                toast.info('Payment authenticated. Finalizing…');
+                return;
             } else {
                 setPaymentSuccess(false);
-                alert(result.error || 'Payment failed. Please try again.');
+                toast.error(result.error || 'Payment failed. Please try again.');
             }
         } catch (error) {
             console.error('Error completing payment:', error);
             setPaymentSuccess(false);
-            alert('An error occurred while processing the payment. Please try again.');
+            toast.error('Payment failed. Please try again.');
         } finally {
             setMakingPayment(false);
         }
