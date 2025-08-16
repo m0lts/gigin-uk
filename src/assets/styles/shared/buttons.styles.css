@@ -99,6 +99,23 @@ button {
     background-color: var(--gn-grey-350);
 }
 
+/* QUATERNARY BUTTONS */
+
+.btn.quaternary {
+    background-color: rgba(133, 133, 133, 0.409);
+    border:1px solid var(--gn-white);
+    font-weight: 500;
+    padding:var(--gn-btn-padding-y) 1.5rem;
+    border-radius: var(--gn-btn-border-radius);
+    color: var(--gn-white);
+    transition: background-color 200ms linear, border-color 200ms linear;
+}
+
+.btn.quaternary:hover {
+    background-color: rgba(216, 216, 216, 0.568);
+    border-color: transparent;
+}
+
 
 /* TEXT BUTTONS */
 
@@ -133,6 +150,23 @@ button {
 
 .btn.icon .icon {
     font-size: 1rem;
+}
+
+.btn.icon.white {
+    background-color: transparent;
+    border: none;
+    padding:5px 7px;
+    border-radius: 0.5rem;
+    transition: background-color 200ms ease;
+}
+
+.btn.icon.white:hover {
+    background-color: rgba(216, 216, 216, 0.568);
+}
+
+.btn.icon.white .icon {
+    font-size: 1.5rem;
+    color: var(--gn-white);
 }
 
 /* ICONS AS BUTTONS */

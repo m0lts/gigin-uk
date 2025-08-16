@@ -86,7 +86,7 @@ export const Venues = ({ venues }) => {
                                     <h3 className='venue-name'>{venue.name}</h3>
                                     <p className='venue-address'>{getCityFromAddress(venue.address)}</p>
                                 </div>
-                                <button className="btn icon" onClick={(e) => openInNewTab(`/venues/${venue.venueId}`, e)}>
+                                <button className="btn icon" onClick={(e) => openInNewTab(`/venues/${venue.venueId}?venueViewing=true`, e)}>
                                     <NewTabIcon />
                                 </button>
                             </div>

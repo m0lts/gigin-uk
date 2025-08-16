@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 /**
  * Initializes a Mapbox map and optionally adds a marker.

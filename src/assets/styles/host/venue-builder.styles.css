@@ -490,6 +490,7 @@
     height: 100%;
     object-fit: cover;
     border-radius: 0.75rem;
+    overflow: hidden;
 }
   
 .venue-builder .stage.photos .preview .image-actions {

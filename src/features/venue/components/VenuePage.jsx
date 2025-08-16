@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import '@styles/host/venue-page.styles.css';
@@ -32,12 +32,16 @@ import { openInNewTab } from '@services/utils/misc';
 import { createVenueRequest, getMusicianProfileByMusicianId } from '../../../services/musicians';
 import { toast } from 'sonner';
 import { getOrCreateConversation } from '../../../services/conversations';
+import { CashIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, QuestionCircleIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { VenueGigsList } from './VenueGigsList';
+import { MapSection } from './MapSection';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const musicianId = searchParams.get('musicianId');
+    const venueViewing = searchParams.get('venueViewing');
     const [venueData, setVenueData] = useState(null);
     const [venueGigs, setVenueGigs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -48,6 +52,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [width, setWidth] = useState('100%');
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [requestMessage, setRequestMessage] = useState('');
+    const [confirmedGigs, setConfirmedGigs] = useState([]);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -73,7 +78,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
               const futureGigs = gigs
                 .filter(gig => {
                   const startDateTime = gig.startDateTime?.toDate?.() ?? gig.startDateTime;
-                  return startDateTime > now;
+                  const openGigs = gig.status !== 'closed';
+                  return (startDateTime > now) && openGigs;
                 })
                 .sort((a, b) => {
                   const aDate = a.startDateTime?.toDate?.() ?? a.startDateTime;
@@ -82,6 +88,12 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 });
         
               setVenueGigs(futureGigs);
+              const filterConfirmedGigs = futureGigs
+                .filter(gig => {
+                    const confirmedApplicant = gig.applicants.some(g => g.status === 'confirmed');
+                    return confirmedApplicant;
+                })
+              setConfirmedGigs(filterConfirmedGigs)
         
             } catch (error) {
               console.error('Error loading venue profile or gigs:', error);
@@ -91,16 +103,13 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
           };
         fetchVenueAndGigs();
     }, [venueId]);
-    
+
+
     useMapbox({
         containerRef: mapContainerRef,
         coordinates: venueData?.coordinates,
-      });
-
-    const handleImageClick = (index) => {
-        setFullscreenImage(venueData.photos[index]);
-        setCurrentImageIndex(index);
-    };
+    });
+    
 
     const closeFullscreen = () => {
         setFullscreenImage(null);
@@ -128,9 +137,9 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             musicianId: profile.musicianId,
             musicianName: profile.name,
             musicianImage: profile.picture || '',
-            musicianGenres: profile.genres,
-            musicianType: profile.musicianType,
-            musicianPlays: profile.musicType,
+            musicianGenres: profile.genres || [],
+            musicianType: profile.musicianType || null,
+            musicianPlays: profile.musicType || null,
             message: requestMessage,
             createdAt: new Date(),
             viewed: false,
@@ -142,8 +151,26 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
           console.error('Error sending request:', err);
           toast.error('Failed to send request. Please try again.');
         }
-      };
+    };
+
+    const copyToClipboard = (venueId) => {
+        navigator.clipboard.writeText(`https://gigin.ltd/venues/${venueId}`).then(() => {
+            toast.success('Link copied to clipboard');
+        }).catch((err) => {
+            toast.error('Failed to copy link. Please try again.')
+            console.error('Failed to copy link: ', err);
+        });
+    };
     
+    const openGoogleMaps = (address, coordinates) => {
+        const baseUrl = 'https://www.google.com/maps/dir/?api=1';
+        const queryParams = coordinates 
+            ? `&destination=${coordinates[1]},${coordinates[0]}`
+            : `&destination=${encodeURIComponent(address)}`;
+        window.open(baseUrl + queryParams, '_blank');
+    };
+
+
     return (
         <div className='venue-page'>
             {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
@@ -164,70 +191,85 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             <section className='venue-page-body' style={{ width: `${width}`}}>
                 {loading ? (
                     <>
-                        <div className='head'>
-                            <div className='title'>
-                                <Skeleton height={40} width={400} />
-                            </div>
-                        </div>
                         <div className='images'>
                             <Skeleton height={350} width='100%' />
+                        </div>
+                        <div className="body" style={{ marginTop: '1rem'}}>
+                            <Skeleton height={200} width='100%' />
                         </div>
                     </>
                 ) : (
                     <>
-                        <div className='head'>
-                            <div className='title'>
-                                <h1>{venueData.name}</h1>
-                                <p>{getCityFromAddress(venueData.address)}</p>
+                        <div className='venue-page-hero'>
+                            <img src={venueData?.photos[0]} alt={venueData?.name} className='background-image' />
+                            <div className="primary-information">
+                                {!venueData?.verified && (
+                                    <div className="verified-tag">
+                                        <VerifiedIcon />
+                                        <p>Verified Venue</p>
+                                    </div>
+                                )}
+                                <h1 className="venue-name">
+                                    {venueData?.name}
+                                    <span className='orange-dot'>.</span>
+                                </h1>
+                                <h4 className="number-of-gigs">
+                                    {venueData?.gigs?.length} Gigs Posted
+                                </h4>
+                                {(musicianId && !venueViewing) ? (
+                                    <div className="action-buttons">
+                                        <button className="btn quaternary" onClick={() => setShowRequestModal(true)}>
+                                            Request a Gig
+                                        </button>
+                                        {/* <button className="btn quaternary">
+                                            Message
+                                        </button>
+                                        <button className="btn icon white">
+                                            <OptionsIcon />
+                                        </button> */}
+                                    </div>
+                                ) : venueViewing && (
+                                    <div className="action-buttons">
+                                        <button className="btn quaternary" onClick={() => navigate(`/venues/add-venue`, {state: { venue: venueData }})}>
+                                            Edit Profile
+                                        </button>
+                                        <button className="btn quaternary" onClick={() => copyToClipboard(venueData.venueId)}>
+                                            Share
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            {/* <div className='options'>
-                                <button className='btn icon'>
-                                    <ShareIcon />
-                                </button>
-                                <button className='btn icon'>
-                                    <SaveIcon />
-                                </button>
-                            </div> */}
                         </div>
-                        <div className='images-and-location'>
-                            <div className='main-image'>
-                                <figure className='img' onClick={() => handleImageClick(0)}>
-                                    <img src={venueData.photos[0]} alt={`${venueData.name} photo`} />
-                                    <div className='more-overlay'>
-                                        <h2>+{venueData.photos.length - 1}</h2>
-                                    </div>
-                                </figure>
-                            </div>
-                            <div className='location'>
-                                <div ref={mapContainerRef} className='map-container' style={{ height: '100%', width: '100%' }} />
-                            </div>
-                        </div>
-                        <div className='main'>
-                            <div className='venue-info'>
-                                <div className='important-info'>
-                                    <div className='date-and-time'>
-                                        <h2>{venueData.name}</h2>
-                                    </div>
-                                    <div className='address'>
-                                        <h4>{venueData.address}</h4>
-                                    </div>
+                        <div className="venue-page-information">
+                            <div className="venue-page-details">
+                                <div className="section bio">
+                                    <h3>Bio</h3>
+                                    <p>{venueData?.description}</p>
                                 </div>
-                                <div className='description'>
-                                    <h4>Description</h4>
-                                    <p>{venueData.description}</p>
-                                </div>
-                                <div className='extra-info'>
-                                    <div className='info'>
-                                        <h6>Venue Information</h6>
-                                        <div className='text'>
-                                            <p>{venueData.extraInformation}</p>
+                                <div className="section secondary-information">
+                                    <div className="info-box location">
+                                        <h3>Location</h3>
+                                        <MapSection venueData={venueData} />
+                                        <h5>{venueData?.address}</h5>
+                                        <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
+                                            Get Directions <NewTabIcon />
+                                        </button>
+                                    </div>
+                                    {venueData?.website && (
+                                        <div className="info-box website">
+                                            <h3>Website</h3>
+                                            <a
+                                                href={venueData.website.startsWith('http') ? venueData.website : `https://${venueData.website}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                <p>{venueData.website}</p>
+                                            </a>
                                         </div>
-                                    </div>
-                                </div>
-                                {venueData.socialMedia && (
-                                    <div className='socials'>
-                                        <h4 className='subtitle'>Socials</h4>
-                                        <div className='links'>
+                                    )}
+                                    {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
+                                        <div className="info-box socials">
+                                            <h4>Socials</h4>
                                             {venueData.socialMedia.facebook && (
                                                 <a href={venueData.socialMedia.facebook} target='_blank' rel='noreferrer'>
                                                     <FacebookIcon />
@@ -244,24 +286,37 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                                 </a>
                                             )}
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                            </div>
-                            <div className='gigs-box'>
-                                <h3>Upcoming Gigs</h3>
-                                {venueGigs && venueGigs.map((gig) => (
-                                    <div key={gig.gigId} className="venue-gig" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
-                                        <h4>{formatDate(gig.date)}</h4>
-                                        <h4>{gig.budget}</h4>
+                                </div>
+                                {venueData?.photos?.length > 1 && (
+                                    <div className="section photos">
+                                        <h3>Photos</h3>
+                                        <div className="photos-collage">
+                                        {venueData.photos.map((photo, index) => (
+                                            <figure className="collage-item" key={photo}>
+                                            <img
+                                                src={photo}
+                                                alt={venueData.name}
+                                                loading="lazy"
+                                                decoding="async"
+                                            />
+                                            </figure>
+                                        ))}
+                                        </div>
                                     </div>
-                                ))}
-                                {musicianId && (
-                                    <button className="btn primary" onClick={() => setShowRequestModal(true)}>
-                                        Request To Play Here
-                                    </button>
                                 )}
                             </div>
+                            {(venueGigs.length > 0 && confirmedGigs.length > 0) ? (
+                                <div className="venue-page-gigs">
+                                    <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} />
+                                    <VenueGigsList title={'Upcoming'} gigs={confirmedGigs} isVenue={venueViewing} />
+                                </div>
+                            ) : (
+                                <div className="venue-page-gigs">
+                                    <h4>No Gigs To Show</h4>
+                                </div>
+                            )}
                         </div>
                     </>
                 )}
@@ -274,18 +329,28 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 )}
             </section>
             {showRequestModal && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <div className="head">
-                            <h3>Request to perform at {venueData.name}</h3>
-                            <div className="musician-request">
-                                <textarea
-                                    className="input"
-                                    rows={3}
-                                    placeholder="Write a message to the venue..."
-                                    value={requestMessage}
-                                    onChange={(e) => setRequestMessage(e.target.value)}
-                                />
+                <div className="modal musician-request" onClick={() => setShowRequestModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <button className='btn close tertiary' onClick={() => setShowRequestModal(false)}>
+                            Close
+                        </button>
+                        <div className="modal-header">
+                            <RequestIcon />
+                            <h2>Request to perform at {venueData.name}</h2>
+                            <p>Send a gig request to the venue. If they accept your request, they'll build a gig for you and you'll automatically be invited.</p>
+                        </div>
+                        <div className="modal-body">
+                            <textarea
+                                className="input"
+                                rows={3}
+                                placeholder="Write a message to the venue..."
+                                value={requestMessage}
+                                onChange={(e) => setRequestMessage(e.target.value)}
+                            />
+                            <div className="two-buttons">
+                                <button className="btn tertiary" onClick={() => setShowRequestModal(false)}>
+                                    Cancel
+                                </button>
                                 <button className="btn primary" onClick={handleMusicianRequest}>
                                     Request To Play Here
                                 </button>

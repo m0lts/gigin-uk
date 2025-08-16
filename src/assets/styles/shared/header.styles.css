@@ -9,6 +9,7 @@
     background-color: var(--gn-white);
     box-shadow: 0 0 5px var(--gn-grey-400);
     position: relative;
+    z-index: 2;
 }
 
 .header .left,

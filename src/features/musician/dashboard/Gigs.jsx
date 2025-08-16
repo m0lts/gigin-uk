@@ -464,7 +464,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                         ) : (
                                                             <button onClick={() => handleSaveGig(gig)}>Save Gig <SaveIcon /></button>
                                                         )}
-                                                        <button onClick={() => { closeOptionsMenu(); navigate(`/venues/${gig.venueId}`) }}>View Venue Page <NewTabIcon /></button>
+                                                        <button onClick={() => { closeOptionsMenu(); navigate(`/venues/${gig.venueId}?musicianId=${musicianId}`) }}>View Venue Page <NewTabIcon /></button>
                                                         <button onClick={() => {
                                                             closeOptionsMenu();
                                                             handleContactVenue(appliedProfile, gig, gig.venueId);
