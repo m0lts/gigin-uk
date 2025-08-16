@@ -4,8 +4,9 @@ import { NewTabIcon, StarIcon } from '@features/shared/ui/extras/Icons';
 import { fetchMusicianTestimonials, fetchProfileReviews } from '@services/reviews';
 import { formatDate } from '@services/utils/dates';
 import { openInNewTab } from '@services/utils/misc';
+import { EmptyIcon } from '../../shared/ui/extras/Icons';
 
-export const ReviewsTab = ({ profile }) => {
+export const ReviewsTab = ({ profile, viewingOwnProfile, setShowPreview }) => {
     const [reviews, setReviews] = useState([]);
     const [testimonials, setTestimonials] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -33,10 +34,30 @@ export const ReviewsTab = ({ profile }) => {
         loadReviewsAndTestimonials();
       }, [profile]);
 
+    if (reviews.length < 1 && testimonials.length < 1) {
+        return (
+            <div className="nothing-to-display">
+                <EmptyIcon />
+                {viewingOwnProfile ? (
+                    <>
+                        <h4>More information will show here when you complete your profile.</h4>
+                        <button className="btn primary" onClick={() => setShowPreview(false)}>
+                            Finish Profile
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <h4>No more information to show.</h4>
+                    </>
+                )}
+            </div>
+          )
+    }
+
 
     if (profile.reviews && profile.reviews.length > 0) {
         return (
-            <ul className='reviews'>
+            <ul className='musician-profile-reviews'>
                 {loading ? (
                     Array(Math.min(3, profile.reviews.length))
                     .fill(0)

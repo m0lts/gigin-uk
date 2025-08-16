@@ -200,6 +200,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
         }
     }, [gigId, user, venueVisiting, inviteToken, multipleProfiles]);
 
+
     useEffect(() => {
         if (!selectedProfile || !gigData) return;
         const applicant = gigData.applicants?.find(
@@ -860,7 +861,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                             </div>
                                         )}
                                         <div className='action-box-buttons'>
-                                        {getLocalGigDateTime(gigData) > new Date() ? (
+                                        {(getLocalGigDateTime(gigData) > new Date() && gigData.status !== 'closed') ? (
                                             <>
                                             {userAppliedToGig ? (
                                                 <button className='btn primary-alt disabled' disabled>

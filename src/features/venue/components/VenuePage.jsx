@@ -203,7 +203,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                         <div className='venue-page-hero'>
                             <img src={venueData?.photos[0]} alt={venueData?.name} className='background-image' />
                             <div className="primary-information">
-                                {!venueData?.verified && (
+                                {venueData?.verified && (
                                     <div className="verified-tag">
                                         <VerifiedIcon />
                                         <p>Verified Venue</p>

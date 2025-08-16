@@ -530,6 +530,7 @@ export const acceptGigOffer = async (gigData, musicianProfileId, nonPayableGig =
       applicants: updatedApplicants,
       agreedFee: `${agreedFee}`,
       paid: nonPayableGig,
+      status: gigData.kind !== 'Open Mic' ? 'closed' : 'open',
     });
     return { updatedApplicants, agreedFee };
 };

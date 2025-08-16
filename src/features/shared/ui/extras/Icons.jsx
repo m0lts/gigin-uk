@@ -2,7 +2,7 @@ import { faApple, faFacebook, faFacebookSquare, faGoogle, faInstagram, faInstagr
 import { faArrowLeft, faBoxArchive, faCircle, faInbox, faLocationDot, faPlayCircle, faUserCircle, faFileImport, faSquareMinus, faChevronUp, faChevronDown, faChevronLeft, faChevronRight, faX, faCheck } from '@fortawesome/free-solid-svg-icons'
 import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faBeerFoam, faCameraViewfinder, faCastle, faCoin, faCutlery, faDrum, faEnvelope, faGear, faGlassesRound, faGraduationCap, faGuitars, faLightbulb, faLocationPin, faMapLocation, faMicrophoneStand, faMuseum, faPause, faPencil, faPiano, faPlaceOfWorship, faPlay, faPlayPause, faQuestionCircle, faReel, faRingsWedding, faSpeakers, faTelescope, faTicket, faTurntable, faVolume, faXmarkCircle, faStarShooting, faTrashCan } from '@fortawesome/pro-light-svg-icons'
 import { faArrowUp, faComments, faFaceFrown, faFaceMeh, faFaceSmile, faFaceSmileHearts, faUserPlus, faArrowUpRightFromSquare, faPencilSquare, faTableTree, faClock, faCircleArrowLeft, faChartPieSimple, faCreditCard, faFileInvoice, faPartyHorn, faListMusic, faCircleExclamation, faBan, faCirclePlus } from '@fortawesome/pro-regular-svg-icons'
-import { faClipboard, faShieldCheck, faCirclePlus as faCirclePlusSolid, faAsterisk, faKey, faUserMinus, faDoorOpen, faPhotoFilmMusic, faSquareInfo, faHashtag, faPiggyBank, faCircleExclamation as faCircleExclamationSolid, faWarning, faMoneyBillTransfer, faBadgeCheck, faMoneyBillsSimple, faBellRing } from '@fortawesome/pro-solid-svg-icons';
+import { faClipboard, faShieldCheck, faCirclePlus as faCirclePlusSolid, faAsterisk, faKey, faUserMinus, faDoorOpen, faPhotoFilmMusic, faSquareInfo, faHashtag, faPiggyBank, faCircleExclamation as faCircleExclamationSolid, faWarning, faMoneyBillTransfer, faBadgeCheck, faMoneyBillsSimple, faBellRing, faEmptySet } from '@fortawesome/pro-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBookmark as faSaveIcon } from '@fortawesome/pro-regular-svg-icons'
 import { faBookmark as faSavedIcon } from '@fortawesome/free-solid-svg-icons'
@@ -762,5 +762,10 @@ export const CashIcon = () => {
 export const RequestIcon = () => {
     return (
         <FontAwesomeIcon icon={faBellRing} className='icon' />
+    )
+}
+export const EmptyIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faEmptySet} className='icon' />
     )
 }
