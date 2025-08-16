@@ -8,7 +8,6 @@ import { Gigs } from './Gigs';
 import '@styles/host/host-dashboard.styles.css'
 import { Venues } from './Venues';
 import { GigApplications } from './GigApplications';
-import { useGigs } from '@context/GigsContext';
 import { Overview } from './Overview';
 import { Finances } from './Finances';
 import { SavedMusicians } from './SavedMusicians';

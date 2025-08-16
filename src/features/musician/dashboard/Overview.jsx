@@ -6,13 +6,8 @@ import {
     SortIcon,
     HouseIconLight,
     PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
-import { useGigs } from '@context/GigsContext';
-import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { useMapbox } from '@hooks/useMapbox';
-import { openInNewTab } from '@services/utils/misc';
-import { formatFeeDate } from '@services/utils/dates';
 import { AllGigsIcon, CoinsIconSolid, ExclamationIcon, LocationPinIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { getVenueProfileById } from '../../../services/venues';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';

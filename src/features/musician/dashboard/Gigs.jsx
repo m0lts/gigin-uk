@@ -8,7 +8,6 @@ import {
     TickIcon,
     CalendarIconSolid,
     RejectedIcon } from '@features/shared/ui/extras/Icons';
-import { useGigs } from '@context/GigsContext';
 import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { openInNewTab } from '../../../services/utils/misc';
 import { useResizeEffect } from '@hooks/useResizeEffect';

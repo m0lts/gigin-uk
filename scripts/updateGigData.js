@@ -1,6 +1,6 @@
 import { collection, getDocs, writeBatch, Timestamp, GeoPoint, updateDoc, doc, deleteField } from 'firebase/firestore';
 import { firestore } from './firebaseConfig.mjs';
-import {geohashForLocation} from 'geofire-common';
+import { geohashForLocation } from 'geofire-common';
 
 
 /**

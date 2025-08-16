@@ -4,7 +4,6 @@ import { ListView } from './ListView';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as CommonHeader } from '@features/shared/components/Header';
 import '@styles/musician/gig-finder.styles.css';
-import { useGigs } from '@context/GigsContext';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { WelcomeModal } from '@features/musician/components/WelcomeModal';
 import { useUpcomingGigs } from '@hooks/useUpcomingGigs';

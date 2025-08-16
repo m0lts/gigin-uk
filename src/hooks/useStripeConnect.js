@@ -44,5 +44,3 @@ export const useStripeConnect = (connectedAccountId) => {
 
   return stripeConnectInstance;
 };
-
-export default useStripeConnect;
