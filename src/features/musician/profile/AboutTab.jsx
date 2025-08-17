@@ -43,7 +43,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
       
     useMapbox({
         containerRef: mapContainerRef,
-        coordinates: musicianData?.location.coordinates,
+        coordinates: musicianData?.location?.coordinates,
         addMarker: false,
         zoom: 8,
     });
@@ -124,14 +124,14 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
                 <EmptyIcon />
                 {viewingOwnProfile ? (
                     <>
-                        <h3>More information will show here when you complete your profile.</h3>
+                        <h4>More information will show here when you complete your profile.</h4>
                         <button className="btn primary" onClick={() => setShowPreview(false)}>
                             Finish Profile
                         </button>
                     </>
                 ) : (
                     <>
-                        <h3>No more information to show.</h3>
+                        <h4>No more information to show.</h4>
                     </>
                 )}
             </div>
@@ -167,7 +167,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
             {musicianData?.location && (
                 <div className="musician-location about-section">
                     <h3>Location</h3>
-                    {musicianData.location.coordinates.length > 0 && (
+                    {musicianData?.location?.coordinates.length > 0 && (
                         <div ref={mapContainerRef} className="map-container" />
                     )}
                     <h4>{musicianData?.location?.city}; {formatTravelDistance(musicianData?.location?.travelDistance)}.</h4>
