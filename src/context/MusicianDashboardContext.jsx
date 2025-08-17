@@ -204,6 +204,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         gigs,
         setGigs,
         gigToReview,
+        setGigToReview,
         gigsToReview,
         setGigsToReview,
         showReviewModal,

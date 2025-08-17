@@ -29,6 +29,7 @@ export const MusicianDashboard = ({ user }) => {
     gigs,
     setGigs,
     gigToReview,
+    setGigToReview,
     showReviewModal,
     setShowReviewModal,
     bandProfiles,
@@ -114,6 +115,7 @@ export const MusicianDashboard = ({ user }) => {
       {showReviewModal && gigToReview && (
         <ReviewModal
           gigData={gigToReview}
+          setGigData={setGigToReview}
           reviewer="musician"
           onClose={() => {
             setShowReviewModal(false);

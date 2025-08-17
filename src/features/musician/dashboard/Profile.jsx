@@ -77,7 +77,7 @@ export const Profile = ({ musicianProfile, user }) => {
                     />
                 </div>
             ) : (
-                <div className="body profile">
+                <div className="body profile-preview">
                     <MusicianProfile
                         musicianProfile={musicianProfile}
                         viewingOwnProfile={true}

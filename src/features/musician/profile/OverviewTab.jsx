@@ -51,7 +51,6 @@ const VideoModal = ({ video, onClose }) => (
   export const OverviewTab = ({ musicianData, viewingOwnProfile, setShowPreview }) => {
     const [activeVideo, setActiveVideo] = useState(null);
   
-    // Normalize + (optionally) sort by date desc if present
     const media = useMemo(() => {
       const imgs = (musicianData?.photos ?? []).map((src, i) => ({
         id: `img-${i}-${src}`,
@@ -66,7 +65,6 @@ const VideoModal = ({ video, onClose }) => (
         date: v.date, // optional
       }));
   
-      // sort newest first if dates exist, otherwise keep original order
       const anyDates = vids.some(v => !!v.date);
       const merged = [...vids, ...imgs];
       return anyDates

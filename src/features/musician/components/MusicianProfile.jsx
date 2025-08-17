@@ -5,18 +5,32 @@ import { OverviewTab } from '@features/musician/profile/OverviewTab';
 import { MusicTab } from '@features/musician/profile/MusicTab';
 import { ReviewsTab } from '@features/musician/profile/ReviewsTab';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
+import { PlayIcon, PlayVideoIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
 import { AboutTab } from '../profile/AboutTab';
 import { getGigsByIds } from '../../../services/gigs';
 import Skeleton from 'react-loading-skeleton';
 import { openInNewTab } from '@services/utils/misc';
 
+const VideoModal = ({ video, onClose }) => {
+    return (
+        <div className='modal'>
+            <div className='modal-content transparent'>
+                <span className='close' onClick={onClose}>&times;</span>
+                <video controls autoPlay style={{ width: '100%' }}>
+                    <source src={video.file} type='video/mp4' />
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    );
+};
 
 export const MusicianProfile = ({ musicianProfile, viewingOwnProfile = false, setShowPreview }) => {
     const [activeTab, setActiveTab] = useState('home');
     const [upcomingGigs, setUpcomingGigs] = useState([]);
     const [loadingGigs, setLoadingGigs] = useState(false);
     const [expanded, setExpanded] = useState(false);
+    const [videoToPlay, setVideoToPlay] = useState(null);
     const displayed = useMemo(() => (expanded ? upcomingGigs : upcomingGigs?.slice(0, 3) ?? []), [expanded, upcomingGigs]);
 
     console.log(musicianProfile)
@@ -51,6 +65,10 @@ export const MusicianProfile = ({ musicianProfile, viewingOwnProfile = false, se
             default:
                 return null;
         }        
+    };
+
+    const closeModal = () => {
+        setVideoToPlay(null);
     };
 
     return (
@@ -91,14 +109,14 @@ export const MusicianProfile = ({ musicianProfile, viewingOwnProfile = false, se
                                 <h4>{musicianProfile.bio.text}</h4>
                             )}
                             <div className="play-buttons">
-                                {musicianProfile?.videos && (
-                                    <button className="btn icon" onClick={() => handlePlayVideo(musicianProfile.videos[0])}>
-                                        <VideoIcon />
+                                {musicianProfile?.videos.length > 0 && (
+                                    <button className="btn icon" onClick={() => setVideoToPlay(musicianProfile?.videos[0])}>
+                                        <PlayIcon />
                                     </button>
                                 )}
-                                {musicianProfile?.tracks && (
-                                    <button className="btn icon" onClick={() => handlePlayTrack(musicianProfile.tracks[0])}>
-                                        <TrackIcon />
+                                {musicianProfile?.tracks.length > 0 && (
+                                    <button className="btn icon" onClick={() => handlePlayTrack(musicianProfile?.tracks[0])}>
+                                        <PlayVideoIcon />
                                     </button>
                                 )}
                             </div>
@@ -171,7 +189,7 @@ export const MusicianProfile = ({ musicianProfile, viewingOwnProfile = false, se
                             )}
                         </div>
                     )}
-                    {musicianProfile?.tracks && (
+                    {musicianProfile?.tracks.length > 0 && (
                         <div className="musician-tracks">
                             <h3>Listen</h3>
                             {musicianProfile.tracks.map((track) => (
@@ -181,6 +199,7 @@ export const MusicianProfile = ({ musicianProfile, viewingOwnProfile = false, se
                     )}
                 </div>
             </div>
+            {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
         </div>
     )
 };

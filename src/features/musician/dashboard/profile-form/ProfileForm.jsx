@@ -853,6 +853,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                             <input
                             type="file"
                             accept="image/*"
+                            multiple
                             id="photoInput"
                             className="hidden-file-input"
                             onChange={handlePhotoUpload}
@@ -956,15 +957,17 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                                                 <h4>Processing...</h4>
                                             )}
                                         </div>
-                                        <div className="upload-item-bottom">
-                                            <div className="progress-bar">
-                                            <div
-                                                className="progress-bar-fill"
-                                                style={{ width: `${upload.progress}%` }}
-                                            />
+                                        {upload.progess === 100 && (
+                                            <div className="upload-item-bottom">
+                                                <div className="progress-bar">
+                                                <div
+                                                    className="progress-bar-fill"
+                                                    style={{ width: `${upload.progress}%` }}
+                                                />
+                                                </div>
+                                                <p>{Math.floor(upload.progress)}%</p>
                                             </div>
-                                            <p>{Math.floor(upload.progress)}%</p>
-                                        </div>
+                                        )}
                                     </>
                                 ) : (
                                     <div className='uploading-item'>
@@ -1047,16 +1050,18 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                                         </div>
                                     </div>
 
+                                                {upload.progress === 100 && (
 
-                                    <div className="upload-item-bottom">
-                                    <div className="progress-bar">
-                                        <div
-                                        className="progress-bar-fill"
-                                        style={{ width: `${upload.progress}%` }}
-                                        />
-                                    </div>
-                                    <p>{Math.floor(upload.progress)}%</p>
-                                    </div>
+                                        <div className="upload-item-bottom">
+                                        <div className="progress-bar">
+                                            <div
+                                            className="progress-bar-fill"
+                                            style={{ width: `${upload.progress}%` }}
+                                            />
+                                        </div>
+                                        <p>{Math.floor(upload.progress)}%</p>
+                                        </div>
+                                                )}
 
                                 </>
                                 ) : (

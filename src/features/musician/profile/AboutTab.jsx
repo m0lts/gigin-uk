@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
     BackgroundMusicIcon,
     ClubIcon,
@@ -35,42 +35,16 @@ import {
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { EmptyIcon } from '../../shared/ui/extras/Icons';
-
-const VideoModal = ({ video, onClose }) => {
-    return (
-        <div className='modal'>
-            <div className='modal-content transparent'>
-                <span className='close' onClick={onClose}>&times;</span>
-                <video controls autoPlay style={{ width: '100%' }}>
-                    <source src={video.file} type='video/mp4' />
-                    Your browser does not support the video tag.
-                </video>
-            </div>
-        </div>
-    );
-};
+import { useMapbox } from '../../../hooks/useMapbox';
 
 export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
 
-    const [showModal, setShowModal] = useState(false);
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-    useResizeEffect((width) => {
-        setWindowWidth(width);
-      });
-
-    const formatVideoDate = (dateString) => {
-        const [year, month, day] = dateString.split('-');
-        return `${day}-${month}-${year}`;
-    };
-
-    const openModal = () => {
-        setShowModal(true);
-    };
-
-    const closeModal = () => {
-        setShowModal(false);
-    };
+    const mapContainerRef = useRef(null);
+      
+    useMapbox({
+        containerRef: mapContainerRef,
+        coordinates: musicianData?.location.coordinates,
+    });
 
     const getInstrumentIcon = (instrument) => {
         switch (instrument.toLowerCase()) {
@@ -147,125 +121,53 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
 
     return (
         <div className='musician-profile-about'>
-            <div className='overview-top'>
-                <div className='info-box'>
-                    <h2>Watch</h2>
-                    <div className='video-thumbnail' onClick={() => openModal()}>
-                        {musicianData?.videos && musicianData.videos.length > 0 ? (
-                            musicianData.videos[0].thumbnail === 'uploading...' ? (
-                                <>
-                                    <h3>Uploading your videos...</h3>
-                                    <LoadingThreeDots />
-                                </>
-                            ) : (
-                                <>
-                                    <img src={musicianData.videos[0].thumbnail} alt='Video Thumbnail' />
-                                    <div className='title-and-date'>
-                                        <h3>{musicianData.videos[0].title}</h3>
-                                        <h6>{formatVideoDate(musicianData.videos[0].date)}</h6>
-                                    </div>
-                                </>
-                            )
-                        ) : (
-                            <p>No videos available.</p>
-                        )}
-                        {musicianData?.videos && musicianData.videos[0].thumbnail !== 'uploading...' && (
-                            <PlayIcon />
-                        )}
-                    </div>
-                </div>
-                <div className='info-box'>
-                    <h2>Bio</h2>
-                    <div className='text bio'>
-                        <p>{musicianData?.bio && musicianData.bio.text}</p>
-                    </div>
-                </div>
-            </div>
-            <div className='overview-middle box-style'>
-                {windowWidth > 1268 && musicianData?.location && (
-                    <h6 className='data'>
-                        <MapIcon /> {musicianData.location.city} <DotIcon /> {musicianData.location.travelDistance}
-                    </h6>
-                )}
-                {musicianData?.musicType && (
-                    <h6 className='data'>
-                        <BackgroundMusicIcon /> {musicianData.musicType === 'Both' ? 'Both Covers and Originals' : musicianData.musicType}
-                    </h6>
-                )}
-                {musicianData?.bio && (
-                    <h6 className='data'>
-                        <ShootingStarIcon />
-                        {musicianData.bio.experience === 'less than 1 year' ? (
-                            <>Up and Comer</>
-                        ) : musicianData.bio.experience === '1-2 years' ? (
-                            <>Rising Star</>
-                        ) : musicianData.bio.experience === '2-5 years' ? (
-                            <>Seasoned Performer</>
-                        ) : musicianData.bio.experience === '5+ years' && (
-                            <>Veteran Performer</>
-                        )}
-                    </h6>
-                )}
-            </div>
-            <div className='overview-bottom'>
-                {musicianData?.instruments && (
-                    <div className='info-box'>
-                        <h2>Sound</h2>
-                        <ul className='box-style list'>
-                            {musicianData.instruments.map((instrument, index) => (
-                                <li className='sound-item' key={index}>
-                                    <h4>{instrument}</h4>
-                                    {getInstrumentIcon(instrument)}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-                {musicianData?.musicType && (
-                    <div className='info-box'>
-                        <h2>Type</h2>
-                        <div className='box-style musician-type'>
-                            {musicianData.musicianType === 'DJ' ? <ClubIcon /> : <GuitarsIcon />}
-                            <h3>
-                                {musicianData.musicianType}
-                            </h3>
+            {musicianData?.genres.length > 0 && (
+                <div className="musician-genres">
+                    <h3>Genres</h3>
+                    {musicianData.genres.map((g) => (
+                        <div className="genre-item" key={g}>
+                            <p>{g}</p>
                         </div>
-                    </div>
-                )}
-                <div className='social-media-links list'>
-                    {musicianData?.socialMedia?.facebook && (
-                            <a className='link' href={musicianData.socialMedia.facebook} target='_blank' rel='noopener noreferrer'>
-                                <FacebookIcon /> Facebook
-                            </a>
-                    )}
-                    {musicianData?.socialMedia?.instagram && (
-                            <a className='link' href={musicianData.socialMedia.instagram} target='_blank' rel='noopener noreferrer'>
-                                <InstagramIcon /> Instagram
-                            </a>
-                    )}
-                    {musicianData?.socialMedia?.twitter && (
-                            <a className='link' href={musicianData.socialMedia.twitter} target='_blank' rel='noopener noreferrer'>
-                                <TwitterIcon /> X
-                            </a>
-                    )}
-                    {musicianData?.socialMedia?.spotify && (
-                            <a className='link' href={musicianData.socialMedia.spotify} target='_blank' rel='noopener noreferrer'>
-                                <SpotifyIcon /> Spotify
-                            </a>
-                    )}
-                    {musicianData?.socialMedia?.youtube && (
-                            <a className='link' href={musicianData.socialMedia.youtube} target='_blank' rel='noopener noreferrer'>
-                                <YoutubeIcon /> Youtube
-                            </a>
-                    )}
-                    {musicianData?.socialMedia?.soundcloud && (
-                            <a className='link' href={musicianData.socialMedia.soundcloud} target='_blank' rel='noopener noreferrer'>
-                                <SoundcloudIcon /> SoundCloud
-                            </a>
-                    )}
+                    ))}
                 </div>
-            </div>
-            {showModal && <VideoModal video={musicianData.videos[0]} onClose={closeModal} />}
+            )}
+            {musicianData?.musicType && (
+                <div className="musician-genres">
+                    <h3>Music Played</h3>
+                    <h4>{musicianData.musicType}</h4>
+                </div>
+            )}
+            {musicianData?.location && (
+                <div className="musician-location">
+                    <h3>Location</h3>
+                    {musicianData.location.coordinates.length > 0 && (
+                        <div ref={mapContainerRef} className="map-container" style={{ width: 100, height: 100 }} />
+                    )}
+                    <h5>{musicianData?.location?.city}</h5>
+                    <h5>{musicianData?.location?.travelDistance}</h5>
+                </div>
+            )}
+            {musicianData?.instruments.length > 0 && (
+                <div className="musician-instruments">
+                    <h3>Instruments Played</h3>
+                    {musicianData.instruments.map((i) => (
+                        <div className="instrument-item" key={i}>
+                            {getInstrumentIcon(i)}
+                            <p>{i}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+            {musicianData?.bandProfile && (
+                <div className="musician-band-members">
+                    <h3>Band Members</h3>
+                    {musicianData.genres.map((g) => (
+                        <div className="genre-item" key={g}>
+                            <p>{g}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
