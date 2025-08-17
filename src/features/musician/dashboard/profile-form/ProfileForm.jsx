@@ -26,6 +26,33 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+
+async function geocodeCity(city) {
+    if (!city || city.trim().length < 2) return null;
+    try {
+      const url = new URL(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(city)}.json`);
+      url.searchParams.set('access_token', MAPBOX_TOKEN);
+      url.searchParams.set('types', 'place');        // cities/towns
+      url.searchParams.set('limit', '1');
+      // Optional: bias to UK (or your market)
+      // url.searchParams.set('country', 'gb');
+  
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error(`Geocode failed: ${res.status}`);
+      const data = await res.json();
+      const match = data.features?.[0];
+      if (!match) return null;
+      const [lng, lat] = match.center || [];
+      // Use Mapbox's canonical city text if present
+      const canonicalCity = match.text || city;
+      return { city: canonicalCity, coordinates: [lng, lat] };
+    } catch (e) {
+      console.warn('Mapbox geocode error:', e);
+      return null;
+    }
+  }
+
 export const ProfileForm = ({ user, musicianProfile, band = false, expand, setExpand }) => {
     const [preview, setPreview] = useState(musicianProfile.picture || '');
     const [formData, setFormData] = useState({
@@ -627,19 +654,27 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
     const handleSubmit = async () => {
         setUploadingProfile(true);
         try {
+            let nextLocation = { ...formData.location };
+            if (!Array.isArray(nextLocation.coordinates) || nextLocation.coordinates.length !== 2) {
+                const geo = await geocodeCity(formData.location?.city);
+                if (geo) {
+                    nextLocation = { ...nextLocation, city: geo.city, coordinates: geo.coordinates };
+                }
+            }
           const keywords = generateSearchKeywords(formData.name);
           const updatedFormData = {
             ...formData,
             completed: !!(formData.name && formData.picture),
             searchKeywords: keywords,
             email: user?.email,
+            location: nextLocation,
           };
-      
           await createMusicianProfile(formData.musicianId, updatedFormData, user.uid);
           await updateUserDocument(user.uid, {
             musicianProfile: arrayUnion(formData.musicianId),
           });
-      
+          console.log('updatedFormData', updatedFormData)
+          setMusicianProfile(updatedFormData);
           setUploadingProfile(false);
           toast.success('Musician Profile Saved');
         } catch (error) {

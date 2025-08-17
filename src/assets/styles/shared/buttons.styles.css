@@ -108,6 +108,9 @@ button {
     padding:var(--gn-btn-padding-y) 1.5rem;
     border-radius: var(--gn-btn-border-radius);
     color: var(--gn-white);
+    display: flex;
+    align-items: center;
+    gap:5px;
     transition: background-color 200ms linear, border-color 200ms linear;
 }
 

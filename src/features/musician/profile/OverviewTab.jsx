@@ -35,21 +35,8 @@ import {
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { EmptyIcon } from '../../shared/ui/extras/Icons';
-
-const VideoModal = ({ video, onClose }) => (
-    <div className="modal" onClick={onClose}>
-      <div className="modal-content transparent" onClick={(e) => e.stopPropagation()}>
-        <span className="close" onClick={onClose}>&times;</span>
-        <video controls autoPlay style={{ width: "100%" }}>
-          <source src={video.src} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-      </div>
-    </div>
-  );
   
-  export const OverviewTab = ({ musicianData, viewingOwnProfile, setShowPreview }) => {
-    const [activeVideo, setActiveVideo] = useState(null);
+  export const OverviewTab = ({ musicianData, viewingOwnProfile, setShowPreview, videoToPlay, setVideoToPlay }) => {
   
     const media = useMemo(() => {
       const imgs = (musicianData?.photos ?? []).map((src, i) => ({
@@ -60,9 +47,9 @@ const VideoModal = ({ video, onClose }) => (
       const vids = (musicianData?.videos ?? []).map((v, i) => ({
         id: `vid-${i}-${v.file}`,
         type: "video",
-        src: v.file,
+        file: v.file,
         poster: v.thumbnail || v.poster,
-        date: v.date, // optional
+        date: v.date,
       }));
   
       const anyDates = vids.some(v => !!v.date);
@@ -108,11 +95,11 @@ const VideoModal = ({ video, onClose }) => (
                 <button
                   type="button"
                   className="video-thumb"
-                  onClick={() => setActiveVideo(item)}
+                  onClick={() => setVideoToPlay(item)}
                   aria-label="Play video"
                 >
                   <video
-                    src={item.src}
+                    src={item.file}
                     poster={item.poster}
                     muted
                     playsInline
@@ -124,10 +111,6 @@ const VideoModal = ({ video, onClose }) => (
             </figure>
           ))}
         </div>
-  
-        {activeVideo && (
-          <VideoModal video={activeVideo} onClose={() => setActiveVideo(null)} />
-        )}
-      </div>
+        </div>
     );
   };

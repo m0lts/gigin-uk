@@ -20,7 +20,7 @@ import { GigFinder } from '@features/gig-discovery/GigFinder';
 import { GigPage } from '@features/gig-discovery/GigPage';
 import { MusicianDashboard } from '@features/musician/dashboard/Dashboard';
 import { ProfileCreator } from '@features/musician/profile-creator/ProfileCreator';
-import { MusicianProfile } from '@features/musician/profile/ViewingProfile';
+import { MusicianProfile } from '@features/musician/components/MusicianProfile';
 import { MessagePage } from '@features/musician/messages/MessagePage';
 import { MessagesLayout } from '@layouts/MessagesLayout';
 import { VenueDashboardLayout } from '@layouts/VenueDashboardLayout';

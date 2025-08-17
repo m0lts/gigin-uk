@@ -1,15 +1,29 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { EditIcon, StarIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/musician/musician-profile.styles.css'
 import { OverviewTab } from '@features/musician/profile/OverviewTab';
 import { MusicTab } from '@features/musician/profile/MusicTab';
 import { ReviewsTab } from '@features/musician/profile/ReviewsTab';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { PlayIcon, PlayVideoIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { InviteIconSolid, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
 import { AboutTab } from '../profile/AboutTab';
-import { getGigsByIds } from '../../../services/gigs';
+import { getGigsByIds, inviteToGig } from '../../../services/gigs';
 import Skeleton from 'react-loading-skeleton';
 import { openInNewTab } from '@services/utils/misc';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/musicians';
+import { Header as MusicianHeader } from '@features/musician/components/Header';
+import { Header as VenueHeader } from '@features/venue/components/Header';
+import { useResizeEffect } from '@hooks/useResizeEffect';
+import { getOrCreateConversation } from '../../../services/conversations';
+import { sendGigInvitationMessage } from '../../../services/messages';
+import { toast } from 'sonner';
+import { updateUserDocument } from '../../../services/users';
+import { validateVenueUser } from '../../../services/utils/validation';
+import { filterInvitableGigsForMusician } from '../../../services/utils/filtering';
+import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { arrayRemove, arrayUnion } from 'firebase/firestore';
+import { formatDate } from '@services/utils/dates';
+
 
 const VideoModal = ({ video, onClose }) => {
     return (
@@ -25,43 +39,155 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const MusicianProfile = ({ musicianProfile, viewingOwnProfile = false, setShowPreview }) => {
+export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingOwnProfile = false, setShowPreview, user, setAuthModal, setAuthType }) => {
+    const { musicianId: routeMusicianId } = useParams();
     const [activeTab, setActiveTab] = useState('home');
     const [upcomingGigs, setUpcomingGigs] = useState([]);
     const [loadingGigs, setLoadingGigs] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [videoToPlay, setVideoToPlay] = useState(null);
     const displayed = useMemo(() => (expanded ? upcomingGigs : upcomingGigs?.slice(0, 3) ?? []), [expanded, upcomingGigs]);
-
-    console.log(musicianProfile)
-
+    const [currentTrack, setCurrentTrack] = useState(null);
+    const audioRef = useRef(null);
     const navigate = useNavigate();
     const location = useLocation();
+    const [padding, setPadding] = useState('5%');
+    const [inviteMusicianModal, setInviteMusicianModal] = useState(false);
+    const [usersGigs, setUsersGigs] = useState([]);
+    const [musicianSaved, setMusicianSaved] = useState(false);
+    const [savingMusician, setSavingMusician] = useState(false);
+    const [selectedGig, setSelectedGig] = useState();
+
+
+    useResizeEffect((width) => {
+        if (width > 1100) {
+          setPadding('15vw');
+        } else {
+          setPadding('1rem');
+        }
+      });
+
+
+    // Local state for fetched profile (when coming from public route)
+    const [fetchedProfile, setFetchedProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileError, setProfileError] = useState(null);
+
+    // Unified source of truth for the profile
+    const profile = useMemo(
+        () => musicianProfileProp ?? fetchedProfile,
+        [musicianProfileProp, fetchedProfile]
+    );
+
+    // Fetch when no prop provided
+    useEffect(() => {
+        if (musicianProfileProp) return; // dashboard flow, nothing to fetch
+        if (!routeMusicianId) return;
+
+        let cancelled = false;
+        (async () => {
+        try {
+            setProfileLoading(true);
+            setProfileError(null);
+            const p = await getMusicianProfileByMusicianId(routeMusicianId);
+            if (!cancelled) setFetchedProfile(p || null);
+        } catch (e) {
+            console.error("Failed to load musician profile", e);
+            if (!cancelled) setProfileError("Unable to load musician profile.");
+        } finally {
+            if (!cancelled) setProfileLoading(false);
+        }
+        })();
+
+        const getSavedMusicians = async () => {
+            if (user?.savedMusicians && user.savedMusicians.length > 0) {
+                const activeMusicianSaved = user.savedMusicians.includes(routeMusicianId);
+                setMusicianSaved(!!activeMusicianSaved);
+            } else {
+                setMusicianSaved(false);
+            }
+        }
+        getSavedMusicians();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [musicianProfileProp, routeMusicianId]);
+    
+    const handlePlayTrack = (track) => {
+      setCurrentTrack(track);
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.play();
+        }
+      }, 0);
+    };
+    
+    const handleStopTrack = () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setCurrentTrack(null);
+    };
 
     useEffect(() => {
-        const fetchUpcomingGigs = async () => {
-            if (!musicianProfile?.confirmedGigs?.length) return;
-            try {
-                setLoadingGigs(true);
-                const gigs = await getGigsByIds(musicianProfile.confirmedGigs);
-                setUpcomingGigs(gigs);
-            } catch (error) {
-                console.error("Error fetching gigs:", error);
-            } finally {
-                setLoadingGigs(false);
-            }
+        const confirmed = profile?.confirmedGigs;
+        if (!confirmed?.length) {
+          setUpcomingGigs([]);
+          return;
+        }
+        const ids = confirmed
+          .map((g) => (typeof g === "string" ? g : g?.gigId))
+          .filter(Boolean);
+    
+        if (ids.length === 0) {
+          setUpcomingGigs([]);
+          return;
+        }
+    
+        let cancelled = false;
+        (async () => {
+          try {
+            setLoadingGigs(true);
+            const gigs = await getGigsByIds(ids);
+            if (!cancelled) setUpcomingGigs(gigs || []);
+          } catch (error) {
+            console.error("Error fetching gigs:", error);
+            if (!cancelled) setUpcomingGigs([]);
+          } finally {
+            if (!cancelled) setLoadingGigs(false);
+          }
+        })();
+    
+        return () => {
+          cancelled = true;
         };
-        fetchUpcomingGigs();
-    }, [musicianProfile?.confirmedGigs]);
+      }, [profile?.confirmedGigs]);
+
+      const handleBuildGigForMusician = () => {
+        navigate('/venues/dashboard', { state: {
+            musicianData: {
+                id: profile.id,
+                type: profile.musicianType,
+                plays: profile.musicType,
+                genres: profile.genres,
+                name: profile.name,
+                bandProfile: profile.bandProfile,
+            },
+            buildingForMusician: true,
+            showGigPostModal: true,
+        }})
+    }
 
     const renderActiveTabContent = () => {
         switch (activeTab) {
             case 'home':
-                return <OverviewTab musicianData={musicianProfile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} />; 
+                return <OverviewTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} videoToPlay={videoToPlay} setVideoToPlay={setVideoToPlay} />; 
             case 'about':
-                return <AboutTab musicianData={musicianProfile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} />;
+                return <AboutTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} />;
             case 'prev-shows':
-                return <ReviewsTab profile={musicianProfile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} />;
+                return <ReviewsTab profile={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} />;
             default:
                 return null;
         }        
@@ -71,135 +197,388 @@ export const MusicianProfile = ({ musicianProfile, viewingOwnProfile = false, se
         setVideoToPlay(null);
     };
 
-    return (
-        <div className="musician-profile">
-            {!viewingOwnProfile && (
-                <div className='musician-profile-hero'>
-                    <img src={musicianProfile?.picture} alt={musicianProfile.name} className='background-image' />
-                    <div className="primary-information">
-                        {!musicianProfile?.verified && (
-                            <div className="verified-tag">
-                                <VerifiedIcon />
-                                <p>Verified Musician</p>
-                            </div>
-                        )}
-                        <h1 className="venue-name">
-                            {musicianProfile?.name}
-                            <span className='orange-dot'>.</span>
-                        </h1>
-                        <h4 className="number-of-gigs">
-                            {musicianProfile?.gigsPerformed} Gigs Performed
-                        </h4>
-                        <div className="action-buttons">
-                            <button className="btn quaternary" onClick={() => handleSendMusicianInvite(musicianProfile.id)}>
-                                Invite to Gig
-                            </button>
-                            <button className="btn quaternary" onClick={() => handleSaveMusician(musicianProfile.id)}>
-                                Save Musician
-                            </button>
+    if (!musicianProfileProp && (profileLoading || !profile) && !profileError) {
+        return <div className="musician-profile"><p>Loading profile…</p></div>;
+    }
+
+    if (profileError) {
+        return (
+          <div className="musician-profile">
+            <p className="error">{profileError}</p>
+          </div>
+        );
+    }
+
+    const handleSendMusicianInvite = async (gigData) => {
+        if (!profile || !gigData) {
+          return;
+        }
+      
+        const venueToSend = user.venueProfiles.find(venue => venue.id === gigData.venueId);
+        if (!venueToSend) {
+          console.error('Venue not found in user profiles.');
+          return;
+        }
+      
+        try {
+          await inviteToGig(gigData.gigId, profile);
+      
+          const newGigApplicationEntry = {
+            gigId: gigData.gigId,
+            profileId: profile.musicianId,
+            name: profile.name,
+          };
+      
+          const updatedGigApplicationsArray = profile.gigApplications
+            ? [...profile.gigApplications, newGigApplicationEntry]
+            : [newGigApplicationEntry];
+      
+          await updateMusicianProfile(profile.musicianId, {
+            gigApplications: updatedGigApplicationsArray,
+          });
+      
+          const conversationId = await getOrCreateConversation(
+            profile,
+            gigData,
+            venueToSend,
+            'invitation'
+          );
+      
+          await sendGigInvitationMessage(conversationId, {
+            senderId: user.uid,
+            text: `${venueToSend.accountName} invited ${profile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(
+              gigData.date
+            )} for ${gigData.budget}.`,
+          });
+      
+          setInviteMusicianModal(false);
+          toast.success(`Invite sent to ${profile.name}`);
+        } catch (error) {
+          console.error('Error while creating or fetching conversation:', error);
+          toast.error('Error inviting musician. Please try again.');
+        }
+      };
+      
+      const handleSaveMusician = async () => {
+        if (user && routeMusicianId) {
+          setSavingMusician(true);
+          try {
+            await updateUserDocument(user.uid, {
+              savedMusicians: arrayUnion(routeMusicianId),
+            });
+            setMusicianSaved(true);
+            toast.success('Musician Saved.');
+          } catch (error) {
+            console.error('Error saving musician:', error);
+            toast.error('Failed to save musician. Please try again.');
+          } finally {
+            setSavingMusician(false);
+          }
+        }
+      };
+      
+      const handleUnsaveMusician = async () => {
+        if (user && routeMusicianId) {
+          setSavingMusician(true);
+          try {
+            await updateUserDocument(user.uid, {
+              savedMusicians: arrayRemove(routeMusicianId),
+            });
+            setMusicianSaved(false);
+            toast.success('Musician Unsaved.');
+          } catch (error) {
+            console.error('Error unsaving musician:', error);
+            toast.error('Failed to unsave musician. Please try again.');
+          } finally {
+            setSavingMusician(false);
+          }
+        }
+      };
+      
+      const handleInviteMusician = async () => {
+        const { valid, venueProfiles } = validateVenueUser({
+          user,
+          setAuthModal,
+          setAuthType,
+          showAlert: (msg) => alert(msg),
+        });
+      
+        if (!valid) return;
+      
+        const gigIds = venueProfiles.flatMap(venueProfile => venueProfile.gigs || []);
+      
+        try {
+          const fetchedGigs = await getGigsByIds(gigIds);
+          const availableGigs = filterInvitableGigsForMusician(fetchedGigs, routeMusicianId);
+      
+          setInviteMusicianModal(true);
+          setUsersGigs(availableGigs);
+        } catch (error) {
+          console.error('Error fetching future gigs:', error);
+          toast.error('We encountered an error. Please try again.');
+        }
+      };
+
+
+return (
+    <div className="musician-profile">
+      {!viewingOwnProfile && (
+        <>
+            {user.venueProfiles && user.venueProfiles.length > 0 ? (
+                <VenueHeader
+                    user={user}
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    padding={padding}
+                />
+            ) : (
+                <MusicianHeader
+                    user={user}
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                />
+            )}
+            <div className={`musician-profile-hero ${padding === '15vw' ? 'large-padding' : 'normal-padding'}`}>
+                <img
+                    src={profile?.picture}
+                    alt={profile?.name}
+                    className="background-image"
+                />
+                <div className="primary-information">
+                    {profile?.verified && (
+                    <div className="verified-tag">
+                        <VerifiedIcon />
+                        <p>Verified Musician</p>
+                    </div>
+                    )}
+                    <h1 className="venue-name">
+                    {profile?.name}
+                    <span className="orange-dot">.</span>
+                    </h1>
+                    <h4 className="number-of-gigs">
+                    {profile?.gigsPerformed} Gigs Performed
+                    </h4>
+                    <div className="action-buttons">
+                    <button
+                        className="btn quaternary"
+                        onClick={() => handleInviteMusician()}
+                    >
+                        Invite to Gig
+                    </button>
+                    {!musicianSaved ? (
+                        <button className='btn quaternary' onClick={handleSaveMusician}>
+                            {savingMusician ? (
+                                <LoadingThreeDots />
+                            ) : (
+                                <>
+                                    <SaveIcon />
+                                    Save
+                                </>
+                            )}
+                        </button>
+                    ) : (
+                        <button className='btn quaternary' onClick={handleUnsaveMusician}>
+                            {savingMusician ? (
+                                <LoadingThreeDots />
+                            ) : (
+                                <>
+                                    <SavedIcon />
+                                    Unsave
+                                </>
+                            )}
+                        </button>   
+                    )}
+                    </div>
+                </div>
+            </div>
+        </>
+      )}
+
+      <div className="musician-profile-body" style={{ padding: `0 ${padding}` }}>
+        <div className="musician-profile-information-container">
+          {(profile?.bio || profile?.videos?.length || profile?.tracks?.length) && (
+            <div className="musician-profile-bio-buttons-container">
+              {profile?.bio?.text && <h4>{profile.bio.text}</h4>}
+              <div className="play-buttons">
+                {!!profile?.videos?.length && (
+                  <button
+                    className="btn icon"
+                    onClick={() => setVideoToPlay(profile.videos[0])}
+                  >
+                    <PlayVideoIcon />
+                  </button>
+                )}
+                {!!profile?.tracks?.length && (
+                  <button
+                    className="btn icon"
+                    onClick={() => handlePlayTrack(profile.tracks[0])}
+                  >
+                    <PlayIcon />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="musician-profile-information">
+            <nav
+              className="musician-profile-tabs"
+              style={{ margin: location.pathname.includes("dashboard") ? "0 5%" : undefined }}
+            >
+              <p
+                onClick={() => setActiveTab("home")}
+                className={`musician-profile-tab ${activeTab === "home" ? "active" : ""}`}
+              >
+                Home
+              </p>
+              <p
+                onClick={() => setActiveTab("prev-shows")}
+                className={`musician-profile-tab ${activeTab === "prev-shows" ? "active" : ""}`}
+              >
+                Previous Shows
+              </p>
+              <p
+                onClick={() => setActiveTab("about")}
+                className={`musician-profile-tab ${activeTab === "about" ? "active" : ""}`}
+              >
+                About
+              </p>
+            </nav>
+
+            <div className="musician-profile-sections">{renderActiveTabContent()}</div>
+          </div>
+        </div>
+
+        <div className="musician-profile-gigs-and-tracks">
+          {!!profile?.confirmedGigs?.length && (
+            <>
+              {currentTrack && (
+                <div className="track-player">
+                  <div className="track-info">
+                    <h4>Now playing: {currentTrack.title}</h4>
+                    <button className="btn text" onClick={handleStopTrack}>
+                      Close
+                    </button>
+                  </div>
+                  <audio
+                    ref={audioRef}
+                    controls
+                    autoPlay
+                    src={currentTrack.file}
+                    onEnded={handleStopTrack}
+                  />
+                </div>
+              )}
+
+              <div className="gigs-box">
+                {loadingGigs ? (
+                  <Skeleton width={"100%"} height={250} />
+                ) : upcomingGigs.length > 0 ? (
+                  <>
+                    <div className="gigs-box-header">
+                      <h3>Upcoming Gigs</h3>
+                      {upcomingGigs.length > 3 && (
+                        <button
+                          type="button"
+                          className="btn text"
+                          onClick={() => setExpanded((v) => !v)}
+                          aria-expanded={expanded}
+                        >
+                          {expanded ? "See less" : `See more (${upcomingGigs.length - 3})`}
+                        </button>
+                      )}
+                    </div>
+
+                    {displayed.map((gig) => {
+                      const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
+                      const day = gigDate.toLocaleDateString("en-US", { day: "2-digit" });
+                      const month = gigDate.toLocaleDateString("en-US", { month: "short" });
+
+                      return (
+                        <div key={gig.id || gig.gigId} className="gig-card">
+                          <div className="date-box">
+                            <h4 className="month">{month.toUpperCase()}</h4>
+                            <h2 className="day">{day}</h2>
+                          </div>
+                          <div className="gig-type">
+                            <h4>{gig.gigName}</h4>
+                          </div>
+                          <button
+                            className="btn tertiary"
+                            onClick={(e) => openInNewTab(`/gig/${gig.gigId ?? gig.id}`, e)}
+                          >
+                            Open
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <p>No upcoming gigs found</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {!!profile?.tracks?.length && (
+            <div className="musician-tracks">
+              <h3>Listen</h3>
+              <ul className="track-list">
+                {profile.tracks.map((track) => (
+                  <li key={track?.id || track?.file} className="track-item">
+                    <button
+                      type="button"
+                      className="btn icon"
+                      onClick={() => handlePlayTrack(track)}
+                      aria-label={`Play ${track?.title}`}
+                    >
+                      <PlayIcon />
+                    </button>
+                    <span className="track-name">{track?.title}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
+        {inviteMusicianModal && (
+                <div className='modal'>
+                    <div className='modal-content'>
+                        <div className="modal-header">
+                            <InviteIconSolid />
+                            <h2>Invite {profile.name} to a Gig?</h2>
+                            {usersGigs.length > 0 ? (
+                                <p>Select a gig you've already posted, or click 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
+                            ) : (
+                                <p>You have no gig posts availabe for invitation. You can create one by clicking 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
+                            )}
+                        </div>
+                        <div className='gig-selection'>
+                            {usersGigs.length > 0 && (
+                                usersGigs.map((gig, index) => (
+                                    <div className={`card ${selectedGig === gig ? 'selected' : ''}`} key={index} onClick={() => setSelectedGig(gig)}>
+                                        <div className="gig-details">
+                                            <h4 className='text'>{gig.gigName}</h4>
+                                            <h5>{gig.venue.venueName}</h5>
+                                        </div>
+                                        <p className='sub-text'>{formatDate(gig.date, 'short')} - {gig.startTime}</p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <button className="btn secondary" onClick={handleBuildGigForMusician}>
+                            Build New Gig For Musician
+                        </button>
+                        <div className='two-buttons'>
+                            <button className='btn tertiary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>
+                            <button className='btn primary' disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
                         </div>
                     </div>
                 </div>
             )}
-            <div className="musician-profile-body">
-                <div className="musician-profile-information-container">
-                    {(musicianProfile?.bio || musicianProfile?.videos || musicianProfile?.tracks) && (
-                        <div className="musician-profile-bio-buttons-container">
-                            {musicianProfile?.bio && (
-                                <h4>{musicianProfile.bio.text}</h4>
-                            )}
-                            <div className="play-buttons">
-                                {musicianProfile?.videos.length > 0 && (
-                                    <button className="btn icon" onClick={() => setVideoToPlay(musicianProfile?.videos[0])}>
-                                        <PlayIcon />
-                                    </button>
-                                )}
-                                {musicianProfile?.tracks.length > 0 && (
-                                    <button className="btn icon" onClick={() => handlePlayTrack(musicianProfile?.tracks[0])}>
-                                        <PlayVideoIcon />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    <div className="musician-profile-information">
-                        <nav className='musician-profile-tabs' style={{
-                                margin: location.pathname.includes('dashboard') ? '0 5%' : undefined,
-                            }}>
-                            <p onClick={() => setActiveTab('home')} className={`musician-profile-tab ${activeTab === 'home' ? 'active' : ''}`}>
-                                Home
-                            </p>
-                            <p onClick={() => setActiveTab('prev-shows')} className={`musician-profile-tab ${activeTab === 'prev-shows' ? 'active' : ''}`}>
-                                Previous Shows
-                            </p>
-                            <p onClick={() => setActiveTab('about')} className={`musician-profile-tab ${activeTab === 'about' ? 'active' : ''}`}>
-                                About
-                            </p>
-                        </nav>
-                        <div className='musician-profile-sections'>
-                            {renderActiveTabContent()}
-                        </div>
-                    </div>
-                </div>
-                <div className="musician-profile-gigs-and-tracks">
-                    {musicianProfile?.confirmedGigs?.length > 0 && (
-                        <div className="gigs-box">
-                            {loadingGigs ? (
-                                <Skeleton width={'100%'} height={250} />
-                            ) : upcomingGigs.length > 0 ? (
-                                <>
-                                    <div className="gigs-box-header">
-                                        <h3>Upcoming Gigs</h3>
-                                        {upcomingGigs?.length > 3 && (
-                                            <button
-                                            type="button"
-                                            className="btn text"
-                                            onClick={() => setExpanded(v => !v)}
-                                            aria-expanded={expanded}
-                                            >
-                                            {expanded ? "See less" : `See more (${upcomingGigs.length - 3})`}
-                                            </button>
-                                        )}
-                                    </div>
-                                    {displayed.map((gig) => {
-                                        const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
-                                        const day = gigDate.toLocaleDateString("en-US", { day: "2-digit" });
-                                        const month = gigDate.toLocaleDateString("en-US", { month: "short" });
-                                        return (
-                                            <div key={gig.id} className="gig-card">
-                                                <div className="date-box">
-                                                    <h4 className="month">{month.toUpperCase()}</h4>
-                                                    <h2 className="day">{day}</h2>
-                                                </div>
-                                                <div className="gig-type">
-                                                    <h4>{gig.gigName}</h4>
-                                                </div>
-                                                <button
-                                                className="btn tertiary"
-                                                onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}
-                                                >
-                                                Open
-                                                </button>
-                                            </div>
-                                        )
-                                    })}
-                                </>
-                            ) : (
-                                <p>No upcoming gigs found</p>
-                            )}
-                        </div>
-                    )}
-                    {musicianProfile?.tracks.length > 0 && (
-                        <div className="musician-tracks">
-                            <h3>Listen</h3>
-                            {musicianProfile.tracks.map((track) => (
-                                <p key={track?.id}>{track?.name}</p>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-            {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
-        </div>
-    )
+    </div>
+  );
 };

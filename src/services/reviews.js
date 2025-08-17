@@ -143,7 +143,7 @@ export const getReviewsByVenueIds = async (venueIds) => {
 export const getReviewsByMusicianId = async (musicianId) => {
     const q = query(collection(firestore, 'reviews'), where('musicianId', '==', musicianId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ref: doc.ref, ...doc.data() }));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 /**
