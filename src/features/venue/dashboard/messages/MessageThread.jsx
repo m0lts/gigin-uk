@@ -18,6 +18,7 @@ import { CalendarIconSolid } from '../../../shared/ui/extras/Icons';
 import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
@@ -33,6 +34,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const [paymentSuccess, setPaymentSuccess] = useState(false);
     const [makingPayment, setMakingPayment] = useState(false);
     const [paymentMessageId, setPaymentMessageId] = useState();
+    const [paymentIntentId, setPaymentIntentId] = useState(null);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const navigate = useNavigate();
 
@@ -241,10 +243,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     };
 
+
     const handleCompletePayment = async () => {
         setLoadingPaymentDetails(true);
         await fetchSavedCardsAndModal();
-    };
+        setPaymentIntentId(null);
+      };
 
     const fetchSavedCardsAndModal = async () => {
         try {
@@ -276,7 +280,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 toast.info("Processing your payment...");
             } else if (result.requiresAction && result.clientSecret) {
                 const stripe = await stripePromise;
-                const { error, paymentIntent } = await stripe.confirmCardPayment(result.clientSecret, { payment_method: result.paymentMethodId || cardId });
+                const { error } = await stripe.confirmCardPayment(result.clientSecret, { payment_method: result.paymentMethodId || cardId });
                 if (error) {
                   setPaymentSuccess(false);
                   toast.error(error.message || 'Authentication failed. Please try another card.');
@@ -702,17 +706,21 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 <button type='submit' className='btn primary'><SendMessageIcon /></button>
             </form>
             {showPaymentModal && (
-                <PaymentModal 
-                    savedCards={savedCards}
-                    onSelectCard={handleSelectCard}
-                    onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
-                    gigData={gigData}
-                    setMakingPayment={setMakingPayment}
-                    makingPayment={makingPayment}
-                    setPaymentSuccess={setPaymentSuccess}
-                    paymentSuccess={paymentSuccess}
-                    setSavedCards={setSavedCards}
-                />
+                <Elements stripe={stripePromise}>
+                    <PaymentModal 
+                        savedCards={savedCards}
+                        onSelectCard={handleSelectCard}
+                        onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
+                        gigData={gigData}
+                        setMakingPayment={setMakingPayment}
+                        makingPayment={makingPayment}
+                        setPaymentSuccess={setPaymentSuccess}
+                        paymentSuccess={paymentSuccess}
+                        setSavedCards={setSavedCards}
+                        paymentIntentId={paymentIntentId}
+                        setPaymentIntentId={setPaymentIntentId} 
+                    />
+                </Elements>
             )}
             {showReviewModal &&
                 <ReviewModal

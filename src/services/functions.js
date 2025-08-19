@@ -42,6 +42,28 @@ export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId }) 
   };
 
 /**
+ * Confirms payment for a gig using a saved card.
+ * @param {Object} options
+ * @param {string} options.cardId - The Stripe payment method ID.
+ * @param {Object} options.gigData - The full gig object.
+ * @returns {Promise<{ success: boolean, error?: string }>}
+ */
+export const confirmPaymentIntent = async ({ amountToCharge, gigData }) => {
+  try {
+    if (!amountToCharge) throw new Error('Missing agreed fee');
+    const confirmPayment = httpsCallable(functions, 'createGigPaymentIntent');
+    const response = await confirmPayment({
+      amountToCharge,
+      gigData,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(error)
+    return error;
+  }
+  };
+
+/**
  * Triggers a payout to a musician's connected bank account.
  * @param {string} musicianId
  * @param {number} amount - Amount in decimal (not cents)

@@ -397,6 +397,42 @@ exports.confirmPayment = onCall(
       }
     });
 
+exports.createGigPaymentIntent = onCall(
+    {
+      secrets: [stripeLiveKey, stripeTestKey],
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
+    async (request) => {
+      const {auth} = request;
+      if (!auth) {
+        throw new Error("User must be authenticated.");
+      }
+      const {amountToCharge, gigData} = request.data;
+      if (!amountToCharge || !gigData.gigId) throw new Error("Missing inputs.");
+      const userId = auth.uid;
+      const userSnap =
+    await admin.firestore().collection("users").doc(userId).get();
+      const customerId = userSnap.data().stripeCustomerId;
+      if (!customerId) throw new Error("Stripe customer ID not found.");
+      const key = getStripeKey(); sanityCheckKey(key);
+      const stripe = new Stripe(key);
+      const pi = await stripe.paymentIntents.create({
+        amount: amountToCharge,
+        currency: "gbp",
+        customer: customerId,
+        automatic_payment_methods: {enabled: true},
+        metadata: {
+          gigId: gigData.gigId,
+          venueId: gigData.venueId,
+          venueName: gigData.venue.venueName || "",
+        },
+      });
+
+      return {clientSecret: pi.client_secret, paymentIntentId: pi.id};
+    },
+);
+
 exports.getCustomerData = onCall(
     {
       secrets: [stripeLiveKey, stripeTestKey],

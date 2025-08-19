@@ -8,6 +8,7 @@ import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
 import { CardIcon, ClockIcon, LeftArrowIcon } from '../../shared/ui/extras/Icons';
 import { listenToPaymentStatus } from '../../../services/payments';
+import { WalletButton } from './WalletButton';
 
 
 
@@ -21,7 +22,8 @@ export const PaymentModal = ({
     paymentSuccess,
     setPaymentSuccess,
     setSavedCards,
-    paymentIntentId
+    paymentIntentId,
+    setPaymentIntentId,
   }) => {
     const [selectedCardId, setSelectedCardId] = useState(null);
     const [addingNewCard, setAddingNewCard] = useState(false);
@@ -122,6 +124,16 @@ export const PaymentModal = ({
                         </div>
                     </div>
                 )}
+              <div className="wallets">
+              <WalletButton
+                amountToCharge={Math.round(parseFloat(gigData.agreedFee.replace('£','')) * 1.05 * 100)}
+                gigData={gigData}
+                onSucceeded={(piId) => {
+                  setPaymentIntentId?.(piId);     // <-- set the PI so the listener can attach
+                  setMakingPayment(true);         // show processing state while listener runs
+                }}
+              />
+              </div>
               <h3 className="subtitle">Select a saved card</h3>
               <ul className="card-list">
                 {savedCards.map((card) => (
