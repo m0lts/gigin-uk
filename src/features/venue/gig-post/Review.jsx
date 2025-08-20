@@ -5,7 +5,7 @@ import { saveGigTemplate } from '@services/gigs';
 import { toast } from 'sonner';
 import { ExclamationIcon, NewTabIcon } from '../../shared/ui/extras/Icons';
 
-export const GigReview = ({ formData, handleInputChange, setStage, buildingForMusician, buildingForMusicianData }) => {
+export const GigReview = ({ formData, handleInputChange, setStage, buildingForMusician, buildingForMusicianData, multipleSlots, numberOfSlots }) => {
 
     const [saving, setSaving] = useState(false);
     const [templateName, setTemplateName] = useState('');
@@ -214,6 +214,20 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                                 <EditIcon />
                             </button>
                         </div>
+                        <div className="review-box">
+                            <div className="value">
+                                <h4 style={{ marginBottom: 6 }}>
+                                    {!multipleSlots ? (
+                                        "Single performer (no slot split)"
+                                    ) : (
+                                        `Multiple performers: ${numberOfSlots || 0} slots`
+                                    )}
+                                </h4>
+                            </div>
+                            <button className="btn text" onClick={() => setStage(10)}>
+                                <EditIcon />
+                            </button>
+                            </div>
                     </div>
                     <div className='review-right'>
                         {(formData.dateUndecided === false && !buildingForMusician) && (

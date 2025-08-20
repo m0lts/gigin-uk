@@ -24,6 +24,33 @@ import { getMusicianProfileByMusicianId } from '../../../services/musicians';
 import { sendGigInvitationMessage } from '../../../services/messages';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { geohashForLocation } from 'geofire-common';
+import { GigSlots } from './GigSlots';
+
+function addMinutesToTimeStr(timeStr, minutesToAdd) {
+    if (!timeStr) return "";
+    const [h, m] = timeStr.split(":").map(Number);
+    const base = new Date(1970, 0, 1, h || 0, m || 0, 0, 0);
+    base.setMinutes(base.getMinutes() + (minutesToAdd || 0));
+    const hh = String(base.getHours()).padStart(2, "0");
+    const mm = String(base.getMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
+  }
+  
+function formatPounds(amount) {
+    if (amount == null || isNaN(amount)) return "£0";
+    const rounded = Math.round(amount * 100) / 100;
+    return Number.isInteger(rounded) ? `£${rounded}` : `£${rounded.toFixed(2)}`;
+}
+  
+function buildSlotDurations(totalMinutes, numberOfSlots, slotSplits) {
+    if (Array.isArray(slotSplits) && slotSplits.length === numberOfSlots) {
+      return slotSplits.map(n => Math.max(0, Number(n) || 0));
+    }
+    const base = Math.floor(totalMinutes / numberOfSlots);
+    const remainder = totalMinutes % numberOfSlots;
+    const arr = Array.from({ length: numberOfSlots }, (_, i) => base + (i === numberOfSlots - 1 ? remainder : 0));
+    return arr;
+}
 
 export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData }) => {
     const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
@@ -237,6 +264,11 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 return;
             }
         }
+
+        if (stage === 10) {
+            setStage(prevStage => prevStage + 1);
+        }
+
     };
     
     const prevStage = () => {
@@ -346,12 +378,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                         setStage={setStage}
                         error={error}
                         setError={setError}
-                        multipleSlots={multipleSlots}
-                        setMultipleSlots={setMultipleSlots}
-                        numberOfSlots={numberOfSlots}
-                        setNumberOfSlots={setNumberOfSlots}
-                        slotSplits={slotSplits}
-                        setSlotSplits={setSlotSplits}
                     />
                 );
             case 9:
@@ -384,7 +410,19 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                         />
                     );
                 }
-            case 10:
+            case 10: 
+                return (
+                    <GigSlots
+                        formData={formData}
+                        multipleSlots={multipleSlots}
+                        setMultipleSlots={setMultipleSlots}
+                        numberOfSlots={numberOfSlots}
+                        setNumberOfSlots={setNumberOfSlots}
+                        slotSplits={slotSplits}
+                        setSlotSplits={setSlotSplits}
+                    />
+                )
+            case 11:
                 return (
                     <GigReview
                         formData={formData}
@@ -396,7 +434,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                         buildingForMusicianData={buildingForMusicianData}
                         multipleSlots={multipleSlots}
                         numberOfSlots={numberOfSlots}
-                        slotSplits={slotSplits}
                     />
                 );
             default:
@@ -406,9 +443,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
 
     const getProgressPercentage = () => {
         if (templates.length > 0 || incompleteGigs.length > 0) {
-            return ((stage) / 10) * 100;
+            return ((stage) / 11) * 100;
         } else {
-            return ((stage) / 10) * 100;
+            return ((stage) / 11) * 100;
         }
     };
 
@@ -447,85 +484,109 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
     const handlePostGig = async () => {
         setLoading(true);
         try {
-            const startDate = new Date(formData.date);
-            let gigDocuments = [];
-            if (formData.repeatData.repeat !== 'no') {
-                const repeatType = formData.repeatData.repeat;
-                const endAfter = parseInt(formData.repeatData.endAfter, 10);
-                const endDate = formData.repeatData.endDate ? new Date(formData.repeatData.endDate) : null;
-                let i = 0;
-                while (true) {
-                    let newDate;
-                    switch (repeatType) {
-                        case 'daily':
-                        newDate = addDays(startDate, i);
-                        break;
-                        case 'weekly':
-                        newDate = addWeeks(startDate, i);
-                        break;
-                        case 'monthly':
-                        newDate = addMonths(startDate, i);
-                        break;
-                        default:
-                        newDate = startDate;
-                    }
-                    const localDate = new Date(newDate.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-                    if (endDate && localDate > endDate) {
-                        break;
-                    }
-                    const newGig = {
-                        ...formData,
-                        gigId: uuidv4(),
-                        date: localDate,
-                        createdAt: new Date(),
-                        complete: true,
-                        startDateTime: getStartDateTime(localDate, formData.startTime),
-                        ...getGeoField(formData.coordinates),
-                        budgetValue: getBudgetValue(formData.budget),
-                    };
-                    delete newGig.repeatData;
-                    gigDocuments.push(newGig);
-                    i++;
-                    if (endAfter && i >= endAfter) {
-                        break;
-                    }
+            const repeatEnabled = !!formData.repeatData && formData.repeatData.repeat && formData.repeatData.repeat !== "no";
+            const totalBudgetValue = getBudgetValue(formData.budget) || 0;
+            const buildOccurrences = () => {
+              const occurrences = [];
+              const startDate = new Date(formData.date);
+              if (!repeatEnabled) {
+                occurrences.push(startDate);
+                return occurrences;
+              }
+              const repeatType = formData.repeatData.repeat;
+              const endAfter = parseInt(formData.repeatData.endAfter, 10) || undefined;
+              const endDate = formData.repeatData.endDate ? new Date(formData.repeatData.endDate) : null;
+              let i = 0;
+              while (true) {
+                let next;
+                switch (repeatType) {
+                  case "daily":
+                    next = addDays(startDate, i);
+                    break;
+                  case "weekly":
+                    next = addWeeks(startDate, i);
+                    break;
+                  case "monthly":
+                    next = addMonths(startDate, i);
+                    break;
+                  default:
+                    next = startDate;
                 }
-            } else {
-                const singleGig = {
+                const localDate = new Date(next.toLocaleString("en-US", { timeZone: "Europe/London" }));
+                if (endDate && localDate > endDate) break;
+                occurrences.push(localDate);
+                i += 1;
+                if (endAfter && i >= endAfter) break;
+              }
+              return occurrences;
+            };
+            const occurrences = buildOccurrences();
+            const allGigsToPost = [];
+            let firstGigDoc = null;
+            for (const occDate of occurrences) {
+              if (multipleSlots && Number(numberOfSlots) > 1) {
+                const slots = Number(numberOfSlots);
+                const slotDurations = buildSlotDurations(Number(formData.duration || 0), slots, slotSplits);
+                const perSlotBudget = totalBudgetValue / slots;
+                const groupIds = Array.from({ length: slots }, () => uuidv4());
+                let cumulativeOffset = 0;
+                for (let i = 0; i < slots; i += 1) {
+                  const slotId = groupIds[i];
+                  const slotDuration = slotDurations[i];
+                  const slotStartTime = addMinutesToTimeStr(formData.startTime, cumulativeOffset);
+                  cumulativeOffset += slotDuration;
+                  const slotBudgetText = formatPounds(perSlotBudget);
+                  const slotGig = {
                     ...formData,
+                    gigId: slotId,
+                    date: occDate,
+                    gigName: `${formData.gigName} (Slot ${i + 1})`,
                     createdAt: new Date(),
                     complete: true,
-                    startDateTime: getStartDateTime(formData.date, formData.startTime),
+                    startDateTime: getStartDateTime(occDate, slotStartTime),
+                    startTime: slotStartTime,
+                    duration: slotDuration,
+                    budget: slotBudgetText,
                     ...getGeoField(formData.coordinates),
-                    budgetValue: getBudgetValue(formData.budget),
-                };
-                if (buildingForMusician) {
-                    const invitationPackage = {
-                        id: buildingForMusicianData.id,
-                        timestamp: Timestamp.now(),
-                        fee: formData.budget || '£0',
-                        status: 'pending',
-                        invited: true,
-                        type: buildingForMusicianData.bandProfile ? 'band' : 'musician'
-                    }
-                    if (!Array.isArray(singleGig.applicants)) {
-                        singleGig.applicants = [];
-                    }
-                    singleGig.applicants.push(invitationPackage);
+                    budgetValue: perSlotBudget,
+                    gigSlots: groupIds.filter(id => id !== slotId),
+                  };
+                  delete slotGig.repeatData;
+                  allGigsToPost.push(slotGig);
+                  if (!firstGigDoc) firstGigDoc = slotGig;
                 }
+              } else {
+                const singleGig = {
+                  ...formData,
+                  date: occDate,
+                  createdAt: new Date(),
+                  complete: true,
+                  startDateTime: getStartDateTime(occDate, formData.startTime),
+                  ...getGeoField(formData.coordinates),
+                  budgetValue: getBudgetValue(formData.budget),
+                };
                 delete singleGig.repeatData;
-                gigDocuments.push(singleGig);
+                allGigsToPost.push(singleGig);
+                if (!firstGigDoc) firstGigDoc = singleGig;
+              }
             }
-          await postMultipleGigs(formData.venueId, gigDocuments)
-          if (buildingForMusician) {
-              const venueToSend = user.venueProfiles.find(venue => venue.id === formData.venueId);
+            await postMultipleGigs(formData.venueId, allGigsToPost);
+            if (buildingForMusician && firstGigDoc) {
+              const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
               const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
-              const conversationId = await getOrCreateConversation(musicianProfile, formData, venueToSend, 'invitation');
+              const conversationId = await getOrCreateConversation(
+                musicianProfile,
+                firstGigDoc,
+                venueToSend,
+                "invitation"
+              );
+            
               await sendGigInvitationMessage(conversationId, {
-                  senderId: user.uid,
-                  text: `${venueToSend.accountName} has invited you to play at their gig at ${formData.venue.venueName} on the ${formatDate(formData.date)} for ${formData.budget}.
-                  ${formData.privateApplicationsLink ? `Follow this link to apply: ${formData.privateApplicationsLink}` : ''}`,
-                })
+                senderId: user.uid,
+                text: `${venueToSend.accountName} has invited you to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date)} for ${firstGigDoc.budget}.
+                  ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
+              });
+            
               setBuildingForMusician(false);
               setBuildingForMusicianData(false);
             }
@@ -623,7 +684,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
     return (
         <div className='modal gig-post' onClick={handleModalClick}>
             <div className='modal-content'>
-                {(stage !== 1 && stage !== 10 && stage !== 0) ? (
+                {(stage !== 1 && stage !== 11 && stage !== 0) ? (
                     <button className='btn tertiary close-modal' onClick={handleSaveAndExit}>
                         {saving ? 'Saving...' : 'Save and Exit'}
                     </button>
@@ -647,7 +708,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 <div className={`control-buttons ${(stage === 1 || stage === 0) && 'single'}`}>
                     {(stage === 1 || stage === 0) ? (
                         <button className='btn primary' onClick={nextStage}>Next</button>
-                    ) : stage === 10 ? (
+                    ) : stage === 11 ? (
                         <>
                             <button className='btn secondary' onClick={prevStage}>Back</button>
                             <button className='btn primary' onClick={handlePostGig}>Post Gig</button>

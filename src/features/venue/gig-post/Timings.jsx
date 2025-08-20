@@ -1,10 +1,5 @@
 
-export const GigTimings = ({ formData, handleInputChange, error, multipleSlots,
-    setMultipleSlots,
-    numberOfSlots,
-    setNumberOfSlots,
-    slotSplits,
-    setSlotSplits,
+export const GigTimings = ({ formData, handleInputChange, error
 }) => {
 
     const handleStartTimeChange = (time) => {
