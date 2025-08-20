@@ -2,10 +2,12 @@ import { Elements, useStripe, useElements, PaymentRequestButtonElement, ExpressC
 import { confirmPaymentIntent } from "../../../services/functions";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 export const WalletButton = ({ amountToCharge, gigData, onSucceeded, returnUrl }) => {
   const stripe = useStripe();
   const elements = useElements();
+  const location = useLocation();
 
   const handleConfirm = async (event) => {
     const { resolve, reject } = event;
@@ -15,6 +17,7 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded, returnUrl }
       console.log('data', data)
       const clientSecret = data?.clientSecret;
       if (!clientSecret) throw new Error('No client secret returned');
+      const returnUrl = `${window.location.origin}${location.pathname}${location.search}${location.hash}`;
       const { error, paymentIntent } = await stripe.confirmPayment({
         clientSecret,
         elements,

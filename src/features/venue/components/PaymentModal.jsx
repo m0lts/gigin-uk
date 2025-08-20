@@ -25,7 +25,6 @@ export const PaymentModal = ({
     setSavedCards,
     paymentIntentId,
     setPaymentIntentId,
-    returnUrl,
   }) => {
     const [selectedCardId, setSelectedCardId] = useState(null);
     const [addingNewCard, setAddingNewCard] = useState(false);
@@ -143,7 +142,6 @@ export const PaymentModal = ({
                   setPaymentIntentId?.(piId);     // <-- set the PI so the listener can attach
                   setMakingPayment(true);         // show processing state while listener runs
                 }}
-                returnUrl={returnUrl}
               />
               </div>
               <h3 className="subtitle">Select a saved card</h3>

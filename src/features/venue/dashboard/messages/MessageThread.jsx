@@ -33,7 +33,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const [paymentMessageId, setPaymentMessageId] = useState();
     const [paymentIntentId, setPaymentIntentId] = useState(null);
     const [showReviewModal, setShowReviewModal] = useState(false);
-    const location = useLocation();
     const navigate = useNavigate();
 
     const messagesEndRef = useRef(null);
@@ -716,7 +715,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     setSavedCards={setSavedCards}
                     paymentIntentId={paymentIntentId}
                     setPaymentIntentId={setPaymentIntentId}
-                    returnUrl={location.pathname}
                 />
             )}
             {showReviewModal &&
