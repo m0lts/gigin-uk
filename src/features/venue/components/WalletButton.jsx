@@ -7,30 +7,26 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
   const stripe = useStripe();
   const elements = useElements();
 
-  // called when the user taps Apple Pay / Google Pay / Link
   const handleConfirm = async (event) => {
-    const { resolve, reject } = event;   // tell the element success/fail
-
+    const { resolve, reject } = event;
+    console.log('event', event)
     try {
-      // 1) Ask your backend to create a PaymentIntent for this amount
       const { data } = await createGigPaymentIntent({ amountToCharge, gigData });
+      console.log('data', data)
       const clientSecret = data?.clientSecret;
       if (!clientSecret) throw new Error('No client secret returned');
-
-      // 2) Confirm the payment *with* the Express Checkout details captured by the element
       const { error, paymentIntent } = await stripe.confirmPayment({
         clientSecret,
-        elements,                 // Important: this lets Stripe re-use the wallet PM just collected
-        redirect: 'if_required',  // stay in-modal for SCA if possible
+        elements,
+        redirect: 'if_required',
       });
-
       if (error) {
+        console.log('error', error)
         reject(error);
         toast.error(error.message || 'Payment failed');
         return;
       }
-
-      // 3) Success 🎉
+      console.log('paymentIntent', paymentIntent)
       resolve();
       onSucceeded?.(paymentIntent?.id || data?.paymentIntentId);
     } catch (err) {
@@ -46,13 +42,8 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
     <ExpressCheckoutElement
       onConfirm={handleConfirm}
       options={{
-        // Optional: order the buttons. Omit or reorder to taste.
-        // Stripe will still auto-hide unsupported options per device.
-        paymentMethodOrder: ['apple_pay', 'google_pay', 'link', 'card'],
-
-        // Optional: style
-        buttonType: 'default',  // 'default' | 'buy' | 'donate' | etc.
-        buttonTheme: 'dark',    // 'dark' | 'light' | 'light-outline'
+        paymentMethodOrder: ['apple_pay', 'google_pay', 'link'],
+        buttonType: 'default',
         buttonHeight: 44,
       }}
     />
