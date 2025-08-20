@@ -451,7 +451,6 @@ exports.createGigPaymentIntent = onCall(
         currency: "gbp",
         customer: customerId,
         automatic_payment_methods: {enabled: true},
-        setup_future_usage: "off_session",
         metadata: {
           gigId: gigData.gigId,
           time: gigData.startTime,
