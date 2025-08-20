@@ -48,7 +48,7 @@ export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId }) 
  * @param {Object} options.gigData - The full gig object.
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
-export const confirmPaymentIntent = async ({ amountToCharge, gigData }) => {
+export const confirmPaymentIntent = async ({ amountToCharge, gigData, musicianProfileId }) => {
   try {
     if (!amountToCharge) throw new Error('Missing agreed fee');
     const gigDate = gigData.startDateTime.toDate();
