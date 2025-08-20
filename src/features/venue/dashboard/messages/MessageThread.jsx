@@ -715,6 +715,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     setSavedCards={setSavedCards}
                     paymentIntentId={paymentIntentId}
                     setPaymentIntentId={setPaymentIntentId}
+                    setGigData={setGigData}
+                    musicianProfileId={musicianProfileId}
                 />
             )}
             {showReviewModal &&

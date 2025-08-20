@@ -24,18 +24,14 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
         redirect: 'if_required',
       });
       if (error) {
-        event.reject(error);
         toast.error(error.message || 'Payment failed');
         return;
       }
-      console.log('got to resolve')
-      event.resolve();
-      toast.success('Payment Accepted')
+      toast.success('Payment Accepted!')
       console.log('got to onsucceeded')
       onSucceeded?.(paymentIntent?.id || data?.paymentIntentId);
     } catch (err) {
       console.error(err);
-      event.reject(err);
       toast.error('Payment failed');
     }
   };

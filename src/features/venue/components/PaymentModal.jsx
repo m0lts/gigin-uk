@@ -25,6 +25,8 @@ export const PaymentModal = ({
     setSavedCards,
     paymentIntentId,
     setPaymentIntentId,
+    setGigData,
+    musicianProfileId
   }) => {
     const [selectedCardId, setSelectedCardId] = useState(null);
     const [addingNewCard, setAddingNewCard] = useState(false);
@@ -139,8 +141,16 @@ export const PaymentModal = ({
                 amountToCharge={amountSubunits}
                 gigData={gigData}
                 onSucceeded={(piId) => {
-                  setPaymentIntentId?.(piId);     // <-- set the PI so the listener can attach
-                  setMakingPayment(true);         // show processing state while listener runs
+                  setPaymentIntentId?.(piId);
+                  setPaymentSuccess(true);
+                  setGigData(prev => ({
+                    ...prev,
+                    applicants: prev.applicants.map(applicant =>
+                        applicant.id === musicianProfileId
+                            ? { ...applicant, status: 'payment processing' }
+                            : applicant
+                    )
+                }));
                 }}
               />
               </div>
