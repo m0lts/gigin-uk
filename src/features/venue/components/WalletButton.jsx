@@ -43,7 +43,7 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
       onConfirm={handleConfirm}
       options={{
         paymentMethodOrder: ['apple_pay', 'google_pay', 'link'],
-        buttonType: 'default',
+        buttonType: { type: 'default' },
         buttonHeight: 44,
       }}
     />
