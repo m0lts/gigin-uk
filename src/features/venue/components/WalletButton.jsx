@@ -11,7 +11,7 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
     const { resolve, reject } = event;
     console.log('event', event)
     try {
-      const { data } = await createGigPaymentIntent({ amountToCharge, gigData });
+      const { data } = await confirmPaymentIntent({ amountToCharge, gigData });
       console.log('data', data)
       const clientSecret = data?.clientSecret;
       if (!clientSecret) throw new Error('No client secret returned');
