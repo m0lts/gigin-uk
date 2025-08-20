@@ -405,29 +405,74 @@ exports.createGigPaymentIntent = onCall(
     },
     async (request) => {
       const {auth} = request;
-      if (!auth) {
-        throw new Error("User must be authenticated.");
-      }
-      const {amountToCharge, gigData} = request.data;
+      if (!auth) throw new Error("User must be authenticated.");
+      const {
+        amountToCharge,
+        gigData,
+        musicianProfileId,
+        paymentMessageId,
+        gigDate,
+      } = request.data || {};
       if (!amountToCharge || !gigData.gigId) throw new Error("Missing inputs.");
+      const db = admin.firestore();
       const userId = auth.uid;
-      const userSnap =
-    await admin.firestore().collection("users").doc(userId).get();
+      const userSnap = await db.collection("users").doc(userId).get();
       const customerId = userSnap.data().stripeCustomerId;
       if (!customerId) throw new Error("Stripe customer ID not found.");
-      const key = getStripeKey(); sanityCheckKey(key);
+      const applicantId = musicianProfileId || null;
+      let applicantType = "musician";
+      let recipientMusicianId = musicianProfileId || null;
+      if (musicianProfileId) {
+        const accepted = (gigData.applicants || []).find(
+            (a) => a.id === musicianProfileId && a.status === "accepted",
+        );
+        if (!accepted) {
+          throw new Error("Accepted applicant doesn't match musician ID.");
+        }
+        applicantType = accepted.type || "musician";
+        if (applicantType === "band") {
+          const bandSnap =
+          await db.collection("musicianProfiles").doc(musicianProfileId).get();
+          if (!bandSnap.exists) {
+            throw new Error(`Band ${musicianProfileId} n/a.`);
+          }
+          const band = bandSnap.data() || {};
+          recipientMusicianId = band.bandInfo.admin.musicianId;
+          if (!recipientMusicianId) {
+            throw new Error(`Band ${musicianProfileId} no admin id.`);
+          }
+        }
+      }
+      const key = getStripeKey();
+      sanityCheckKey(key);
       const stripe = new Stripe(key);
       const pi = await stripe.paymentIntents.create({
         amount: amountToCharge,
         currency: "gbp",
         customer: customerId,
         automatic_payment_methods: {enabled: true},
+        setup_future_usage: "off_session",
         metadata: {
           gigId: gigData.gigId,
+          time: gigData.startTime,
+          date: gigDate,
+          venueName: gigData.venue.venueName,
           venueId: gigData.venueId,
-          venueName: gigData.venue.venueName || "",
+          applicantId: applicantId,
+          applicantType,
+          recipientMusicianId: recipientMusicianId,
+          paymentMessageId: paymentMessageId,
         },
       });
+      await db.collection("payments").doc(pi.id).set({
+        gigId: gigData.gigId,
+        applicantId: applicantId || null,
+        recipientMusicianId: recipientMusicianId || null,
+        venueId: gigData.venueId || null,
+        status: "requires_confirmation",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastCheckedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
       return {clientSecret: pi.client_secret, paymentIntentId: pi.id};
     },
 );

@@ -4,14 +4,14 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
+export const WalletButton = ({ amountToCharge, gigData, onSucceeded, musicianProfileId }) => {
   const stripe = useStripe();
   const elements = useElements();
   const location = useLocation();
 
   const handleConfirm = async (event) => {
     try {
-      const { data } = await confirmPaymentIntent({ amountToCharge, gigData });
+      const { data } = await confirmPaymentIntent({ amountToCharge, gigData, musicianProfileId });
       const clientSecret = data?.clientSecret;
       if (!clientSecret) throw new Error('No client secret returned');
       const returnUrl = `${window.location.origin}${location.pathname}${location.search}${location.hash}`;
@@ -28,7 +28,6 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
         return;
       }
       toast.success('Payment Accepted!')
-      console.log('got to onsucceeded')
       onSucceeded?.(paymentIntent?.id || data?.paymentIntentId);
     } catch (err) {
       console.error(err);

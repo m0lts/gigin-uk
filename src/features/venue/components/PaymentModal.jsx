@@ -140,6 +140,7 @@ export const PaymentModal = ({
               <WalletButton
                 amountToCharge={amountSubunits}
                 gigData={gigData}
+                musicianProfileId={musicianProfileId}
                 onSucceeded={(piId) => {
                   setPaymentIntentId?.(piId);
                   setPaymentSuccess(true);

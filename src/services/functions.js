@@ -51,10 +51,13 @@ export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId }) 
 export const confirmPaymentIntent = async ({ amountToCharge, gigData }) => {
   try {
     if (!amountToCharge) throw new Error('Missing agreed fee');
+    const gigDate = gigData.startDateTime.toDate();
     const confirmPayment = httpsCallable(functions, 'createGigPaymentIntent');
     const response = await confirmPayment({
       amountToCharge,
       gigData,
+      gigDate,
+      musicianProfileId,
     });
     return response;
   } catch (error) {
