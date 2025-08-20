@@ -70,9 +70,10 @@ export const PaymentModal = ({
       setSelectedCardId(cardId);
     };
   
-    const totalDue =
-      gigData?.agreedFee &&
-      (parseFloat(gigData.agreedFee.replace("£", "")) * 1.05).toFixed(2);
+    const baseFee = gigData?.agreedFee && (parseFloat(String(gigData.agreedFee).replace(/[^\d.]/g, "")) || 0);
+    const totalPounds = baseFee * 1.05;
+    const totalDue = `£${totalPounds.toFixed(2)}`;
+    const amountSubunits = Math.round(totalPounds * 100);
   
     return (
       <div className="modal payment">
@@ -80,7 +81,7 @@ export const PaymentModal = ({
           stripe={stripePromise}
           options={{
             mode: 'payment',
-            amount: totalDue,
+            amount: amountSubunits,
             currency: 'gbp',
           }}
         >

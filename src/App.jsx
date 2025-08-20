@@ -28,6 +28,8 @@ import { Account } from '@features/account/Account';
 import { Testimonials } from '@features/musician/profile/TestimonialPage';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { VenuePage } from './features/venue/components/VenuePage';
+import { VerifyEmailModal } from './features/shared/components/VerifyEmailModal';
+import { auth } from "@lib/firebase";
 
 
 
@@ -39,6 +41,9 @@ export default function App() {
   const [authType, setAuthType] = useState('login');
   const [authClosable, setAuthClosable] = useState(true);
   const [isScreenTooSmall, setIsScreenTooSmall] = useState(false);
+  const [verifyEmailModal, setVerifyEmailModal] = useState(false);
+  const [verifyInfoModal, setVerifyInfoModal] = useState(false);
+  const newUser =  sessionStorage.getItem('newUser');
 
   useResizeEffect((width) => {
     setIsScreenTooSmall(width < 768);
@@ -52,6 +57,38 @@ export default function App() {
     }
   }, [location.pathname]);
 
+  const getCreatedAtMs = (authUser, userDoc) => {
+    const meta = authUser?.metadata?.creationTime;
+    const fromAuth = meta ? Date.parse(meta) : NaN;
+    if (!Number.isNaN(fromAuth)) return fromAuth;
+    const raw = userDoc?.createdAt;
+    if (!raw) return NaN;
+    if (typeof raw === 'number') return raw;
+    if (raw?.toDate) {
+      try { return raw.toDate().getTime(); } catch { /* ignore */ }
+    }
+    return NaN;
+  }
+
+  useEffect(() => {
+    const u = auth.currentUser;
+    if (!u) {
+      setVerifyEmailModal(false);
+      return;
+    }
+    if (u.emailVerified) {
+      setVerifyEmailModal(false);
+      return;
+    }
+    const createdAtMs = getCreatedAtMs(u, user);
+    if (Number.isNaN(createdAtMs)) {
+      setVerifyEmailModal(false);
+      return;
+    }
+    const hours = (Date.now() - createdAtMs) / 36e5;
+    setVerifyEmailModal(hours >= 48);
+    if (newUser) setVerifyInfoModal(true);
+  }, [user]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -66,6 +103,7 @@ export default function App() {
       </div>
     );
   }
+
 
   return (
     <>
@@ -99,6 +137,8 @@ export default function App() {
       </Routes>
       
       {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} /> }
+      {verifyEmailModal && <VerifyEmailModal onClose={() => setVerifyEmailModal(false)} />}
+      {verifyInfoModal && <VerifyEmailModal onClose={() => setVerifyInfoModal(false)} />}
     </>
   );
 }

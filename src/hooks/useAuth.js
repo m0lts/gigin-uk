@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { auth, firestore } from '@lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
+import { auth, firestore, googleProvider } from '@lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, fetchSignInMethodsForEmail, deleteUser, sendEmailVerification } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export const useAuth = () => {
 
@@ -102,6 +103,11 @@ export const useAuth = () => {
       }
   };
 
+  const actionCodeSettings = {
+    url: `${window.location.origin}`,
+    handleCodeInApp: false,
+  };
+
   const signup = async (credentials, marketingConsent) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
@@ -109,16 +115,21 @@ export const useAuth = () => {
         name: credentials.name,
         email: credentials.email,
         marketingConsent: marketingConsent,
+        createdAt: Date.now(),
       });
+      await sendEmailVerification(userCredential.user, actionCodeSettings);
       setUser({ uid: userCredential.user.uid, ...credentials });
       const redirect = sessionStorage.getItem('redirect');
+      sessionStorage.setItem('newUser', true)
       if (redirect) {
           navigate(redirect);
           sessionStorage.removeItem('redirect');
       } else {
         navigate('/');
       }
+      return { needsEmailVerify: true };
     } catch (error) {
+      console.log(error)
       setUser(null);
       throw { error }
     }
@@ -141,6 +152,102 @@ export const useAuth = () => {
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      const cred = await signInWithPopup(auth, googleProvider);
+      const { user } = cred;
+      const ref = doc(firestore, 'users', user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        try {
+          await deleteUser(user);
+        } catch (_) {
+          await signOut(auth);
+        }
+        toast.error('No Gigin account is linked to this Google account. Please sign up first.')
+        throw {
+          error: {
+            code: 'auth/account-not-registered',
+            message:
+              'No Gigin account is linked to this Google account. Please sign up and accept the Terms first.',
+          },
+        };
+      }
+      const userDoc = await getDoc(ref);
+      const userDocData = userDoc.data() || {};
+      setUser({ uid: user.uid, ...userDocData, email: user.email });
+      const venueProfiles = userDocData.venueProfiles || [];
+      const redirect = sessionStorage.getItem('redirect');
+      if (redirect) {
+        navigate(redirect);
+        sessionStorage.removeItem('redirect');
+      } else if (venueProfiles.length > 0 && venueProfiles.some(v => v.completed)) {
+        navigate('/venues/dashboard');
+      } else if (venueProfiles.length > 0 && !venueProfiles.some(v => v.completed)) {
+        navigate('/venues/add-venue');
+      } else {
+        navigate('/find-a-gig');
+      }
+    } catch (error) {
+      if (error?.code === 'auth/account-exists-with-different-credential') {
+        const email = error.customData?.email;
+        const methods = email ? await fetchSignInMethodsForEmail(auth, email) : [];
+        throw {
+          error: {
+            code: error.code,
+            message: `Account already exists with: ${methods.join(', ')}`,
+          },
+        };
+      } else if (error?.code === 'auth/popup-closed-by-user') {
+        throw {
+          error: {
+            code: error.code,
+            message: 'Request timed out',
+          },
+        };
+      }
+      throw { error };
+    }
+  };
+  
+  const signupWithGoogle = async (marketingConsent) => {
+    try {
+      const cred = await signInWithPopup(auth, googleProvider);
+      const { user } = cred;
+      const ref = doc(firestore, 'users', user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          name: user.displayName || '',
+          email: user.email || '',
+          marketingConsent,
+          createdAt: Date.now(),
+          emailVerified: true,
+        });
+      }
+      const userDoc = await getDoc(ref);
+      const userDocData = userDoc.data() || {};
+      setUser({ uid: user.uid, ...userDocData, email: user.email });
+      const redirect = sessionStorage.getItem('redirect');
+      if (redirect) {
+        navigate(redirect);
+        sessionStorage.removeItem('redirect');
+      } else {
+        navigate('/');
+      }
+    } catch (error) {
+      if (error?.code === 'auth/popup-closed-by-user') {
+        throw {
+          error: {
+            code: error.code,
+            message: `Request timed out`,
+          }
+        };
+      }
+      throw { error };
+    }
+  };
+
   return {
     user,
     loading,
@@ -149,5 +256,7 @@ export const useAuth = () => {
     signup,
     logout,
     resetPassword,
+    loginWithGoogle,
+    signupWithGoogle
   };
 };

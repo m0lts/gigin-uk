@@ -9,6 +9,11 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({ mode }) => {
   loadEnv(mode, process.cwd(), '');
   return {
+    server: {
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      },
+    },
     plugins: [react()],
     resolve: {
       alias: {

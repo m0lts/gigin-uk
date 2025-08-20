@@ -108,6 +108,12 @@ input:-webkit-autofill {
     -webkit-text-fill-color: black !important;
 }
 
+.auth-form select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px white inset !important;
+    box-shadow: 0 0 0 1000px white inset !important;
+    -webkit-text-fill-color: black !important;
+}
+
 .auth-form .input-group .btn {
     font-size: 0.75rem;
     color: var(--gn-grey-600);
@@ -151,10 +157,19 @@ input:-webkit-autofill {
     background-color: var(--gn-grey-300) !important;
 }
 
-.auth-form .phone-number {
+.auth-form .phone-row {
     display: flex;
-    width:100%;
+    align-items: center;
+    min-width:100%;
     gap:5px;
+}
+
+.auth-form .phone-row .phone-country:focus {
+    outline-color: var(--gn-off-black);
+}
+
+.auth-form .phone-row .phone-local {
+    flex: 1;
 }
 
 .auth-form .password-info {
@@ -217,4 +232,26 @@ input:-webkit-autofill {
 
 .auth-form .change-auth-type .btn {
     color: var(--gn-orange);
+}
+
+/* INTEGRATIONS */
+
+.oauth-divider {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5%;
+}
+
+.oauth-divider span {
+    border-bottom:1px solid var(--gn-grey-400);
+    width:50%;
+}
+
+.btn.google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:0.5rem;
 }

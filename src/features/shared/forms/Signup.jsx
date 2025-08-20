@@ -1,5 +1,5 @@
 // Dependencies
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 // Components
@@ -8,10 +8,13 @@ import { SeeIcon, QuestionCircleIcon, ErrorIcon } from '@features/shared/ui/extr
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 // Styles
 import '@styles/forms/forms.styles.css';
+import { toast } from 'sonner';
+import { GoogleIcon } from '../ui/extras/Icons';
+import { PhoneField, isValidE164 } from './PhoneField';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable }) => {
 
-  const { signup } = useAuth();
+  const { signup, signupWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordInfo, setShowPasswordInfo] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -34,9 +37,6 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
   };
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-  // const validatePhoneNumber = (phoneNumber) => /^[0-9]{10,15}$/.test(phoneNumber);
-
   const validatePassword = (password) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(password);
 
   const handleSignup = async (e) => {
@@ -48,10 +48,10 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       return;
     }
 
-    // if (!validatePhoneNumber(credentials.phoneNumber)) {
-    //   setError({ status: true, input: 'phoneNumber', message: '* Please enter a valid phone number' });
-    //   return;
-    // }
+    if (!isValidE164(credentials.phoneNumber)) {
+      setError({ status: true, input: 'phoneNumber', message: '* Please enter a valid phone number' });
+      return;
+    }
 
     if (!validatePassword(credentials.password)) {
       setShowPasswordInfo(true);
@@ -129,19 +129,20 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
               disabled={loading}
             />
           </div>
-          {/* <div className='input-group'>
-            <label htmlFor='phoneNumber'>Phone Number</label>
-            <input
-              type='text'
-              id='phoneNumber'
-              name='phoneNumber'
+          <div className="input-group">
+            <PhoneField
+              initialCountry="GB"
               value={credentials.phoneNumber}
-              onChange={(e) => { handleChange(e); clearError(); }}
-              placeholder='e.g. 07362 876514'
-              required
-              className={`${error.input.includes('phoneNumber') && 'error'}`}
+              disabled={loading}
+              onChange={(e164) => {
+                setCredentials(prev => ({ ...prev, phoneNumber: e164 }));
+                if (error.input === 'phoneNumber') clearError();
+              }}
             />
-          </div> */}
+            {error.input.includes('phoneNumber') && (
+              <p className="error-msg">* Please enter a valid phone number</p>
+            )}
+          </div>
           <div className='input-group'>
             <label htmlFor='password'>
               Password
@@ -211,6 +212,35 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 disabled={error.status || !credentials.name || !credentials.email || !credentials.password || !termsAccepted}
               >
                 Sign Up
+              </button>
+              <div className="oauth-divider">
+                <span className="line" />
+                <h6>OR</h6>
+                <span className="line" />
+              </div>
+              <button
+                type="button"
+                className="btn secondary google"
+                disabled={loading}
+                onClick={async () => {
+                  try {
+                    if (!termsAccepted) {
+                      toast.error('Please accept our terms and conditions.');
+                      return;
+                    }
+                    setLoading(true);
+                    await signupWithGoogle(marketingConsent);
+                    setAuthModal(false);
+                    setAuthClosable(true);
+                  } catch (err) {
+                    setError({ status: true, input: '', message: err?.error?.message || 'Google sign up failed' });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                <GoogleIcon />
+                Continue with Google
               </button>
             </>
           )}
