@@ -428,7 +428,6 @@ exports.createGigPaymentIntent = onCall(
           venueName: gigData.venue.venueName || "",
         },
       });
-
       return {clientSecret: pi.client_secret, paymentIntentId: pi.id};
     },
 );

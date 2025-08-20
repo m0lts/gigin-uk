@@ -136,7 +136,7 @@ export const PaymentModal = ({
                 )}
               <div className="wallets">
               <WalletButton
-                amountToCharge={totalDue}
+                amountToCharge={amountSubunits}
                 gigData={gigData}
                 onSucceeded={(piId) => {
                   setPaymentIntentId?.(piId);     // <-- set the PI so the listener can attach
