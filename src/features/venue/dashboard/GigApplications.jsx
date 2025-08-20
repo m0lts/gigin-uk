@@ -624,6 +624,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                     paymentSuccess={paymentSuccess}
                     setSavedCards={setSavedCards}
                     paymentIntentId={watchPaymentIntentId}
+                    returnUrl={location.pathname}
                 />
             )}
             {showReviewModal && (

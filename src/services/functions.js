@@ -56,7 +56,6 @@ export const confirmPaymentIntent = async ({ amountToCharge, gigData }) => {
       amountToCharge,
       gigData,
     });
-    console.log(response);
     return response;
   } catch (error) {
     console.error(error)

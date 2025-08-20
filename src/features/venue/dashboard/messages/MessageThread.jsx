@@ -7,7 +7,7 @@ import {
 import '@styles/musician/messages.styles.css';
 import { PaymentModal } from '@features/venue/components/PaymentModal'
 import { ReviewModal } from '@features/shared/components/ReviewModal';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { sendMessage, listenToMessages, sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/messages';
 import { acceptGigOffer, declineGigApplication, updateGigWithCounterOffer } from '@services/gigs';
 import { getVenueProfileById } from '@services/venues';
@@ -33,6 +33,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const [paymentMessageId, setPaymentMessageId] = useState();
     const [paymentIntentId, setPaymentIntentId] = useState(null);
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const location = useLocation();
     const navigate = useNavigate();
 
     const messagesEndRef = useRef(null);
@@ -329,10 +330,10 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         return isNaN(d.getTime()) ? null : d;
       };
       
-      const start = toDate(gigData?.startDateTime);
-      const durationMs = Number(gigData?.duration || 0) * 60_000;
-      const end = start ? new Date(start.getTime() + durationMs) : null;
-    
+    const start = toDate(gigData?.startDateTime);
+    const durationMs = Number(gigData?.duration || 0) * 60_000;
+    const end = start ? new Date(start.getTime() + durationMs) : null;
+
     return (
         <>
         <div className='messages'>
@@ -714,7 +715,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     paymentSuccess={paymentSuccess}
                     setSavedCards={setSavedCards}
                     paymentIntentId={paymentIntentId}
-                    setPaymentIntentId={setPaymentIntentId} 
+                    setPaymentIntentId={setPaymentIntentId}
+                    returnUrl={location.pathname}
                 />
             )}
             {showReviewModal &&

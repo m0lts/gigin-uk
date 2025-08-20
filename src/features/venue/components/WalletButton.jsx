@@ -3,7 +3,7 @@ import { confirmPaymentIntent } from "../../../services/functions";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 
-export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
+export const WalletButton = ({ amountToCharge, gigData, onSucceeded, returnUrl }) => {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -18,6 +18,9 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
       const { error, paymentIntent } = await stripe.confirmPayment({
         clientSecret,
         elements,
+        confirmParams: {
+          return_url: returnUrl,
+        },
         redirect: 'if_required',
       });
       if (error) {
