@@ -72,7 +72,7 @@ export const PaymentModal = ({
   
     const baseFee = gigData?.agreedFee && (parseFloat(String(gigData.agreedFee).replace(/[^\d.]/g, "")) || 0);
     const totalPounds = baseFee * 1.05;
-    const totalDue = `£${totalPounds.toFixed(2)}`;
+    const totalDue = `${totalPounds.toFixed(2)}`;
     const amountSubunits = Math.round(totalPounds * 100);
   
     return (

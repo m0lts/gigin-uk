@@ -60,6 +60,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [multipleSlots, setMultipleSlots] = useState(false);
+    const [numberOfSlots, setNumberOfSlots] = useState(null);
+    const [slotSplits, setSlotSplits] = useState(null);
 
     const resetFormData = () => {
         setFormData({
@@ -304,11 +307,11 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 }
                 return (
                     <GigMusic
-                    formData={formData}
-                    handleInputChange={handleInputChange}
-                    setStage={setStage}
-                    error={error}
-                    setError={setError}
+                        formData={formData}
+                        handleInputChange={handleInputChange}
+                        setStage={setStage}
+                        error={error}
+                        setError={setError}
                     />
                 );
             case 6:
@@ -343,6 +346,12 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                         setStage={setStage}
                         error={error}
                         setError={setError}
+                        multipleSlots={multipleSlots}
+                        setMultipleSlots={setMultipleSlots}
+                        numberOfSlots={numberOfSlots}
+                        setNumberOfSlots={setNumberOfSlots}
+                        slotSplits={slotSplits}
+                        setSlotSplits={setSlotSplits}
                     />
                 );
             case 9:
@@ -385,6 +394,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                         setError={setError}
                         buildingForMusician={buildingForMusician}
                         buildingForMusicianData={buildingForMusicianData}
+                        multipleSlots={multipleSlots}
+                        numberOfSlots={numberOfSlots}
+                        slotSplits={slotSplits}
                     />
                 );
             default:

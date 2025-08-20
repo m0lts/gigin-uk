@@ -3,7 +3,7 @@
 }
 
 .payment.modal .modal-content {
-    overflow: hidden;
+    overflow-y: auto;
     max-width: 500px;
 }
 
@@ -116,3 +116,8 @@
 .payment.modal .back-button {
     margin-bottom: 1rem;
 }
+
+.payment.modal .modal-content .wallets {
+    margin-bottom: 1rem;
+}
+
