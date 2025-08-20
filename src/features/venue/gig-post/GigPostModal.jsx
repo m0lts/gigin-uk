@@ -410,18 +410,34 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                         />
                     );
                 }
-            case 10: 
-                return (
-                    <GigSlots
-                        formData={formData}
-                        multipleSlots={multipleSlots}
-                        setMultipleSlots={setMultipleSlots}
-                        numberOfSlots={numberOfSlots}
-                        setNumberOfSlots={setNumberOfSlots}
-                        slotSplits={slotSplits}
-                        setSlotSplits={setSlotSplits}
-                    />
-                )
+            case 10:
+                if (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig') {
+                    return (
+                        <GigReview
+                            formData={formData}
+                            handleInputChange={handleInputChange}
+                            setStage={setStage}
+                            error={error}
+                            setError={setError}
+                            buildingForMusician={buildingForMusician}
+                            buildingForMusicianData={buildingForMusicianData}
+                            multipleSlots={multipleSlots}
+                            numberOfSlots={numberOfSlots}
+                        />
+                    );
+                } else {
+                    return (
+                        <GigSlots
+                            formData={formData}
+                            multipleSlots={multipleSlots}
+                            setMultipleSlots={setMultipleSlots}
+                            numberOfSlots={numberOfSlots}
+                            setNumberOfSlots={setNumberOfSlots}
+                            slotSplits={slotSplits}
+                            setSlotSplits={setSlotSplits}
+                        />
+                    )
+                }
             case 11:
                 return (
                     <GigReview
@@ -443,9 +459,17 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
 
     const getProgressPercentage = () => {
         if (templates.length > 0 || incompleteGigs.length > 0) {
-            return ((stage) / 11) * 100;
+            if (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig') {
+                return ((stage) / 10) * 100;
+            } else {
+                return ((stage) / 11) * 100;
+            }
         } else {
-            return ((stage) / 11) * 100;
+            if (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig') {
+                return ((stage) / 10) * 100;
+            } else {
+                return ((stage) / 11) * 100;
+            }
         }
     };
 
@@ -708,7 +732,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 <div className={`control-buttons ${(stage === 1 || stage === 0) && 'single'}`}>
                     {(stage === 1 || stage === 0) ? (
                         <button className='btn primary' onClick={nextStage}>Next</button>
-                    ) : stage === 11 ? (
+                    ) : (stage === 10 && (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig')) || (stage === 11 && !(formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig')) ? (
                         <>
                             <button className='btn secondary' onClick={prevStage}>Back</button>
                             <button className='btn primary' onClick={handlePostGig}>Post Gig</button>

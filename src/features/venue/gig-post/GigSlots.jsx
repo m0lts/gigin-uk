@@ -78,11 +78,11 @@ export const GigSlots = ({
         <div className="head">
           <h1 className="title">Multiple Performers?</h1>
           <p className="text" style={{ marginTop: '1rem', fontSize: '1.1rem', width: '75%' }}>
-            Do you want more than one musician to perform in this session?
+            Do you want more than one musician to perform in this gig session?
           </p>
         </div>
   
-        <div className="body open-mic">
+        <div className="body multiple-slots">
           {/* Yes / No */}
           <div className="input-group">
             <div className="selections">
@@ -108,38 +108,36 @@ export const GigSlots = ({
           </div>
   
           {multipleSlots && (
-            <>
-                <h4>Each gig slot will be posted as a seperate gig for musicians to apply to. This will help you easily manage the gig. The gig budget will be evenly split between the slots.</h4>
-
+            <div className='slot-options'>
+              <h4>Each gig slot will be posted as a seperate gig for musicians to apply to. This will help you easily manage the gig. The gig budget will be evenly split between the slots.</h4>
               {/* number of musicians (slots) */}
               <div className="input-group">
-                <label htmlFor="slotsCount">How many musicians?</label>
+                <label htmlFor="slotsCount" className='label'>How many slots?</label>
                 <input
                   id="slotsCount"
                   type="number"
-                  min={1}
+                  min={2}
                   max={20}
                   value={numberOfSlots ?? ''}
                   onChange={handleNumberChange}
-                  placeholder="e.g. 3"
                 />
-                <p className="subtext">Total gig duration: {totalDuration || 0} min</p>
+                <h6 className="subtext">Total gig duration: {totalDuration || 0} min</h6>
               </div>
   
               {/* equal split preview */}
               {Number(numberOfSlots) > 0 && equalSplit && (
                 <div className="input-group">
-                  <label>Each slot duration</label>
+                  <label className='label'>Each slot duration</label>
                   <div className="preview-pills">
                     {(slotSplits || []).map((d, i) => (
                       <span key={i} className="pill">
-                        Musician {i + 1}: {d} min
+                        Slot {i + 1}: {d} min
                       </span>
                     ))}
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </>
