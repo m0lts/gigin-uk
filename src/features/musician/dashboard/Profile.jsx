@@ -32,7 +32,7 @@ export const Profile = ({ musicianProfile, user }) => {
                         <span className='orange-dot'>.</span>
                     </h1>
                     <h4 className="number-of-gigs">
-                        {musicianProfile?.gigsPerformed} Gigs Performed
+                        {musicianProfile?.gigsPerformed || 0} Gigs Performed
                     </h4>
                     <div className="action-buttons">
                         <button className="btn quaternary" onClick={() => setShowPreview(!showPreview)}>

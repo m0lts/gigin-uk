@@ -6,51 +6,54 @@ import { useEffect, useState } from "react";
 export const WalletButton = ({ amountToCharge, gigData, onSucceeded }) => {
   const stripe = useStripe();
   const elements = useElements();
-  const [pr, setPr] = useState(null);
 
-  useEffect(() => {
-    if (!stripe) return;
-    const paymentRequest = stripe.paymentRequest({
-      country: "GB",
-      currency: "gbp",
-      total: {
-        label: `Gigin gig payment`,
-        amount: amountToCharge,
-      },
-      requestPayerName: true,
-      requestPayerEmail: true,
-    });
-    paymentRequest.canMakePayment().then(result => {
-      if (result) setPr(paymentRequest);
-    });
-    paymentRequest.on("paymentmethod", async (ev) => {
-      try {
-        const { data } = await confirmPaymentIntent({ amountToCharge, gigData });
-        const { error } = await stripe.confirmCardPayment(data.clientSecret, {
-          payment_method: ev.paymentMethod.id,
-        }, { handleActions: true });
-        if (error) {
-          ev.complete("fail");
-          toast.error(error.message || "Payment failed");
-          return;
-        }
-        ev.complete("success");
-        onSucceeded?.(data.paymentIntentId);
-      } catch (err) {
-        console.error(err);
-        ev.complete("fail");
-        toast.error("Payment failed");
+  // called when the user taps Apple Pay / Google Pay / Link
+  const handleConfirm = async (event) => {
+    const { resolve, reject } = event;   // tell the element success/fail
+
+    try {
+      // 1) Ask your backend to create a PaymentIntent for this amount
+      const { data } = await createGigPaymentIntent({ amountToCharge, gigData });
+      const clientSecret = data?.clientSecret;
+      if (!clientSecret) throw new Error('No client secret returned');
+
+      // 2) Confirm the payment *with* the Express Checkout details captured by the element
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        clientSecret,
+        elements,                 // Important: this lets Stripe re-use the wallet PM just collected
+        redirect: 'if_required',  // stay in-modal for SCA if possible
+      });
+
+      if (error) {
+        reject(error);
+        toast.error(error.message || 'Payment failed');
+        return;
       }
-    });
-  }, [stripe, amountToCharge, gigData]);
 
-  if (!pr) return null;
+      // 3) Success 🎉
+      resolve();
+      onSucceeded?.(paymentIntent?.id || data?.paymentIntentId);
+    } catch (err) {
+      console.error(err);
+      reject(err);
+      toast.error('Payment failed');
+    }
+  };
+
+  if (!stripe || !elements) return null;
 
   return (
-    <PaymentRequestButtonElement
+    <ExpressCheckoutElement
+      onConfirm={handleConfirm}
       options={{
-        paymentRequest: pr,
-        style: { paymentRequestButton: { type: "default", theme: "dark", height: "44px" } }
+        // Optional: order the buttons. Omit or reorder to taste.
+        // Stripe will still auto-hide unsupported options per device.
+        paymentMethodOrder: ['apple_pay', 'google_pay', 'link', 'card'],
+
+        // Optional: style
+        buttonType: 'default',  // 'default' | 'buy' | 'donate' | etc.
+        buttonTheme: 'dark',    // 'dark' | 'light' | 'light-outline'
+        buttonHeight: 44,
       }}
     />
   );

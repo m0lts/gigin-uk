@@ -85,7 +85,13 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
             userId: user?.uid,
             musicianId: musicianProfile.id,
           },
-          members: [musicianProfile.id]
+          members: [
+            {
+              id: musicianProfile.id,
+              img: musicianProfile.picture,
+              name: musicianProfile.name,
+            }
+          ]
         };
         await createBandProfile(formData.bandId, updatedFormData, user.uid, musicianProfile);
         await updateUserDocument(user.uid, {

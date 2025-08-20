@@ -94,17 +94,31 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
 
     const [videoUploads, setVideoUploads] = useState([]);
     const [trackUploads, setTrackUploads] = useState([]);
+    const [uploadingMedia, setUploadingMedia] = useState(false);
 
 
     useEffect(() => {
         if (!musicianProfile) return;
         const checkForSavedProfile = async () => {
           const isBand = musicianProfile.bandProfile === true;
-          setFormData((prev) => ({
-            ...prev,
-            ...musicianProfile,
-            bandProfile: isBand,
-          }));
+          if (isBand && band) {
+            console.log('band profile:', musicianProfile)
+            setFormData((prev) => ({
+                ...prev,
+                ...musicianProfile,
+                bandProfile: true,
+                musicianId: musicianProfile.id,
+              }));
+          } else {
+            console.log('musician profile:', musicianProfile)
+            setFormData((prev) => ({
+                ...prev,
+                ...musicianProfile,
+                bandProfile: false,
+                musicianId: musicianProfile.id,
+              }));
+          }
+
           // Setup videoUploads from existing videos
             const existingVideos = (musicianProfile.videos || []).map((video) => ({
                 title: video.title,
@@ -123,6 +137,12 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                 error: null,
             }));
             setTrackUploads(existingTracks);
+
+            // Setup trackUploads from existing tracks
+            const existingPhotos = (musicianProfile.photos || []).map((photo) => ({
+                url: photo
+            }));
+            setPhotoUploads(existingPhotos);
         };
         checkForSavedProfile();
     }, [musicianProfile]);
@@ -181,8 +201,11 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
     const canAddTrack = (formData, trackUploads = []) =>
     (formData?.tracks?.length ?? 0) + trackUploads.length < MAX_TRACKS;
 
-    const canAddPhoto = (formData, photoUploads = []) =>
-    (formData?.photos?.length ?? 0) + photoUploads.length < MAX_PHOTOS;
+    const remainingPhotoSlots = (formData, photoUploads=[]) =>
+        MAX_PHOTOS - (formData?.photos?.length ?? 0) - photoUploads.filter(u => !u.url).length;
+
+    const canAddPhoto = (formData, photoUploads=[]) =>
+        remainingPhotoSlots(formData, photoUploads) > 0;
 
     const handleFileChange = async (event) => {
         if (!canAddVideo(formData, videoUploads)) {
@@ -192,7 +215,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
         }
         const file = event.target.files[0];
         if (!file) return;
-
+        setUploadingMedia(true)
     
         const title = file.name;
         const thumbnail = await generateThumbnail(file);
@@ -246,6 +269,8 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                 updated[uploadIndex].error = error.message;
                 return updated;
             });
+        } finally {
+            setUploadingMedia(false)
         }
     };
 
@@ -257,6 +282,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
         }
         const file = event.target.files[0];
         if (!file) return;
+        setUploadingMedia(true)
 
       
         const title = file.name;
@@ -301,76 +327,94 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
             updated[uploadIndex].error = error.message;
             return updated;
           });
+        } finally {
+            setUploadingMedia(false)
         }
     };
 
     const handlePhotoUpload = async (event) => {
-        if (!canAddPhoto(formData, photoUploads)) {
+        const filesList = Array.from(event.target.files || []);
+        if (filesList.length === 0) return;
+        setUploadingMedia(true)
+
+        // filter to images only
+        const imageFiles = filesList.filter(f => f.type?.startsWith('image/'));
+        if (imageFiles.length === 0) {
+          toast.error('Please select image files.');
+          event.target.value = '';
+          return;
+        }
+      
+        // enforce remaining slots
+        const slots = remainingPhotoSlots(formData, photoUploads);
+        if (slots <= 0) {
           toast.error('You can only upload 10 photos.');
           event.target.value = '';
           return;
         }
+        const filesToUpload = imageFiles.slice(0, slots);
       
-        const file = event.target.files?.[0];
-        if (!file) return;
+        // add optimistic placeholders with stable ids
+        const placeholders = filesToUpload.map((f) => ({
+          id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          title: f.name,
+          url: null,
+          error: null,
+        }));
+        setPhotoUploads(prev => [...prev, ...placeholders]);
       
-        if (!file.type.startsWith('image/')) {
-          toast.error('Please select an image file.');
-          event.target.value = '';
-          return;
-        }
-      
-        const title = file.name;
-        const uploadIndex = photoUploads.length;
-      
-        // add placeholder
-        setPhotoUploads(prev => [...prev, { title, progress: 0, url: null, error: null }]);
-      
-        const photoPath = `musicians/${musicianProfile.musicianId}/photos/${title}`;
+        // helper to remove a placeholder by id
+        const removePlaceholder = (id) => {
+          setPhotoUploads(prev => prev.filter(p => p.id !== id));
+        };
       
         try {
-          const photoUrl = await uploadFileWithProgress(file, photoPath, (progress) => {
-            setPhotoUploads(prev => {
-              const updated = [...prev];
-              if (updated[uploadIndex]) updated[uploadIndex].progress = progress;
-              return updated;
-            });
-          });
+          // upload sequentially (keeps UI/order stable & avoids flooding)
+          for (let i = 0; i < filesToUpload.length; i++) {
+            const file = filesToUpload[i];
+            const phId = placeholders[i].id;
       
-          // add to form data
-          setFormData(prev => {
-            const next = [...(prev.photos || []), photoUrl].slice(0, MAX_PHOTOS);
-            return { ...prev, photos: next };
-          });
+            // unique storage path to avoid overwrites
+            const cleanName = file.name.replace(/\s+/g, '_');
+            const photoPath = `musicians/${musicianProfile.musicianId}/photos/${Date.now()}_${cleanName}`;
       
-          // 🚮 remove placeholder so it’s replaced by the real photo
-          setPhotoUploads(prev => prev.filter((_, i) => i !== uploadIndex));
-      
-        } catch (error) {
-          setPhotoUploads(prev => {
-            const updated = [...prev];
-            if (updated[uploadIndex]) updated[uploadIndex].error = error.message;
-            return updated;
-          });
+            try {
+              const url = await uploadFileWithProgress(file, photoPath); // you’re not showing progress, that’s fine
+              // add to form data (real photo)
+              setFormData(prev => {
+                const next = [...(prev.photos || []), url].slice(0, MAX_PHOTOS);
+                return { ...prev, photos: next };
+              });
+              // remove its placeholder
+              removePlaceholder(phId);
+            } catch (err) {
+              // mark error on placeholder (keeps it visible with message)
+              setPhotoUploads(prev =>
+                prev.map(p => (p.id === phId ? { ...p, error: err?.message || 'Upload failed' } : p))
+              );
+            }
+          }
         } finally {
+          // reset file input so selecting the same files again works
           event.target.value = '';
+          setUploadingMedia(false)
+
         }
-      };
+    };
 
-
-        const handleRemoveCompletedPhoto = async (photoUrl) => {
+    const handleRemoveCompletedPhoto = async (photoUrl) => {
         try {
             if (photoUrl?.startsWith('http')) {
-            await deleteFileFromStorage(photoUrl);
+                await deleteFileFromStorage(photoUrl);
             }
             setFormData(prev => ({
-            ...prev,
-            photos: (prev.photos || []).filter(p => p !== photoUrl),
+                ...prev,
+                photos: (prev.photos || []).filter(p => p !== photoUrl),
             }));
         } catch (err) {
             console.error('Failed to delete photo:', err);
         }
-        };
+    };
 
     const handleRemoveTrack = async (uploadIndex, audioUrl, title) => {
         try {
@@ -386,24 +430,6 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
           console.error('Failed to delete track:', err);
         }
     };
-
-    const handleRemovePhoto = async (uploadIndex, photoUrlOrTitle) => {
-        try {
-          // If the item has a URL, delete from storage
-          if (photoUrlOrTitle && photoUrlOrTitle.startsWith('http')) {
-            await deleteFileFromStorage(photoUrlOrTitle);
-          }
-          // Remove from UI uploads
-          setPhotoUploads((prev) => prev.filter((_, idx) => idx !== uploadIndex));
-          // Remove from form data (match by URL string)
-          setFormData((prev) => ({
-            ...prev,
-            photos: (prev.photos || []).filter((p) => p !== photoUrlOrTitle),
-          }));
-        } catch (err) {
-          console.error('Failed to delete photo:', err);
-        }
-      };
 
     const handleMediaMetaChange = (type, index, field, value) => {
         setFormData((prev) => {
@@ -652,6 +678,10 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
 
 
     const handleSubmit = async () => {
+        if (uploadingMedia) {
+            toast.info('Please wait for your files to finish uploading.');
+            return;
+        }
         setUploadingProfile(true);
         try {
             let nextLocation = { ...formData.location };
@@ -886,13 +916,13 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                         </div>
                         <div className="upload-option">
                             <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            id="photoInput"
-                            className="hidden-file-input"
-                            onChange={handlePhotoUpload}
-                            disabled={!canAddPhoto(formData, photoUploads)}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                id="photoInput"
+                                className="hidden-file-input"
+                                onChange={handlePhotoUpload}
+                                disabled={!canAddPhoto(formData, photoUploads)}
                             />
                             <label htmlFor="photoInput" className="media-upload-label">
                             <CameraIcon />
@@ -1288,7 +1318,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                     </div>
                 </div>
                 <div className="action-buttons">
-                    <button className="btn primary" onClick={handleSubmit}>
+                    <button className="btn primary" onClick={handleSubmit} disabled={uploadingMedia}>
                         Save
                     </button>
                     <button className="btn tertiary" onClick={() => setFormData(musicianProfile)}>

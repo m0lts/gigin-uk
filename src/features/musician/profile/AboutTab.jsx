@@ -36,8 +36,9 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { EmptyIcon } from '../../shared/ui/extras/Icons';
 import { useMapbox } from '../../../hooks/useMapbox';
+import { openInNewTab } from '../../../services/utils/misc';
 
-export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
+export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandAdmin }) => {
 
     const mapContainerRef = useRef(null);
       
@@ -116,19 +117,26 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
           default:
             return distance || 'Travel distance not specified';
         }
-      };
+    };
 
-    if (!musicianData.genres && !musicianData.musicType && !musicianData.coordinates && !musicianData.equipment && !musicianData.socials) {
+
+    if (!musicianData.genres && !musicianData.musicType && !musicianData.coordinates && !musicianData.equipment && !musicianData.socials && !musicianData.members) {
         return (
             <div className="nothing-to-display">
                 <EmptyIcon />
                 {viewingOwnProfile ? (
-                    <>
-                        <h4>More information will show here when you complete your profile.</h4>
-                        <button className="btn primary" onClick={() => setShowPreview(false)}>
-                            Finish Profile
-                        </button>
-                    </>
+                    bandAdmin ? (
+                        <>
+                            <h4>More information will show here when you complete your profile.</h4>
+                            <button className="btn primary" onClick={() => setShowPreview(false)}>
+                                Finish Profile
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <h4>More information will show here when the band admin completes the band's profile.</h4>
+                        </>
+                    )
                 ) : (
                     <>
                         <h4>No more information to show.</h4>
@@ -137,6 +145,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
             </div>
           )
     }
+
 
     return (
         <div className='musician-profile-about'>
@@ -186,12 +195,18 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview}) => {
                     </ul>
                 </div>
             )}
-            {musicianData?.bandProfile && (
+            {musicianData?.bandProfile && musicianData.members && (
                 <div className="musician-band-members about-section">
                     <h3>Band Members</h3>
-                    {musicianData.bandMembers.map((bm) => (
-                        <div className="genre-item" key={bm}>
-                            <p>{bm}</p>
+                    {musicianData.members.map((bm) => (
+                        <div className="band-member" key={bm} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                            <div className="member-info" style={{ display: 'flex', alignItems: 'center', gap:'1rem'}}>
+                                <img src={bm.img} alt={bm.name} style={{ width: '50px', height: '50px', objectFit: 'cover'}} />
+                                <h4>{bm.name}</h4>
+                            </div>
+                            <button className="btn tertiary" onClick={(e) => openInNewTab(`/${bm.id}`, e)}>
+                                View Profile
+                            </button>
                         </div>
                     ))}
                 </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { leaveBand } from '@services/bands';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { getBandsByMusicianId } from '@services/bands';
-import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, StarIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { OverviewTab } from '../profile/OverviewTab';
 import { MusicTab } from '../profile/MusicTab';
@@ -13,54 +13,41 @@ import { toast } from 'sonner';
 import { deleteBand } from '../../../services/bands';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import { ProfileForm } from '../dashboard/profile-form/ProfileForm';
+import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { MusicianProfile } from '../components/MusicianProfile';
 
-export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData }) => {
+export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
+  const { refreshMusicianProfile } = useMusicianDashboard();
   const { bandId } = useParams();
   const location = useLocation();
   const state = location.state;
-  const navigate = useNavigate();
-  const [band, setBand] = useState(state?.band || null);
+  const [bandProfile, setBandProfile] = useState(state?.band || null);
+  const [bandMembers, setBandMembers] = useState(state?.band?.members || null);
+  const [showPreview, setShowPreview] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [bandMembers, setBandMembers] = useState(band?.members || null);
-  const [editingMedia, setEditingMedia] = useState(false);
-  const [localVideos, setLocalVideos] = useState(band?.videos || []);
-  const [localTracks, setLocalTracks] = useState(band?.tracks || []);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const {
-    refreshMusicianProfile
-  } = useMusicianDashboard();
+  const [expand, setExpand] = useState(['your-sound', 'media-upload', 'further-information', 'social-media']);
+  const isPrimaryOpen = expand.includes('primary-information');
+  const toggleSection = (section) => {
+    setExpand(prev =>
+      prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]
+    );
+  };
+  const bandAdmin = musicianProfile.musicianId === bandProfile?.bandInfo?.admin?.musicianId;
 
   useEffect(() => {
     const found = bandProfiles.find((b) => b.id === bandId);
     if (found) {
-      setBand(found);
-      setLocalVideos(found.videos);
-      setLocalTracks(found.tracks);
+      setBandProfile(found);
       setBandMembers(found.members);
-      setActiveTab('profile');
     };
   }, [bandProfiles, bandId]);
-
-  const saveChanges = async () => {
-    try {
-        await updateMusicianProfile(band.id, {
-            videos: localVideos,
-            tracks: localTracks,
-        });
-        setEditingMedia(false);
-        toast.success('Changes saved.')
-    } catch (err) {
-        console.error('Error saving changes:', err);
-        toast.error('Error saving changes. Please try again.')
-    }
-  };
 
   const handleLeaveBand = async () => {
     try {
       setLoading(true);
-      await leaveBand(band.id, musicianProfile.musicianId, musicianProfile.userId);
+      await leaveBand(bandProfile.id, musicianProfile.musicianId, musicianProfile.userId);
       await refreshMusicianProfile();
       setTimeout(() => {
         toast.success('Left the band.');
@@ -77,7 +64,7 @@ export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData
   const handleDeleteBand = async () => {
     try {
       setLoading(true);
-      await deleteBand(band.id);
+      await deleteBand(bandProfile.id);
       await refreshMusicianProfile();
       setTimeout(() => {
         toast.success('Band deleted.');
@@ -91,95 +78,97 @@ export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData
     }
   };
 
-  if (!band || loading) {
-    return <LoadingScreen />;
-  }
-
-  const renderActiveTabContent = () => {
-    switch (activeTab) {
-      case 'profile':
-        return <ProfileForm musicianProfile={band} user={user} band={true} />;
-      case 'members':
-        return (
-          <BandMembersTab
-            band={band}
-            bandMembers={bandMembers}
-            setBandMembers={setBandMembers}
-            musicianId={musicianProfile.musicianId}
-            refreshBandInfo={refreshData}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
-  if (!band) {
-    return (
-      <div className="profile">
-        <LoadingScreen />
-      </div>
-    )
+  console.log('MUSICIANID', musicianProfile.musicianId)
+  
+  if (!bandProfile) {
+    return <LoadingScreen />
   }
 
   return (
-    <div className="band-dashboard profile">
-      <div className='profile-banner' style={{
-        padding: '2%',
-      }}>
-        <div className='profile-information'>
-          <figure className='profile-picture'>
-              <img src={band.picture} alt={`${band.name}'s Profile Picture`} />
-          </figure>
-          <div className='profile-details'>
-              <div className='name'>
-                <h1>{band.name}</h1>
-              </div>
-              <h4>Band</h4>
-              <div className='data'>
-                  {band.bandProfile?.avgReviews && (
-                      <h6><StarIcon /> {band.bandProfile?.avgReviews.avgRating} ({band.bandProfile?.avgReviews.totalReviews})</h6>
+      <>
+        <div className="musician-profile-hero">
+            <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
+            <div className="primary-information">
+                {!bandProfile?.verified && (
+                    <div className="verified-tag">
+                        <VerifiedIcon />
+                        <p>Verified Band</p>
+                    </div>
+                )}
+                <h1 className="venue-name">
+                    {bandProfile?.name}
+                    <span className='orange-dot'>.</span>
+                </h1>
+                <h4 className="number-of-gigs">
+                    {bandProfile?.gigsPerformed || 0} Gigs Performed
+                </h4>
+                <div className="action-buttons">
+                  {musicianProfile?.musicianId === bandProfile?.bandInfo?.admin?.musicianId ? (
+                    <>
+                      <button className="btn quaternary" onClick={() => setShowPreview(!showPreview)}>
+                          {showPreview ? (
+                            'Edit Profile'
+                          ) : (
+                            'View Profile'
+                          )}
+                      </button>
+                      {/* COLLAPSED HEADER (shown when NOT expanded) */}
+                      {isPrimaryOpen && !showPreview ? (
+                          <button
+                              className="btn quaternary"
+                              onClick={() => toggleSection('primary-information')}
+                              aria-expanded={false}
+                              aria-controls="primary-information-panel"
+                          >
+                              Hide Name and Profile Picture
+                          </button>
+                          ) : !showPreview &&(
+                              <button
+                              className="btn quaternary"
+                              onClick={() => toggleSection('primary-information')}
+                              aria-expanded={false}
+                              aria-controls="primary-information-panel"
+                          >
+                              Edit Name and Profile Picture
+                          </button>
+                          )}
+                      <button className="btn quaternary" onClick={() => setShowDeleteModal(true)}>
+                        Delete Band
+                      </button>
+                    </>
+                  ) : (
+                    <button className="btn quaternary" onClick={() => setShowLeaveModal(true)}>
+                      Leave Band
+                    </button>
                   )}
-                  <h6>{band.bandProfile?.gigsPerformed || '0'} gigs played</h6>
-              </div>
-              <div className='genre-tags'>
-                  {band.bandProfile?.genres && band.bandProfile?.genres.map((genre, index) => (
-                      <div className='genre-tag' key={index}>
-                          {genre}
-                      </div>
-                  ))}
-              </div>
-          </div>
-        </div>
-          <div className="profile-actions">
-            {band.bandInfo.admin.musicianId === musicianProfile.musicianId ? (
-              <button className="btn danger" onClick={() => setShowDeleteModal(true)}>Delete Band</button>
-            ) : (
-              <button className="btn danger" onClick={() => setShowLeaveModal(true)}>Leave Band</button>
-            )}
-        </div>
-      </div>
-        <div className='profile-view band'>
-          <nav className='profile-tabs band'>
-            <div className="left-side">
-              <p
-                onClick={() => setActiveTab('profile')}
-                className={`profile-tab ${activeTab === 'profile' ? 'active' : ''}`}
-              >
-                Band Profile
-              </p>
-              <p
-                onClick={() => setActiveTab('members')}
-                className={`profile-tab ${activeTab === 'members' ? 'active' : ''}`}
-              >
-                Band Members
-              </p>
+                </div>
             </div>
-          </nav>
-          <div className='profile-sections'>
-            {renderActiveTabContent()}
-          </div>
         </div>
+        {!showPreview ? (
+            <div className="body profile">
+                <ProfileForm
+                    user={user}
+                    musicianProfile={bandProfile}
+                    setShowPreview={setShowPreview}
+                    expand={expand}
+                    setExpand={setExpand}
+                    band={true}
+                />
+            </div>
+        ) : (
+            <div className="body profile-preview">
+                <MusicianProfile
+                    musicianProfile={bandProfile}
+                    viewingOwnProfile={true}
+                    setShowPreview={setShowPreview}
+                    bandProfile={true}
+                    bandMembers={bandMembers}
+                    setBandMembers={setBandMembers}
+                    musicianId={musicianProfile.musicianId}
+                    bandAdmin={bandAdmin}
+                />
+            </div>
+        )}
         {showDeleteModal && (
             <div className="modal" onClick={() => setShowDeleteModal(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -187,7 +176,7 @@ export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData
                       <DeleteGigIcon />
                       <h2>Delete Band?</h2>
                       <p>
-                          Are you sure you want to delete "{band.name}"? This action cannot be undone.
+                          Are you sure you want to delete "{bandProfile.name}"? This action cannot be undone.
                       </p>
                   </div>
               <div className="modal-actions">
@@ -214,7 +203,7 @@ export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData
                       <DoorIcon />
                       <h2>Leave Band?</h2>
                       <p>
-                          Are you sure you want to leave "{band.name}"?
+                          Are you sure you want to leave "{bandProfile.name}"?
                       </p>
                   </div>
               <div className="modal-actions">
@@ -234,6 +223,6 @@ export const BandDashboard = ({ user, musicianProfile, bandProfiles, refreshData
               </div>
           </div>
         )}
-    </div>
+    </>
   );
 };

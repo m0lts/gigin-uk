@@ -8,8 +8,9 @@ import { AddMember, KeyIcon, PasswordIcon, PeopleGroupIconSolid, PlusIconSolid, 
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
+import Portal from '@features/shared/components/Portal'
 
-export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, refreshBandInfo, viewing = false }) => {
+export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, viewing = false, bandAdmin }) => {
 
     const {
         refreshSingleBand
@@ -214,12 +215,14 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
     };
 
     if (loading) {
-        return <div className="band-tab members"><LoadingThreeDots /></div>;
+        return <div className="band-members-tab"><LoadingThreeDots /></div>;
     }
+
+    console.log(musicianId)
 
     return (
         <>
-        <div className="band-tab members">
+        <div className="band-members-tab">
             <div className="members-header">
                 <div className="action-buttons">
                     {musicianId === band?.bandInfo?.admin?.musicianId && (
@@ -300,7 +303,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                 </div>
             </div>
 
-            <ul className="member-list">
+            <ul className="members-list">
                 {bandMembers?.map((member) => (
                     viewing ? (
                         <li key={member.musicianProfileId} className="member-card" onClick={(e) => openInNewTab(`/${member.musicianProfileId}/null`, e)} style={{ cursor: 'pointer'}}>
@@ -470,8 +473,9 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             </div>
         )}
         {memberModal && (
-            <div className="modal" onClick={() => setMemberModal(false)}>
-                <div className="modal-content members" onClick={(e) => e.stopPropagation()}>
+            <Portal>
+            <div className="modal members" onClick={() => setMemberModal(false)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <div className="modal-header">
                         <PeopleGroupIconSolid />
                         <h2>Adding Band Members</h2>
@@ -533,11 +537,12 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                             </div>
                         </div>
                     </div>
-                    <button className="btn close" onClick={() => setMemberModal(false)}>
+                    <button className="btn close tertiary" onClick={() => setMemberModal(false)}>
                         Close
                     </button>
                 </div>
             </div>
+            </Portal>
         )}
         </>
     );

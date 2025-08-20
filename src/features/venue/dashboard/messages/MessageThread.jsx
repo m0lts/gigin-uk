@@ -706,21 +706,19 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 <button type='submit' className='btn primary'><SendMessageIcon /></button>
             </form>
             {showPaymentModal && (
-                <Elements stripe={stripePromise}>
-                    <PaymentModal 
-                        savedCards={savedCards}
-                        onSelectCard={handleSelectCard}
-                        onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
-                        gigData={gigData}
-                        setMakingPayment={setMakingPayment}
-                        makingPayment={makingPayment}
-                        setPaymentSuccess={setPaymentSuccess}
-                        paymentSuccess={paymentSuccess}
-                        setSavedCards={setSavedCards}
-                        paymentIntentId={paymentIntentId}
-                        setPaymentIntentId={setPaymentIntentId} 
-                    />
-                </Elements>
+                <PaymentModal
+                    savedCards={savedCards}
+                    onSelectCard={handleSelectCard}
+                    onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
+                    gigData={gigData}
+                    setMakingPayment={setMakingPayment}
+                    makingPayment={makingPayment}
+                    setPaymentSuccess={setPaymentSuccess}
+                    paymentSuccess={paymentSuccess}
+                    setSavedCards={setSavedCards}
+                    paymentIntentId={paymentIntentId}
+                    setPaymentIntentId={setPaymentIntentId} 
+                />
             )}
             {showReviewModal &&
                 <ReviewModal

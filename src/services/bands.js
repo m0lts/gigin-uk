@@ -103,7 +103,11 @@ export const joinBandByPassword = async (bandId, musicianProfile) => {
         split: 0,
       });
       transaction.update(bandRef, {
-        members: arrayUnion(musicianProfile.musicianId),
+        members: arrayUnion({
+          id: musicianProfile.musicianId,
+          img: musicianProfile.picture,
+          name: musicianProfile.name,
+        }),
       });
       transaction.update(musicianRef, {
         bands: arrayUnion(bandId),
@@ -389,7 +393,11 @@ export const acceptBandInvite = async (inviteId, musicianProfile) => {
       split: 0,
     });
     transaction.update(bandRef, {
-      members: arrayUnion(musicianProfile.musicianId),
+      members: arrayUnion({
+        id: musicianProfile.musicianId,
+        img: musicianProfile.picture,
+        name: musicianProfile.name,
+      }),
     });
     transaction.update(musicianRef, {
       bands: arrayUnion(bandId),
@@ -540,8 +548,10 @@ export const removeGigFromBand = async (bandId, gigId) => {
  */
 export const removeBandMember = async (bandId, musicianProfileId, userId) => {
   const bandRef = doc(firestore, 'bands', bandId);
+  const bandMusicianProfileRef = doc(firestore, 'musicianProfiles', bandId);
   const memberRef = doc(firestore, `bands/${bandId}/members`, musicianProfileId);
   const musicianRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+  const musicianProfile = await getDoc(musicianRef);
   const userRef = doc(firestore, 'users', userId);
   const removedSnap = await getDoc(memberRef);
   const removedSplit = removedSnap.exists() ? removedSnap.data().split || 0 : 0;
@@ -557,6 +567,14 @@ export const removeBandMember = async (bandId, musicianProfileId, userId) => {
     batch.update(docSnap.ref, { split: Number(newSplit.toFixed(2)) });
   });
   batch.delete(memberRef);
+  const memberToRemove = {
+    id: musicianProfileId,
+    name: musicianProfile.name,
+    img: musicianProfile.picture,
+  };
+  batch.update(bandMusicianProfileRef, {
+    members: arrayRemove(memberToRemove),
+  });
   batch.update(bandRef, {
     members: arrayRemove(musicianProfileId),
   });
@@ -582,11 +600,21 @@ export const removeBandMember = async (bandId, musicianProfileId, userId) => {
  */
 export const leaveBand = async (bandId, musicianProfileId, userId) => {
   const bandRef = doc(firestore, 'bands', bandId);
+  const bandMusicianProfileRef = doc(firestore, 'musicianProfiles', bandId);
   const memberRef = doc(firestore, `bands/${bandId}/members`, musicianProfileId);
   const userRef = doc(firestore, 'users', userId);
   const musicianRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+  const musicianProfile = await getDoc(musicianRef);
   const batch = writeBatch(firestore);
   batch.delete(memberRef);
+  const memberToRemove = {
+    id: musicianProfileId,
+    name: musicianProfile.name,
+    img: musicianProfile.picture,
+  };
+  batch.update(bandMusicianProfileRef, {
+    members: arrayRemove(memberToRemove),
+  });
   batch.update(bandRef, {
     members: arrayRemove(musicianProfileId)
   });
@@ -607,6 +635,7 @@ export const deleteBand = async (bandId) => {
   try {
     const batch = writeBatch(firestore);
     const bandRef = doc(firestore, 'bands', bandId);
+    const bandMusicianProfileRef = doc(firestore, 'musicianProfiles', bandId);
     const membersRef = collection(firestore, `bands/${bandId}/members`);
     const membersSnap = await getDocs(membersRef);
     for (const memberDoc of membersSnap.docs) {
@@ -621,6 +650,7 @@ export const deleteBand = async (bandId) => {
       });
       batch.delete(memberDoc.ref);
     }
+    batch.delete(bandMusicianProfileRef);
     batch.delete(bandRef);
     await batch.commit();
   } catch (error) {

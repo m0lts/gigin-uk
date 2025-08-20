@@ -10,7 +10,7 @@ import { getGigsByIds } from '../../../services/gigs';
 import { getReviewsByMusicianId } from '../../../services/reviews';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
-export const ReviewsTab = ({ profile, viewingOwnProfile, setShowPreview }) => {
+export const ReviewsTab = ({ profile, viewingOwnProfile, setShowPreview, bandAdmin }) => {
     const [reviews, setReviews] = useState([]);
     const [testimonials, setTestimonials] = useState([]);
     const [loading, setLoading] = useState(true);

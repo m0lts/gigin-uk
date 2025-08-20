@@ -107,7 +107,7 @@ export const MusicianDashboard = ({ user }) => {
                 <Route path='bands' element={<Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
                 <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
                 <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />
-                <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
+                <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} />} />
                 <Route path='finances' element={<Finances musicianProfile={musicianProfile} />} />
               </Routes>
               </div>

@@ -36,7 +36,7 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { EmptyIcon } from '../../shared/ui/extras/Icons';
   
-  export const OverviewTab = ({ musicianData, viewingOwnProfile, setShowPreview, videoToPlay, setVideoToPlay }) => {
+  export const OverviewTab = ({ musicianData, viewingOwnProfile, setShowPreview, videoToPlay, setVideoToPlay, bandAdmin }) => {
   
     const media = useMemo(() => {
       const imgs = (musicianData?.photos ?? []).map((src, i) => ({
@@ -64,12 +64,18 @@ import { EmptyIcon } from '../../shared/ui/extras/Icons';
         <div className="nothing-to-display">
             <EmptyIcon />
             {viewingOwnProfile ? (
+              bandAdmin ? (
                 <>
                     <h4>More information will show here when you complete your profile.</h4>
                     <button className="btn primary" onClick={() => setShowPreview(false)}>
                         Finish Profile
                     </button>
                 </>
+              ) : (
+                <>
+                    <h4>More information will show here when the band admin completes the band's profile.</h4>
+                </>
+              )
             ) : (
                 <>
                     <h4>No more information to show.</h4>

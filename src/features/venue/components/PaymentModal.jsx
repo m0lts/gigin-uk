@@ -9,6 +9,7 @@ import AmexIcon from '@assets/images/amex.png';
 import { CardIcon, ClockIcon, LeftArrowIcon } from '../../shared/ui/extras/Icons';
 import { listenToPaymentStatus } from '../../../services/payments';
 import { WalletButton } from './WalletButton';
+import { Elements } from '@stripe/react-stripe-js';
 
 
 
@@ -75,6 +76,14 @@ export const PaymentModal = ({
   
     return (
       <div className="modal payment">
+        <Elements
+          stripe={stripePromise}
+          options={{
+            mode: 'payment',
+            amount: totalDue,
+            currency: 'gbp',
+          }}
+        >
         <div className="modal-content">
           {/* PAYMENT PROCESSING */}
           {makingPayment ? (
@@ -120,13 +129,13 @@ export const PaymentModal = ({
                         </div>
                         <div className='payment-line'>
                             <h6>Total Payment Due:</h6>
-                            <h1>£{(parseFloat(gigData.agreedFee.replace('£', '')) * 1.05).toFixed(2)}</h1>
+                            <h1>£{totalDue}</h1>
                         </div>
                     </div>
                 )}
               <div className="wallets">
               <WalletButton
-                amountToCharge={Math.round(parseFloat(gigData.agreedFee.replace('£','')) * 1.05 * 100)}
+                amountToCharge={totalDue}
                 gigData={gigData}
                 onSucceeded={(piId) => {
                   setPaymentIntentId?.(piId);     // <-- set the PI so the listener can attach
@@ -210,6 +219,7 @@ export const PaymentModal = ({
             </button>
           )}
         </div>
+        </Elements>
       </div>
     );
   };
