@@ -70,25 +70,25 @@ export default function App() {
     return NaN;
   }
 
-  useEffect(() => {
-    const u = auth.currentUser;
-    if (!u) {
-      setVerifyEmailModal(false);
-      return;
-    }
-    if (u.emailVerified) {
-      setVerifyEmailModal(false);
-      return;
-    }
-    const createdAtMs = getCreatedAtMs(u, user);
-    if (Number.isNaN(createdAtMs)) {
-      setVerifyEmailModal(false);
-      return;
-    }
-    const hours = (Date.now() - createdAtMs) / 36e5;
-    setVerifyEmailModal(hours >= 48);
-    if (newUser) setVerifyInfoModal(true);
-  }, [user]);
+  // useEffect(() => {
+  //   const u = auth.currentUser;
+  //   if (!u) {
+  //     setVerifyEmailModal(false);
+  //     return;
+  //   }
+  //   if (u.emailVerified) {
+  //     setVerifyEmailModal(false);
+  //     return;
+  //   }
+  //   const createdAtMs = getCreatedAtMs(u, user);
+  //   if (Number.isNaN(createdAtMs)) {
+  //     setVerifyEmailModal(false);
+  //     return;
+  //   }
+  //   const hours = (Date.now() - createdAtMs) / 36e5;
+  //   setVerifyEmailModal(hours >= 48);
+  //   if (newUser) setVerifyInfoModal(true);
+  // }, [user]);
 
   if (loading) {
     return <LoadingScreen />;

@@ -5,14 +5,20 @@ import { toast } from "sonner";
 // Reuse your existing logo/icons if you like:
 import { NoTextLogo } from "@features/shared/ui/logos/Logos";
 import { LoadingThreeDots } from "@features/shared/ui/loading/Loading";
+import { useAuth } from '@hooks/useAuth'
+import { useNavigate } from "react-router-dom";
+
 
 export const  VerifyEmailModal = ({ onClose }) => {
+
+  const { logout } = useAuth();
   const user = auth.currentUser;
   const email = user?.email || "";
 
   const [sending, setSending] = useState(false);
   const [checking, setChecking] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -60,6 +66,17 @@ export const  VerifyEmailModal = ({ onClose }) => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+        await logout();
+        navigate();
+    } catch (err) {
+        console.error(err);
+    } finally {
+        window.location.reload();
+    }
+}
+
   return (
     <div className="modal" onClick={(e) => e.stopPropagation()}>
       <div className="modal-content auth">
@@ -104,6 +121,9 @@ export const  VerifyEmailModal = ({ onClose }) => {
               )}
             </button>
           </div>
+          <button className="btn tertiary" onClick={handleLogout} style={{ margin: '1rem auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            Log Out
+          </button>
         </div>
       </div>
     </div>

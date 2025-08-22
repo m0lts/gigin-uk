@@ -12,7 +12,8 @@ import {
   onSnapshot,
   Timestamp,
   orderBy,
-  arrayRemove
+  arrayRemove,
+  limit
 } from 'firebase/firestore';
 import { fetchCustomerData } from '@services/functions';
 

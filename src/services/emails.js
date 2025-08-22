@@ -13,6 +13,8 @@ import {
   Timestamp,
   orderBy
 } from 'firebase/firestore';
+import { NextGigIcon } from '../features/shared/ui/extras/Icons';
+import { TextLogo } from '../features/shared/ui/logos/Logos';
 
 /**
  * Sends an email using the Firestore 'mail' collection.
@@ -67,25 +69,131 @@ export const sendGigApplicationEmail = async ({
   ? `${musicianName} have applied to your gig on ${date} at ${venueName}.${feeText}`
   : `${musicianName} has applied to your gig on ${date} at ${venueName}.${feeText}`;
 
-const html = isBand
-  ? `
-    <p><strong>${musicianName}</strong> have applied to your gig:</p>
-    <ul>
-      <li><strong>Date:</strong> ${date}</li>
-      <li><strong>Venue:</strong> ${venueName}</li>
-      ${!nonPayableGig ? `<li><strong>Proposed Fee:</strong> ${budget}</li>` : ''}
-    </ul>
-    <p>Visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to review this application.</p>
-  `
-  : `
-    <p><strong>${musicianName}</strong> has applied to your gig:</p>
-    <ul>
-      <li><strong>Date:</strong> ${date}</li>
-      <li><strong>Venue:</strong> ${venueName}</li>
-      ${!nonPayableGig ? `<li><strong>Proposed Fee:</strong> ${budget}</li>` : ''}
-    </ul>
-    <p>Visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to review this application.</p>
+  const dashboardUrl = `${window.location.origin}/venues/dashboard`;
+
+  const baseStyles = {
+    bodyBg: "#f9f9f9",
+    cardBg: "#ffffff",
+    text: "#333333",
+    muted: "#6b7280",
+    accent: "#111827",
+    border: "#e5e7eb",
+    btnBg: "#111827",
+    btnText: "#ffffff",
+    gnOrange: "#FF6C4B",
+    gnOffsetOrange: "#fff1ee",
+  };
+
+  const iconPath = 'M32 32a32 32 0 1 1 64 0A32 32 0 1 1 32 32zM448 160a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32 256a32 32 0 1 1 0 64 32 32 0 1 1 0-64zM167 153c-9.4-9.4-9.4-24.6 0-33.9l8.3-8.3c16.7-16.7 27.2-38.6 29.8-62.1l3-27.4C209.6 8.2 221.5-1.3 234.7 .1s22.7 13.3 21.2 26.5l-3 27.4c-3.8 34.3-19.2 66.3-43.6 90.7L201 153c-9.4 9.4-24.6 9.4-33.9 0zM359 311l8.2-8.3c24.4-24.4 56.4-39.8 90.7-43.6l27.4-3c13.2-1.5 25 8 26.5 21.2s-8 25-21.2 26.5l-27.4 3c-23.5 2.6-45.4 13.1-62.1 29.8L393 345c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9zM506.3 8.5c8.6 10.1 7.3 25.3-2.8 33.8l-10 8.5c-14.8 12.5-33.7 19.1-53 18.6c-16.6-.4-30.6 12.4-31.6 29l-1.8 30c-2.5 42.5-38.3 75.3-80.8 74.2c-7.6-.2-15 2.4-20.7 7.3l-10 8.5c-10.1 8.6-25.3 7.3-33.8-2.8s-7.3-25.3 2.8-33.8l10-8.5c14.8-12.5 33.7-19.1 53-18.6c16.6 .4 30.6-12.4 31.6-29l1.8-30c2.5-42.5 38.3-75.3 80.8-74.2c7.6 .2 15-2.4 20.7-7.3l10-8.5c10.1-8.6 25.3-7.3 33.8 2.8zM150.6 201.4l160 160c7.7 7.7 10.9 18.8 8.6 29.4s-9.9 19.4-20 23.2l-39.7 14.9L83.1 252.5 98 212.8c3.8-10.2 12.6-17.7 23.2-20s21.7 1 29.4 8.6zM48.2 345.6l22.6-60.2L226.6 441.2l-60.2 22.6L48.2 345.6zM35.9 378.5l97.6 97.6L43.2 510c-11.7 4.4-25 1.5-33.9-7.3S-2.4 480.5 2 468.8l33.8-90.3z';
+  const iconSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
+        width="28" height="28" role="img" aria-label="Icon"
+        style="display:block;">
+      <path d="${iconPath}" fill="#111827"></path>
+    </svg>
   `;
+
+  const logoUrl = "https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/gigin.png?alt=media&token=efd9ba79-f580-454c-98f6-b4a391e0d636";
+
+  const htmlBase = (inner) => `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="background:${baseStyles.bodyBg};padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;background:${baseStyles.cardBg};border:1px solid ${baseStyles.border};border-radius:16px;">
+            <tr>
+              <td style="padding:28px 28px 0 28px;" align="center">
+                <img src="${logoUrl}" width="120" height="36" alt="gigin."
+                style="display:block;border:0;max-width:100%;height:auto;">
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 28px 0 28px;" align="center">
+                <div style="font-size:28px;line-height:1.2;color:${baseStyles.accent}">${iconSvg}</div>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 28px 0 28px;" align="center">
+                <h1 style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:20px;line-height:28px;color:${baseStyles.accent};font-weight:700;">
+                  New Gig Application
+                </h1>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:16px 28px 0 28px;">
+                ${inner}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:20px 28px 28px 28px;" align="center">
+                <!-- CTA Button -->
+                <a href="${dashboardUrl}"
+                  style="display:inline-block;background:${baseStyles.btnBg};color:${baseStyles.btnText};text-decoration:none;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;padding:12px 18px;border-radius:10px;">
+                  Review Application
+                </a>
+                <div style="font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:${baseStyles.muted};margin-top:10px;">
+                  Or paste this into your browser: ${dashboardUrl}
+                </div>
+              </td>
+            </tr>
+
+          </table>
+          <div style="max-width:600px;margin-top:16px;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:${baseStyles.muted};">
+            You’re receiving this because you have a venue on Gigin.
+          </div>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  // BAND version
+  const htmlBandInner = `
+    <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+      <strong>${musicianName}</strong> have applied to your gig:
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;color:${baseStyles.text};margin:0 0 16px 0;">
+      <tr>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${date}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Venue:</strong> ${venueName}</td>
+      </tr>
+      ${!nonPayableGig
+        ? `<tr><td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Proposed Fee:</strong> ${budget}</td></tr>`
+        : ""
+      }
+    </table>
+    <p style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+      Visit your <a href="${dashboardUrl}" style="color:#111827;text-decoration:underline;">dashboard</a> to review this application.
+    </p>
+  `;
+
+  // SOLO version
+  const htmlSoloInner = `
+    <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+      <strong>${musicianName}</strong> has applied to your gig:
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;color:${baseStyles.text};margin:0 0 16px 0;">
+      <tr>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${date}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Venue:</strong> ${venueName}</td>
+      </tr>
+      ${!nonPayableGig
+        ? `<tr><td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Proposed Fee:</strong> ${budget}</td></tr>`
+        : ""
+      }
+    </table>
+    <p style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+      Visit your <a href="${dashboardUrl}" style="color:#111827;text-decoration:underline;">dashboard</a> to review this application.
+    </p>
+  `;
+
+  const html = htmlBase(isBand ? htmlBandInner : htmlSoloInner);
 
   const mailRef = collection(firestore, 'mail');
   await addDoc(mailRef, {
