@@ -19,17 +19,31 @@ import { declineGigApplication, deleteGig, updateGigApplicants } from '@services
 import { getMusicianProfileByMusicianId, removeGigFromMusician } from '@services/musicians';
 import { deleteConversationsByGigId, getConversationsByParticipantAndGigId, getOrCreateConversation } from '@services/conversations';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, getMostRecentMessage } from '@services/messages';
-import { sendEmail } from '@services/emails';
 import { removeGigFromVenue } from '@services/venues';
 import { confirmGigPayment, fetchSavedCards } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
 import { acceptGigOffer, updateGigDocument } from '../../../services/gigs';
-import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PreviousIcon } from '../../shared/ui/extras/Icons';
+import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { getVenueProfileById } from '../../../services/venues';
 import { loadStripe } from '@stripe/stripe-js';
+import { sendGigAcceptedEmail, sendGigDeclinedEmail } from '../../../services/emails';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+const VideoModal = ({ video, onClose }) => {
+    return (
+        <div className='modal videos'>
+            <div className='modal-content transparent'>
+                <span className='close' onClick={onClose}>&times;</span>
+                <video controls autoPlay style={{ width: '100%' }}>
+                    <source src={video.file} type='video/mp4' />
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    );
+};
 
 export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
 
@@ -37,7 +51,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const now = useMemo(() => new Date(), []);
-
+    const [videoToPlay, setVideoToPlay] = useState(null);
     const [gigInfo, setGigInfo] = useState(null);
     const [musicianProfiles, setMusicianProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -53,7 +67,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
     const [showDeleteConfirmationModal, setShowDeleteConfirmationModal] = useState(false);
     const [showCloseGigModal, setShowCloseGigModal] = useState(false);
     const [watchPaymentIntentId, setWatchPaymentIntentId] = useState(null);
-
+    const [hoveredRowId, setHoveredRowId] = useState(null);
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
     const venueName = location.state?.gig?.venue?.venueName || '';
@@ -156,28 +170,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
                 await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, agreedFee, 'venue', nonPayableGig);
             }
-            const musicianEmail = musicianProfile.email;
-            const musicianName = musicianProfile.name;
-            await sendEmail({
-                to: musicianEmail,
-                subject: `Your Gig Application Has Been Accepted!`,
-                text: `Congratulations! Your application for the gig at ${gigInfo.venue.venueName} on ${formatDate(gigInfo.date)} has been accepted.`,
-                html: `
-                    <p>Hi ${musicianName},</p>
-                    <p>We're excited to inform you that your application for the following gig has been accepted:</p>
-                    <ul>
-                        <li><strong>Gig:</strong> ${gigInfo.venue.venueName}</li>
-                        <li><strong>Date:</strong> ${formatDate(gigInfo.date)}</li>
-                        <li><strong>Fee:</strong> ${agreedFee}</li>
-                    </ul>
-                    <p>${
-                        nonPayableGig
-                          ? 'This gig is already confirmed — no payment is required from the venue.'
-                          : 'The gig will be confirmed once the venue has paid the gig fee.'
-                      }</p>
-                    <p>Please visit your <a href='${window.location.origin}/dashboard'>dashboard</a> to see the status of the gig.</p>
-                    <p>Thanks,<br />The Gigin Team</p>
-                `,
+            await sendGigAcceptedEmail({
+                userRole: 'venue',
+                musicianProfile: musicianProfile,
+                venueProfile: venueProfile,
+                gigData: gigInfo,
+                agreedFee: agreedFee,
+                isNegotiated: false,
+                nonPayableGig,
             })
             toast.success('Application Accepted.')
         } catch (error) {
@@ -206,21 +206,12 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
                 await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, proposedFee, 'venue');
             }
-            await sendEmail({
-                to: musicianEmail,
-                subject: `Your Gig Application Has Been Declined`,
-                text: `Your application for the gig at ${gigInfo.venue.venueName} on ${formatDate(gigInfo.date)} has been declined.`,
-                html: `
-                    <p>Hi ${musicianName},</p>
-                    <p>Unfortunately your application for the following gig has been declined:</p>
-                    <ul>
-                        <li><strong>Gig:</strong> ${gigInfo.venue.venueName}</li>
-                        <li><strong>Date:</strong> ${formatDate(gigInfo.date)}</li>
-                    </ul>
-                    <p>Please visit your <a href='${window.location.origin}/dashboard'>dashboard</a> to find another gig or negotiate the fee.</p>
-                    <p>Thanks,<br />The Gigin Team</p>
-                `,
-            });
+            await sendGigDeclinedEmail({
+                userRole: 'venue',
+                venueProfile: venueProfile,
+                musicianProfile: musicianProfile,
+                gigData: gigInfo,
+            })
             toast.info('Application Rejected.')
         } catch (error) {
             toast.error('Error rejecting gig application. Please try again.')
@@ -328,7 +319,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             ));
             await removeGigFromVenue(venueId, gigId);
             await deleteConversationsByGigId(gigId);
-            navigate('/venues/dashboard');
+            navigate('/venues/dashboard/gigs');
             toast.success('Gig Deleted');
         } catch (error) {
             console.error('Error deleting gig:', error);
@@ -361,6 +352,10 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             toast.error('Failed to update gig status.');
         }
     }
+
+    const closeModal = () => {
+        setVideoToPlay(null);
+    };
 
     return (
         <>
@@ -428,9 +423,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                     {windowWidth > 880 && (
                                         <th>Genre(s)</th>
                                     )}
-                                    {windowWidth > 1268 && (
-                                        <th>Reviews</th>
-                                    )}
+                                    <th>Video</th>
                                     <th>Fee</th>
                                     <th>Status</th>
                                 </tr>
@@ -440,8 +433,12 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                     const applicant = gigInfo.applicants.find(applicant => applicant.id === profile.id);
                                     const status = applicant ? applicant.status : 'pending';
                                     return (
-                                        <tr key={profile.id} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)}>
-                                            <td>
+                                        <tr key={profile.id} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
+                                        onMouseLeave={() => setHoveredRowId(null)}>
+                                            <td className='musician-name'>
+                                                {hoveredRowId === profile.id && (
+                                                    <NewTabIcon />
+                                                )}
                                                 {profile.name}
                                             </td>
                                             {windowWidth > 880 && (
@@ -459,17 +456,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                     )}
                                                 </td>
                                             )}
-                                            {windowWidth > 1268 && (
-                                                <td>{profile?.reviews && profile?.reviews.length > 0 ? (
-                                                    <>
-                                                        <StarIcon /> 
-                                                        {profile.avgReviews.avgRating}
-                                                        ({profile.avgReviews.totalReviews})
-                                                    </>
-                                                ) : (
-                                                    'No Reviews'
-                                                )}</td>
-                                            )}
+                                            <td>{profile?.videos && profile?.videos.length > 0 ? (
+                                                <button className='btn small tertiary' onClick={(e) => {e.stopPropagation(); setVideoToPlay(profile.videos[0]);}} onMouseEnter={() => setHoveredRowId(null)} onMouseLeave={() => setHoveredRowId(profile.id)}>
+                                                    <PlayIcon />
+                                                    Play Video
+                                                </button>
+                                            ) : (
+                                                'No Video'
+                                            )}</td>
                                             <td>
                                                 {(gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') ? (
                                                     profile.proposedFee !== gigInfo.budget ? (
@@ -665,6 +659,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                     </div>
                 </div>
             )}
+            {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
         </>
     );
 };

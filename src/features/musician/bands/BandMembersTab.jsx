@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { createBandInvite, getBandMembers } from '@services/bands';
-import { sendEmail } from '@services/emails';
 import { CopyIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { updateBandMemberSplits, updateBandMemberPermissions, removeBandMember, updateBandAdmin } from '@services/bands';
@@ -9,6 +8,7 @@ import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import Portal from '@features/shared/components/Portal'
+import { sendBandInviteEmail } from '../../../services/emails';
 
 export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, viewing = false, bandAdmin }) => {
 
@@ -71,14 +71,10 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
         try {
             if (!emailToInvite) return;
             const link = await generateInviteLink();
-            await sendEmail({
+            await sendBandInviteEmail({
                 to: emailToInvite,
-                subject: `You're invited to join ${band.name} on Gigin`,
-                text: `You've been invited to join ${band.name} on Gigin. Click the link below to join:\n\n${link}`,
-                html: `
-                  <p>You've been invited to join <strong>${band.name}</strong> on Gigin.</p>
-                  <p><a href="${link}">Click here to join the band</a></p>
-                `,
+                band: band.name,
+                link: link,
             });
             setEmailToInvite('');
             toast.success('Email Sent!')

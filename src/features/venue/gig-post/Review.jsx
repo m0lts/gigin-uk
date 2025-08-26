@@ -5,7 +5,7 @@ import { saveGigTemplate } from '@services/gigs';
 import { toast } from 'sonner';
 import { ExclamationIcon, NewTabIcon } from '../../shared/ui/extras/Icons';
 
-export const GigReview = ({ formData, handleInputChange, setStage, buildingForMusician, buildingForMusicianData, multipleSlots, numberOfSlots }) => {
+export const GigReview = ({ formData, handleInputChange, setStage, buildingForMusician, buildingForMusicianData, extraSlots }) => {
 
     const [saving, setSaving] = useState(false);
     const [templateName, setTemplateName] = useState('');
@@ -145,12 +145,17 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
     const handleSaveTemplate = async () => {
         setSaving(true);
         const templateId = uuidv4();
+        const allSlots = [
+            { startTime: formData.startTime, duration: formData.duration },
+            ...extraSlots,
+          ];
         const templateDataPacket = {
           ...formData,
           gigId: null,
           date: null,
           templateName: templateName,
           templateId: templateId,
+          gigSlots: allSlots,
         };
         try {
           await saveGigTemplate(templateDataPacket);
@@ -172,7 +177,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
             <div className='stage review'>
                 <div className='review-box'>
                     <h4 className='value'>{formData.venue.venueName}</h4>
-                    <button className='btn text' onClick={() => setStage(2)}>
+                    <button className='btn text' onClick={() => setStage(1)}>
                         <EditIcon />
                     </button>
                 </div>
@@ -180,19 +185,19 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                     <div className='review-left'>
                         <div className='review-box'>
                             <h4 className='value'>{formData.date ? formatDate(formData.date) : 'Date undecided'}</h4>
-                            <button className='btn text' onClick={() => setStage(1)}>
+                            <button className='btn text' onClick={() => setStage(2)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className='review-box'>
                             <h4 className='value'>{formData.startTime}</h4>
-                            <button className='btn text' onClick={() => setStage(7)}>
+                            <button className='btn text' onClick={() => setStage(6)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className='review-box'>
                             <h4 className='value'>{formatDuration(formData.duration)}</h4>
-                            <button className='btn text' onClick={() => setStage(7)}>
+                            <button className='btn text' onClick={() => setStage(6)}>
                                 <EditIcon />
                             </button>
                         </div>
@@ -204,28 +209,28 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                         </div>
                         <div className='review-box'>
                             <h4 className='value'>{formData.privacy} {formData.kind}</h4>
-                            <button className='btn text' onClick={() => setStage(3)}>
+                            <button className='btn text' onClick={() => setStage(4)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className='review-box'>
                             <h4 className='value'>{formatMusic(formData.genre)}</h4>
-                            <button className='btn text' onClick={() => setStage(5)}>
+                            <button className='btn text' onClick={() => setStage(6)}>
                                 <EditIcon />
                             </button>
                         </div>
-                        {multipleSlots && (
+                        {extraSlots.length > 0 && (
                             <div className="review-box">
                                 <div className="value">
                                     <h4 style={{ marginBottom: 6 }}>
-                                        {!multipleSlots ? (
+                                        {extraSlots.length < 1 ? (
                                             "Single performer (no slot split)"
                                         ) : (
-                                            `Multiple performers: ${numberOfSlots || 0} slots`
+                                            `Multiple performers: ${extraSlots.length || 0} slots`
                                         )}
                                     </h4>
                                 </div>
-                                <button className="btn text" onClick={() => setStage(10)}>
+                                <button className="btn text" onClick={() => setStage(7)}>
                                     <EditIcon />
                                 </button>
                             </div>                            

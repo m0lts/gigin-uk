@@ -13,6 +13,7 @@ import { cancelTask } from '@services/functions';
 import { submitReview } from '../../../services/reviews';
 import { toast } from 'sonner';
 import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/payments';
+import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/emails';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);
@@ -93,12 +94,15 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     text: `A dispute has been logged for the gig on ${formatDate(gigData.date)}.`,
                     html: `<p>A dispute has been logged for the gig on ${formatDate(gigData.date)}.</p>`,
                 })
-                await sendEmail({
-                    to: musicianProfile.email,
-                    subject: 'Dispute Logged',
-                    text: `The venue ${gigData.venue.venueName} has reported your performance at the gig on ${formatDate(gigData.date)}. We have withheld the gig fee until the dispute is resolved. We will be in touch shortly.`,
-                    html: `<p>The venue ${gigData.venue.venueName} has reported your performance at the gig on ${formatDate(gigData.date)}. <br /> We have withheld the gig fee until the dispute is resolved. <br /> We will be in touch shortly.</p>`,
+                await sendDisputeLoggedEmail({
+                    musicianProfile: musicianProfile,
+                    gigData: gigData,
                 });
+                await sendVenueDisputeLoggedEmail({
+                    venueProfile: venueProfile,
+                    musicianProfile: musicianProfile,
+                    gigData: gigData,
+                })
                 setLoading(false);
                 setShowDisputeForm(false);
                 setDisputeSubmitted(true);

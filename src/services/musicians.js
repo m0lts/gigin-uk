@@ -169,7 +169,14 @@ export const fetchMusiciansPaginated = async ({ lastDocId, limitCount = 50, type
 
   const constraints = [];
 
-  if (type) constraints.push(where('musicianType', '==', type));
+  if (type === 'Musician') {
+    constraints.push(where('musicianType', '==', 'Musician'));
+  } else if (type === 'Band') {
+    constraints.push(where('musicianType', '==', 'Band'));
+  } else if (type === 'DJ') {
+    constraints.push(where('musicianType', '==', 'DJ'));
+  }
+
   if (genres?.length) constraints.push(where('genres', 'array-contains-any', genres));
   // if (location) constraints.push(where('location.city', '==', location)); // adjust path if needed
   if (search) constraints.push(where('searchKeywords', 'array-contains', search.toLowerCase()));

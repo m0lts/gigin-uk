@@ -1,5 +1,5 @@
 import { InviteIcon, PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
-import { InviteIconSolid, PeopleGroupIconSolid } from '../../shared/ui/extras/Icons';
+import { BackgroundMusicIcon, HouseIconSolid, InviteIconSolid, MicrophoneIconSolid, MusicianIconSolid, PeopleGroupIconSolid, TicketIcon, WeddingIcon } from '../../shared/ui/extras/Icons';
 
 export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => {
 
@@ -12,9 +12,28 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
     const handleKindSelect = (e) => {
         setError(null);
         handleInputChange({
-            kind: e.target.value,
+            kind: e,
         });
     };
+
+    const gigTypes = ['Background Music', 'Live Music', 'Ticketed Gig', 'House Party', 'Wedding', 'Open Mic'];
+
+    const filterGigIcon = (gig) => {
+        switch (gig) {
+            case 'Background Music':
+                return <BackgroundMusicIcon />
+            case 'Live Music':
+                return <MusicianIconSolid />
+            case 'Ticketed Gig':
+                return <TicketIcon />
+            case 'House Party':
+                return <HouseIconSolid />
+            case 'Wedding':
+                return <WeddingIcon />
+            default:
+                return <MicrophoneIconSolid />
+        }
+    }
 
     return (
         <>
@@ -23,7 +42,7 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
                 <p className='text'>Select whether the gig is private or open to the public, and then select the type of event it is.</p>
             </div>
             <div className='body privacy'>
-                <div className='selections'>
+                {/* <div className='selections'>
                     <div className={`card ${formData.privacy === 'Public' ? 'selected' : ''}`} onClick={() => handlePrivacySelect('Public')}>
                         {formData.privacy === 'Public' ? (
                             <PeopleGroupIconSolid />
@@ -47,29 +66,19 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
                     <div className="error-cont" style={{ width: 'fit-content', margin: '1rem auto' }}>
                         <p className="error-message">{error}</p>
                     </div>
-                )}
-                {formData.privacy && (
-                    <>
-                        <div className='type-of-gig'>
-                            <h6>WHAT TYPE OF GIG IS IT?</h6>
-                            <div className='selections'>
-                                <select name='kind' id='kind' value={formData.kind} onChange={handleKindSelect} className={`${error ? 'error' : ''}`}>
-                                    <option value=''>Select gig type here...</option>
-                                    <option value='Background Music'>Background Music</option>
-                                    <option value='Live Music'>Live Music</option>
-                                    <option value='Ticketed Gig'>Ticketed Gig</option>
-                                    <option value='House Party'>House Party</option>
-                                    <option value='Wedding'>Wedding</option>
-                                    <option value='Open Mic'>Open Mic</option>
-                                </select>
-                            </div>
+                )} */}
+                <div className='type-of-gig'>
+                    {gigTypes.map((gt) => (
+                        <div className={`card ${formData.kind === gt ? 'selected' : ''}`} key={gt} onClick={() => handleKindSelect(gt)}>
+                            {filterGigIcon(gt)}
+                            <h4>{gt}</h4>
                         </div>
-                        {error && error !== 'Please select both a gig kind and a privacy setting.' && (
-                            <div className="error-cont" style={{ width: 'fit-content', margin: '1rem auto' }}>
-                                <p className="error-message">{error}</p>
-                            </div>
-                        )}
-                    </>
+                    ))}
+                </div>
+                {error && error !== 'Please select both a gig kind and a privacy setting.' && (
+                    <div className="error-cont" style={{ width: 'fit-content', margin: '1rem auto' }}>
+                        <p className="error-message">{error}</p>
+                    </div>
                 )}
             </div>
         </>

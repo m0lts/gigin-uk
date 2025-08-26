@@ -82,7 +82,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
     }, [venue])
 
     const [uploadingProfile, setUploadingProfile] = useState(false);
-    const [uploadText, setUploadText] = useState('Saving Your Venue...');
+    const [uploadText, setUploadText] = useState('Adding You To The Gigin Map');
     const [progress, setProgress] = useState(1);
     const [completeSavedProfileModal, setCompleteSavedProfileModal] = useState(false);
     const [savedProfile, setSavedProfile] = useState();
@@ -133,14 +133,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             progressIntervals.forEach((value, index) => {
                 setTimeout(() => setProgress(value), 1000 * (index + 1));
             });
-    
-            // Text updates
-            setTimeout(() => setUploadText('Uploading Your Images...'), 2000);
-            setTimeout(() => setUploadText('Building Your Dashboard...'), 6000);
-    
+        
             // Final navigation
             setTimeout(() => {
-                navigate('/venues/dashboard', { state: { newUser: true } });
+                navigate('/venues/dashboard/gigs', { state: { newUser: true } });
                 setUploadingProfile(false)
             }, 11000);
     

@@ -32,15 +32,23 @@ export const GigGenre = ({ formData, handleInputChange, error }) => {
         }
     }, [formData.noMusicPreference]);
 
+    const genresToShow = ['Pop', 'Soul', 'Rock', 'Jazz', 'Classical', 'Choral', 'Indie', 'Alternative', 'Singer-Songwriter', 'Folk', 'Blues', 'R&B', 'Funk', 'Electronic/Dance', 'House', 'Drill', 'Hip-Hop', 'Rap', 'Country', 'World', 'Latin']
+
+    const handleExtraInfoChange = (info) => {
+        handleInputChange({
+            extraInformation: info,
+        })
+    }
+
     return (
         <>
             <div className='head'>
-                <h1 className='title'>What genre(s) would you prefer?</h1>
-                <p className='text'>Select all that apply. This will help us match the right musician to your gig.</p>
+                <h1 className='title'>Gig Details</h1>
+                <p className='text'>Select a genre for the gig if you'd like. Add any extra description.</p>
             </div>
             <div className='body genre'>
                 <div className='toggle-container'>
-                    <label htmlFor='no-specifics'>Flexible, no specifics</label>
+                    <label htmlFor='no-specifics'>No specific genre</label>
                     <label className='switch'>
                         <input
                             type='checkbox'
@@ -51,58 +59,26 @@ export const GigGenre = ({ formData, handleInputChange, error }) => {
                         <span className='slider round'></span>
                     </label>
                 </div>
-                {formData.gigType === 'Musician/Band' ? (
+                {!formData.noMusicPreference && (
                     <div className='selections'>
-                        <div className={`card small ${formData.genre.includes('Pop') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Pop')}>
-                            <h4 className='text'>Pop</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Rock') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Rock')}>
-                            <h4 className='text'>Rock</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Classical') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Classical')}>
-                            <h4 className='text'>Classical</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Jazz') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Jazz')}>
-                            <h4 className='text'>Jazz</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Folk') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Folk')}>
-                            <h4 className='text'>Folk</h4>
-                        </div>
-                    </div>
-                ) : (
-                    <div className='selections'>
-                        <div className={`card small ${formData.genre.includes('Club Classics') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Club Classics')}>
-                            <h4 className='text'>Club Classics</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('House') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('House')}>
-                            <h4 className='text'>House</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('New Hits') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('New Hits')}>
-                            <h4 className='text'>New Hits</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Hip-Hop & RnB') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Hip-Hop & RnB')}>
-                            <h4 className='text'>Hip-Hop & RnB</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Funk & Soul') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Funk & Soul')}>
-                            <h4 className='text'>Funk & Soul</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Disco') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Disco')}>
-                            <h4 className='text'>Disco</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Drum & Bass') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Drum & Bass')}>
-                            <h4 className='text'>Drum & Bass</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Jungle') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Jungle')}>
-                            <h4 className='text'>Jungle</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Rock') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Rock')}>
-                            <h4 className='text'>Rock</h4>
-                        </div>
-                        <div className={`card small ${formData.genre.includes('Chillout/Lounge') ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect('Chillout/Lounge')}>
-                            <h4 className='text'>Chillout/Lounge</h4>
-                        </div>
+                        {genresToShow.map((genre) => (
+                            <div className={`card small ${formData.genre.includes(genre) ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect(genre)}>
+                                <h4 className='text'>{genre}</h4>
+                            </div>
+                        ))}
                     </div>
                 )}
+                <div className="extra-details">
+                    <h6>Add any extra details on what kind of experience you’re after</h6>
+                    <div className='input-group'>
+                        <textarea 
+                            name='extraInformation' 
+                            id='extraInformation' 
+                            onChange={(e) => handleExtraInfoChange(e.target.value)}
+                            value={formData.extraInformation}
+                        ></textarea>
+                    </div>
+                </div>
                 {error && (
                     <div className="error-cont" style={{ width: 'fit-content', margin: '0.5rem auto' }}>
                         <p className="error-message">{error}</p>

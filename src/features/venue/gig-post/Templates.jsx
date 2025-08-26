@@ -1,24 +1,38 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetFormData }) => {
+export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetFormData, setExtraSlots }) => {
 
     const [selectedCard, setSelectedCard] = useState();
+
+    const applyGigSlots = (slots) => {
+        if (!slots || slots.length === 0) return;
+        const [first, ...rest] = slots;
+        setFormData(prev => ({
+            ...prev,
+            startTime: first.startTime,
+            duration: first.duration,
+        }));
+        setExtraSlots(rest);
+    };
 
     const handlePopulateTemplateData = (template) => {
         if (selectedCard === template.templateId) {
             resetFormData();
+            setExtraSlots([]);
             setSelectedCard(undefined);
         } else {
             const { templateName, templateId, ...templateData } = template;
             const id = uuidv4();
             delete templateData.id;
-            setFormData({
+            setFormData(prev => ({
+                ...prev,
                 ...templateData,
                 gigId: id,
                 id: id,
                 createdAt: new Date(),
-            });
+            }));
+            applyGigSlots(templateData.gigSlots);
             setSelectedCard(templateId);
         }
     };
@@ -26,15 +40,18 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetForm
     const handlePopulateGigData = (gig) => {
         if (selectedCard === gig.gigId) {
             resetFormData();
+            setExtraSlots([]);
             setSelectedCard(undefined);
         } else {
             const { gigId, createdAt, ...gigData } = gig;
-            setFormData({
+            setFormData(prev => ({
+                ...prev,
                 ...gigData,
                 gigId: gigId,
                 date: gig.date.toDate(),
                 createdAt: new Date(),
-            });
+              }));
+            applyGigSlots(gigData.gigSlots);
             setSelectedCard(gigId);
         }
     };

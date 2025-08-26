@@ -19,7 +19,7 @@ export const GigName = ({ formData, handleInputChange, error }) => {
     return (
         <>
             <div className='head'>
-                <h1 className='title'>What do you want to call this gig?</h1>
+                <h1 className='title'>What do you want to call this gig? (Optional)</h1>
                 <p className='text'>E.g. Friday Night Lights</p>
             </div>
             <div className='body budget'>
@@ -34,6 +34,7 @@ export const GigName = ({ formData, handleInputChange, error }) => {
                         autoComplete='off'
                         />
                 </div>
+                <button className="btn secondary" onClick={() => handleNameChange(`Gig at ${formData.venue.venueName}`)}>Auto-Fill</button>
                 {error && (
                     <div className="error-cont" style={{ width: 'fit-content', margin: '0 auto' }}>
                         <p className="error-message">{error}</p>

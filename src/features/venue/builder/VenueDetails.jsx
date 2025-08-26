@@ -121,8 +121,7 @@ export const VenueDetails = ({ formData, handleInputChange, setStepError, stepEr
         <div className='stage details'>
             <div className="stage-content">
                 <div className="stage-definition">
-                    <h1>Let’s Pin Down Your Venue</h1>
-                    <p className='stage-copy'>Start by telling us what your venue’s called and where it is. The more accurate the info, the easier it is to attract the right musicians!</p>
+                    <h1>Let’s Get You on the Map</h1>
                 </div>
                     <div className='form'>
                         <div className='input-group'>
@@ -178,7 +177,17 @@ export const VenueDetails = ({ formData, handleInputChange, setStepError, stepEr
                                         mapStyle='mapbox://styles/mapbox/streets-v11'
                                         mapboxAccessToken={mapboxToken}
                                     >
-                                        <Marker longitude={locationCoordinates[0]} latitude={locationCoordinates[1]} />
+                                        <Marker longitude={locationCoordinates[0]} latitude={locationCoordinates[1]} >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="#FF6C4B"
+                                                width="30px"
+                                                height="30px"
+                                            >
+                                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
+                                            </svg>
+                                        </Marker>
                                     </Map>
                                 </div>
                             </div>

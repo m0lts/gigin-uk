@@ -12,6 +12,11 @@ const Stripe = require("stripe");
 const cors = require("cors")({origin: true});
 const {GoogleAuth} = require("google-auth-library");
 const {CloudTasksClient} = require("@google-cloud/tasks");
+const {
+  gigFeeReleasedEmail,
+  reviewPromptEmail,
+  gigConfirmedEmail,
+} = require("./services/emails");
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -863,31 +868,12 @@ exports.clearPendingFee = onRequest(
           await performerRef.set({gigsPerformed: clearedCount}, {merge: true});
         }
         const mailRef = db.collection("mail");
+        const isAdmin = applicantId === musicianId;
+        const mailMessage =
+        gigFeeReleasedEmail(musicianName, venueName, isAdmin);
         await mailRef.add({
           to: musicianEmail,
-          message: {
-            subject: "Your gig fee is available!",
-            text:
-                "We have just cleared your gig fee. " +
-                "You can now withdraw it to your bank account.",
-            html: `
-                <p>Hi ${musicianName},</p>
-                <p>
-                We hope your gig at <strong>${venueName}</strong> went well!
-                </p>
-                <p>
-                ${applicantId !== musicianId ?
-                  "You are the band admin - it is your responsibility " +
-                  "to split these funds between your band members" :
-                  ""}
-                </p>
-                <p>
-                Your fee has been cleared and is available in your Gigin wallet.
-                </p>
-                <p><a href="https://gigin.ltd/finances">Log in to Gigin</a> to withdraw it to your bank account.</p>
-                <p>Thanks,<br />The Gigin Team</p>
-              `,
-          },
+          message: mailMessage,
         });
         console.log(
             `Fee cleared for recipient ${musicianId}, gig ${gigId}.`,
@@ -1118,38 +1104,20 @@ exports.automaticReviewMessage = onRequest(
               lastMessageSenderId: "system",
             });
         const mailRef = firestore.collection("mail");
-        await mailRef.add({
-          to: musicianEmail,
-          message: {
-            subject: "How did the gig go?",
-            text: `We hope your gig at ${venueName}
-             went well! Let them know how it went.`,
-            html: `
-                    <p>Hi ${musicianName},</p>
-                    <p>We hope your gig at
-                     <strong>${venueName}</strong> went well!</p>
-                    <p><a href="https://gigin.ltd">Log on to Gigin</a> to leave a review.</p>
-                    <p>Thanks,<br />The Gigin Team</p>
-                `,
-          },
+        const musicianMessage = reviewPromptEmail({
+          audience: "musician",
+          musicianName,
+          venueName,
+          baseUrl: "https://gigin.ltd",
         });
-        await mailRef.add({
-          to: venueEmail,
-          message: {
-            subject: "How was the performance?",
-            text: `How was ${musicianName}'s performance at your gig?
-             Let them know by leaving a review.`,
-            html: `
-                    <p>Hi ${venueName},</p>
-                    <p>How was <strong>${musicianName}</strong>'s
-                     performance at your gig?</p>
-                    <p>We’d love to hear your feedback!
-                     <a href="https://gigin.ltd">Log on to Gigin</a> and
-                     leave ${musicianName} a review.</p>
-                    <p>Thanks,<br />The Gigin Team</p>
-                `,
-          },
+        const venueMessage = reviewPromptEmail({
+          audience: "venue",
+          musicianName,
+          venueName,
+          baseUrl: "https://gigin.ltd",
         });
+        await mailRef.add({to: musicianEmail, message: musicianMessage});
+        await mailRef.add({to: venueEmail, message: venueMessage});
         console.log("Review message sent successfully.");
         res.status(200).send({success: true});
       } catch (error) {
@@ -2080,29 +2048,16 @@ const handlePaymentSuccess = async (paymentIntent) => {
       });
 
       const mailRef = admin.firestore().collection("mail");
+      const mailMessage = gigConfirmedEmail({
+        musicianName,
+        gigData,
+        gigDate,
+        gigTime,
+        calendarLink,
+      });
       await mailRef.add({
         to: musicianEmail,
-        message: {
-          subject: "Gig Confirmed!",
-          text: `Your gig at ${gigData.venue.venueName} on ` +
-          `${new Date(gigDate).toLocaleDateString()} is now confirmed. ` +
-          `Fee: ${gigData.agreedFee}.`,
-          html: `
-                <p>Hi ${musicianName},</p>
-                <p>Great news! Your gig is now confirmed:</p>
-                <ul>
-                    <li><strong>Gig:</strong> ${gigData.venue.venueName}</li>
-                    <li>
-                      <strong>Date:</strong>
-                       ${new Date(gigDate).toLocaleDateString()}
-                    </li>
-                    <li><strong>Time:</strong> ${gigTime}</li>
-                    <li><strong>Fee:</strong> ${gigData.agreedFee}</li>
-                </ul>
-                <p><a href="${calendarLink}">Add to your calendar</a></p>
-                <p>Thanks,<br />The Gigin Team</p>
-            `,
-        },
+        message: mailMessage,
       });
     });
     console.log(
@@ -2197,224 +2152,3 @@ const handlePaymentFailure = async (failedIntent) => {
     throw new Error("Error updating gig and other data after payment failure.");
   }
 };
-
-
-/* eslint-disable */
-// ======= START OF IGNORED FUNCTION =======
-
-/*
-exports.clearPendingFee = onRequest(
-  {
-    secrets: [stripeProductionKey],
-    timeoutSeconds: 3600,
-  },
-  async (req, res) => {
-    const {
-      musicianId,
-      gigId,
-      amount,
-      disputeClearingTime,
-      venueId,
-      gigDate,
-      gigTime,
-      musicianEmail,
-      musicianName,
-      venueName,
-    } = req.body;
-    if (!musicianId ||
-      !gigId ||
-      !disputeClearingTime ||
-      !venueId ||
-      !gigDate ||
-      !gigTime ||
-      !amount) {
-      console.error("Invalid payload received in task.");
-      return res.status(400).send("Invalid payload.");
-    }
-    const stripe = new Stripe(stripeProductionKey.value());
-    const firestore = getFirestore();
-    try {
-      const musicianProfileRef =
-      firestore.collection("musicianProfiles").doc(musicianId);
-      const musicianDoc = await musicianProfileRef.get();
-      if (!musicianDoc.exists) {
-        console.error(`Musician doc ${musicianId} not found.`);
-        return res.status(400).send(`Musician doc ${musicianId} not found.`);
-      }
-      const musicianData = musicianDoc.data();
-      const isBand = musicianData.bandProfile === true;
-      const gigRef = firestore.collection("gigs").doc(gigId);
-      const gigDoc = await gigRef.get();
-      if (!gigDoc.exists) {
-        console.error(`Gig ${gigId} not found.`);
-        return res.status(400).send(`Gig ${gigId} not found.`);
-      }
-      const gigData = gigDoc.data();
-      const clearedFee =
-      (musicianData.pendingFees || []).find((fee) => fee.gigId === gigId);
-      if (!clearedFee) {
-        console.error(`Fee for gig ${gigId} already cleared or not found.`);
-        return res.status(400).send(`Fee for gig ${gigId} already cleared.`);
-      }
-      if (clearedFee.disputeLogged || gigData.disputeLogged) {
-        console.error(`Dispute logged for gig ${gigId}`);
-        return res.status(400).send(`Dispute logged for gig ${gigId}`);
-      }
-      const updatedApplications = gigData.applicants.map((application) =>
-      application.id === musicianId ? {...application, status: "paid"} : application,
-      );
-      await gigRef.update({
-        musicianFeeStatus: "cleared",
-        applicants: updatedApplications,
-      });
-      const mailRef = firestore.collection("mail");
-      if (isBand) {
-        const membersSnap =
-        await firestore.collection("bands")
-            .doc(musicianId).collection("members").get();
-        const bandMembers = membersSnap.docs.map((doc) => doc.data());
-        for (const member of bandMembers) {
-          const {musicianProfileId, split} = member;
-          const memberAmount = parseFloat((amount * (split / 100)).toFixed(2));
-          const memberRef =
-          firestore.collection("musicianProfiles").doc(musicianProfileId);
-          const memberDoc = await memberRef.get();
-          if (!memberDoc.exists) continue;
-          const memberData = memberDoc.data();
-          let stripeTransferId = null;
-          if (memberData.stripeAccountId) {
-            const transfer = await stripe.transfers.create({
-              amount: Math.round(memberAmount * 100),
-              currency: "gbp",
-              destination: memberData.stripeAccountId,
-              metadata: {
-                musicianId: musicianProfileId,
-                gigId,
-                description: "Gig fee split transfer after dispute period cleared",
-              },
-            });
-            console.log(`Transferred £${memberAmount} to ${musicianProfileId}`);
-            stripeTransferId = transfer.id;
-          }
-          const updatedPendingFees =
-          (memberData.pendingFees || [])
-              .filter((fee) => fee.gigId !== gigId);
-          const updatedClearedFees = [
-            ...(memberData.clearedFees || []),
-            {
-              ...clearedFee,
-              feeCleared: true,
-              status: "cleared",
-              stripeTransferId,
-              amount: memberAmount,
-              splitPercentage,
-            },
-          ];
-          await memberRef.update({
-            pendingFees: updatedPendingFees,
-            clearedFees: updatedClearedFees,
-            totalEarnings: (memberData.totalEarnings || 0) + memberAmount,
-            withdrawableEarnings: (memberData.withdrawableEarnings || 0) + memberAmount,
-          });
-          await mailRef.add({
-            to: memberData.email,
-            message: {
-              subject: "Your gig fee is available!",
-              text: `Your split from the band gig has cleared. You can now withdraw it from your account.`,
-              html: `
-              <p>Hi ${memberData.name},</p>
-              <p>Your share of the gig with <strong>${venueName}</strong> has been cleared.</p>
-              <p><a href="https://gigin.ltd">Log on to Gigin</a> to withdraw your £${memberAmount}.</p>
-              <p>Thanks,<br />The Gigin Team</p>
-            `,
-            },
-          });
-        }
-        await musicianProfileRef.update({
-          pendingFees: [],
-          clearedFees: [],
-        });
-      } else {
-        let stripeTransferId = null;
-        if (musicianData.stripeAccountId) {
-          const transfer = await stripe.transfers.create({
-            amount: Math.round(amount * 100),
-            currency: "gbp",
-            destination: musicianData.stripeAccountId,
-            metadata: {
-              musicianId,
-              gigId,
-              description: "Gig fee transferred after dispute period cleared",
-            },
-          });
-          console.log(`Stripe transfer successful: ${transfer.id}`);
-          stripeTransferId = transfer.id;
-        }
-        const updatedPendingFees =
-        (musicianData.pendingFees || [])
-            .filter((fee) => fee.gigId !== gigId);
-        const updatedClearedFees = [
-          ...(musicianData.clearedFees || []),
-          {
-            ...clearedFee,
-            feeCleared: true,
-            status: "cleared",
-            stripeTransferId,
-          },
-        ];
-        await musicianProfileRef.update({
-          pendingFees: updatedPendingFees,
-          clearedFees: updatedClearedFees,
-          totalEarnings: (musicianData.totalEarnings || 0) + amount,
-          withdrawableEarnings:
-          (musicianData.withdrawableEarnings || 0) + amount,
-        });
-        await mailRef.add({
-          to: musicianEmail,
-          message: {
-            subject: "Your gig fee is available!",
-            text: `We have just cleared your gig fee. You can now withdraw it to your bank account.`,
-            html: `
-            <p>Hi ${musicianName},</p>
-            <p>We hope your gig at <strong>${venueName}</strong> went well!</p>
-            <p><a href="https://gigin.ltd">Log on to Gigin</a> to withdraw it to your bank account.</p>
-            <p>Thanks,<br />The Gigin Team</p>
-          `,
-          },
-        });
-      }
-      console.log(`Fee cleared for ${musicianId}, gig ${gigId}`);
-      return res.status(200).send({success: true});
-    } catch (error) {
-      console.error("Error clearing fee:", error);
-      return res.status(500).send("Internal Server Error.");
-    }
-  },
-);
-
-exports.createStripeCustomer =
-functions.auth.user().onCreate(async (user) => {
-  try {
-    const {uid, email} = user;
-    const mode = functions.config().stripe.mode;
-    const key = functions.config().stripe.key;
-    if (!key) throw new Error(`Stripe key missing (mode: ${mode})`);
-    const stripe = new Stripe(key);
-    const customer = await stripe.customers.create({email});
-    await db.collection("users").doc(uid).set(
-        {
-          stripeCustomerId: customer.id,
-        },
-        {merge: true},
-    );
-    console.log(`Stripe customer created for: ${uid}`);
-  } catch (error) {
-    console.error("Error creating Stripe customer:", error);
-    throw new functions.https.HttpsError(
-        "internal", "Failed to create Stripe customer",
-    );
-  }
-});
-
-// ======= END OF IGNORED FUNCTION =======
-/* eslint-enable */

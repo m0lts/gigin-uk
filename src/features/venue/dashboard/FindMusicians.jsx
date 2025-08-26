@@ -79,11 +79,17 @@ export const FindMusicians = ({ user }) => {
         return () => el.removeEventListener('scroll', handleScroll);
       }, [fetchMusicians]);
 
-    useEffect(() => {
+      useEffect(() => {
         setLastDocId(null);
         setHasMore(true);
         setMusicians([]);
-        fetchMusicians(true); // reset = true
+    
+        // Wait for state to settle before calling fetchMusicians with reset
+        const timeout = setTimeout(() => {
+            fetchMusicians(true);
+        }, 0);
+    
+        return () => clearTimeout(timeout);
     }, [selectedType, selectedGenres, searchQuery]);
 
     const updateParam = (key, value) => {
@@ -217,31 +223,10 @@ export const FindMusicians = ({ user }) => {
 
                         return (
                         <div className='musician-card' key={id}>
-                            <div className={`media-container ${!videoSrc ? 'empty' : ''}`}>
-                                {videoSrc ? (
-                                    <figure className="video-thumbnail" onClick={() => openVideoModal(firstVideo)}>
-                                        <video
-                                            src={videoSrc}
-                                            muted
-                                            playsInline
-                                            preload="metadata"
-                                            poster={videoThumb}
-                                        />
-                                        <div className="play-icon">
-                                            <PlayIcon />
-                                        </div>
-                                    </figure>
-                                ) : (!videoSrc && picture) && (
-                                    <figure className="profile-picture-only">
-                                        <img src={picture} alt={name} />
-                                    </figure>
-                                )}
-
-                                {(videoSrc && picture) && (
-                                    <div className="profile-picture">
-                                        <img src={picture} alt={name} />
-                                    </div>
-                                )}
+                            <div className={`media-container empty`}>
+                                <figure className="profile-picture-only">
+                                    <img src={picture} alt={name} />
+                                </figure>
                             </div>
 
                             <div className="musician-card-flex">
@@ -262,8 +247,7 @@ export const FindMusicians = ({ user }) => {
                                 </div>
                             )}
 
-                            <div className="stats-container">
-                                {/* avg rating */}
+                            {/* <div className="stats-container">
                                 {avgReviews?.avgRating ? (
                                     <div className="stats-box avg-rating">
                                     <span className="large-item"><StarIcon />{avgReviews.avgRating}</span>
@@ -278,7 +262,6 @@ export const FindMusicians = ({ user }) => {
 
                                 <span className="spacer"></span>
 
-                                {/* earnings */}
                                 <div className="stats-box earnings">
                                     <span className="large-item">{totalEarnings ? formatEarnings(totalEarnings) : '£0'}</span>
                                     <span className='text'>earned</span>
@@ -286,12 +269,11 @@ export const FindMusicians = ({ user }) => {
 
                                 <span className="spacer"></span>
 
-                                {/* followers */}
                                 <div className="stats-box followers">
                                     <span className="large-item">{followers ?? 0}</span>
                                     <span className="text">followers</span>
                                 </div>
-                            </div>
+                            </div> */}
 
                             <button
                                 className="btn primary"

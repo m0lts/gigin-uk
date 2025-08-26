@@ -142,31 +142,10 @@ export const SavedMusicians = ({ user }) => {
 
                         return (
                         <div className='musician-card' key={id}>
-                            <div className={`media-container ${!videoSrc ? 'empty' : ''}`}>
-                                {videoSrc ? (
-                                    <figure className="video-thumbnail" onClick={() => openVideoModal(firstVideo)}>
-                                        <video
-                                            src={videoSrc}
-                                            muted
-                                            playsInline
-                                            preload="metadata"
-                                            poster={videoThumb}
-                                        />
-                                        <div className="play-icon">
-                                            <PlayIcon />
-                                        </div>
-                                    </figure>
-                                ) : (!videoSrc && picture) && (
-                                    <figure className="profile-picture-only">
-                                        <img src={picture} alt={name} />
-                                    </figure>
-                                )}
-
-                                {(videoSrc && picture) && (
-                                    <div className="profile-picture">
-                                        <img src={picture} alt={name} />
-                                    </div>
-                                )}
+                            <div className={`media-container empty`}>
+                                <figure className="profile-picture-only">
+                                    <img src={picture} alt={name} />
+                                </figure>
                             </div>
 
                             <div className="musician-card-flex">
@@ -187,8 +166,7 @@ export const SavedMusicians = ({ user }) => {
                                 </div>
                             )}
 
-                            <div className="stats-container">
-                                {/* avg rating */}
+                            {/* <div className="stats-container">
                                 {avgReviews?.avgRating ? (
                                     <div className="stats-box avg-rating">
                                     <span className="large-item"><StarIcon />{avgReviews.avgRating}</span>
@@ -203,7 +181,6 @@ export const SavedMusicians = ({ user }) => {
 
                                 <span className="spacer"></span>
 
-                                {/* earnings */}
                                 <div className="stats-box earnings">
                                     <span className="large-item">{totalEarnings ? formatEarnings(totalEarnings) : '£0'}</span>
                                     <span className='text'>earned</span>
@@ -211,13 +188,12 @@ export const SavedMusicians = ({ user }) => {
 
                                 <span className="spacer"></span>
 
-                                {/* followers */}
                                 <div className="stats-box followers">
                                     <span className="large-item">{followers ?? 0}</span>
                                     <span className="text">followers</span>
                                 </div>
                             </div>
-
+                            */}
                             <button
                                 className="btn primary"
                                 onClick={(e) => openInNewTab(`/${encodeURIComponent(id)}/null`, e)}

@@ -113,3 +113,69 @@ export const generateBandPassword = () => {
   return `${random(adjectives)}-${random(nouns)}-${random(nouns)}`;
 };
 
+
+/**
+ * Validates all gig timing slots.
+ *
+ * @param {Object} formData - The main form data object.
+ * @param {Array} extraSlots - Array of extra slot objects with { startTime, duration }.
+ * @returns {{ valid: boolean, error?: string }}
+ */
+export const validateGigTimings = (formData, extraSlots) => {
+  const allSlots = [
+    { startTime: formData.startTime, duration: formData.duration },
+    ...extraSlots,
+  ];
+
+  for (let i = 0; i < allSlots.length; i++) {
+    const { startTime, duration } = allSlots[i];
+
+    if (allSlots.length === 1 && (!startTime || duration === 0)) {
+      return {
+        valid: false,
+        error: `Gig must have a valid start time and duration.`,
+      };
+    }
+
+    if (!startTime || duration === 0) {
+      return {
+        valid: false,
+        error: `Slot ${i + 1} must have a valid start time and duration.`,
+      };
+    }
+
+    if (duration < 15) {
+      return {
+        valid: false,
+        error: `Slot ${i + 1} duration is too short. Must be at least 15 minutes.`,
+      };
+    }
+  }
+
+  for (let i = 1; i < allSlots.length; i++) {
+    const prev = allSlots[i - 1];
+    const curr = allSlots[i];
+
+    const [prevH, prevM] = prev.startTime.split(':').map(Number);
+    const [currH, currM] = curr.startTime.split(':').map(Number);
+
+    const prevEndInMins = prevH * 60 + prevM + prev.duration;
+    const currStartInMins = currH * 60 + currM;
+
+    if (currStartInMins < prevEndInMins) {
+      return {
+        valid: false,
+        error: `Slot ${i + 1} overlaps with the previous slot.`,
+      };
+    }
+
+    if (currStartInMins > 1440) {
+      return {
+        valid: false,
+        error: `Slot ${i + 1} starts after midnight, which is not allowed.`,
+      };
+    }
+  }
+
+  return { valid: true };
+};

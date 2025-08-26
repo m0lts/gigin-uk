@@ -39,14 +39,21 @@ export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
     }
   };
 
+  useEffect(() => {
+    if (location.pathname === '/venues/dashboard' || location.pathname === '/venues/dashboard/' ) {
+      navigate('/venues/dashboard/gigs');
+      return;
+    };
+  }, [location])
+
   const menuItems = [
-    {
-      path: '/venues/dashboard',
-      label: 'Overview',
-      icon: <DashboardIconLight />,
-      iconActive: <DashboardIconSolid />,
-      exact: true,
-    },
+    // {
+    //   path: '/venues/dashboard',
+    //   label: 'Overview',
+    //   icon: <DashboardIconLight />,
+    //   iconActive: <DashboardIconSolid />,
+    //   exact: true,
+    // },
     {
       path: '/venues/dashboard/gigs',
       label: 'Gigs',
@@ -67,7 +74,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
       iconActive: <VenueIconSolid />,
     },
     {
-      path: '/venues/dashboard/musicians',
+      path: '/venues/dashboard/musicians/find',
       label: 'Musicians',
       icon: <MusicianIconLight />,
       iconActive: <MusicianIconSolid />,

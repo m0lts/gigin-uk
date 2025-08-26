@@ -156,7 +156,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 Feedback
                             </button> */}
                             {user.venueProfiles && !user.musicianProfile ? (
-                                <Link className='link' to={'/venues/dashboard'}>
+                                <Link className='link' to={'/venues/dashboard/gigs'}>
                                     <button className='btn secondary'>
                                         <DashboardIconLight />
                                         Dashboard
@@ -237,7 +237,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                             <h6 className='title'>venues</h6>
                             {user.venueProfiles && user.venueProfiles.length > 0 ? (
                                 <>
-                                    <Link className='link item no-margin' to={'/venues/dashboard'}>
+                                    <Link className='link item no-margin' to={'/venues/dashboard/gigs'}>
                                         Dashboard
                                         <DashboardIconLight />
                                     </Link>

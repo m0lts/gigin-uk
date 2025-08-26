@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export const GigBudget = ({ formData, handleInputChange, error }) => {
+export const GigBudget = ({ formData, handleInputChange, error, extraSlots }) => {
 
     const budgetInputRef = useRef(null);
 
@@ -56,8 +56,18 @@ export const GigBudget = ({ formData, handleInputChange, error }) => {
     return (
         <>
             <div className='head'>
-                <h1 className='title'>What's your budget?</h1>
-                <p className='text'>This is not a fixed price, you can negotiate a final price with the musician.</p>
+                {extraSlots.length > 0 ? (
+                    <>
+                        <h1 className='title'>What's your budget for the night?</h1>
+                        <p className='text'>This will be split proportionately between each gig slot.</p>
+                    </>
+
+                ) : (
+                    <>
+                        <h1 className='title'>What's your budget?</h1>
+                        <p className='text'>This is not a fixed price, you can negotiate a final price with the musician.</p>
+                    </>
+                )}
             </div>
             <div className='body budget'>
                 <div className='input-group'>

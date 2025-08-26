@@ -37,7 +37,7 @@ import { getBandMembers } from '../../services/bands';
 import { acceptGigOffer, getGigById } from '../../services/gigs';
 import { getMostRecentMessage, sendGigAcceptedMessage } from '../../services/messages';
 import { toast } from 'sonner';
-import { sendEmail } from '../../services/emails';
+import { sendInvitationAcceptedEmailToVenue } from '../../services/emails';
 import { CoinsIconSolid, NewTabIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon } from '../shared/ui/extras/Icons';
 import { openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
@@ -528,26 +528,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigData.budget, 'musician', nonPayableGig);
             const venueEmail = venueProfile.email;
             const musicianName = musicianProfile.name;
-            await sendEmail({
-                to: venueEmail,
-                subject: `${musicianName} Has Accepted Your Invitation!`,
-                text: `Congratulations! Your invitation sent to ${musicianName} for the gig at ${gigData.venue.venueName} on ${formatDate(gigData.date)} has been accepted.`,
-                html: `
-                    <p>Hi ${venueProfile.accountName},</p>
-                    <p>We're excited to inform you that your invitation for the following gig has been accepted:</p>
-                    <ul>
-                        <li><strong>Musician:</strong> ${musicianName}</li>
-                        <li><strong>Date:</strong> ${formatDate(gigData.date)}</li>
-                        <li><strong>Fee:</strong> ${agreedFee}</li>
-                    </ul>
-                    <p>${
-                        nonPayableGig
-                          ? 'This gig is already confirmed — no payment is required.'
-                          : 'The gig will be confirmed once you have paid the gig fee.'
-                      }</p>
-                    <p>Please visit your <a href='${window.location.origin}/venues/dashboard'>dashboard</a> to see the status of the gig.</p>
-                    <p>Thanks,<br />The Gigin Team</p>
-                `,
+            await sendInvitationAcceptedEmailToVenue({
+                venueEmail: venueEmail,
+                musicianName: musicianName,
+                venueProfile: venueProfile,
+                gigData: gigData,
+                agreedFee: agreedFee,
+                nonPayableGig: nonPayableGig,
             })
             toast.success('Invitation Accepted.')
         } catch (error) {

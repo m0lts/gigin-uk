@@ -199,7 +199,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
     };
 
     const handleBuildGigForMusician = () => {
-        navigate('/venues/dashboard', { state: {
+        navigate('/venues/dashboard/gigs', { state: {
             musicianData: {
                 id: musicianProfile.id,
                 type: musicianProfile.musicianType,

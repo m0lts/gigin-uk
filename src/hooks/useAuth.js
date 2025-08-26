@@ -91,7 +91,7 @@ export const useAuth = () => {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
       } else if (venueProfiles.length > 0 && venueProfiles.some(v => v.completed)) {
-        navigate('/venues/dashboard');
+        navigate('/venues/dashboard/gigs');
       } else if (venueProfiles.length > 0 && !venueProfiles.some(v => v.completed)) {
         navigate('/venues/add-venue');
       } else {
@@ -182,7 +182,7 @@ export const useAuth = () => {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
       } else if (venueProfiles.length > 0 && venueProfiles.some(v => v.completed)) {
-        navigate('/venues/dashboard');
+        navigate('/venues/dashboard/gigs');
       } else if (venueProfiles.length > 0 && !venueProfiles.some(v => v.completed)) {
         navigate('/venues/add-venue');
       } else {

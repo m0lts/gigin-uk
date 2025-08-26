@@ -57,7 +57,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     useResizeEffect((width) => {
         if (width > 1100) {
           setPadding('10%');
-          setWidth('80%');
+          setWidth('95%');
         } else {
           setPadding('2.5%');
           setWidth('95%');
@@ -188,7 +188,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                     padding={padding}
                 />
             )}
-            <section className='venue-page-body' style={{ width: `${width}`}}>
+            <section className='venue-page-body'>
                 {loading ? (
                     <>
                         <div className='images'>
@@ -240,7 +240,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                 )}
                             </div>
                         </div>
-                        <div className="venue-page-information">
+                        <div className="venue-page-information" style={{ width: `${width}`, margin: '0 auto'}}>
                             <div className="venue-page-details">
                                 <div className="section bio">
                                     <h3>Bio</h3>

@@ -488,7 +488,7 @@
     color: orange;
 }
 
-.window.venues .body.gigs table .status.previous {
+.window.venues .body.gigs table .status.past {
     background-color: rgba(128, 128, 128, 0.1);
     color: gray;
 }
@@ -731,6 +731,34 @@
 
 /* GIG APPLICATIONS */
 
+.window.venues .modal.videos .modal-content.transparent {
+    position: relative;
+    border:none;
+    height: 100%;
+    width:100%;
+    padding:0;
+    background-color: transparent;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+}
+
+.window.venues .modal.videos .modal-content video {
+    max-height: 75%;
+    max-width: 90%;
+}
+
+.window.venues .modal.videos .close {
+    position: absolute;
+    top: 1rem;
+    right: 2rem;
+    color: var(--gn-red);
+    font-size: 2rem;
+    cursor: pointer;
+}
+
 .window.venues .head.gig-applications {
     display: flex;
     justify-content: space-between;
@@ -832,6 +860,10 @@
     align-items: center;
     justify-content: center;
     gap:5px;
+}
+
+.window.venues .body.gigs .applications-table .musician-name .icon {
+    margin-right: 5px
 }
 
 
@@ -1587,7 +1619,7 @@
     color: orange;
 }
 
-.window.venues .body.finances table .status.previous {
+.window.venues .body.finances table .status.past {
     border:1px solid gray;
     background-color: rgba(128, 128, 128, 0.1);
     color: gray;

@@ -685,7 +685,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     className='input'
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder='Aa'
+                    placeholder='Type your message...'
                 />
                 <button type='submit' className='btn primary'><SendMessageIcon /></button>
             </form>

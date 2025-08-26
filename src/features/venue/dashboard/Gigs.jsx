@@ -92,7 +92,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         const isoDate = gigDateTime.toISOString().split('T')[0];
     
         const acceptedApplicant = gig.applicants?.some(app => app.status === 'confirmed');
-        let status = 'previous';
+        let status = 'past';
     
         if (gigDateTime > now) {
           if (acceptedApplicant) status = 'confirmed';
@@ -273,8 +273,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   <button className={`btn ${selectedStatus === 'upcoming' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'upcoming')}>
                       Upcoming
                   </button>
-                  <button className={`btn ${selectedStatus === 'previous' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'previous')}>
-                      Previous
+                  <button className={`btn ${selectedStatus === 'past' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'past')}>
+                      Past
                   </button>
               </div>
               {windowWidth >= 1400 ? (
@@ -433,7 +433,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       upcoming: <ClockIcon />,
                       confirmed: <TickIcon />,
                       closed: <CloseIcon />,
-                      previous: <PreviousIcon />
+                      past: <PreviousIcon />
                     }[gig.status];
     
                     return (
@@ -442,7 +442,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           <tr className='filler-row'>
                             <td className='data' colSpan={8}>
                               <div className='flex center'>
-                                <h4>Previous Gigs</h4>
+                                <h4>Past Gigs</h4>
                               </div>
                             </td>
                           </tr>

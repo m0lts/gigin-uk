@@ -17,7 +17,10 @@ export const FeedbackBox = ({ user }) => {
           await submitUserFeedback(feedback);
           setFeedback({ feedback: '', user: user?.uid });
           setMode('submitted');
-          toast.success('Feedback received, thank you.')          
+          toast.success('Feedback received, thank you.');
+          setTimeout(() => {
+            setMode('initial')
+          }, 2500);
         } catch (error) {
           toast.error('Feedback submission failed, please try again.')
         }
@@ -48,9 +51,18 @@ export const FeedbackBox = ({ user }) => {
           )}
         </div>
         {mode !== 'submitted' && (
-          <button className="btn primary" onClick={handleClick}>
-            {mode === 'initial' ? 'Give Feedback' : 'Send Feedback'}
-          </button>
+          mode === 'input' ? (
+            <div className='two-buttons' style={{ justifyContent: 'space-between'}}>
+                <button className="btn primary" onClick={handleClick}>
+                {mode === 'initial' ? 'Give Feedback' : 'Send Feedback'}
+              </button>
+              <button className="btn secondary" onClick={() => setMode('initial')}>Close</button>
+            </div>
+          ) : (
+            <button className="btn primary" onClick={handleClick}>
+              {mode === 'initial' ? 'Give Feedback' : 'Send Feedback'}
+            </button>
+          )
         )}
       </div>
     );

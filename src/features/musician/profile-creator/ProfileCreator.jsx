@@ -238,7 +238,7 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
                 onClick={() => {
                     setShowErrorModal(false);
                     setShowModal(false);
-                    navigate('/venues/dashboard');
+                    navigate('/venues/dashboard/gigs');
                 }}
                 >
                 Got it!
@@ -248,7 +248,7 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
                 onClick={() => {
                     setShowErrorModal(false);
                     setShowModal(false);
-                    navigate('/venues/dashboard');
+                    navigate('/venues/dashboard/gigs');
                 }}
                 >
                 Close

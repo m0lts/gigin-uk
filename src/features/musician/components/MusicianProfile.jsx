@@ -167,7 +167,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
       }, [profile?.confirmedGigs]);
 
       const handleBuildGigForMusician = () => {
-        navigate('/venues/dashboard', { state: {
+        navigate('/venues/dashboard/gigs', { state: {
             musicianData: {
                 id: profile.id,
                 type: profile.musicianType,

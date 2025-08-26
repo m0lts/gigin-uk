@@ -51,7 +51,7 @@ export const VenueType = ({ formData, handleInputChange, setStepError, stepError
                         </motion.span>
                         </AnimatePresence>
                         <span className='title'>Personal Space</span>
-                        e.g. House, Wedding, Private party
+                        e.g. House for private party
                     </button>
                 </div>
             </div>

@@ -7,7 +7,7 @@ import { deleteFolderFromStorage } from '@services/storage';
 import { deleteReview, getReviewsByVenueId } from '@services/reviews';
 import { deleteConversation, getConversationsByParticipantId } from '@services/conversations';
 import { openInNewTab } from '@services/utils/misc';
-import { DeleteGigIcon, HouseIconSolid, NewTabIcon, PeopleRoofIconSolid } from '../../shared/ui/extras/Icons';
+import { DeleteGigIcon, HouseIconSolid, NewTabIcon, PeopleRoofIconSolid, ShareIcon } from '../../shared/ui/extras/Icons';
 import { getCityFromAddress } from '../../../services/utils/misc';
 import { toast } from 'sonner';
 
@@ -66,6 +66,15 @@ export const Venues = ({ venues }) => {
         }
     }
 
+    const copyToClipboard = (venueId) => {
+        navigator.clipboard.writeText(`https://gigin.ltd/venues/${venueId}`).then(() => {
+            toast.success(`Copied Venue Link: https://gigin.ltd/venues/${venueId}`);
+        }).catch((err) => {
+            toast.error('Failed to copy link. Please try again.')
+            console.error('Failed to copy link: ', err);
+        });
+    };
+
     return (
         <>
             <div className='head'>
@@ -90,18 +99,16 @@ export const Venues = ({ venues }) => {
                                     <NewTabIcon />
                                 </button>
                             </div>
-                            <div className="venue-type">
-                                <span className="icon-cont">
-                                    {formatVenueType(venue.type)}
-                                </span>
-                                <span className='text'>{venue.type}</span>
-                            </div>
                             <div className="venue-gigs">
                                 <span className="gigs">{(venue?.gigs ?? []).length}</span>
                                 <span className='text'>gigs posted.</span>
                             </div>
                         </div>
                         <div className="action-buttons">
+                            <button className="btn tertiary" onClick={() => copyToClipboard(venue.venueId)}>
+                                Share
+                                <ShareIcon />
+                            </button>
                             <button className='btn tertiary' onClick={() => handleEditVenue(venue)}>
                                 Edit
                                 <EditIcon />

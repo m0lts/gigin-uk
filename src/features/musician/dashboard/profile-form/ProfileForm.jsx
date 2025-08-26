@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import '@styles/musician/musician-profile.styles.css'
 import { BackgroundMusicIcon, CameraIcon, DownChevronIcon, EditIcon, ErrorIcon, FacebookIcon, InstagramIcon, MediaIcon, MicrophoneIconSolid, MicrophoneLinesIcon, MoreInformationIcon, Mp3Icon, Mp4Icon, MusicianIconSolid, ProfileIconSolid, SocialMediaIcon, SoundcloudIcon, SpotifyIcon, StarIcon, TickIcon, TwitterIcon, UpChevronIcon, VideoIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
-import { sendEmail } from '@services/emails';
 import { v4 as uuidv4 } from 'uuid';
 import { updateUserDocument } from '@services/users';
 import { createMusicianProfile } from '@services/musicians';
@@ -10,6 +9,7 @@ import { useMusicianDashboard } from '../../../../context/MusicianDashboardConte
 import { arrayUnion } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { deleteFileFromStorage, uploadFileWithProgress } from '../../../../services/storage';
+import { sendTestimonialRequestEmail } from '../../../../services/emails';
 
 
 const VideoModal = ({ video, onClose }) => {
@@ -644,17 +644,12 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
         }
 
         try {
-            await sendEmail({
-            to: email,
-            subject: `Gigin Testimonial Request From ${formData.name}`,
-            text: `${formData.name} has asked if you could provide a testimonial for them on Gigin.`,
-            html: `
-                <p>${formData.name} has asked if you could provide a testimonial for them on Gigin.</p>
-                <p>You can provide your testimonial by clicking the link below:</p>
-                <a href='https://gigin.ltd/testimonials?musicianId=${formData.musicianId}&musicianName=${encodeURIComponent(formData.name)}' target='_blank'>Provide Testimonial</a>
-            `
+            await sendTestimonialRequestEmail({
+                to: email,
+                musicianId: formData.musicianId,
+                musicianName: formData.name,
+                baseUrl: window.location.origin,
             });
-
             setTestimonialMessage({
             type: 'success',
             message: `Email sent to ${email}`
