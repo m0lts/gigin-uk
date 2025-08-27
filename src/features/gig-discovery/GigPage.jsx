@@ -39,7 +39,7 @@ import { getMostRecentMessage, sendGigAcceptedMessage } from '../../services/mes
 import { toast } from 'sonner';
 import { sendInvitationAcceptedEmailToVenue } from '../../services/emails';
 import { CoinsIconSolid, NewTabIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon } from '../shared/ui/extras/Icons';
-import { openInNewTab } from '../../services/utils/misc';
+import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
 import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
 
@@ -751,17 +751,17 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                                         <h4 className='subtitle'>Socials</h4>
                                         <div className='links'>
                                             {venueProfile.socialMedia.facebook && (
-                                                <a href={venueProfile.socialMedia.facebook} target='_blank' rel='noreferrer'>
+                                                <a href={ensureProtocol(venueProfile.socialMedia.facebook)} target='_blank' rel='noreferrer'>
                                                     <FacebookIcon />
                                                 </a>
                                             )}
                                             {venueProfile.socialMedia.instagram && (
-                                                <a href={venueProfile.socialMedia.instagram} target='_blank' rel='noreferrer'>
+                                                <a href={ensureProtocol(venueProfile.socialMedia.instagram)} target='_blank' rel='noreferrer'>
                                                     <InstagramIcon />
                                                 </a>
                                             )}
                                             {venueProfile.socialMedia.twitter && (
-                                                <a href={venueProfile.socialMedia.twitter} target='_blank' rel='noreferrer'>
+                                                <a href={ensureProtocol(venueProfile.socialMedia.twitter)} target='_blank' rel='noreferrer'>
                                                     <TwitterIcon />
                                                 </a>
                                             )}

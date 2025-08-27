@@ -3,6 +3,7 @@ import '@styles/shared/promote-modal.styles.css';
 import { FacebookIcon, InstagramIcon, SoundcloudIcon, SpotifyIcon, TwitterIcon, YoutubeIcon } from '@features/shared/ui/extras/Icons';
 import { getMusicianProfileByMusicianId } from '@services/musicians';
 import { getVenueProfileById } from '@services/venues';
+import { ensureProtocol } from '../../../services/utils/misc';
 
 export const PromoteModal = ({ socialLinks, setShowSocialsModal, musicianId, venueId }) => {
 
@@ -40,12 +41,12 @@ export const PromoteModal = ({ socialLinks, setShowSocialsModal, musicianId, ven
                 <h2>Share the gig details on your Social Media!</h2>
                 {socials && Object.keys(socials).length > 0 ? (
                     <ul className='socials-links'>
-                        {socials?.facebook && <li><a className='btn secondary' href={socials.facebook} target='_blank' rel='noreferrer'><FacebookIcon /> Facebook</a></li>}
-                        {socials?.twitter && <li><a className='btn secondary' href={socials.twitter} target='_blank' rel='noreferrer'><TwitterIcon /> Twitter</a></li>}
-                        {socials?.instagram && <li><a className='btn secondary' href={socials.instagram} target='_blank' rel='noreferrer'><InstagramIcon /> Instagram</a></li>}
-                        {socials?.spotify && <li><a className='btn secondary' href={socials.spotify} target='_blank' rel='noreferrer'><SpotifyIcon /> Spotify</a></li>}
-                        {socials?.youtube && <li><a className='btn secondary' href={socials.youtube} target='_blank' rel='noreferrer'><YoutubeIcon /> Youtube</a></li>}
-                        {socials?.soundcloud && <li><a className='btn secondary' href={socials.soundcloud} target='_blank' rel='noreferrer'><SoundcloudIcon /> Soundcloud</a></li>}
+                        {socials?.facebook && <li><a className='btn secondary' href={ensureProtocol(socials.facebook)} target='_blank' rel='noreferrer'><FacebookIcon /> Facebook</a></li>}
+                        {socials?.twitter && <li><a className='btn secondary' href={ensureProtocol(socials.twitter)} target='_blank' rel='noreferrer'><TwitterIcon /> Twitter</a></li>}
+                        {socials?.instagram && <li><a className='btn secondary' href={ensureProtocol(socials.instagram)} target='_blank' rel='noreferrer'><InstagramIcon /> Instagram</a></li>}
+                        {socials?.spotify && <li><a className='btn secondary' href={ensureProtocol(socials.spotify)} target='_blank' rel='noreferrer'><SpotifyIcon /> Spotify</a></li>}
+                        {socials?.youtube && <li><a className='btn secondary' href={ensureProtocol(socials.youtube)} target='_blank' rel='noreferrer'><YoutubeIcon /> Youtube</a></li>}
+                        {socials?.soundcloud && <li><a className='btn secondary' href={ensureProtocol(socials.soundcloud)} target='_blank' rel='noreferrer'><SoundcloudIcon /> Soundcloud</a></li>}
                     </ul>
                 ) : (
                     <p>No social media links found</p>

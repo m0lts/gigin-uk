@@ -95,10 +95,18 @@
     gap:1rem;
 }
 
+.modal-content.scrollable {
+    overflow-y: scroll;
+    scrollbar-width: none;       /* Firefox */
+    -ms-overflow-style: none;    /* IE 10+ */
+}
+
+.modal-content.scrollable::-webkit-scrollbar {
+    display: none;               /* Chrome, Safari, Opera */
+}
+
 
 /* AUTH MODAL */
-
-
 .modal-content.auth {
     border: none;
     width:450px;

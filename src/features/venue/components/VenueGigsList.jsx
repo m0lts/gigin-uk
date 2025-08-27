@@ -16,9 +16,10 @@ import {
     TwitterIcon,
     WeddingIcon } from '@features/shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
-import { getMusicianProfileByMusicianId } from "../../../services/musicians";
+import { createVenueRequest, getMusicianProfileByMusicianId } from "../../../services/musicians";
+import { toast } from "sonner";
 
-export const VenueGigsList = ({ title, gigs, isVenue = false }) => {
+export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null, venueId }) => {
     const [expanded, setExpanded] = useState(false);
     const displayed = useMemo(() => (expanded ? gigs : gigs?.slice(0, 3) ?? []), [expanded, gigs]);
     const [profilesById, setProfilesById] = useState({});
@@ -76,6 +77,31 @@ export const VenueGigsList = ({ title, gigs, isVenue = false }) => {
         default: return <BackgroundMusicIcon />;
       }
     };
+
+    const handleMusicianRequest = async () => {
+      try {
+        const profile = await getMusicianProfileByMusicianId(musicianId);
+        if (!profile) throw new Error('Musician profile not found');
+        await createVenueRequest({
+          venueId: venueId,
+          musicianId: profile.musicianId,
+          musicianName: profile.name,
+          musicianImage: profile.picture || '',
+          musicianGenres: profile.genres || [],
+          musicianType: profile.musicianType || null,
+          musicianPlays: profile.musicType || null,
+          message: `${profile.name}`,
+          createdAt: new Date(),
+          viewed: false,
+        });
+        toast.success('Request sent to venue!');
+        setRequestMessage('');
+        setShowRequestModal(false);
+      } catch (err) {
+        console.error('Error sending request:', err);
+        toast.error('Failed to send request. Please try again.');
+      }
+  };
   
     return (
       <div className="gigs-box">
@@ -92,69 +118,87 @@ export const VenueGigsList = ({ title, gigs, isVenue = false }) => {
             </button>
           )}
         </div>
-  
-        {displayed?.map((gig) => {
-          const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
-          const day = gigDate.toLocaleDateString("en-US", { day: "2-digit" });
-          const month = gigDate.toLocaleDateString("en-US", { month: "short" });
-          const confirmed = (gig?.applicants ?? []).filter(a => a?.status === "confirmed");
-          return (
-            <div key={gig.gigId} className="venue-gig">
-                {title === 'Upcoming' ? (
-                    <div className="confirmed-musician">
-                        <div className="date-box">
-                            <h4 className="month">{month.toUpperCase()}</h4>
-                            <h2 className="day">{day}</h2>
-                        </div>
-                        <div className="confirmed-musicians">
-                            {confirmed.slice(0, 3).map(a => {
-                                const p = profilesById[a.id];
-                                return (
-                                    confirmed.length > 1 ? (
-                                        <>
-                                            <img key={a.id} src={p?.picture || a?.img} alt={p?.name || a?.name} className="avatar sm" />
-                                        </>
-                                    ) : (
-                                        <>
-                                            <img key={a.id} src={p?.picture || a?.img} alt={p?.name || a?.name} className="avatar sm" />
-                                            <h4>{p?.name}</h4>
-                                        </>
-                                    )
-                                )
-                            })}
-                        </div>
-                    </div>
+        
+        {displayed.length > 0 ? (
+          displayed?.map((gig) => {
+            const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
+            const day = gigDate.toLocaleDateString("en-US", { day: "2-digit" });
+            const month = gigDate.toLocaleDateString("en-US", { month: "short" });
+            const confirmed = (gig?.applicants ?? []).filter(a => a?.status === "confirmed");
+            return (
+              <div key={gig.gigId} className="venue-gig">
+                  {title === 'Upcoming' ? (
+                      <div className="confirmed-musician">
+                          <div className="date-box">
+                              <h4 className="month">{month.toUpperCase()}</h4>
+                              <h2 className="day">{day}</h2>
+                          </div>
+                          <div className="confirmed-musicians">
+                              {confirmed.slice(0, 3).map(a => {
+                                  const p = profilesById[a.id];
+                                  return (
+                                      confirmed.length > 1 ? (
+                                          <>
+                                              <img key={a.id} src={p?.picture || a?.img} alt={p?.name || a?.name} className="avatar sm" />
+                                          </>
+                                      ) : (
+                                          <>
+                                              <img key={a.id} src={p?.picture || a?.img} alt={p?.name || a?.name} className="avatar sm" />
+                                              <h4>{p?.name}</h4>
+                                          </>
+                                      )
+                                  )
+                              })}
+                          </div>
+                      </div>
+                  ) : (
+                      <div className="confirmed-musician">
+                          <div className="date-box">
+                              <h4 className="month">{month.toUpperCase()}</h4>
+                              <h2 className="day">{day}</h2>
+                          </div>
+                          <div className="gig-type">
+                              {findGigIcon(gig.kind)}
+                              <h4>{gig.kind}</h4>
+                          </div>
+                      </div>
+                  )}
+    
+                {title !== "Upcoming" && !isVenue ? (
+                  <button
+                    className="btn primary-alt"
+                    onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}
+                  >
+                    Apply
+                  </button>
                 ) : (
-                    <div className="confirmed-musician">
-                        <div className="date-box">
-                            <h4 className="month">{month.toUpperCase()}</h4>
-                            <h2 className="day">{day}</h2>
-                        </div>
-                        <div className="gig-type">
-                            {findGigIcon(gig.kind)}
-                            <h4>{gig.kind}</h4>
-                        </div>
-                    </div>
+                  <button
+                    className="btn tertiary"
+                    onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}
+                  >
+                    Open
+                  </button>
                 )}
-  
-              {title !== "Upcoming" && !isVenue ? (
-                <button
-                  className="btn primary"
-                  onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}
-                >
-                  Apply
-                </button>
-              ) : (
-                <button
-                  className="btn tertiary"
-                  onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}
-                >
-                  Open
+              </div>
+            );
+          })
+        ) : (
+          title === "Upcoming" ? (
+            <div className="no-gigs">
+              <h4>No Upcoming Gigs</h4>
+            </div>
+          ) : (
+            <div className="no-gigs">
+              <h4>No Gig Vacancies</h4>
+              {musicianId && (
+                <button className="btn tertiary" onClick={handleMusicianRequest}>
+                  Request a Gig
                 </button>
               )}
             </div>
-          );
-        })}
+          )
+        )}
+  
   
         {/* optional subtle hint while profiles are loading */}
         {title === "Upcoming" && loadingProfiles && <div className="loading-inline">Loading acts…</div>}

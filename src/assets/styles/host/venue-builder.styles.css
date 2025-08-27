@@ -189,6 +189,7 @@
 .venue-builder .stage-content {
     /* border:1px solid red; */
     margin:0 2rem;
+    margin-bottom: 5rem;
 }
 
 .venue-builder .stage-definition {
@@ -415,20 +416,23 @@
 }
 
 .venue-builder .stage.photos .photo-space {
-    max-height: 80%;
     width: 100%;
     display: flex;
     flex-direction: column;
     margin-top: 0;
-  }
+    padding-bottom: 5rem;
+}
 
 .venue-builder .stage.photos .upload {
-    border:1px dashed var(--gn-grey-500);
-    background-color: var(--gn-grey-200);
     border-radius: 1rem;
     display: flex;
     align-items: center;
-    justify-content: center;
+    width:fit-content;
+    padding: 1rem;
+    border:1px solid var(--gn-grey-350);
+    box-shadow: 0 0 5px var(--gn-shadow);
+    cursor: pointer;
+    transition: all 200ms linear;
 }
 
 .venue-builder .stage.photos .upload.error {
@@ -436,31 +440,21 @@
 }
 
 .venue-builder .stage.photos .upload:hover {
-    background-color: var(--gn-white);
+    background-color: var(--gn-grey-300);
+    border-color: transparent;
 }
 
 .venue-builder .stage.photos .upload-label {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    width:100%;
-    height:150px;
-    gap:5px;
+    gap:1rem;
     cursor: pointer;
 }
 
-.venue-builder .stage.photos .upload-label span {
-    font-size: 0.9rem;
-    color: var(--gn-black);
-}
-
 .venue-builder .stage.photos .upload-label .icon {
-    font-size: 3rem;
-}
-
-.venue-builder .stage.photos .photo-space h4 {
-    margin-top:1rem;
+    font-size: 1.5rem;
+    margin: 0;
+    padding: 0;
 }
 
 .venue-builder .stage.photos .preview {
@@ -497,19 +491,22 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    align-items: center;
 }
 
 .venue-builder .stage.photos .preview .image-actions .remove {
-    color: red;
+    color: var(--gn-red);
+    width:fit-content;
 }
 
 .venue-builder .stage.photos .preview .image-actions .position-select {
     overflow-y: auto;
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;     /* Firefox */
+    flex-direction: column;  /* force vertical stacking */
+    flex-wrap: nowrap;       /* prevent wrapping */
+    align-items: center;     /* center buttons horizontally if needed */
+    -ms-overflow-style: none;
+    scrollbar-width: none;  /* Firefox */
 }
 
 .venue-builder .stage.photos .preview .image-actions .position-select::-webkit-scrollbar {
@@ -545,6 +542,71 @@
 .venue-builder .stage.photos .input-label {
     margin-top: 1rem;
 }
+
+.venue-builder .stage.photos .banner-preview {
+    width: 100%;
+    height: 300px;
+    overflow: hidden;
+    border-radius: 1rem;
+}
+
+.venue-builder .stage.photos .banner-preview .image-row-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+  
+.venue-builder .stage.photos .banner-preview .image-thumbnail {
+    width:100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.venue-builder .stage.photos .banner-preview .image-actions {
+    position: absolute;
+    top:10px;
+    right:10px;
+}
+
+.venue-builder .stage.photos .banner-preview .image-actions {
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+}
+
+.venue-builder .stage.photos .banner-preview .image-actions .btn.tertiary {
+    background-color: var(--gn-red);
+    color: var(--gn-white);
+}
+  
+.venue-builder .stage.photos .upload.empty-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: auto;
+    border: 1px dashed var(--gn-grey-350);
+    box-shadow: none;
+    background-color: var(--gn-grey-250);
+}
+
+.venue-builder .stage.photos .upload.empty-primary:hover {
+    background-color: transparent;
+}
+
+.draggable-container {
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .image-thumbnail.draggable {
+    height: auto;
+    width: 100%;
+    object-fit: cover;
+    user-select: none;
+    pointer-events: none;
+  }
 
 /* Additional details */
 
@@ -592,6 +654,7 @@
     padding:10px;
     max-width: 100%;
     max-height: 200px;
+    resize: none;
     transition: border 200ms linear, outline 200ms linear;
 }
 
@@ -608,13 +671,9 @@
     margin-top: 1.5rem;
 }
 
-.venue-builder .stage.extra-details .social-medias {
-    width: 75%;
-}
-
 .venue-builder .stage.extra-details .social-media-inputs {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap:0.5rem;
 }
 
@@ -629,6 +688,7 @@
 .venue-builder .stage.extra-details .social-media-inputs .input-group .icon {
     font-size: 1.5rem;
     margin-top: 5px;
+    color: var(--gn-off-black);
 }
 
 .venue-builder .stage.extra-details .social-media-inputs .input-group .input-box {
@@ -651,6 +711,8 @@
 /* CONTROL BUTTONS */
 
 .venue-builder .stage .stage-controls {
+    background-color: var(--gn-white);
+    border-radius: 0 0 2rem 2rem;
     position: absolute;
     padding: 1rem;
     bottom:0;

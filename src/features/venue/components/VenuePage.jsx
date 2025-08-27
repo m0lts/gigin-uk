@@ -35,6 +35,7 @@ import { getOrCreateConversation } from '../../../services/conversations';
 import { CashIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, QuestionCircleIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
+import { ensureProtocol } from '../../../services/utils/misc';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
@@ -86,9 +87,10 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                   const bDate = b.startDateTime?.toDate?.() ?? b.startDateTime;
                   return aDate - bDate;
                 });
-        
-              setVenueGigs(futureGigs);
-              const filterConfirmedGigs = futureGigs
+
+                
+                setVenueGigs(futureGigs);
+                const filterConfirmedGigs = futureGigs
                 .filter(gig => {
                     const confirmedApplicant = gig.applicants.some(g => g.status === 'confirmed');
                     return confirmedApplicant;
@@ -170,7 +172,6 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         window.open(baseUrl + queryParams, '_blank');
     };
 
-
     return (
         <div className='venue-page'>
             {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
@@ -201,7 +202,15 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 ) : (
                     <>
                         <div className='venue-page-hero'>
-                            <img src={venueData?.photos[0]} alt={venueData?.name} className='background-image' />
+                        <img
+  src={venueData?.photos[0]}
+  alt={venueData?.name}
+  className='background-image'
+  style={{
+    transform: `translateY(${venueData?.primaryImageOffsetY || 0}px)`,
+    transition: 'transform 0.3s ease-out',
+  }}
+/>
                             <div className="primary-information">
                                 {venueData?.verified && (
                                     <div className="verified-tag">
@@ -269,22 +278,24 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     )}
                                     {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
                                         <div className="info-box socials">
-                                            <h4>Socials</h4>
-                                            {venueData.socialMedia.facebook && (
-                                                <a href={venueData.socialMedia.facebook} target='_blank' rel='noreferrer'>
-                                                    <FacebookIcon />
-                                                </a>
-                                            )}
-                                            {venueData.socialMedia.instagram && (
-                                                <a href={venueData.socialMedia.instagram} target='_blank' rel='noreferrer'>
-                                                    <InstagramIcon />
-                                                </a>
-                                            )}
-                                            {venueData.socialMedia.twitter && (
-                                                <a href={venueData.socialMedia.twitter} target='_blank' rel='noreferrer'>
-                                                    <TwitterIcon />
-                                                </a>
-                                            )}
+                                            <h3>Socials</h3>
+                                            <div className="socials-buttons">
+                                                {venueData?.socialMedia?.facebook && (
+                                                    <a href={ensureProtocol(venueData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
+                                                        <FacebookIcon />
+                                                    </a>
+                                                )}
+                                                {venueData?.socialMedia?.instagram && (
+                                                    <a href={ensureProtocol(venueData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
+                                                        <InstagramIcon />
+                                                    </a>
+                                                )}
+                                                {venueData?.socialMedia?.twitter && (
+                                                    <a href={ensureProtocol(venueData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
+                                                        <TwitterIcon />
+                                                    </a>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 
@@ -307,16 +318,10 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     </div>
                                 )}
                             </div>
-                            {(venueGigs.length > 0 && confirmedGigs.length > 0) ? (
-                                <div className="venue-page-gigs">
-                                    <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} />
-                                    <VenueGigsList title={'Upcoming'} gigs={confirmedGigs} isVenue={venueViewing} />
-                                </div>
-                            ) : (
-                                <div className="venue-page-gigs">
-                                    <h4>No Gigs To Show</h4>
-                                </div>
-                            )}
+                            <div className="venue-page-gigs">
+                                <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                <VenueGigsList title={'Upcoming'} gigs={confirmedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                            </div>
                         </div>
                     </>
                 )}

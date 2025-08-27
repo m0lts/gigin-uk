@@ -1,8 +1,8 @@
-import { faApple, faFacebook, faFacebookSquare, faGoogle, faInstagram, faInstagramSquare, faSoundcloud, faSpotify, faStripe, faTwitter, faTwitterSquare, faYoutube, faYoutubeSquare } from '@fortawesome/free-brands-svg-icons'
+import { faApple, faFacebook, faFacebookSquare, faGoogle, faInstagram, faInstagramSquare, faSoundcloud, faSpotify, faStripe, faTwitter, faTwitterSquare, faXTwitter, faYoutube, faYoutubeSquare } from '@fortawesome/free-brands-svg-icons'
 import { faArrowLeft, faBoxArchive, faCircle, faInbox, faLocationDot, faPlayCircle, faUserCircle, faFileImport, faSquareMinus, faChevronUp, faChevronDown, faChevronLeft, faChevronRight, faX, faCheck } from '@fortawesome/free-solid-svg-icons'
 import { faAddressCard, faAmpGuitar, faArrowLeftFromArc, faArrowRightFromBracket, faBeerFoam, faCameraViewfinder, faCastle, faCoin, faCutlery, faDrum, faEnvelope, faGear, faGlassesRound, faGraduationCap, faGuitars, faLightbulb, faLocationPin, faMapLocation, faMicrophoneStand, faMuseum, faPause, faPencil, faPiano, faPlaceOfWorship, faPlay, faPlayPause, faQuestionCircle, faReel, faSpeakers, faTelescope, faTurntable, faXmarkCircle, faStarShooting, faTrashCan } from '@fortawesome/pro-light-svg-icons'
 import { faArrowUp, faComments, faFaceFrown, faFaceMeh, faFaceSmile, faFaceSmileHearts, faUserPlus, faArrowUpRightFromSquare, faPencilSquare, faTableTree, faClock, faCircleArrowLeft, faChartPieSimple, faCreditCard, faFileInvoice, faPartyHorn, faListMusic, faCircleExclamation, faBan, faCirclePlus } from '@fortawesome/pro-regular-svg-icons'
-import { faClipboard, faShieldCheck, faCirclePlus as faCirclePlusSolid, faAsterisk, faKey, faUserMinus, faDoorOpen, faPhotoFilmMusic, faSquareInfo, faHashtag, faPiggyBank, faCircleExclamation as faCircleExclamationSolid, faWarning, faMoneyBillTransfer, faBadgeCheck, faMoneyBillsSimple, faBellRing, faEmptySet, faCircleVideo, faRingsWedding, faTicket, faVolume } from '@fortawesome/pro-solid-svg-icons';
+import { faClipboard, faShieldCheck, faCirclePlus as faCirclePlusSolid, faAsterisk, faKey, faUserMinus, faDoorOpen, faPhotoFilmMusic, faSquareInfo, faHashtag, faPiggyBank, faCircleExclamation as faCircleExclamationSolid, faWarning, faMoneyBillTransfer, faBadgeCheck, faMoneyBillsSimple, faBellRing, faEmptySet, faCircleVideo, faRingsWedding, faTicket, faVolume, faExpand } from '@fortawesome/pro-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBookmark as faSaveIcon } from '@fortawesome/pro-regular-svg-icons'
 import { faBookmark as faSavedIcon } from '@fortawesome/free-solid-svg-icons'
@@ -475,32 +475,32 @@ export const FaceFrownIcon = () => {
 }
 export const FacebookIcon = () => {
     return (
-        <FontAwesomeIcon icon={faFacebook} className='icon' color={'#0000ff'} />
+        <FontAwesomeIcon icon={faFacebook} className='icon' />
     )
 }
 export const TwitterIcon = () => {
     return (
-        <FontAwesomeIcon icon={faTwitter} className='icon' color={'#37b2ff'} />
+        <FontAwesomeIcon icon={faXTwitter} className='icon' />
     )
 }
 export const InstagramIcon = () => {
     return (
-        <FontAwesomeIcon icon={faInstagram} className='icon' color={'#fbad50'} />
+        <FontAwesomeIcon icon={faInstagram} className='icon' />
     )
 }
 export const YoutubeIcon = () => {
     return (
-        <FontAwesomeIcon icon={faYoutube} className='icon' color={'#ff0000'} />
+        <FontAwesomeIcon icon={faYoutube} className='icon' />
     )
 }
 export const SpotifyIcon = () => {
     return (
-        <FontAwesomeIcon icon={faSpotify} className='icon' color={'#14cc00'} />
+        <FontAwesomeIcon icon={faSpotify} className='icon' />
     )
 }
 export const SoundcloudIcon = () => {
     return (
-        <FontAwesomeIcon icon={faSoundcloud} className='icon' color={'#ff5c37'} />
+        <FontAwesomeIcon icon={faSoundcloud} className='icon' />
     )
 }
 export const VideoIcon = () => {
@@ -772,5 +772,10 @@ export const EmptyIcon = () => {
 export const PlayVideoIcon = () => {
     return (
         <FontAwesomeIcon icon={faCircleVideo} className='icon' />
+    )
+}
+export const RepositionIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faExpand} className='icon' />
     )
 }

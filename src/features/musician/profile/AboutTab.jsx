@@ -36,7 +36,7 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { EmptyIcon } from '../../shared/ui/extras/Icons';
 import { useMapbox } from '../../../hooks/useMapbox';
-import { openInNewTab } from '../../../services/utils/misc';
+import { ensureProtocol, openInNewTab } from '../../../services/utils/misc';
 
 export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandAdmin }) => {
 
@@ -215,32 +215,32 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
                 <div className="musician-socials about-section">
                     <h3>Socials</h3>
                     {musicianData.socialMedia.facebook && (
-                        <a href={musicianData.socialMedia.facebook} target='_blank' rel='noreferrer'>
+                        <a href={ensureProtocol(musicianData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
                             <FacebookIcon />
                         </a>
                     )}
                     {musicianData.socialMedia.instagram && (
-                        <a href={musicianData.socialMedia.instagram} target='_blank' rel='noreferrer'>
+                        <a href={ensureProtocol(musicianData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
                             <InstagramIcon />
                         </a>
                     )}
                     {musicianData.socialMedia.twitter && (
-                        <a href={musicianData.socialMedia.twitter} target='_blank' rel='noreferrer'>
+                        <a href={ensureProtocol(musicianData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
                             <TwitterIcon />
                         </a>
                     )}
                     {musicianData.socialMedia.spotify && (
-                        <a href={musicianData.socialMedia.spotify} target='_blank' rel='noreferrer'>
+                        <a href={ensureProtocol(musicianData.socialMedia.spotify)} target='_blank' rel='noreferrer'>
                             <SpotifyIcon />
                         </a>
                     )}
                     {musicianData.socialMedia.soundcloud && (
-                        <a href={musicianData.socialMedia.soundcloud} target='_blank' rel='noreferrer'>
+                        <a href={ensureProtocol(musicianData.socialMedia.soundcloud)} target='_blank' rel='noreferrer'>
                             <SoundcloudIcon />
                         </a>
                     )}
                     {musicianData.socialMedia.youtube && (
-                        <a href={musicianData.socialMedia.youtube} target='_blank' rel='noreferrer'>
+                        <a href={ensureProtocol(musicianData.socialMedia.youtube)} target='_blank' rel='noreferrer'>
                             <YoutubeIcon />
                         </a>
                     )}

@@ -25,16 +25,26 @@ export const uploadFileToStorage = async (file, path) => {
 /**
  * Uploads an array of images and returns an array of all image URLs (existing + uploaded).
  *
- * @param {Array<string | File>} images - Mixed array of image URLs and new File objects.
+ * @param {Array<string | { file: File, offsetY?: number }>} images - Mixed array of image URLs and new image objects.
  * @param {string} folderPath - Firebase storage path for uploads.
  * @returns {Promise<string[]>} - Array of all image URLs.
  */
 export const uploadImageArrayWithFallback = async (images, folderPath) => {
-  const urls = images.filter(img => typeof img === 'string');
-  const files = images.filter(img => typeof img !== 'string');
+  const urls = images
+    .filter(img =>
+      typeof img === 'string' ||
+      (typeof img.file === 'string' && img.file.startsWith('https'))
+    )
+    .map(img => (typeof img === 'string' ? img : img.file)); // extract actual URLs
+
+  const files = images
+    .filter(img => typeof img.file === 'object' && img.file instanceof File)
+    .map(img => img.file);
+
   const uploadedUrls = await Promise.all(
     files.map(file => uploadFileToStorage(file, `${folderPath}/${file.name}`))
   );
+
   return [...urls, ...uploadedUrls];
 };
 

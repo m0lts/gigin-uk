@@ -50,3 +50,12 @@ export const openInNewTab = (url, e) => {
     if (!url || typeof url !== 'string') return;
     window.open(url, '_blank');
   };
+
+/**
+ * Ensures the link provided is a valid https:// link
+ * @param {string} url - URL or route to open
+ */
+export const ensureProtocol = (url) => {
+  if (!url) return '';
+  return url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
+};

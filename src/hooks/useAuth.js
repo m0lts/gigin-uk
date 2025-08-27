@@ -116,9 +116,10 @@ export const useAuth = () => {
         email: credentials.email,
         marketingConsent: marketingConsent,
         createdAt: Date.now(),
+        firstTimeInFinances: true,
       });
       await sendEmailVerification(userCredential.user, actionCodeSettings);
-      setUser({ uid: userCredential.user.uid, ...credentials });
+      setUser({ uid: userCredential.user.uid, ...credentials, firstTimeInFinances: true });
       const redirect = sessionStorage.getItem('redirect');
       sessionStorage.setItem('newUser', true)
       if (redirect) {
@@ -223,11 +224,12 @@ export const useAuth = () => {
           marketingConsent,
           createdAt: Date.now(),
           emailVerified: true,
+          firstTimeInFinances: true,
         });
       }
       const userDoc = await getDoc(ref);
       const userDocData = userDoc.data() || {};
-      setUser({ uid: user.uid, ...userDocData, email: user.email });
+      setUser({ uid: user.uid, ...userDocData, email: user.email, firstTimeInFinances: true });
       const redirect = sessionStorage.getItem('redirect');
       if (redirect) {
         navigate(redirect);

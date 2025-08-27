@@ -16,6 +16,7 @@ import { TickIcon } from '../../shared/ui/extras/Icons';
 import { uploadImageArrayWithFallback } from '../../../services/storage';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
+import { Links } from './Links';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
@@ -62,6 +63,12 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
     useEffect(() => {
         if (venue) {
+            const photos = (venue.photos || []).map((url, i) => {
+                if (i === 0) {
+                    return { file: url, offsetY: venue.primaryImageOffsetY || 0 };
+                }
+                return url;
+            });
             setFormData({
                 venueId: venue.venueId || uuidv4(),
                 type: venue.type || '',
@@ -71,12 +78,13 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 establishment: venue.establishment || '',
                 equipmentAvailable: venue.equipmentAvailable || '',
                 equipment: venue.equipment || [],
-                photos: venue.photos || [],
+                photos: photos || [],
                 extraInformation: venue.extraInformation || '',
                 description: venue.description || '',
                 completed: venue.completed || false,
                 website: venue.website,
                 socialMedia: venue.socialMedia,
+                primaryImageOffsetY: venue.primaryImageOffsetY,
             });
         }
     }, [venue])
@@ -120,8 +128,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             const updatedFormData = {
                 ...formData,
                 photos: imageUrls,
+                primaryImageOffsetY: formData.photos[0]?.offsetY,
                 completed: true,
             };
+            console.log(imageUrls)
     
             await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             await updateUserDocument(user.uid, {
@@ -156,6 +166,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         }
     };
 
+    console.log(formData.photos)
+
     const handleSaveAndExit = async () => {
         if (formData.name === '') {
             navigate(-1);
@@ -181,12 +193,17 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 const imageFiles = formData.photos;
                 const imageUrls = await uploadImageArrayWithFallback(imageFiles, `venues/${formData.venueId}`);
                 updatedFormData.photos = imageUrls;
+                updatedFormData.primaryImageOffsetY = formData.photos[0]?.offsetY;
             }
             await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             await updateUserDocument(user.uid, {
                 venueProfiles: arrayUnion(formData.venueId),
             });
-            navigate('/venues');
+            if (updatedFormData.completed) {
+                navigate('/venues/dashboard/gigs')
+            } else {
+                navigate('/venues');
+            }
             toast.success('Venue profile saved.')
         } catch (error) {
             if (error.message?.includes('storage') || error.message?.includes('image')) {
@@ -229,6 +246,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         if (location.pathname.includes('additional-details')) {
             return formData.type === 'Public Establishment' ? 5 : 4;
         }
+        if (location.pathname.includes('links')) {
+            return formData.type === 'Public Establishment' ? 6 : 5;
+        }
         return 1;
     };
 
@@ -253,6 +273,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             }
         } else if (step === 5) {
             navigate('/venues/add-venue/additional-details');
+        } else if (step === 6 || (!isPublic && step === 5)) {
+            navigate('/venues/add-venue/links');
         }
     };
 
@@ -307,7 +329,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         if (step === finalStep) {
           const step3Valid = !isPublic || (formData.equipmentAvailable);
           const step4Valid = formData.photos.length > 0;
-      
           if (
             formData.name &&
             formData.address &&
@@ -318,9 +339,26 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
           ) {
             redirectToStep(finalStep);
           }
-      
           return;
         }
+
+        if (step === 6 || (!isPublic && step === 5)) {
+            const step4Valid = formData.photos.length > 0;
+            const step5Valid = formData.extraInformation && formData.description;
+            if (
+              formData.name &&
+              formData.address &&
+              formData.coordinates &&
+              formData.establishment &&
+              (!isPublic || formData.equipmentAvailable) &&
+              step4Valid &&
+              step5Valid
+            ) {
+              redirectToStep(step);
+            }
+            return;
+          }
+
       };
 
     const isStep1Complete = () => formData.type;
@@ -347,6 +385,14 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
     
     const isStep5Complete = () => formData.extraInformation && formData.description;
 
+    const isStep6Complete = () => {
+        if (currentStep === 6 && formData.type === 'Public Establishment') {
+            return true;
+        } else if (currentStep === 5) {
+            return true;
+        }
+    };
+
     const getNextIncompleteStep = () => {
         const isPublic = formData.type === 'Public Establishment';
       
@@ -355,21 +401,22 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         if (isPublic && !isStep3Complete()) return 3;
         if (!isStep4Complete()) return isPublic ? 4 : 3;
         if (!isStep5Complete()) return isPublic ? 5 : 4;
-      
+        if (!isStep6Complete()) return isPublic ? 6 : 5;
         // All complete
         return null;
     };
 
     const isPublic = formData.type === 'Public Establishment';
-    const totalSteps = isPublic ? 5 : 4;
+    const totalSteps = isPublic ? 6 : 5;
     
     const completedSteps = [
         isStep1Complete(),
         isStep2Complete(),
         ...(isPublic ? [isStep3Complete()] : []),
         isStep4Complete(),
-        isStep5Complete()
-    ].filter(Boolean).length;
+        isStep5Complete(),
+        isStep6Complete()
+      ].filter(Boolean).length;
     
     const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
 
@@ -444,6 +491,15 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                                 </div>
                                 Additional Details
                                 </li>
+                                <li
+                                className={`step ${isStep6Complete() ? 'completed' : ''} ${getNextIncompleteStep() === (formData.type === 'Public Establishment' ? 6 : 5) ? 'active' : ''}`}
+                                onClick={() => handleStepClick(formData.type === 'Public Establishment' ? 6 : 5)}
+                                >
+                                <div className='circle'>
+                                    {isStep6Complete() ? <TickIcon /> : formData.type === 'Public Establishment' ? 6 : 5}
+                                </div>
+                                Links (Optional)
+                                </li>
                             </ul>
                             {stepError && (
                                 <div className="step-error-box">
@@ -470,7 +526,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                             <Route path='venue-details' element={<VenueDetails formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
                             <Route path='equipment' element={<InHouseEquipment formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
                             <Route path='photos' element={<Photos formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
-                            <Route path='additional-details' element={<AdditionalDetails formData={formData} handleInputChange={handleInputChange} handleSubmit={handleSubmit} setStepError={setStepError} stepError={stepError} />} />
+                            <Route path='additional-details' element={<AdditionalDetails formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
+                            <Route path='links' element={<Links formData={formData} handleInputChange={handleInputChange} handleSubmit={handleSubmit} setStepError={setStepError} stepError={stepError} />} />
                         </Routes>
                     </section>
                 </>

@@ -24,21 +24,25 @@ import { openInNewTab } from '@services/utils/misc';
 import { CardIcon, CoinsIconSolid, DeleteGigIcon, HouseIconSolid, PeopleRoofIconSolid, PieChartIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { changeDefaultCard } from '../../../services/functions';
+import { useAuth } from '@hooks/useAuth';
+import { updateUserDocument } from '../../../services/users';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 
 export const Finances = ({ savedCards, receipts, customerDetails, setStripe, venues }) => {
 
+  const {user} = useAuth();
   const [sortOrder, setSortOrder] = useState('desc');
   const [addCardModal, setAddCardModal] = useState(false);
   const [newCardSaved, setNewCardSaved] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
 
-const toggleMenu = (cardId) => {
-  setOpenMenuId(prev => (prev === cardId ? null : cardId));
-};
+  const toggleMenu = (cardId) => {
+    setOpenMenuId(prev => (prev === cardId ? null : cardId));
+  };
 
   useResizeEffect((width) => {
     setWindowWidth(width);
@@ -66,6 +70,15 @@ const toggleMenu = (cardId) => {
     // Clear the flag/object once consumed (optional)
     // setNewCardSaved(null);
   }, [newCardSaved, setStripe]);
+
+  useEffect(() => {
+    const checkFirstTime = async () => {
+      if (user?.firstTimeInFinances !== false) {
+        setShowFirstTimeModal(true);
+      }
+    };
+    if (user?.uid) checkFirstTime();
+  }, [user]);
 
   const formatReceiptCharge = (amount) => {
     return (amount / 100).toFixed(2);
@@ -268,14 +281,35 @@ const toggleMenu = (cardId) => {
   </div>
     {addCardModal && (
       <div className='modal'>
-        <div className='modal-content'>
+        <div className='modal-content scrollable'>
           <div className="modal-header">
             <CardIcon />
             <h2>Add New Payment Method</h2>
             <p>Save a card to your account to make future gig payments quicker.</p>
           </div>
+          <div className="modal-body">
             <CardForm activityType={'adding card'} setSaveCardModal={setAddCardModal} setNewCardSaved={setNewCardSaved} />
+          </div>
           <button className='btn tertiary close' onClick={() => setAddCardModal(false)}>
+            Close
+          </button>
+        </div>
+      </div>
+    )}
+    {showFirstTimeModal && (
+      <div className='modal'>
+        <div className='modal-content' style={{ maxWidth: '300px'}}>
+          <div className="modal-header">
+            <CoinsIconSolid />
+            <h2>Your Finances</h2>
+            <p>If you are paying musicians flat fees, this is where you can track your spending, see your gig receipts, and manage your credit/debit cards.</p>
+          </div>
+          <div className="modal-body">
+            <button className="btn primary" onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
+              Ok
+            </button>
+          </div>
+          <button className='btn tertiary close' onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
             Close
           </button>
         </div>
