@@ -22,20 +22,6 @@ import { WeddingIcon } from '../../../shared/ui/extras/Icons';
 
 export const GigInformation = ({ gigId, gigData, setGigData, venueGigs = [] }) => {
 
-    const [venueProfile, setVenueProfile] = useState();
-
-      useEffect(() => {
-        if (!gigId) return;
-        const found = venueGigs.find(g => g.id === gigId);
-        if (found) {
-          setGigData(found);
-          setVenueProfile(found.venue);
-          return;
-        } else {
-            toast.error('Error loading gig information.')
-        }
-      }, [gigId, venueGigs, setGigData]);
-
     const performerIcon = (input) => {
         if (input === 'Musician') {
             return <MicrophoneIcon />

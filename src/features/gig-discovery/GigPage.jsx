@@ -172,11 +172,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
               }
               const validBandProfiles = [];
               for (const bandProfile of bandProfiles) {
-                const bandId = bandProfile.musicianId;
+                console.log('bandProfile', bandProfile)
+                const bandId = bandProfile.bandId;
                 try {
                   const members = await getBandMembers(bandId);
                   const userMember = members.find(m => m.musicianProfileId === user.musicianProfile.musicianId);
-                  if (userMember?.role === 'Band Leader') {
+                  if (userMember?.role === 'Band Leader' || userMember?.role === 'Admin') {
                     validBandProfiles.push(stripFirestoreRefs(bandProfile));
                   }
                   if (bandProfile?.savedGigs?.includes(gigData.gigId)) setGigSaved(true);
@@ -199,6 +200,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             fetchBandData();
         }
     }, [gigId, user, venueVisiting, inviteToken, multipleProfiles]);
+
+    console.log(user.musicianProfile)
 
 
     useEffect(() => {

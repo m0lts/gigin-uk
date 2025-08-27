@@ -35,6 +35,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         establishment: '',
         equipmentAvailable: '',
         equipment: [],
+        equipmentInformation: '',
         photos: [],
         extraInformation: '',
         description: '',
@@ -78,6 +79,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 establishment: venue.establishment || '',
                 equipmentAvailable: venue.equipmentAvailable || '',
                 equipment: venue.equipment || [],
+                equipmentInformation: venue.equipmentInformation || '',
                 photos: photos || [],
                 extraInformation: venue.extraInformation || '',
                 description: venue.description || '',
@@ -131,20 +133,14 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 primaryImageOffsetY: formData.photos[0]?.offsetY,
                 completed: true,
             };
-            console.log(imageUrls)
-    
             await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             await updateUserDocument(user.uid, {
                 venueProfiles: arrayUnion(formData.venueId),
             });
-    
-            // Progress intervals every 1 second
             const progressIntervals = [11, 22, 33, 44, 55, 66, 77, 88, 100];
             progressIntervals.forEach((value, index) => {
                 setTimeout(() => setProgress(value), 1000 * (index + 1));
             });
-        
-            // Final navigation
             setTimeout(() => {
                 navigate('/venues/dashboard/gigs', { state: { newUser: true } });
                 setUploadingProfile(false)
@@ -165,8 +161,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             console.error('Error uploading images or creating venue profile: ', error);
         }
     };
-
-    console.log(formData.photos)
 
     const handleSaveAndExit = async () => {
         if (formData.name === '') {
@@ -386,7 +380,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
     const isStep5Complete = () => formData.extraInformation && formData.description;
 
     const isStep6Complete = () => {
-        if (currentStep === 6 && formData.type === 'Public Establishment') {
+        if (formData.completed) {
+            return true;
+        } else if (currentStep === 6 && formData.type === 'Public Establishment') {
             return true;
         } else if (currentStep === 5) {
             return true;

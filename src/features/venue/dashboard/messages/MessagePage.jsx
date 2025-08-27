@@ -42,8 +42,8 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
         return conversations
           .filter(conv => {
             const isArchivedMatch = showArchived
-              ? conv.status === 'archived'
-              : conv.status !== 'archived';
+                ? conv.archived?.[user?.uid] === true
+                : conv.archived?.[user?.uid] !== true;
             const isVenueMatch = selectedVenueId === 'all' || (
                 conv.accountNames.find(p => p.role === 'venue')?.participantId === selectedVenueId
               );
@@ -101,9 +101,13 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     };
 
     const handleArchiveConversation = async (conversation, shouldArchive) => {
-        await updateConversationDocument(conversation.id, {
-          status: shouldArchive ? 'archived' : 'open',
-        });
+        try {
+          await updateConversationDocument(conversation.id, {
+            [`archived.${user.uid}`]: shouldArchive
+          });
+        } catch (err) {
+          console.error("Failed to archive conversation:", err);
+        }
       };
 
     const handleShowArchived = () => {
@@ -132,7 +136,6 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                 </select>
                                 <button className="btn tertiary" onClick={handleShowArchived}>
                                     {showArchived ? <InboxIcon /> : <ArchiveIcon />}
-                                    {showArchived ? 'Inbox' : 'Archived'}
                                 </button>
                             </div>
                             <ul className='conversations-list'>
@@ -159,8 +162,11 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                             {activeConversation && (
                                 <>
                                     <div className='top-banner'>
-                                        <h3>
+                                        <h3 onClick={(e) => {
+                                                    openInNewTab(`/${activeConversation.accountNames.find(account => account.role === 'musician' || account.role === 'band')?.participantId}/null`, e);
+                                                }}>
                                             {activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}
+                                            <NewTabIcon />
                                         </h3>
                                         <div className='buttons' style={{ display: 'flex', alignItems: 'center', gap:5}}>
                                             <button
@@ -169,46 +175,15 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                 >
                                                 Gig Info
                                             </button>
-                                            <div className="dropdown-wrapper" ref={menuRef} style={{ position: 'relative' }}>
-                                                <button
-                                                    className={`btn icon-box ${menuOpen === true ? 'active' : ''}`}
-                                                    onClick={() => setMenuOpen(prev => !prev)}
-                                                >
-                                                    <OptionsIcon />
-                                                </button>
-                                                {menuOpen && (
-                                                    <div className="dropdown-menu">
-                                                    <ul style={{ listStyle: 'none', margin: 0, padding: '0.5rem 0' }}>
-                                                        <li>
-                                                        <button
-                                                            className="btn secondary"
-                                                            onClick={(e) => {
-                                                            openInNewTab(`/${activeConversation.accountNames.find(account => account.role === 'musician' || account.role === 'band')?.participantId}/null`, e);
-                                                            setMenuOpen(false);
-                                                            }}
-                                                            disabled={!activeConversation.accountNames.find(account => account.accountId === user.uid)?.role === 'venue'}
-                                                        >
-                                                            View {activeConversation.bandConversation ? "Band's" : "Musician's"} Profile
-                                                            <NewTabIcon />
-                                                        </button>
-                                                        </li>
-                                                        <li>
-                                                        <button
-                                                            className="btn secondary"
-                                                            onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleArchiveConversation(activeConversation, !showArchived);
-                                                            setMenuOpen(false);
-                                                            }}
-                                                        >
-                                                            {showArchived ? 'Unarchive Conversation' : 'Archive Conversation'}
-                                                            <ArchiveIcon />
-                                                        </button>
-                                                        </li>
-                                                    </ul>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <button
+                                                className="btn icon"
+                                                onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleArchiveConversation(activeConversation, !showArchived);
+                                                }}
+                                            >
+                                                <ArchiveIcon />
+                                            </button>
                                         </div>
                                     </div>
                                     {(() => {
@@ -252,9 +227,9 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                     className="modal-content gig-information"
                     onClick={(e) => e.stopPropagation()}
                     >   
-                        <button className="btn close icon"
+                        <button className="btn close tertiary"
                         onClick={() => setShowGigModal(false)}>
-                            <ErrorIcon />
+                            Close
                         </button>
                             <GigInformation gigId={activeConversation?.gigId} gigData={gigData} setGigData={setGigData} venueGigs={venueGigs} />
                         </div>

@@ -4,8 +4,10 @@
     grid-template-columns: 30% auto;
     grid-template-rows: 100%;
     width:100%;
-    padding:0 !important;
+    padding-left: 1.5rem;
+    padding-top:1rem;
     margin:0 auto;
+    gap:0.5rem;
 }
 
 @media (max-width: 1000px) {
@@ -37,40 +39,47 @@
     color: var(--gn-black);
 }
 
-.body.messages .column {
-    overflow: hidden;
-}
 
 /* CONVERSATIONS COLUMN */
 
 .body.messages .column.conversations {
+    background-color: var(--gn-white);
+    border-radius: 1rem;
+    border: 1px solid var(--gn-grey-300);
+    box-shadow: 0 0 5px var(--gn-shadow);
     height: 100%;
-    padding-left: 1.5rem;
-    padding-top: 1rem;
     overflow-y: auto;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none;  /* IE and Edge */
   }
   
-  .body.messages .column.conversations::-webkit-scrollbar {
+.body.messages .column.conversations::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
-  }
+}
+
+.message-page .column .top-banner {
+    position: sticky;
+    top: 0;
+    background-color: var(--gn-white);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+}
 
 .body.messages .filters {
+    width:100%;
+    position: sticky;
+    top: 0;
     display: flex;
     justify-content: space-between;
     gap:1rem;
-    align-items: center;
-    padding-right: 1rem;
-    width:100%;
+    background-color: var(--gn-white);
+    padding: 1rem;
 }
 
 .body.messages .filters.ext {
     margin-top:1rem;
-}
-
-.body.messages .filters {
-    margin-bottom: 1rem;
 }
 
 .body.messages .filters select {
@@ -122,18 +131,18 @@
 }
 
 .body.messages .column.conversations .conversations-list .conversation {
+    min-width: 95%;
     height:fit-content;
-    min-width: 100%;
-    max-width: 100%;
+    margin: 0 1rem;
     display: flex;
+    border-radius: 0.5rem;
     align-items: center;
     gap:1rem;
     padding: 0.75rem;
     cursor: pointer;
     overflow: hidden;
+    margin-bottom: 0.25rem;
     transition: background-color 100ms linear;
-    border:1px solid transparent;
-    border-bottom-color: var(--gn-grey-350);
 }
 
 .body.messages .column.conversations .conversations-list .conversation:first-of-type {
@@ -141,7 +150,7 @@
 }
 
 .body.messages .column.conversations .conversations-list .conversation:hover {
-    background-color: var(--gn-grey-250);
+    background-color: var(--gn-grey-200);
 }
 
 .body.messages .column.conversations .conversations-list .conversation.active {
@@ -268,15 +277,13 @@
 /* MESSAGES COLUMN */
 
 .body.messages .column.message-thread {
-    background-color: var(--gn-grey-300);
-    border-radius: 1rem;
-    margin-right: 1.5rem;
-    margin-bottom: 1rem;
+    background-color: var(--gn-white);
     position: relative;
-    /* display: grid;
-    grid-template-rows: 60px auto; */
     display: flex;
     flex-direction: column;
+    border-radius: 1rem;
+    border: 1px solid var(--gn-grey-300);
+    box-shadow: 0 0 5px var(--gn-shadow);
 }
 
 .body.messages .column.message-thread.empty {
@@ -288,11 +295,26 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--gn-off-black);
     border-radius: 1rem 1rem 0 0;
     position: relative;
     z-index: 1;
-    color: var(--gn-white);
+    border-bottom: 1px solid var(--gn-grey-200);
+    box-shadow: 0 2px 5px var(--gn-grey-300);
+}
+
+.body.messages .column.message-thread .top-banner h3 {
+    display: flex;
+    align-items: center;
+    gap:0.5rem;
+    cursor: pointer;
+}
+
+.body.messages .column.message-thread .top-banner h3:hover {
+    text-decoration: underline;
+}
+
+.body.messages .column.message-thread .top-banner .btn.text .icon {
+    font-size: 0.75rem;
 }
 
 .body.messages .column.message-thread .messages {
@@ -502,16 +524,16 @@
 .body.messages .message-input {
     display: flex;
     padding: 1rem;
-    background-color: var(--gn-grey-300); /* Semi-transparent background */
-    backdrop-filter: blur(10px); /* Apply blur */
+    backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(1px);
+    border-radius: 0 0 1rem 1rem;
     flex-shrink: 0;
 }
 
 .body.messages .message-input .input {
     flex: 1;
     border:2px solid transparent;
-    background-color: var(--gn-white);
+    background-color: var(--gn-grey-300);
     border-radius: 1.5rem;
     padding: 0.5rem;
     margin-right: 0.5rem;

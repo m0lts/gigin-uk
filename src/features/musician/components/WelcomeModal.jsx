@@ -1,35 +1,56 @@
 import { TextLogo } from '@features/shared/ui/logos/Logos';
+import { NoTextLogo } from '../../shared/ui/logos/Logos';
 
-export const WelcomeModal = ({ user, setShowWelcomeModal, role }) => {
+export const WelcomeModal = ({ user, setShowWelcomeModal, role, revisiting = false }) => {
+
+
+    const musicianVideoUrl =
+        'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials%2F544c446f-6596-44d8-8747-b52ac54bb82e.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74';
+
+    const venueVideoUrl =
+        'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials%2F544c446f-6596-44d8-8747-b52ac54bb82e.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74';
+
     return (
         <div className='modal welcome'>
             <div className='modal-content welcome'>
-                <TextLogo />
-                <h2>Welcome to Gigin!</h2>
+                <div className="modal-header">
+                    <NoTextLogo />
+                    {revisiting ? (
+                        <>
+                            <h3>Dashboard Tutorial</h3>
+                            <p>Revisit how the Gigin dashboard works.</p>
+                        </>
+                    ) : (
+                        <>
+                            <h3>Welcome to Gigin!</h3>
+                            <p>Watch this video to familiarise yourself with the dashboard.</p>
+                        </>
+                    )}
+                </div>
                 {role === 'musician' ? (
-                    <div className='body'>
-                        <h4>We’re so glad to have you as on of our earliest users. If you have any feedback (of any kind) do let us know by clicking the <i>feedback</i> button in the header menu.</h4>
-                        <h4>Here’s a recap of our 3-step booking process:</h4>
-                        <ol>
-                            <li>Find a gig <i>(on the map or list view)</i>.</li>
-                            <li>Apply to the gig / Negotiate the fee (this can be done from the <i>Messages</i> window).</li>
-                            <li>The venue pays now to confirm the gig, and you get paid when the gig is performed.</li>
-                        </ol>
-                        <h4>Enjoy!</h4>
+                    <div className='modal-body'>
+                        <video
+                            src={musicianVideoUrl}
+                            controls
+                            style={{
+                                width: '100%',
+                                maxHeight: '60vh',
+                            }}
+                        />
                     </div>
                 ) : (
-                    <div className='body'>
-                        <h4>We’re so glad to have you as on of our earliest users. If you have any feedback (of any kind) do let us know by clicking the <i>feedback</i> button in the header menu.</h4>
-                        <h4>Here’s a recap of our 3-step booking process:</h4>
-                        <ol>
-                            <li><i>Post a gig</i>, using the button from your dashboard.</li>
-                            <li>Find the perfect music by allowing musicians to apply or finding them yourself.</li>
-                            <li><i>Accept and pay</i> securely using Stripe payments to confirm the gig.</li>
-                        </ol>
-                        <h4>Enjoy!</h4>
+                    <div className='modal-body'>
+                        <video
+                            src={venueVideoUrl}
+                            controls
+                            style={{
+                                width: '100%',
+                                maxHeight: '60vh',
+                            }}
+                        />
                     </div>
                 )}
-                <button className='btn primary' onClick={() => setShowWelcomeModal(false)}>Got it!</button>
+                <button className='btn tertiary close' onClick={() => setShowWelcomeModal(false)}>Close</button>
             </div>
         </div>
     )

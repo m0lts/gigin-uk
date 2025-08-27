@@ -21,7 +21,7 @@ import { CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLigh
 import { FeedbackBox } from './FeedbackBox';
 import { toast } from 'sonner';
 
-export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
+export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModal, setRevisitingModal }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
@@ -146,7 +146,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages }) => {
         })}
       </ul>
       {pathname !== '/venues/dashboard' && (
-        <FeedbackBox user={user} />
+        <FeedbackBox user={user} setShowWelcomeModal={setShowWelcomeModal} setRevisitingModal={setRevisitingModal} />
       )}
     </div>
   );

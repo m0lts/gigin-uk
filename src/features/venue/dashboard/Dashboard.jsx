@@ -43,6 +43,7 @@ export const VenueDashboard = ({ user }) => {
     const [gigPostModal, setGigPostModal] = useState(false);
     const [editGigData, setEditGigData] = useState();
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [revisitingModal, setRevisitingModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [gigToReview, setGigToReview] = useState(null);
     const [gigsToReview, setGigsToReview] = useState([]);
@@ -54,7 +55,9 @@ export const VenueDashboard = ({ user }) => {
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname), [location.pathname]);
   
     useEffect(() => {
-      if (location.state?.newUser) setShowWelcomeModal(true);
+      if (location.state?.newUser && user?.venueProfiles?.length === 1) {
+        setShowWelcomeModal(true);
+      };
       if (location.state?.showGigPostModal) setGigPostModal(true);
       if (location.state?.buildingForMusician) setBuildingForMusician(true);
       if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
@@ -94,6 +97,8 @@ export const VenueDashboard = ({ user }) => {
               setGigPostModal={setGigPostModal}
               user={user}
               newMessages={newMessages}
+              setShowWelcomeModal={setShowWelcomeModal}
+              setRevisitingModal={setRevisitingModal}
             />
             <div className='window venues'>
                 {location.pathname !== '/venues/dashboard' && (
@@ -155,9 +160,10 @@ export const VenueDashboard = ({ user }) => {
             }
             {showWelcomeModal && (
                 <WelcomeModal
-                    user={user}
-                    setShowWelcomeModal={setShowWelcomeModal}
-                    role='venue'
+                  user={user}
+                  setShowWelcomeModal={setShowWelcomeModal}
+                  role='venue'
+                  revisiting={revisitingModal}
                 />
             )}
         </>

@@ -38,37 +38,16 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
     };
 
     const equipmentOptions = [
-        'Speakers',
-        'Microphone',
-        'Piano',
-        'Keyboard',
+        'PA System',
+        'Stage Monitors',
         'Guitar Amp',
         'Bass Amp',
-        'PA System',
-        'Mixing Desk',
-        'Stage Lighting',
-        'Drum Kit',
-        'Monitors',
-        'In-Ear Monitor System',
+        'Mixing/Sound Desk',
         'DI Boxes',
-        'Cables',
-        'Mic Stands',
-        'Music Stands',
-        'Stools',
-        'Stage Risers',
-        'Projector / Screen',
-        'Backline Storage',
-        'DJ Booth',
-        'Turntables',
-        'CDJs',
-        'Smoke Machine',
-        'Laser Lighting',
-        'Loop Pedals',
-        'Patch Bay',
-        'Acoustic Panels',
-        'Power Strips / Extension Leads',
-        'Recording Equipment',
-        'Laptop Stand'
+        'Cables (XLRs, Jack Leads)',
+        'Guiter',
+        'Piano/Keyboard',
+        'Bass'
       ]
 
     return (
@@ -92,20 +71,31 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                     </button>
                 </div>
                 {equipmentAvailable === 'yes' && (
-                    <div className='equipment-type'>
-                        <h6>Select the equipment available to musicians</h6>
-                        <div className='selections'>
-                            {equipmentOptions.map(type => (
-                                <button 
-                                    key={type}
-                                    className={`card small ${equipmentType.includes(type) ? 'selected' : ''} `}
-                                    onClick={() => handleEquipmentTypeToggle(type)}
-                                >
-                                    {type}
-                                </button>
-                            ))}
+                    <>
+                        <div className='equipment-type'>
+                            <h6>Select the equipment available to musicians</h6>
+                            <div className='selections'>
+                                {equipmentOptions.map(type => (
+                                    <button 
+                                        key={type}
+                                        className={`card small ${equipmentType.includes(type) ? 'selected' : ''} `}
+                                        onClick={() => handleEquipmentTypeToggle(type)}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                        <div className='input-group'>
+                            <label htmlFor='information' className='input-label'>Equipment Information</label>
+                            <textarea
+                                id='information'
+                                placeholder='Provide any extra information about the equipment if required.'
+                                value={formData.equipmentInformation}
+                                onChange={(e) => handleInputChange('equipmentInformation', e.target.value)}
+                            />
+                        </div>
+                    </>
                 )}
             </div>
             <div className='stage-controls'>

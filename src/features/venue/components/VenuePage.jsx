@@ -202,15 +202,15 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 ) : (
                     <>
                         <div className='venue-page-hero'>
-                        <img
-  src={venueData?.photos[0]}
-  alt={venueData?.name}
-  className='background-image'
-  style={{
-    transform: `translateY(${venueData?.primaryImageOffsetY || 0}px)`,
-    transition: 'transform 0.3s ease-out',
-  }}
-/>
+                            <img
+                                src={venueData?.photos[0]}
+                                alt={venueData?.name}
+                                className='background-image'
+                                style={{
+                                    transform: `translateY(${venueData?.primaryImageOffsetY || 0}px)`,
+                                    transition: 'transform 0.3s ease-out',
+                                }}
+                            />
                             <div className="primary-information">
                                 {venueData?.verified && (
                                     <div className="verified-tag">

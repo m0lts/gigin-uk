@@ -398,6 +398,34 @@
     font-weight: 500;
 }
 
+.venue-builder .stage.equipment .input-group {
+    display: flex;
+    flex-direction: column;
+    width:fit-content;
+    margin-top: 1rem;
+}
+
+.venue-builder .stage.equipment .input-group label {
+    text-transform: uppercase;
+    color: var(--gn-grey-600);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.venue-builder .stage.equipment .input-group textarea {
+    min-height: 200px;
+    border:1px solid var(--gn-grey-400);
+    outline: 1px solid transparent;
+    border-radius: 5px;
+    padding:10px;
+    max-width: 100%;
+    max-height: 200px;
+    width:500px;
+    resize: none;
+    transition: border 200ms linear, outline 200ms linear;
+}
+
 
 /* Photos */
 

@@ -42,11 +42,11 @@ export const MessagePage = () => {
         if (!user) return;
         const unsubscribe = listenToUserConversations(user, (updatedConversations, docChanges) => {
             const open = updatedConversations
-                .filter(c => c.status !== 'archived')
+                .filter(c => !c.archived?.[user?.uid])
                 .sort((a, b) => (b.lastMessageTimestamp?.seconds || 0) - (a.lastMessageTimestamp?.seconds || 0));
             setConversations(open);
             const archived = updatedConversations
-                .filter(c => c.status === 'archived')
+                .filter(c => c.archived?.[user?.uid])
                 .sort((a, b) => (b.lastMessageTimestamp?.seconds || 0) - (a.lastMessageTimestamp?.seconds || 0));
             setArchivedConversations(archived);
         });
@@ -82,10 +82,14 @@ export const MessagePage = () => {
     };
 
     const handleArchiveConversation = async (conversation, shouldArchive) => {
-        await updateConversationDocument(conversation.id, {
-          status: shouldArchive ? 'archived' : 'open',
-        });
-    };
+        try {
+          await updateConversationDocument(conversation.id, {
+            [`archived.${user.uid}`]: shouldArchive
+          });
+        } catch (err) {
+          console.error("Failed to archive conversation:", err);
+        }
+      };
 
     const handleShowArchived = () => {
         setShowArchived(prev => !prev);

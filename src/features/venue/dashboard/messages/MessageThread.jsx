@@ -17,6 +17,7 @@ import { fetchSavedCards, confirmGigPayment } from '@services/functions';
 import { CalendarIconSolid } from '../../../shared/ui/extras/Icons';
 import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
 import { toast } from 'sonner';
+import { formatDate } from '../../../../services/utils/dates';
 
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
@@ -587,7 +588,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                         <>
                                             <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>{message.text} <br /> {'No payment is required for this type of gig.'}</h4>
+                                            <h4>You have accepted the musician's application. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
                                         </>
                                     ) : (
                                         <>

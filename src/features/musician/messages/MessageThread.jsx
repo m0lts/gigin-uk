@@ -16,6 +16,7 @@ import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } fro
 import { fetchSavedCards, confirmGigPayment } from '@services/functions';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
+import { formatDate } from '../../../services/utils/dates';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
@@ -567,7 +568,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 {(gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>The venue has accepted the musician's application. No payment is required for this gig.</h4>
+                                        <h4>{gigData.venue.venueName} has accepted the musician's application. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
                                     </>
                                 ) : message.status === 'awaiting payment' && userRole === 'venue' ? (
                                     <>
