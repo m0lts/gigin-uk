@@ -148,7 +148,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
                     }
                 }
             }
-            if (user.musicianProfile?.savedGigs?.includes(gig.gigId)) {
+            if (user?.musicianProfile?.savedGigs?.includes(gig.gigId)) {
                 setGigSaved(true);
               }
             if (gig?.venueId) {
@@ -173,7 +173,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
               const validBandProfiles = [];
               for (const bandProfile of bandProfiles) {
                 console.log('bandProfile', bandProfile)
-                const bandId = bandProfile.bandId;
+                const bandId = bandProfile.musicianId;
                 try {
                   const members = await getBandMembers(bandId);
                   const userMember = members.find(m => m.musicianProfileId === user.musicianProfile.musicianId);
@@ -200,8 +200,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType }) => {
             fetchBandData();
         }
     }, [gigId, user, venueVisiting, inviteToken, multipleProfiles]);
-
-    console.log(user.musicianProfile)
 
 
     useEffect(() => {

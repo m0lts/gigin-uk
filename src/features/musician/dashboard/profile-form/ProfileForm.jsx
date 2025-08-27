@@ -102,7 +102,6 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
         const checkForSavedProfile = async () => {
           const isBand = musicianProfile.bandProfile === true;
           if (isBand && band) {
-            console.log('band profile:', musicianProfile)
             setFormData((prev) => ({
                 ...prev,
                 ...musicianProfile,
@@ -110,7 +109,6 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                 musicianId: musicianProfile.id,
               }));
           } else {
-            console.log('musician profile:', musicianProfile)
             setFormData((prev) => ({
                 ...prev,
                 ...musicianProfile,

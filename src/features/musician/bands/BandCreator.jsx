@@ -103,6 +103,7 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
         const keywords = generateSearchKeywords(formData.name);
         const musicianProfileData = {
           ...formData,
+          musicianId: formData.bandId,
           picture: pictureUrl,
           email: user?.email,
           musicianType: 'Band',

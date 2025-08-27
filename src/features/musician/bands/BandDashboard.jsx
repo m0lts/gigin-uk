@@ -20,6 +20,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const { refreshMusicianProfile } = useMusicianDashboard();
   const { bandId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state;
   const [bandProfile, setBandProfile] = useState(state?.band || null);
   const [bandMembers, setBandMembers] = useState(state?.band?.members || null);
@@ -77,8 +78,6 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
       setLoading(false);
     }
   };
-
-  console.log('MUSICIANID', musicianProfile.musicianId)
   
   if (!bandProfile) {
     return <LoadingScreen />

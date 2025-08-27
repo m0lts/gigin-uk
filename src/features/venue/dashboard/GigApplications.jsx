@@ -165,6 +165,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             const conversationId = await getOrCreateConversation(musicianProfile, gigInfo, venueProfile, 'application');
             if (proposedFee === gigInfo.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
+                console.log(applicationMessage)
                 await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigInfo.budget, 'venue', nonPayableGig);
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
@@ -357,6 +358,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         setVideoToPlay(null);
     };
 
+    console.log(gigInfo)
+
     return (
         <>
             <div className='head gig-applications'>
@@ -374,7 +377,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                 Edit Gig Details
                             </button>
                         )}
-                        {!gigInfo.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') ? (
+                        {!gigInfo?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') ? (
                             <>
                                 {gigInfo.status === 'closed' ? (
                                 <button className="btn tertiary" onClick={handleReopenGig}>
@@ -405,7 +408,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 ) : (
                     <>
                     {new Date(gigInfo.disputeClearingTime) > getLocalGigDateTime(gigInfo) &&
-                        gigInfo.applicants.some(applicant => applicant.status === 'confirmed' &&
+                        gigInfo?.applicants.some(applicant => applicant.status === 'confirmed' &&
                         !gigInfo.disputeLogged) && (
                         <div className='dispute-box'>
                             <h3>Not happy with how the gig went?</h3>
@@ -430,7 +433,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                             </thead>
                             <tbody>
                                 {musicianProfiles.map((profile) => {
-                                    const applicant = gigInfo.applicants.find(applicant => applicant.id === profile.id);
+                                    const applicant = gigInfo?.applicants.find(applicant => applicant.id === profile.id);
                                     const status = applicant ? applicant.status : 'pending';
                                     return (
                                         <tr key={profile.id} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
