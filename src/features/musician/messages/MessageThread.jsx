@@ -568,7 +568,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 {(gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{gigData.venue.venueName} has accepted the musician's application. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
+                                        <h4>{gigData.venue.venueName} has accepted your application. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
                                     </>
                                 ) : message.status === 'awaiting payment' && userRole === 'venue' ? (
                                     <>

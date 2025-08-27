@@ -92,7 +92,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             source: 'gigs',
             filter: ['has', 'point_count'],
             layout: {
-              'text-field': '{point_count_abbreviated}',
+              'text-field': ['concat', ['get', 'point_count_abbreviated'], ' gigs'],
               'text-font': ['DM Sans Bold'],
               'text-size': 13,
               'text-anchor': 'center',

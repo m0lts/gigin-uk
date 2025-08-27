@@ -372,12 +372,16 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 </div>
                 {getLocalGigDateTime(gigInfo) > now && (
                     <div className='action-buttons'>
-                        {!gigInfo?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') && (
+                        {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
+                            ['accepted', 'confirmed', 'paid'].includes(applicant.status)
+                        ) && (
                             <button className='btn tertiary' onClick={() => openGigPostModal(gigInfo)}>
                                 Edit Gig Details
                             </button>
                         )}
-                        {!gigInfo?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed' || applicant.status === 'paid') ? (
+                        {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
+                            ['accepted', 'confirmed', 'paid'].includes(applicant.status)
+                        ) ? (
                             <>
                                 {gigInfo.status === 'closed' ? (
                                 <button className="btn tertiary" onClick={handleReopenGig}>
@@ -408,7 +412,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 ) : (
                     <>
                     {new Date(gigInfo.disputeClearingTime) > getLocalGigDateTime(gigInfo) &&
-                        gigInfo?.applicants.some(applicant => applicant.status === 'confirmed' &&
+                        Array.isArray(gigInfo?.applicants) && gigInfo?.applicants.some(applicant => applicant.status === 'confirmed' &&
                         !gigInfo.disputeLogged) && (
                         <div className='dispute-box'>
                             <h3>Not happy with how the gig went?</h3>
