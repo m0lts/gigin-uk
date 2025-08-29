@@ -126,6 +126,7 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
         musicianId: formData.musicianId,
         email: user?.email || '',
         name: formData.name,
+        onboarded:true,
         picture: pictureUrl,
         searchKeywords: keywords,
         updatedAt: Timestamp.now(),

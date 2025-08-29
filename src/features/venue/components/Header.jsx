@@ -52,7 +52,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
           setNewMessages(hasUnread);
         });
         return () => unsubscribe();
-    }, [user]);
+    }, [user, location.pathname]);
 
 
     useEffect(() => {

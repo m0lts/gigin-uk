@@ -114,13 +114,14 @@ p, a, span, label, input, button, select, option, textarea, li {
     bottom: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
+    min-width: 150px;
+    max-width: 300px;
     background: var(--gn-off-black);
     color: white;
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 500;
-    white-space: nowrap;
     opacity: 0;
     pointer-events: none;
     transition: opacity 150ms ease-in-out;

@@ -573,7 +573,7 @@
 .message-page .column.information .map {
     box-shadow: 0 0 5px var(--gn-shadow);
     margin: 0.25rem 1.5rem;
-    height:200px;
+    height:125px;
     border-radius: 10px;
 }
 

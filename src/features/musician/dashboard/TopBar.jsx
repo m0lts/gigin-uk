@@ -26,6 +26,7 @@ import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { listenToUserConversations } from '@services/conversations';
 import { submitUserFeedback } from '@services/reports';
 import { useResizeEffect } from '@hooks/useResizeEffect';
+import { DashboardIconSolid } from '../../shared/ui/extras/Icons';
 
 export const TopBar = ({ user, bandProfiles }) => {
     
@@ -51,7 +52,7 @@ export const TopBar = ({ user, bandProfiles }) => {
           setNewMessages(hasUnread);
         });
         return () => unsubscribe();
-    }, [user]);
+    }, [user, location.pathname]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -107,29 +108,35 @@ export const TopBar = ({ user, bandProfiles }) => {
                 <div className='buttons'>
                     <Link className='link' to={'/find-a-gig'}>
                         <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                            <TelescopeIcon />
+                            <MapIcon />
                             Find A Gig
                         </button>
                     </Link>
-                            {newMessages ? (
-                                <Link className='link' to={'/messages'}>
-                                    <button className='btn secondary messages'>
-                                        <MailboxFullIcon />
-                                        Messages
-                                        <span className='notification-dot'><DotIcon /></span>
-                                    </button>
-                                </Link>
-                            ) : (
-                                <Link className='link' to={'/messages'}>
-                                    <button className='btn secondary'>
-                                        <MailboxEmptyIcon />
-                                        Messages
-                                    </button>
-                                </Link>
-                            )}
+                    <Link className='link' to={'/dashboard'}>
+                        <button className={`btn secondary ${location.pathname === '/dashboard' ? 'disabled' : ''}`}>
+                            <DashboardIconLight />
+                            Dashboard
+                        </button>
+                    </Link>
+                    {newMessages ? (
+                        <Link className='link' to={'/messages'}>
+                            <button className='btn secondary messages'>
+                                <MailboxFullIcon />
+                                Messages
+                                <span className='notification-dot'><DotIcon /></span>
+                            </button>
+                        </Link>
+                    ) : (
+                        <Link className='link' to={'/messages'}>
+                            <button className='btn secondary'>
+                                <MailboxEmptyIcon />
+                                Messages
+                            </button>
+                        </Link>
+                    )}
                 </div>
                 <button className={`btn account-btn ${accountMenu ? 'active' : ''}`} onClick={() => setAccountMenu(!accountMenu)} ref={buttonRef}>
-                    <h4 className='withdrawable-earnings'>£{user?.musicianProfile?.withdrawableEarnings ? parseFloat(user.musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h4>
+                    <h4 className='withdrawable-earnings'>My Gigin</h4>
                     <UserIcon />
                 </button>
             </div>

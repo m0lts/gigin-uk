@@ -26,24 +26,16 @@ import { listenToUserConversations } from '@services/conversations';
 import { submitUserFeedback } from '@services/reports';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';
+import { NoProfileModal } from './NoProfileModal';
 
-export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
+export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModal, setNoProfileModal }) => {
     
     const { logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [accountMenu, setAccountMenu] = useState(false);
-    const [feedbackForm, setFeedbackForm] = useState(false);
-    const [feedback, setFeedback] = useState({
-        scale: '',
-        feedback: '',
-        user: user?.uid,
-    });
-    const [feedbackLoading, setFeedbackLoading] = useState(false);
-
     const [newMessages, setNewMessages] = useState(false);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-    const [showProfileModal, setShowProfileModal] = useState(false);
 
     useResizeEffect((width) => {
         setWindowWidth(width);
@@ -62,25 +54,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
           setNewMessages(hasUnread);
         });
         return () => unsubscribe();
-    }, [user]);
-
-
-    const handleScaleSelection = (scale) => {
-        setFeedback(prev => ({ ...prev, scale }));
-    };
-
-    const handleFeedbackSubmit = async () => {
-        setFeedbackLoading(true);
-        try {
-          await submitUserFeedback(feedback);
-          setFeedback({ scale: '', feedback: '' });
-          setFeedbackForm(false);
-        } catch (error) {
-          console.error('Error submitting feedback:', error);
-        } finally {
-          setFeedbackLoading(false);
-        }
-    };
+    }, [user, location.pathname]);
 
     const showAuthModal = (type) => {
         setAuthModal(true);
@@ -114,47 +88,9 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                 <>
                     <div className='left musician'>
                         <MusicianLogoLink />
-                        {location.pathname.includes('dashboard') && (
-                            <div className='breadcrumbs'>
-                                <span className='item breadcrumb' onClick={() => navigate('/dashboard')}>Dashboard</span>
-                                {location.pathname === ('/dashboard') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/dashboard')}>Overview</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('gig') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/dashboard/gigs')}>Gigs</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('finances') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb'  onClick={() => navigate('/dashboard/finances')}>Finances</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('bands') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/dashboard/bands')}>Bands</span>
-                                    </>
-                                )}
-                                {location.pathname.includes('profile') && (
-                                    <>
-                                        <RightChevronIcon />
-                                        <span className='item active breadcrumb' onClick={() => navigate('/dashboard/profile')}>Profile</span>
-                                    </>
-                                )}
-                            </div>
-                        )}
                     </div>
                     <div className='right'>
                         <div className='buttons'>
-                            {/* <button className='btn text' onClick={() => setFeedbackForm(!feedbackForm)}>
-                                Feedback
-                            </button> */}
                             {user.venueProfiles && !user.musicianProfile ? (
                                 <Link className='link' to={'/venues/dashboard/gigs'}>
                                     <button className='btn secondary'>
@@ -164,14 +100,12 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 </Link>
                             ) : (
                                 <>
-                                    {location.pathname !== '/find-a-gig' && windowWidth > 1100 && (
-                                        <Link className='link' to={'/find-a-gig'}>
-                                            <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                                                <TelescopeIcon />
-                                                Find A Gig
-                                            </button>
-                                        </Link>
-                                    )}
+                                    <Link className='link' to={'/find-a-gig'}>
+                                        <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
+                                            <MapIcon />
+                                            Find A Gig
+                                        </button>
+                                    </Link>
                                     {user.musicianProfile ? (
                                         windowWidth > 1100 && (
                                             <Link className='link' to={'/dashboard'}>
@@ -182,7 +116,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                             </Link>
                                         )
                                     ) : (
-                                        <button className='btn secondary' onClick={() => setShowProfileModal(true)}>
+                                        <button className='btn secondary' onClick={() => setNoProfileModal(true)}>
                                             <GuitarsIcon />
                                             Create Musician Profile
                                         </button>
@@ -190,26 +124,26 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 </>
                             )}
                             {user.musicianProfile && (
-                                    newMessages ? (
-                                        <Link className='link' to={'/messages'}>
-                                            <button className='btn secondary messages'>
-                                                <span className='notification-dot'><DotIcon /></span>
-                                                <MailboxFullIcon />
-                                                Messages
-                                            </button>
-                                        </Link>
-                                    ) : (
-                                        <Link className='link' to={'/messages'}>
-                                            <button className='btn secondary'>
-                                                <MailboxEmptyIcon />
-                                                Messages
-                                            </button>
-                                        </Link>
-                                    )
+                                newMessages ? (
+                                    <Link className='link' to={'/messages'}>
+                                        <button className={`btn secondary messages ${location.pathname === '/messages' ? 'disabled' : ''}`}>
+                                            <span className='notification-dot'><DotIcon /></span>
+                                            <MailboxFullIcon />
+                                            Messages
+                                        </button>
+                                    </Link>
+                                ) : (
+                                    <Link className='link' to={'/messages'}>
+                                        <button className={`btn secondary ${location.pathname === '/messages' ? 'disabled' : ''}`}>
+                                            <MailboxEmptyIcon />
+                                            Messages
+                                        </button>
+                                    </Link>
+                                )
                             )}
                         </div>
                         <button className={`btn account-btn ${accountMenu ? 'active' : ''}`} onClick={() => setAccountMenu(!accountMenu)}>
-                            <h4 className='withdrawable-earnings'>£{user.musicianProfile?.withdrawableEarnings ? parseFloat(user.musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h4>
+                            <h4 className='withdrawable-earnings'>My Gigin</h4>
                             <UserIcon />
                         </button>
                     </div>
@@ -253,14 +187,10 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                 </Link>
                             )}
                             <div className='break' />
-                            <Link className='link item no-margin' onClick={() => setShowProfileModal(true)}>
+                            <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
                                 Create a Musician Profile
                                 <GuitarsIcon />
                             </Link>
-                            {/* <Link className='link item' to={'/find-a-gig'}>
-                                Find Gigs
-                                <MapIcon />
-                            </Link> */}
                             <Link to={'/account'} className='item no-margin link'>
                                 Settings
                                 <SettingsIcon />
@@ -298,7 +228,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                         <DashboardIconLight />
                                     </Link>
                                 ) : (
-                                    <Link className='link item' onClick={() => setShowProfileModal(true)}>
+                                    <Link className='link item' onClick={() => setNoProfileModal(true)}>
                                         Create Musician Profile
                                         <GuitarsIcon />
                                     </Link>
@@ -328,42 +258,6 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                             </nav>
                         )
                     )}
-                    {feedbackForm && (
-                        <div className='feedback'>
-                            <div className='body'>
-                                <textarea
-                                    name='feedbackBox'
-                                    id='feedbackBox'
-                                    onChange={(e) => setFeedback(prev => ({ ...prev, feedback: e.target.value }))}
-                                    value={feedback.feedback}
-                                    placeholder='Give us your thoughts...'
-                                ></textarea>
-                            </div>
-                            <div className='foot'>
-                                <div className='faces'>
-                                    <button className={`btn icon ${feedback.scale === 'hearts' ? 'active' : ''}`} onClick={() => handleScaleSelection('hearts')}>
-                                        <FaceHeartsIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'smiles' ? 'active' : ''}`} onClick={() => handleScaleSelection('smiles')}>
-                                        <FaceSmileIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'meh' ? 'active' : ''}`} onClick={() => handleScaleSelection('meh')}>
-                                        <FaceMehIcon />
-                                    </button>
-                                    <button className={`btn icon ${feedback.scale === 'frown' ? 'active' : ''}`} onClick={() => handleScaleSelection('frown')}>
-                                        <FaceFrownIcon />
-                                    </button>
-                                </div>
-                                <button className='btn primary' onClick={handleFeedbackSubmit}>
-                                    {feedbackLoading ? (
-                                        <LoadingThreeDots />
-                                    ) : (
-                                        'Send'
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </>
             ) : (
                 <>
@@ -377,9 +271,6 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                         </button>
                     </nav>
                 </>
-            )}
-            {showProfileModal && (
-                <ProfileCreator user={user} setShowModal={setShowProfileModal} />
             )}
         </header>
     )

@@ -26,6 +26,8 @@ export const PhoneField = ({
   value,
   disabled,
   onChange,
+  error,
+  loading
 }) => {
   const initial = useMemo(() => {
     if (!value || !value.startsWith("+")) return { country: initialCountry, local: "" };
@@ -52,7 +54,7 @@ export const PhoneField = ({
       <label className="label">Phone Number</label>
       <div className="phone-row">
         <select
-          className="phone-country"
+          className={`phone-country ${error.input.includes('phoneNumber') && 'error'} ${loading ? 'disabled' : ''}`}
           value={country}
           onChange={(e) => setCountry(e.target.value)}
           disabled={disabled}
@@ -65,7 +67,7 @@ export const PhoneField = ({
           ))}
         </select>
         <input
-          className="phone-local input"
+          className={`phone-local input ${error.input.includes('phoneNumber') && 'error'} ${loading ? 'disabled' : ''}`}
           type="tel"
           inputMode="tel"
           placeholder={selected.example}

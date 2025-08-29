@@ -24,6 +24,13 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
         });
     
         map.on('load', () => {
+
+          const labelFor = (g) =>
+            ((g.budget === '£' || g.budget === 'No Fee') &&
+            (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
+              ? g.kind
+              : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
+
           const geojson = {
             type: 'FeatureCollection',
             features: upcomingGigs.map(gig => ({
@@ -32,6 +39,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
                 gigId: gig.gigId,
                 budget: gig.budget,
                 kind: gig.kind,
+                label: labelFor(gig),
               },
               geometry: {
                 type: 'Point',
@@ -54,7 +62,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             source: 'gigs',
             filter: ['has', 'point_count'],
             paint: {
-              'circle-color': 'rgba(0, 0, 0, 0.07)', // soft grey shadow
+              'circle-color': 'rgba(0, 0, 0, 0.07)',
               'circle-radius': [
                 'step',
                 ['get', 'point_count'],
@@ -92,7 +100,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             source: 'gigs',
             filter: ['has', 'point_count'],
             layout: {
-              'text-field': ['concat', ['get', 'point_count_abbreviated'], ' gigs'],
+              'text-field': ['concat', ['get', 'point_count_abbreviated'], ' Gigs'],
               'text-font': ['DM Sans Bold'],
               'text-size': 13,
               'text-anchor': 'center',
@@ -124,7 +132,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             source: 'gigs',
             filter: ['!', ['has', 'point_count']],
             layout: {
-              'text-field': ['get', gigMarkerDisplay],
+              'text-field': ['get', 'label'],
               'text-font': ['DM Sans Bold'],
               'text-size': 14,
               'text-anchor': 'top',
@@ -278,7 +286,11 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
                     </div>
                   </div>
                   <div className="preview-gig-budget">
-                    <h3>{gig.budget !== '£' ? gig.budget : 'No Fee'}</h3>
+                  {((gig.budget === '£' || gig.budget === 'No Fee') && (gig.kind === 'Ticketed Gig' || gig.kind === 'Open Mic')) ? (
+                    <h3 className='budget text'>{gig.kind}</h3>
+                  ) : (
+                    <h3 className='budget'>{gig.budget !== '£' ? gig.budget : 'No Fee'}</h3>
+                  )}
                   </div>
                 </li>
               ))}

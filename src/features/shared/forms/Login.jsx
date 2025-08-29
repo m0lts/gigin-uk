@@ -10,7 +10,7 @@ import { GoogleIcon } from '../ui/extras/Icons';
 
 
 
-export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, loginWithGoogle }) => {
+export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, loginWithGoogle, noProfileModal, setNoProfileModal }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -44,10 +44,17 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
     setLoading(true);
 
     try {
-      await login(credentials);
-      setAuthModal(false);
-      setAuthClosable(true);
+      const loginResponse = await login(credentials);
+      if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
+        setAuthModal(false);
+        setAuthClosable(true);
+        setNoProfileModal(true);
+      } else {        
+        setAuthModal(false);
+        setAuthClosable(true);
+      }
     } catch (err) {
+      console.log(err)
       switch (err.error.code) {
         case 'auth/invalid-credential':
           setError({ status: true, input: '', message: '* Invalid Credentials.' });
@@ -70,12 +77,47 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
 
   return (
     <div className='modal-padding auth' onClick={(e) => e.stopPropagation()}>
-    <div className='modal-content auth'>
+    <div className='modal-content auth scrollable'>
       <div className='head'>
         <NoTextLogo />
-        <h1>Sign In</h1>
+        <h1>Welcome Back</h1>
       </div>
         <form className='auth-form' onSubmit={handleLogin}>
+          {!loading && (
+            <>
+              <button
+                type="button"
+                className="btn secondary google"
+                disabled={loading}
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    const loginResponse = await loginWithGoogle();
+                    if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
+                      setAuthModal(false);
+                      setAuthClosable(true);
+                      setNoProfileModal(true);
+                    } else {        
+                      setAuthModal(false);
+                      setAuthClosable(true);
+                    }
+                  } catch (err) {
+                    setError({ status: true, input: '', message: err?.error?.message || 'Google sign in failed' });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                <GoogleIcon />
+                Continue With Google
+              </button>
+              <div className="oauth-divider">
+                <span className="line" />
+                <h6>OR</h6>
+                <span className="line" />
+              </div>
+            </>
+          )}
           <div className='input-group'>
             <label htmlFor='email'>Email</label>
             <input
@@ -126,37 +168,12 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
               >
                 Sign In
               </button>
-              <div className="oauth-divider">
-                <span className="line" />
-                <h6>OR</h6>
-                <span className="line" />
-              </div>
-              <button
-                type="button"
-                className="btn secondary google"
-                disabled={loading}
-                onClick={async () => {
-                  try {
-                    setLoading(true);
-                    await loginWithGoogle();
-                    setAuthModal(false);
-                    setAuthClosable(true);
-                  } catch (err) {
-                    setError({ status: true, input: '', message: err?.error?.message || 'Google sign in failed' });
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
-                <GoogleIcon />
-                Sign In with Google
-              </button>
             </>
           )}
         </form>
       {(!loading && authClosable) && (
         <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false)}}>
-          <ErrorIcon />
+          Close
         </button>
       )}
     </div>

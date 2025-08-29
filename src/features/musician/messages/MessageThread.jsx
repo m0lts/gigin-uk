@@ -619,10 +619,10 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     </>
                                 )}
                                 </>
-                            ) : message.type === 'review' ? (
+                            ) : message.type === 'review' && gigData ? (
                                 <>
                                     {(userRole === 'musician' || userRole === 'band') ? (
-                                        !gigData.musicianHasReviewed ? (
+                                        !gigData?.musicianHasReviewed ? (
                                             <>
                                                 <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                                 <h4>How was your experience? Click the button below to review the venue.</h4>
@@ -630,7 +630,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     className='btn primary'
                                                     onClick={() => setShowReviewModal(true)}
                                                 >
-                                                    {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
+                                                    {gigData?.disputeClearingTime && new Date(gigData?.disputeClearingTime.toDate()) > new Date()
                                                         ? 'Leave a Review'
                                                         : 'Leave a Review'}
                                                 </button>
@@ -642,7 +642,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </>
                                         )
                                     ) : (
-                                        !gigData.venueHasReviewed && !gigData.disputeLogged ? (
+                                        !gigData?.venueHasReviewed && !gigData?.disputeLogged ? (
                                             <>
                                                 <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                                 <h4>How was your experience? Click the button below to review the musician{gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date() ? ' or if you want to report an issue with the gig and request a refund.' : '.'}</h4>
@@ -650,17 +650,17 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     className='btn primary'
                                                     onClick={() => setShowReviewModal(true)}
                                                 >
-                                                    {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
+                                                    {gigData?.disputeClearingTime && new Date(gigData?.disputeClearingTime.toDate()) > new Date()
                                                         ? 'Leave a Review / Report Issue'
                                                         : 'Leave a Review'}
                                                 </button>
                                             </>
-                                        ) : gigData.venueHasReviewed && !gigData.disputeLogged ? (
+                                        ) : gigData?.venueHasReviewed && !gigData?.disputeLogged ? (
                                             <>
                                                 <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                                 <h4>Thank you for submitting your review.</h4>
                                             </>
-                                        ) : !gigData.venueHasReviewed && gigData.disputeLogged && (
+                                        ) : !gigData?.venueHasReviewed && gigData?.disputeLogged && (
                                             <>
                                                 <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                                 <h4>We have received your report.</h4>

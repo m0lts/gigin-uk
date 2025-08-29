@@ -30,6 +30,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { VenuePage } from './features/venue/components/VenuePage';
 import { VerifyEmailModal } from './features/shared/components/VerifyEmailModal';
 import { auth } from "@lib/firebase";
+import { NoProfileModal } from './features/musician/components/NoProfileModal';
 
 
 
@@ -43,6 +44,7 @@ export default function App() {
   const [isScreenTooSmall, setIsScreenTooSmall] = useState(false);
   const [verifyEmailModal, setVerifyEmailModal] = useState(false);
   const [verifyInfoModal, setVerifyInfoModal] = useState(false);
+  const [noProfileModal, setNoProfileModal] = useState(false)
   const newUser =  sessionStorage.getItem('newUser');
 
   useResizeEffect((width) => {
@@ -110,12 +112,12 @@ export default function App() {
       <Routes>
 
         {/* MAP */}
-        <Route path='/find-a-gig' element={<GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+        <Route path='/find-a-gig' element={<GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal}  />} />
 
         {/* MUSICIAN ROUTES */}
         <Route path='/'>
-          <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><LandingPage /></MainLayout>} />
-          <Route path='dashboard/*' element={<MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><MusicianDashboard user={user} /></MusicianDashboardLayout>} />
+          <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} ><LandingPage /></MainLayout>} />
+          <Route path='dashboard/*' element={<MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} ><MusicianDashboard user={user} /></MusicianDashboardLayout>} />
           <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
           <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
@@ -130,13 +132,14 @@ export default function App() {
 
         {/* OTHER ROUTES */}
         <Route path='/messages' element={<MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout>} />
-        <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+        <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} />} />
         <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
         <Route path='/testimonials' element={<Testimonials />} />
         
       </Routes>
       
-      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} /> }
+      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} /> }
+      {noProfileModal && <NoProfileModal isOpen={noProfileModal} onClose={() => setNoProfileModal(false)} />}
       {verifyEmailModal && <VerifyEmailModal onClose={() => setVerifyEmailModal(false)} />}
       {verifyInfoModal && <VerifyEmailModal onClose={() => setVerifyInfoModal(false)} />}
     </>

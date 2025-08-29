@@ -189,8 +189,8 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
                 return <AboutTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
             case 'prev-shows':
                 return <ReviewsTab profile={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
-            case 'members':
-              return bandProfile ? <BandMembersTab band={profile} bandMembers={bandMembers} setBandMembers={setBandMembers} musicianId={musicianId} bandAdmin={bandAdmin} /> : null;
+            // case 'members':
+            //   return bandProfile ? <BandMembersTab band={profile} bandMembers={bandMembers} setBandMembers={setBandMembers} musicianId={musicianId} bandAdmin={bandAdmin} /> : null;
             default:
                 return null;
         }        
@@ -440,14 +440,14 @@ return (
               >
                 Previous Shows
               </p>
-              {(bandProfile && viewingOwnProfile) && (
+              {/* {(bandProfile && viewingOwnProfile) && (
                 <p
                   onClick={() => setActiveTab("members")}
                   className={`musician-profile-tab ${activeTab === "members" ? "active" : ""}`}
                 >
                   Band Members
                 </p>
-              )}
+              )} */}
               <p
                 onClick={() => setActiveTab("about")}
                 className={`musician-profile-tab ${activeTab === "about" ? "active" : ""}`}

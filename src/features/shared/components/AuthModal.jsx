@@ -9,7 +9,7 @@ import '@styles/shared/modals.styles.css'
 import { ForgotPasswordForm } from '@features/shared/forms/ForgotPassword';
 
 
-export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable }) => {
+export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
   const { login, signup, resetPassword, checkUser, loginWithGoogle } = useAuth();
   const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
@@ -50,6 +50,8 @@ export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, s
           loading={loading}
           setLoading={setLoading}
           loginWithGoogle={loginWithGoogle}
+          noProfileModal={noProfileModal}
+          setNoProfileModal={setNoProfileModal}
         />
       ) : authType === 'signup' ? (
         <SignupForm
@@ -67,6 +69,8 @@ export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, s
           loading={loading}
           setLoading={setLoading}
           checkUser={checkUser}
+          noProfileModal={noProfileModal}
+          setNoProfileModal={setNoProfileModal}
         />
       ) : authType === 'forgot-password' && (
         <ForgotPasswordForm 

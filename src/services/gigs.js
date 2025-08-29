@@ -584,7 +584,7 @@ export const updateGigWithCounterOffer = async (gigData, musicianProfileId, newF
  * @param {string} newAccountName
  * @returns {Promise<number>} number of gigs updated
  */
-export async function updateVenueGigsAccountName(venueId, newAccountName) {
+export async function updateVenueGigsAccountName(venueId, newAccountName, newId) {
   const gigsCol = collection(firestore, 'gigs');
   const pageSize = 400;
   let lastDoc = null;
@@ -597,7 +597,7 @@ export async function updateVenueGigsAccountName(venueId, newAccountName) {
     if (snap.empty) break;
     const batch = writeBatch(firestore);
     snap.docs.forEach(d => {
-      batch.update(d.ref, { accountName: newAccountName });
+      batch.update(d.ref, { accountName: newAccountName, 'venue.userId': newId });
       updated += 1;
     });
     await batch.commit();

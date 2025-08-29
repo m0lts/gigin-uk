@@ -8,7 +8,7 @@ import {
     PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { AllGigsIcon, CoinsIconSolid, ExclamationIcon, LocationPinIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { AllGigsIcon, CoinsIconSolid, ExclamationIcon, LocationPinIcon, MapIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { getVenueProfileById } from '../../../services/venues';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { FeedbackSection } from '../../venue/dashboard/FeedbackSection';
@@ -172,7 +172,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                 )}
                 <div className="quick-buttons">
                     <div className="quick-button" onClick={() => navigate('/find-a-gig')}>
-                        <TelescopeIcon />
+                        <MapIcon />
                         <span className='quick-button-text'>Find a Gig</span>
                     </div>
                     {musicianProfile.withdrawableEarnings && (

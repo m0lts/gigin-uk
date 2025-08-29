@@ -89,7 +89,7 @@ export const FilterPanel = ({ filters, setFilters, pendingFilters, setPendingFil
           )}
   
           {/* Budget */}
-          {(pendingFilters.kind !== 'Ticketed Gig' && pendingFilters.kind !== 'Open Mic') && (
+          {/* {(pendingFilters.kind !== 'Ticketed Gig' && pendingFilters.kind !== 'Open Mic') && (
             <div className="input-group">
               <label className="label">Budget (£)</label>
               <input
@@ -117,7 +117,7 @@ export const FilterPanel = ({ filters, setFilters, pendingFilters, setPendingFil
                 }
               />
             </div>
-          )}
+          )} */}
   
           {/* Date Range */}
           <div className="input-group calendar">

@@ -86,7 +86,7 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
           </div>
           {(!loading && authClosable) && (
             <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false); setShowSuccessMessage(false); setAuthType('login')}}>
-              <CloseIcon />
+              Close
             </button>
           )}
         </>
@@ -130,7 +130,7 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
           </form>
           {(!loading && authClosable) && (
             <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false); setShowSuccessMessage(false); setAuthType('login')}}>
-              <ErrorIcon />
+              Close
             </button>
           )}
         </>

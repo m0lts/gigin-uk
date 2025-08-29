@@ -316,9 +316,10 @@ export async function transferVenueOwnership({ venueId, fromUserId, toUserId }) 
   const toUserSnap = await getDoc(doc(firestore, 'users', toUserId));
   const toUser = toUserSnap.data() || {};
   const newAccountName = toUser.name || '';
+  const newId = toUserSnap.id;
 
   // 3) Update gigs' denormalized accountName
-  await updateVenueGigsAccountName(venueId, newAccountName);
+  await updateVenueGigsAccountName(venueId, newAccountName, newId);
 
   // 4) Rewrite conversations & messages
   await rewriteVenueConversationsAndMessages({

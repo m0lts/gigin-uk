@@ -96,6 +96,8 @@ export const MusicianDashboard = ({ user }) => {
           user={user}
           newMessages={newMessages}
           unseenInvites={unseenInvites}
+          bandProfiles={bandProfiles}
+          musicianProfile={musicianProfile}
         />
           <div className='window musicians'>
             <TopBar user={user} bandProfiles={bandProfiles} />
@@ -108,7 +110,7 @@ export const MusicianDashboard = ({ user }) => {
                 <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
                 <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />
                 <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} />} />
-                <Route path='finances' element={<Finances musicianProfile={musicianProfile} />} />
+                <Route path='finances' element={<Finances user={user} musicianProfile={musicianProfile} />} />
               </Routes>
               </div>
           </div>

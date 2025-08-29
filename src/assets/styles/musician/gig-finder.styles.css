@@ -336,6 +336,11 @@
     justify-content: center;
 }
 
+.gig-finder .preview-gig-list .preview-gig-budget .budget.text {
+    font-size: 1rem;
+    text-align: center;
+}
+
 
 /* CONTROL BUTTON */
 
@@ -356,6 +361,14 @@
     background-color: var(--gn-white);
     color: var(--gn-black);
     border:1px solid var(--gn-grey-500);
+}
+
+.gig-finder .btn.danger {
+    top:2px;
+}
+
+.gig-finder .btn.danger .icon {
+    font-size: 0.75rem;
 }
 
 

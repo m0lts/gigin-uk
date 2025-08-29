@@ -214,8 +214,6 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
         return <div className="band-members-tab"><LoadingThreeDots /></div>;
     }
 
-    console.log(musicianId)
-
     return (
         <>
         <div className="band-members-tab">

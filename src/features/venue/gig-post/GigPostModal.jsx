@@ -37,6 +37,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
             venueName: '',
             address: '',
             photo: null,
+            userId: user.uid
         },
         date: null,
         dateUndecided: false,

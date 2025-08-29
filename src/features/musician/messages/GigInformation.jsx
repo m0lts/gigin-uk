@@ -101,13 +101,13 @@ export const GigInformation = ({ gigId, gigData, setGigData }) => {
         return (
             <>
                 <div className='venue'>
-                    <h2>{gigData.venue.venueName}</h2>
+                    <h2>{gigData.gigName}</h2>
                     <figure className='photo'>
                         <img src={gigData.venue.photo} alt={`${gigData.venue.venueName} Photo`} />
                     </figure>
                 </div>
                 <div className='primary-info'>
-                    <h3>{gigData.gigName}</h3>
+                    <h3>{gigData.venue.venueName}</h3>
                     <div className="date-and-time">
                         <h4>{formatDurationSpan(gigData.startTime, gigData.duration)}, {formatDate(gigData.date)}</h4>
                     </div>
@@ -130,18 +130,6 @@ export const GigInformation = ({ gigId, gigData, setGigData }) => {
                 )}
                 <div className='details'>
                     <div className='details-list'>
-                        <div className='detail'>
-                            <h6>Performer</h6>
-                            <div className='data'>
-                                <p>{gigData.gigType}</p>
-                            </div>
-                        </div>
-                        <div className='detail'>
-                            <h6>Audience</h6>
-                            <div className='data'>
-                                <p>{gigData.privacy}</p>
-                            </div>
-                        </div>
                         <div className='detail'>
                             <h6>Type</h6>
                             <div className='data'>

@@ -10,15 +10,16 @@ export const MusicianDashboardLayout = ({
     setAuthType,
     user,
     setAuthClosable,
+    setNoProfileModal,
+    noProfileModal
   }) => {
     const { loading } = useAuth();
-    const [showProfileModal, setShowProfileModal] = useState(false);
 
     const hasBasics = useMemo(() => {
       const p = user?.musicianProfile || null;
       const hasName = typeof p?.name === 'string' && p.name.trim().length >= 2;
-      const hasPhoto = !!p?.picture;
-      return hasName && hasPhoto;
+      const hasOnboarded = !!p?.onboarded;
+      return hasName && hasOnboarded;
     }, [user?.musicianProfile]);
   
     useEffect(() => {
@@ -30,19 +31,19 @@ export const MusicianDashboardLayout = ({
       }
 
       if (!loading && user && !user.musicianProfile) {
-        setShowProfileModal(true);
+        setNoProfileModal(true);
         setAuthClosable?.(false);
         return;
       }
 
       if (!loading && user?.musicianProfile && !hasBasics) {
-        setShowProfileModal(true);
+        setNoProfileModal(true);
         setAuthClosable?.(false);
         return;
       }
 
       if (!loading && user && hasBasics) {
-        setShowProfileModal(false);
+        setNoProfileModal(false);
         setAuthClosable?.(true);
       }
     }, [loading, user, hasBasics, setAuthModal, setAuthType, setAuthClosable]);
@@ -52,14 +53,6 @@ export const MusicianDashboardLayout = ({
         <section className="dashboard">
           {children}
         </section>
-  
-        {showProfileModal && (
-          <ProfileCreator
-            user={user}
-            setShowModal={setShowProfileModal}
-            closable={false}
-          />
-        )}
       </MusicianDashboardProvider>
     );
   };

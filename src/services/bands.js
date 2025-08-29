@@ -39,9 +39,9 @@ export const createBandProfile = async (bandId, data, userId, musicianProfile) =
       }, { merge: true });
       const memberRef = doc(firestore, `bands/${bandId}/members/${musicianProfile.id}`);
       await setDoc(memberRef, {
-        musicianProfileId: musicianProfile.id,
+        musicianProfileId: musicianProfile.id || musicianProfile.musicianId,
         memberName: musicianProfile.name,
-        memberImg: musicianProfile.picture,
+        memberImg: musicianProfile?.picture || '',
         memberUserId: musicianProfile.userId,
         joinedAt: new Date(),
         isAdmin: true,

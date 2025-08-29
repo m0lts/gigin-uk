@@ -55,7 +55,8 @@
     padding: 8px 12px;
     border-radius: 2rem;
     box-shadow: 0 0 5px var(--gn-shadow);
-    width:100px;
+    width:fit-content;
+    gap:1rem;
     display: flex;
     align-items: center;
     justify-content: space-around;
@@ -671,7 +672,7 @@
     color: orange;
 }
 
-.window.musicians .body.gigs table .status.previous {
+.window.musicians .body.gigs table .status.past {
     background-color: rgba(128, 128, 128, 0.1);
     color: gray;
 }
@@ -1713,7 +1714,7 @@
     color: orange;
 }
 
-.window.musicians .body.finances table .status.previous {
+.window.musicians .body.finances table .status.past {
     border:1px solid gray;
     background-color: rgba(128, 128, 128, 0.1);
     color: gray;

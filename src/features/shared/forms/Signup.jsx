@@ -11,8 +11,9 @@ import '@styles/forms/forms.styles.css';
 import { toast } from 'sonner';
 import { GoogleIcon } from '../ui/extras/Icons';
 import { PhoneField, isValidE164 } from './PhoneField';
+import { phoneExists } from '../../../services/users';
 
-export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable }) => {
+export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
   const { signup, signupWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
@@ -44,12 +45,12 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     if (loading) return;
 
     if (!validateEmail(credentials.email)) {
-      setError({ status: true, input: 'email', message: '* Please enter a valid email address' });
+      setError({ status: true, input: 'email', message: '*Please enter a valid email address' });
       return;
     }
 
     if (!isValidE164(credentials.phoneNumber)) {
-      setError({ status: true, input: 'phoneNumber', message: '* Please enter a valid phone number' });
+      setError({ status: true, input: 'phoneNumber', message: '*Please enter a valid phone number' });
       return;
     }
 
@@ -59,7 +60,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     }
 
     if (!termsAccepted) {
-      setError({ status: true, input: 'terms', message: '* You must accept the terms and conditions' });
+      setError({ status: true, input: 'terms', message: '*You must accept the terms and conditions' });
       return;
     }
 
@@ -67,13 +68,23 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     setLoading(true);
 
     try {
-      await signup(credentials, marketingConsent);
-      setAuthModal(false);
-      setAuthClosable(true);
+      if (await phoneExists(credentials.phoneNumber)) {
+        setError({ status: true, input: 'phoneNumber', message: '*Phone number already in use.' });
+        return;
+      }
+      const signupResponse = await signup(credentials, marketingConsent);
+      if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
+        setAuthModal(false);
+        setAuthClosable(true);
+        setNoProfileModal(true);
+      } else {        
+        setAuthModal(false);
+        setAuthClosable(true);
+      }
     } catch (err) {
       switch (err.error.code) {
         case 'auth/email-already-in-use':
-          setError({ status: true, input: 'email', message: '* Email already in use.' });
+          setError({ status: true, input: 'email', message: '*Email already in use.' });
           break;
         default:
           setError({ status: true, input: '', message: err.message });
@@ -94,13 +105,52 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
 
   return (
     <div className="modal-padding auth" onClick={(e) => e.stopPropagation()}>
-      <div className='modal-content auth'>
+      <div className='modal-content auth scrollable'>
         <div className='head'>
           <NoTextLogo />
           <h1>Welcome to Gigin</h1>
-          <p>Sign up to create your account. You can then build a venue or musician profile.</p>
+          <p>Sign up to create your account. Then create a venue or musician profile.</p>
         </div>
         <form className='auth-form' onSubmit={handleSignup}>
+          {!loading && (
+            <>
+              <button
+                type="button"
+                className="btn secondary google"
+                disabled={loading}
+                onClick={async () => {
+                  try {
+                    if (!termsAccepted) {
+                      toast.error('Please accept our terms and conditions.');
+                      return;
+                    }
+                    setLoading(true);
+                    const signupResponse = await signupWithGoogle(marketingConsent);
+                    if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
+                      setAuthModal(false);
+                      setAuthClosable(true);
+                      setNoProfileModal(true);
+                    } else {        
+                      setAuthModal(false);
+                      setAuthClosable(true);
+                    }
+                  } catch (err) {
+                    setError({ status: true, input: '', message: err?.error?.message || 'Google sign up failed' });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                <GoogleIcon />
+                Continue With Google
+              </button>
+              <div className="oauth-divider">
+                <span className="line" />
+                <h6>OR</h6>
+                <span className="line" />
+              </div>
+            </>
+          )}
           <div className='input-group'>
             <label htmlFor='name'>Name</label>
             <input
@@ -138,8 +188,10 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 setCredentials(prev => ({ ...prev, phoneNumber: e164 }));
                 if (error.input === 'phoneNumber') clearError();
               }}
+              error={error}
+              loading={loading}
             />
-            {error.input.includes('phoneNumber') && (
+            {(error.input.includes('phoneNumber') && error.message !== '*Phone number already in use.') && (
               <p className="error-msg">* Please enter a valid phone number</p>
             )}
           </div>
@@ -205,7 +257,6 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           {loading ? (
             <LoadingThreeDots />
           ) : (
-            <>
               <button
                 type='submit'
                 className='btn primary'
@@ -213,41 +264,11 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
               >
                 Sign Up
               </button>
-              <div className="oauth-divider">
-                <span className="line" />
-                <h6>OR</h6>
-                <span className="line" />
-              </div>
-              <button
-                type="button"
-                className="btn secondary google"
-                disabled={loading}
-                onClick={async () => {
-                  try {
-                    if (!termsAccepted) {
-                      toast.error('Please accept our terms and conditions.');
-                      return;
-                    }
-                    setLoading(true);
-                    await signupWithGoogle(marketingConsent);
-                    setAuthModal(false);
-                    setAuthClosable(true);
-                  } catch (err) {
-                    setError({ status: true, input: '', message: err?.error?.message || 'Google sign up failed' });
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
-                <GoogleIcon />
-                Continue with Google
-              </button>
-            </>
           )}
         </form>
         {(!loading && authClosable) && (
           <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false)}}>
-            <ErrorIcon />
+            Close
           </button>
         )}
       </div>

@@ -6,37 +6,14 @@ import { useAuth } from '@hooks/useAuth'
 import { useState, useEffect } from 'react'
 import { listenToUserConversations } from '@services/conversations';
 import { ProfileCreator } from '../../musician/profile-creator/ProfileCreator';
+import { ExitIcon, MapIcon } from '../ui/extras/Icons';
+import { NoProfileModal } from '../../musician/components/NoProfileModal';
 
-export const Header = ({ setAuthModal, setAuthType, user }) => {
+export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoProfileModal }) => {
     
     const { logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const [accountMenu, setAccountMenu] = useState(false);
-    const [feedbackForm, setFeedbackForm] = useState(false);
-    const [feedback, setFeedback] = useState({
-        scale: '',
-        feedback: '',
-        user: user?.uid,
-    });
-    const [feedbackLoading, setFeedbackLoading] = useState(false);
-    const [newMessages, setNewMessages] = useState(false);
-    const [showProfileModal, setShowProfileModal] = useState(false);
-
-    useEffect(() => {
-        if (!user) return;
-        const unsubscribe = listenToUserConversations(user, (conversations) => {
-          const hasUnread = conversations.some((conv) => {
-            const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
-            const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
-            const isNotSender = conv.lastMessageSenderId !== user.uid;
-            const isDifferentPage = !location.pathname.includes(conv.id);
-            return lastMessage > lastViewed && isNotSender && isDifferentPage;
-          });
-          setNewMessages(hasUnread);
-        });
-        return () => unsubscribe();
-    }, [user]);
 
     const showAuthModal = (type) => {
         setAuthModal(true);
@@ -66,12 +43,7 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
 
     const headerStyle = {
         padding: location.pathname.includes('dashboard') ? '0 1rem' : '0 2.5%',
-      };
-
-    const menuStyle = {
-        right: location.pathname.includes('dashboard') ? '1rem' : '2.5%',
-      };
-
+    };
     
     return (
         <header className='header default' style={headerStyle}>
@@ -82,57 +54,26 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                     </div>
                     <div className='right'>
                         <div className='buttons'>
-                            <button className='btn secondary' onClick={() => setShowProfileModal(true)}>
+                            <Link className='link' to={'/find-a-gig'}>
+                                <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
+                                    <MapIcon />
+                                    Find A Gig
+                                </button>
+                            </Link>
+                            <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`} onClick={() => setNoProfileModal(true)}>
                                 <GuitarsIcon />
                                 Create a Musician Profile
                             </button>
-                            {location.pathname !== '/find-a-gig' && (
-                                <Link className='link' to={'/find-a-gig'}>
-                                    <button className='btn secondary'>
-                                        <TelescopeIcon />
-                                        Find A Gig
-                                    </button>
-                                </Link>
-                            )}
                             <Link className='link' to={'/venues'}>
                                 <button className='btn text'>
                                     I'm a Venue
                                 </button>
                             </Link>
                         </div>
-                        <button className='btn icon' onClick={() => setAccountMenu(!accountMenu)}>
-                            <UserIcon />
+                        <button className='btn logout' onClick={() => handleLogout()}>
+                            <LogOutIcon />
                         </button>
                     </div>
-                    {accountMenu && (
-                        <nav className='account-menu' style={menuStyle}>
-                            <div className='item name-and-email no-margin'>
-                                <h6>{user.name}</h6>
-                                <p>{user.email}</p>
-                            </div>
-                            <div className='break' />
-                            <h6 className='title'>musicians</h6>
-                            <Link to={'/find-a-gig'} className='item link'>
-                                Find a Gig
-                                <TelescopeIcon />
-                            </Link>
-                            <Link onClick={() => setShowProfileModal(true)} className='item link'>
-                                Create Musician Profile
-                                <GuitarsIcon />
-                            </Link>
-                            <div className='break' />
-                            <h6 className='title'>Venues</h6>
-                            <Link to={'/venues'} className='item link'>
-                                I'm a Venue
-                                <VenueBuilderIcon />
-                            </Link>
-                            <div className='break' />
-                            <button className='btn logout no-margin' onClick={handleLogout}>
-                                Log Out
-                                <LogOutIcon />
-                            </button>
-                        </nav>
-                    )}
                 </>
             ) : (
                 <>
@@ -146,9 +87,6 @@ export const Header = ({ setAuthModal, setAuthType, user }) => {
                         </button>
                     </nav>
                 </>
-            )}
-            {showProfileModal && (
-                <ProfileCreator user={user} setShowModal={setShowProfileModal} />
             )}
         </header>
     )

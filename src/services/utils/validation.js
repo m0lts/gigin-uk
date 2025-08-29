@@ -20,7 +20,8 @@ export const validateMusicianUser = ({
 }) => {
   if (!user) {
     setAuthModal?.(true);
-    setAuthType?.('login');
+    setAuthType?.('signup');
+    sessionStorage.setItem('redirect', 'create-musician-profile');
     return { valid: false };
   }
   const p =
@@ -51,9 +52,9 @@ export function getMusicianEligibility(profile) {
   }
   const reasons = [];
   const hasName = typeof profile.name === 'string' && profile.name.trim().length >= 2;
-  const hasPhoto = !!profile.picture;
+  const completedSignup = profile.onboarded;
   if (!hasName) reasons.push('Add a stage name');
-  if (!hasPhoto) reasons.push('Add a profile photo');
+  if (!completedSignup) reasons.push('Complete signup');
   if (profile.status === 'banned') reasons.push('Your account is restricted');
   if (profile.photoModeration === 'rejected') reasons.push('Upload a new profile photo');
   return { canApply: reasons.length === 0, reasons };

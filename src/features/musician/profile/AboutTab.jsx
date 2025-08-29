@@ -125,18 +125,12 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
             <div className="nothing-to-display">
                 <EmptyIcon />
                 {viewingOwnProfile ? (
-                    bandAdmin ? (
-                        <>
-                            <h4>More information will show here when you complete your profile.</h4>
-                            <button className="btn primary" onClick={() => setShowPreview(false)}>
-                                Finish Profile
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <h4>More information will show here when the band admin completes the band's profile.</h4>
-                        </>
-                    )
+                    <>
+                        <h4>More information will show here when you complete your profile.</h4>
+                        <button className="btn primary" onClick={() => setShowPreview(false)}>
+                            Finish Profile
+                        </button>
+                    </>
                 ) : (
                     <>
                         <h4>No more information to show.</h4>

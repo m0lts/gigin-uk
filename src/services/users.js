@@ -15,6 +15,8 @@ import {
   deleteField
 } from 'firebase/firestore';
 
+
+
 /*** READ OPERATIONS ***/
 
 /**
@@ -26,7 +28,7 @@ import {
 export const getUserById = async (userId) => {
     const userRef = doc(firestore, 'users', userId);
     const snap = await getDoc(userRef);
-    return snap.exists() ? { id: snap.id, ref: userRef, ...snap.data() } : null;
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 };
 
 /**
@@ -41,6 +43,20 @@ export async function getUserByEmail(email) {
   const docSnap = snap.docs[0];
   return { id: docSnap.id, data: docSnap.data() };
 }
+
+/**
+ * Checks if a phone number already exists in the database.
+ * @param {string} phoneNumber
+ * @returns {Promise<{id:string, data:object} | null>}
+ */
+export const phoneExists = async (phoneNumber) => {
+  const q = query(
+    collection(firestore, "users"),
+    where("phoneNumber", "==", phoneNumber)
+  );
+  const snap = await getDocs(q);
+  return !snap.empty;
+};
 
 
 /*** UPDATE OPERATIONS ***/

@@ -10,7 +10,7 @@ export const TopBanner = ({ gigCount, showFilters, toggleFilters, viewType, setV
         <h2>{gigCount} Results</h2>
       </div>
       <div className="results-header">
-        {viewType === 'map' && (
+        {/* {viewType === 'map' && (
           <select
             value={gigMarkerDisplay}
             onChange={(e) => setGigMarkerDisplay(e.target.value)}
@@ -19,7 +19,7 @@ export const TopBanner = ({ gigCount, showFilters, toggleFilters, viewType, setV
             <option value="budget">Show Venue Budget</option>
             <option value="kind">Show Gig Type</option>
           </select>
-        )}
+        )} */}
         <button className="btn tertiary" onClick={() => setViewType(viewType === 'map' ? 'list' : 'map')}>
           {viewType === 'map' ? 'List View' : 'Map View'}
         </button>

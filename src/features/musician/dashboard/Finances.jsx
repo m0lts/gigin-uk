@@ -17,6 +17,7 @@ import { BankAccountIcon, CoinsIconSolid, CopyIcon, ErrorIcon, ExclamationIcon, 
 import { deleteStripeConnectAccount } from '../../../services/functions';
 import { getConnectAccountStatus } from '../../../services/functions';
 import { getMusicianFees } from '../../../services/musicians';
+import { updateUserDocument } from '../../../services/users';
 
 function CountdownTimer({ targetDate }) {
     const [label, setLabel] = React.useState("");
@@ -48,7 +49,7 @@ function CountdownTimer({ targetDate }) {
     return <>{label || "Calculating..."}</>;
   }
 
-export const Finances = ({ musicianProfile }) => {
+export const Finances = ({ user, musicianProfile }) => {
     const [sortOrder, setSortOrder] = useState('desc');
     const [feesToDisplay, setFeesToDisplay] = useState([]);
     const [pendingTotal, setPendingTotal] = useState(0);
@@ -67,6 +68,7 @@ export const Finances = ({ musicianProfile }) => {
     const [acctStatusLoading, setAcctStatusLoading] = useState(false);
     const [paymentSystemModal, setPaymentSystemModal] = useState(false);
     const [stripeSystemModal, setStripeSystemModal] = useState(false);
+    const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
 
     useResizeEffect((width) => {
         setWindowWidth(width);
@@ -95,6 +97,15 @@ export const Finances = ({ musicianProfile }) => {
         load();
         return () => (ignore = true);
     }, [musicianProfile?.stripeAccountId]);
+
+    useEffect(() => {
+        const checkFirstTime = async () => {
+          if (user?.firstTimeInFinances !== false) {
+            setShowFirstTimeModal(true);
+          }
+        };
+        if (user?.uid) checkFirstTime();
+    }, [user]);
 
     const handleCopy = async (value) => {
         try {
@@ -724,6 +735,25 @@ export const Finances = ({ musicianProfile }) => {
                         </div>
                     </div>
                     )}
+            {showFirstTimeModal && (
+                <div className='modal'>
+                    <div className='modal-content' style={{ maxWidth: '300px'}}>
+                    <div className="modal-header">
+                        <CoinsIconSolid />
+                        <h2>Your Finances</h2>
+                        <p>If you’re wanting to receive flat fee payments, this is where you can set up your bank account to withdraw gig payments from your gigin account.</p>
+                    </div>
+                    <div className="modal-body">
+                        <button className="btn primary" onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
+                        Ok
+                        </button>
+                    </div>
+                    <button className='btn tertiary close' onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
+                        Close
+                    </button>
+                    </div>
+                </div>
+                )}
             </div>
         </>
     );

@@ -39,14 +39,14 @@ export const Bands = ({ bandProfiles }) => {
             <PlusIconSolid />
             <h4>Create a Band</h4>
             <p className="text">
-              Set up your band and invite members to join. Each musician needs to create their own profile first, then they can join your band.
+              Set up your band and apply to gigs!
             </p>
           </div>
-          <div className="card" onClick={() => navigate('/dashboard/bands/join')}>
+          {/* <div className="card" onClick={() => navigate('/dashboard/bands/join')}>
             <PeopleGroupIconSolid />
             <h4>Join a Band</h4>
             <p className="text">Already in a band? Join it here using the invite link or band password your band leader shared with you.</p>
-          </div>
+          </div> */}
         </div>
         {bandProfiles.length > 0 && (
           <>

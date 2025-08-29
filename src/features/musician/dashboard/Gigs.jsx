@@ -83,16 +83,19 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                 return { icon: <TickIcon />, text: 'Confirmed' };
             }
             if (applicant.status === 'accepted') {
-                return { icon: <ClockIcon />, text: 'Waiting for Payment Confirmation' };
+                return { icon: <ClockIcon />, text: 'Awaiting Venue Payment' };
+            }
+            if (applicant.status === 'pending' && applicant.invited) {
+                return { icon: <ClockIcon />, text: 'Awaiting Your Response' };
             }
             if (applicant.status === 'pending') {
-                return { icon: <ClockIcon />, text: 'Pending' };
+                return { icon: <ClockIcon />, text: 'Awaiting Venue Response' };
             }
             if (applicant.status === 'declined') {
                 return { icon: <RejectedIcon />, text: 'Declined' };
             }
         } else {
-            return { icon: <PreviousIcon />, text: 'Previous' };
+            return { icon: <PreviousIcon />, text: 'Past' };
         }
     };
 
@@ -118,7 +121,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
           const profileId = selectedProfile || musicianId;
           const applicant = gig.applicants?.find(app => app.id === profileId);
           const appStatus = applicant?.status;
-          let status = 'previous';
+          let status = 'past';
           if (gigDateTime > now) {
             if (appStatus === 'confirmed') status = 'confirmed';
             else if (appStatus === 'accepted' || appStatus === 'pending') status = 'pending';
@@ -262,10 +265,11 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
         <>
             <div className='head gigs'>
                 <div className='title-container'>
-                    <h1 className='title'>{showSavedGigs ? 'Saved Gigs' : 'Gig Applications'}</h1>
+                    <h1 className='title'>Gig Applications</h1>
+                    {/* <h1 className='title'>{showSavedGigs ? 'Saved Gigs' : 'Gig Applications'}</h1>
                     <button className="btn primary" onClick={() => setShowSavedGigs(!showSavedGigs)}>
                         {!showSavedGigs ? 'Saved Gigs' : 'Gig Applications'}
-                    </button>
+                    </button> */}
                 </div>
                 <div className='filters'>
                     <div className="status-buttons">
@@ -278,8 +282,8 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                         <button className={`btn ${selectedStatus === 'pending' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'pending')}>
                             Pending
                         </button>
-                        <button className={`btn ${selectedStatus === 'previous' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'previous')}>
-                            Previous
+                        <button className={`btn ${selectedStatus === 'past' ? 'active' : ''}`} onClick={() => updateUrlParams('status', 'past')}>
+                            Past
                         </button>
                     </div>
                     {windowWidth >= 1400 ? (
@@ -357,7 +361,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                     <table>
                         <thead>
                             <tr>
-                                {(musicianProfile.bands && !showSavedGigs) && (
+                                {(musicianProfile.bands) && (
                                     <th id="profile">
                                         Profile
                                     </th>
@@ -395,7 +399,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             <tr className='filler-row'>
                                                 <td className='data' colSpan={7}>
                                                     <div className='flex center'>
-                                                        <h4>Previous Gigs</h4>
+                                                        <h4>Past Gigs</h4>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -406,19 +410,19 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                 : (e) => openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile ? appliedProfile.profileId : null}`, e)
                                         }
                                             onMouseEnter={() => {
-                                                if (applicant?.invited && !applicant.viewed) {
+                                                if (applicant?.invited && (!applicant.viewed || applicant.viewed == undefined)) {
                                                     markInviteAsViewed(gig.gigId, applicant.id);
                                                 }
                                             }}
                                         >
-                                            {(musicianProfile.bands && showSavedGigs) && (
+                                            {(musicianProfile.bands) && (
                                                 <td className="applied-profile-name">
                                                     {applicant.invited && !applicant.viewed && (
                                                         <div className="new-invite">
                                                             <p>NEW INVITE</p>
                                                         </div>
                                                     )}
-                                                    {appliedProfile?.name}
+                                                    {appliedProfile?.profileName}
                                                 </td>
                                             )}
                                             <td>
@@ -442,12 +446,12 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             </td>
                                             <td
                                                 className={`status-box ${
-                                                    gigStatus.text.toLowerCase() === 'waiting for payment confirmation' ? 'pending' : gigStatus.text.toLowerCase() === 'not applied' ? 'previous' : gigStatus.text.toLowerCase() 
+                                                    gigStatus.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus.text.toLowerCase() === 'awaiting your response' || gigStatus.text.toLowerCase() === 'awaiting venue response' ? 'pending' : gigStatus.text.toLowerCase() === 'not applied' ? 'past' : gigStatus.text.toLowerCase() 
                                                 }`}
                                             >
                                                 <div
                                                     className={`status ${
-                                                        gigStatus.text.toLowerCase() === 'waiting for payment confirmation' ? 'pending' : gigStatus.text.toLowerCase() === 'not applied' ? 'previous' : gigStatus.text.toLowerCase()
+                                                        gigStatus.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus.text.toLowerCase() === 'awaiting your response' || gigStatus.text.toLowerCase() === 'awaiting venue response' ? 'pending' : gigStatus.text.toLowerCase() === 'not applied' ? 'past' : gigStatus.text.toLowerCase()
                                                     }`}
                                                 >
                                                     {gigStatus.icon} {gigStatus.text}
