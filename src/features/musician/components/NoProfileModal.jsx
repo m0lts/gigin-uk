@@ -114,9 +114,7 @@ export const NoProfileModal = ({
         try {
             let pictureUrl;
             if (musicianImageFile) {
-                pictureUrl = formData.picture
-                ? await uploadProfilePicture(formData.picture, formData.musicianId)
-                : '';
+                await uploadProfilePicture(musicianImageFile, musicianId)
             }
             const payload = {
                 onboarded: true,
