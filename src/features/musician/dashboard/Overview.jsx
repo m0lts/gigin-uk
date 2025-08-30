@@ -8,7 +8,7 @@ import {
     PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { AllGigsIcon, CoinsIconSolid, ExclamationIcon, LocationPinIcon, MapIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { AllGigsIcon, CoinsIconSolid, ExclamationIcon, LocationPinIcon, MapIcon, NextGigIcon, NoImageIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { getVenueProfileById } from '../../../services/venues';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { FeedbackSection } from '../../venue/dashboard/FeedbackSection';
@@ -138,7 +138,14 @@ const toMs = (dt) => {
                         <>
                             <h1 className='large-title'>My Musician Profile</h1>
                             <div className="overview-profile">
-                                <img src={musicianProfile.picture} alt={musicianProfile.name} />
+                                {musicianProfile.picture ? (
+                                    <img src={musicianProfile.picture} alt={musicianProfile.name} />
+                                ) : (
+                                    <div className="background-image empty">
+                                        <NoImageIcon />
+                                        <h4>No Artist Image</h4>
+                                    </div>
+                                )}
                                 <div className="profile-overlay">
                                     <h1 className='profile-name'>
                                         {musicianProfile.name}
