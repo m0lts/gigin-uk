@@ -11,8 +11,8 @@ export const WelcomeModal = ({ user, setShowWelcomeModal, role, revisiting = fal
         'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials%2F544c446f-6596-44d8-8747-b52ac54bb82e.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74';
 
     return (
-        <div className='modal welcome'>
-            <div className='modal-content welcome'>
+        <div className='modal welcome'  onClick={() => setShowWelcomeModal(false)}>
+            <div className='modal-content welcome' onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <NoTextLogo />
                     {revisiting ? (

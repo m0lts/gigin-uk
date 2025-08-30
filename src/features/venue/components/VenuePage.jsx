@@ -36,6 +36,7 @@ import { CashIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, QuestionCircleI
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
+import Portal from '../../shared/components/Portal';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
@@ -334,35 +335,37 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 )}
             </section>
             {showRequestModal && (
-                <div className="modal musician-request" onClick={() => setShowRequestModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <button className='btn close tertiary' onClick={() => setShowRequestModal(false)}>
-                            Close
-                        </button>
-                        <div className="modal-header">
-                            <RequestIcon />
-                            <h2>Request to perform at {venueData.name}</h2>
-                            <p>Send a gig request to the venue. If they accept your request, they'll build a gig for you and you'll automatically be invited.</p>
-                        </div>
-                        <div className="modal-body">
-                            <textarea
-                                className="input"
-                                rows={3}
-                                placeholder="Write a message to the venue..."
-                                value={requestMessage}
-                                onChange={(e) => setRequestMessage(e.target.value)}
-                            />
-                            <div className="two-buttons">
-                                <button className="btn tertiary" onClick={() => setShowRequestModal(false)}>
-                                    Cancel
-                                </button>
-                                <button className="btn primary" onClick={handleMusicianRequest}>
-                                    Request To Play Here
-                                </button>
+                <Portal>
+                    <div className="modal musician-request" onClick={() => setShowRequestModal(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <button className='btn close tertiary' onClick={() => setShowRequestModal(false)}>
+                                Close
+                            </button>
+                            <div className="modal-header">
+                                <RequestIcon />
+                                <h2>Request to perform at {venueData.name}</h2>
+                                <p>Send a gig request to the venue. If they accept your request, they'll build a gig for you and you'll automatically be invited.</p>
+                            </div>
+                            <div className="modal-body">
+                                <textarea
+                                    className="input"
+                                    rows={3}
+                                    placeholder="Write a message to the venue..."
+                                    value={requestMessage}
+                                    onChange={(e) => setRequestMessage(e.target.value)}
+                                />
+                                <div className="two-buttons">
+                                    <button className="btn tertiary" onClick={() => setShowRequestModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button className="btn primary" onClick={handleMusicianRequest}>
+                                        Request To Play Here
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </Portal>
             )}
         </div>
     );

@@ -10,6 +10,7 @@ import { openInNewTab } from '@services/utils/misc';
 import { DeleteGigIcon, HouseIconSolid, NewTabIcon, PeopleRoofIconSolid, ShareIcon } from '../../shared/ui/extras/Icons';
 import { getCityFromAddress } from '../../../services/utils/misc';
 import { toast } from 'sonner';
+import Portal from '../../shared/components/Portal';
 
 export const Venues = ({ venues }) => {
 
@@ -122,16 +123,18 @@ export const Venues = ({ venues }) => {
                 ))}
 
                 {showDeleteModal && (
-                    <div className='modal'>
-                        <div className='modal-content'>
-                            <h2>Confirm Venue Deletion</h2>
-                            <p style={{ textAlign: 'center' }}>Are you sure you want to delete '{venueToDelete.name}'? <br /> This will also delete all of this venue's gigs.</p>
-                            <div className='two-buttons'>
-                                <button className='btn secondary' onClick={() => setShowDeleteModal(false)}>Cancel</button>
-                                <button className='btn danger' onClick={confirmDeleteVenue}>Delete</button>
+                    <Portal>
+                        <div className='modal' onClick={() => setShowDeleteModal(false)}>
+                            <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                                <h2>Confirm Venue Deletion</h2>
+                                <p style={{ textAlign: 'center' }}>Are you sure you want to delete '{venueToDelete.name}'? <br /> This will also delete all of this venue's gigs.</p>
+                                <div className='two-buttons'>
+                                    <button className='btn secondary' onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                                    <button className='btn danger' onClick={confirmDeleteVenue}>Delete</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </Portal>
                 )}
             </div>
         </>

@@ -22,6 +22,7 @@ import { useVenueDashboard } from '@context/VenueDashboardContext';
 import { getUnreviewedPastGigs } from '../../../services/utils/filtering';
 import { MessagePage } from './messages/MessagePage';
 import { listenToUserConversations } from '@services/conversations';
+import Portal from '../../shared/components/Portal';
 
 export const VenueDashboard = ({ user }) => {
     const {
@@ -134,21 +135,25 @@ export const VenueDashboard = ({ user }) => {
                     </Routes>
                 </div>
             </div>
-            {gigPostModal && 
-              <GigPostModal 
-                setGigPostModal={setGigPostModal} 
-                venueProfiles={venueProfiles} 
-                user={user} 
-                templates={templates} 
-                incompleteGigs={incompleteGigs} 
-                editGigData={editGigData}
-                buildingForMusician={buildingForMusician}
-                buildingForMusicianData={buildingForMusicianData}
-                setBuildingForMusician={setBuildingForMusician}
-                setBuildingForMusicianData={setBuildingForMusicianData}
-              />
+            {gigPostModal && (
+              <Portal>
+                <GigPostModal 
+                  setGigPostModal={setGigPostModal} 
+                  venueProfiles={venueProfiles} 
+                  user={user} 
+                  templates={templates} 
+                  incompleteGigs={incompleteGigs} 
+                  editGigData={editGigData}
+                  buildingForMusician={buildingForMusician}
+                  buildingForMusicianData={buildingForMusicianData}
+                  setBuildingForMusician={setBuildingForMusician}
+                  setBuildingForMusicianData={setBuildingForMusicianData}
+                />
+              </Portal>
+            )
             }
-            {showReviewModal && 
+            {showReviewModal && (
+              <Portal>
                 <ReviewModal
                     gigData={gigToReview}
                     reviewer='venue'
@@ -157,14 +162,17 @@ export const VenueDashboard = ({ user }) => {
                         localStorage.setItem(`reviewedGig-${gigToReview.gigId}`, 'true');
                     }}
                 />
-            }
+              </Portal>
+            )}
             {showWelcomeModal && (
+              <Portal>
                 <WelcomeModal
                   user={user}
                   setShowWelcomeModal={setShowWelcomeModal}
                   role='venue'
                   revisiting={revisitingModal}
                 />
+              </Portal>
             )}
         </>
     )

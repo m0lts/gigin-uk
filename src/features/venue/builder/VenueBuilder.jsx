@@ -18,6 +18,7 @@ import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
 import { Links } from './Links';
 import { geohashForLocation } from 'geofire-common';
+import Portal from '../../shared/components/Portal';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
@@ -544,62 +545,66 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
 
             {completeSavedProfileModal && (
-                <div className='modal'>
-                    <div className="modal-padding">
-                        <div className='modal-content saved-profile'>
-                            <h2>You Have an Unfinished Profile</h2>
-                            <p>Would you like to continue where you left off?</p>
-                            <div
-                                    className="saved-profile-card"
-                                    onClick={() => {
-                                        setFormData(savedProfile);
-                                        setCompleteSavedProfileModal(false);
-                                        redirectToStep(savedProfile.currentStep);
-                                    }}
-                                    role="button"
-                                    tabIndex={0}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
+                <Portal>
+                    <div className='modal' onClick={handleDeleteSavedProfile}>
+                        <div className="modal-padding" onClick={(e) => e.stopPropagation()}>
+                            <div className='modal-content saved-profile'>
+                                <h2>You Have an Unfinished Profile</h2>
+                                <p>Would you like to continue where you left off?</p>
+                                <div
+                                        className="saved-profile-card"
+                                        onClick={() => {
                                             setFormData(savedProfile);
                                             setCompleteSavedProfileModal(false);
                                             redirectToStep(savedProfile.currentStep);
-                                        }
-                                    }}
-                                >
-                                {savedProfile?.photos[0] ? (
-                                    <div className="img-thumbnail">
-                                        <img src={savedProfile.photos[0]} alt={savedProfile.name} />
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                setFormData(savedProfile);
+                                                setCompleteSavedProfileModal(false);
+                                                redirectToStep(savedProfile.currentStep);
+                                            }
+                                        }}
+                                    >
+                                    {savedProfile?.photos[0] ? (
+                                        <div className="img-thumbnail">
+                                            <img src={savedProfile.photos[0]} alt={savedProfile.name} />
+                                        </div>
+                                    ) : (
+                                        <div className="img-thumbnail">
+                                            <h1>?</h1>
+                                        </div>
+                                    )}
+                                    <div className="details">
+                                        <h3>{savedProfile.name}</h3>
+                                        <h4>{savedProfile?.address}</h4>
                                     </div>
-                                ) : (
-                                    <div className="img-thumbnail">
-                                        <h1>?</h1>
-                                    </div>
-                                )}
-                                <div className="details">
-                                    <h3>{savedProfile.name}</h3>
-                                    <h4>{savedProfile?.address}</h4>
                                 </div>
                             </div>
+                            <button className='btn text bottom-text' onClick={handleDeleteSavedProfile}>No, delete the profile.</button>
                         </div>
-                        <button className='btn text bottom-text' onClick={handleDeleteSavedProfile}>No, delete the profile.</button>
                     </div>
-                </div>
+                </Portal>
             )}
 
             {showErrorModal && (
-                <div className='modal venue-builder-error'>
-                    <div className='modal-content'>
-                        <div>
-                            <h2>Oops! You’re Already a Musician</h2>
-                            <p>
-                                It looks like you’ve already signed up with a musician profile.
-                                For now, we only support one type of profile per account.
-                                Venue support is coming soon — stay tuned!
-                            </p>
+                <Portal>
+                    <div className='modal venue-builder-error' onClick={() => {setShowErrorModal(false); navigate('/find-a-gig')}}>
+                        <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                            <div>
+                                <h2>Oops! You’re Already a Musician</h2>
+                                <p>
+                                    It looks like you’ve already signed up with a musician profile.
+                                    For now, we only support one type of profile per account.
+                                    Venue support is coming soon — stay tuned!
+                                </p>
+                            </div>
+                            <button className='btn primary' onClick={() => {setShowErrorModal(false); navigate('/find-a-gig')}}>Go Back</button>
                         </div>
-                        <button className='btn primary' onClick={() => {setShowErrorModal(false); navigate('/find-a-gig')}}>Go Back</button>
                     </div>
-                </div>
+                </Portal>
             )}
         </div>
     )

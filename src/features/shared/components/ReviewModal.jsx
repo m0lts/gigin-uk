@@ -14,6 +14,7 @@ import { submitReview } from '../../../services/reviews';
 import { toast } from 'sonner';
 import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/payments';
 import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/emails';
+import Portal from './Portal';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);
@@ -169,8 +170,8 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
     }
 
     return (
-        <div className='modal'>
-            <div className='modal-content review'>
+        <div className='modal' onClick={onClose}>
+            <div className='modal-content review' onClick={(e) => e.stopPropagation()}>
                 {(showDisputeForm && disputeAllowed) ? (
                     <div className='leave-review'>
                         {reviewer === 'venue' ? (

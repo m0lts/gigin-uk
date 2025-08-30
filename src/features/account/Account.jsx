@@ -20,6 +20,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { getUserByEmail, updateUserDocument } from '../../services/users';
 import { transferVenueOwnership, updateVenueProfileAccountNames } from '../../services/venues';
 import { toast } from 'sonner';
+import Portal from '../shared/components/Portal';
 
 export const Account = () => {
     const { user,  } = useAuth();
@@ -398,191 +399,201 @@ export const Account = () => {
                     )}
                 </div>
                 {showNameModal && (
-                    <div className='modal'>
-                        <div className='modal-content'>
-                            <h2>Change Your Account Name</h2>
-                            <div className='input-container'>
-                                <input
-                                    className='input'
-                                    type='text'
-                                    placeholder='Enter new name...'
-                                    value={newName}
-                                    onChange={(e) => setNewName(e.target.value)}
-                                />
-                            </div>
-                            <div className='two-buttons'>
-                                <button className='btn primary' onClick={handleNameUpdate}>Submit</button>
-                                <button className='btn secondary' onClick={() => setShowNameModal(false)}>Cancel</button>
-                            </div>
-                            <div className='btn close tertiary' onClick={() => setShowNameModal(false)}>
-                                Close
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {showEmailModal && (
-                    <div className='modal'>
-                        <div className='modal-content'>
-                            <h2>Change Your Email Address</h2>
-                            <div className='input-container'>
-                                <input
-                                    className='input'
-                                    type='email'
-                                    placeholder='Enter new email address...'
-                                    value={newEmail}
-                                    onChange={(e) => setNewEmail(e.target.value)}
-                                />
-                            </div>
-                            <div className='two-buttons'>
-                                <button className='btn primary' onClick={handleEmailUpdate}>Submit</button>
-                                <button className='btn secondary' onClick={() => setShowEmailModal(false)}>Cancel</button>
-                            </div>
-                            <div className='btn close tertiary' onClick={() => setShowEmailModal(false)}>
-                                Close
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {showPasswordModal && (
-                    <div className='modal'>
-                        <div className='modal-content'>
-                            <h2>Change Your Password</h2>
-                            <input
-                                type='password'
-                                placeholder='Enter your current password'
-                                value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
-                            />
-                            <input
-                                type='password'
-                                placeholder='Enter new password'
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                            />
-                            <input
-                                type='password'
-                                placeholder='Confirm new password'
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                            />
-                            <button onClick={handlePasswordUpdate}>Submit</button>
-                            <button onClick={() => setShowPasswordModal(false)}>Cancel</button>
-                        </div>
-                    </div>
-                )}
-                {showDeleteModal && (
-                    <div className='modal'>
-                        <div className='modal-content'>
-                            <h2>Delete Account</h2>
-                            <p>Are you sure? This action cannot be undone.</p>
-                            <input
-                                type='password'
-                                placeholder='Enter your password to confirm'
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                            />
-                            <button onClick={confirmAccountDeletion}>Confirm Account Deletion</button>
-                            <button onClick={() => setShowDeleteModal(false)}>Cancel</button>
-                        </div>
-                    </div>
-                )}
-                {showTransferModal && (
-                    <div className="modal" onClick={() => !transferLoading && setShowTransferModal(false)}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                            <div className="modal-header">
-
-                                <h2>Transfer Venue Ownership</h2>
-                                <p>
-                                    You’re transferring <strong>{venueToTransfer?.name}</strong> to another Gigin account.
-                                    The recipient will become the new owner and you’ll lose access to this venue.
-                                </p>
-                            </div>
-                            <div className="modal-body">
-                                <div className="input-container" style={{ marginTop: 10 }}>
-                                    <label htmlFor="recipientEmail">Recipient’s email</label>
+                    <Portal>
+                        <div className='modal' onClick={() => setShowNameModal(false)}>
+                            <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                                <h2>Change Your Account Name</h2>
+                                <div className='input-container'>
                                     <input
-                                    id="recipientEmail"
-                                    type="email"
-                                    className="input"
-                                    placeholder="name@example.com"
-                                    value={recipientEmail}
-                                    onChange={(e) => setRecipientEmail(e.target.value.trim())}
-                                    disabled={transferLoading}
+                                        className='input'
+                                        type='text'
+                                        placeholder='Enter new name...'
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
                                     />
                                 </div>
-
-                                <div className="notes" style={{ marginTop: 10 }}>
-                                    <small>
-                                    Tip: Make sure the recipient has already created a Gigin account with this email.
-                                    </small>
+                                <div className='two-buttons'>
+                                    <button className='btn primary' onClick={handleNameUpdate}>Submit</button>
+                                    <button className='btn secondary' onClick={() => setShowNameModal(false)}>Cancel</button>
                                 </div>
+                                <div className='btn close tertiary' onClick={() => setShowNameModal(false)}>
+                                    Close
+                                </div>
+                            </div>
+                        </div>
+                    </Portal>
+                )}
+                {showEmailModal && (
+                    <Portal>
+                        <div className='modal' onClick={() => setShowEmailModal(false)}>
+                            <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                                <h2>Change Your Email Address</h2>
+                                <div className='input-container'>
+                                    <input
+                                        className='input'
+                                        type='email'
+                                        placeholder='Enter new email address...'
+                                        value={newEmail}
+                                        onChange={(e) => setNewEmail(e.target.value)}
+                                    />
+                                </div>
+                                <div className='two-buttons'>
+                                    <button className='btn primary' onClick={handleEmailUpdate}>Submit</button>
+                                    <button className='btn secondary' onClick={() => setShowEmailModal(false)}>Cancel</button>
+                                </div>
+                                <div className='btn close tertiary' onClick={() => setShowEmailModal(false)}>
+                                    Close
+                                </div>
+                            </div>
+                        </div>
+                    </Portal>
+                )}
+                {showPasswordModal && (
+                    <Portal>
+                        <div className='modal' onClick={() => setShowPasswordModal(false)}>
+                            <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                                <h2>Change Your Password</h2>
+                                <input
+                                    type='password'
+                                    placeholder='Enter your current password'
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                />
+                                <input
+                                    type='password'
+                                    placeholder='Enter new password'
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                />
+                                <input
+                                    type='password'
+                                    placeholder='Confirm new password'
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                />
+                                <button onClick={handlePasswordUpdate}>Submit</button>
+                                <button onClick={() => setShowPasswordModal(false)}>Cancel</button>
+                            </div>
+                        </div>
+                    </Portal>
+                )}
+                {showDeleteModal && (
+                    <Portal>
+                        <div className='modal' onClick={() => setShowDeleteModal(false)}>
+                            <div className='modal-content'onClick={(e) => e.stopPropagation()}>
+                                <h2>Delete Account</h2>
+                                <p>Are you sure? This action cannot be undone.</p>
+                                <input
+                                    type='password'
+                                    placeholder='Enter your password to confirm'
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                />
+                                <button onClick={confirmAccountDeletion}>Confirm Account Deletion</button>
+                                <button onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                            </div>
+                        </div>
+                    </Portal>
+                )}
+                {showTransferModal && (
+                    <Portal>
+                        <div className="modal" onClick={() => !transferLoading && setShowTransferModal(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
 
-                                <div className="two-buttons" style={{ marginTop: 16 }}>
-                                    <button
-                                    className="btn danger"
-                                    disabled={transferLoading || !recipientEmail}
-                                    onClick={async () => {
-                                        if (!recipientEmail) return alert('Please enter a valid email.');
-                                        if (!venueToTransfer) return;
-                                        const ok = window.confirm(
-                                        `Transfer "${venueToTransfer.name}" to ${recipientEmail}? You will lose access.`
-                                        );
-                                        if (!ok) return;
-                                            setTransferLoading(true);
-                                        try {
-                                            const target = await getUserByEmail(recipientEmail);
-                                            if (!target) {
-                                                toast.error('No Gigin account found for that email.');
+                                    <h2>Transfer Venue Ownership</h2>
+                                    <p>
+                                        You’re transferring <strong>{venueToTransfer?.name}</strong> to another Gigin account.
+                                        The recipient will become the new owner and you’ll lose access to this venue.
+                                    </p>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="input-container" style={{ marginTop: 10 }}>
+                                        <label htmlFor="recipientEmail">Recipient’s email</label>
+                                        <input
+                                        id="recipientEmail"
+                                        type="email"
+                                        className="input"
+                                        placeholder="name@example.com"
+                                        value={recipientEmail}
+                                        onChange={(e) => setRecipientEmail(e.target.value.trim())}
+                                        disabled={transferLoading}
+                                        />
+                                    </div>
+
+                                    <div className="notes" style={{ marginTop: 10 }}>
+                                        <small>
+                                        Tip: Make sure the recipient has already created a Gigin account with this email.
+                                        </small>
+                                    </div>
+
+                                    <div className="two-buttons" style={{ marginTop: 16 }}>
+                                        <button
+                                        className="btn danger"
+                                        disabled={transferLoading || !recipientEmail}
+                                        onClick={async () => {
+                                            if (!recipientEmail) return alert('Please enter a valid email.');
+                                            if (!venueToTransfer) return;
+                                            const ok = window.confirm(
+                                            `Transfer "${venueToTransfer.name}" to ${recipientEmail}? You will lose access.`
+                                            );
+                                            if (!ok) return;
+                                                setTransferLoading(true);
+                                            try {
+                                                const target = await getUserByEmail(recipientEmail);
+                                                if (!target) {
+                                                    toast.error('No Gigin account found for that email.');
+                                                    setTransferLoading(false);
+                                                    return;
+                                                }
+                                                if (target.id === user.uid) {
+                                                    toast.error('You already own this venue profile.')
+                                                    setTransferLoading(false);
+                                                    return;
+                                                }
+                                                toast.info('Transferring venue ownership...')
+                                                await transferVenueOwnership({
+                                                    venueId: venueToTransfer.id,
+                                                    fromUserId: user.uid,
+                                                    toUserId: target.id,
+                                                });
+                                                setVenueList(prev => prev.filter(v => v.id !== venueToTransfer.id));
+                                                toast.success('Venue ownership transferred successfully.');
+                                                setShowTransferModal(false);
+                                                setVenueToTransfer(null);
+                                                setRecipientEmail('');
+                                                navigate('/');
+                                            } catch (err) {
+                                                console.error('Transfer failed:', err);
+                                                toast.error(`Failed to transfer venue.`);
+                                            } finally {
                                                 setTransferLoading(false);
-                                                return;
                                             }
-                                            if (target.id === user.uid) {
-                                                toast.error('You already own this venue profile.')
-                                                setTransferLoading(false);
-                                                return;
-                                            }
-                                            toast.info('Transferring venue ownership...')
-                                            await transferVenueOwnership({
-                                                venueId: venueToTransfer.id,
-                                                fromUserId: user.uid,
-                                                toUserId: target.id,
-                                            });
-                                            setVenueList(prev => prev.filter(v => v.id !== venueToTransfer.id));
-                                            toast.success('Venue ownership transferred successfully.');
-                                            setShowTransferModal(false);
-                                            setVenueToTransfer(null);
-                                            setRecipientEmail('');
-                                            navigate('/');
-                                        } catch (err) {
-                                            console.error('Transfer failed:', err);
-                                            toast.error(`Failed to transfer venue.`);
-                                        } finally {
-                                            setTransferLoading(false);
-                                        }
-                                    }}
-                                    >
-                                    {transferLoading ? 'Transferring, please wait...' : 'Confirm Transfer'}
-                                    </button>
+                                        }}
+                                        >
+                                        {transferLoading ? 'Transferring, please wait...' : 'Confirm Transfer'}
+                                        </button>
+                                        <button
+                                            className="btn secondary"
+                                            disabled={transferLoading}
+                                            onClick={() => setShowTransferModal(false)}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+
                                     <button
-                                        className="btn secondary"
+                                        className="btn close tertiary"
                                         disabled={transferLoading}
                                         onClick={() => setShowTransferModal(false)}
                                     >
-                                        Cancel
+                                        Close
                                     </button>
                                 </div>
-
-                                <button
-                                    className="btn close tertiary"
-                                    disabled={transferLoading}
-                                    onClick={() => setShowTransferModal(false)}
-                                >
-                                    Close
-                                </button>
                             </div>
                         </div>
-                    </div>
-                    )}
+                    </Portal>
+                )}
             </div>
         );
     }

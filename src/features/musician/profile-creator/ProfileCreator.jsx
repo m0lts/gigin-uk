@@ -16,6 +16,7 @@ import { createMusicianProfile } from '@services/musicians';
 import { uploadProfilePicture } from '@services/storage';
 import { ProfileIconSolid, SuccessIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
+import Portal from '../../shared/components/Portal';
 
 export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
   const navigate = useNavigate();
@@ -184,6 +185,7 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
   return (
     <>  
         {!saved && (
+          <Portal>
             <div className="modal" onClick={handleModalClose}>
                 <div className='modal-content profile-creator' onClick={(e) => e.stopPropagation()}>
                     {saving && !saved ? (
@@ -225,40 +227,44 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
 
                 </div>
             </div>
+          </Portal>
         )}
 
         {showErrorModal && (
-            <div className='modal'>
-            <div className='modal-content'>
-                <h3>Oops!</h3>
-                <p>
-                You are already signed up as a venue. We don't allow two profiles for the time being, check back soon!
-                </p>
-                <button
-                className='btn primary'
-                onClick={() => {
-                    setShowErrorModal(false);
-                    setShowModal(false);
-                    navigate('/venues/dashboard/gigs');
-                }}
-                >
-                Got it!
-                </button>
-                <button
-                className='btn close tertiary'
-                onClick={() => {
-                    setShowErrorModal(false);
-                    setShowModal(false);
-                    navigate('/venues/dashboard/gigs');
-                }}
-                >
-                Close
-                </button>
+          <Portal>
+            <div className='modal' onClick={() => showErrorModal(false)}>
+              <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                  <h3>Oops!</h3>
+                  <p>
+                  You are already signed up as a venue. We don't allow two profiles for the time being, check back soon!
+                  </p>
+                  <button
+                  className='btn primary'
+                  onClick={() => {
+                      setShowErrorModal(false);
+                      setShowModal(false);
+                      navigate('/venues/dashboard/gigs');
+                  }}
+                  >
+                  Got it!
+                  </button>
+                  <button
+                  className='btn close tertiary'
+                  onClick={() => {
+                      setShowErrorModal(false);
+                      setShowModal(false);
+                      navigate('/venues/dashboard/gigs');
+                  }}
+                  >
+                  Close
+                  </button>
+              </div>
             </div>
-            </div>
+          </Portal>
         )}
 
         {saved && !saving && (
+          <Portal>
             <div className="modal" onClick={() => setShowModal(false)}>
                 <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <div className="modal-header">
@@ -283,6 +289,7 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
                     </div>
                 </div>
             </div>
+          </Portal>
         )}
     </>
   );

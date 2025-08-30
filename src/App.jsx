@@ -32,6 +32,7 @@ import { VerifyEmailModal } from './features/shared/components/VerifyEmailModal'
 import { auth } from "@lib/firebase";
 import { NoProfileModal } from './features/musician/components/NoProfileModal';
 import { VenueFinder } from './features/venue-discovery/VenueFinder';
+import Portal from './features/shared/components/Portal';
 
 
 
@@ -142,10 +143,26 @@ export default function App() {
         
       </Routes>
       
-      {authModal && <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} /> }
-      {noProfileModal && <NoProfileModal isOpen={noProfileModal} onClose={() => setNoProfileModal(false)} />}
-      {verifyEmailModal && <VerifyEmailModal onClose={() => setVerifyEmailModal(false)} />}
-      {verifyInfoModal && <VerifyEmailModal onClose={() => setVerifyInfoModal(false)} />}
+      {authModal && (
+        <Portal>
+          <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} />
+        </Portal>
+      )}
+      {noProfileModal && (
+        <Portal>
+          <NoProfileModal isOpen={noProfileModal} onClose={() => setNoProfileModal(false)} />
+        </Portal>
+      )}
+      {verifyEmailModal && (
+        <Portal>
+          <VerifyEmailModal onClose={() => setVerifyEmailModal(false)} />
+        </Portal>
+      )}
+      {verifyInfoModal && (
+        <Portal>
+          <VerifyEmailModal onClose={() => setVerifyInfoModal(false)} />
+        </Portal>
+      )}
     </>
   );
 }

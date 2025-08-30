@@ -29,12 +29,13 @@ import { toast } from 'sonner';
 import { getVenueProfileById } from '../../../services/venues';
 import { loadStripe } from '@stripe/stripe-js';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail } from '../../../services/emails';
+import Portal from '../../shared/components/Portal';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const VideoModal = ({ video, onClose }) => {
     return (
-        <div className='modal videos'>
-            <div className='modal-content transparent'>
+        <div className='modal videos'  onClick={onClose}>
+            <div className='modal-content transparent' onClick={(e) => e.stopPropagation()}>
                 <span className='close' onClick={onClose}>&times;</span>
                 <video controls autoPlay style={{ width: '100%' }}>
                     <source src={video.file} type='video/mp4' />
@@ -612,57 +613,65 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 )}
             </div>
             {showPaymentModal && (
-                <PaymentModal 
-                    savedCards={savedCards}
-                    onSelectCard={handleSelectCard}
-                    onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false), setMusicianProfileId(null); setWatchPaymentIntentId(null)}}
-                    gigData={gigInfo}
-                    setMakingPayment={setMakingPayment}
-                    makingPayment={makingPayment}
-                    setPaymentSuccess={setPaymentSuccess}
-                    paymentSuccess={paymentSuccess}
-                    setSavedCards={setSavedCards}
-                    paymentIntentId={watchPaymentIntentId}
-                    setGigData={setGigInfo}
-                    musicianProfileId={musicianProfileId}
-                />
+                <Portal>
+                    <PaymentModal 
+                        savedCards={savedCards}
+                        onSelectCard={handleSelectCard}
+                        onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false), setMusicianProfileId(null); setWatchPaymentIntentId(null)}}
+                        gigData={gigInfo}
+                        setMakingPayment={setMakingPayment}
+                        makingPayment={makingPayment}
+                        setPaymentSuccess={setPaymentSuccess}
+                        paymentSuccess={paymentSuccess}
+                        setSavedCards={setSavedCards}
+                        paymentIntentId={watchPaymentIntentId}
+                        setGigData={setGigInfo}
+                        musicianProfileId={musicianProfileId}
+                    />
+                </Portal>
             )}
             {showReviewModal && (
-                <ReviewModal
-                    gigData={gigInfo}
-                    setGigData={setGigInfo}
-                    reviewer='venue'
-                    onClose={() => {
-                        setShowReviewModal(false)
-                        setReviewProfile(null)
-                    }}
-                />
+                <Portal>
+                    <ReviewModal
+                        gigData={gigInfo}
+                        setGigData={setGigInfo}
+                        reviewer='venue'
+                        onClose={() => {
+                            setShowReviewModal(false)
+                            setReviewProfile(null)
+                        }}
+                    />
+                </Portal>
             )}
             {showPromoteModal && (
-                <PromoteModal
-                    socialLinks={null}
-                    setShowSocialsModal={setShowPromoteModal}
-                    musicianId={null}
-                    venueId={gigInfo.venueId}
-                />
+                <Portal>
+                    <PromoteModal
+                        socialLinks={null}
+                        setShowSocialsModal={setShowPromoteModal}
+                        musicianId={null}
+                        venueId={gigInfo.venueId}
+                    />
+                </Portal>
             )}
             {showDeleteConfirmationModal && (
-                <div className='modal'>
-                    <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-                        <h3>Are you sure you want to delete this gig?</h3>
-                        <div className='two-buttons'>
-                            <button className='btn danger' onClick={handleDeleteGig}>
-                                Delete Gig
-                            </button>
-                            <button className='btn secondary' onClick={() => setShowDeleteConfirmationModal(false)}>
-                                Cancel
+                <Portal>
+                    <div className='modal' onClick={() => setShowDeleteConfirmationModal(false)}>
+                        <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                            <h3>Are you sure you want to delete this gig?</h3>
+                            <div className='two-buttons'>
+                                <button className='btn danger' onClick={handleDeleteGig}>
+                                    Delete Gig
+                                </button>
+                                <button className='btn secondary' onClick={() => setShowDeleteConfirmationModal(false)}>
+                                    Cancel
+                                </button>
+                            </div>
+                            <button className='btn tertiary close' onClick={() => setShowDeleteConfirmationModal(false)}>
+                                Close
                             </button>
                         </div>
-                        <button className='btn tertiary close' onClick={() => setShowDeleteConfirmationModal(false)}>
-                            Close
-                        </button>
                     </div>
-                </div>
+                </Portal>
             )}
             {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
         </>

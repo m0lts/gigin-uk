@@ -26,6 +26,7 @@ import { getOrCreateConversation } from '../../../services/conversations';
 import { sendGigInvitationMessage } from '../../../services/messages';
 import { formatDate } from '../../../services/utils/dates';
 import { inviteToGig } from '../../../services/gigs';
+import Portal from '../../shared/components/Portal';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -702,45 +703,45 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
       };
 
     return (
-        <div className='modal gig-post' onClick={handleModalClick}>
-            <div className='modal-content'>
-                {(stage !== 1 && stage !== 10 && stage !== 0) ? (
-                    <button className='btn tertiary close-modal' onClick={handleSaveAndExit}>
-                        {saving ? 'Saving...' : 'Save and Exit'}
-                    </button>
-                ) : (stage === 1 || stage === 0) && (
-                    <button className='btn tertiary close-modal' onClick={() => setGigPostModal(false)}>
-                        Close
-                    </button>
-                )}
-                <div className='stage'>
-                    {loading ? (
-                        <div className='head'>
-                            <h1 className='title'>Posting Gig...</h1>
-                        </div>
-                    ) : (
-                        renderStageContent()
+            <div className='modal gig-post' onClick={handleModalClick}>
+                <div className='modal-content'>
+                    {(stage !== 1 && stage !== 10 && stage !== 0) ? (
+                        <button className='btn tertiary close-modal' onClick={handleSaveAndExit}>
+                            {saving ? 'Saving...' : 'Save and Exit'}
+                        </button>
+                    ) : (stage === 1 || stage === 0) && (
+                        <button className='btn tertiary close-modal' onClick={() => setGigPostModal(false)}>
+                            Close
+                        </button>
                     )}
-                </div>
-                <div className='progress-bar-container'>
-                    <div className='progress-bar' style={{ width: `${getProgressPercentage()}%` }}></div>
-                </div>
-                <div className={`control-buttons ${(stage === 1 || stage === 0) && 'single'}`}>
-                    {(stage === 1 || stage === 0) ? (
-                        <button className='btn primary' onClick={nextStage}>Next</button>
-                    ) : (stage === 10 && (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig')) || (stage === 10 && !(formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig')) ? (
-                        <>
-                            <button className='btn secondary' onClick={prevStage}>Back</button>
-                            <button className='btn primary' onClick={handlePostGig}>Post Gig</button>
-                        </>
-                    ) : (
-                        <>
-                            <button className='btn secondary' onClick={prevStage}>Back</button>
+                    <div className='stage'>
+                        {loading ? (
+                            <div className='head'>
+                                <h1 className='title'>Posting Gig...</h1>
+                            </div>
+                        ) : (
+                            renderStageContent()
+                        )}
+                    </div>
+                    <div className='progress-bar-container'>
+                        <div className='progress-bar' style={{ width: `${getProgressPercentage()}%` }}></div>
+                    </div>
+                    <div className={`control-buttons ${(stage === 1 || stage === 0) && 'single'}`}>
+                        {(stage === 1 || stage === 0) ? (
                             <button className='btn primary' onClick={nextStage}>Next</button>
-                        </>
-                    )}
+                        ) : (stage === 10 && (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig')) || (stage === 10 && !(formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig')) ? (
+                            <>
+                                <button className='btn secondary' onClick={prevStage}>Back</button>
+                                <button className='btn primary' onClick={handlePostGig}>Post Gig</button>
+                            </>
+                        ) : (
+                            <>
+                                <button className='btn secondary' onClick={prevStage}>Back</button>
+                                <button className='btn primary' onClick={nextStage}>Next</button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
     )
 }

@@ -7,6 +7,7 @@ import { WelcomeModal } from '@features/musician/components/WelcomeModal';
 import { useUserLocation } from '@hooks/useUserLocation';
 import { TopBanner } from './TopBanner';
 import { fetchNearbyVenues } from '../../services/venues';
+import Portal from '../shared/components/Portal';
 
 export const VenueFinder = ({ user, setAuthModal, setAuthType }) => {
   const [venues, setVenues] = useState([]);
@@ -88,7 +89,9 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType }) => {
         </div>
       </div>
       {showWelcomeModal && (
-        <WelcomeModal user={user} setShowWelcomeModal={setShowWelcomeModal} role='musician' />
+        <Portal>
+          <WelcomeModal user={user} setShowWelcomeModal={setShowWelcomeModal} role='musician' />
+        </Portal>
       )}
     </section>
   );

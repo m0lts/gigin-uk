@@ -399,143 +399,147 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             </ul>
         </div>
         {showAdminConfirmModal && (
-            <div className="modal" onClick={() => setShowAdminConfirmModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header">
-                        <KeyIcon />
-                        <h2>Transfer Admin Role?</h2>
-                        <p>
-                            You're about to transfer admin rights to{' '}
-                            <strong>
-                                {bandMembers.find((m) => m.musicianProfileId === newAdminCandidate.musicianProfileId)?.memberName}
-                            </strong>
-                            . You will be removed as the band's admin. Are you sure you want to proceed?
-                        </p>
+            <Portal>
+                <div className="modal" onClick={() => setShowAdminConfirmModal(false)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <KeyIcon />
+                            <h2>Transfer Admin Role?</h2>
+                            <p>
+                                You're about to transfer admin rights to{' '}
+                                <strong>
+                                    {bandMembers.find((m) => m.musicianProfileId === newAdminCandidate.musicianProfileId)?.memberName}
+                                </strong>
+                                . You will be removed as the band's admin. Are you sure you want to proceed?
+                            </p>
+                        </div>
+                    <div className="modal-actions">
+                        <button className="btn tertiary" onClick={() => setShowAdminConfirmModal(false)}>
+                            Cancel
+                        </button>
+                        <button
+                            className="btn danger"
+                            onClick={() => {
+                                setShowAdminConfirmModal(false);
+                                handleConfirmPermissions();
+                            }}
+                        >
+                            Yes, Transfer Admin Rights
+                        </button>
                     </div>
-                <div className="modal-actions">
-                    <button className="btn tertiary" onClick={() => setShowAdminConfirmModal(false)}>
-                        Cancel
-                    </button>
-                    <button
-                        className="btn danger"
-                        onClick={() => {
-                            setShowAdminConfirmModal(false);
-                            handleConfirmPermissions();
-                        }}
-                    >
-                        Yes, Transfer Admin Rights
-                    </button>
+                    </div>
                 </div>
-                </div>
-            </div>
+            </Portal>
         )}
         {showRemoveModal && memberToRemove && (
-            <div className="modal" onClick={() => setShowRemoveModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header">
-                        <RemoveMemberIcon />
-                        <h2>Remove Member?</h2>
-                        <p>
-                            Are you sure you want to remove <strong>{memberToRemove.memberName}</strong> from the band?
-                        </p>
+            <Portal>
+                <div className="modal" onClick={() => setShowRemoveModal(false)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <RemoveMemberIcon />
+                            <h2>Remove Member?</h2>
+                            <p>
+                                Are you sure you want to remove <strong>{memberToRemove.memberName}</strong> from the band?
+                            </p>
+                        </div>
+                    <div className="modal-actions">
+                        <button className="btn secondary" onClick={() => setShowRemoveModal(false)}>
+                        Cancel
+                        </button>
+                        <button
+                        className="btn danger"
+                        onClick={async () => {
+                            try {
+                                setLoading(true);
+                                if (bandMembers.length < 1) return;
+                                const updated = await removeBandMember(band.id, memberToRemove.musicianProfileId, memberToRemove.memberUserId);
+                                setBandMembers(updated);
+                                setShowRemoveModal(false);
+                                setMemberToRemove(null);
+                            } catch (err) {
+                                console.error('Failed to remove member:', err);
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                        >
+                        Yes, Remove Member
+                        </button>
                     </div>
-                <div className="modal-actions">
-                    <button className="btn secondary" onClick={() => setShowRemoveModal(false)}>
-                    Cancel
-                    </button>
-                    <button
-                    className="btn danger"
-                    onClick={async () => {
-                        try {
-                            setLoading(true);
-                            if (bandMembers.length < 1) return;
-                            const updated = await removeBandMember(band.id, memberToRemove.musicianProfileId, memberToRemove.memberUserId);
-                            setBandMembers(updated);
-                            setShowRemoveModal(false);
-                            setMemberToRemove(null);
-                        } catch (err) {
-                            console.error('Failed to remove member:', err);
-                        } finally {
-                            setLoading(false);
-                        }
-                    }}
-                    >
-                    Yes, Remove Member
-                    </button>
+                    </div>
                 </div>
-                </div>
-            </div>
+            </Portal>
         )}
         {memberModal && (
             <Portal>
-            <div className="modal members" onClick={() => setMemberModal(false)}>
-                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header">
-                        <PeopleGroupIconSolid />
-                        <h2>Adding Band Members</h2>
-                        <p>
-                            You have three options when adding band members:
-                        </p>
-                    </div>
-                    <div className="modal-options">
-                        <div className="option">
-                            <h3>Share Band Password</h3>
-                            <p>Send the band password to your members. Make sure to keep this password secure.</p>
-                            <div className="option-cont">
-                                <button className="btn tertiary password" onClick={() => setShowPassword(!showPassword)}>
-                                    {showPassword ? (
-                                        'Hide Password'
-                                    ) : (
-                                        'Show Password'
-                                    )}
-                                </button>
-                                {!showPassword ? (
-                                    <div className="password-value">
-                                        <PasswordIcon />
-                                    </div>
-                                ) : (
-                                    <button className="btn secondary password-value" onClick={() => handleCopy(band.bandInfo.joinPassword)}>
-                                        <h4>{band.bandInfo.joinPassword}</h4>
+                <div className="modal members" onClick={() => setMemberModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <PeopleGroupIconSolid />
+                            <h2>Adding Band Members</h2>
+                            <p>
+                                You have three options when adding band members:
+                            </p>
+                        </div>
+                        <div className="modal-options">
+                            <div className="option">
+                                <h3>Share Band Password</h3>
+                                <p>Send the band password to your members. Make sure to keep this password secure.</p>
+                                <div className="option-cont">
+                                    <button className="btn tertiary password" onClick={() => setShowPassword(!showPassword)}>
+                                        {showPassword ? (
+                                            'Hide Password'
+                                        ) : (
+                                            'Show Password'
+                                        )}
                                     </button>
-                                )}
+                                    {!showPassword ? (
+                                        <div className="password-value">
+                                            <PasswordIcon />
+                                        </div>
+                                    ) : (
+                                        <button className="btn secondary password-value" onClick={() => handleCopy(band.bandInfo.joinPassword)}>
+                                            <h4>{band.bandInfo.joinPassword}</h4>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="option">
+                                <h3>Share an Invite Link</h3>
+                                <p>Band members can join using this secure link. You must create one link per member.</p>
+                                <div className="option-cont">
+                                    <button className="btn tertiary" onClick={handleCreateInvite}>
+                                        Generate Invite Link
+                                    </button>
+                                    {inviteLink && (
+                                        <div className="btn secondary invite-link" onClick={() => handleCopy(inviteLink)}>
+                                            {inviteLink}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="option">
+                                <h3>Invite Via Email</h3>
+                                <p>Know your member's email addresses? Enter them below and we'll handle the rest.</p>
+                                <div className="option-cont">
+                                    <input
+                                        type="email"
+                                        placeholder="Email Address"
+                                        value={emailToInvite}
+                                        onChange={(e) => setEmailToInvite(e.target.value)}
+                                        className="input"
+                                    />
+                                    <button className="btn tertiary email" onClick={handleSendEmailInvite}>
+                                        Send Invite
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="option">
-                            <h3>Share an Invite Link</h3>
-                            <p>Band members can join using this secure link. You must create one link per member.</p>
-                            <div className="option-cont">
-                                <button className="btn tertiary" onClick={handleCreateInvite}>
-                                    Generate Invite Link
-                                </button>
-                                {inviteLink && (
-                                    <div className="btn secondary invite-link" onClick={() => handleCopy(inviteLink)}>
-                                        {inviteLink}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="option">
-                            <h3>Invite Via Email</h3>
-                            <p>Know your member's email addresses? Enter them below and we'll handle the rest.</p>
-                            <div className="option-cont">
-                                <input
-                                    type="email"
-                                    placeholder="Email Address"
-                                    value={emailToInvite}
-                                    onChange={(e) => setEmailToInvite(e.target.value)}
-                                    className="input"
-                                />
-                                <button className="btn tertiary email" onClick={handleSendEmailInvite}>
-                                    Send Invite
-                                </button>
-                            </div>
-                        </div>
+                        <button className="btn close tertiary" onClick={() => setMemberModal(false)}>
+                            Close
+                        </button>
                     </div>
-                    <button className="btn close tertiary" onClick={() => setMemberModal(false)}>
-                        Close
-                    </button>
                 </div>
-            </div>
             </Portal>
         )}
         </>

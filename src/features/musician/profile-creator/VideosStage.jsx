@@ -3,8 +3,8 @@ import { EditIcon, VideoIcon, PlayIcon } from '@features/shared/ui/extras/Icons'
 
 const VideoModal = ({ video, onClose }) => {
     return (
-        <div className='modal'>
-            <div className='modal-content'>
+        <div className='modal' onClick={onClose}>
+            <div className='modal-content' onClick={(e) => e.stopPropagation()}>
                 <span className='close' onClick={onClose}>&times;</span>
                 <video controls autoPlay style={{ width: '100%' }}>
                     <source src={typeof video.file === 'string' ? video.file : URL.createObjectURL(video.file)} type='video/mp4' />

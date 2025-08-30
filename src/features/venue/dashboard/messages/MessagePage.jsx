@@ -20,6 +20,7 @@ import { openInNewTab } from '@services/utils/misc';
 import { ArchiveIcon, InboxIcon } from '@features/shared/ui/extras/Icons';
 import { updateConversationDocument } from '@services/conversations';
 import { DeleteGigIcon, DeleteIcon, ErrorIcon, OptionsIcon } from '../../../shared/ui/extras/Icons';
+import Portal from '../../../shared/components/Portal';
 
 export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles }) => {
     const navigate = useNavigate();
@@ -219,21 +220,24 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                     </div>
                 )}
                 {(showGigModal && activeConversation) && (
-                    <div
-                    className="modal"
-                    onClick={() => setShowGigModal(false)}
-                >
-                    <div
-                    className="modal-content gig-information"
-                    onClick={(e) => e.stopPropagation()}
-                    >   
-                        <button className="btn close tertiary"
-                        onClick={() => setShowGigModal(false)}>
-                            Close
-                        </button>
-                            <GigInformation gigId={activeConversation?.gigId} gigData={gigData} setGigData={setGigData} venueGigs={venueGigs} />
+                    <Portal>
+                        <div
+                            className="modal"
+                            onClick={() => setShowGigModal(false)}
+                        >
+                            <div
+                                className="modal-content gig-information"
+                                onClick={(e) => e.stopPropagation()}
+                            >   
+                                <button className="btn close tertiary"
+                                    onClick={() => setShowGigModal(false)}>
+                                    Close
+                                </button>
+                                <GigInformation gigId={activeConversation?.gigId} gigData={gigData} setGigData={setGigData} venueGigs={venueGigs} />
+                            </div>
                         </div>
-                    </div>
+
+                    </Portal>
                 )}
             </div>
         </>

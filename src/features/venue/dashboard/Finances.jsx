@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { changeDefaultCard } from '../../../services/functions';
 import { useAuth } from '@hooks/useAuth';
 import { updateUserDocument } from '../../../services/users';
+import Portal from '../../shared/components/Portal';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -280,40 +281,44 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       </div>
   </div>
     {addCardModal && (
-      <div className='modal'>
-        <div className='modal-content scrollable'>
-          <div className="modal-header">
-            <CardIcon />
-            <h2>Add New Payment Method</h2>
-            <p>Save a card to your account to make future gig payments quicker.</p>
-          </div>
-          <div className="modal-body">
-            <CardForm activityType={'adding card'} setSaveCardModal={setAddCardModal} setNewCardSaved={setNewCardSaved} />
-          </div>
-          <button className='btn tertiary close' onClick={() => setAddCardModal(false)}>
-            Close
-          </button>
-        </div>
-      </div>
-    )}
-    {showFirstTimeModal && (
-      <div className='modal'>
-        <div className='modal-content' style={{ maxWidth: '300px'}}>
-          <div className="modal-header">
-            <CoinsIconSolid />
-            <h2>Your Finances</h2>
-            <p>If you are paying musicians flat fees, this is where you can track your spending, see your gig receipts, and manage your credit/debit cards.</p>
-          </div>
-          <div className="modal-body">
-            <button className="btn primary" onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
-              Ok
+      <Portal>
+        <div className='modal' onClick={() => setAddCardModal(false)}>
+          <div className='modal-content scrollable'onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <CardIcon />
+              <h2>Add New Payment Method</h2>
+              <p>Save a card to your account to make future gig payments quicker.</p>
+            </div>
+            <div className="modal-body">
+              <CardForm activityType={'adding card'} setSaveCardModal={setAddCardModal} setNewCardSaved={setNewCardSaved} />
+            </div>
+            <button className='btn tertiary close' onClick={() => setAddCardModal(false)}>
+              Close
             </button>
           </div>
-          <button className='btn tertiary close' onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
-            Close
-          </button>
         </div>
-      </div>
+      </Portal>
+    )}
+    {showFirstTimeModal && (
+      <Portal>
+        <div className='modal' onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
+          <div className='modal-content' style={{ maxWidth: '300px'}} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <CoinsIconSolid />
+              <h2>Your Finances</h2>
+              <p>If you are paying musicians flat fees, this is where you can track your spending, see your gig receipts, and manage your credit/debit cards.</p>
+            </div>
+            <div className="modal-body">
+              <button className="btn primary" onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
+                Ok
+              </button>
+            </div>
+            <button className='btn tertiary close' onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
+              Close
+            </button>
+          </div>
+        </div>
+      </Portal>
     )}
   </>
   );

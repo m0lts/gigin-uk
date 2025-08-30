@@ -988,33 +988,39 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             </section>
 
             {noProfileModal && (
-                <NoProfileModal 
-                    isOpen={noProfileModal}
-                    onClose={() => setNoProfileModal(false)}
-                />
+                <Portal>
+                    <NoProfileModal 
+                        isOpen={noProfileModal}
+                        onClose={() => setNoProfileModal(false)}
+                    />
+                </Portal>
             )}
 
             {negotiateModal && (
-                <div className='modal negotiation'>
-                    <div className='modal-content'>
-                        <div className="modal-header">
-                            <CoinsIconSolid />
-                            <h2>Negotiate the Gig Fee</h2>
-                            <p>Enter a value below. If the venue accepts your negotiation, this will be the final gig fee.</p>
-                        </div>
-                        <input type='text' className='input' id='negotiation-value' value={newOffer} onChange={(e) => handleBudgetChange(e)} placeholder={`Current Fee: ${gigData.budget}`} />
-                        <div className='two-buttons'>
-                            <button className='btn tertiary' onClick={() => setNegotiateModal(false)}>Cancel</button>
-                            {newOffer && (
-                                <button className='btn primary' disabled={!newOffer || newOffer === '£'} onClick={handleNegotiate}>Offer {newOffer}</button>
-                            )}
+                <Portal>
+                    <div className='modal negotiation' onClick={() => setNegotiateModal(false)}>
+                        <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <CoinsIconSolid />
+                                <h2>Negotiate the Gig Fee</h2>
+                                <p>Enter a value below. If the venue accepts your negotiation, this will be the final gig fee.</p>
+                            </div>
+                            <input type='text' className='input' id='negotiation-value' value={newOffer} onChange={(e) => handleBudgetChange(e)} placeholder={`Current Fee: ${gigData.budget}`} />
+                            <div className='two-buttons'>
+                                <button className='btn tertiary' onClick={() => setNegotiateModal(false)}>Cancel</button>
+                                {newOffer && (
+                                    <button className='btn primary' disabled={!newOffer || newOffer === '£'} onClick={handleNegotiate}>Offer {newOffer}</button>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
+                </Portal>
             )}
 
             {showCreateProfileModal && (
-                <ProfileCreator user={user} setShowModal={setShowCreateProfileModal} selectedUserType={selectedUserType} />
+                <Portal>
+                    <ProfileCreator user={user} setShowModal={setShowCreateProfileModal} selectedUserType={selectedUserType} />
+                </Portal>
             )}
         </div>
     );

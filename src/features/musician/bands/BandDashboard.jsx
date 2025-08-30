@@ -15,6 +15,7 @@ import { useMusicianDashboard } from '../../../context/MusicianDashboardContext'
 import { ProfileForm } from '../dashboard/profile-form/ProfileForm';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { MusicianProfile } from '../components/MusicianProfile';
+import Portal from '../../shared/components/Portal';
 
 export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const { refreshMusicianProfile } = useMusicianDashboard();
@@ -169,35 +170,38 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
             </div>
         )}
         {showDeleteModal && (
+          <Portal>
             <div className="modal" onClick={() => setShowDeleteModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                  <div className="modal-header">
-                      <DeleteGigIcon />
-                      <h2>Delete Band?</h2>
-                      <p>
-                          Are you sure you want to delete "{bandProfile.name}"? This action cannot be undone.
-                      </p>
-                  </div>
-              <div className="modal-actions">
-                  <button className="btn tertiary" onClick={() => setShowDeleteModal(false)}>
-                      Cancel
-                  </button>
-                  <button
-                      className="btn danger"
-                      onClick={() => {
-                          handleDeleteBand();
-                          setShowDeleteModal(false);
-                      }}
-                  >
-                      Yes, Delete Band
-                  </button>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <DeleteGigIcon />
+                        <h2>Delete Band?</h2>
+                        <p>
+                            Are you sure you want to delete "{bandProfile.name}"? This action cannot be undone.
+                        </p>
+                    </div>
+                <div className="modal-actions">
+                    <button className="btn tertiary" onClick={() => setShowDeleteModal(false)}>
+                        Cancel
+                    </button>
+                    <button
+                        className="btn danger"
+                        onClick={() => {
+                            handleDeleteBand();
+                            setShowDeleteModal(false);
+                        }}
+                    >
+                        Yes, Delete Band
+                    </button>
+                </div>
               </div>
-              </div>
-          </div>
+            </div>
+          </Portal>
         )}
         {showLeaveModal && (
+          <Portal>
             <div className="modal" onClick={() => setShowLeaveModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                   <div className="modal-header">
                       <DoorIcon />
                       <h2>Leave Band?</h2>
@@ -220,7 +224,8 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
                   </button>
               </div>
               </div>
-          </div>
+            </div>
+          </Portal>
         )}
     </>
   );

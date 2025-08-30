@@ -4,6 +4,7 @@ import { Header as VenuesHeader } from '@features/venue/components/Header'
 import { Header as CommonHeader } from '@features/shared/components/Header';
 import VenueImg from '@assets/images/venue-welcome.png';
 import '@styles/host/info.styles.css'
+import Portal from '../../shared/components/Portal';
 
 export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
 
@@ -57,14 +58,16 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
                 </div>
             </div>
             {showErrorModal && (
-                <div className='modal'>
-                    <div className='modal-content'>
-                        <h3>Oops!</h3>
-                        <p>You are already signed up as a musician. We don't allow two profiles for the time being, check back soon!</p>
-                        <button className='btn primary' onClick={() => {setShowErrorModal(false)}}>Got it!</button>
-                        <button className='btn close tertiary' onClick={() => setShowErrorModal(false)}>Close</button>
+                <Portal>
+                    <div className='modal' onClick={() => setShowErrorModal(false)}>
+                        <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                            <h3>Oops!</h3>
+                            <p>You are already signed up as a musician. We don't allow two profiles for the time being, check back soon!</p>
+                            <button className='btn primary' onClick={() => {setShowErrorModal(false)}}>Got it!</button>
+                            <button className='btn close tertiary' onClick={() => setShowErrorModal(false)}>Close</button>
+                        </div>
                     </div>
-                </div>
+                </Portal>
             )}
         </div>
     )

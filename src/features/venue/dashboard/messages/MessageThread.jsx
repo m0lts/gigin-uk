@@ -18,6 +18,7 @@ import { CalendarIconSolid } from '../../../shared/ui/extras/Icons';
 import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
 import { toast } from 'sonner';
 import { formatDate } from '../../../../services/utils/dates';
+import Portal from '../../../shared/components/Portal';
 
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
@@ -704,35 +705,39 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 <button type='submit' className='btn primary'><SendMessageIcon /></button>
             </form>
             {showPaymentModal && (
-                <PaymentModal
-                    savedCards={savedCards}
-                    onSelectCard={handleSelectCard}
-                    onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
-                    gigData={gigData}
-                    setMakingPayment={setMakingPayment}
-                    makingPayment={makingPayment}
-                    setPaymentSuccess={setPaymentSuccess}
-                    paymentSuccess={paymentSuccess}
-                    setSavedCards={setSavedCards}
-                    paymentIntentId={paymentIntentId}
-                    setPaymentIntentId={setPaymentIntentId}
-                    setGigData={setGigData}
-                    musicianProfileId={musicianProfileId}
-                />
+                <Portal>
+                    <PaymentModal
+                        savedCards={savedCards}
+                        onSelectCard={handleSelectCard}
+                        onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
+                        gigData={gigData}
+                        setMakingPayment={setMakingPayment}
+                        makingPayment={makingPayment}
+                        setPaymentSuccess={setPaymentSuccess}
+                        paymentSuccess={paymentSuccess}
+                        setSavedCards={setSavedCards}
+                        paymentIntentId={paymentIntentId}
+                        setPaymentIntentId={setPaymentIntentId}
+                        setGigData={setGigData}
+                        musicianProfileId={musicianProfileId}
+                    />
+                </Portal>
             )}
-            {showReviewModal &&
-                <ReviewModal
-                    gigData={gigData}
-                    setGigData={setGigData}
-                    reviewer={userRole}
-                    onClose={(reviewSubmitted) => {
-                        setShowReviewModal(false);
-                        if (reviewSubmitted) {
-                            handleMessageReviewed();
-                        }
-                    }}
-                />
-            }
+            {showReviewModal && (
+                <Portal>
+                    <ReviewModal
+                        gigData={gigData}
+                        setGigData={setGigData}
+                        reviewer={userRole}
+                        onClose={(reviewSubmitted) => {
+                            setShowReviewModal(false);
+                            if (reviewSubmitted) {
+                                handleMessageReviewed();
+                            }
+                        }}
+                    />
+                </Portal>
+            )}
         </>
     );
 };

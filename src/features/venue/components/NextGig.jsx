@@ -18,6 +18,7 @@ import { CloseIcon, ErrorIcon, ExitIcon, PeopleGroupIconSolid } from '../../shar
 import { toast } from 'sonner';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
 import { updateMusicianCancelledGig } from '../../../services/musicians';
+import Portal from '../../shared/components/Portal';
 
 
 export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
@@ -152,155 +153,158 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
     };
 
     return (
-        <div className='modal' onClick={handleModalClick}>
-            {showConfirmation ? (
-                <div className='modal-content confirmation-modal' onClick={(e) => e.stopPropagation()}>
-                    {loading ? (
-                        <>
-                            <div className="text">
-                                <h2>Cancelling gig...</h2>
-                                <p>Please don't leave this window or close your browser.</p>
-                            </div>
-                            <LoadingThreeDots />
-                        </>
-                    ) : !askCancellationReason ? (
-                        <>
-                            <div className="text">
-                                <h2>Are you sure you want to cancel this gig?</h2>
-                                <p>You will be refunded the gig fee and the gig won't be re-listed. You can relist the gig in the dashboard.</p>
-                            </div>
-                            <div className='two-buttons'>
-                                <button className='btn danger' onClick={() => setAskCancellationReason(true)}>
-                                    Yes
-                                </button>
-                                <button className='btn tertiary' onClick={handleCancelNo}>
-                                    No
-                                </button>
-                            </div>
-                        </>
-                    ) : askCancellationReason && (
-                        <>
-                            <div className="text">
-                                <h2>What is your reason for cancelling?</h2>
-                            </div>
-                            <div className="input-container select">
-                                <select id='cancellation-reason' value={cancellationReason.reason} onChange={(e) => setCancellationReason((prev) => ({
-                                        ...prev,
-                                        reason: e.target.value,
-                                    }))}>
-                                    <option value=''>Please select a reason</option>
-                                    <option value='fee'>Fee Dispute</option>
-                                    <option value='availability'>Availability</option>
-                                    <option value='double-booking'>Double Booking</option>
-                                    <option value='personal-reasons'>Personal Reasons</option>
-                                    <option value='illness'>Illness</option>
-                                    <option value='information'>Not Enough Information</option>
-                                    <option value='other'>Other</option>
-                                </select>
-                            </div>
-                            <div className="input-container">
-                                <label htmlFor="extraDetails" className='label'>Add any extra details below:</label>
-                                <textarea name="extra-details" value={cancellationReason.extraDetails} id="extraDetails" className='input' onChange={(e) => setCancellationReason((prev) => ({
-                                        ...prev,
-                                        extraDetails: e.target.value,
-                                    }))}></textarea>
-                            </div>
-                            <div className='two-buttons'>
-                                <button className='btn danger' onClick={handleConfirmCancel} disabled={!cancellationReason}>
-                                    Confirm Cancellation
-                                </button>
-                                <button className='btn tertiary' onClick={handleCancelNo}>
-                                    Cancel
-                                </button>
-                            </div>
-                        </>
-                    )}
-                </div>
-            ) : (
-                <div className='modal-content next-gig' onClick={(e) => e.stopPropagation()}>
-                    {nextGig?.kind === 'Open Mic' ? (
-                        <>
-                            <h3>Musicians Playing:</h3>
-                            <div className='head multiple-musicians'>
-                                {loadingMusicians ? (
-                                    <LoadingThreeDots />
-                                ) : (
-                                    openMicMusicians.map(musician => (
-                                        <div
-                                            className='musician-item'
-                                            key={musician.musicianId}
-                                            onClick={(e) => openInNewTab(`/${musician.musicianId}`, e)}
-                                        >
-                                            <div className='venue-info'>
-                                            <figure className='venue-img-cont'>
-                                                <img src={musician.picture} alt={musician.name} className='venue-img' />
-                                            </figure>
-                                            <div className='names-div'>
-                                                <h3>{musician.name}</h3>
-                                                <p>{musician.musicianType}</p>
-                                            </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </>
-                    ) : (
-                        <div className='head' onClick={(e) => openInNewTab(`/${musicianProfile.musicianId}`, e)}>
-                            <div className='venue-info'>
-                                <figure className='venue-img-cont'>
-                                    <img src={musicianProfile.picture} alt={musicianProfile.name} className='venue-img' />
-                                </figure>
-                                <div className='names-div'>
-                                    <h1>{musicianProfile.name}</h1>
-                                    <p>{musicianProfile.musicianType}</p>
+        <Portal>
+
+            <div className='modal' onClick={handleModalClick}>
+                {showConfirmation ? (
+                    <div className='modal-content confirmation-modal' onClick={(e) => e.stopPropagation()}>
+                        {loading ? (
+                            <>
+                                <div className="text">
+                                    <h2>Cancelling gig...</h2>
+                                    <p>Please don't leave this window or close your browser.</p>
                                 </div>
-                            </div>
-                            <button className='btn tertiary'>
-                                <NewTabIcon />
-                            </button>
-                        </div>
-                    )}
-                <div className='body'>
-                    <div className='primary-info'>
-                        <div className='info-cont'>
-                            <h3 className='subject'>Date and Time</h3>
-                            <h3 className='text'>{formatDate(nextGig.date)} {formatDurationSpan(nextGig.startTime, nextGig.duration)}</h3>
-                        </div>
-                        <div className='info-cont'>
-                            <h3 className='subject'>Gig Type</h3>
-                            <h3 className='text'>{nextGig.kind}</h3>
-                        </div>
-                        {nextGig.kind !== "Open Mic" && nextGig.kind !== 'Ticketed Gig' && (
-                            <div className='info-cont'>
-                                <h3 className='subject'>Agreed Fee</h3>
-                                <h3 className='text'>{nextGig.agreedFee}</h3>
+                                <LoadingThreeDots />
+                            </>
+                        ) : !askCancellationReason ? (
+                            <>
+                                <div className="text">
+                                    <h2>Are you sure you want to cancel this gig?</h2>
+                                    <p>You will be refunded the gig fee and the gig won't be re-listed. You can relist the gig in the dashboard.</p>
+                                </div>
+                                <div className='two-buttons'>
+                                    <button className='btn danger' onClick={() => setAskCancellationReason(true)}>
+                                        Yes
+                                    </button>
+                                    <button className='btn tertiary' onClick={handleCancelNo}>
+                                        No
+                                    </button>
+                                </div>
+                            </>
+                        ) : askCancellationReason && (
+                            <>
+                                <div className="text">
+                                    <h2>What is your reason for cancelling?</h2>
+                                </div>
+                                <div className="input-container select">
+                                    <select id='cancellation-reason' value={cancellationReason.reason} onChange={(e) => setCancellationReason((prev) => ({
+                                            ...prev,
+                                            reason: e.target.value,
+                                        }))}>
+                                        <option value=''>Please select a reason</option>
+                                        <option value='fee'>Fee Dispute</option>
+                                        <option value='availability'>Availability</option>
+                                        <option value='double-booking'>Double Booking</option>
+                                        <option value='personal-reasons'>Personal Reasons</option>
+                                        <option value='illness'>Illness</option>
+                                        <option value='information'>Not Enough Information</option>
+                                        <option value='other'>Other</option>
+                                    </select>
+                                </div>
+                                <div className="input-container">
+                                    <label htmlFor="extraDetails" className='label'>Add any extra details below:</label>
+                                    <textarea name="extra-details" value={cancellationReason.extraDetails} id="extraDetails" className='input' onChange={(e) => setCancellationReason((prev) => ({
+                                            ...prev,
+                                            extraDetails: e.target.value,
+                                        }))}></textarea>
+                                </div>
+                                <div className='two-buttons'>
+                                    <button className='btn danger' onClick={handleConfirmCancel} disabled={!cancellationReason}>
+                                        Confirm Cancellation
+                                    </button>
+                                    <button className='btn tertiary' onClick={handleCancelNo}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                ) : (
+                    <div className='modal-content next-gig' onClick={(e) => e.stopPropagation()}>
+                        {nextGig?.kind === 'Open Mic' ? (
+                            <>
+                                <h3>Musicians Playing:</h3>
+                                <div className='head multiple-musicians'>
+                                    {loadingMusicians ? (
+                                        <LoadingThreeDots />
+                                    ) : (
+                                        openMicMusicians.map(musician => (
+                                            <div
+                                                className='musician-item'
+                                                key={musician.musicianId}
+                                                onClick={(e) => openInNewTab(`/${musician.musicianId}`, e)}
+                                            >
+                                                <div className='venue-info'>
+                                                <figure className='venue-img-cont'>
+                                                    <img src={musician.picture} alt={musician.name} className='venue-img' />
+                                                </figure>
+                                                <div className='names-div'>
+                                                    <h3>{musician.name}</h3>
+                                                    <p>{musician.musicianType}</p>
+                                                </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <div className='head' onClick={(e) => openInNewTab(`/${musicianProfile.musicianId}`, e)}>
+                                <div className='venue-info'>
+                                    <figure className='venue-img-cont'>
+                                        <img src={musicianProfile.picture} alt={musicianProfile.name} className='venue-img' />
+                                    </figure>
+                                    <div className='names-div'>
+                                        <h1>{musicianProfile.name}</h1>
+                                        <p>{musicianProfile.musicianType}</p>
+                                    </div>
+                                </div>
+                                <button className='btn tertiary'>
+                                    <NewTabIcon />
+                                </button>
                             </div>
                         )}
-                        <div className='info-cont'>
-                            <h3 className='subject'>Requested Genres</h3>
-                            <h3 className='text'>{formatGenres(nextGig.genre)}</h3>
+                    <div className='body'>
+                        <div className='primary-info'>
+                            <div className='info-cont'>
+                                <h3 className='subject'>Date and Time</h3>
+                                <h3 className='text'>{formatDate(nextGig.date)} {formatDurationSpan(nextGig.startTime, nextGig.duration)}</h3>
+                            </div>
+                            <div className='info-cont'>
+                                <h3 className='subject'>Gig Type</h3>
+                                <h3 className='text'>{nextGig.kind}</h3>
+                            </div>
+                            {nextGig.kind !== "Open Mic" && nextGig.kind !== 'Ticketed Gig' && (
+                                <div className='info-cont'>
+                                    <h3 className='subject'>Agreed Fee</h3>
+                                    <h3 className='text'>{nextGig.agreedFee}</h3>
+                                </div>
+                            )}
+                            <div className='info-cont'>
+                                <h3 className='subject'>Requested Genres</h3>
+                                <h3 className='text'>{formatGenres(nextGig.genre)}</h3>
+                            </div>
+                        </div>
+                        <div className='actions'>
+                            <button className='btn primary' onClick={() => setShowPromoteModal(true)}>
+                                <PeopleGroupIconSolid /> Promote Gig
+                            </button>
+                            <button className='btn danger' onClick={() => handleGigCancelation()}>
+                                Cancel Gig
+                            </button>
                         </div>
                     </div>
-                    <div className='actions'>
-                        <button className='btn primary' onClick={() => setShowPromoteModal(true)}>
-                            <PeopleGroupIconSolid /> Promote Gig
+                    {(!loading) && (
+                        <button className='btn close tertiary' onClick={() => {setNextGigModal(false)}}>
+                            Close
                         </button>
-                        <button className='btn danger' onClick={() => handleGigCancelation()}>
-                            Cancel Gig
-                        </button>
-                    </div>
+                    )}
                 </div>
-                {(!loading) && (
-                    <button className='btn close tertiary' onClick={() => {setNextGigModal(false)}}>
-                        Close
-                    </button>
+                )}
+                {showPromoteModal && (
+                    <PromoteModal setShowSocialsModal={setShowPromoteModal} musicianId={musicianProfile.musicianId} />
                 )}
             </div>
-            )}
-            {showPromoteModal && (
-                <PromoteModal setShowSocialsModal={setShowPromoteModal} musicianId={musicianProfile.musicianId} />
-            )}
-        </div>
+        </Portal>
     );
 };

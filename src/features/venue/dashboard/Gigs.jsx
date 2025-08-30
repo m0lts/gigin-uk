@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { openInNewTab } from '../../../services/utils/misc';
 import { RequestCard } from '../components/RequestCard';
 import { removeVenueRequest } from '../../../services/venues';
+import Portal from '../../shared/components/Portal';
 
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests }) => {
@@ -612,8 +613,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
             )
           )}
             {confirmModal && (
-                <div className="modal confirm">
-                    <div className="modal-content">
+              <Portal>
+                <div className="modal confirm" onClick={() => setConfirmModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <h3>
                             {confirmMessage}
                         </h3>
@@ -627,6 +629,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                         </div>
                     </div>
                 </div>
+              </Portal>
             )}
         </div>
       </>

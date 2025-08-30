@@ -28,8 +28,8 @@ import { BandMembersTab } from '../bands/BandMembersTab';
 
 const VideoModal = ({ video, onClose }) => {
     return (
-        <div className='modal'>
-            <div className='modal-content transparent'>
+        <div className='modal' onClick={onClose}>
+            <div className='modal-content transparent' onClick={(e) => e.stopPropagation()}>
                 <span className='close' onClick={onClose}>&times;</span>
                 <video controls autoPlay style={{ width: '100%' }}>
                     <source src={video.file} type='video/mp4' />
@@ -530,40 +530,42 @@ return (
 
       {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
       {inviteMusicianModal && (
-              <div className='modal'>
-                  <div className='modal-content'>
-                      <div className="modal-header">
-                          <InviteIconSolid />
-                          <h2>Invite {profile.name} to a Gig?</h2>
-                          {usersGigs.length > 0 ? (
-                              <p>Select a gig you've already posted, or click 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
-                          ) : (
-                              <p>You have no gig posts availabe for invitation. You can create one by clicking 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
-                          )}
-                      </div>
-                      <div className='gig-selection'>
-                          {usersGigs.length > 0 && (
-                              usersGigs.map((gig, index) => (
-                                  <div className={`card ${selectedGig === gig ? 'selected' : ''}`} key={index} onClick={() => setSelectedGig(gig)}>
-                                      <div className="gig-details">
-                                          <h4 className='text'>{gig.gigName}</h4>
-                                          <h5>{gig.venue.venueName}</h5>
-                                      </div>
-                                      <p className='sub-text'>{formatDate(gig.date, 'short')} - {gig.startTime}</p>
+        <Portal>
+          <div className='modal' onClick={() => setInviteMusicianModal(false)}>
+              <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                      <InviteIconSolid />
+                      <h2>Invite {profile.name} to a Gig?</h2>
+                      {usersGigs.length > 0 ? (
+                          <p>Select a gig you've already posted, or click 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
+                      ) : (
+                          <p>You have no gig posts availabe for invitation. You can create one by clicking 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
+                      )}
+                  </div>
+                  <div className='gig-selection'>
+                      {usersGigs.length > 0 && (
+                          usersGigs.map((gig, index) => (
+                              <div className={`card ${selectedGig === gig ? 'selected' : ''}`} key={index} onClick={() => setSelectedGig(gig)}>
+                                  <div className="gig-details">
+                                      <h4 className='text'>{gig.gigName}</h4>
+                                      <h5>{gig.venue.venueName}</h5>
                                   </div>
-                              ))
-                          )}
-                      </div>
-                      <button className="btn secondary" onClick={handleBuildGigForMusician}>
-                          Build New Gig For Musician
-                      </button>
-                      <div className='two-buttons'>
-                          <button className='btn tertiary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>
-                          <button className='btn primary' disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
-                      </div>
+                                  <p className='sub-text'>{formatDate(gig.date, 'short')} - {gig.startTime}</p>
+                              </div>
+                          ))
+                      )}
+                  </div>
+                  <button className="btn secondary" onClick={handleBuildGigForMusician}>
+                      Build New Gig For Musician
+                  </button>
+                  <div className='two-buttons'>
+                      <button className='btn tertiary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>
+                      <button className='btn primary' disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
                   </div>
               </div>
-          )}
+          </div>
+        </Portal>
+      )}
     </div>
   );
 };

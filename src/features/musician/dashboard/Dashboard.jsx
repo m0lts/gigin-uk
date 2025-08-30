@@ -17,6 +17,7 @@ import { listenToUserConversations } from '../../../services/conversations';
 import { mergeAndSortConversations } from '@services/utils/filtering';
 import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 import { TopBar } from './TopBar';
+import Portal from '../../shared/components/Portal';
 
 
 export const MusicianDashboard = ({ user }) => {
@@ -115,15 +116,17 @@ export const MusicianDashboard = ({ user }) => {
               </div>
           </div>
       {showReviewModal && gigToReview && (
-        <ReviewModal
-          gigData={gigToReview}
-          setGigData={setGigToReview}
-          reviewer="musician"
-          onClose={() => {
-            setShowReviewModal(false);
-            localStorage.setItem(`reviewedGig-${gigToReview.gigId}`, 'true');
-          }}
-        />
+        <Portal>
+          <ReviewModal
+            gigData={gigToReview}
+            setGigData={setGigToReview}
+            reviewer="musician"
+            onClose={() => {
+              setShowReviewModal(false);
+              localStorage.setItem(`reviewedGig-${gigToReview.gigId}`, 'true');
+            }}
+          />
+        </Portal>
       )}
     </>
   );

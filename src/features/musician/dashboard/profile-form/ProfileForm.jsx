@@ -14,8 +14,8 @@ import { sendTestimonialRequestEmail } from '../../../../services/emails';
 
 const VideoModal = ({ video, onClose }) => {
     return (
-        <div className='modal'>
-            <div className='modal-content'>
+        <div className='modal' onClick={onClose}>
+            <div className='modal-content' onClick={(e) => e.stopPropagation()}>
                 <span className='close' onClick={onClose}>&times;</span>
                 <video className='video' controls autoPlay>
                     <source src={typeof video.url === 'string' ? video.url : URL.createObjectURL(video.url)} type='video/mp4' />

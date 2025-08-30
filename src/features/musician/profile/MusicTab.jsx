@@ -8,8 +8,8 @@ import { generateVideoThumbnail, uploadTracks, uploadVideosWithThumbnails } from
 
 const VideoModal = ({ video, onClose }) => {
     return (
-        <div className='modal'>
-            <div className='modal-content transparent'>
+        <div className='modal' onClick={onClose}>
+            <div className='modal-content transparent' onClick={(e) => e.stopPropagation()}>
                 <span className='close' onClick={onClose}>&times;</span>
                 <video controls autoPlay style={{ width: '100%' }}>
                     <source src={video.file} type='video/mp4' />

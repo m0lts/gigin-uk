@@ -11,6 +11,7 @@ import { useUserLocation } from '@hooks/useUserLocation';
 import { fetchNearbyGigs } from '../../services/gigs';
 import { FilterPanel } from './FilterPanel';
 import { TopBanner } from './TopBanner';
+import Portal from '../shared/components/Portal';
 
 export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
 
@@ -196,11 +197,13 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
                 </div>
             </div>
             {showWelcomeModal && (
+              <Portal>
                 <WelcomeModal
                     user={user}
                     setShowWelcomeModal={setShowWelcomeModal}
                     role='musician'
                 />
+              </Portal>
             )}
         </section>
     );

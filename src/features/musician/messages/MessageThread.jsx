@@ -17,6 +17,7 @@ import { fetchSavedCards, confirmGigPayment } from '@services/functions';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
 import { formatDate } from '../../../services/utils/dates';
+import Portal from '../../shared/components/Portal';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
@@ -691,31 +692,35 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 <button type='submit' className='btn primary'><SendMessageIcon /></button>
             </form>
             {showPaymentModal && (
-                <PaymentModal 
-                    savedCards={savedCards}
-                    onSelectCard={handleSelectCard}
-                    onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
-                    gigData={gigData}
-                    setMakingPayment={setMakingPayment}
-                    makingPayment={makingPayment}
-                    setPaymentSuccess={setPaymentSuccess}
-                    paymentSuccess={paymentSuccess}
-                    setSavedCards={setSavedCards}
-                />
+                <Portal>
+                    <PaymentModal 
+                        savedCards={savedCards}
+                        onSelectCard={handleSelectCard}
+                        onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
+                        gigData={gigData}
+                        setMakingPayment={setMakingPayment}
+                        makingPayment={makingPayment}
+                        setPaymentSuccess={setPaymentSuccess}
+                        paymentSuccess={paymentSuccess}
+                        setSavedCards={setSavedCards}
+                    />
+                </Portal>
             )}
-            {showReviewModal &&
-                <ReviewModal
-                    gigData={gigData}
-                    setGigData={setGigData}
-                    reviewer={userRole}
-                    onClose={(reviewSubmitted) => {
-                        setShowReviewModal(false);
-                        if (reviewSubmitted) {
-                            handleMessageReviewed();
-                        }
-                    }}
-                />
-            }
+            {showReviewModal && (
+                <Portal>
+                    <ReviewModal
+                        gigData={gigData}
+                        setGigData={setGigData}
+                        reviewer={userRole}
+                        onClose={(reviewSubmitted) => {
+                            setShowReviewModal(false);
+                            if (reviewSubmitted) {
+                                handleMessageReviewed();
+                            }
+                        }}
+                    />
+                </Portal>
+            )}
         </>
     );
 };
