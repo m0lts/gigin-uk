@@ -153,7 +153,7 @@ export const SavedMusicians = ({ user }) => {
                                     <h2>{name}</h2>
                                     <p>{musicianType}</p>
                                 </div>
-                                <button className="btn icon-box" onClick={() => handleMusicianUnsave(musician)}>
+                                <button className="btn icon" onClick={() => handleMusicianUnsave(musician)}>
                                     <SavedIcon />
                                 </button>
                             </div>
@@ -195,11 +195,12 @@ export const SavedMusicians = ({ user }) => {
                             </div>
                             */}
                             <button
-                                className="btn primary"
+                                className="btn tertiary"
                                 onClick={(e) => openInNewTab(`/${encodeURIComponent(id)}/null`, e)}
                                 disabled={!id}
                             >
-                                <span>View Profile</span>
+                                <span>Open Profile</span>
+                                <NewTabIcon />
                             </button>
                         </div>
                         );

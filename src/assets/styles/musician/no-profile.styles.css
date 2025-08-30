@@ -7,7 +7,6 @@
 
  .modal.profile-select .modal-content {
     position: relative;
-    overflow: hidden;
 }
 
  .modal.profile-select .modal-content .profile-preview {
@@ -23,7 +22,9 @@
 
  .modal.profile-select .modal-content .banner-frame {
     width: 100%;
-    height:250px;
+    height: 25vh;
+    max-height:250px;
+    min-height: 150px;
     background: var(--gn-grey-250);
     border-radius: 12px;
     transition: all 0.2s linear;

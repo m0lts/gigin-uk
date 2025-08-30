@@ -1,6 +1,10 @@
 
 /* NEW */
 
+.body.profile {
+    padding-left:0 !important;
+}
+
 .profile .profile-form .profile-section .btn.secondary {
     display: flex;
     align-items: center;
@@ -407,18 +411,20 @@
 /* MUSICIAN PROFILE */
 
 .body.profile-preview {
+    padding: 0 !important;
+    padding-right: 2rem !important;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
-
 
 .body.profile-preview::-webkit-scrollbar {
     display: none;
 }
 
 /* PROFILE */
+
 .musician-profile-hero {
-    min-height: 35vh;
+    height: 300px;
     width:97.5%;
     margin:0.5rem auto;
     position: relative;
@@ -443,6 +449,24 @@
     height:100%;
     object-fit: cover;
     z-index: 0;
+}
+
+.musician-profile-hero .background-image.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    background-color: var(--gn-off-black);
+}
+
+.musician-profile-hero .background-image.empty h4 {
+    color: var(--gn-grey-200);
+}
+
+.musician-profile-hero .background-image.empty .icon {
+    font-size: 2.5rem;
+    color: var(--gn-grey-200);
 }
 
 .musician-profile-hero .primary-information {
@@ -491,6 +515,7 @@
 
 
 .musician-profile .musician-profile-body {
+    margin-top: 1rem;
     width: 100%;
     display: grid;
     grid-template-columns: 65% auto;
@@ -508,13 +533,82 @@
 }
 
 .musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container {
+    display: grid;
+    grid-template-columns: 35% auto;
+    gap:1rem;
+    border-radius: 1rem;
+    margin: 1rem 0;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video {
+    position: relative;
+    width:100%;
+    height:250px;
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video img {
+    width:100%;
+    height:100%;
+    object-fit: cover;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video-details {
+    position: absolute;
+    bottom: 0.5rem;
+    left:0.5rem;
+    z-index: 2;
+    color: var(--gn-white);
+    text-shadow: 0 0 10px var(--gn-grey-700);
+    overflow: hidden;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video-details h3 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video .icon {
+    position: absolute;
+    top:50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--gn-white);
+    font-size: 2.5rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video .icon:hover {
+    background-color: transparent;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details {
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: flex-end;
     justify-content: space-between;
 }
 
-.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .play-buttons .icon {
-    font-size: 2rem;
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details .bio-text {
+    font-size: 1.1rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details .interactive-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap:2px;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details .interactive-buttons .icon {
+    color: var(--gn-off-black);
+    font-size: 1.75rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details .interactive-buttons .icon.orange .icon {
+    color: var(--gn-orange);
 }
 
 .musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs {
@@ -547,6 +641,7 @@
 .musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs .musician-profile-tab {
     padding:5px;
     font-weight: 500;
+    font-size: 1.25rem;
     cursor: pointer;
     transition: color 200ms linear;
 }
@@ -557,7 +652,7 @@
 
 .musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs .musician-profile-tab.active {
     font-weight: 600;
-    border-bottom: 2px solid var(--gn-black);
+    border-bottom: 2px solid var(--gn-orange);
 }
 
 /* UPCOMING GIGS */
@@ -566,7 +661,7 @@
 
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks {
     position: sticky;
-    top:0;
+    top:1rem;
 }
 
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box {
@@ -648,6 +743,13 @@
     box-shadow: 0 0 0 1px var(--gn-grey-300);
 }
 
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks {
+    border:1px solid var(--gn-grey-300);
+    border-radius: 1rem;
+    padding:1rem;
+    box-shadow: 0 0 3px var(--gn-grey-400);
+}
+
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-list {
     list-style: none;
 }
@@ -664,6 +766,11 @@
 
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-item .icon {
     font-size: 1.5rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-details {
+    padding:0.5rem 0;
+    padding-left: 0.25rem;
 }
 
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-name {
@@ -701,6 +808,8 @@
 /* HOME SECTION */
 .musician-profile .musician-profile-home .media-collage {
     margin: 1rem 0;
+    border-top: 1px solid var(--gn-grey-300);
+    padding: 1rem 0;
     column-count: 3;
     column-gap: 0.75rem;
 }
@@ -944,6 +1053,34 @@
     border-radius: 50%;
     width:50px;
     height:50px;
+}
+
+
+
+/* EMPTY CONTAINERS */
+
+.musician-profile .empty-container {
+    background-color: var(--gn-grey-350);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    padding: 2rem;
+    gap:5px;
+    width:100%;
+    height:100%;
+}
+
+.musician-profile .showcase-video.empty-container .icon {
+    position: relative !important;
+    color: var(--gn-off-black) !important;
+    font-size: 1rem !important;
+    top: 0 !important;;
+    left: 0 !important;;
+    translate: none !important;
+    transform: translate(0%, 0%) !important;
 }
 
 

@@ -5,7 +5,7 @@ import { OverviewTab } from '@features/musician/profile/OverviewTab';
 import { MusicTab } from '@features/musician/profile/MusicTab';
 import { ReviewsTab } from '@features/musician/profile/ReviewsTab';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { InviteIconSolid, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
+import { EmptyIcon, InviteIconSolid, NoImageIcon, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
 import { AboutTab } from '../profile/AboutTab';
 import { getGigsByIds, inviteToGig } from '../../../services/gigs';
 import Skeleton from 'react-loading-skeleton';
@@ -184,11 +184,11 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
     const renderActiveTabContent = () => {
         switch (activeTab) {
             case 'home':
-                return <OverviewTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} videoToPlay={videoToPlay} setVideoToPlay={setVideoToPlay} bandAdmin={bandAdmin} />; 
-            case 'about':
+                return <OverviewTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} videoToPlay={videoToPlay} setVideoToPlay={setVideoToPlay} bandAdmin={bandAdmin} setCurrentTrack={setCurrentTrack} />; 
+            case 'tech-info':
                 return <AboutTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
-            case 'prev-shows':
-                return <ReviewsTab profile={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
+            // case 'tech-info':
+            //     return <ReviewsTab profile={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
             // case 'members':
             //   return bandProfile ? <BandMembersTab band={profile} bandMembers={bandMembers} setBandMembers={setBandMembers} musicianId={musicianId} bandAdmin={bandAdmin} /> : null;
             default:
@@ -342,87 +342,64 @@ return (
                 />
             )}
             <div className={`musician-profile-hero ${padding === '15vw' ? 'large-padding' : 'normal-padding'}`}>
-                <img
-                    src={profile?.picture}
-                    alt={profile?.name}
-                    className="background-image"
-                />
+                {profile?.picture ? (
+                    <img src={profile?.picture} alt={profile.name} className='background-image' />
+                ) : (
+                    <div className="background-image empty">
+                        <NoImageIcon />
+                        <h4>No Artist Image</h4>
+                    </div>
+                )}
                 <div className="primary-information">
                     {profile?.verified && (
                     <div className="verified-tag">
                         <VerifiedIcon />
-                        <p>Verified Musician</p>
+                        <p>Verified Artist</p>
                     </div>
                     )}
                     <h1 className="venue-name">
-                    {profile?.name}
-                    <span className="orange-dot">.</span>
+                      {profile?.name}
+                      <span className="orange-dot">.</span>
                     </h1>
                     <h4 className="number-of-gigs">
-                    {profile?.gigsPerformed || 0} Gigs Performed
+                      {profile?.gigsPerformed || 0} Gigs Performed
                     </h4>
                     <div className="action-buttons">
-                    <button
-                        className="btn quaternary"
-                        onClick={() => handleInviteMusician()}
-                    >
-                        Invite to Gig
-                    </button>
-                    {!musicianSaved ? (
-                        <button className='btn quaternary' onClick={handleSaveMusician}>
-                            {savingMusician ? (
-                                <LoadingThreeDots />
-                            ) : (
-                                <>
-                                    <SaveIcon />
-                                    Save
-                                </>
-                            )}
-                        </button>
-                    ) : (
-                        <button className='btn quaternary' onClick={handleUnsaveMusician}>
-                            {savingMusician ? (
-                                <LoadingThreeDots />
-                            ) : (
-                                <>
-                                    <SavedIcon />
-                                    Unsave
-                                </>
-                            )}
-                        </button>   
-                    )}
+                      <button
+                          className="btn quaternary"
+                          onClick={() => handleInviteMusician()}
+                      >
+                          Invite to Gig
+                      </button>
+                      {!musicianSaved ? (
+                          <button className='btn quaternary' onClick={handleSaveMusician}>
+                              {savingMusician ? (
+                                  <LoadingThreeDots />
+                              ) : (
+                                  <>
+                                      Save
+                                  </>
+                              )}
+                          </button>
+                      ) : (
+                          <button className='btn quaternary' onClick={handleUnsaveMusician}>
+                              {savingMusician ? (
+                                  <LoadingThreeDots />
+                              ) : (
+                                  <>
+                                      Unsave
+                                  </>
+                              )}
+                          </button>   
+                      )}
                     </div>
                 </div>
             </div>
         </>
       )}
 
-      <div className="musician-profile-body" style={{ padding: `0 ${!viewingOwnProfile ? padding : '0'}` }}>
+      <div className="musician-profile-body" style={{ padding: `0 ${!viewingOwnProfile ? padding : '0 !important'}` }}>
         <div className="musician-profile-information-container">
-          {(profile?.bio || profile?.videos?.length || profile?.tracks?.length) && (
-            <div className="musician-profile-bio-buttons-container">
-              {profile?.bio?.text && <h4>{profile.bio.text}</h4>}
-              <div className="play-buttons">
-                {!!profile?.videos?.length && (
-                  <button
-                    className="btn icon"
-                    onClick={() => setVideoToPlay(profile.videos[0])}
-                  >
-                    <PlayVideoIcon />
-                  </button>
-                )}
-                {!!profile?.tracks?.length && (
-                  <button
-                    className="btn icon"
-                    onClick={() => handlePlayTrack(profile.tracks[0])}
-                  >
-                    <PlayIcon />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
           <div className="musician-profile-information">
             <nav
               className="musician-profile-tabs"
@@ -432,27 +409,13 @@ return (
                 onClick={() => setActiveTab("home")}
                 className={`musician-profile-tab ${activeTab === "home" ? "active" : ""}`}
               >
-                Home
+                About Me
               </p>
               <p
-                onClick={() => setActiveTab("prev-shows")}
-                className={`musician-profile-tab ${activeTab === "prev-shows" ? "active" : ""}`}
+                onClick={() => setActiveTab("tech-info")}
+                className={`musician-profile-tab ${activeTab === "tech-info" ? "active" : ""}`}
               >
-                Previous Shows
-              </p>
-              {/* {(bandProfile && viewingOwnProfile) && (
-                <p
-                  onClick={() => setActiveTab("members")}
-                  className={`musician-profile-tab ${activeTab === "members" ? "active" : ""}`}
-                >
-                  Band Members
-                </p>
-              )} */}
-              <p
-                onClick={() => setActiveTab("about")}
-                className={`musician-profile-tab ${activeTab === "about" ? "active" : ""}`}
-              >
-                About
+                Technical Information
               </p>
             </nav>
 
@@ -461,8 +424,6 @@ return (
         </div>
 
         <div className="musician-profile-gigs-and-tracks">
-          {!!profile?.confirmedGigs?.length && (
-            <>
               {currentTrack && (
                 <div className="track-player">
                   <div className="track-info">
@@ -477,10 +438,11 @@ return (
                     autoPlay
                     src={currentTrack.file}
                     onEnded={handleStopTrack}
-                  />
+                    />
                 </div>
               )}
 
+            {/* {!!profile?.confirmedGigs?.length && (
               <div className="gigs-box">
                 {loadingGigs ? (
                   <Skeleton width={"100%"} height={250} />
@@ -528,29 +490,41 @@ return (
                   <p>No upcoming gigs found</p>
                 )}
               </div>
-            </>
-          )}
+          )} */}
 
-          {!!profile?.tracks?.length && (
             <div className="musician-tracks">
-              <h3>Listen</h3>
-              <ul className="track-list">
-                {profile.tracks.map((track) => (
-                  <li key={track?.id || track?.file} className="track-item">
-                    <button
-                      type="button"
-                      className="btn icon"
-                      onClick={() => handlePlayTrack(track)}
-                      aria-label={`Play ${track?.title}`}
-                    >
-                      <PlayIcon />
+              <h3>Tracks</h3>
+              {profile?.tracks?.length ? (
+                <ul className="track-list">
+                  {profile.tracks.map((track) => (
+                    <li key={track?.id || track?.file} className="track-item">
+                      <button
+                        type="button"
+                        className="btn icon"
+                        onClick={() => handlePlayTrack(track)}
+                        aria-label={`Play ${track?.title}`}
+                      >
+                        <PlayIcon />
+                      </button>
+                      <div className="track-details">
+                        <span className="track-name">{track?.title}</span>
+                        <p>{track?.date}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="empty-container">
+                  <EmptyIcon />
+                  <h4>No Tracks Uploaded</h4>
+                  {viewingOwnProfile && (
+                    <button className="btn tertiary" onClick={() => setShowPreview(false)}>
+                      Add Tracks
                     </button>
-                    <span className="track-name">{track?.title}</span>
-                  </li>
-                ))}
-              </ul>
+                  )}
+                </div>
+              )}
             </div>
-          )}
         </div>
       </div>
 

@@ -205,41 +205,6 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
                     ))}
                 </div>
             )}
-            {(musicianData?.socialMedia?.instagram !== '' || musicianData?.socialMedia?.facebook !== '' || musicianData?.socialMedia?.twitter !== '' || musicianData?.socialMedia?.spotify !== '' || musicianData?.socialMedia?.soundcloud !== '' || musicianData?.socialMedia?.youtube !== '') && (
-                <div className="musician-socials about-section">
-                    <h3>Socials</h3>
-                    {musicianData.socialMedia.facebook && (
-                        <a href={ensureProtocol(musicianData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
-                            <FacebookIcon />
-                        </a>
-                    )}
-                    {musicianData.socialMedia.instagram && (
-                        <a href={ensureProtocol(musicianData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
-                            <InstagramIcon />
-                        </a>
-                    )}
-                    {musicianData.socialMedia.twitter && (
-                        <a href={ensureProtocol(musicianData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
-                            <TwitterIcon />
-                        </a>
-                    )}
-                    {musicianData.socialMedia.spotify && (
-                        <a href={ensureProtocol(musicianData.socialMedia.spotify)} target='_blank' rel='noreferrer'>
-                            <SpotifyIcon />
-                        </a>
-                    )}
-                    {musicianData.socialMedia.soundcloud && (
-                        <a href={ensureProtocol(musicianData.socialMedia.soundcloud)} target='_blank' rel='noreferrer'>
-                            <SoundcloudIcon />
-                        </a>
-                    )}
-                    {musicianData.socialMedia.youtube && (
-                        <a href={ensureProtocol(musicianData.socialMedia.youtube)} target='_blank' rel='noreferrer'>
-                            <YoutubeIcon />
-                        </a>
-                    )}
-                </div>
-            )}
         </div>
     )
 }

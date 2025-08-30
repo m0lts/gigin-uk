@@ -239,7 +239,7 @@ export const NoProfileModal = ({
 
     return (
         <div className="modal profile-select" role="dialog" aria-modal="true">
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
 
             <AnimatePresence mode="wait" custom={direction}>
                 {stage === Stage.SELECT && (
@@ -351,7 +351,7 @@ export const NoProfileModal = ({
                     <div className="modal-header">
                         <MusicianIconSolid />
                         <h2>Set up your Musician Profile (Optional)</h2>
-                        <p>You can skip this step and fill it in later.</p>
+                        <p>We recommend a full profile setup to add videos and music.</p>
                     </div>
 
                     {/* Profile Preview */}
@@ -394,12 +394,11 @@ export const NoProfileModal = ({
                         </div>
 
                         <div className="display-name">
-                            <label>Display Name <EditIcon /></label>
+                            <label>Stage Name <EditIcon /></label>
                             <input
                                 type="text"
                                 value={musicianName}
                                 onChange={(e) => setMusicianName(e.target.value)}
-                                placeholder="Your stage name"
                             />
                         </div>
                     </div>
@@ -437,7 +436,7 @@ export const NoProfileModal = ({
                     <div className="modal-header">
                         <PeopleGroupIconSolid />
                         <h2>Create your Band</h2>
-                        <p>Enter a display name for your band. You can add an image now or later.</p>
+                        <p>We recommend a full profile setup to add videos and music. Complete your profile in your dashboard once you've created your band.</p>
                     </div>
 
                     {/* Band Preview */}
@@ -480,12 +479,11 @@ export const NoProfileModal = ({
                         </div>
 
                         <div className="display-name">
-                            <label>Band Display Name*</label>
+                            <label>Band Name*</label>
                             <input
                                 type="text"
                                 value={bandName}
                                 onChange={(e) => setBandName(e.target.value)}
-                                placeholder="e.g. The Midnight Owls"
                             />
                         </div>
                     </div>

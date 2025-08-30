@@ -3,7 +3,7 @@ import '@styles/musician/musician-profile.styles.css'
 import { ProfilePreview } from './profile-preview/ProfilePreview';
 import { ProfileForm } from './profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
-import { VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { NoImageIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 
 
 export const Profile = ({ musicianProfile, user }) => {
@@ -19,12 +19,19 @@ export const Profile = ({ musicianProfile, user }) => {
     return (
         <>
             <div className="musician-profile-hero">
-                <img src={musicianProfile?.picture} alt={musicianProfile.name} className='background-image' />
+                {musicianProfile?.picture ? (
+                    <img src={musicianProfile?.picture} alt={musicianProfile.name} className='background-image' />
+                ) : (
+                    <div className="background-image empty">
+                        <NoImageIcon />
+                        <h4>No Artist Image</h4>
+                    </div>
+                )}
                 <div className="primary-information">
-                    {!musicianProfile?.verified && (
+                    {musicianProfile?.verified && (
                         <div className="verified-tag">
                             <VerifiedIcon />
-                            <p>Verified Musician</p>
+                            <p>Verified Artist</p>
                         </div>
                     )}
                     <h1 className="venue-name">

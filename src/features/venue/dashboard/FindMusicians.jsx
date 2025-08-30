@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { openInNewTab } from '@services/utils/misc';
-import { PlayIcon, SaveIcon, SavedIcon, SearchIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, SearchIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { fetchMusiciansPaginated } from '../../../services/musicians';
@@ -49,7 +49,7 @@ export const FindMusicians = ({ user }) => {
             lastDocId: reset ? null : lastDocId,
             limitCount: 50,
             type: selectedType,
-            genres: selectedGenres,
+            genres: selectedGenres === 'Any' ? '' : selectedGenres,
             search: searchQuery,
           });
           setMusicians(prev => reset ? newMusicians : [...prev, ...newMusicians]);
@@ -159,11 +159,11 @@ export const FindMusicians = ({ user }) => {
                 <select
                     value={selectedGenres}
                     onChange={(e) => {
-                        const selected = Array.from(e.target.selectedOptions, o => o.value);
-                        updateParam('genres', selected);
-                    }}
+                        const v = e.target.value;
+                        updateParam('genres', v === 'Any' ? '' : v);
+                      }}
                     >
-                        <option value="">Any</option>
+                    <option value="">Any</option>
                     <option value="Rock">Rock</option>
                     <option value="Jazz">Jazz</option>
                     <option value="Pop">Pop</option>
@@ -224,9 +224,16 @@ export const FindMusicians = ({ user }) => {
                         return (
                         <div className='musician-card' key={id}>
                             <div className={`media-container empty`}>
-                                <figure className="profile-picture-only">
-                                    <img src={picture} alt={name} />
-                                </figure>
+                                {picture ? (
+                                    <figure className="profile-picture-only">
+                                        <img src={picture} alt={name} />
+                                    </figure>
+                                ) : (
+                                    <div className="profile-picture-only empty">
+                                        <NoImageIcon />
+                                        <h4>No Artist Image</h4>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="musician-card-flex">
@@ -234,7 +241,7 @@ export const FindMusicians = ({ user }) => {
                                     <h2>{name}</h2>
                                     <p>{musicianType}</p>
                                 </div>
-                                <button className="btn icon-box" onClick={() => handleMusicianSave(musician)}>
+                                <button className="btn icon" onClick={() => handleMusicianSave(musician)}>
                                     {user?.savedMusicians?.includes(id) ? <SavedIcon /> : <SaveIcon />}
                                 </button>
                             </div>
@@ -276,11 +283,12 @@ export const FindMusicians = ({ user }) => {
                             </div> */}
 
                             <button
-                                className="btn primary"
+                                className="btn tertiary"
                                 onClick={(e) => openInNewTab(`/${encodeURIComponent(id)}/null`, e)}
                                 disabled={!id}
                             >
-                                <span>View Profile</span>
+                                <span>Open Profile</span>
+                                <NewTabIcon />
                             </button>
                         </div>
                         );

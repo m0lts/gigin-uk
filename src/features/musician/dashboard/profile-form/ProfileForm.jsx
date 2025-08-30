@@ -53,7 +53,7 @@ async function geocodeCity(city) {
     }
   }
 
-export const ProfileForm = ({ user, musicianProfile, band = false, expand, setExpand }) => {
+export const ProfileForm = ({ user, musicianProfile, band = false, expand, setShowPreview }) => {
     const [preview, setPreview] = useState(musicianProfile.picture || '');
     const [formData, setFormData] = useState({
         musicianId: uuidv4(),
@@ -814,12 +814,12 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                             {genres[formData.musicianType || 'Musician'].map((g) => (
                                 <div
                                     key={g}
-                                    className={`selection-card ${formData.genres.includes(g) ? 'selected' : ''}`}
+                                    className={`selection-card ${formData?.genres?.includes(g) ? 'selected' : ''}`}
                                     onClick={() =>
                                     handleChange('genres',
-                                        formData.genres.includes(g)
-                                        ? formData.genres.filter(genre => genre !== g)
-                                        : [...formData.genres, g]
+                                        formData?.genres?.includes(g)
+                                        ? formData?.genres?.filter(genre => genre !== g)
+                                        : [...formData?.genres, g]
                                     )
                                     }
                                 >
@@ -838,12 +838,12 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                             {instruments[formData.musicianType || 'Musician'].map((i) => (
                                 <div
                                     key={i}
-                                    className={`selection-card ${formData.instruments.includes(i) ? 'selected' : ''}`}
+                                    className={`selection-card ${formData?.instruments?.includes(i) ? 'selected' : ''}`}
                                     onClick={() =>
                                     handleChange('instruments',
-                                        formData.instruments.includes(i)
-                                        ? formData.instruments.filter(instrument => instrument !== i)
-                                        : [...formData.instruments, i]
+                                        formData?.instruments?.includes(i)
+                                        ? formData?.instruments?.filter(instrument => instrument !== i)
+                                        : [...formData?.instruments, i]
                                     )
                                     }
                                 >
@@ -1196,13 +1196,13 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                             {requiredEquipment.map((e) => (
                                 <div
                                     key={e}
-                                    className={`selection-card ${formData.equipmentRequired.includes(e) ? 'selected' : ''}`}
+                                    className={`selection-card ${formData?.equipmentRequired?.includes(e) ? 'selected' : ''}`}
                                     onClick={() =>
                                     handleChange(
                                         'equipmentRequired',
-                                        formData.equipmentRequired.includes(e)
-                                        ? formData.equipmentRequired.filter(item => item !== e)
-                                        : [...formData.equipmentRequired, e]
+                                        formData?.equipmentRequired?.includes(e)
+                                        ? formData?.equipmentRequired?.filter(item => item !== e)
+                                        : [...formData?.equipmentRequired, e]
                                     )
                                     }
                                 >
@@ -1236,11 +1236,11 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                             </div>
                         </div>
                         <div className="input-container">
-                            <label htmlFor="bio" className='label'>Write a bio for your profile</label>
+                            <label htmlFor="bio" className='label' style={{ color: formData.bio.text.length > 275 ? 'red' : ''}}>Write a bio for your profile (300 characters max) — {formData.bio.text.length}/300</label>
                             <textarea
                                 className='input bio'
                                 style={{ width: '50%', height: '200px', minWidth: 300, resize: 'none' }}
-                                
+                                maxLength={300}
                                 value={formData.bio.text}
                                 onChange={(e) => handleNestedChange('bio', 'text', e.target.value)}
                             />
@@ -1314,7 +1314,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setEx
                     <button className="btn primary" onClick={handleSubmit} disabled={uploadingMedia}>
                         Save
                     </button>
-                    <button className="btn tertiary" onClick={() => setFormData(musicianProfile)}>
+                    <button className="btn tertiary" onClick={() => {setFormData(musicianProfile); setShowPreview(true)}}>
                         Discard Changes
                     </button>
                 </div>

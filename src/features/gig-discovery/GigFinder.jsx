@@ -57,9 +57,9 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
       }, [filters]);
 
     useEffect(() => {
-        if (locationError) {
-            console.warn('User location error:', locationError);
-        }
+      if (locationError) {
+        console.warn('User location error:', locationError);
+      }
     }, [locationError]);
 
     useEffect(() => {

@@ -1022,9 +1022,9 @@
 
 /* PROFILE */
 .window.musicians .musician-profile-hero {
-    min-height: 35vh;
-    width:97.5%;
-    margin:0.5rem auto;
+    height: 300px;
+    width:calc(100% - 2rem);
+    margin:0.5rem 0;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -1039,6 +1039,15 @@
     height:100%;
     object-fit: cover;
     z-index: 0;
+}
+
+.window.musicians .musician-profile-hero .background-image.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    background-color: var(--gn-off-black);
 }
 
 .window.musicians .musician-profile-hero .primary-information {
