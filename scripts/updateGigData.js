@@ -8,7 +8,7 @@ import { geohashForLocation } from 'geofire-common';
  * - Converts `coordinates` to a `geo` object with `geopoint` and `geohash` (for GeoFirestore)
  */
 const migrateGigsToAddGeoHash = async () => {
-  const gigsRef = collection(firestore, 'gigs');
+  const gigsRef = collection(firestore, 'venues');
   const snapshot = await getDocs(gigsRef);
 
   const batch = writeBatch(firestore);

@@ -3,23 +3,28 @@ import mapboxgl from 'mapbox-gl';
 import { ErrorIcon } from '@features/shared/ui/extras/Icons';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '@services/utils/dates';
-import { LoadingThreeDots } from '../shared/ui/loading/Loading';
+import { LoadingSpinner, LoadingThreeDots } from '../shared/ui/loading/Loading';
 import { openInNewTab } from '../../services/utils/misc';
+import { MapIcon } from '../shared/ui/extras/Icons';
 
-export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, gigMarkerDisplay }) => {
+export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, gigMarkerDisplay, userLocation, onSearchArea }) => {
 
     const mapContainerRef = useRef(null);
-    const [mapInstance, setMapInstance] = useState(null);
+    const mapRef = useRef(null)
+    const sourceId = 'gigs';
+
+    const centerLngLat = userLocation
+    ? [userLocation.longitude, userLocation.latitude]
+    : [0.1218, 52.2053];
 
     useEffect(() => {
-      if (!mapContainerRef.current || !upcomingGigs.length) return;
 
+      if (!mapContainerRef.current || mapRef.current) return;
         mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
-    
         const map = new mapboxgl.Map({
           container: mapContainerRef.current,
           style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
-          center: [0.1278, 52.2053],
+          center: centerLngLat,
           zoom: 10,
         });
     
@@ -239,9 +244,44 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
           
         });
     
-        setMapInstance(map);
-        return () => map.remove();
-      }, [upcomingGigs, loading, gigMarkerDisplay]);
+        mapRef.current = map;
+        return () => { map.remove(); mapRef.current = null; };
+      }, []);
+
+      // 2) Recenter when userLocation becomes available
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (!userLocation) return;
+    mapRef.current.easeTo({ center: centerLngLat, duration: 500 });
+  }, [userLocation]); // recenter only
+
+  // 3) Update source data whenever results change (even 0)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const labelFor = (g) =>
+      ((g.budget === '£' || g.budget === 'No Fee') && (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
+        ? g.kind
+        : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
+
+    const data = {
+      type: 'FeatureCollection',
+      features: (upcomingGigs || []).map(gig => ({
+        type: 'Feature',
+        properties: {
+          gigId: gig.gigId,
+          budget: gig.budget,
+          kind: gig.kind,
+          label: labelFor(gig),
+        },
+        geometry: { type: 'Point', coordinates: gig.coordinates },
+      })),
+    };
+
+    const src = map.getSource(sourceId);
+    if (src) src.setData(data);
+  }, [upcomingGigs]);
 
     function formatGigRange(gigStartTime, duration) {
         const [startHour, startMinute] = gigStartTime.split(':').map(Number);
@@ -254,15 +294,31 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
 
     return (
       <div className="output-container">
-        {!loading ? (
-          upcomingGigs.length > 0 ? (
-            <div ref={mapContainerRef} className="map" style={{ width: '100%', height: clickedGigs.length > 0 ? '70%' : '100%' }} />
-          ) : (
-            <div className="map-loading"><h3>No Results</h3></div>
-          )
-        ) : (
-          <div className="map-loading"><h3>Loading Gigs</h3> <LoadingThreeDots /></div>
-        )}
+        <div
+          ref={mapContainerRef}
+          className="map"
+          style={{ width: '100%', height: clickedGigs.length > 0 ? '70%' : '100%' }}
+        >
+          {!loading && (
+            <button
+              className="btn primary"
+              onClick={() => {
+                if (!mapRef.current) return;
+                const center = mapRef.current.getCenter();
+                onSearchArea?.({ latitude: center.lat, longitude: center.lng });
+              }}
+            >
+              <MapIcon />
+              Search Here
+            </button>
+          )}
+          {loading && (
+            <div className="map-loading">
+              <LoadingSpinner width={20} height={20} />
+              <span style={{ marginRight: 2 }}>Finding Gigs...</span>
+            </div>
+          )}
+        </div>
   
         {clickedGigs.length > 0 && (
           <div className="preview-gig-container">

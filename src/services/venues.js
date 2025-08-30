@@ -13,10 +13,12 @@ import {
   Timestamp,
   orderBy,
   setDoc,
-  runTransaction
+  runTransaction,
+  GeoPoint
 } from 'firebase/firestore';
 import { updateVenueGigsAccountName } from './gigs';
 import { rewriteVenueConversationsAndMessages } from './conversations';
+import { distanceBetween } from 'geofire-common';
 
 /*** CREATE OPERATIONS ***/
 
@@ -42,6 +44,63 @@ export const createVenueProfile = async (venueId, data, userId) => {
   };
 
 /*** READ OPERATIONS ***/
+
+/**
+ * Fetches venues near the specified location from Firestore using a geobounding query,
+ * then filters by precise radius and sorts by distance.
+ *
+ * @param {Object} options
+ * @param {{ latitude: number, longitude: number }} options.location - Center point
+ * @param {number} [options.radiusInKm=50]
+ * @param {number} [options.limitCount=50]
+ * @param {import('firebase/firestore').QueryDocumentSnapshot} [options.lastDoc]
+ * @param {Object} [filters]
+ * @param {string} [filters.status] - e.g. 'active'
+ * @param {string[]} [filters.genres] - optional: if you tag venues with genres
+ * @param {number} [filters.minBudget] - optional: if venues store a budgetValue
+ * @param {number} [filters.maxBudget]
+ * @returns {Promise<{ venues: Array<Object>, lastVisible: import('firebase/firestore').QueryDocumentSnapshot | null }>}
+ */
+export const fetchNearbyVenues = async ({
+  location,
+  radiusInKm = 50,
+  limitCount = 50,
+  lastDoc = null,
+}) => {
+  const center = [location.latitude, location.longitude];
+  const lat = location.latitude;
+  const lng = location.longitude;
+  const latDelta = radiusInKm / 111;
+  const lngDelta = radiusInKm / (111 * Math.cos((lat * Math.PI) / 180));
+  const minLat = lat - latDelta;
+  const maxLat = lat + latDelta;
+  const minLng = lng - lngDelta;
+  const maxLng = lng + lngDelta;
+  const venuesRef = collection(firestore, 'venueProfiles');
+  let q = query(
+    venuesRef,
+    where('geopoint', '>=', new GeoPoint(minLat, minLng)),
+    where('geopoint', '<=', new GeoPoint(maxLat, maxLng)),
+    orderBy('geopoint')
+  );
+
+  const snapshot = await getDocs(q);
+  const enriched = snapshot.docs
+    .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .map((v) => {
+      const gp = v.geopoint;
+      const distKm = gp ? distanceBetween(center, [gp.latitude, gp.longitude]) : Infinity;
+      return { ...v, _distanceKm: distKm };
+    })
+    .filter((v) => v._distanceKm <= radiusInKm)
+    .sort((a, b) => a._distanceKm - b._distanceKm)
+    .slice(0, limitCount);
+  const venues = enriched.map((v) => ({
+    ...v,
+  }));
+  const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
+  return { venues, lastVisible };
+};
 
 /**
  * Fetches a single venue profile document from Firestore using its document ID.

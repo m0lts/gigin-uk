@@ -31,6 +31,7 @@ import { VenuePage } from './features/venue/components/VenuePage';
 import { VerifyEmailModal } from './features/shared/components/VerifyEmailModal';
 import { auth } from "@lib/firebase";
 import { NoProfileModal } from './features/musician/components/NoProfileModal';
+import { VenueFinder } from './features/venue-discovery/VenueFinder';
 
 
 
@@ -111,8 +112,11 @@ export default function App() {
     <>
       <Routes>
 
-        {/* MAP */}
+        {/* FIND GIGS */}
         <Route path='/find-a-gig' element={<GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal}  />} />
+
+        {/* FIND VENUES */}
+        <Route path='/find-venues' element={<VenueFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal}  />} />
 
         {/* MUSICIAN ROUTES */}
         <Route path='/'>

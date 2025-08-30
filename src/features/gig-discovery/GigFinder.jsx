@@ -87,10 +87,9 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
         const fetch = async () => {
           setLoading(true);
           try {
-            const fakeCambridge = { latitude: 52.1205, longitude: 0.1690 };
             const { gigs: newGigs, lastVisible } = await fetchNearbyGigs({
-              location: fakeCambridge,
-              radiusInKm: 50,
+              location: userLocation,
+              radiusInKm: 100,
               lastDoc: null,
               filters,
             });
@@ -165,20 +164,33 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
                       />
                     )}
                     <div className={`output-container ${viewType === 'map' ? 'map-view' : 'list-view'}`}>
-                    {viewType === 'map' ? (
+                    {viewType === 'map' && (
                         <MapOutput
-                            upcomingGigs={gigs}
-                            clickedGigs={clickedGigs}
-                            setClickedGigs={setClickedGigs}
-                            gigMarkerDisplay={gigMarkerDisplay}
-                            loading={loading}
-                        />
-                    ) : (
-                        <ListView
-                            upcomingGigs={gigs}
-                            location={userLocation}
-                            loading={loading}
-                        />
+                        upcomingGigs={gigs}
+                        clickedGigs={clickedGigs}
+                        setClickedGigs={setClickedGigs}
+                        gigMarkerDisplay={gigMarkerDisplay}
+                        loading={loading}
+                        userLocation={userLocation}
+                        onSearchArea={async (center) => {
+                          setLoading(true);
+                          try {
+                            const { gigs: newGigs, lastVisible } = await fetchNearbyGigs({
+                              location: center,
+                              radiusInKm: 50,
+                              lastDoc: null,
+                              filters,
+                            });
+                            setGigs(newGigs);
+                            setLastDoc(lastVisible);
+                            setHasMore(newGigs.length === 50);
+                          } catch (err) {
+                            console.error('Error fetching gigs in area:', err);
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                      />
                     )}
                     </div>
                 </div>
@@ -193,3 +205,9 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
         </section>
     );
 };
+
+                        // <ListView
+                        //     upcomingGigs={gigs}
+                        //     location={userLocation}
+                        //     loading={loading}
+                        // />

@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../hooks/useAuth';
 import { uploadProfilePicture } from '../../../services/storage';
 import '@styles/musician/no-profile.styles.css'
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 // Helpers
 const slideVariants = {
@@ -513,7 +514,7 @@ export const NoProfileModal = ({
                         className="loading-stage"
                     >
                         <div className="loading-wrap">
-                        <div className="spinner" aria-hidden />
+                            <LoadingSpinner width={40} height={40} />
                             <h3>{loadingMessage}</h3>
                             <p>This usually only takes a moment.</p>
                         </div>

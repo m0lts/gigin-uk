@@ -109,7 +109,13 @@ export const TopBar = ({ user, bandProfiles }) => {
                     <Link className='link' to={'/find-a-gig'}>
                         <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                             <MapIcon />
-                            Find A Gig
+                            Find a Gig
+                        </button>
+                    </Link>
+                    <Link className='link' to={'/find-venues'}>
+                        <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
+                            <TelescopeIcon />
+                            Find a Venue
                         </button>
                     </Link>
                     <Link className='link' to={'/dashboard'}>
@@ -162,6 +168,10 @@ export const TopBar = ({ user, bandProfiles }) => {
                         <Link className='link item no-margin' to={'/find-a-gig'}>
                             Find a Gig
                             <MapIcon />
+                        </Link>
+                        <Link className='link item no-margin' to={'/find-venues'}>
+                            Find a Venue
+                            <TelescopeIcon />
                         </Link>
                         {/* <div className='break' />
                         <Link className='link item no-margin' to={'/venues/add-venue'}>

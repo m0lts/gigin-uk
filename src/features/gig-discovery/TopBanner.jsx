@@ -20,9 +20,9 @@ export const TopBanner = ({ gigCount, showFilters, toggleFilters, viewType, setV
             <option value="kind">Show Gig Type</option>
           </select>
         )} */}
-        <button className="btn tertiary" onClick={() => setViewType(viewType === 'map' ? 'list' : 'map')}>
+        {/* <button className="btn tertiary" onClick={() => setViewType(viewType === 'map' ? 'list' : 'map')}>
           {viewType === 'map' ? 'List View' : 'Map View'}
-        </button>
+        </button> */}
       </div>
     </div>
   );

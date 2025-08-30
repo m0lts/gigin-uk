@@ -8,7 +8,7 @@ import { Photos } from './Photos';
 import { AdditionalDetails } from './AdditionalDetails';
 import '@styles/host/venue-builder.styles.css'
 import { UploadingProfile } from './UploadingProfile';
-import { arrayUnion, arrayRemove } from 'firebase/firestore';
+import { arrayUnion, arrayRemove, GeoPoint } from 'firebase/firestore';
 import { createVenueProfile, deleteVenueProfile } from '@services/venues';
 import { updateUserDocument } from '@services/users';
 import { useResizeEffect } from '@hooks/useResizeEffect';
@@ -17,6 +17,7 @@ import { uploadImageArrayWithFallback } from '../../../services/storage';
 import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
 import { Links } from './Links';
+import { geohashForLocation } from 'geofire-common';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
@@ -122,6 +123,17 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
         }
     }, [user, setAuthModal, formData]);
 
+    const getGeoField = (coordinates) => {
+        if (!coordinates || coordinates.length !== 2) return null;
+        const [lng, lat] = coordinates;
+        const geopoint = new GeoPoint(lat, lng);
+        const geohash = geohashForLocation([lat, lng]).substring(0, 8);
+        return {
+          geopoint,
+          geohash,
+        };
+    };
+
     const handleSubmit = async () => {
         setUploadingProfile(true);
         try {
@@ -132,6 +144,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                 photos: imageUrls,
                 primaryImageOffsetY: formData.photos[0]?.offsetY,
                 completed: true,
+                ...getGeoField(formData.coordinates),
             };
             await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             await updateUserDocument(user.uid, {
