@@ -358,8 +358,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         setVideoToPlay(null);
     };
 
-    console.log(gigInfo)
-
     return (
         <>
             <div className='head gig-applications'>
@@ -437,7 +435,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                             </thead>
                             <tbody>
                                 {musicianProfiles.map((profile) => {
-                                    const applicant = gigInfo?.applicants.find(applicant => applicant.id === profile.id);
+                                    const applicant = gigInfo?.applicants?.find(applicant => applicant.id === profile.id);
                                     const status = applicant ? applicant.status : 'pending';
                                     return (
                                         <tr key={profile.id} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}

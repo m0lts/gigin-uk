@@ -12,6 +12,8 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null)
     const sourceId = 'gigs';
+    const latestGigsRef = useRef(upcomingGigs);
+  latestGigsRef.current = upcomingGigs; 
 
     const centerLngLat = userLocation
     ? [userLocation.longitude, userLocation.latitude]
@@ -29,33 +31,10 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
         });
     
         map.on('load', () => {
-
-          const labelFor = (g) =>
-            ((g.budget === '£' || g.budget === 'No Fee') &&
-            (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
-              ? g.kind
-              : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
-
-          const geojson = {
-            type: 'FeatureCollection',
-            features: upcomingGigs.map(gig => ({
-              type: 'Feature',
-              properties: {
-                gigId: gig.gigId,
-                budget: gig.budget,
-                kind: gig.kind,
-                label: labelFor(gig),
-              },
-              geometry: {
-                type: 'Point',
-                coordinates: gig.coordinates,
-              },
-            })),
-          };
     
-          map.addSource('gigs', {
+          map.addSource(sourceId, {
             type: 'geojson',
-            data: geojson,
+            data: { type: 'FeatureCollection', features: [] },
             cluster: true,
             clusterMaxZoom: 14,
             clusterRadius: 50,
@@ -172,18 +151,14 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             const padding = 10;
             const p1 = new mapboxgl.Point(e.point.x - padding, e.point.y - padding);
             const p2 = new mapboxgl.Point(e.point.x + padding, e.point.y + padding);
-          
             const features = map.queryRenderedFeatures([p1, p2], {
               layers: ['unclustered-point', 'unclustered-hit', 'unclustered-point-label'],
             });
             if (!features.length) return;
-          
-            const ids = new Set(
-              features.map(f => f.properties?.gigId).filter(Boolean)
-            );
-          
-            const gigsToAdd = upcomingGigs.filter(g => ids.has(g.gigId));
-          
+    
+            const ids = new Set(features.map(f => f.properties?.gigId).filter(Boolean));
+            const gigsToAdd = (latestGigsRef.current || []).filter(g => ids.has(g.gigId)); // ✅ use ref
+    
             setClickedGigs(prev => {
               const byId = Object.fromEntries(prev.map(g => [g.gigId, g]));
               gigsToAdd.forEach(g => { byId[g.gigId] = g; });
@@ -194,52 +169,37 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
           map.on('click', 'unclustered-hit', handleUnclusteredClick);
           map.on('click', 'unclustered-point', handleUnclusteredClick);
           map.on('click', 'unclustered-point-label', handleUnclusteredClick);
-
+    
           map.on('click', 'clusters', (e) => {
-            const features = map.queryRenderedFeatures(e.point, {
-              layers: ['clusters'],
-            });
-          
+            const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
             if (!features.length) return;
-          
+    
             const clusterId = features[0].properties.cluster_id;
-            const source = map.getSource('gigs');
-          
-            source.getClusterLeaves(clusterId, Infinity, 0, (err, leafFeatures) => {
-              if (err) {
-                console.error('Error fetching cluster leaves:', err);
-                return;
-              }
-          
-              const newGigs = leafFeatures
+            const source = map.getSource(sourceId);
+    
+            source.getClusterLeaves(clusterId, Infinity, 0, (err, leaves) => {
+              if (err) return console.error(err);
+    
+              const newGigs = leaves
                 .map(f => {
                   const gigId = f.properties.gigId;
-                  return upcomingGigs.find(g => g.gigId === gigId);
+                  return (latestGigsRef.current || []).find(g => g.gigId === gigId); // ✅ use ref
                 })
-                .filter(g => !!g);
-          
+                .filter(Boolean);
+    
               setClickedGigs(prev => {
                 const merged = [...prev, ...newGigs];
-                const uniqueById = {};
-                merged.forEach(gig => {
-                  uniqueById[gig.gigId] = gig;
-                });
-                return Object.values(uniqueById);
+                const uniq = {};
+                merged.forEach(g => { uniq[g.gigId] = g; });
+                return Object.values(uniq);
               });
             });
           });
-
-          map.on('mouseenter', 'unclustered-point', () => {
-            map.getCanvas().style.cursor = 'pointer';
-          });
-          map.on('mouseleave', 'unclustered-point', () => {
-            map.getCanvas().style.cursor = '';
-          });
-          map.on('mouseenter', 'unclustered-hit', () => {
-            map.getCanvas().style.cursor = 'pointer';
-          });
-          map.on('mouseleave', 'unclustered-hit', () => {
-            map.getCanvas().style.cursor = '';
+    
+          // cursors...
+          ['unclustered-point', 'unclustered-hit'].forEach(l => {
+            map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
+            map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
           });
           
         });
@@ -248,40 +208,38 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
         return () => { map.remove(); mapRef.current = null; };
       }, []);
 
-      // 2) Recenter when userLocation becomes available
-  useEffect(() => {
-    if (!mapRef.current) return;
-    if (!userLocation) return;
-    mapRef.current.easeTo({ center: centerLngLat, duration: 500 });
-  }, [userLocation]); // recenter only
-
-  // 3) Update source data whenever results change (even 0)
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    const labelFor = (g) =>
-      ((g.budget === '£' || g.budget === 'No Fee') && (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
-        ? g.kind
-        : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
-
-    const data = {
-      type: 'FeatureCollection',
-      features: (upcomingGigs || []).map(gig => ({
-        type: 'Feature',
-        properties: {
-          gigId: gig.gigId,
-          budget: gig.budget,
-          kind: gig.kind,
-          label: labelFor(gig),
-        },
-        geometry: { type: 'Point', coordinates: gig.coordinates },
-      })),
-    };
-
-    const src = map.getSource(sourceId);
-    if (src) src.setData(data);
-  }, [upcomingGigs]);
+      useEffect(() => {
+        if (!mapRef.current || !userLocation) return;
+        mapRef.current.easeTo({ center: centerLngLat, duration: 500 });
+      }, [userLocation]);
+    
+      // update source data when gigs change
+      useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+    
+        const labelFor = (g) =>
+          ((g.budget === '£' || g.budget === 'No Fee') && (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
+            ? g.kind
+            : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
+    
+        const data = {
+          type: 'FeatureCollection',
+          features: (upcomingGigs || []).map(gig => ({
+            type: 'Feature',
+            properties: {
+              gigId: gig.gigId,
+              budget: gig.budget,
+              kind: gig.kind,
+              label: labelFor(gig),
+            },
+            geometry: { type: 'Point', coordinates: gig.coordinates },
+          })),
+        };
+    
+        const src = map.getSource(sourceId);
+        if (src) src.setData(data);
+      }, [upcomingGigs]);
 
     function formatGigRange(gigStartTime, duration) {
         const [startHour, startMinute] = gigStartTime.split(':').map(Number);
@@ -291,6 +249,8 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
         const formatTime = (date) => date.toTimeString().slice(0, 5);
         return `${formatTime(startDate)}-${formatTime(endDate)}`;
     }
+
+    console.log(clickedGigs)
 
     return (
       <div className="output-container">

@@ -38,13 +38,14 @@ import { acceptGigOffer, getGigById, getGigsByIds } from '../../services/gigs';
 import { getMostRecentMessage, sendGigAcceptedMessage } from '../../services/messages';
 import { toast } from 'sonner';
 import { sendInvitationAcceptedEmailToVenue } from '../../services/emails';
-import { AmpIcon, ClubIconSolid, CoinsIconSolid, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon } from '../shared/ui/extras/Icons';
+import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
 import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
 import { NoProfileModal } from '../musician/components/NoProfileModal';
 import { getUserById } from '../../services/users';
 import { formatFeeDate } from '../../services/utils/dates';
+import { LoadingSpinner } from '../shared/ui/loading/Loading';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal }) => {
     const { gigId } = useParams();
@@ -57,7 +58,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
     const [gigData, setGigData] = useState(null);
     const [venueProfile, setVenueProfile] = useState(null);
-    const [similarGigs, setSimilarGigs] = useState([]);
     const [loading, setLoading] = useState(true);
     const mapContainerRef = useRef(null);
     const [padding, setPadding] = useState('5%');
@@ -69,9 +69,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const [negotiateModal, setNegotiateModal] = useState(false);
     const [newOffer, setNewOffer] = useState('');
     const [width, setWidth] = useState('100%');
-    const [multipleProfiles, setMultipleProfiles] = useState(false);
     const [validProfiles, setValidProfiles] = useState();
-    const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState(user?.musicianProfile);
     const [hasAccessToPrivateGig, setHasAccessToPrivateGig] = useState(true);
     const [accessTokenIsMusicianProfile, setAccessTokenIsMusicianProfile] = useState(false);
@@ -104,142 +102,114 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     useMapbox({
         containerRef: mapContainerRef,
         coordinates: venueProfile?.coordinates,
-      });
+    });
     
+    const computeStatusForProfile = (gig, profile) => {
+        const applicant = gig?.applicants?.find(a => a?.id === profile?.musicianId);
+        const invited = !!(applicant && applicant.invited === true);
+        const applied = !!(applicant && applicant.invited !== true);
+        const accepted = !!(applicant && applicant.status === 'accepted');
+        return { invited, applied, accepted };
+    };
+      
     useEffect(() => {
-        const filterGigData = async () => {
-            if (!gigId) return;
+        if (!gigId) return;
+        let cancelled = false;
+        const run = async () => {
+          setLoading(true);
+          try {
             const gig = await getGigById(gigId);
-            if (!gig) return;
-            setGigData(gig)
+            if (!gig || cancelled) return;
+            let enrichedGig = gig;
             if (gig?.venue?.userId) {
-                const userDoc = await getUserById(gig?.venue?.userId);
-                setGigData({
-                    ...gig,
-                    user: userDoc,
-                });
+              const userDoc = await getUserById(gig.venue.userId);
+              if (cancelled) return;
+              enrichedGig = { ...gig, user: userDoc };
             }
-            if (gig?.gigSlots && gig?.gigSlots?.length > 0) {
-                const otherGigs = await getGigsByIds(gig.gigSlots);
-                setOtherSlots(otherGigs.filter(g => g.status?.toLowerCase() && g.status?.toLowerCase() !== 'closed'));
+            if (Array.isArray(enrichedGig?.gigSlots) && enrichedGig.gigSlots.length) {
+              const otherGigs = await getGigsByIds(enrichedGig.gigSlots);
+              if (cancelled) return;
+              setOtherSlots(otherGigs.filter(g => (g.status || '').toLowerCase() !== 'closed'));
             }
-            setValidProfiles([user?.musicianProfile])
-            if (gig?.privateApplications) {
-                const savedToken = gig.privateApplicationToken;
-                const isTokenValid = !!inviteToken && inviteToken === savedToken;
-                const validMusicianProfile = validProfiles?.find(
-                    profile => profile.musicianId === inviteToken
-                );
-                const isMusicianValid = !!validMusicianProfile;
-                if (!isTokenValid && !isMusicianValid) {
-                    setHasAccessToPrivateGig(false);
-                } else {
-                    setHasAccessToPrivateGig(true);
-                    setInvitedToGig(true);
-                    if (isMusicianValid) {
-                        setSelectedProfile(validMusicianProfile);
-                        setAccessTokenIsMusicianProfile(true);
-                        setInvitedToGig(true);
+            const baseMusician = user?.musicianProfile ? [user.musicianProfile] : [];
+            let bandProfiles = [];
+            if (user?.musicianProfile?.bands?.length) {
+              const rawBands = await getMusicianProfilesByIds(user.musicianProfile.bands);
+              if (cancelled) return;
+              if (Array.isArray(rawBands)) {
+                const keep = [];
+                for (const band of rawBands) {
+                  try {
+                    const members = await getBandMembers(band.musicianId);
+                    const me = members.find(m => m.musicianProfileId === user.musicianProfile.musicianId);
+                    if (me?.role === 'Band Leader' || me?.role === 'Admin') {
+                      keep.push(stripFirestoreRefs(band));
                     }
-                }
-            }
-            const musicianId = user?.musicianProfile?.musicianId;
-            const bandIds = user?.musicianProfile?.bands || [];
-            if (musicianId && gig?.applicants?.length > 0) {
-                const matchingApplicant = gig.applicants.find(
-                    app => app.id === musicianId || bandIds.includes(app.id)
-                );
-                if (matchingApplicant) {
-                    if (matchingApplicant.invited) {
-                        setUserAppliedToGig(false);
-                        setInvitedToGig(true);
-                        if (matchingApplicant.status === 'accepted') {
-                            setUserAcceptedInvite(true);
-                        }
-                    } else {
-                        setUserAppliedToGig(true);
-                        setInvitedToGig(false);
-                    }
-                }
-            }
-            if (user?.musicianProfile?.savedGigs?.includes(gig.gigId)) {
-                setGigSaved(true);
-              }
-            if (gig?.venueId) {
-                const venue = await getVenueProfileById(gig.venueId);
-                if (venue) setVenueProfile(venue);
-            }
-            // const similarGigsList = gigs
-            // .filter(g => g.id !== gigId && getLocalGigDateTime(g) > new Date() && !g.confirmed)
-            // .map(g => ({ id: g.id, ...g }));
-            // setSimilarGigs(similarGigsList);
-            setLoading(false)
-        }
-
-        const fetchBandData = async () => {
-            if (!user?.musicianProfile?.bands?.length) return;
-            try {
-              const bandProfiles = await getMusicianProfilesByIds(user.musicianProfile.bands);
-              if (!Array.isArray(bandProfiles)) {
-                console.error('Expected array from getMusicianProfilesByIds, got:', bandProfiles);
-                return;
-              }
-              const validBandProfiles = [];
-              for (const bandProfile of bandProfiles) {
-                const bandId = bandProfile.musicianId;
-                try {
-                  const members = await getBandMembers(bandId);
-                  const userMember = members.find(m => m.musicianProfileId === user.musicianProfile.musicianId);
-                  if (userMember?.role === 'Band Leader' || userMember?.role === 'Admin') {
-                    validBandProfiles.push(stripFirestoreRefs(bandProfile));
+                  } catch (e) {
+                    console.error('getBandMembers failed for', band.musicianId, e);
                   }
-                  if (bandProfile?.savedGigs?.includes(gigData.gigId)) setGigSaved(true);
-                } catch (err) {
-                  console.error(`Failed to fetch members for band ${bandId}:`, err);
+                }
+                bandProfiles = keep;
+              } else {
+                console.error('getMusicianProfilesByIds did not return array:', rawBands);
+              }
+            }
+            const profiles = [...baseMusician, ...bandProfiles];
+            let nextHasAccess = true;
+            let nextInvitedToGig = false;
+            let defaultSelected = profiles[0] || null;
+            if (enrichedGig?.privateApplications) {
+              const savedToken = enrichedGig.privateApplicationToken;
+              const tokenMatches = !!inviteToken && inviteToken === savedToken;
+              const tokenProfile = profiles.find(p => p.musicianId === inviteToken) || null;
+              if (!tokenMatches && !tokenProfile) {
+                nextHasAccess = false;
+              } else {
+                nextHasAccess = true;
+                nextInvitedToGig = true;
+                if (tokenProfile) {
+                  defaultSelected = tokenProfile;
                 }
               }
-          
-              const combinedProfiles = [...validBandProfiles, user.musicianProfile];
-              const correctAppliedProfile = combinedProfiles.find(prof => prof.id === appliedProfile);
-              setMultipleProfiles(combinedProfiles.length > 1);
-              setValidProfiles(combinedProfiles);
-              setSelectedProfile(correctAppliedProfile);
-            } catch (err) {
-              console.error('Error fetching band data:', err);
             }
-          };
-        filterGigData();
-        if (user?.musicianProfile && user?.musicianProfile?.bands?.length > 0) {
-            fetchBandData();
-        }
-    }, [gigId, user, venueVisiting, inviteToken, multipleProfiles]);
+            setGigData(enrichedGig);
+            setValidProfiles(profiles);
+            setSelectedProfile(prev => prev || defaultSelected);
+            setHasAccessToPrivateGig(nextHasAccess);
+            setInvitedToGig(nextInvitedToGig);
+            const myIds = [
+              user?.musicianProfile?.savedGigs || [],
+              ...bandProfiles.map(b => b.savedGigs || []),
+            ].flat();
+            if (myIds.includes(enrichedGig.gigId)) setGigSaved(true);
+            if (enrichedGig?.venueId) {
+              const venue = await getVenueProfileById(enrichedGig.venueId);
+              if (!cancelled && venue) setVenueProfile(venue);
+            }
+          } catch (err) {
+            console.error('filterGigData failed:', err);
+          } finally {
+            if (!cancelled) setLoading(false);
+          }
+        };
+        run();
+        return () => { cancelled = true; };
+    }, [gigId, user, inviteToken]);
 
 
     useEffect(() => {
-        if (!selectedProfile || !gigData) return;
-        const applicant = gigData.applicants?.find(
-            app => app.id === selectedProfile.musicianId
-        );
-        if (applicant) {
-            if (applicant.invited) {
-                setUserAppliedToGig(false);
-                setInvitedToGig(true);
-                if (applicant.status === 'accepted') {
-                    setUserAcceptedInvite(true);
-                } else {
-                    setUserAcceptedInvite(false);
-                }
-            } else {
-                setUserAppliedToGig(true);
-                setInvitedToGig(false);
-                setUserAcceptedInvite(false);
-            }
-        } else {
-            setUserAppliedToGig(false);
-            setInvitedToGig(false);
-            setUserAcceptedInvite(false);
+        if (!selectedProfile || !gigData) {
+          setUserAppliedToGig(false);
+          setInvitedToGig(false);
+          setUserAcceptedInvite(false);
+          return;
         }
+        const { invited, applied, accepted } = computeStatusForProfile(gigData, selectedProfile);
+        setInvitedToGig(invited);
+        setUserAppliedToGig(applied);
+        setUserAcceptedInvite(accepted);
     }, [selectedProfile, gigData]);
+
 
     const stripFirestoreRefs = (obj) => {
         if (obj === null || typeof obj !== 'object') return obj;
@@ -253,8 +223,32 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return cleanObj;
       };
 
-    if (!gigData) {
-        return <div>No gig data found.</div>;
+    if (!gigData && !loading) {
+        return (
+            <div className='gig-page'>
+                {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
+                    <VenueHeader
+                        user={user}
+                        setAuthModal={setAuthModal}
+                        setAuthType={setAuthType}
+                        padding={padding}
+                    />
+                ) : (
+                    <MusicianHeader
+                        user={user}
+                        setAuthModal={setAuthModal}
+                        setAuthType={setAuthType}
+                        padding={padding}
+                    />
+                )}
+                <section className='gig-page-body' style={{ width: `${width}`}}>
+                    <div className='loading-state'>
+                        <ErrorIcon />
+                        <h4>Sorry, we can't find that gig right now.</h4>
+                    </div>
+                </section>
+            </div>
+        );
     }
 
     const handleImageClick = (index) => {
@@ -303,15 +297,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return calculateTime(gigData.startTime, gigData.duration);
     };
 
-    const startTimeMinusOneHour = gigData.startTime ? calculateTime(gigData.startTime, -60) : '00:00';
-    const endTime = gigData.startTime && gigData.duration ? calculateEndTime() : '00:00';
+    const endTime = gigData?.startTime && gigData?.duration ? calculateEndTime() : '00:00';
 
     const formatDuration = (duration) => {
         const hours = Math.floor(duration / 60);
         const minutes = duration % 60;
         const hourStr = hours === 1 ? 'hr' : 'hrs';
         const minuteStr = minutes === 1 ? 'min' : 'mins';
-    
         if (minutes === 0) {
             return `${hours} ${hourStr}`;
         } else if (hours === 0) {
@@ -590,16 +582,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             )}
             <section className='gig-page-body' style={{ width: `${width}`}}>
                 {loading ? (
-                    <>
-                        <div className='head'>
-                            <div className='title'>
-                                <Skeleton height={40} width={400} />
-                            </div>
-                        </div>
-                        <div className='images'>
-                            <Skeleton height={350} width='100%' />
-                        </div>
-                    </>
+                    <div className='loading-state'>
+                        <LoadingSpinner width={40} height={40} />
+                        <h4>Loading Gig...</h4>
+                    </div>
                 ) : (
                     <>
                         <div className='head'>
