@@ -393,6 +393,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                       musicianProfile.bands?.includes(a.id)
                                 );
                                 const thisGigIsSaved = savedGigs.some(g => g.gigId === gig.gigId);
+                                console.log(gig)
                                 return (
                                     <React.Fragment key={gig.id}>
                                         {isFirstPreviousGig && (

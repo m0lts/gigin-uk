@@ -4,10 +4,13 @@ import { ProfilePreview } from './profile-preview/ProfilePreview';
 import { ProfileForm } from './profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
 import { NoImageIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { useLocation } from 'react-router-dom';
 
 
 export const Profile = ({ musicianProfile, user }) => {
-    const [showPreview, setShowPreview] = useState(true);
+    const location = useLocation();
+    const state = location.state;
+    const [showPreview, setShowPreview] = useState(state?.preview === false ? false : true);
     const [expand, setExpand] = useState(['your-sound', 'media-upload', 'further-information', 'social-media']);
     const isPrimaryOpen = expand.includes('primary-information');
     const toggleSection = (section) => {

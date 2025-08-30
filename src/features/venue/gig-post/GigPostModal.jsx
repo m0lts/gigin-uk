@@ -21,6 +21,11 @@ import { TicketedGig } from './TicketedGig';
 import { GeoPoint, Timestamp } from 'firebase/firestore';
 import { geohashForLocation } from 'geofire-common';
 import { validateGigTimings } from '../../../services/utils/validation';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/musicians';
+import { getOrCreateConversation } from '../../../services/conversations';
+import { sendGigInvitationMessage } from '../../../services/messages';
+import { formatDate } from '../../../services/utils/dates';
+import { inviteToGig } from '../../../services/gigs';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -238,8 +243,13 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 }
                 return;
             } else if (formData.kind === 'Ticketed Gig') {
-                setStage(prevStage => prevStage + 1);
-                return;
+                if (formData.ticketedGigUnderstood) {
+                    setStage(prevStage => prevStage + 1);
+                    return;
+                } else {
+                    setError("You must click 'I understand' to post a ticketed gig.")
+                    return;
+                }
             } else {
                 if (formData.budget !== '£') {
                     setStage(prevStage => prevStage + 1);
@@ -367,14 +377,15 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                             setError={setError}
                         />
                     );
-                } else if (formData.kind === 'Ticketed Gig') {
-                    return (
-                        <TicketedGig
-                            formData={formData}
-                            handleInputChange={handleInputChange}
-                            setStage={setStage}
-                        />
-                    );
+                // } else if (formData.kind === 'Ticketed Gig') {
+                //     return (
+                //         <TicketedGig
+                //             formData={formData}
+                //             handleInputChange={handleInputChange}
+                //             setStage={setStage}
+                //         />
+                //     );
+                // } else {
                 } else {
                     return (
                         <GigBudget
@@ -571,10 +582,22 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 venueToSend,
                 "invitation"
               );
-            
+              await inviteToGig(formData.gigId, musicianProfile);
+              const newGigApplicationEntry = {
+                gigId: formData.gigId,
+                profileId: musicianProfile.id,
+                name: musicianProfile.name,
+              };
+              const updatedGigApplicationsArray = musicianProfile.gigApplications
+                ? [...musicianProfile.gigApplications, newGigApplicationEntry]
+                : [newGigApplicationEntry];
+          
+              await updateMusicianProfile(musicianProfile.id, {
+                gigApplications: updatedGigApplicationsArray,
+              });
               await sendGigInvitationMessage(conversationId, {
                 senderId: user.uid,
-                text: `${venueToSend.accountName} has invited you to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date)} for ${firstGigDoc.budget}.
+                text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')} for ${firstGigDoc.budget}.
                   ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
               });
             

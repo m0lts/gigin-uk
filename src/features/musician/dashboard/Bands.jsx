@@ -32,16 +32,19 @@ export const Bands = ({ bandProfiles }) => {
     <>
       <div className="head">
         <h1 className='title'>Bands</h1>
+        <button className="btn primary" onClick={() => navigate('/dashboard/bands/create')}>
+          Add Band
+        </button>
       </div>
       <div className="body bands">
         <div className="entry-actions">
-          <div className="card" onClick={() => navigate('/dashboard/bands/create')}>
+          {/* <div className="card" onClick={() => navigate('/dashboard/bands/create')}>
             <PlusIconSolid />
             <h4>Create a Band</h4>
             <p className="text">
               Set up your band and apply to gigs!
             </p>
-          </div>
+          </div> */}
           {/* <div className="card" onClick={() => navigate('/dashboard/bands/join')}>
             <PeopleGroupIconSolid />
             <h4>Join a Band</h4>
@@ -50,7 +53,6 @@ export const Bands = ({ bandProfiles }) => {
         </div>
         {bandProfiles.length > 0 && (
           <>
-            <h2>Your Bands</h2>
             <div className="users-bands">
               {bandProfiles.map((band) => (
                 <div className='band-card' key={band.id}>

@@ -16,7 +16,7 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
         });
     };
 
-    const gigTypes = ['Background Music', 'Live Music', 'Ticketed Gig', 'House Party', 'Wedding', 'Open Mic'];
+    const gigTypes = ['Background Music', 'Live Music', 'House Party', 'Wedding', 'Open Mic'];
 
     const filterGigIcon = (gig) => {
         switch (gig) {

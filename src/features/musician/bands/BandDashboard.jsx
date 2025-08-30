@@ -24,7 +24,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const state = location.state;
   const [bandProfile, setBandProfile] = useState(state?.band || null);
   const [bandMembers, setBandMembers] = useState(state?.band?.members || null);
-  const [showPreview, setShowPreview] = useState(true);
+  const [showPreview, setShowPreview] = useState(state?.preview === false ? false : true);
   const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);

@@ -20,17 +20,22 @@ export const Sidebar = ({ user, newMessages, unseenInvites, bandProfiles, musici
     const isOnlyNameFilled = useMemo(() => {
       const p = musicianProfile;
       if (!p) return true;
-      const isEmptyVal = (v) =>
-        v == null ||
-        v === '' ||
-        (Array.isArray(v) && v.length === 0) ||
-        (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
-      const exclude = new Set(['name', 'id', 'uid', 'createdAt', 'updatedAt']);
-      for (const [k, v] of Object.entries(p)) {
-        if (exclude.has(k)) continue;
-        if (!isEmptyVal(v)) return false;
-      }
-      return true;
+      const hasMusicianType = !!(p.musicianType);
+      const hasBio = !!(p.bio?.text && p.bio.text.trim().length > 0);
+      const hasPhotos = Array.isArray(p.photos) && p.photos.length > 0;
+      const hasVideos = Array.isArray(p.videos) && p.videos.length > 0;
+      const hasGenres = Array.isArray(p.genres) && p.genres.length > 0;
+      const hasInstruments = Array.isArray(p.instruments) && p.instruments.length > 0;
+      const hasLocation =
+        !!p.location && (
+          (Array.isArray(p.location.coordinates) && p.location.coordinates.length === 2) ||
+          Object.keys(p.location).length > 0
+        );
+      const hasSocials =
+        !!p.socials && Object.values(p.socials).some(v => typeof v === 'string' ? v.trim() : v);
+      const anyContent =
+        hasMusicianType || hasBio || hasPhotos || hasVideos || hasGenres || hasInstruments || hasLocation || hasSocials;
+      return !anyContent;
     }, [musicianProfile]);
   
     const menuItems = useMemo(() => {

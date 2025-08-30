@@ -93,13 +93,17 @@
     padding-left: 0;
 }
 
-.venue-page-body .venue-page-information .venue-page-details .section h3 {
+.venue-page-body .venue-page-information .venue-page-details .section h2 {
     margin-bottom: 0.5rem;
 }
   
 .venue-page-body .venue-page-information .venue-page-details .section.bio {
     grid-column: 1 / 3;
     height:fit-content;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section.bio p {
+    font-size: 1.1rem;
 }
   
 .venue-page-body .venue-page-information .venue-page-details .section.photos {
@@ -149,7 +153,7 @@
 }
 
 .venue-page-body .venue-page-information .venue-page-details .section .location h5 {
-    font-size: 0.8rem;
+    font-size: 1rem;
 }
 
 .venue-page-body .venue-page-information .venue-page-details .section .location .btn {
@@ -167,6 +171,7 @@
     overflow-wrap: break-word;
     word-break: break-word;
     white-space: normal;
+    font-size: 1.1rem;
 }
 
 .venue-page-body .venue-page-information .venue-page-details .section .socials-buttons {
@@ -176,7 +181,7 @@
 }
 
 .venue-page-body .venue-page-information .venue-page-details .section .socials-buttons a .icon {
-    font-size: 1.5rem;
+    font-size: 2rem;
     color: var(--gn-off-black);
 }
 

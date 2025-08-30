@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
     FaceFrownIcon,
@@ -14,258 +14,244 @@ import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { FeedbackSection } from '../../venue/dashboard/FeedbackSection';
 import { toast } from 'sonner';
 import { submitReview } from '../../../services/reviews';
+import { formatDate } from '../../../services/utils/dates';
 
 export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToReview, setGigsToReview, bandProfiles, unseenInvites }) => {
 
     const navigate = useNavigate();
 
     const [nextGig, setNextGig] = useState(null);
-    const [venuesToReview, setVenuesToReview] = useState(null);
+    const [awaitingResponse, setAwaitingResponse] = useState([]);
     const [showGigHandbook, setShowGigHandbook] = useState(false);
     const [showSocialsModal, setShowSocialsModal] = useState(false);
-    const [justReviewed, setJustReviewed] = useState(false);
-    const [ratings, setRatings] = useState({});
-    const [reviewTexts, setReviewTexts] = useState({});
-    const [submittingReviews, setSubmittingReviews] = useState({});
 
-    useEffect(() => {
-        const filterGigs = () => {
-            if (!musicianProfile || !gigs) {
-                console.warn('Musician profile or gigs data is missing.');
-                return;
-            }
-            const confirmedGigs = gigs.filter(gig => musicianProfile.confirmedGigs?.includes(gig.gigId) || false);
-            const nextGig = confirmedGigs
-                .filter((gig) => {
-                    const gigDateTime = new Date(gig.startDateTime);
-                    return gigDateTime > new Date();
-                })
-                .sort((a, b) => {
-                    const aDateTime = new Date(a.startDateTime);
-                    const bDateTime = new Date(b.startDateTime);
-                    return aDateTime - bDateTime;
-                })[0];
-            setNextGig(nextGig);
-        };
+    const isOnlyNameFilled = useMemo(() => {
+        const p = musicianProfile;
+        if (!p) return true;
+        const hasMusicianType = !!(p.musicianType);
+        const hasBio = !!(p.bio?.text && p.bio.text.trim().length > 0);
+        const hasPhotos = Array.isArray(p.photos) && p.photos.length > 0;
+        const hasVideos = Array.isArray(p.videos) && p.videos.length > 0;
+        const hasGenres = Array.isArray(p.genres) && p.genres.length > 0;
+        const hasInstruments = Array.isArray(p.instruments) && p.instruments.length > 0;
+        const hasLocation =
+          !!p.location && (
+            (Array.isArray(p.location.coordinates) && p.location.coordinates.length === 2) ||
+            Object.keys(p.location).length > 0
+          );
+        const hasSocials =
+          !!p.socials && Object.values(p.socials).some(v => typeof v === 'string' ? v.trim() : v);
+        const anyContent =
+          hasMusicianType || hasBio || hasPhotos || hasVideos || hasGenres || hasInstruments || hasLocation || hasSocials;
+        const hasBand = Array.isArray(bandProfiles) && bandProfiles.length > 0;
+        const shouldSwap = hasBand && !anyContent;
+        return shouldSwap;
+    }, [musicianProfile, bandProfiles]);
 
-        if (gigApplications && gigApplications.length > 0) {
-            filterGigs();
-        }
-    }, [gigApplications, gigs]);
+const toMs = (dt) => {
+    if (!dt) return NaN;
+    if (typeof dt?.toDate === 'function') return dt.toDate().getTime();
+    const t = new Date(dt).getTime();
+    return Number.isFinite(t) ? t : NaN;
+  };
+  
+  useEffect(() => {
+    if (!gigs || !gigs.length) return;
+    const primaryProfile = (() => {
+      if (!musicianProfile) return null;
+      if (isOnlyNameFilled) {
+        return Array.isArray(bandProfiles) && bandProfiles.length
+          ? bandProfiles[0]
+          : musicianProfile;
+      }
+      return musicianProfile;
+    })();
+    if (!primaryProfile) return;
+    const userProfileIds = new Set([
+      musicianProfile?.id ?? musicianProfile?.musicianId,
+      ...(Array.isArray(bandProfiles) ? bandProfiles.map(b => b?.id) : []),
+    ].filter(Boolean));
+    const profileNameMap = {};
+    if (musicianProfile?.id) profileNameMap[musicianProfile.id] = musicianProfile.name;
+    bandProfiles?.forEach(b => { if (b?.id) profileNameMap[b.id] = b.name; });
+    const now = Date.now();
+    const confirmedForPrimary = gigs.filter(gig =>
+      Array.isArray(primaryProfile.confirmedGigs) &&
+      primaryProfile.confirmedGigs.includes(gig.gigId)
+    );
+    const nextConfirmedFutureGig =
+      confirmedForPrimary
+        .filter(gig => {
+          const t = toMs(gig.startDateTime);
+          return Number.isFinite(t) && t > now;
+        })
+        .sort((a, b) => toMs(a.startDateTime) - toMs(b.startDateTime))[0] || null;
+    setNextGig(nextConfirmedFutureGig);
 
-
-    useEffect(() => {
-        const fetchVenuesToReview = async () => {
-            if (!gigsToReview || gigsToReview.length < 1) return;
-            try {
-              const updatedGigs = await Promise.all(
-                gigsToReview.map(async (gig) => {
-                  const confirmedApplicant = gig.applicants.find((app) => app.status === 'confirmed');
-                  if (!confirmedApplicant) return null;
-                  const venueProfile = await getVenueProfileById(gig.venueId);
-                  return {
-                    ...gig,
-                    venueProfile,
-                  };
-                })
-              );
-              const filteredGigs = updatedGigs.filter(Boolean);
-              setVenuesToReview(filteredGigs);
-            } catch (error) {
-              console.error('Error fetching venue profiles for gigs:', error);
-            }
+    const awaiting = gigs
+      .map(gig => {
+        const applicants = Array.isArray(gig.applicants) ? gig.applicants : []
+        const matchedApplicant = applicants.find(a =>
+            a?.invited === true &&
+            a?.viewed === true || !a?.viewed &&
+            userProfileIds.has(a?.id)
+        );
+        if (!matchedApplicant) return null;
+        const t = toMs(gig.startDateTime);
+        if (!Number.isFinite(t) || t <= now) return null;
+        const invitedProfileId = matchedApplicant.id;
+        const invitedProfileName = profileNameMap[invitedProfileId] ?? 'Your Profile';
+        return {
+            ...gig,
+            _invitedApplicant: matchedApplicant,
+            _invitedProfileId: invitedProfileId,
+            _invitedProfileName: invitedProfileName,
           };
-          if (nextGig) fetchVenueProfile();
-          if (gigsToReview?.length > 0) fetchVenuesToReview();
-      }, [nextGig, gigsToReview, justReviewed]);
+      })
+      .filter(Boolean);
+    setAwaitingResponse(awaiting);
+  }, [gigs, musicianProfile, bandProfiles, isOnlyNameFilled]);
 
     const formatName = (name) => {
         return name.split(' ')[0];
     };
 
-    const handleRatingChange = (musicianId, star) => {
-        setRatings(prev => ({ ...prev, [musicianId]: star }));
-    };
-      
-      const handleReviewTextChange = (musicianId, text) => {
-        setReviewTexts(prev => ({ ...prev, [musicianId]: text }));
-    };
-
-    const handleSubmitReview = async (venueId, gigData) => {
-        setSubmittingReviews(prev => ({ ...prev, [venueId]: true }));
-        try {
-            const ratingValue = ratings[venueId];
-            const reviewTextValue = reviewTexts[venueId];
-            if (!ratingValue) {
-                toast.info('Please add a star rating.');
-                return;
-            };
-            let resolvedMusicianId = gigData.applicants?.find(app => app.id === musicianProfile.id)?.id;
-            if (!resolvedMusicianId && Array.isArray(bandProfiles)) {
-                for (const bandProfileId of bandProfiles) {
-                    const match = gigData.applicants?.find(app => app.id === bandProfileId);
-                    if (match) {
-                        resolvedMusicianId = match.id;
-                        break;
-                    }
-                }
-            }
-            if (!resolvedMusicianId) {
-                throw new Error('Unable to resolve musician ID from gig applicants.');
-            }
-            await submitReview({
-                reviewer: 'musician',
-                venueId: venueId,
-                musicianId: resolvedMusicianId,
-                gigId: gigData.gigId,
-                rating: ratingValue,
-                reviewText: reviewTextValue,
-                profile: gigData.musicianProfile,
-            });
-            toast.success('Review submitted. Thank you!');
-            setGigsToReview((prev) => prev.filter(g => g.gigId !== gigData.gigId));
-            setRatings((prev) => ({ ...prev, [venueId]: 0 }));
-            setReviewTexts((prev) => ({ ...prev, [venueId]: '' }));
-            setJustReviewed(true);
-        } catch (error) {
-            console.error('Error submitting review:', error);
-            toast.error('Review submission failed. Please try again.');
-        } finally {
-            setSubmittingReviews(prev => ({ ...prev, [venueId]: false }));
-        }
-    };
-
-    const howToSteps = [
-        {
-          title: 'Create Your Musician Profile',
-          text: "Put your performing personality and media into a profile to show off to venues."
-        },
-        {
-          title: 'Find Gigs',
-          text: "Forget about waiting for venues to contact you. Browse the map for gig posts and apply yourself!"
-        },
-        {
-          title: 'Play!',
-          text: "When venues accept your gig application, they'll pay the gig fee. We hold this until 48 hours after you've performed the gig."
-        },
-        {
-          title: 'Get Paid',
-          text: "After the 48 hour dispute period, the funds are released to your gigin account. Withdraw them in the finances section."
-        }
-    ];
-
     return (
         <>
-            <div className="head">
-                <h1 className='title'>Musician Dashboard</h1>
-            </div>
             <div className='body overview'>
-                <div className="welcome">
-                    <h2>Hi {formatName(user.name)}!</h2>
-                    <h4>Ready to tear up the music scene?</h4>
-                </div>
-                {unseenInvites.length > 0 && (
-                    <div className="new-applications" onClick={() => navigate('/dashboard/gigs')}>
-                        <ExclamationIcon />
-                        <h4>You have {unseenInvites.length || 0} unseen gig invites.</h4>
-                    </div>
-                )}
-                <div className="quick-buttons">
-                    <div className="quick-button" onClick={() => navigate('/find-a-gig')}>
+                <div className="welcome-box">
+                    <h1 className='title'>Good Afternoon, {formatName(user.name)} 👋</h1>
+                    <h2>Have a look at you’re next gig arrangements, messages or find your next gig.</h2>
+                    <button className="btn secondary" onClick={() => navigate('/find-a-gig')}>
                         <MapIcon />
-                        <span className='quick-button-text'>Find a Gig</span>
-                    </div>
-                    {musicianProfile.withdrawableEarnings && (
-                        <div className="quick-button" onClick={() => navigate('/dashboard/finances')}>
-                            <CoinsIconSolid />
-                            <h3>£{musicianProfile.withdrawableEarnings}</h3>
-                            <span className="quick-button-text">Withdraw Funds</span>
-                        </div>
-                    )}
-                    {nextGig && (
-                        <div className="quick-button" onClick={() => setShowGigHandbook(true)}>
-                            <NextGigIcon />
-                            <span className='quick-button-text'>Next Gig</span>
-                        </div>
-                    )}
-                    <div className="quick-button" onClick={() => navigate('/dashboard/gigs')}>
-                        <AllGigsIcon />
-                        <span className='quick-button-text'>Gig Applications</span>
-                    </div>
+                        Find a Gig
+                    </button>
                 </div>
-
-                {venuesToReview?.length > 0 ? (
-                    <div className="review-musicians">
-                        <h3>Previous Venues</h3>
-                        <div className="musicians-to-review">
-                            {venuesToReview.map((venue) => {
-                                const id = venue.venueProfile.venueId;
-                                
-                                const currentRating = ratings[id] || 0;
-                                const currentText = reviewTexts[id] || '';
-
-                                return (
-                                    <div className="musician-to-review" key={id}>
-                                        <div className="musician-info">
-                                            <figure className="musician-img-cont">
-                                                <img className="musician-img" src={venue.venueProfile.photos[0]} alt={venue.venueProfile.name} />
-                                            </figure>
-                                            <div className="musician-name">
-                                                <h3>{venue.venueProfile.name}</h3>
-                                                <p>{venue.venueProfile.venueType}</p>
-                                            </div>
-                                        </div>
-                                        <div className="review-section">
-                                            <div className='star-rating'>
-                                                {[1, 2, 3, 4, 5].map((star) => (
-                                                    <span
-                                                    key={star}
-                                                    className='star'
-                                                    onClick={() => handleRatingChange(id, star)}
-                                                    >
-                                                    {currentRating >= star ? <StarIcon /> : <StarEmptyIcon />}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                            <textarea
-                                                value={currentText}
-                                                onChange={(e) => handleReviewTextChange(id, e.target.value)}
-                                                placeholder='Write your review (optional)...'
-                                                disabled={!currentRating}
-                                                className='textarea'
-                                            />
-                                        </div>
-                                        {submittingReviews[id] ? (
-                                            <LoadingThreeDots />
-                                        ) : (
-                                            <button
-                                                className='btn primary'
-                                                onClick={() => handleSubmitReview(id, venue)}
-                                                disabled={submittingReviews[id]}
-                                            >
-                                                Submit Review
-                                            </button>
-                                        )}
+                <div className="overview-profile-container">
+                    {!isOnlyNameFilled ? (
+                        <>
+                            <h1 className='large-title'>My Musician Profile</h1>
+                            <div className="overview-profile">
+                                <img src={musicianProfile.picture} alt={musicianProfile.name} />
+                                <div className="profile-overlay">
+                                    <h1 className='profile-name'>
+                                        {musicianProfile.name}
+                                        <span className="orange-dot">.</span>
+                                    </h1>
+                                    <div className="action-buttons">
+                                        <button className="btn quaternary" onClick={() => navigate(`/dashboard/profile`)}>
+                                            View My Profile
+                                        </button>
+                                        <button className="btn quaternary" onClick={() => navigate(`/dashboard/profile`, { state: {preview: false} })}>
+                                            Add New Photos / Videos
+                                        </button>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="how-gigin-works-cont">
-                        <h3>How Gigin Works</h3>
-                        <div className="how-gigin-works">
-                            {howToSteps.map((step, index) => (
-                                <div key={index} className="how-to-step">
-                                <div className="step-number">{index + 1}</div>
-                                <h3>{step.title}</h3>
-                                <p>{step.text}</p>
                                 </div>
-                            ))}
+                            </div>
+                        </>
+                    ) : bandProfiles.length > 0 && bandProfiles[0] && (
+                        <>
+                            <h1 className='large-title'>My Band Profile</h1>
+                            <div className="overview-profile">
+                                <img src={bandProfiles[0].picture} alt={bandProfiles[0].name} />
+                                <div className="profile-overlay">
+                                    <h1 className='profile-name'>
+                                        {bandProfiles[0].name}
+                                        <span className="orange-dot">.</span>
+                                    </h1>
+                                    <div className="action-buttons">
+                                        <button className="btn quaternary" onClick={() => navigate(`/dashboard/bands/${bandProfiles[0].id}`, { state: {band: bandProfiles[0]} })}>
+                                            View Band Profile
+                                        </button>
+                                        <button className="btn quaternary" onClick={() => navigate(`/dashboard/bands/${bandProfiles[0].id}`, { state: {band: bandProfiles[0], preview: false} })}>
+                                            Add New Photos / Videos
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+                <div className="next-gig-container">
+                    <h1 className='large-title'>Gigs</h1>
+                    {nextGig ? (
+                        <div className="next-gig">
+                            <div className="heading">
+                                <h2>Up Next</h2>
+                                <button className="btn text" onClick={() => setShowGigHandbook(true)}>
+                                    See Details
+                                </button>
+                            </div>
+                            <h2>{musicianProfile.name} @ {nextGig.venue.venueName}</h2>
+                            <h3>{formatDate(nextGig.startDateTime, 'withTime')}</h3>
                         </div>
-                    </div>
-                )}
-                <FeedbackSection user={user} />
+                    ) : (
+                        <div className="empty-container">
+                            <h4>You have no upcoming gigs.</h4>
+                            <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}>
+                                <MapIcon />
+                                Find a Gig
+                            </button>
+                        </div>
+                    )}
+                </div>
+                <div className="awaiting-response-container">
+                    {awaitingResponse.length ? (
+                        <div className="awaiting-response">
+                            <div className="heading">
+                                <h2>Awaiting Your Response</h2>
+                                <button className="btn text" onClick={() => navigate('dashboard/gigs')}>
+                                    See All
+                                </button>
+                            </div>
+                            <div className='body gigs musician'>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                {(bandProfiles && bandProfiles.length) && (
+                                                    <th id="profile">
+                                                        Profile
+                                                    </th>
+                                                )}
+                                                <th id='date'>
+                                                    Time and Date
+                                                </th>
+                                                <th>Venue</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {awaitingResponse.slice(0, 10).map((gig) => {
+                                                const dt = gig.startDateTime?.toDate
+                                                ? gig.startDateTime.toDate()
+                                                : new Date(gig.startDateTime);
+                                                return (
+                                                <tr key={gig.id} onClick={() => navigate('/dashboard/gigs')}>
+                                                    {(bandProfiles && bandProfiles.length) && (
+                                                    <td className="applied-profile-name">{gig._invitedProfileName}</td>
+                                                    )}
+                                                    <td>
+                                                    {dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                    {' - '}
+                                                    {dt.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                    </td>
+                                                    <td>{gig.venue?.venueName}</td>
+                                                </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="empty-container">
+                            <h4>You have no gig invitations.</h4>
+                            <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}>
+                                <TelescopeIcon />
+                                Find a Venue
+                            </button>
+                        </div>
+                    )}
+                </div>
                 {showGigHandbook && (
                     <GigHandbook
                         setShowGigHandbook={setShowGigHandbook}

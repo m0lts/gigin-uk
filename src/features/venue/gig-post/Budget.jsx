@@ -1,8 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { CoinsIcon, CoinsIconSolid, TicketIcon, TicketIconLight } from '../../shared/ui/extras/Icons';
 
-export const GigBudget = ({ formData, handleInputChange, error, extraSlots }) => {
+export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setError, setStage }) => {
 
     const budgetInputRef = useRef(null);
+    const [localKind, setLocalKind] = useState(formData.kind === 'Live Music' ? 'Flat Fee' : 'Ticketed Gig');
+    const [showSecondStage, setShowSecondStage] = useState(formData.kind ? true : false);
 
     useEffect(() => {
         if (budgetInputRef.current) {
@@ -15,6 +18,24 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots }) =>
         handleInputChange({
             budget: `£${value}`,
         });
+    };
+
+    const handleKindSelect = (e) => {
+        setError(null);
+        if (e === 'Live Music') {
+            handleInputChange({
+                kind: e,
+                ticketedGigUnderstood: false,
+            });
+            setLocalKind('Flat Fee');
+        } else {
+            handleInputChange({
+                kind: e,
+                budget: '£',
+            });
+            setLocalKind(e);
+        }
+        setShowSecondStage(true);
     };
 
     const formatSubText = (kind, gigType) => {
@@ -56,32 +77,70 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots }) =>
     return (
         <>
             <div className='head'>
-                {extraSlots.length > 0 ? (
-                    <>
-                        <h1 className='title'>What's your budget for the night?</h1>
-                        <p className='text'>This will be split proportionately between each gig slot.</p>
-                    </>
-
-                ) : (
-                    <>
-                        <h1 className='title'>What's your budget?</h1>
-                        <p className='text'>This is not a fixed price, you can negotiate a final price with the musician.</p>
-                    </>
-                )}
+                <h1 className='title'>Payment Method</h1>
             </div>
             <div className='body budget'>
-                <div className='input-group'>
-                    <input 
-                        type='text' 
-                        name='budget' 
-                        id='budget'
-                        ref={budgetInputRef}
-                        onChange={handleBudgetChange}
-                        value={formData.budget}
-                        autoComplete="off"
-                        />
-                </div>
-                <p className='sub-text'>{formatSubText(formData.kind, formData.gigType)}</p>
+                    <div className="selections">
+                        <div className={`card ${localKind === 'Ticketed Gig' ? 'selected' : ''}`} onClick={() => handleKindSelect('Ticketed Gig')}>
+                            {localKind === 'Ticketed Gig' ? (
+                                <TicketIcon />
+                            ) : (
+                                <TicketIconLight />
+                            )}
+                            <h4 className='text'>Tickets</h4>
+                        </div>
+                        <div className={`card ${localKind === 'Flat Fee' ? 'selected' : ''}`} onClick={() => handleKindSelect('Live Music')}>
+                            {localKind === 'Flat Fee' ? (
+                                <CoinsIconSolid />
+                                ) : (
+                                <CoinsIcon />
+                            )}
+                            <h4 className='text'>Flat Fee</h4>
+                        </div>
+                    </div>
+                    {showSecondStage && localKind === 'Flat Fee' ? (
+                        <div className="budget-container">
+                            <h4>What's your budget for the evening?</h4>
+                            {extraSlots.length > 0 && (<p>This budget will be split proportionately between the evening's sets.</p>)}
+                            <p></p>
+                            <div className='input-group'>
+                                <input 
+                                    type='text' 
+                                    name='budget' 
+                                    id='budget'
+                                    ref={budgetInputRef}
+                                    onChange={handleBudgetChange}
+                                    value={formData.budget}
+                                    autoComplete="off"
+                                    />
+                            </div>
+                            <p className='sub-text'>{formatSubText(formData.kind, formData.gigType)}</p>
+                        </div>
+                    ) : showSecondStage && localKind === 'Ticketed Gig' && (
+                        <div className='ticketed-container'>
+                            <h4 className='text' style={{ marginTop: '1rem', fontSize: '1.1rem', width: '75%' }}>Musicians that play at a ticketed gig won't be paid by you, but will take home 100% of their ticket sales.</h4>
+                            {extraSlots.length > 0 && (<p style={{ marginTop: '1rem', width: '75%' }}>You must tell the musicians about the multiple gig slots, so the musicians can decide how to split the ticket sales.</p>)}
+                            <div className='input-group'>
+                                <h6>Confirm that you understand how a ticketed gig works.</h6>
+                                <div className="selections">
+                                    <button
+                                    type="button"
+                                    className={`card small ${formData.ticketedGigUnderstood === true ? 'selected' : ''}`}
+                                    onClick={() => {handleInputChange({ ticketedGigUnderstood: true }); setStage(9)}}
+                                    >
+                                        Yes, I understand
+                                    </button>
+                                    <button
+                                    type="button"
+                                    className={`card small`}
+                                    onClick={() => {setLocalKind('Flat Fee'); handleKindSelect('Live Music')}}
+                                    >
+                                        No, change payment type
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 {error && (
                     <div className="error-cont" style={{ width: 'fit-content', margin: '1rem auto' }}>
                         <p className="error-message">{error}</p>

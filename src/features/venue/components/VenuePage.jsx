@@ -252,12 +252,12 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                         <div className="venue-page-information" style={{ width: `${width}`, margin: '0 auto'}}>
                             <div className="venue-page-details">
                                 <div className="section bio">
-                                    <h3>Bio</h3>
+                                    <h2>Bio</h2>
                                     <p>{venueData?.description}</p>
                                 </div>
                                 <div className="section secondary-information">
                                     <div className="info-box location">
-                                        <h3>Location</h3>
+                                        <h2>Location</h2>
                                         <MapSection venueData={venueData} />
                                         <h5>{venueData?.address}</h5>
                                         <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
@@ -266,7 +266,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     </div>
                                     {venueData?.website && (
                                         <div className="info-box website">
-                                            <h3>Website</h3>
+                                            <h2>Website</h2>
                                             <a
                                                 href={venueData.website.startsWith('http') ? venueData.website : `https://${venueData.website}`}
                                                 target="_blank"
@@ -278,7 +278,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     )}
                                     {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
                                         <div className="info-box socials">
-                                            <h3>Socials</h3>
+                                            <h2>Socials</h2>
                                             <div className="socials-buttons">
                                                 {venueData?.socialMedia?.facebook && (
                                                     <a href={ensureProtocol(venueData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
@@ -302,7 +302,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                 </div>
                                 {venueData?.photos?.length > 1 && (
                                     <div className="section photos">
-                                        <h3>Photos</h3>
+                                        <h2>Photos</h2>
                                         <div className="photos-collage">
                                         {venueData.photos.map((photo, index) => (
                                             <figure className="collage-item" key={photo}>
@@ -320,7 +320,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                             </div>
                             <div className="venue-page-gigs">
                                 <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
-                                <VenueGigsList title={'Upcoming'} gigs={confirmedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                {/* <VenueGigsList title={'Upcoming'} gigs={confirmedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} /> */}
                             </div>
                         </div>
                     </>
