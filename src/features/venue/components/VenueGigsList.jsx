@@ -153,6 +153,7 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
                       </div>
                   ) : (
                       <div className="confirmed-musician">
+                        <div className="left">
                           <div className="date-box">
                               <h4 className="month">{month.toUpperCase()}</h4>
                               <h2 className="day">{day}</h2>
@@ -160,6 +161,7 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
                           <div className="gig-time" style={{ display: 'flex', alignItems: 'center', margin: '0 1rem'}}>
                               <h3>{gig.startTime}</h3>
                           </div>
+                        </div>
                           <div className="gig-type">
                               {findGigIcon(gig.kind)}
                               {gig.kind === 'Ticketeg Gig' || gig.kind === 'Open Mic' ? (

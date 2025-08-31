@@ -245,7 +245,14 @@
 
 .venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musician {
     display: flex;
+    justify-content: space-between;
     gap:0.5rem;
+    width:60%;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musician .left {
+    display: flex;
+    align-items: center;
 }
 
 .venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musicians {
