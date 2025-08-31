@@ -46,6 +46,7 @@ import { NoProfileModal } from '../musician/components/NoProfileModal';
 import { getUserById } from '../../services/users';
 import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
+import Portal from '../shared/components/Portal';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal }) => {
     const { gigId } = useParams();
