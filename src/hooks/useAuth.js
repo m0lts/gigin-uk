@@ -302,15 +302,26 @@ export const useAuth = () => {
       const ref = doc(firestore, 'users', user.uid);
       const snap = await getDoc(ref);
       if (!snap.exists()) {
-        await setDoc(ref, {
-          name: user.displayName || '',
-          email: user.email || '',
-          marketingConsent,
-          createdAt: Date.now(),
-          emailVerified: true,
-          firstTimeInFinances: true,
-          musicianProfile: arrayUnion(musicianId)
-        });
+        if (redirect === 'create-musician-profile') {
+          await setDoc(ref, {
+            name: user.displayName || '',
+            email: user.email || '',
+            marketingConsent,
+            createdAt: Date.now(),
+            emailVerified: true,
+            firstTimeInFinances: true,
+            musicianProfile: arrayUnion(musicianId)
+          });
+        } else {
+          await setDoc(ref, {
+            name: user.displayName || '',
+            email: user.email || '',
+            marketingConsent,
+            createdAt: Date.now(),
+            emailVerified: true,
+            firstTimeInFinances: true,
+          });
+        }
       }
       const userDoc = await getDoc(ref);
       const userDocData = userDoc.data() || {};
