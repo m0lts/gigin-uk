@@ -126,7 +126,7 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
             const month = gigDate.toLocaleDateString("en-US", { month: "short" });
             const confirmed = (gig?.applicants ?? []).filter(a => a?.status === "confirmed");
             return (
-              <div key={gig.gigId} className="venue-gig">
+              <div key={gig.gigId} className="venue-gig" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
                   {title === 'Upcoming' ? (
                       <div className="confirmed-musician">
                           <div className="date-box">
