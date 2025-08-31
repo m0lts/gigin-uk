@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, fetchSignInMethodsForEmail, deleteUser, sendEmailVerification } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -295,9 +295,8 @@ export const useAuth = () => {
       const cred = await signInWithPopup(auth, googleProvider);
       const redirect = sessionStorage.getItem('redirect');
       const { user } = cred;
-      let musicianId;
+      const musicianId = uuidv4();
       if (redirect === 'create-musician-profile') {
-        musicianId = uuidv4();
         createMusicianProfile(musicianId, {musicianId: musicianId, name: user.displayName, createdAt: Timestamp.now(), email: user.email}, user.uid);
       }
       const ref = doc(firestore, 'users', user.uid);
@@ -310,9 +309,7 @@ export const useAuth = () => {
           createdAt: Date.now(),
           emailVerified: true,
           firstTimeInFinances: true,
-          musicianProfile: [
-            musicianId
-          ]
+          musicianProfile: arrayUnion(musicianId)
         });
       }
       const userDoc = await getDoc(ref);
