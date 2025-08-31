@@ -164,7 +164,7 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
                         </div>
                           <div className="gig-type">
                               {findGigIcon(gig.kind)}
-                              {gig.kind === 'Ticketeg Gig' || gig.kind === 'Open Mic' ? (
+                              {gig.kind === 'Ticketed Gig' || gig.kind === 'Open Mic' ? (
                                 <h4>{gig.kind}</h4>
                               ) : (
                                 <h4>{(gig.budget === '£' || gig.budget === 'No Fee' || gig.budget === '£0') ? 'No Fee' : gig.budget}</h4>
