@@ -57,7 +57,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                             <Link className='link' to={'/find-a-gig'}>
                                 <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                                     <MapIcon />
-                                    Find A Gig
+                                    Find a Gig
                                 </button>
                             </Link>
                             <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`} onClick={() => setNoProfileModal(true)}>
@@ -78,7 +78,19 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
             ) : (
                 <>
                     { getLocation() }
-                    <nav className='nav-list'>
+                    <nav className='nav-list right'>
+                        <Link className='link' to={'/find-a-gig'}>
+                            <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
+                                <MapIcon />
+                                Find a Gig
+                            </button>
+                        </Link>
+                        <Link className='link' to={'/find-venues'}>
+                            <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
+                                <TelescopeIcon />
+                                Find a Venue
+                            </button>
+                        </Link>
                         <button className='item btn secondary' onClick={() => {showAuthModal(true); setAuthType('login')}}>
                             Log In
                         </button>

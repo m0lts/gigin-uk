@@ -157,9 +157,16 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
                               <h4 className="month">{month.toUpperCase()}</h4>
                               <h2 className="day">{day}</h2>
                           </div>
+                          <div className="gig-time" style={{ display: 'flex', alignItems: 'center', margin: '0 1rem'}}>
+                              <h3>{gig.startTime}</h3>
+                          </div>
                           <div className="gig-type">
                               {findGigIcon(gig.kind)}
-                              <h4>{gig.kind}</h4>
+                              {gig.kind === 'Ticketeg Gig' || gig.kind === 'Open Mic' ? (
+                                <h4>{gig.kind}</h4>
+                              ) : (
+                                <h4>{(gig.budget === '£' || gig.budget === 'No Fee' || gig.budget === '£0') ? 'No Fee' : gig.budget}</h4>
+                              )}
                           </div>
                       </div>
                   )}
