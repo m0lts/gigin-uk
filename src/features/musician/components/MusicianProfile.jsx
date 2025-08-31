@@ -24,6 +24,7 @@ import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { arrayRemove, arrayUnion } from 'firebase/firestore';
 import { formatDate } from '@services/utils/dates';
 import { BandMembersTab } from '../bands/BandMembersTab';
+import Portal from '../../shared/components/Portal';
 
 
 const VideoModal = ({ video, onClose }) => {
