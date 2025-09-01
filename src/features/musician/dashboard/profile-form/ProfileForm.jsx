@@ -10,6 +10,7 @@ import { arrayUnion } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { deleteFileFromStorage, uploadFileWithProgress } from '../../../../services/storage';
 import { sendTestimonialRequestEmail } from '../../../../services/emails';
+import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
 
 const VideoModal = ({ video, onClose }) => {
@@ -696,7 +697,6 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
           await updateUserDocument(user.uid, {
             musicianProfile: arrayUnion(formData.musicianId),
           });
-          console.log('updatedFormData', updatedFormData)
           setMusicianProfile(updatedFormData);
           setUploadingProfile(false);
           toast.success('Musician Profile Saved');
@@ -718,7 +718,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
     };
 
 
-    const isPrimaryOpen = expand.includes('primary-information');
+    const isPrimaryOpen = expand.includes('primary-information') || !formData?.picture;
 
     return (
         <>
@@ -1012,7 +1012,10 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
                                                 </div>
                                                 </>
                                             ) : (
-                                                <h4>Processing...</h4>
+                                                <div className='processing'>
+                                                    <LoadingSpinner width={20} height={20} />
+                                                    <h4>Processing...</h4>
+                                                </div>
                                             )}
                                         </div>
                                         {upload.progess === 100 && (
@@ -1108,7 +1111,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
                                         </div>
                                     </div>
 
-                                                {upload.progress === 100 && (
+                                                {upload.progress !== 100 && (
 
                                         <div className="upload-item-bottom">
                                         <div className="progress-bar">
@@ -1261,7 +1264,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
                         </div>
                     </div>
                 </div>
-                <div className="profile-section">
+                <div className="profile-section socials">
                     <div className="section-header">
                         <SocialMediaIcon />
                         <h3>Social Media and Testimonials</h3>

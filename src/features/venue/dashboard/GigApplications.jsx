@@ -416,12 +416,12 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                         <div className='dispute-box'>
                             <h3>Not happy with how the gig went?</h3>
                             <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
-                            <button className='btn primary-alt' onClick={() => {setShowReviewModal(true)}}>
+                            <button className='btn primary' onClick={() => {setShowReviewModal(true)}}>
                                 Dispute Gig
                             </button>
                         </div>
-                    )}
-                    {musicianProfiles.length > 0 ? (
+                        )}
+                        {musicianProfiles.length > 0 ? (
                         <table className='applications-table'>
                             <thead>
                                 <tr>
@@ -438,6 +438,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                 {musicianProfiles.map((profile) => {
                                     const applicant = gigInfo?.applicants?.find(applicant => applicant.id === profile.id);
                                     const status = applicant ? applicant.status : 'pending';
+                                    const gigAlreadyConfirmed = gigInfo.applicants.some((a) => a.status === 'confirmed')
                                     return (
                                         <tr key={profile.id} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
                                         onMouseLeave={() => setHoveredRowId(null)}>
@@ -483,7 +484,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                         </>
                                                     )
                                                 ) : (
-                                                    '-'
+                                                    gigInfo.kind
                                                 )}
                                             </td>
                                             {getLocalGigDateTime(gigInfo) < now ? (
@@ -527,7 +528,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                     textAlign: 'center',
                                                     minWidth: '140px',
                                                     width: '100%',
-                                                    whiteSpace: 'nowrap'
+                                                    whiteSpace: 'nowrap',
+                                                    minHeight: '50px',
                                                   }}>
                                                     {(status === 'confirmed' || status === 'paid') && (
                                                         <div className='status-box'>
@@ -554,7 +556,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </button>
                                                         )
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant.invited && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant.invited && !gigAlreadyConfirmed && (
                                                         <>
                                                             <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
                                                                 <TickIcon />
@@ -574,7 +576,15 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'declined' && (
+                                                    {status === 'declined' && gigAlreadyConfirmed && (
+                                                        <div className='status-box'>
+                                                            <div className='status declined'>
+                                                                <CloseIcon />
+                                                                Declined
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind !== 'Ticked Gig' || gigInfo.kind !== 'Open Mic') && (
                                                         <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.id)}}>
                                                             Negotiate Fee
                                                         </button>

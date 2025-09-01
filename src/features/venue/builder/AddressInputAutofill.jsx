@@ -1,82 +1,137 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { AddressAutofill } from '@mapbox/search-js-react';
 import { toast } from 'sonner';
 
-export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange, coordinatesError, setCoordinatesError, stepError, setStepError, errorField, setErrorField }) => {
-
-    const handleRetrieve = useCallback(
-        (res) => {
-            const feature = res.features[0];
-            setFeature(feature);
-
-            const address = feature.properties.full_address;
-            const coordinates = feature.geometry.coordinates;
-
-            if (coordinates) {
-                setLocationCoordinates(coordinates);
-            } else {
-                setCoordinatesError(true)
-            }
-
-            setLocationAddress(address);
-        },
-        [setFeature, setLocationAddress, setLocationCoordinates]
-    );
-
-    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-
-
-    const handleGeocodeAddress = async (address) => {
-        setLocationAddress(address);
-        try {
-            const response = await fetch(
-                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxToken}`
-            );
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.features && data.features.length > 0) {
-                    const coordinates = data.features[0].geometry.coordinates;
-                    if (coordinates) {
-                        setLocationCoordinates(coordinates);
-                    } else {
-                        setCoordinatesError(true);
-                    }
-                    const addressDetails = {
-                        type: 'Feature',
-                        geometry: {
-                            type: 'Point',
-                            coordinates: coordinates,
-                        },
-                        properties: {
-                            address: address,
-                        },
-                    };
-                    setFeature(addressDetails);
-                }
-            } else {
-                toast.error('Error fetching coordinates for that address. Please try again.')
-                console.error('Failed to fetch coordinates.');
-            }
-        } catch (error) {
-            toast.error('Error fetching coordinates for that address. Please try again.')
-            console.error('Error fetching coordinates:', error);
-        }
+const parseMapboxFeature = (f) => {
+    const ctx = Object.fromEntries((f.context || []).map(c => [c.id.split('.')[0], c]));
+    const line1 =
+      f.place_type?.includes('address')
+        ? `${f.address ?? ''} ${f.text ?? ''}`.trim()
+        : f.text || '';
+    return {
+      fullAddress: f.place_name || line1,
+      line1,
+      city: ctx.place?.text || ctx.locality?.text || '',
+      region: ctx.region?.text || '',
+      postcode: ctx.postcode?.text || '',
+      country: ctx.country?.text || '',
+      countryCode: (ctx.country?.short_code || '').toUpperCase(),
+      geometry: f.geometry, // { type, coordinates }
     };
+};
+
+export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange, coordinatesError, setCoordinatesError, stepError, setStepError, errorField, setErrorField }) => {
+    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    const [typedAddress, setTypedAddress] = useState(locationAddress || '');
+    useEffect(() => { setTypedAddress(locationAddress || ''); }, [locationAddress]);
+
+    const handleRetrieve = useCallback((res) => {
+        const f = res?.features?.[0];
+        if (!f) return;
+        const parts = parseMapboxFeature(f);
+    
+        setFeature({
+        type: 'Feature',
+        geometry: parts.geometry,
+        properties: {
+            full_address: parts.fullAddress,
+            line1: parts.line1,
+            city: parts.city,
+            region: parts.region,
+            postcode: parts.postcode,
+            country: parts.country,
+            countryCode: parts.countryCode,
+        },
+        });
+    
+        const coords = parts.geometry?.coordinates;
+        if (coords) {
+        setLocationCoordinates(coords);
+        setCoordinatesError(false);
+        } else {
+        setCoordinatesError(true);
+        }
+    
+        setLocationAddress(parts.fullAddress);
+        handleInputChange?.('address', parts.fullAddress);
+    }, [setFeature, setLocationAddress, setLocationCoordinates, setCoordinatesError, handleInputChange]);
+
+    const geocodeAndSave = useCallback(async (address) => {
+        const q = (address || '').trim();
+        if (!q) return;
+        try {
+          const resp = await fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${mapboxToken}`
+          );
+          if (!resp.ok) throw new Error('Geocoding request failed');
+          const data = await resp.json();
+      
+          const best = data?.features?.[0];
+          if (!best) {
+            setCoordinatesError(true);
+            toast.error('We couldn’t find that address. Please try another.');
+            return;
+          }
+      
+          const parts = parseMapboxFeature(best);
+          const coords = parts.geometry?.coordinates;
+          if (!coords) {
+            setCoordinatesError(true);
+            toast.error('No coordinates found for that address.');
+            return;
+          }
+      
+          setFeature({
+            type: 'Feature',
+            geometry: parts.geometry,
+            properties: {
+              full_address: parts.fullAddress,
+              line1: parts.line1,
+              city: parts.city,
+              region: parts.region,
+              postcode: parts.postcode,
+              country: parts.country,
+              countryCode: parts.countryCode,
+            },
+          });
+      
+          setLocationCoordinates(coords);
+          setCoordinatesError(false);
+          setLocationAddress(parts.fullAddress);                  // <-- save Mapbox’s formatted address
+          handleInputChange?.('address', parts.fullAddress);      // <-- parent gets the formatted address
+          setExpandForm(false);
+        } catch (err) {
+          console.error(err);
+          setCoordinatesError(true);
+          toast.error('Error fetching coordinates for that address. Please try again.');
+        }
+    }, [mapboxToken, setFeature, setLocationAddress, setLocationCoordinates, setCoordinatesError, handleInputChange, setExpandForm]);
+
+    const handleBlur = useCallback((e) => {
+        setTimeout(() => {
+        if (!locationAddress && typedAddress.trim()) {
+            geocodeAndSave(typedAddress);
+        }
+        }, 150);
+    }, [geocodeAndSave, typedAddress, locationAddress]);
+
+    const handleKeyDown = useCallback((e) => {
+        if (e.key === 'Enter') {
+        e.preventDefault();
+        geocodeAndSave(typedAddress);
+        }
+    }, [geocodeAndSave, typedAddress]);
 
     const handleAddressSubmission = (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-
         const address1 = formData.get('address1');
         const address2 = formData.get('address2');
         const city = formData.get('city');
         const country = formData.get('country');
         const postcode = formData.get('postcode');
-
         const enteredAddress = `${address1}${address2 ? `, ${address2}` : ''}, ${city}, ${postcode}, ${country}`;
-
-        handleGeocodeAddress(enteredAddress);
+        geocodeAndSave(enteredAddress);
         handleInputChange('address', enteredAddress);
         setExpandForm(false);
     };
@@ -87,44 +142,67 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                 <div className='address-input'>
                     {locationAddress ? (
                         <div className='input-group'>
+                        <label htmlFor='autofill' className='input-label'>Venue Address</label>
+                        <input
+                            className={`input-box ${(coordinatesError || (stepError && errorField === 'address')) ? 'error': ''}`}
+                            type='text'
+                            value={locationAddress}
+                            readOnly
+                            onClick={() => {
+                            setLocationAddress('');
+                            setLocationCoordinates(null);
+                            setTypedAddress('');
+                            setExpandForm(false);
+                            }}
+                        />
+                        {coordinatesError && (
+                            <p className='error-message'>
+                            Sorry, we couldn't find any coordinates for that address. Please try again.
+                            </p>
+                        )}
+                        </div>
+                    ) : (
+                        <AddressAutofill accessToken={mapboxToken} onRetrieve={handleRetrieve}>
+                        <div className='input-group'>
                             <label htmlFor='autofill' className='input-label'>Venue Address</label>
                             <input
-                                className={`input-box ${(coordinatesError || (stepError && errorField === 'address')) ? 'error': ''}`}
-                                type='text'
-                                value={locationAddress}
-                                readOnly
-                                onClick={() => {
-                                    setLocationAddress('');
-                                    setLocationCoordinates(null);
-                                    setExpandForm(false);
-                                  }}
+                            className={`input-box ${(coordinatesError || (stepError && errorField === 'address')) ? 'error': ''}`}
+                            type='text'
+                            name='autofill'
+                            id='autofill'
+                            placeholder='Start typing your address...'
+                            autoComplete='off'
+                            value={typedAddress}
+                            onChange={(e) => {
+                                setStepError?.(null);
+                                setErrorField?.(null);
+                                setTypedAddress(e.target.value);
+                            }}
+                            onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
+                            onClick={() => {
+                                setStepError?.(null);
+                                setErrorField?.(null);
+                            }}
                             />
-                            {coordinatesError && (
-                                <p className='error-message'>Sorry, we couldn't find any coordinates for that address. Please try again.</p>
-                            )}
-                            {/* <button className='btn secondary' style={{ width: 'fit-content' }} onClick={() => {setLocationAddress(''); setLocationCoordinates(null)}}>
-                                Change Address
-                            </button> */}
                         </div>
-                    
-                    ) : (
-
-                        <AddressAutofill accessToken={mapboxToken} onRetrieve={handleRetrieve}>
-                            <div className='input-group'>
-                                <label htmlFor='autofill' className='input-label'>Venue Address</label>
-                                <input
-                                    className={`input-box ${(coordinatesError || (stepError && errorField === 'address')) ? 'error': ''}`}
-                                    type='text'
-                                    name='autofill'
-                                    id='autofill'
-                                    placeholder='Start typing your address...'
-                                    autoComplete='off'
-                                    onClick={() => {setStepError(null); setErrorField(null)}}
-                                />
-                            </div>
                         </AddressAutofill>
                     )}
-                    <button className='btn text' onClick={() => {setExpandForm(true); setLocationAddress(''); setLocationCoordinates(null)}} style={{ textAlign: 'left', fontSize: '0.75rem' }}>
+                    {/* Save button explicitly geocodes what’s typed */}
+                    {!locationAddress && (
+                        <button
+                        className="btn primary"
+                        onClick={() => geocodeAndSave(typedAddress)}
+                        disabled={!typedAddress.trim()}
+                        >
+                        Save
+                        </button>
+                    )}
+                    <button
+                        className='btn text'
+                        onClick={() => { setExpandForm(true); setLocationAddress(''); setLocationCoordinates(null); setTypedAddress(''); }}
+                        style={{ textAlign: 'left', fontSize: '0.75rem' }}
+                    >
                         Or enter the address manually...
                     </button>
                 </div>

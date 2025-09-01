@@ -32,11 +32,7 @@
 }
 
 .body.messages .no-messages .icon {
-    font-size: 5rem;
-}
-
-.body.messages .no-messages h3 {
-    color: var(--gn-black);
+    font-size: 1rem;
 }
 
 
@@ -585,105 +581,3 @@
 .body.messages .message.announcement .complete-payment {
     margin-top: 1rem;
 }
-
-
-/* GIG INFO COLUMN */
-
-.body.messages .modal-content.gig-information {
-    min-height: fit-content !important;
-}
-
-.body.messages .gig-information .top-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.body.messages .gig-information .venue {
-    padding:0.5rem 0;
-    margin: 0rem 1.5rem;
-}
-
-.body.messages .gig-information .venue .photo {
-    margin-bottom: 0.5rem;
-    width: 100%;
-    height: 150px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    box-shadow: 0 0 5px var(--gn-shadow);
-}
-
-.body.messages .gig-information .venue .photo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.body.messages .gig-information .event-information {
-    margin: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--gn-grey-300);
-    border-top: 1px solid var(--gn-grey-300);
-}
-
-.body.messages .gig-information .location {
-    margin-left: 1.5rem;
-    margin-right: 1.5rem;
-}
-
-.body.messages .gig-information .budgets {
-    border:1px solid var(--gn-grey-300);
-    margin: 0 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-evenly;
-    border-radius: 10px;
-    box-shadow: 0px 0px 5px var(--gn-shadow);
-    padding: 1rem;
-}
-
-.body.messages .gig-information .budget-container {
-    text-align: center;
-}
-
-.body.messages .gig-information .date-and-time {
-    margin: 0.25rem 1.5rem;
-}
-
-.body.messages .gig-information .details {
-    margin: 1rem 1.5rem;
-}
-
-.body.messages .gig-information .details-list {
-    width:100%;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap:5px;
-}
-
-.body.messages .gig-information .details-list .detail {
-    text-align: center;
-    border: 1px solid var(--gn-grey-300);
-    border-radius: 10px;
-    box-shadow: 0px 0px 5px var(--gn-shadow);
-    padding: 1rem 0.5rem;
-}
-
-.body.messages .gig-information .details-list .detail .data {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-}
-
-.body.messages .gig-information .map {
-    box-shadow: 0 0 5px var(--gn-shadow);
-    margin: 0.25rem 1.5rem;
-    height:240px;
-    border-radius: 10px;
-    padding-bottom: 1rem;
-}
-

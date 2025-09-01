@@ -11,7 +11,7 @@ import {
     VillageHallIcon } from '@features/shared/ui/extras/Icons';
 import { BeerIconSolid, ClubIconSolid, HouseIconSolid, MicrophoneIconSolid, PlaceOfWorshipIconSolid, RestaurantIconSolid, VillageHallIconSolid } from '../../shared/ui/extras/Icons';
 
-export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage, error, setError }) => {
+export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage, error, setError, user }) => {
 
     const navigate = useNavigate();
 
@@ -22,6 +22,7 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
                 venueName: venue.name,                
                 address: venue.address,
                 photo: venue.photos[0],
+                userId: user.uid,
             },
             coordinates: venue.coordinates,
         });

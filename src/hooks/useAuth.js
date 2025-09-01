@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, fetchSignInMethodsForEmail, deleteUser, sendEmailVerification } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion, query, collection, getDocs, where, limit } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -146,10 +146,8 @@ export const useAuth = () => {
       if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
-      } else if (venueProfiles.length > 0 && venueProfiles.some(v => v.completed)) {
-        navigate('/venues/dashboard/gigs');
-      } else if (venueProfiles.length > 0 && !venueProfiles.some(v => v.completed)) {
-        navigate('/venues/add-venue');
+      } else if (venueProfiles.length) {
+        navigate('/venues');
       } else {
         navigate('/find-a-gig');
       }
@@ -164,16 +162,22 @@ export const useAuth = () => {
     handleCodeInApp: false,
   };
 
+  const generateSearchKeywords = (name) => {
+    const lower = name.toLowerCase();
+    return Array.from({ length: lower.length }, (_, i) => lower.slice(0, i + 1));
+  };
+
   const signup = async (credentials, marketingConsent) => {
     try {
       const redirect = sessionStorage.getItem('redirect');
       const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
       if (redirect === 'create-musician-profile') {
         const musicianId = uuidv4();
-        await createMusicianProfile(musicianId, {musicianId: musicianId, name: credentials.name, createdAt: Timestamp.now(), email: credentials.email}, userCredential.user.uid);
+        await createMusicianProfile(musicianId, {musicianId: musicianId, name: credentials.name, createdAt: Timestamp.now(), email: credentials.email, searchKeywords: generateSearchKeywords(credentials.name)}, userCredential.user.uid);
         await setDoc(doc(firestore, 'users', userCredential.user.uid), {
           name: credentials.name,
           email: credentials.email,
+          phoneNumber: credentials.phoneNumber,
           marketingConsent: marketingConsent,
           createdAt: Date.now(),
           firstTimeInFinances: true,
@@ -185,6 +189,7 @@ export const useAuth = () => {
         await setDoc(doc(firestore, 'users', userCredential.user.uid), {
           name: credentials.name,
           email: credentials.email,
+          phoneNumber: credentials.phoneNumber,
           marketingConsent: marketingConsent,
           createdAt: Date.now(),
           firstTimeInFinances: true,
@@ -210,14 +215,40 @@ export const useAuth = () => {
       throw { error }
     }
   };
-
-  const resetPassword = async (email) => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-    } catch (error) {
-      throw { message: error.message, status: error.status || 500 };
+  
+const resetPassword = async (rawEmail) => {
+  const email = (rawEmail || '').trim().toLowerCase();
+  try {
+    let q = query(collection(firestore, 'users'), where('email', '==', email), limit(1));
+    let snap = await getDocs(q);
+    if (snap.empty) {
+      q = query(collection(firestore, 'users'), where('email', '==', email), limit(1));
+      snap = await getDocs(q);
     }
-  };
+    if (snap.empty) {
+      return { sent: false, reason: 'no-account' };
+    }
+    const userDoc = snap.docs[0].data();
+    if (userDoc.googleAccount === true) {
+      return { sent: false, reason: 'google-only' };
+    }
+    await sendPasswordResetEmail(auth, email, actionCodeSettings);
+    return { sent: true, reason: 'password-account' };
+  } catch (err) {
+    const code = err?.code;
+    if (code === 'auth/invalid-email') {
+      throw { message: 'Please enter a valid email address.', status: 400, code };
+    }
+    if (code === 'auth/too-many-requests') {
+      throw { message: 'Too many attempts. Please try again later.', status: 429, code };
+    }
+    if (code === 'auth/user-disabled') {
+      throw { message: 'This account is disabled.', status: 403, code };
+    }
+    throw { message: err?.message || 'Failed to send reset email.', status: 500, code };
+  }
+};
+
 
   const logout = async () => {
     try {
@@ -269,6 +300,7 @@ export const useAuth = () => {
         navigate('/find-a-gig');
       }
     } catch (error) {
+      console.log(error);
       if (error?.code === 'auth/account-exists-with-different-credential') {
         const email = error.customData?.email;
         const methods = email ? await fetchSignInMethodsForEmail(auth, email) : [];
@@ -282,7 +314,7 @@ export const useAuth = () => {
         throw {
           error: {
             code: error.code,
-            message: 'Request timed out',
+            message: '*Google Sign In Failed',
           },
         };
       }
@@ -297,7 +329,7 @@ export const useAuth = () => {
       const { user } = cred;
       const musicianId = uuidv4();
       if (redirect === 'create-musician-profile') {
-        createMusicianProfile(musicianId, {musicianId: musicianId, name: user.displayName, createdAt: Timestamp.now(), email: user.email}, user.uid);
+        createMusicianProfile(musicianId, {musicianId: musicianId, name: user.displayName, createdAt: Timestamp.now(), email: user.email, searchKeywords: generateSearchKeywords(user.displayName)}, user.uid);
       }
       const ref = doc(firestore, 'users', user.uid);
       const snap = await getDoc(ref);
@@ -310,7 +342,8 @@ export const useAuth = () => {
             createdAt: Date.now(),
             emailVerified: true,
             firstTimeInFinances: true,
-            musicianProfile: arrayUnion(musicianId)
+            musicianProfile: arrayUnion(musicianId),
+            googleAccount: true,
           });
         } else {
           await setDoc(ref, {
@@ -320,6 +353,7 @@ export const useAuth = () => {
             createdAt: Date.now(),
             emailVerified: true,
             firstTimeInFinances: true,
+            googleAccount: true,
           });
         }
       }
@@ -341,7 +375,7 @@ export const useAuth = () => {
         throw {
           error: {
             code: error.code,
-            message: `Request timed out`,
+            message: `*Google Sign Up Failed`,
           }
         };
       }

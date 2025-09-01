@@ -7,16 +7,19 @@ import { deleteFolderFromStorage } from '@services/storage';
 import { deleteReview, getReviewsByVenueId } from '@services/reviews';
 import { deleteConversation, getConversationsByParticipantId } from '@services/conversations';
 import { openInNewTab } from '@services/utils/misc';
-import { DeleteGigIcon, HouseIconSolid, NewTabIcon, PeopleRoofIconSolid, ShareIcon } from '../../shared/ui/extras/Icons';
+import { DeleteGigIcon, HouseIconSolid, NewTabIcon, PeopleRoofIconSolid, ShareIcon, VenueIconSolid } from '../../shared/ui/extras/Icons';
 import { getCityFromAddress } from '../../../services/utils/misc';
 import { toast } from 'sonner';
 import Portal from '../../shared/components/Portal';
+import { getVenueProfileById } from '../../../services/venues';
+import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 
-export const Venues = ({ venues }) => {
+export const Venues = ({ venues, user }) => {
 
     const navigate = useNavigate();
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [venueToDelete, setVenueToDelete] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     const handleEditVenue = (venue) => {
         navigate('/venues/add-venue', { state: { venue } });
@@ -30,10 +33,11 @@ export const Venues = ({ venues }) => {
 
     const confirmDeleteVenue = async () => {
         if (!venueToDelete) return;
-        const { user, venueId } = venueToDelete;
+        const { venueId } = venueToDelete;
         try {
+            setLoading(true);
             await deleteVenueProfile(venueId);
-            await removeVenueIdFromUser(user, venueId);
+            await removeVenueIdFromUser(user.uid, venueId);
             const gigs = await getGigsByVenueId(venueId);
             for (const { id } of gigs) {
                 await deleteGig(id);
@@ -48,6 +52,7 @@ export const Venues = ({ venues }) => {
             }
             await deleteTemplatesByVenueId(venueId);
             await deleteFolderFromStorage(`venues/${venueId}`);
+            setLoading(false)
             navigate(0);
             toast.success('Venue Deleted');
         } catch (error) {
@@ -56,16 +61,9 @@ export const Venues = ({ venues }) => {
         } finally {
           setShowDeleteModal(false);
           setVenueToDelete(null);
+          setLoading(false);
         }
       };
-
-    const formatVenueType = (type) => {
-        if (type === 'Public Establishment') {
-            return <PeopleRoofIconSolid />
-        } else {
-            return <HouseIconSolid />
-        }
-    }
 
     const copyToClipboard = (venueId) => {
         navigator.clipboard.writeText(`https://gigin.ltd/venues/${venueId}`).then(() => {
@@ -122,12 +120,22 @@ export const Venues = ({ venues }) => {
                     </div>
                 ))}
 
+                {!venues.length && (
+                    <div className="no-venues" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', minHeight: '500px', gap:'0.5rem'}}>
+                        <VenueIconSolid />
+                        <h4>No venue profiles.</h4>
+                    </div>
+                )}
+
                 {showDeleteModal && (
                     <Portal>
                         <div className='modal' onClick={() => setShowDeleteModal(false)}>
                             <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-                                <h2>Confirm Venue Deletion</h2>
-                                <p style={{ textAlign: 'center' }}>Are you sure you want to delete '{venueToDelete.name}'? <br /> This will also delete all of this venue's gigs.</p>
+                                <div className="modal-header">
+                                    <DeleteGigIcon />
+                                    <h2>Confirm Venue Deletion</h2>
+                                    <p>Are you sure you want to delete '{venueToDelete.name}'? <br /> This will also delete all of this venue's gigs.</p>
+                                </div>
                                 <div className='two-buttons'>
                                     <button className='btn secondary' onClick={() => setShowDeleteModal(false)}>Cancel</button>
                                     <button className='btn danger' onClick={confirmDeleteVenue}>Delete</button>
@@ -135,6 +143,10 @@ export const Venues = ({ venues }) => {
                             </div>
                         </div>
                     </Portal>
+                )}
+
+                {loading && (
+                    <LoadingModal title={'Deleting Venue'} text={'This may take a minute or two...'} />
                 )}
             </div>
         </>

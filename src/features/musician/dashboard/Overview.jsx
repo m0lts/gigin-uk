@@ -121,7 +121,7 @@ const toMs = (dt) => {
             <div className='body overview'>
                 <div className="welcome-box">
                     <h1 className='title'>Good Afternoon, {formatName(user.name)} 👋</h1>
-                    <h2>Have a look at you’re next gig arrangements, messages or find your next gig.</h2>
+                    <h2>Have a look at your next gig arrangements, profile, venues who have invited you, or find your next gig</h2>
                     <div className="two-buttons" style={{ justifyContent: 'flex-start' }}>
                         <button className="btn secondary" onClick={() => navigate('/find-a-gig')}>
                             <MapIcon />

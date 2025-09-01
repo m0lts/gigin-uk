@@ -30,28 +30,25 @@ export const FindMusicians = ({ user }) => {
     const [musicians, setMusicians] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
-
     const searchQuery = searchParams.get('search') || '';
     const selectedType = searchParams.get('type') || '';
-    // const selectedLocation = searchParams.get('location') || '';
     const rawGenres = searchParams.get('genres') || '';
     const selectedGenres = useMemo(() => rawGenres.split(',').filter(Boolean), [rawGenres]);
-
-
     const [lastDocId, setLastDocId] = useState(null);
     const [hasMore, setHasMore] = useState(true);
     
     const fetchMusicians = useCallback(async (reset = false) => {
-        if (loading || (!hasMore && !reset)) return;
+        if ((loading && !reset) || (!hasMore && !reset)) return;
         setLoading(true);
         try {
-          const { musicians: newMusicians, lastDocId: newLastId } = await fetchMusiciansPaginated({
-            lastDocId: reset ? null : lastDocId,
-            limitCount: 50,
-            type: selectedType,
-            genres: selectedGenres === 'Any' ? '' : selectedGenres,
-            search: searchQuery,
-          });
+            const { musicians: newMusicians, lastDocId: newLastId } =
+            await fetchMusiciansPaginated({
+              lastDocId: reset ? null : lastDocId,
+              limitCount: 50,
+              type: selectedType,
+              genres: selectedGenres,      // array ([]) when none
+              search: searchQuery.trim(),  // trim for safety
+            });
           setMusicians(prev => reset ? newMusicians : [...prev, ...newMusicians]);
           setLastDocId(newLastId);
           if (newMusicians.length < 50) setHasMore(false);
@@ -83,8 +80,6 @@ export const FindMusicians = ({ user }) => {
         setLastDocId(null);
         setHasMore(true);
         setMusicians([]);
-    
-        // Wait for state to settle before calling fetchMusicians with reset
         const timeout = setTimeout(() => {
             fetchMusicians(true);
         }, 0);
@@ -156,12 +151,12 @@ export const FindMusicians = ({ user }) => {
                     <button className={`btn ${selectedType === 'DJ' ? 'active' : ''}`} onClick={() => updateParam('type', 'DJ')}>DJ</button>
                 </div>
 
-                <select
-                    value={selectedGenres}
-                    onChange={(e) => {
-                        const v = e.target.value;
-                        updateParam('genres', v === 'Any' ? '' : v);
-                      }}
+                    <select
+                        value={rawGenres}
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            updateParam('genres', v === 'Any' ? '' : v);
+                        }}
                     >
                     <option value="">Any</option>
                     <option value="Rock">Rock</option>
@@ -171,25 +166,15 @@ export const FindMusicians = ({ user }) => {
                     <option value="Classical">Classical</option>
                 </select>
 
-                {/* {windowWidth > 1268 && (
-                    <select
-                        value={selectedLocation}
-                        onChange={(e) => updateParam('location', e.target.value)}
-                        >
-                        <option value="">All Locations</option>
-                        <option value="Cambridge">Cambridge</option>
-                    </select>
-                )} */}
-
                 <div className="search-bar-container">
                     <SearchIcon />
                     <input
-                    type='text'
-                    placeholder='Search By Name...'
-                    value={searchQuery}
-                    onChange={(e) => updateParam('search', e.target.value)} 
-                    className='search-bar'
-                    aria-label='Search musicians'
+                        type='text'
+                        placeholder='Search By Name...'
+                        value={searchQuery}
+                        onChange={(e) => updateParam('search', e.target.value)} 
+                        className='search-bar'
+                        aria-label='Search musicians'
                     />
                 </div>
             </div>
@@ -253,34 +238,6 @@ export const FindMusicians = ({ user }) => {
                                     ))}
                                 </div>
                             )}
-
-                            {/* <div className="stats-container">
-                                {avgReviews?.avgRating ? (
-                                    <div className="stats-box avg-rating">
-                                    <span className="large-item"><StarIcon />{avgReviews.avgRating}</span>
-                                    <span className='text'>avg rating</span>
-                                    </div>
-                                ) : (
-                                    <div className="stats-box avg-rating">
-                                    <span className="large-item"><StarIcon />-</span>
-                                    <span className='text'>no ratings</span>
-                                    </div>
-                                )}
-
-                                <span className="spacer"></span>
-
-                                <div className="stats-box earnings">
-                                    <span className="large-item">{totalEarnings ? formatEarnings(totalEarnings) : '£0'}</span>
-                                    <span className='text'>earned</span>
-                                </div>
-
-                                <span className="spacer"></span>
-
-                                <div className="stats-box followers">
-                                    <span className="large-item">{followers ?? 0}</span>
-                                    <span className="text">followers</span>
-                                </div>
-                            </div> */}
 
                             <button
                                 className="btn tertiary"

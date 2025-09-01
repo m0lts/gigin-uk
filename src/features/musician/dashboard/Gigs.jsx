@@ -393,7 +393,6 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                       musicianProfile.bands?.includes(a.id)
                                 );
                                 const thisGigIsSaved = savedGigs.some(g => g.gigId === gig.gigId);
-                                console.log(gig)
                                 return (
                                     <React.Fragment key={gig.id}>
                                         {isFirstPreviousGig && (
@@ -408,7 +407,9 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                         <tr onClick={
                                             gigStatus.text.toLowerCase() === 'confirmed'
                                                 ? () => openGigHandbook(gig)
-                                                : (e) => openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile ? appliedProfile.profileId : null}`, e)
+                                                : gig.privateApplications ?
+                                                (e) => openInNewTab(`${gig.privateApplicationsLink}`, e) :
+                                                (e) => openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile ? appliedProfile.profileId : null}`, e)
                                         }
                                             onMouseEnter={() => {
                                                 if (applicant?.invited && (!applicant.viewed || applicant.viewed == undefined)) {
@@ -464,12 +465,12 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                 </button>
                                                 {openOptionsGigId === gig.gigId && (
                                                     <div className="options-dropdown">
-                                                        {thisGigIsSaved ? (
+                                                        {/* {thisGigIsSaved ? (
                                                             <button onClick={() => handleUnSaveGig(gig)}>Unsave Gig <SavedIcon /></button>
                                                         ) : (
                                                             <button onClick={() => handleSaveGig(gig)}>Save Gig <SaveIcon /></button>
-                                                        )}
-                                                        <button onClick={() => { closeOptionsMenu(); navigate(`/venues/${gig.venueId}?musicianId=${musicianId}`) }}>View Venue Page <NewTabIcon /></button>
+                                                        )} */}
+                                                        <button onClick={(e) => { closeOptionsMenu(); openInNewTab(`/venues/${gig.venueId}?musicianId=${musicianId}`, e) }}>View Venue Page <NewTabIcon /></button>
                                                         <button onClick={() => {
                                                             closeOptionsMenu();
                                                             handleContactVenue(appliedProfile, gig, gig.venueId);

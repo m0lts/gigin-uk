@@ -552,22 +552,22 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                                 <h2>You Have an Unfinished Profile</h2>
                                 <p>Would you like to continue where you left off?</p>
                                 <div
-                                        className="saved-profile-card"
-                                        onClick={() => {
+                                    className="saved-profile-card"
+                                    onClick={() => {
+                                        setFormData(savedProfile);
+                                        setCompleteSavedProfileModal(false);
+                                        redirectToStep(savedProfile.currentStep);
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
                                             setFormData(savedProfile);
                                             setCompleteSavedProfileModal(false);
                                             redirectToStep(savedProfile.currentStep);
-                                        }}
-                                        role="button"
-                                        tabIndex={0}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                setFormData(savedProfile);
-                                                setCompleteSavedProfileModal(false);
-                                                redirectToStep(savedProfile.currentStep);
-                                            }
-                                        }}
-                                    >
+                                        }
+                                    }}
+                                >
                                     {savedProfile?.photos[0] ? (
                                         <div className="img-thumbnail">
                                             <img src={savedProfile.photos[0]} alt={savedProfile.name} />

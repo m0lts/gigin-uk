@@ -9,7 +9,7 @@ import {
     TickIcon,
 CloseIcon } from '@features/shared/ui/extras/Icons';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { CalendarIconSolid, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, FilterIconEmpty, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, FilterIconEmpty, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch, duplicateGig, saveGigTemplate, updateGigDocument } from '@services/gigs';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
@@ -159,12 +159,12 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         if (selectedGigs.length === 0) return;
         try {
           await deleteGigsBatch(selectedGigs);
-          toast.success('Gigs Deleted.');
+          toast.success('Gig Deleted.');
           setConfirmModal(false);
           setSelectedGigs([]);
         } catch (error) {
-          console.error('Failed to delete selected gigs:', error);
-          toast.error('Failed to delete selected gigs. Please try again.');
+          console.error('Failed to delete selected gig:', error);
+          toast.error('Failed to delete selected gig. Please try again.');
           setConfirmModal(false);
         } finally {
           setTimeout(() => {
@@ -243,7 +243,16 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           showGigPostModal: true,
           skipTemplate:true,
       }})
-      };
+    };
+
+    const copyToClipboard = (link) => {
+      navigator.clipboard.writeText(`${link}`).then(() => {
+          toast.success(`Copied Venue Link: ${link}`);
+      }).catch((err) => {
+          toast.error('Failed to copy link. Please try again.')
+          console.error('Failed to copy link: ', err);
+      });
+    };
   
     return (
       <>
@@ -351,7 +360,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
               )}
           </div>
         <div className='body gigs'>
-            {selectedGigs.length > 0 && (
+            {/* {selectedGigs.length > 0 && (
                 <div className="gig-action-bar">
                     <p>{selectedGigs.length} Gig{selectedGigs.length > 1 ? 's' : ''} Selected</p>
                     <span className="separator"></span>
@@ -390,7 +399,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                     </div>
                     <button className="btn icon" onClick={clearSelection}><ErrorIcon /></button>
                 </div>
-            )}
+            )} */}
           {!showMusicianRequests ? (
             <table>
               <thead>
@@ -522,7 +531,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           <DuplicateGigIcon />
                                       </button>
                                   )}
-                                  {(gig.dateTime > now && gig.status !== 'confirmed' && !gig.kind === 'Open Mic') ? (
+                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.kind !== 'Open Mic') ? (
                                       <button
                                       onClick={async () => {
                                           closeOptionsMenu();
@@ -568,7 +577,12 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                   <button onClick={() => { closeOptionsMenu(); handleCloneAsTemplate(gig); }}>
                                       Make Gig a Template <TemplateIcon />
                                   </button>
-                                  {gig.dateTime > now && (
+                                  {gig.privateApplications && (
+                                    <button onClick={() => { closeOptionsMenu(); copyToClipboard(gig.privateApplicationsLink); }}>
+                                        Copy Private Link <LinkIcon />
+                                    </button>
+                                  )}
+                                  {gig.dateTime > now && gig.status !== 'confirmed' && (
                                       <button 
                                           onClick={() => {
                                               closeOptionsMenu();
@@ -620,7 +634,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             {confirmMessage}
                         </h3>
                         <div className='two-buttons'>
-                            <button className="btn text" onClick={() => setConfirmModal(false)}>Cancel</button>
+                            <button className="btn tertiary" onClick={() => setConfirmModal(false)}>Cancel</button>
                             {confirmType === 'delete' ? (
                                 <button className="btn danger" onClick={handleDeleteSelected}>Delete</button>
                             ) : (

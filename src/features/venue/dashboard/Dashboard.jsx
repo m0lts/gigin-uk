@@ -106,13 +106,13 @@ export const VenueDashboard = ({ user }) => {
                     <div className="breadcrumbs">
                         {breadcrumbs.map((crumb, index) => (
                             <React.Fragment key={crumb.path}>
-                            <div className="breadcrumb">
+                            <Link className="breadcrumb" to={crumb.path}>
                                 {index !== breadcrumbs.length - 1 ? (
-                                <Link to={crumb.path} className='breadcrumb-link'>{crumb.label}</Link>
+                                  <p className='breadcrumb-link'>{crumb.label}</p>
                                 ) : (
-                                <p className='breadcrumb-text'>{crumb.label}</p>
+                                  <p className='breadcrumb-text'>{crumb.label}</p>
                                 )}
-                            </div>
+                            </Link>
                             {index !== breadcrumbs.length - 1 && (
                                 <div className="breadcrumb-separator">
                                 <RightChevronIcon />
@@ -128,7 +128,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route index path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} />} />
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} />} />
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} />} />
-                        <Route path='my-venues' element={<Venues venues={venueProfiles} />} />
+                        <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />
@@ -144,10 +144,13 @@ export const VenueDashboard = ({ user }) => {
                   templates={templates} 
                   incompleteGigs={incompleteGigs} 
                   editGigData={editGigData}
+                  setEditGigData={setEditGigData}
                   buildingForMusician={buildingForMusician}
                   buildingForMusicianData={buildingForMusicianData}
                   setBuildingForMusician={setBuildingForMusician}
                   setBuildingForMusicianData={setBuildingForMusicianData}
+                  refreshTemplates={refreshTemplates}
+                  refreshGigs={refreshGigs}
                 />
               </Portal>
             )

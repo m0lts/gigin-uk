@@ -381,7 +381,7 @@
     overflow: hidden;
     border-collapse: separate;
     border-spacing: 0;
-    padding-bottom: 100px;
+    padding-bottom:20rem;
 }
 
 .window.venues .body.gigs table thead tr {
@@ -598,11 +598,11 @@
 }
 
 .window.venues .body.gigs .dispute-box {
+    margin: 1rem 0;
     width:fit-content;
     padding: 1rem 1.5rem;
     border-radius: 1rem;
-    background-color: var(--gn-off-black);
-    color: var(--gn-white);
+    background-color: var(--gn-grey-200);
     box-shadow: 0 0 5px var(--gn-shadow);
 }
 
@@ -614,6 +614,10 @@
 
 .window.venues .body.gigs .dispute-box h3 {
     text-align: center;
+}
+
+.window.venues .body.gigs .dispute-box .btn {
+    width:100%;
 }
 
 .window.venues .body.gigs .gig-action-bar {
@@ -647,17 +651,6 @@
 
 .window.venues .body.gigs .gig-action-bar .btn.icon .icon {
     font-size: 1.25rem;
-}
-
-.window.venues .body.gigs .modal.confirm .modal-content {
-    max-width: 250px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.window.venues .body.gigs .modal.confirm .modal-content h3 {
-    text-align: center;
 }
 
 .window.venues .body.gigs .musician-requests {

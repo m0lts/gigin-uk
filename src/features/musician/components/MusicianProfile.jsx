@@ -20,11 +20,12 @@ import { toast } from 'sonner';
 import { updateUserDocument } from '../../../services/users';
 import { validateVenueUser } from '../../../services/utils/validation';
 import { filterInvitableGigsForMusician } from '../../../services/utils/filtering';
-import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { arrayRemove, arrayUnion } from 'firebase/firestore';
 import { formatDate } from '@services/utils/dates';
 import { BandMembersTab } from '../bands/BandMembersTab';
 import Portal from '../../shared/components/Portal';
+import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 
 
 const VideoModal = ({ video, onClose }) => {
@@ -59,7 +60,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
     const [musicianSaved, setMusicianSaved] = useState(false);
     const [savingMusician, setSavingMusician] = useState(false);
     const [selectedGig, setSelectedGig] = useState();
-
+    const [inviting, setInviting] = useState(false);
 
     useResizeEffect((width) => {
         if (width > 1100) {
@@ -217,49 +218,43 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         if (!profile || !gigData) {
           return;
         }
-      
         const venueToSend = user.venueProfiles.find(venue => venue.id === gigData.venueId);
         if (!venueToSend) {
           console.error('Venue not found in user profiles.');
           return;
         }
-      
         try {
           await inviteToGig(gigData.gigId, profile);
-      
           const newGigApplicationEntry = {
             gigId: gigData.gigId,
             profileId: profile.musicianId,
             name: profile.name,
           };
-      
           const updatedGigApplicationsArray = profile.gigApplications
             ? [...profile.gigApplications, newGigApplicationEntry]
             : [newGigApplicationEntry];
-      
           await updateMusicianProfile(profile.musicianId, {
             gigApplications: updatedGigApplicationsArray,
           });
-      
           const conversationId = await getOrCreateConversation(
             profile,
             gigData,
             venueToSend,
             'invitation'
           );
-      
           await sendGigInvitationMessage(conversationId, {
             senderId: user.uid,
             text: `${venueToSend.accountName} invited ${profile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(
               gigData.date
             )} for ${gigData.budget}.`,
           });
-      
           setInviteMusicianModal(false);
           toast.success(`Invite sent to ${profile.name}`);
         } catch (error) {
           console.error('Error while creating or fetching conversation:', error);
           toast.error('Error inviting musician. Please try again.');
+        } finally {
+          setInviting(false);
         }
       };
       
@@ -375,7 +370,7 @@ return (
                       {!musicianSaved ? (
                           <button className='btn quaternary' onClick={handleSaveMusician}>
                               {savingMusician ? (
-                                  <LoadingThreeDots />
+                                  <LoadingSpinner width={10} height={10} />
                               ) : (
                                   <>
                                       Save
@@ -385,7 +380,7 @@ return (
                       ) : (
                           <button className='btn quaternary' onClick={handleUnsaveMusician}>
                               {savingMusician ? (
-                                  <LoadingThreeDots />
+                                  <LoadingSpinner width={10} height={10} />
                               ) : (
                                   <>
                                       Unsave
@@ -530,18 +525,23 @@ return (
       </div>
 
       {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
-      {inviteMusicianModal && (
+      {inviteMusicianModal && !inviting ? (
         <Portal>
-          <div className='modal' onClick={() => setInviteMusicianModal(false)}>
+          <div className='modal invite-musician' onClick={() => setInviteMusicianModal(false)}>
               <div className='modal-content' onClick={(e) => e.stopPropagation()}>
                   <div className="modal-header">
+                    <div className="modal-header-text">
                       <InviteIconSolid />
-                      <h2>Invite {profile.name} to a Gig?</h2>
-                      {usersGigs.length > 0 ? (
-                          <p>Select a gig you've already posted, or click 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
-                      ) : (
-                          <p>You have no gig posts availabe for invitation. You can create one by clicking 'Build New Gig For Musician' to post a gig and automatically invite this musician.</p>
-                      )}
+                      <h2>Invite {profile.name} to one of your available gigs.</h2>
+                    </div>
+                    <div className="or-separator">
+                      <span />
+                      <h6>or</h6>
+                      <span />
+                    </div>
+                    <button className="btn secondary" onClick={handleBuildGigForMusician}>
+                      Build New Gig For Musician
+                    </button>
                   </div>
                   <div className='gig-selection'>
                       {usersGigs.length > 0 && (
@@ -556,15 +556,18 @@ return (
                           ))
                       )}
                   </div>
-                  <button className="btn secondary" onClick={handleBuildGigForMusician}>
-                      Build New Gig For Musician
-                  </button>
                   <div className='two-buttons'>
                       <button className='btn tertiary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>
-                      <button className='btn primary' disabled={!selectedGig} onClick={() => handleSendMusicianInvite(selectedGig)}>Invite</button>
+                      {selectedGig && (
+                        <button className='btn primary' disabled={!selectedGig} onClick={() => {setInviting(true); handleSendMusicianInvite(selectedGig)}}>Invite</button>
+                      )}
                   </div>
               </div>
           </div>
+        </Portal>
+      ) : inviteMusicianModal && inviting && (
+        <Portal>
+          <LoadingModal title={`Sending Invite`} />
         </Portal>
       )}
     </div>

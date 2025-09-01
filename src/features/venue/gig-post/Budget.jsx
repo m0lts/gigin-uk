@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CoinsIcon, CoinsIconSolid, TicketIcon, TicketIconLight } from '../../shared/ui/extras/Icons';
 
 export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setError, setStage }) => {
@@ -13,30 +13,49 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
         }
     }, []);
 
-    const handleBudgetChange = (e) => {
-        const value = e.target.value.replace(/[^0-9]/g, '');
-        handleInputChange({
-            budget: `£${value}`,
-        });
+    const formatPoundsInput = (raw) => {
+        const digits = String(raw || '').replace(/[^\d]/g, '');
+        return `£${digits}`;
     };
-
-    const handleKindSelect = (e) => {
+    
+    const handleBudgetChange = (e) => {
+        handleInputChange({ budget: formatPoundsInput(e.target.value) });
+    };
+    
+    const setSlotBudget = (index, value) => {
+        const v = formatPoundsInput(value);
+        const current = Array.isArray(formData.slotBudgets) ? [...formData.slotBudgets] : [];
+        const allSlotsLen = 1 + (extraSlots?.length || 0);
+        if (current.length < allSlotsLen) current.length = allSlotsLen;
+        current[index] = v;
+        handleInputChange({ slotBudgets: current });
+    };
+    
+    const handleKindSelect = (kind) => {
         setError(null);
-        if (e === 'Live Music') {
-            handleInputChange({
-                kind: e,
-                ticketedGigUnderstood: false,
-            });
-            setLocalKind('Flat Fee');
+        if (kind === 'Live Music') {
+          handleInputChange({ kind, ticketedGigUnderstood: false });
+          setLocalKind('Flat Fee');
         } else {
-            handleInputChange({
-                kind: e,
-                budget: '£',
-            });
-            setLocalKind(e);
+          handleInputChange({ kind, budget: '£', slotBudgets: [] });
+          setLocalKind('Ticketed Gig');
         }
         setShowSecondStage(true);
     };
+    
+    const allSlots = [{ startTime: formData.startTime, duration: formData.duration }, ...(extraSlots || [])];
+
+    const parsePounds = (s) => {
+        const n = Number(String(s ?? '').replace(/[^\d]/g, ''));
+        return Number.isFinite(n) ? n : 0;
+    };
+
+    const totalSlotsBudget = useMemo(() => {
+        const slotBudgets = (formData.slotBudgets || []).slice(0, allSlots.length);
+        return slotBudgets.reduce((sum, s) => sum + parsePounds(s), 0);
+      }, [formData.slotBudgets, allSlots.length]);
+      
+      const formatPounds = (n) => `£${Number(n || 0).toLocaleString('en-GB')}`;
 
     const formatSubText = (kind, gigType) => {
         if (kind === 'Wedding') {
@@ -100,20 +119,48 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
                     </div>
                     {showSecondStage && localKind === 'Flat Fee' ? (
                         <div className="budget-container">
-                            <h4>What's your budget for the evening?</h4>
-                            {extraSlots.length > 0 && (<p>This budget will be split proportionately between the evening's sets.</p>)}
-                            <p></p>
-                            <div className='input-group'>
-                                <input 
-                                    type='text' 
-                                    name='budget' 
+                            {extraSlots.length > 0 ? (
+                                <h4>Enter a budget for each set.</h4>
+                            ) : (
+                                <h4>What's your budget for the evening?</h4>
+                            )}
+                            {allSlots.length === 1 ? (
+                                <div className='input-group'>
+                                    <input
+                                    type='text'
+                                    name='budget'
                                     id='budget'
                                     ref={budgetInputRef}
                                     onChange={handleBudgetChange}
-                                    value={formData.budget}
+                                    value={formData.budget || '£'}
                                     autoComplete="off"
                                     />
-                            </div>
+                                </div>
+                                ) : (
+                                <div className="slots-container">
+                                    <div className='slot-budgets'>
+                                        {allSlots.map((slot, i) => (
+                                        <div className='input-group' key={i}>
+                                            <label className='label'>
+                                                Set {i + 1} — {slot.startTime} • {slot.duration} mins
+                                            </label>
+                                            <input
+                                                type='text'
+                                                inputMode='numeric'
+                                                value={(formData.slotBudgets?.[i]) ?? '£'}
+                                                onChange={(e) => setSlotBudget(i, e.target.value)}
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                        ))}
+                                        {/* (Optional) Show total */}
+                                    </div>
+                                    <div className='sub-text'>
+                                        <h6>Total</h6>
+                                        <h1>{formatPounds(totalSlotsBudget)}</h1>
+                                    </div>
+                                </div>
+                            )}
                             <p className='sub-text'>{formatSubText(formData.kind, formData.gigType)}</p>
                         </div>
                     ) : showSecondStage && localKind === 'Ticketed Gig' && (

@@ -208,7 +208,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                   name='password'
                   id='password'
                   value={credentials.password}
-                  onChange={(e) => { handleChange(e); clearError(); }}
+                  onChange={(e) => { handleChange(e); clearError(); setShowPasswordInfo(false) }}
                   placeholder='Password'
                   required
                   className={`${error.input === 'password' && 'error'} ${loading ? 'disabled' : ''}`}

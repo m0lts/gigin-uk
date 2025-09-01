@@ -1,8 +1,13 @@
 
 .gig-post .modal-content {
-    padding:4rem 1rem;
-    padding-bottom: 5rem;
+    padding:1rem 1rem;
     min-width: 70vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:0;
+    min-height: 70vh;
 }
 
 @media (max-width: 1268px) {
@@ -121,7 +126,7 @@
 
 .gig-post .modal-content .stage {
     text-align: center;
-    height: 500px;
+    flex: 1;
     width:100%;
     overflow: scroll;
     -ms-overflow-style: none;
@@ -131,7 +136,8 @@
     align-items: center;
     justify-content: center;
     gap:1rem;
-    padding-top: 2rem;
+    padding:3rem 0;
+    padding-top: 6rem;
 }
 
 .gig-post .modal-content .stage::-webkit-scrollbar {
@@ -620,6 +626,44 @@
     outline: none;
 }
 
+.gig-post .stage .budget .slot-budgets {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap:1rem;
+}
+
+.gig-post .stage .budget .slot-budgets .input-group {
+    flex-direction: column;
+    margin: 1rem 0;
+    gap:5px;
+}
+
+.gig-post .stage .budget .slot-budgets .input-group input {
+    font-size: 1.5rem;
+    font-weight: var(--gn-semi-bold);
+    width: fit-content;
+    max-width: 100px;
+    text-align: center;
+    border:1px solid var(--gn-grey-400);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0;
+    outline: 1px solid transparent;
+    transition: all 0.2s linear;
+}
+
+.gig-post .stage .budget .slot-budgets .input-group input:focus {
+    border-color: var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+}
+
+.gig-post .stage .budget .slots-container .sub-text {
+    font-size: 2rem;
+    font-weight: var(--gn-semi-bold);
+    margin: 1rem 0;
+}
+
 .gig-post .stage .budget .ticketed-container {
     display: flex;
     flex-direction: column;
@@ -746,8 +790,15 @@
     padding-top: 0;
 }
 
+.gig-post .stage .review-box-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    margin-bottom: 1rem;
+}
+
 .gig-post .stage .review-box {
-    width:fit-content;
     display: flex;
     align-items: center;
     text-align: center;
@@ -764,6 +815,7 @@
 .gig-post .stage .review .review-grid {
     width:100%;
     height:100%;
+    flex: 1;
     display: grid;
     grid-template-columns: 50% 50%;
 }
@@ -777,6 +829,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: space-evenly;
+    gap:1rem;
 }
 
 .gig-post .stage .review .review-right {
@@ -914,16 +967,13 @@
 /* PROGRESS BAR */
 
 .gig-post .progress-bar-container {
-    position: absolute;
-    bottom: 60px;
-    left:2.5%;
-    width: 95%;
-    margin: 0 auto;
+    height:5px;
+    min-height: 5px;
+    width:100%;
+    margin: 1rem 0;
     background-color: var(--gn-grey-300);
-    height: 5px;
     border-radius: 5px;
     overflow: hidden;
-    margin-bottom: 1rem;
 }
 
 .gig-post .progress-bar {
@@ -936,10 +986,7 @@
 /* CONTROL BUTTONS */
 
 .gig-post .control-buttons {
-    position: absolute;
-    bottom: 5%;
-    left:2.5%;
-    width:95%;
+    width:100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -953,8 +1000,6 @@
 /* CLOSE BUTTON */
 
 .gig-post .btn.close-modal {
-    position: absolute;
-    top:1rem;
-    right:2.5%;
+    align-self: flex-end;
     transition: all 200ms linear;
 }

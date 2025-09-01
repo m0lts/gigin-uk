@@ -91,13 +91,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     });
 
     const getLocalGigDateTime = (gig) => {
-        const dateObj = gig.date.toDate();
-        const [hours, minutes] = gig.startTime.split(':').map(Number);
-        dateObj.setHours(hours);
-        dateObj.setMinutes(minutes);
-        dateObj.setSeconds(0);
-        dateObj.setMilliseconds(0);
-        return dateObj;
+        if (gig) {
+            const dateObj = gig.date.toDate();
+            const [hours, minutes] = gig.startTime.split(':').map(Number);
+            dateObj.setHours(hours);
+            dateObj.setMinutes(minutes);
+            dateObj.setSeconds(0);
+            dateObj.setMilliseconds(0);
+            return dateObj;
+        }
       };
 
     useMapbox({
@@ -107,7 +109,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     
     const computeStatusForProfile = (gig, profile) => {
         const applicant = gig?.applicants?.find(a => a?.id === profile?.musicianId);
-        const invited = !!(applicant && applicant.invited === true);
+        const invited = !!(applicant && applicant.invited === true) || (gig?.privateApplications && gig.privateApplicationToken === inviteToken);
         const applied = !!(applicant && applicant.invited !== true);
         const accepted = !!(applicant && applicant.status === 'accepted');
         return { invited, applied, accepted };
@@ -127,10 +129,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               if (cancelled) return;
               enrichedGig = { ...gig, user: userDoc };
             }
-            if (Array.isArray(enrichedGig?.gigSlots) && enrichedGig.gigSlots.length) {
-              const otherGigs = await getGigsByIds(enrichedGig.gigSlots);
-              if (cancelled) return;
-              setOtherSlots(otherGigs.filter(g => (g.status || '').toLowerCase() !== 'closed'));
+            if (Array.isArray(enrichedGig?.gigSlots) && enrichedGig.gigSlots.some(g => g?.id)) {
+                const ids = enrichedGig.gigSlots.map(g => g.id);
+                const otherGigs = await getGigsByIds(ids);
+                if (cancelled) return;
+                setOtherSlots(otherGigs.filter(g => (g.status || '').toLowerCase() !== 'closed'));
             }
             const baseMusician = user?.musicianProfile ? [user.musicianProfile] : [];
             let bandProfiles = [];
@@ -177,12 +180,17 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setValidProfiles(profiles);
             setSelectedProfile(prev => prev || defaultSelected);
             setHasAccessToPrivateGig(nextHasAccess);
-            setInvitedToGig(nextInvitedToGig);
+            if (nextHasAccess) {
+                setInvitedToGig(nextHasAccess)
+            } else {
+                setInvitedToGig(nextInvitedToGig);
+            }
             const myIds = [
               user?.musicianProfile?.savedGigs || [],
               ...bandProfiles.map(b => b.savedGigs || []),
             ].flat();
             if (myIds.includes(enrichedGig.gigId)) setGigSaved(true);
+            console.log(enrichedGig)
             if (enrichedGig?.venueId) {
               const venue = await getVenueProfileById(enrichedGig.venueId);
               if (!cancelled && venue) setVenueProfile(venue);
@@ -497,7 +505,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         try {
             const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'message');
             navigate(`/messages?conversationId=${conversationId}`);
-            toast.success('Message sent to venue.')
         } catch (error) {
             console.error('Error while creating or fetching conversation:', error);
             toast.error('Failed to send message. Please try again')
@@ -562,7 +569,40 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           console.error(error);
           toast.error('Failed to save gig. Please try again.');
         }
-      };
+    };
+
+    const now = new Date();
+    const isFutureOpen = getLocalGigDateTime(gigData) > now && (gigData?.status || '').toLowerCase() !== 'closed';
+    const isPrivate = !!gigData?.privateApplications;
+    const invited = !!invitedToGig;
+    const applied = !!userAppliedToGig;
+    const accepted = !!userAcceptedInvite;
+
+    // Visibility per your spec
+    const showApply =
+    !invited && !isPrivate && !applied && !accepted;
+
+    const showApplied =
+    ( // already applied covers both public and private
+        applied
+    ) || (
+        // (you also wanted "if invited and already applied" -> show applied)
+        invited && applied
+    );
+
+    const showAcceptInvite =
+        invited && !applied && !accepted; // private or not
+
+    // Negotiate: show only if (not applied/accepted) OR (private AND invited)
+    const showNegotiate =
+        (!applied && !accepted) || (isPrivate && invited);
+
+    // Message: show in any case EXCEPT (private AND not invited)
+    const showMessage =
+    !(isPrivate && !invited);
+
+    // Optional: hide negotiate for kinds you excluded earlier
+    const kindBlocksNegotiate = gigData?.kind === 'Ticketed Gig' || gigData?.kind === 'Open Mic';
     
     return (
         <div className='gig-page'>
@@ -626,7 +666,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 <div className='important-info'>
                                     <div className='date-and-time'>
                                         <h2>{gigData.venue.venueName}</h2>
-                                        <button className="btn text" onClick={(e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile.id}`, e)}>
+                                        <button className="btn text" onClick={
+                                            selectedProfile && selectedProfile?.id ? 
+                                            (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e)
+                                            : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
                                             Venue Page <NewTabIcon />
                                         </button>
                                     </div>
@@ -678,7 +721,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 Audience
                                             </span>
                                             <p className='detail-text'>
-                                            {gigData.privacy === 'Public' || '' ? (
+                                            {(gigData.privacy === 'Public' || '') ? (
                                                 'This gig is open to the public, rather than a private event'
                                             ) : (
                                                 'This gig is a private event - not open to the public'
@@ -775,7 +818,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             </div>
                                         </div>
                                     )}
-                                    {venueProfile.extraInformation && (
+                                    {venueProfile?.extraInformation && (
                                         <div className='info'>
                                             <h6>Venue Information</h6>
                                             <div className='text'>
@@ -882,7 +925,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             </div>
                                         </div>
                                     )}
-                                    {!(user?.venueProfiles?.length > 0 && (!user.musicianProfile)) && hasAccessToPrivateGig && !venueVisiting && (
+                                    {!(user?.venueProfiles?.length > 0 && !user.musicianProfile) && !venueVisiting && (
                                         <>
                                             {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && (
                                                 <div className="profile-select-wrapper">
@@ -905,49 +948,59 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </div>
                                             )}
                                             <div className='action-box-buttons'>
-                                            {(getLocalGigDateTime(gigData) > new Date() && gigData.status !== 'closed') ? (
-                                                <>
-                                                {userAppliedToGig ? (
-                                                    <button className='btn primary-alt disabled' disabled>
-                                                        Applied To Gig
-                                                    </button>
-                                                ) : userAcceptedInvite ? (
-                                                    <button className='btn primary-alt disabled' disabled>
-                                                        Invitation Accepted
-                                                    </button>
-                                                ) : invitedToGig ? (
-                                                    <button className='btn primary-alt' onClick={handleAccept}>
-                                                        {applyingToGig ? <LoadingThreeDots /> : 'Accept Invitation'}
-                                                    </button>
-                                                ) : (
-                                                    <button className='btn primary-alt' onClick={handleGigApplication}>
-                                                        {applyingToGig ? <LoadingThreeDots /> : 'Apply To Gig'}
-                                                    </button>
-                                                )}
+                                                {isFutureOpen  ? (
+                                                    <>
+                                                        {/* Primary action button area */}
+                                                        {showApplied && hasAccessToPrivateGig ? (
+                                                            <button className='btn primary-alt disabled' disabled>Applied To Gig</button>
+                                                        ) : accepted && hasAccessToPrivateGig ? (
+                                                            <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
+                                                        ) : showAcceptInvite && hasAccessToPrivateGig ? (
+                                                            <button className='btn primary-alt' onClick={handleAccept}>
+                                                            {applyingToGig ? <LoadingThreeDots /> : 'Accept Invitation'}
+                                                            </button>
+                                                        ) : showApply && hasAccessToPrivateGig ? (
+                                                            <button className='btn primary-alt' onClick={handleGigApplication}>
+                                                            {applyingToGig ? <LoadingThreeDots /> : 'Apply To Gig'}
+                                                            </button>
+                                                        ) : null}
 
-                                                <div className='two-buttons'>
-                                                    {!userAppliedToGig && !invitedToGig && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && (
-                                                        <button className='btn secondary' onClick={handleNegotiateButtonClick}>
-                                                            Negotiate
-                                                        </button>
-                                                    )}
-                                                    <button className='btn secondary' onClick={handleMessage}>
-                                                    Message
-                                                    </button>
-                                                </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                <div className='two-buttons'>
-                                                    <button className='btn secondary' onClick={handleMessage}>
-                                                        Message
-                                                    </button>
-                                                </div>
+                                                        <div className='two-buttons'>
+                                                            {/* Negotiate */}
+                                                            {showNegotiate && !kindBlocksNegotiate && hasAccessToPrivateGig && (
+                                                                <button className='btn secondary' onClick={handleNegotiateButtonClick}>
+                                                                    Negotiate
+                                                                </button>
+                                                            )}
+
+                                                            {/* Message */}
+                                                            {showMessage && hasAccessToPrivateGig && (
+                                                            <button className='btn secondary' onClick={handleMessage}>
+                                                                Message
+                                                            </button>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Private notice (only if private AND no invite) */}
+                                                        {isPrivate && !hasAccessToPrivateGig && (
+                                                            <div className="private-applications">
+                                                            <InviteIconSolid />
+                                                            <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                    <div className='two-buttons'>
+                                                        {showMessage && (
+                                                            <button className='btn secondary' onClick={handleMessage}>Message</button>
+                                                        )}
+                                                    </div>
                                                     <button className='btn secondary'>
                                                         Other Gigs at {gigData.venue.venueName}
                                                     </button>
-                                                </>
-                                            )}
+                                                    </>
+                                                )}
                                             </div>
                                         </>
                                     )}
@@ -992,7 +1045,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 <Portal>
                     <NoProfileModal 
                         isOpen={noProfileModal}
-                        onClose={() => setNoProfileModal(false)}
+                        onClose={() => {setNoProfileModal(false)}}
                     />
                 </Portal>
             )}

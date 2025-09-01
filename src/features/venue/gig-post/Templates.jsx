@@ -80,7 +80,7 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetForm
                             <div className={`card template ${selectedCard === template.templateId ? 'selected' : ''}`} key={index} onClick={() => handlePopulateTemplateData(template)}>
                                 <h4 className='text'>{template.templateName}</h4>
                                 <p className='sub-text'>{template.venue.venueName}</p>
-                                <p className='sub-text'>{formatDate(template.createdAt)}</p>
+                                <p className='sub-text'>{template?.createdAt ? formatDate(template?.createdAt) : ''}</p>
                             </div>
                         ))}
                     </div>
@@ -93,7 +93,7 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetForm
                         {incompleteGigs.map((gig, index) => (
                             <div className={`card saved ${selectedCard === gig.gigId ? 'selected' : ''}`} key={index} onClick={() => handlePopulateGigData(gig)}>
                                 <h4 className='text'>{gig.venue.venueName}</h4>
-                                <p className='sub-text'>{formatDate(gig.createdAt)}</p>
+                                <p className='sub-text'>{gig?.createdAt ? formatDate(gig?.createdAt) : ''}</p>
                             </div>
                         ))}
                     </div>

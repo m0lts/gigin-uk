@@ -156,3 +156,287 @@
 .modal-padding.auth .change-auth-type .btn:hover {
     color: var(--gn-grey-600);
 }
+
+
+/* VENUE BUILDER SAVED PROFILE */
+.modal .saved-profile h2 {
+    margin-bottom: 5px;
+}
+
+.modal .saved-profile .saved-profile-card {
+    border:1px solid var(--gn-grey-350);
+    outline:1px solid transparent;
+    margin-top:2rem;
+    border-radius: 1rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 200ms ease-in-out;
+}
+
+.modal .saved-profile .saved-profile-card:hover {
+    border-color: var(--gn-off-black);
+    outline-color: var(--gn-off-black);
+}
+
+.modal .saved-profile .saved-profile-card .img-thumbnail {
+    background-color: var(--gn-grey-350);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    width:75px;
+    height:75px;
+    object-fit: cover;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.modal .saved-profile .saved-profile-card .img-thumbnail img {
+    width:75px;
+    height:75px;
+    object-fit: cover;
+}
+
+/* Musician Profile Error */
+
+.modal .venue-builder-error .modal-content {
+    max-width: 300px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal .venue-builder-error .modal-content h2 {
+    margin-bottom: 5px;
+}
+
+/* CONFIRM MODALS */
+.modal.confirm .modal-content {
+    max-width: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal.confirm .modal-content h3 {
+    text-align: center;
+}
+
+/* LOADING MODAL */
+
+.modal.loading .modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal.loading .modal-content .loading-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:0.5rem;
+}
+
+.modal.loading .modal-content .loading-text p {
+    color: var(--gn-grey-700);
+}
+
+/* VENUE MESSAGES GIG INFO */
+
+.modal.gig-information .modal-content {
+    min-height: fit-content !important;
+}
+
+.modal.gig-information .top-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal.gig-information .venue {
+    padding:0.5rem 0;
+    margin: 0rem 1.5rem;
+}
+
+.modal.gig-information .venue .photo {
+    margin-bottom: 0.5rem;
+    width: 100%;
+    height: 150px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.modal.gig-information .venue .photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal.gig-information .event-information {
+    margin: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--gn-grey-300);
+    border-top: 1px solid var(--gn-grey-300);
+}
+
+.modal.gig-information .location {
+    margin-left: 1.5rem;
+    margin-right: 1.5rem;
+}
+
+.modal.gig-information .budgets {
+    border:1px solid var(--gn-grey-300);
+    margin: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    padding: 1rem;
+}
+
+.modal.gig-information .budget-container {
+    text-align: center;
+}
+
+.modal.gig-information .date-and-time {
+    margin: 0.25rem 1.5rem;
+}
+
+.modal.gig-information .details {
+    margin: 1rem 1.5rem;
+}
+
+.modal.gig-information .details-list {
+    width:100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:5px;
+}
+
+.modal.gig-information .details-list .detail {
+    text-align: center;
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    padding: 1rem 0.5rem;
+}
+
+.modal.gig-information .details-list .detail .data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.modal.gig-information .map {
+    box-shadow: 0 0 5px var(--gn-shadow);
+    margin: 0.25rem 1.5rem;
+    height:240px;
+    border-radius: 10px;
+    padding-bottom: 1rem;
+}
+
+
+/* INVITE MUSICIAN TO GIG MODAL */
+
+.modal.invite-musician .modal-content {
+    min-height: 75vh;
+    display: flex;
+    flex-direction: column;
+    gap:0;
+}
+
+.modal.invite-musician .modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap:1rem;
+}
+
+
+.modal.invite-musician .modal-header .or-separator {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.modal.invite-musician .modal-header .or-separator span {
+    width:50%;
+    border-top: 1px solid var(--gn-grey-400);
+}
+
+.modal.invite-musician .gig-selection {
+    width:100%;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-bottom: 1rem;
+    padding: 0 0.1rem;
+}
+
+.modal.invite-musician .gig-selection .card {
+    position: relative;
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding:1rem;
+    gap:5px;
+    text-align: left;
+    margin-bottom: 0.5rem;
+    outline: 1px solid transparent;
+    transition: all 200ms linear;
+}
+
+.modal.invite-musician .gig-selection .card .text {
+    font-size: 1rem;
+}
+
+.modal.invite-musician .gig-selection .card .sub-text {
+    font-size: 0.9rem;
+}
+
+.modal.invite-musician .gig-selection .card:hover {
+    border-color: var(--gn-off-black);
+}
+
+.modal.invite-musician .gig-selection .card.selected {
+    border-color: var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+}
+
+
+/* GIG PAGE NEGOTIATE MODAL */
+
+/* NEGOTIATE MODAL */
+
+.modal.negotiation .modal-content {
+    max-width: 300px;
+}
+
+.modal.negotiation .modal-content .input {
+    border:1px solid var(--gn-grey-350);
+    width:100%;
+    text-align: center;
+    margin-bottom: 1rem;
+    border-radius: 1rem;
+    font-size: 1.25rem;
+    outline: 1px solid transparent;
+    transition: all 0.2s linear;
+}
+
+.modal.negotiation .modal-content .input:focus {
+    border:1px solid var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+}

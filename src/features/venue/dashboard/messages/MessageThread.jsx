@@ -595,15 +595,17 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <>
                                             <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                             <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
-                                            <AddToCalendarButton
-                                                event={{
-                                                    title: `Gig at ${gigData.venue.venueName}`,
-                                                    start: start,
-                                                    end: end,
-                                                    description: `Gig confirmed with fee: ${gigData.agreedFee}`,
-                                                    location: gigData.venue.address,
-                                                }}
-                                            />
+                                            {gigData && (
+                                                <AddToCalendarButton
+                                                    event={{
+                                                        title: `Gig at ${gigData?.venue?.venueName}`,
+                                                        start: start,
+                                                        end: end,
+                                                        description: `Gig confirmed with fee: ${gigData?.agreedFee}`,
+                                                        location: gigData?.venue?.address,
+                                                    }}
+                                                />
+                                            )}
                                         </>
                                     )
                                 ) : message.status === 'payment failed' && userRole === 'venue' ? (

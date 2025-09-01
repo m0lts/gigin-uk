@@ -130,6 +130,7 @@ export const NoProfileModal = ({
                 await updateMusicianProfile(musicianId, payload);
             }
             toast.success('Profile updated');
+            window.location.reload();
             onClose?.();
         } catch (e) {
             console.error(e);
@@ -142,13 +143,13 @@ export const NoProfileModal = ({
         setLoadingMessage('Saving…');
         setStage(Stage.LOADING);
         try {
-            console.log('skipping', musicianId)
             const payload = {
               onboarded: true,
               searchKeywords: generateSearchKeywords(musicianName),
               updatedAt: Timestamp.now(),
             };
             await updateMusicianProfile(musicianId, payload);
+            window.location.reload();
             onClose?.();
           } catch (e) {
             console.error(e);
@@ -216,6 +217,7 @@ export const NoProfileModal = ({
             };
             await createMusicianProfile(bandId, musicianProfileData, user.uid);
             toast.success('Band created!');
+            window.location.reload();
             onClose?.();
         } catch (e) {
             console.error('Error creating band:', e);

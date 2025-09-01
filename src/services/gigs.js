@@ -36,22 +36,22 @@ import {
  * @param {Array<Object>} gigDocuments - An array of gig objects, each containing a `gigId` field.
  * @returns {Promise<void>}
  */
+
 export const postMultipleGigs = async (venueId, gigDocuments) => {
-  try {
-    const gigIds = gigDocuments.map(gig => gig.gigId);
-    const writePromises = gigDocuments.map(gig => {
-      const gigRef = doc(firestore, 'gigs', gig.gigId);
-      return setDoc(gigRef, gig, { merge: true });
-    });
-    await Promise.all(writePromises);
-    const venueRef = doc(firestore, 'venueProfiles', venueId);
-    await updateDoc(venueRef, {
-      gigs: arrayUnion(...gigIds),
-    });
-  } catch (error) {
-    console.error('Error posting multiple gigs for venue:', error);
-    throw error;
+  if (!venueId) throw new Error('venueId is required');
+  if (!Array.isArray(gigDocuments) || gigDocuments.length === 0) return;
+  const batch = writeBatch(firestore);
+  const gigIds = [];
+  for (const gig of gigDocuments) {
+    if (!gig?.gigId) throw new Error('Each gig must have a gigId');
+    const gigRef = doc(firestore, 'gigs', gig.gigId);
+    batch.set(gigRef, gig, { merge: false });
+    gigIds.push(gig.gigId);
   }
+  const uniqueGigIds = [...new Set(gigIds)];
+  const venueRef = doc(firestore, 'venueProfiles', venueId);
+  batch.set(venueRef, { gigs: arrayUnion(...uniqueGigIds) }, { merge: true });
+  await batch.commit();
 };
 
 /**

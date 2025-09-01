@@ -265,7 +265,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.5rem;
+}
+
+.profile .profile-form .upload-progress-list .upload-item-top .processing h4 {
+    margin-top: 5px;
 }
 
 .profile .profile-form .upload-progress-list .upload-item-bottom {
@@ -331,46 +334,46 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
     gap: 0.5rem;
-  }
+}
   
   /* each item */
-  .profile .profile-form .photo-item .photo-box {
+.profile .profile-form .photo-item .photo-box {
     position: relative;
     width: 100%;
     aspect-ratio: 1 / 1;         /* square thumbs */
     border-radius: 8px;
     overflow: hidden;
     background: var(--gn-grey-200);
-  }
+}
   
   /* uploading placeholder */
-  .profile .profile-form .photo-item.uploading .photo-box.placeholder {
+.profile .profile-form .photo-item.uploading .photo-box.placeholder {
     display: grid;
     place-items: center;
     background: var(--gn-grey-250);
-  }
+}
   
   /* spinner */
-  .profile .profile-form .spinner {
+.profile .profile-form .spinner {
     width: 22px;
     height: 22px;
     border: 3px solid rgba(0,0,0,0.15);
     border-top-color: rgba(0,0,0,0.55);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
   
   /* thumbnail image */
-  .profile .profile-form .photo-item img {
+.profile .profile-form .photo-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-  }
+}
   
   /* hover overlay for actions */
-  .profile .profile-form .photo-item .hover-overlay {
+.profile .profile-form .photo-item .hover-overlay {
     position: absolute;
     inset: 0;
     display: flex;
@@ -380,16 +383,34 @@
     background: linear-gradient(to top, rgba(0,0,0,0.35), rgba(0,0,0,0));
     opacity: 0;
     transition: opacity .15s ease;
-  }
+}
   
-  .profile .profile-form .photo-item:hover .hover-overlay {
+.profile .profile-form .photo-item:hover .hover-overlay {
     opacity: 1;
-  }
-  
-  .profile .profile-form .photo-item .hover-overlay .btn.small {
+}
+
+.profile .profile-form .photo-item .hover-overlay .btn.small {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
-  }
+}
+
+.profile .profile-form .profile-section.socials .message {
+    border:1px solid var(--gn-green);
+    width: fit-content;
+    padding:0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--gn-green);
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    background-color: var(--gn-offset-green);
+}
+
+.profile .profile-form .profile-section.socials .message.error {
+    border:1px solid var(--gn-red);
+    background-color: var(--gn-offset-red);
+    color: var(--gn-red);
+}
 
 .profile .profile-form .modal-content {
     background-color: transparent;
@@ -1115,46 +1136,6 @@
     color: var(--gn-red);
     font-size: 2rem;
     cursor: pointer;
-}
-
-.musician-profile  .modal .gig-selection {
-    width:75%;
-    max-height: 250px;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-.musician-profile  .modal .gig-selection .card {
-    position: relative;
-    border:1px solid var(--gn-grey-400);
-    background-color: var(--gn-white);
-    border-radius: var(--gn-btn-border-radius);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    padding:0.5rem;
-    padding-right: 1.5rem;
-    gap:5px;
-    text-align: left;
-    transition: background-color 200ms linear, border-color 200ms linear;
-}
-
-.musician-profile  .modal .gig-selection .card .text {
-    font-size: 1rem;
-}
-
-.musician-profile  .modal .gig-selection .card .sub-text {
-    font-size: 0.9rem;
-}
-
-.musician-profile  .modal .gig-selection .card:hover {
-    border-color: var(--gn-orange);
-}
-
-.musician-profile  .modal .gig-selection .card.selected {
-    background-color: var(--gn-offset-orange);
-    border-color: var(--gn-orange);
 }
 
 /* BAND MEMBERS MODAL */

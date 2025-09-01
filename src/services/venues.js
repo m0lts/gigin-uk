@@ -420,7 +420,6 @@ export const removeVenueIdFromUser = async (userId, venueIdToRemove) => {
     try {
       const userRef = doc(firestore, 'users', userId);
       const userSnap = await getDoc(userRef);
-  
       if (userSnap.exists()) {
         const userData = userSnap.data();
         const updatedVenueProfiles = (userData.venueProfiles || []).filter(id => id !== venueIdToRemove);

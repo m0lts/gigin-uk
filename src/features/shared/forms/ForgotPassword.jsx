@@ -6,6 +6,7 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 // Styles
 import '@styles/forms/forms.styles.css';
+import { toast } from 'sonner';
 
 
 export const ForgotPasswordForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, resetPassword, setAuthModal, loading, setLoading, authClosable }) => {
@@ -47,7 +48,6 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
   const handleResendPasswordReset = async () => {
     if (loading || timer > 0) return;
     setLoading(true);
-
     try {
       await resetPassword(credentials.email);
       setTimer(60);
@@ -78,7 +78,7 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
             <h1>Forgot Password</h1>
           </div>
           <div className='auth-form'>
-            <p style={{ textAlign: 'center' }}>We have sent an email to {credentials.email} with instructions on how to reset your password.</p>
+            <p style={{ textAlign: 'center' }}>If you have an account with {credentials.email}, you will have received instructions on how to reset your password.</p>
             <p style={{ textAlign: 'center', marginBottom: '1rem' }}>If you haven't received an email, click the button below to send another link.</p>
             <button className='btn text' onClick={handleResendPasswordReset} disabled={timer > 0}>
               {timer > 0 ? `Re-send forgot password link (${timer}s)` : 'Re-send forgot password link.'}

@@ -17,7 +17,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
         endDate: ''
     })
     const [gigRepeat, setGigRepeat] = useState('no');
-    const [repeatEnd, setRepeatEnd] = useState('never');
+    const [repeatEnd, setRepeatEnd] = useState('after');
     const [endRepeatAfter, setEndRepeatAfter] = useState('');
     const [endRepeatDate, setEndRepeatDate] = useState('');
     const [privateApplicationsToken, setPrivateApplicationsToken] = useState(null);
@@ -95,42 +95,74 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
         return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
     };
 
+    const HARD_CAP = 10;
+
     const getMaxRepeat = () => {
-        switch (gigRepeat) {
-            case 'daily':
-                return 365;
-            case 'weekly':
-                return 52;
-            case 'fortnightly':
-                return 26;
-            case 'monthly':
-                return 12;
-            default:
-                return '';
+        const byFreq =
+          gigRepeat === 'daily' ? 365 :
+          gigRepeat === 'weekly' ? 52 :
+          gigRepeat === 'fortnightly' ? 26 :
+          gigRepeat === 'monthly' ? 12 :
+          0;
+        return Math.min(HARD_CAP, byFreq || HARD_CAP);
+    };
+
+    const addOccurrence = (date, freq) => {
+        const d = new Date(date);
+        if (freq === 'daily') d.setDate(d.getDate() + 1);
+        else if (freq === 'weekly') d.setDate(d.getDate() + 7);
+        else if (freq === 'fortnightly') d.setDate(d.getDate() + 14);
+        else if (freq === 'monthly') d.setMonth(d.getMonth() + 1);
+        return d;
+    };
+    
+    const nthOccurrenceDate = (start, freq, n) => {
+        let d = new Date(start);
+        for (let i = 1; i < n; i++) d = addOccurrence(d, freq);
+        return d;
+    };
+      
+    const countOccurrencesUpTo = (start, end, freq, cap = HARD_CAP) => {
+        let count = 1;
+        let d = new Date(start);
+        while (count < cap) {
+          d = addOccurrence(d, freq);
+          if (d > end) break;
+          count++;
         }
+        return count;
     };
 
     const handleEndRepeatAfterChange = (e) => {
         const max = getMaxRepeat();
-        const value = e.target.value;
-        if (value <= max) {
-            setEndRepeatAfter(value);
-        } else {
-            setEndRepeatAfter(max);
-        }
+        let value = parseInt(e.target.value || '0', 10);
+        if (!Number.isFinite(value) || value < 1) value = 1;
+        if (value > max) value = max;
+        setRepeatEnd('after');
+        setEndRepeatAfter(String(value));
     };
 
     const handleRepeatDateChange = (e) => {
-        const value = new Date(e.target.value);
-        const gigDate = new Date(formData.date);
-    
-        if (value < gigDate) {
-            toast.error('The repeat end date cannot be before the gig date.');
-            return;
-        } else {
-            setEndRepeatDate(e.target.value);
+        const chosen = new Date(e.target.value);
+        const start = new Date(formData.date);
+        if (chosen < start) {
+          toast.error('The repeat end date cannot be before the gig date.');
+          return;
         }
-    };
+        if (gigRepeat === 'no') {
+          setEndRepeatDate(e.target.value);
+          return;
+        }
+        const occ = countOccurrencesUpTo(start, chosen, gigRepeat, HARD_CAP + 1);
+        if (occ > HARD_CAP) {
+          const tenth = nthOccurrenceDate(start, gigRepeat, HARD_CAP);
+          const iso = tenth.toISOString().slice(0, 10);
+          setEndRepeatDate(iso);
+          toast('Capped to the first 10 repeats.');
+        } else {
+          setEndRepeatDate(e.target.value);
+        }
+      };
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(privateApplicationsLink).then(() => {
@@ -146,26 +178,39 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
         setSaving(true);
         const templateId = uuidv4();
         const allSlots = [
-            { startTime: formData.startTime, duration: formData.duration },
-            ...extraSlots,
-          ];
+          { startTime: formData.startTime, duration: formData.duration },
+          ...extraSlots,
+        ];
+      
+        // Clone formData and strip unwanted fields
+        const {
+          applicants,     // remove
+          gigId,          // remove
+          date,           // remove
+          createdAt,      // remove
+          ...rest
+        } = formData;
+      
         const templateDataPacket = {
-          ...formData,
+          ...rest,
           gigId: null,
           date: null,
-          templateName: templateName,
-          templateId: templateId,
+          templateName,
+          templateId,
           gigSlots: allSlots,
+          status: "open",
+          createdAt: Date.now(),
         };
+      
         try {
           await saveGigTemplate(templateDataPacket);
           setSaving(false);
           setSavedTemplate(true);
-          toast.success('Template Saved.')
+          toast.success("Template Saved.");
         } catch (error) {
           setSaving(false);
-          toast.error('Failed to save template. Please try again.')
-          console.error('Failed to save template:', error);
+          toast.error("Failed to save template. Please try again.");
+          console.error("Failed to save template:", error);
         }
       };
 
@@ -174,8 +219,8 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
             <div className='head'>
                 <h1 className='title'>Review and Post</h1>
             </div>
-            <div className='stage review'>
-                <div className='review-box'>
+            <div className='body review'>
+                <div className='review-box-top'>
                     <h4 className='value'>{formData.venue.venueName}</h4>
                     <button className='btn text' onClick={() => setStage(1)}>
                         <EditIcon />
@@ -202,7 +247,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                             </button>
                         </div>
                         <div className='review-box'>
-                            <h4 className='value'>{formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig' ? '£0' : formData.budget}</h4>
+                            <h4 className='value'>{formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig' ? formData.kind : extraSlots.length && formData.budget === '£' ? 'Multiple Budgets' : formData.budget === '£' ? 'No Fee' : formData.budget}</h4>
                             <button className='btn text' onClick={() => setStage(8)}>
                                 <EditIcon />
                             </button>
@@ -251,23 +296,22 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                                     {gigRepeat !== 'no' && (
                                         <>
                                             <select name='repeatEnd' id='repeatEnd' onChange={(e) => {setRepeatEnd(e.target.value); if (e.target.value === 'after') {setEndRepeatDate('')}; if (e.target.value === 'date') {setEndRepeatAfter('')} }}>
-                                                <option value='never'>Never End</option>
                                                 <option value='after'>End After</option>
                                                 <option value='date'>End Date</option>
                                             </select>
                                             {repeatEnd === 'after' && (
                                                 <div className='end-repeat-after-cont'>
-                                                    <input 
-                                                        type='number' 
-                                                        name='endRepeatAfter' 
-                                                        id='endRepeatAfter' 
-                                                        onChange={handleEndRepeatAfterChange}
-                                                        value={endRepeatAfter}
-                                                        max={getMaxRepeat()}
+                                                    <input
+                                                    type='number'
+                                                    name='endRepeatAfter'
+                                                    id='endRepeatAfter'
+                                                    onChange={handleEndRepeatAfterChange}
+                                                    value={endRepeatAfter}
+                                                    min={1}
+                                                    max={getMaxRepeat()}
                                                     />
                                                     <p>gigs.</p>
                                                 </div>
-
                                             )}
                                             {repeatEnd === 'date' && (
                                                 <input 
@@ -298,7 +342,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                                     />
                                 </div>
                                 {templateName && (
-                                    <button className='btn primary-alt' onClick={handleSaveTemplate}>{saving ? 'Saving...' : 'Save Gig Template'}</button>
+                                    <button className='btn primary' onClick={handleSaveTemplate}>{saving ? 'Saving...' : 'Save Gig Template'}</button>
                                 )}
                             </div>
                         )}
@@ -370,10 +414,6 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                         )}
                     </div>
                 </div>
-                {/* <button className="btn secondary" style={{ marginBottom: '1rem' }} onClick={() => handlePreviewGig()}>
-                    <span style={{ marginRight: 5 }}>Preview Gig</span>
-                    <NewTabIcon />
-                </button> */}
             </div>
         </>
     )

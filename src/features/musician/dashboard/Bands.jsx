@@ -51,7 +51,7 @@ export const Bands = ({ bandProfiles }) => {
             <p className="text">Already in a band? Join it here using the invite link or band password your band leader shared with you.</p>
           </div> */}
         </div>
-        {bandProfiles.length > 0 && (
+        {bandProfiles.length > 0 ? (
           <>
             <div className="users-bands">
               {bandProfiles.map((band) => (
@@ -133,6 +133,11 @@ export const Bands = ({ bandProfiles }) => {
               ))}
             </div>
           </>
+        ) : (
+<div className="no-bands">
+                  <PeopleGroupIconSolid />
+                  <h4>You aren't in any bands.</h4>
+                </div>
         )}
       </div>
     </>

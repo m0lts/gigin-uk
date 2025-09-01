@@ -91,26 +91,26 @@
     padding: 0.5rem 1rem;
     color: var(--gn-grey-600);
     border-radius: 0.5rem;
-    transition: background-color 200ms linear;
-  }
-  
-  .dashboard .window .breadcrumbs .breadcrumb:has(.breadcrumb-link) {
-    cursor: pointer;
-  }
-  
-  .dashboard .window .breadcrumbs .breadcrumb:has(.breadcrumb-link):hover {
-    background-color: var(--gn-grey-350);
-  }
-  
-  .dashboard .window .breadcrumbs .breadcrumb-link {
-    color: var(--gn-grey-600);
     text-decoration: none;
-    transition: color 200ms linear;
-  }
+    transition: background-color 200ms linear;
+}
   
-  .dashboard .window .breadcrumbs .breadcrumb-text {
+.dashboard .window .breadcrumbs .breadcrumb:has(.breadcrumb-link) {
+    cursor: pointer;
+}
+  
+.dashboard .window .breadcrumbs .breadcrumb:has(.breadcrumb-link):hover {
+    background-color: var(--gn-grey-350);
+}
+  
+.dashboard .window .breadcrumbs .breadcrumb-link {
+    color: var(--gn-grey-600);
+    transition: color 200ms linear;
+}
+  
+.dashboard .window .breadcrumbs .breadcrumb-text {
     color: var(--gn-black);
-  }
+}
 
 
 /* DAHSBOARD LEFT SIDEBAR */

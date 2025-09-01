@@ -140,7 +140,6 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
           )
     }
 
-
     return (
         <div className='musician-profile-about'>
             {musicianData?.genres.length > 0 && (
@@ -167,7 +166,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
                     <h4>{musicianData.bio.experience}</h4>
                 </div>
             )}
-            {musicianData?.location && (
+            {musicianData?.location && musicianData?.location?.city && musicianData?.location?.coordinates &&(
                 <div className="musician-location about-section">
                     <h3>Location</h3>
                     {musicianData?.location?.coordinates.length > 0 && (

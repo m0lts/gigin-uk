@@ -21,6 +21,29 @@ export function toE164(dial, localRaw) {
 
 export const isValidE164 = (value) => /^\+[1-9]\d{7,14}$/.test(value || "");
 
+const byDialLen = (list) => [...list].sort((a, b) => b.dial.length - a.dial.length);
+
+const parseInternational = (raw) => {
+  let s = (raw || '').trim();
+  if (s.startsWith('00')) s = '+' + s.slice(2);
+  if (!s.startsWith('+')) return null;
+  const digits = s.slice(1).replace(/\D+/g, '');
+  const found = byDialLen(COUNTRIES).find(c => digits.startsWith(c.dial));
+  if (!found) return null;
+  const local = digits.slice(found.dial.length);
+  return { country: found.code, dial: found.dial, local };
+};
+
+const normalizeLocalInput = (raw, selectedDial) => {
+  let s = (raw || '').replace(/[^\d+]/g, '');
+  const intl = parseInternational(s);
+  if (intl) return intl;
+  if (selectedDial && s.startsWith(selectedDial)) {
+    s = s.slice(selectedDial.length);
+  }
+  return { country: null, dial: selectedDial, local: s.replace(/\D+/g, '') };
+};
+
 export const PhoneField = ({ 
   initialCountry = "GB",
   value,
@@ -72,7 +95,11 @@ export const PhoneField = ({
           inputMode="tel"
           placeholder={selected.example}
           value={local}
-          onChange={(e) => setLocal(e.target.value)}
+          onChange={(e) => {
+            const { country: parsedCountry, local: cleanLocal } = normalizeLocalInput(e.target.value, selected.dial);
+            if (parsedCountry) setCountry(parsedCountry);
+            setLocal(cleanLocal);
+          }}
           disabled={disabled}
           aria-label="Local phone number"
         />

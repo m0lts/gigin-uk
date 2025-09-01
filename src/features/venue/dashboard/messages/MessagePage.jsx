@@ -216,17 +216,17 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                 ) : (
                     <div className='message-page no-messages'>
                         <MailboxEmptyIcon />
-                        <h3>You have no messages</h3>
+                        <h4>You have no messages</h4>
                     </div>
                 )}
                 {(showGigModal && activeConversation) && (
                     <Portal>
                         <div
-                            className="modal"
+                            className="modal gig-information"
                             onClick={() => setShowGigModal(false)}
                         >
                             <div
-                                className="modal-content gig-information"
+                                className="modal-content"
                                 onClick={(e) => e.stopPropagation()}
                             >   
                                 <button className="btn close tertiary"

@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { getMusicianProfilesByIds } from '@services/musicians';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
-import { ErrorIcon, NewTabIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { ErrorIcon, NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import { removeMusicianFromUser } from '../../../services/venues';
 
@@ -143,9 +143,16 @@ export const SavedMusicians = ({ user }) => {
                         return (
                         <div className='musician-card' key={id}>
                             <div className={`media-container empty`}>
-                                <figure className="profile-picture-only">
-                                    <img src={picture} alt={name} />
-                                </figure>
+                                {picture ? (
+                                    <figure className="profile-picture-only">
+                                        <img src={picture} alt={name} />
+                                    </figure>
+                                ) : (
+                                    <div className="profile-picture-only empty">
+                                        <NoImageIcon />
+                                        <h4>No Artist Image</h4>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="musician-card-flex">
