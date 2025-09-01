@@ -34,7 +34,7 @@ import {
 } from '@fortawesome/pro-light-svg-icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { EmptyIcon } from '../../shared/ui/extras/Icons';
+import { EmptyIcon, NewTabIcon, QuestionCircleIcon } from '../../shared/ui/extras/Icons';
 import { useMapbox } from '../../../hooks/useMapbox';
 import { ensureProtocol, openInNewTab } from '../../../services/utils/misc';
 
@@ -119,6 +119,8 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
         }
     };
 
+    console.log(musicianData.members)
+    console.log(musicianData.musicianId)
 
     if (!musicianData.genres && !musicianData.musicType && !musicianData.coordinates && !musicianData.equipment && !musicianData.socials && !musicianData.members) {
         return (
@@ -142,7 +144,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
 
     return (
         <div className='musician-profile-about'>
-            {musicianData?.genres.length > 0 && (
+            {musicianData?.genres?.length > 0 && (
                 <div className="musician-genres about-section">
                     <h3>Genres</h3>
                     <ul className="genre-list">
@@ -175,7 +177,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
                     <h4>{musicianData?.location?.city}; {formatTravelDistance(musicianData?.location?.travelDistance)}.</h4>
                 </div>
             )}
-            {musicianData?.instruments.length > 0 && (
+            {musicianData?.instruments?.length > 0 && (
                 <div className="musician-instruments about-section">
                     <h3>Instruments Played</h3>
                     <ul className="instrument-list">
@@ -188,18 +190,26 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
                     </ul>
                 </div>
             )}
-            {musicianData?.bandProfile && musicianData.members && (
+            {musicianData?.bandProfile && musicianData?.members && (
                 <div className="musician-band-members about-section">
                     <h3>Band Members</h3>
                     {musicianData.members.map((bm) => (
                         <div className="band-member" key={bm} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                             <div className="member-info" style={{ display: 'flex', alignItems: 'center', gap:'1rem'}}>
-                                <img src={bm.img} alt={bm.name} style={{ width: '50px', height: '50px', objectFit: 'cover'}} />
-                                <h4>{bm.name}</h4>
+                                {bm.memberImg ? (
+                                    <img src={bm.memberImg} alt={bm.memberName} style={{ width: '50px', height: '50px', objectFit: 'cover'}} />
+                                ) : (
+                                    <div className="no-image">
+                                        <QuestionCircleIcon />
+                                    </div>
+                                )}
+                                <h3>{bm.memberName}</h3>
                             </div>
-                            <button className="btn tertiary" onClick={(e) => openInNewTab(`/${bm.id}`, e)}>
-                                View Profile
-                            </button>
+                            {bm.id !== musicianData.musicianId && (
+                                <button className="btn secondary" onClick={(e) => openInNewTab(`/${bm.id}`, e)}>
+                                    View Profile <NewTabIcon />
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>

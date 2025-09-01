@@ -28,6 +28,8 @@ export const Bands = ({ bandProfiles }) => {
     return '£5k+';
 };
 
+console.log(bandProfiles)
+
   return (
     <>
       <div className="head">

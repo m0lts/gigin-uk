@@ -19,6 +19,8 @@ import { getConnectAccountStatus } from '../../../services/functions';
 import { getMusicianFees } from '../../../services/musicians';
 import { updateUserDocument } from '../../../services/users';
 import Portal from '../../shared/components/Portal';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 
 function CountdownTimer({ targetDate }) {
     const [label, setLabel] = React.useState("");
@@ -70,6 +72,7 @@ export const Finances = ({ user, musicianProfile }) => {
     const [paymentSystemModal, setPaymentSystemModal] = useState(false);
     const [stripeSystemModal, setStripeSystemModal] = useState(false);
     const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     useResizeEffect((width) => {
         setWindowWidth(width);
@@ -138,6 +141,18 @@ export const Finances = ({ user, musicianProfile }) => {
         fetchFees();
     }, [musicianProfile?.id, sortOrder]);
 
+    useEffect(() => {
+        const handleClick = () => {
+          setShowHelp(false);
+        };
+    
+        window.addEventListener('click', handleClick);
+    
+        return () => {
+          window.removeEventListener('click', handleClick);
+        };
+      }, [showHelp]);
+
     const toggleSortOrder = () => {
         setSortOrder((prevOrder) => (prevOrder === 'desc' ? 'asc' : 'desc'));
     };
@@ -167,16 +182,13 @@ export const Finances = ({ user, musicianProfile }) => {
 
     const handleDeleteStripeAccount = async () => {
         if (!musicianProfile?.musicianId) return;
-        const ok = window.confirm(
-          'Are you sure you want to delete your Stripe account? This cannot be undone.'
-        );
-        if (!ok) return;
         setDeleting(true);
         try {
           const res = await deleteStripeConnectAccount(musicianProfile.musicianId);
           if (res.success) {
             setConnectedAccountId(null);
             toast.success('Stripe account deleted.');
+            window.location.reload();
           } else {
             toast.error(res.message || 'Could not delete Stripe account.');
           }
@@ -256,10 +268,12 @@ export const Finances = ({ user, musicianProfile }) => {
         <>
             <div className='head finances'>
                 <h1 className='title'>Finances</h1>
-                <div className="account-status">
-                    <h6>Account Status:</h6>
-                    {renderStatusBox()}
-                </div>
+                {musicianProfile.bankDetailsAdded && (
+                    <div className="account-status">
+                        <h6>Account Status:</h6>
+                        {renderStatusBox()}
+                    </div>
+                )}
             </div>
             <div className='body finances'>
                 <div className="top-section">
@@ -297,14 +311,14 @@ export const Finances = ({ user, musicianProfile }) => {
                 </div>
                     {!musicianProfile.bankDetailsAdded && (
                         <div className='connect-account'>
-                            <div className="title">
+                            <div className={`title ${!stripeConnectInstance ? 'right' : ''}`}>
                                 {stripeConnectInstance && (
                                     <div className="text">
                                         <BankAccountIcon />
                                         <h2>Connect Your Bank Account</h2>
                                     </div>
                                 )}
-                                {showHelp ? (
+                                {showHelp && (
                                     <div className="more-information" onClick={() => setShowHelp(false)}>
                                         <MoreInformationIcon />
                                         <div className='text-information'>
@@ -313,17 +327,16 @@ export const Finances = ({ user, musicianProfile }) => {
                                             <p className="link" onClick={(e) => {e.stopPropagation(); handleCopy(`https://gigin.ltd/${musicianProfile.musicianId}`)}}>https://gigin.ltd/{musicianProfile.musicianId} <CopyIcon /></p>
                                         </div>
                                     </div>
-                                ) : (
-                                    <button className='btn secondary' onClick={() => setShowHelp(true)}>
-                                        <MoreInformationIcon />
-                                        <h4>Helpful Setup Information</h4>
-                                    </button>
                                 )}
+                                <button className='btn secondary' onClick={(e) => {e.stopPropagation(); setShowHelp(!showHelp)}}>
+                                    <MoreInformationIcon />
+                                    <h4>Helpful Setup Information</h4>
+                                </button>
                             </div>
                             <div className={`stripe-window ${stripeConnectInstance ? 'stripe-active' : ''}`}>
                                 {accountCreatePending ? (
                                     <div className="loading-state">
-                                        <LoadingThreeDots />
+                                        <LoadingSpinner />
                                         <h3>Connecting to Stripe…</h3>
                                         <p className="muted">This usually takes a few seconds.</p>
                                     </div>
@@ -386,6 +399,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                                         console.error('Error transferring funds to Stripe account.');
                                                     }
                                                 }
+                                                window.location.reload();
                                                 toast.success('Stripe Account Linked!');
                                             } catch (error) {
                                                 console.error('Error updating musician profile:', error);
@@ -417,8 +431,8 @@ export const Finances = ({ user, musicianProfile }) => {
                                     Edit Stripe Details
                                 </button>
                                 )}
-                                <button className={`btn tertiary information-button`}  onClick={handleDeleteStripeAccount} disabled={deleting || musicianProfile.withdrawableEarnings > 0}>
-                                    {deleting ? 'Deleting Account…' : 'Delete Stripe Account'}
+                                <button className={`btn tertiary information-button`}  onClick={() => setShowDeleteModal(true)} disabled={deleting || musicianProfile.withdrawableEarnings > 0}>
+                                    Delete Stripe Account
                                 </button>
                             </div>
                         </div>
@@ -513,13 +527,13 @@ export const Finances = ({ user, musicianProfile }) => {
                     {showManage && stripeConnectInstance && (
                         <Portal>
                             <div className="modal stripe-account" onClick={() => handleAccountManagementClose()}>
-                                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
                                 <div className="modal-header">
                                     <CoinsIconSolid />
                                     <h2>Edit payout details</h2>
                                     <p>Change your Stripe connect account details here.</p> 
                                     <div className="more-information">
-                                    <p><MoreInformationIcon /> If you require ID verification, click the edit button in the "Personal Details" section. You will see a button to upload an ID document.</p>
+                                    <p><MoreInformationIcon /> If you require ID verification, click the edit text under the "Personal Details" title. Then click the 'Upload Document' button to upload an ID document.</p>
                                     </div>
                                     <button className="btn close tertiary" onClick={() => handleAccountManagementClose()}>Close</button>
                                 </div>
@@ -547,7 +561,6 @@ export const Finances = ({ user, musicianProfile }) => {
                     )}
                     {paymentSystemModal && (
                         <Portal>
-
                             <div className="modal more-information" onClick={() => setPaymentSystemModal(false)}>
                                 <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                                     <div className="modal-header">
@@ -571,7 +584,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                         <hr />
                                         <ol>
                                             <li>
-                                            <strong cl>1. Gig Application Accepted</strong><br />
+                                            <strong>1. Gig Application Accepted</strong><br />
                                             Once a venue accepts your gig application, we automatically prepare the secure
                                             payment process in the background.
                                             <br />
@@ -763,6 +776,23 @@ export const Finances = ({ user, musicianProfile }) => {
                             </button>
                             </div>
                         </div>
+                    </Portal>
+                )}
+                {showDeleteModal && (
+                    <Portal>
+                        {!deleting ? (
+                            <div className='modal confirm' onClick={() => setShowDeleteModal(false)}>
+                                <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '300px'}}>
+                                    <h3>Are you sure you want to delete your stripe account?</h3>
+                                    <div className='two-buttons'>
+                                        <button className="btn tertiary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                                        <button className="btn danger" onClick={handleDeleteStripeAccount}>Delete</button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <LoadingModal title={'Deleting Stripe Account'} text={"Please don't close this window or refresh the page"} />
+                        )}
                     </Portal>
                 )}
             </div>

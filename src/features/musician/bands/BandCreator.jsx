@@ -12,7 +12,7 @@ import { generateBandPassword } from '@services/utils/validation';
 import { Timestamp, arrayUnion } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { createMusicianProfile } from '../../../services/musicians';
 import '@styles/musician/profile-creator.styles.css';
 
@@ -114,14 +114,12 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
         }
         await createMusicianProfile(formData.bandId, musicianProfileData, user.uid);
         refreshData();
-        setTimeout(() => {
-          navigate(`/dashboard/bands/${formData.bandId}`);
-          toast.success('Band created!');
-          setLoading(false)
-        }, 2000);
+        navigate(`/dashboard/bands`);
+        toast.success('Band created!');
       } catch (e) {
         console.error('Error submitting band:', e);
         toast.error('Error creating band. Please try again.')
+      } finally {
         setLoading(false);
       }
     };
@@ -150,8 +148,9 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
       <div className={`profile-creator band ${loading ? 'loading' : ''}`}>
         {loading ? (
           <div className="creating-band">
-            <h2>Creating your band...</h2>
-            <LoadingThreeDots />
+            <LoadingSpinner width={40} height={40} />
+            <h2>Creating Band</h2>
+            <p>Please wait...</p>
           </div>
         ) : (
           <>

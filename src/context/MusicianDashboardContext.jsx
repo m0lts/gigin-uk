@@ -18,14 +18,38 @@ export const MusicianDashboardProvider = ({ user, children }) => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [bandProfiles, setBandProfiles] = useState([]);
 
-  const loadedOnce = useRef(false);
+  // NEW: trigger re-subscribe after refresh
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
   const unsubRef = useRef(null);
   const bandUnsubsRef = useRef([]);
 
+  const resolveMusicianId = (u) =>
+    u?.musicianProfile?.musicianId ||
+    u?.musicianProfile?.id ||
+    (typeof u?.musicianProfile === 'string' ? u.musicianProfile : null) ||
+    (Array.isArray(u?.musicianProfile) ? u.musicianProfile[0] : null);
+
   useEffect(() => {
-    if (!user || !user.musicianProfile || loadedOnce.current) return;
+    const baseId = resolveMusicianId(user);
+
+    // no user or no id → stop loading so UI can render empty state
+    if (!user || !baseId) {
+      setMusicianProfile(null);
+      setGigApplications([]);
+      setGigs([]);
+      setSavedGigs([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // cleanup previous subscription (on user/nonce change)
+    unsubRef.current?.();
+
     const unsub = subscribeToMusicianProfile(
-      user.musicianProfile.musicianId,
+      baseId,
       async (profile) => {
         if (!profile) {
           setMusicianProfile(null);
@@ -37,16 +61,16 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         setMusicianProfile(profile);
         subscribeToBands(profile.bands);
         setLoading(false);
-        loadedOnce.current = true;
       },
       (err) => {
         console.error('Error subscribing to musician profile:', err);
         setLoading(false);
       }
     );
+
     unsubRef.current = unsub;
-    return () => unsub && unsub();
-  }, [user]);
+    return () => unsub?.();
+  }, [user, refreshNonce]);
 
   const subscribeToBands = (bandIds = []) => {
     cleanupBandSubscriptions();
@@ -64,14 +88,9 @@ export const MusicianDashboardProvider = ({ user, children }) => {
             getBandMembers(bandId),
             getBandDataOnly(bandId),
           ]);
-          const finalBandProfile = {
-            ...profile,
-            bandId,
-            members,
-            bandInfo,
-          };
+          const finalBandProfile = { ...profile, bandId, members, bandInfo };
           setBandProfiles((prev) => {
-            const filtered = prev.filter(p => p.bandId !== bandId);
+            const filtered = prev.filter((p) => p.bandId !== bandId);
             return [...filtered, finalBandProfile];
           });
         },
@@ -83,44 +102,46 @@ export const MusicianDashboardProvider = ({ user, children }) => {
   };
 
   const cleanupBandSubscriptions = () => {
-    bandUnsubsRef.current.forEach(unsub => unsub?.());
+    bandUnsubsRef.current.forEach((unsub) => unsub?.());
     bandUnsubsRef.current = [];
   };
 
   useEffect(() => {
     const run = async () => {
       if (!musicianProfile) return;
-      const ownApplications = (musicianProfile.gigApplications || []).map(app => ({
+
+      const ownApplications = (musicianProfile.gigApplications || []).map((app) => ({
         ...app,
         submittedBy: 'musician',
         profileId: musicianProfile.musicianId,
         profileName: musicianProfile.name,
       }));
-      const bandApplications = bandProfiles.flatMap(band =>
-        (band.gigApplications || []).map(app => ({
+
+      const bandApplications = bandProfiles.flatMap((band) =>
+        (band.gigApplications || []).map((app) => ({
           ...app,
           submittedBy: 'band',
           profileId: band.bandId,
           profileName: band.name,
         }))
       );
+
       const allApplications = [...ownApplications, ...bandApplications];
       setGigApplications(allApplications);
+
       const ownSaved = musicianProfile.savedGigs || [];
-      const bandSaved = (bandProfiles || []).flatMap(b => b.savedGigs || []);
+      const bandSaved = (bandProfiles || []).flatMap((b) => b.savedGigs || []);
       const savedGigIds = [...new Set([...ownSaved, ...bandSaved])];
-      const applicationGigIds = [...new Set(allApplications.map(a => a.gigId))];
+      const applicationGigIds = [...new Set(allApplications.map((a) => a.gigId))];
+
       const [fetchedGigs, fetchedSavedGigs] = await Promise.all([
         applicationGigIds.length ? getGigsByIds(applicationGigIds) : Promise.resolve([]),
         savedGigIds.length ? getGigsByIds(savedGigIds) : Promise.resolve([]),
       ]);
-      const allMusicianIds = [
-        musicianProfile.musicianId,
-        ...(bandProfiles || []).map(b => b.bandId),
-      ];
-      if (fetchedGigs.length) {
-        checkGigsForReview(fetchedGigs, allMusicianIds);
-      }
+
+      const allMusicianIds = [musicianProfile.musicianId, ...(bandProfiles || []).map((b) => b.bandId)];
+      if (fetchedGigs.length) checkGigsForReview(fetchedGigs, allMusicianIds);
+
       setGigs(fetchedGigs);
       setSavedGigs(fetchedSavedGigs);
     };
@@ -129,27 +150,18 @@ export const MusicianDashboardProvider = ({ user, children }) => {
 
   const checkGigsForReview = (gigs, musicianIds = []) => {
     const now = new Date();
-  
-    const eligibleGigs = gigs.filter((gig) => {
-      const gigDate = gig.startDateTime.toDate?.() || new Date(gig.startDateTime);
+    const eligible = gigs.filter((gig) => {
+      const gigDate = gig.startDateTime?.toDate?.() || new Date(gig.startDateTime);
       const localReviewed = localStorage.getItem(`reviewedGig-${gig.gigId}`) === 'true';
       const dbReviewed = gig.musicianHasReviewed;
-  
-      const isConfirmedByAnyProfile = gig.applicants?.some(
+      const isConfirmedByAny = gig.applicants?.some(
         (a) => musicianIds.includes(a.id) && a.status === 'confirmed'
       );
-  
-      return (
-        gigDate <= now &&
-        !localReviewed &&
-        !dbReviewed &&
-        isConfirmedByAnyProfile
-      );
+      return gigDate <= now && !localReviewed && !dbReviewed && isConfirmedByAny;
     });
-  
-    if (eligibleGigs.length > 0) {
-      setGigToReview(eligibleGigs[0]);
-      setGigsToReview(eligibleGigs);
+    if (eligible.length) {
+      setGigToReview(eligible[0]);
+      setGigsToReview(eligible);
       setShowReviewModal(true);
     }
   };
@@ -161,14 +173,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         getBandMembers(bandId),
         getBandDataOnly(bandId),
       ]);
-  
-      const updatedBand = {
-        ...profile,
-        bandId,
-        members,
-        bandInfo,
-      };
-  
+      const updatedBand = { ...profile, bandId, members, bandInfo };
       setBandProfiles((prev) => {
         const filtered = prev.filter((b) => b.bandId !== bandId);
         return [...filtered, updatedBand];
@@ -178,11 +183,11 @@ export const MusicianDashboardProvider = ({ user, children }) => {
     }
   };
 
+  // 🔧 Updated refresh: trigger a new subscription pass
   const refreshMusicianProfile = () => {
-    loadedOnce.current = false;
     unsubRef.current?.();
     cleanupBandSubscriptions();
-    setLoading(true);
+
     setMusicianProfile(null);
     setBandProfiles([]);
     setGigApplications([]);
@@ -191,6 +196,9 @@ export const MusicianDashboardProvider = ({ user, children }) => {
     setGigToReview(null);
     setGigsToReview(null);
     setShowReviewModal(false);
+
+    setLoading(true);
+    setRefreshNonce((n) => n + 1); // <- drives the effect to resubscribe
   };
 
   return (
@@ -213,7 +221,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         refreshMusicianProfile,
         refreshSingleBand,
         savedGigs,
-        setSavedGigs
+        setSavedGigs,
       }}
     >
       {children}
@@ -221,4 +229,10 @@ export const MusicianDashboardProvider = ({ user, children }) => {
   );
 };
 
-export const useMusicianDashboard = () => useContext(MusicianDashboardContext);
+export const useMusicianDashboard = () => {
+  const ctx = useContext(MusicianDashboardContext);
+  if (!ctx) {
+    throw new Error('useMusicianDashboard must be used within <MusicianDashboardProvider>.');
+  }
+  return ctx;
+};

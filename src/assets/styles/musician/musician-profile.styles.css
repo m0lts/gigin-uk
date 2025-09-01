@@ -1047,15 +1047,15 @@
 
 /* BAND MEMBERS */
 
-.musician-profile .band-members-tab .members-header {
+.musician-profile .musician-band-members .members-header {
     padding:1rem 0;
 }
 
-.musician-profile .band-members-tab .members-list {
+.musician-profile .musician-band-members .members-list {
     list-style: none;
 }
 
-.musician-profile .band-members-tab .members-list .member-card {
+.musician-profile .musician-band-members .band-member {
     background-color: var(--gn-grey-300);
     padding:2rem 1rem;
     border-radius: 1rem;
@@ -1064,16 +1064,36 @@
     justify-content: space-between;
 }
 
-.musician-profile .band-members-tab .members-list .member-card .left-side {
+.musician-profile .musician-band-members .band-member .member-info {
     display: flex;
     align-items: center;
     gap:1rem;
 }
 
-.musician-profile .band-members-tab .members-list .member-card img {
+.musician-profile .musician-band-members .band-member .member-info h3 {
+    margin: 0;
+}
+
+.musician-profile .musician-band-members .band-member .member-info img {
     border-radius: 50%;
     width:50px;
     height:50px;
+}
+
+.musician-profile .musician-band-members .band-member .member-info .no-image {
+    background-color: var(--gn-grey-600);
+    border-radius: 50%;
+    width:50px;
+    height:50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.musician-profile .musician-band-members .band-member .member-info .no-image .icon {
+    font-size: 2rem;
+    color: var(--gn-grey-200);
 }
 
 

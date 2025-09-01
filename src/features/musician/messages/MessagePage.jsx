@@ -54,8 +54,14 @@ export const MessagePage = () => {
     }, [user]);
 
     const activeConversation = useMemo(() => {
-        if (!paramsConversationId || conversations.length === 0) return null;
-        return conversations.find(c => c.id === paramsConversationId) || null;
+        if (showArchived) {
+            if (!paramsConversationId || archivedConversations.length === 0) return null;
+            return archivedConversations.find(c => c.id === paramsConversationId) || null;
+        }
+        if (!showArchived) {
+            if (!paramsConversationId || conversations.length === 0) return null;
+            return conversations.find(c => c.id === paramsConversationId) || null;
+        }
     }, [conversations, paramsConversationId]);
 
     useEffect(() => {
@@ -95,7 +101,7 @@ export const MessagePage = () => {
         setShowArchived(prev => !prev);
     };
 
-    if (conversations.length > 0) {
+    if (conversations.length > 0 || archivedConversations.length > 0) {
         return (
             <div className='message-page'>
                 <div className='column conversations'>
@@ -107,7 +113,7 @@ export const MessagePage = () => {
                         </button>
                     </div>
                     <ul className='conversations-list'>
-                        {conversations.length > 0 ? (
+                        {conversations.length > 0 || archivedConversations.length > 0 ? (
                             (showArchived ? archivedConversations : conversations).map(conversation => {
                                 const isBandConversation = conversation.bandConversation;
 
@@ -154,13 +160,10 @@ export const MessagePage = () => {
                                         </div>
                                         <div className='conversation-text'>
                                             <div className='conversation-title'>
-                                                <h3 className='conversation-title-text'>
-                                                    {isBandConversation
-                                                        ? (otherParticipant?.role === 'venue'
-                                                            ? otherParticipant?.accountName || 'Venue'
-                                                            : bandAccount?.accountName || 'Band')
-                                                        : musicianAccount?.accountName || 'Musician'}
-                                                </h3>
+                                                <div className='conversation-title-text'>
+                                                    <h3>{otherParticipant?.role === 'venue' ? otherParticipant?.accountName : 'Venue'}</h3>
+                                                    <h4>{otherParticipant.venueName}</h4>
+                                                </div>
                                                 {showArchived ? (
                                                     <button
                                                     className='btn text'
@@ -196,7 +199,7 @@ export const MessagePage = () => {
                                     </li>
                                 );
                             })
-                        ) : (
+                        ) :  (
                             <h4>You have no messages.</h4>
                         )}
                     </ul>

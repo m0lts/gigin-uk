@@ -39,12 +39,13 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const bandAdmin = musicianProfile.musicianId === bandProfile?.bandInfo?.admin?.musicianId;
 
   useEffect(() => {
+    console.log('band profiles', bandProfiles)
     const found = bandProfiles.find((b) => b.id === bandId);
     if (found) {
       setBandProfile(found);
       setBandMembers(found.members);
     };
-  }, [bandProfiles, bandId]);
+  }, [bandProfiles, bandId, musicianProfile.bands]);
 
   const handleLeaveBand = async () => {
     try {
@@ -81,6 +82,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   };
   
   if (!bandProfile) {
+    console.log('no band profile')
     return <LoadingScreen />
   }
 
@@ -180,7 +182,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
                             Are you sure you want to delete "{bandProfile.name}"? This action cannot be undone.
                         </p>
                     </div>
-                <div className="modal-actions">
+                <div className="modal-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap:'1rem'}}>
                     <button className="btn tertiary" onClick={() => setShowDeleteModal(false)}>
                         Cancel
                     </button>
@@ -209,7 +211,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
                           Are you sure you want to leave "{bandProfile.name}"?
                       </p>
                   </div>
-              <div className="modal-actions">
+              <div className="modal-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap:'1rem'}}>
                   <button className="btn tertiary" onClick={() => setShowLeaveModal(false)}>
                       Cancel
                   </button>

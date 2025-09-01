@@ -1621,6 +1621,7 @@
 .window.musicians .body.finances .top-section {
     display: grid;
     grid-template-columns: repeat(2, auto);
+    margin-bottom: 1rem;
 }
 
 .window.musicians .body.finances .top-section .expenditure-card {
@@ -1702,6 +1703,10 @@
     position: relative;
 }
 
+.window.musicians .body.finances .connect-account .title.right {
+    justify-content: flex-end;
+}
+
 .window.musicians .body.finances .connect-account .title .text .icon {
     font-size: 2rem;
 }
@@ -1713,7 +1718,6 @@
 }
 
 .window.musicians .body.finances .connect-account .title .more-information {
-    cursor: pointer;
     position: absolute;
     right:0;
     top:0;
@@ -1758,6 +1762,14 @@
     text-align: center;
 }
 
+.window.musicians .body.finances .connect-account .stripe-window .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+}
+
 .window.musicians .body.finances .connect-account .stripe-window.stripe-active {
     justify-content: flex-start;
 }
@@ -1780,7 +1792,7 @@
     display: grid;
     grid-template-columns: 38% 38% auto;
     gap:2%;
-    margin: 1rem 0;
+    margin-bottom: 1rem;
 }
 
 .window.musicians .body.finances .information-grid .information-item {
@@ -1813,6 +1825,12 @@
     justify-content: flex-end;
     gap:5px;
     padding:0;
+    cursor: auto;
+}
+
+.window.musicians .body.finances .information-grid .information-item.actions:hover {
+    background-color: transparent;
+    box-shadow: none;
 }
 
 .window.musicians .body.finances .information-grid .information-item.actions .btn {
@@ -1937,107 +1955,4 @@
 
 .window.musicians .body.finances table .no-receipts .data .icon {
     font-size: 3rem;
-}
-
-.window.musicians .body.finances .modal.stripe-account .modal-content {
-    max-width: 500px;
-    overflow-y: scroll;
-    position: relative;
-    padding:0;
-    /* Hide scrollbar for Webkit browsers (Chrome, Safari, Edge) */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
-}
-
-.window.musicians .body.finances .modal.stripe-account .modal-content::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Edge */
-}
-
-.window.musicians .body.finances .modal.stripe-account .modal-content .modal-header {
-    position: sticky;
-    top:0;
-    left:0;
-    width:100%;
-    background-color: var(--gn-white);
-    padding:2rem;
-    padding-bottom: 0.5rem;
-    z-index: 1;
-}
-
-.window.musicians .body.finances .modal.stripe-account .modal-content .modal-header .more-information {
-    border:1px solid var(--gn-grey-350);
-    border-radius: 0.5rem;
-    padding:0.5rem;
-    background-color: var(--gn-grey-200);
-    margin-top: 0.5rem;
-}
-
-.window.musicians .body.finances .modal.stripe-account .modal-content .modal-header .more-information p,
-.window.musicians .body.finances .modal.stripe-account .modal-content .modal-header .more-information .icon {
-    color: var(--gn-black);
-    font-size: 0.8rem;
-}
-
-.window.musicians .body.finances .modal.stripe-account .modal-content .modal-body {
-    padding: 0 2rem;
-    padding-bottom: 2rem;
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content {
-    max-width: 500px;
-    overflow-y: scroll;
-    position: relative;
-    padding:0;
-    /* Hide scrollbar for Webkit browsers (Chrome, Safari, Edge) */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Edge */
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content .modal-header {
-    position: sticky;
-    top:0;
-    left:0;
-    width:100%;
-    background-color: var(--gn-white);
-    padding:2rem;
-    padding-top: 3rem;
-    padding-bottom: 1rem;
-    z-index: 1;
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content .modal-header .icon {
-    font-size: 2rem;
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content .modal-body {
-    padding: 0 2rem;
-    padding-bottom: 2rem;
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content .modal-body ol,
-.window.musicians .body.finances .modal.more-information .modal-content .modal-body ul {
-    padding:0 1rem;
-    list-style-type: none;
-    display: flex;
-    flex-direction: column;
-    gap:0.5rem;
-    margin: 1rem 0;
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content .modal-body .no-padding {
-    padding: 0;
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content .modal-body strong {
-    font-weight: 600;
-}
-
-.window.musicians .body.finances .modal.more-information .modal-content .modal-body hr {
-    border: none;
-    border-top: 1px solid var(--gn-grey-400);
-    margin: 1.5rem 0;
 }
