@@ -1,4 +1,5 @@
 
+<<<<<<< HEAD
 /* PROFILE BANNER */
 
 .profile .profile-view {
@@ -52,10 +53,307 @@
     border:1px solid var(--gn-grey-200);
     border-radius: 5px;
     flex-direction: column;
+=======
+/* NEW */
+
+.body.profile {
+    padding-left:0 !important;
+}
+
+.profile .profile-form.not-admin {
+    border:1px solid red;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile .profile-form .profile-section .btn.secondary {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.profile .profile-form .profile-section {
+    border-bottom: 1px solid var(--gn-grey-400);
+    padding: 1rem 0.1rem;
+}
+
+.profile .profile-form .profile-section:last-of-type {
+    border-bottom: none;
+}
+
+.profile .profile-form .section-header {
+    margin: 1rem 0;
+}
+
+.profile .profile-form .section-header .icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.profile .profile-form .section-header h3 {
+    margin-bottom: 0.25rem;
+}
+
+.profile .profile-form .section-header p {
+    color: var(--gn-grey-700);
+}
+
+.profile .profile-form .input-container,
+.profile .profile-form .selection-container {
+    margin-top: 1rem;
+}
+
+.profile .profile-form .label {
+    margin-bottom: 0.2rem;
+}
+
+.profile .profile-form .input-container .input {
+    padding: 0.5rem;
+}
+
+.profile .profile-form .input-container.name {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.profile .profile-form .input-container .email {
+    width:25%;
+    min-width: 200px;
+    margin-right: 0.5rem;
+}
+
+.profile .profile-form .input-container.name .btn {
+    margin-top: 0.25rem;
+}
+
+.profile .profile-form .input-container.photo .hidden-file-input {
+    display: none;
+}
+  
+.profile .profile-form .input-container.photo {
+    display: flex;
+    flex-direction: column;
+}
+  
+.profile .profile-form .input-container.photo .upload-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    border: 1px dashed var(--gn-grey-400);
+    border-radius: 0.5rem;
+    background-color: var(--gn-grey-300);
+    width: fit-content;
+    margin-top: 0.5rem;
+    font-weight: 500;
+}
+  
+.profile .profile-form .input-container.photo .upload-button .icon {
+    font-size: 1.5rem;
+    color: var(--gn-black);
+}
+  
+.profile .profile-form .input-container.photo .image-preview {
+    width: 160px;
+    height: 160px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+
+.profile .profile-form .selection-container .selections {
+    display: flex;
+    flex-wrap: wrap;
+    gap:0.5rem;
+}
+
+.profile .profile-form .selection-container .selections .selection-card {
+    border:1px solid var(--gn-grey-400);
+    outline: 1px solid transparent;
+    padding:0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    color: var(--gn-off-black);
+    cursor: pointer;
+    transition: outline-color 200ms ease, border-color 200ms ease;
+}
+
+.profile .profile-form .selection-container .selections .selection-card.selected {
+    border-color: var(--gn-off-black);
+    outline-color: var(--gn-off-black);
+}
+
+.profile .profile-form .input-container .social-media-input {
+    display: flex;
+    align-items: center;
+    gap:0.25rem;
+    margin-bottom: 0.25rem;
+    width:25%;
+    min-width: 200px;
+}
+
+.profile .profile-form .input-container .social-media-input .input {
+    width: 100%;
+}
+
+.profile .profile-form .input-container .social-media-input .icon {
+    font-size: 1.5rem;
+}
+
+.profile .profile-form .action-buttons {
+    background-color: var(--gn-grey-200);
+    padding: 1rem 0;
+    width:100%;
+    position: sticky;
+    bottom: -1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.profile .profile-form.band .action-buttons {
+    padding-bottom: 2rem;
+}
+
+
+.profile .profile-form .profile-section.media {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile .profile-form .profile-section.media .upload-options-container {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.profile .profile-form .upload-option .hidden-file-input {
+    display: none;
+}
+  
+.profile .profile-form .upload-option .media-upload-label {
+    width:125px;
+    height:125px;
+    min-width: 125px;
+    min-height: 125px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    border: 1px dashed var(--gn-grey-400);
+    border-radius: 0.5rem;
+    background-color: var(--gn-grey-300);
+    margin-bottom: 1rem;
+}
+
+.profile .profile-form .upload-option .media-upload-label span {
+    font-weight: 500;
+}
+  
+.profile .profile-form .upload-option .media-upload-label .icon {
+    font-size: 1.5rem;
+    color: var(--gn-black);
+}
+  
+.profile .profile-form .media-section {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+}
+
+.profile .profile-form .media-section .media-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap:0.25rem;
+}
+
+.profile .profile-form .media-section .btn.showcase {
+    border:1px solid var(--gn-grey-400);
+    border-radius: 0.5rem;
+    padding:0.25rem;
+    color: var(--gn-black);
+    display: flex;
+    align-items: center;
+    gap:0.25rem;
+    font-weight: 500;
+}
+
+.profile .profile-form .media-section .btn.showcase.active {
+    color: rgb(228, 194, 0);
+    background-color: rgb(255, 248, 232);
+    border:1px solid gold;
+}
+  
+.profile .profile-form .media-preview {
+    border-radius: 0.5rem;
+    border: 1px solid var(--gn-grey-500);
+    background-color: #000;
+}
+
+.profile .profile-form .upload-item {
+    margin-bottom: 1rem;
+}
+  
+.profile .profile-form .progress-bar {
+    height: 6px;
+    width: 100%;
+    background-color: #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+  
+.profile .profile-form .progress-bar-fill {
+    height: 100%;
+    background-color: var(--gn-black);
+    transition: width 0.2s ease-in-out;
+}
+
+.profile .profile-form .upload-progress-list .upload-item {
+    border:1px solid var(--gn-grey-350);
+    padding:0.75rem 1rem;
+    border-radius: 0.5rem;
+}
+
+.profile .profile-form .upload-progress-list .upload-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.profile .profile-form .upload-progress-list .upload-item-top .processing h4 {
+    margin-top: 5px;
+}
+
+.profile .profile-form .upload-progress-list .upload-item-bottom {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.profile .profile-form .upload-progress-list .upload-item-bottom p {
+    font-weight: 500;
+}
+
+.profile .profile-form .upload-progress-list .upload-item .upload-item-meta {
+    display: flex;
+>>>>>>> ui-overhaul
     align-items: center;
     gap:0.5rem;
 }
 
+<<<<<<< HEAD
 .profile .profile-banner .profile-actions.applicant .primary-alt {
     width:100%;
     margin-top:5px;
@@ -85,11 +383,134 @@
 }
 
 .profile .profile-banner .profile-actions.applicant .status.declined {
+=======
+.profile .profile-form .upload-progress-list .upload-item .media-preview {
+    width:50px;
+    height:50px;
+    object-fit: contain;
+    cursor: pointer;
+}
+
+.profile .profile-form .upload-progress-list .upload-item .media-preview.no-preview {
+    background-color: var(--gn-grey-300);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile .profile-form .upload-progress-list .upload-item .media-preview.no-preview .icon {
+    font-size: 1.5rem;
+}
+
+.profile .profile-form .upload-progress-list .upload-item .editable-meta-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap:0.2rem;
+}
+
+.profile .profile-form .upload-progress-list .upload-item .editable-meta input {
+    border: none;
+    font-weight: 500;
+    padding:0.25rem 0.5rem;
+    background-color: var(--gn-grey-200);
+    border-radius: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.profile .profile-form .upload-progress-list .upload-item .editable-meta-container .icon {
+    color: var(--gn-grey-600);
+}
+
+.profile .profile-form .upload-progress-list .upload-item .editable-meta input:focus {
+    outline-color: var(--gn-off-black);
+}
+
+.profile .profile-form .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 0.5rem;
+}
+  
+  /* each item */
+.profile .profile-form .photo-item .photo-box {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;         /* square thumbs */
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--gn-grey-200);
+}
+  
+  /* uploading placeholder */
+.profile .profile-form .photo-item.uploading .photo-box.placeholder {
+    display: grid;
+    place-items: center;
+    background: var(--gn-grey-250);
+}
+  
+  /* spinner */
+.profile .profile-form .spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(0,0,0,0.15);
+    border-top-color: rgba(0,0,0,0.55);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+  
+  /* thumbnail image */
+.profile .profile-form .photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+  
+  /* hover overlay for actions */
+.profile .profile-form .photo-item .hover-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    padding: 0.4rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.35), rgba(0,0,0,0));
+    opacity: 0;
+    transition: opacity .15s ease;
+}
+  
+.profile .profile-form .photo-item:hover .hover-overlay {
+    opacity: 1;
+}
+
+.profile .profile-form .photo-item .hover-overlay .btn.small {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.profile .profile-form .profile-section.socials .message {
+    border:1px solid var(--gn-green);
+    width: fit-content;
+    padding:0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--gn-green);
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    background-color: var(--gn-offset-green);
+}
+
+.profile .profile-form .profile-section.socials .message.error {
+>>>>>>> ui-overhaul
     border:1px solid var(--gn-red);
     background-color: var(--gn-offset-red);
     color: var(--gn-red);
 }
 
+<<<<<<< HEAD
 .musician-profile-page .modal .gig-selection {
     width:75%;
     max-height: 250px;
@@ -188,18 +609,270 @@
 
 .profile .profile-tabs {
     border-bottom: 1px solid var(--gn-grey-500);
+=======
+.profile .profile-form .modal-content {
+    background-color: transparent;
+    border:transparent;
+    box-shadow: none;
+    min-width:100% !important;
+    min-height:100% !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile .profile-form .modal-content .video {
+    max-width: 50vw;
+    max-height: 50vw;
+}
+
+
+/* MUSICIAN PROFILE */
+
+.body.profile-preview {
+    padding: 0 !important;
+    padding-right: 2rem !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.body.profile-preview::-webkit-scrollbar {
+    display: none;
+}
+
+/* PROFILE */
+
+.musician-profile-hero {
+    height: 300px;
+    width:97.5%;
+    margin:0.5rem auto;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    border-radius:1rem;
+    box-shadow: 0 0 3px var(--gn-grey-500);
+}
+
+.musician-profile-hero.large-padding {
+    width: 70vw;
+}
+
+.musician-profile-hero.normal-padding {
+    width: 97.5%;
+}
+
+.musician-profile-hero .background-image {
+    position: absolute;
+    width:100%;
+    height:100%;
+    object-fit: cover;
+    z-index: 0;
+}
+
+.musician-profile-hero .background-image.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    background-color: var(--gn-off-black);
+}
+
+.musician-profile-hero .background-image.empty h4 {
+    color: var(--gn-grey-200);
+}
+
+.musician-profile-hero .background-image.empty .icon {
+    font-size: 2.5rem;
+    color: var(--gn-grey-200);
+}
+
+.musician-profile-hero .primary-information {
+    position: relative;
+    z-index: 1;
+    width:100%;
+    color: var(--gn-white);
+    display: flex;
+    flex-direction: column;
+    margin:1rem 1.5rem;
+}
+
+.musician-profile-hero .primary-information .verified-tag {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.musician-profile-hero .primary-information .verified-tag .icon {
+    font-size: 1.5rem;
+}
+
+.musician-profile-hero .primary-information .verified-tag p,
+.musician-profile-hero .primary-information .number-of-gigs {
+    font-size: 1rem;
+    font-weight: 500;
+    text-shadow: 0 0 10px var(--gn-grey-700);
+}
+
+.musician-profile-hero .primary-information .venue-name {
+    font-size: 4rem;
+    text-shadow: 0 0 10px var(--gn-grey-700);
+}
+
+.musician-profile-hero .primary-information .venue-name .orange-dot {
+    color: var(--gn-orange);
+    font-size: 5rem;
+}
+
+.musician-profile-hero .primary-information .action-buttons {
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+
+.musician-profile .musician-profile-body {
+    margin-top: 1rem;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 65% auto;
+    gap: 2rem;
+    align-items: start;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container {
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+    margin:0 !important;
+    position: sticky;
+    top: 0;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container {
+    display: grid;
+    grid-template-columns: 35% auto;
+    gap:1rem;
+    border-radius: 1rem;
+    margin: 1rem 0;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video {
+    position: relative;
+    width:100%;
+    height:250px;
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video img {
+    width:100%;
+    height:100%;
+    object-fit: cover;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video-details {
+    position: absolute;
+    bottom: 0.5rem;
+    left:0.5rem;
+    z-index: 2;
+    color: var(--gn-white);
+    text-shadow: 0 0 10px var(--gn-grey-700);
+    overflow: hidden;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video-details h3 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video .icon {
+    position: absolute;
+    top:50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--gn-white);
+    font-size: 2.5rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .showcase-video .icon:hover {
+    background-color: transparent;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details .bio-text {
+    font-size: 1.1rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details .interactive-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap:2px;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details .interactive-buttons .icon {
+    color: var(--gn-off-black);
+    font-size: 1.75rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information-container .musician-profile-bio-buttons-container .artist-details .interactive-buttons .icon.orange .icon {
+    color: var(--gn-orange);
+}
+
+.musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs {
+    display: flex;
+    align-items: center;
+    gap:2rem;
+    padding: 0 !important;
+    margin:0 !important;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs .left-side {
+>>>>>>> ui-overhaul
     display: flex;
     align-items: center;
     gap:2rem;
 }
 
+<<<<<<< HEAD
 .profile .profile-tab {
     padding:5px;
     font-weight: 500;
+=======
+.musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs .right-side {
+    display: flex;
+    align-items: center;
+    gap:0.5rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs .right-side .edit-profile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+}
+
+.musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs .musician-profile-tab {
+    padding:5px;
+    font-weight: 500;
+    font-size: 1.25rem;
+>>>>>>> ui-overhaul
     cursor: pointer;
     transition: color 200ms linear;
 }
 
+<<<<<<< HEAD
 .profile .profile-tab:hover {
     color: var(--gn-grey-600);
 }
@@ -374,6 +1047,474 @@
 
 /* PLAY VIDEO MODAL */
 .profile .modal-content.transparent {
+=======
+.musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs .musician-profile-tab:hover {
+    color: var(--gn-grey-600);
+}
+
+.musician-profile .musician-profile-body .musician-profile-information .musician-profile-tabs .musician-profile-tab.active {
+    font-weight: 600;
+    border-bottom: 2px solid var(--gn-orange);
+}
+
+/* UPCOMING GIGS */
+
+/* GIGS */
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks {
+    position: sticky;
+    top:1rem;
+    max-width: 100%;
+    overflow: hidden;
+    padding:0.25rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box {
+    display: flex;
+    flex-direction: column;
+    gap:0.5rem;
+    margin-bottom: 2rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .gigs-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .gigs-box-header .btn.text {
+    font-size: 0.8rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .gig-card {
+    border:1px solid var(--gn-grey-350);
+    border-radius: 0.5rem;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .gig-card:hover {
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .gig-card .date-box {
+    background-color: var(--gn-grey-250);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .gig-type {
+    display: inline-flex;
+    align-items: center;
+    gap:5px;
+    max-width: 50%;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .gig-type h4 {
+    white-space: nowrap;       /* prevent wrapping */
+    overflow: hidden;          /* hide overflow */
+    text-overflow: ellipsis;   /* show … */
+    display: block;            /* or inline-block/flex item */
+    max-width: 100%;           /* required so browser knows where to clip */
+  }
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .gig-type .icon {
+    color: var(--gn-grey-700);
+    font-size: 1.25rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .confirmed-musician {
+    display: flex;
+    gap:0.5rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .confirmed-musicians {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+  
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box .confirmed-musicians img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 1px var(--gn-grey-300);
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks {
+    border:1px solid var(--gn-grey-300);
+    border-radius: 1rem;
+    padding:1rem;
+    box-shadow: 0 0 3px var(--gn-grey-400);
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-list {
+    list-style: none;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-item {
+    background-color: var(--gn-grey-300);
+    margin: 0.5rem 0;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-item .icon {
+    font-size: 1.5rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-details {
+    max-width: 100%;
+    padding:0.5rem 0;
+    padding-left: 0.25rem;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-name {
+    font-size: 1.15rem;
+    font-weight: 500;
+    white-space: nowrap;       /* prevent wrapping */
+    overflow: hidden;          /* hide overflow */
+    text-overflow: ellipsis;   /* show … */
+    display: block;            /* or inline-block/flex item */
+    width: 90%;  
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .track-player {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width:100%;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .track-player .track-info {
+    margin-bottom: 0.5rem;
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .track-player .btn.text {
+    text-decoration: none;
+    color: red;
+}
+
+
+/* HOME SECTION */
+.musician-profile .musician-profile-home .media-collage {
+    margin: 1rem 0;
+    border-top: 1px solid var(--gn-grey-300);
+    padding: 1rem 0;
+    column-count: 3;
+    column-gap: 0.75rem;
+}
+@media (max-width: 1200px) { .media-collage { column-count: 2; } }
+@media (max-width: 700px)  { .media-collage { column-count: 1; } }
+  
+.musician-profile .musician-profile-home .media-item {
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    margin: 0 0 0.75rem;
+    display: block;
+}
+
+.musician-profile .musician-profile-home .media-item img,
+.musician-profile .musician-profile-home .media-item video {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    object-fit: cover;
+}
+  
+.musician-profile .musician-profile-home .video-thumb {
+    position: relative;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+}
+
+.musician-profile .musician-profile-home .video-thumb .icon {
+    position: absolute;
+    left: 50%;        /* use left instead of right for centering */
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 999px;
+    pointer-events: none;
+}
+  
+.musician-profile .musician-profile-home .modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+}
+.musician-profile .musician-profile-home .modal-content.transparent {
+    background: transparent; max-width: 900px; width: 90%;
+}
+.musician-profile .musician-profile-home .modal .close {
+    position: absolute; top: 16px; right: 16px;
+    color: #fff; font-size: 28px; cursor: pointer;
+}
+
+.musician-profile .musician-profile-body .nothing-to-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height:150px;
+    justify-content: center;
+    gap:0.5rem;
+}
+
+.musician-profile .musician-profile-body .nothing-to-display .icon {
+    font-size: 2rem;
+}
+
+
+/* ABOUT SECTION */
+
+.musician-profile .musician-profile-about .about-section {
+    margin-top: 2rem;
+    border-bottom: 1px solid var(--gn-grey-350);
+    padding-bottom: 2rem;
+}
+
+.musician-profile .musician-profile-about .about-section:first-of-type {
+    margin-top: 1rem;
+}
+
+.musician-profile .musician-profile-about .about-section:last-of-type {
+    border-bottom: none;
+}
+
+.musician-profile .musician-profile-about .about-section h3 {
+    margin-bottom: 0.5rem;
+}
+
+.musician-profile .musician-profile-about .musician-genres .genre-list,
+.musician-profile .musician-profile-about .musician-instruments .instrument-list {
+    display: flex;
+    align-items: center;
+    gap:0.5rem;
+    margin:0.5rem 0;
+    list-style-type: none;
+    flex-wrap: wrap;
+}
+
+.musician-profile .musician-profile-about .musician-genres .genre-item,
+.musician-profile .musician-profile-about .musician-instruments .instrument-item {
+    border:1px solid var(--gn-orange);
+    background-color: var(--gn-offset-orange);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    color: var(--gn-orange);
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.musician-profile .musician-profile-about h4 {
+    margin-top: 0.5rem;
+    font-size: 1.05rem;
+}
+
+.musician-profile .musician-profile-about .musician-location .map-container {
+    width:250px;
+    height:250px;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.musician-profile .musician-profile-about .musician-instruments .instrument-item {
+    border-color: var(--gn-grey-700);
+    background-color: var(--gn-grey-300);
+    color: var(--gn-grey-700);
+}
+
+.musician-profile .musician-profile-about .musician-socials a .icon {
+    font-size: 2.5rem;
+    margin-right: 1rem;
+}
+
+
+/* PREVIOUS GIGS */
+
+.musician-profile .musician-profile-previous-gigs {
+    margin-top: 1rem;
+}
+
+.musician-profile .musician-profile-previous-gigs .previous-gigs {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap:0.5rem;
+    margin-bottom: 2rem;
+}
+
+.musician-profile .musician-profile-previous-gigs .prev-gig-item {
+    border:1px solid var(--gn-grey-350);
+    border-radius: 0.5rem;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+.musician-profile .musician-profile-previous-gigs .prev-gig-item:hover {
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.musician-profile .musician-profile-previous-gigs .prev-gig-item .right,
+.musician-profile .musician-profile-previous-gigs .prev-gig-item .left {
+    display: flex;
+    align-items: center;
+}
+
+.musician-profile .musician-profile-previous-gigs .prev-gig-item .right {
+    flex-direction: column;
+    align-items: flex-start;
+    gap:0.25rem;
+    margin-left: 1rem;
+}
+
+.musician-profile .musician-profile-previous-gigs .prev-gig-item .right .icon {
+    color: gold;
+}
+
+
+.musician-profile .musician-profile-previous-gigs .prev-gig-item .date-box {
+    background-color: var(--gn-grey-250);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-right: 0.5rem;
+}
+
+.musician-profile .musician-profile-previous-gigs .venue-info {
+    display: flex;
+    align-items: center;
+    gap:0.5rem
+}
+
+.musician-profile .musician-profile-previous-gigs .venue-info .venue-img {
+    width:50px;
+    height:50px;
+    border-radius: 50%;
+    overflow: hidden;
+    object-fit: cover;
+}
+
+.musician-profile .musician-profile-previous-gigs .venue-info .venue-name {
+    font-size: 1.1rem;
+}
+
+
+/* BAND MEMBERS */
+
+.musician-profile .musician-band-members .members-header {
+    padding:1rem 0;
+}
+
+.musician-profile .musician-band-members .members-list {
+    list-style: none;
+}
+
+.musician-profile .musician-band-members .band-member {
+    background-color: var(--gn-grey-300);
+    padding:2rem 1rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.musician-profile .musician-band-members .band-member .member-info {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.musician-profile .musician-band-members .band-member .member-info h3 {
+    margin: 0;
+}
+
+.musician-profile .musician-band-members .band-member .member-info img {
+    border-radius: 50%;
+    width:50px;
+    height:50px;
+}
+
+.musician-profile .musician-band-members .band-member .member-info .no-image {
+    background-color: var(--gn-grey-600);
+    border-radius: 50%;
+    width:50px;
+    height:50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.musician-profile .musician-band-members .band-member .member-info .no-image .icon {
+    font-size: 2rem;
+    color: var(--gn-grey-200);
+}
+
+
+
+/* EMPTY CONTAINERS */
+
+.musician-profile .empty-container {
+    background-color: var(--gn-grey-350);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    padding: 2rem;
+    gap:5px;
+    width:100%;
+    height:100%;
+}
+
+.musician-profile .showcase-video.empty-container .icon {
+    position: relative !important;
+    color: var(--gn-off-black) !important;
+    font-size: 1rem !important;
+    top: 0 !important;;
+    left: 0 !important;;
+    translate: none !important;
+    transform: translate(0%, 0%) !important;
+}
+
+
+/* VIDEO MODAL */
+
+.musician-profile .modal-content.transparent,
+.musician-profile-home .modal-content.transparent {
+>>>>>>> ui-overhaul
     position: relative;
     border:none;
     height: 100%;
@@ -384,14 +1525,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
+<<<<<<< HEAD
 }
 
 .profile .modal-content video {
+=======
+    z-index: 5;
+}
+
+.musician-profile .modal-content video,
+.musician-profile-home .modal-content video {
+>>>>>>> ui-overhaul
     max-height: 75%;
     max-width: 90%;
 }
 
+<<<<<<< HEAD
 .profile .modal .close {
+=======
+.musician-profile .modal .close,
+.musician-profile-home .modal .close {
+>>>>>>> ui-overhaul
     position: absolute;
     top: 1rem;
     right: 2rem;
@@ -400,6 +1554,7 @@
     cursor: pointer;
 }
 
+<<<<<<< HEAD
 /* MUSIC SECTION */
 .profile .music .videos {
     margin: 1rem 0;
@@ -679,3 +1834,25 @@
     justify-content: center;
     padding: 5rem 0;
 }
+=======
+/* BAND MEMBERS MODAL */
+
+.modal.members {
+    position: fixed;
+    z-index: 1000;
+    width:100%;
+    height:100%;
+    top:0;
+    left:0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+    background-color: var(--gn-overlay);
+}
+
+.musician-profile .modal.members .modal-content {
+    border:1px solid red;
+}
+
+>>>>>>> ui-overhaul

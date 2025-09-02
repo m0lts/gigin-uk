@@ -1,0 +1,44 @@
+
+.logo,
+.logo .link {
+    font-style: var(--gn-logo-font);
+    text-decoration: none;
+    width:fit-content;
+    font-weight:600;
+    font-size: 24px;
+}
+
+.logo .orange-txt {
+    color: var(--gn-orange);
+    font-size: 1.5rem;
+}
+
+.logo-med {
+    font-style: var(--gn-logo-font);
+    text-decoration: none;
+    width:fit-content;
+    font-weight:600;
+    font-size: 2.5rem;
+}
+
+.logo-med .orange-txt {
+    color: var(--gn-orange);
+    font-size: 2rem;
+}
+
+
+.logo.bckgrd-white {
+    background-color: var(--gn-white);
+    border-radius: 50%;
+    width:50px;
+    padding-bottom: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo .user-type {
+    margin-left: 3px;
+    font-size: 0.8rem;
+    color: var(--gn-grey-600);
+}

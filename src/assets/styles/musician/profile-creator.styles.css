@@ -1,4 +1,5 @@
 
+<<<<<<< HEAD
 .profile-creator {
     position: relative;
     width:100vw;
@@ -7,6 +8,30 @@
     padding: 1rem 0;
     display: grid;
     grid-template-rows: 5% 85% 10%;
+=======
+.modal-content.profile-creator {
+    height:500px;
+    width: 75%;
+    max-width: 800px;
+    padding: 1.5rem 0;
+    display: grid;
+    grid-template-rows: 5% auto 5%;
+}
+
+.profile-creator.band {
+    min-height:100%;
+    display: grid;
+    grid-template-rows: auto 7.5%;
+}
+
+.profile-creator.band .creating-band {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+    grid-row: span 2;
+>>>>>>> ui-overhaul
 }
 
 
@@ -27,8 +52,18 @@
     margin-top:1rem;
 }
 
+<<<<<<< HEAD
 .profile-creator .stage .body {
     height:90%;
+=======
+.profile-creator .stage {
+    max-width:100%;
+    width:100%;
+}
+
+.profile-creator .stage .body {
+    min-height:100%;
+>>>>>>> ui-overhaul
     display: flex;
     gap:1rem;
     flex-direction: column;
@@ -54,7 +89,11 @@
 
 /* CARDS */
 
+<<<<<<< HEAD
 .profile-creator .stage .card {
+=======
+/* .profile-creator .stage .card {
+>>>>>>> ui-overhaul
     position: relative;
     border:1px solid var(--gn-grey-400);
     background-color: var(--gn-white);
@@ -123,31 +162,53 @@
     -webkit-appearance: none;
     width: 100%;
     height: 10px;
+<<<<<<< HEAD
     background-color: #e0e0e0; /* Background of the progress bar */
+=======
+    background-color: #e0e0e0;
+>>>>>>> ui-overhaul
     border-radius: 5px;
     overflow: hidden;
     border: none;
 }
 
 .profile-creator progress::-webkit-progress-bar {
+<<<<<<< HEAD
     background-color: #e0e0e0; /* Background of the entire progress bar */
+=======
+    background-color: #e0e0e0;
+>>>>>>> ui-overhaul
     border-radius: 5px;
 }
 
 .profile-creator progress::-webkit-progress-value {
+<<<<<<< HEAD
     background-color: #000000; /* Black color for the filled part */
     border-radius: 5px 0 0 5px; /* Rounded corners for the filled section */
+=======
+    background-color: #000000;
+    border-radius: 5px 0 0 5px;
+>>>>>>> ui-overhaul
     transition: width 0.3s ease;
 }
 
 .profile-creator progress::-moz-progress-bar {
+<<<<<<< HEAD
     background-color: #000000; /* Black color for Firefox */
+=======
+    background-color: #000000;
+>>>>>>> ui-overhaul
     border-radius: 5px;
 }
 
 .profile-creator progress:indeterminate {
+<<<<<<< HEAD
     background-color: #e0e0e0; /* Background for indeterminate progress */
 }
+=======
+    background-color: #e0e0e0;
+} */
+>>>>>>> ui-overhaul
 
 
 /* TEXT AND SELECT INPUTS */
@@ -177,13 +238,21 @@
 
 /* INTRO */
 
+<<<<<<< HEAD
 .profile-creator .stage.intro {
+=======
+/* .profile-creator .stage.intro {
+>>>>>>> ui-overhaul
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap:5px;
+<<<<<<< HEAD
 }
+=======
+} */
+>>>>>>> ui-overhaul
 
 
 /* NAME */
@@ -198,6 +267,21 @@
     margin-bottom: 2rem;
 }
 
+<<<<<<< HEAD
+=======
+@media screen and (max-width: 1268px) {
+    .profile-creator .stage.name .input.name {
+        font-size: 4rem;
+    }
+}
+
+@media screen and (max-width: 900px) {
+    .profile-creator .stage.name .input.name {
+        font-size: 3rem;
+    }
+}
+
+>>>>>>> ui-overhaul
 .profile-creator .stage.name .input.name:focus {
     outline: none;
 }
@@ -246,7 +330,11 @@
 
 /* LOCATION */
 
+<<<<<<< HEAD
 .profile-creator .stage.location .map-placeholder {
+=======
+/* .profile-creator .stage.location .map-placeholder {
+>>>>>>> ui-overhaul
     width:200px;
     height:200px;
     background-color: var(--gn-grey-300);
@@ -258,20 +346,35 @@
 
 .profile-creator .stage.location .map-placeholder .icon {
     font-size: 2rem;
+<<<<<<< HEAD
 }
+=======
+} */
+>>>>>>> ui-overhaul
 
 
 /* MUSICIAN TYPE */
 
+<<<<<<< HEAD
 .profile-creator .stage.musician-type .selections {
     display: flex;
     gap:10px;
 }
+=======
+/* .profile-creator .stage.musician-type .selections {
+    display: flex;
+    gap:10px;
+} */
+>>>>>>> ui-overhaul
 
 
 /* GENRES */
 
+<<<<<<< HEAD
 .profile-creator .stage.genres .genre-selections-container {
+=======
+/* .profile-creator .stage.genres .genre-selections-container {
+>>>>>>> ui-overhaul
     position: relative;
 }
 
@@ -334,42 +437,73 @@
     color: var(--gn-orange);
     background-color: var(--gn-offset-orange);
     cursor: pointer;
+<<<<<<< HEAD
 }
+=======
+} */
+>>>>>>> ui-overhaul
 
 
 /* COVERS OR ORIGINALS */
 
+<<<<<<< HEAD
 .profile-creator .stage.music-type .selections {
     display: flex;
     gap:10px;
 }
+=======
+/* .profile-creator .stage.music-type .selections {
+    display: flex;
+    gap:10px;
+} */
+>>>>>>> ui-overhaul
 
 
 /* INSTRUMENTS */
 
+<<<<<<< HEAD
 .profile-creator .stage.instruments .instruments-list {
+=======
+/* .profile-creator .stage.instruments .instruments-list {
+>>>>>>> ui-overhaul
     width:80%;
     display: flex;
     gap:5px;
     flex-wrap: wrap;
     justify-content: center;
+<<<<<<< HEAD
 }
 
 
 /* EQUIPMENT */
 
+=======
+} */
+
+
+/* EQUIPMENT */
+/* 
+>>>>>>> ui-overhaul
 .profile-creator .stage.equipment .equipment-list {
     width:80%;
     display: flex;
     gap:5px;
     flex-wrap: wrap;
     justify-content: center;
+<<<<<<< HEAD
 }
+=======
+} */
+>>>>>>> ui-overhaul
 
 
 /* BIO */
 
+<<<<<<< HEAD
 .profile-creator .stage.bio textarea {
+=======
+/* .profile-creator .stage.bio textarea {
+>>>>>>> ui-overhaul
     width: 400px;
     max-width: 400px;
     min-width: 400px;
@@ -390,12 +524,20 @@
 .profile-creator .stage.bio textarea:focus {
     outline: none;
     border: 1px solid var(--gn-off-black);
+<<<<<<< HEAD
 }
+=======
+} */
+>>>>>>> ui-overhaul
 
 
 /* VIDEOS AND TRACKS */
 
+<<<<<<< HEAD
 .profile-creator .stage.media .upload {
+=======
+/* .profile-creator .stage.media .upload {
+>>>>>>> ui-overhaul
     border:1px solid var(--gn-grey-500);
     border-radius: 5px;
     background-color: var(--gn-white);
@@ -491,11 +633,19 @@
     font-size: 1rem;
     padding:5px;
     color: var(--gn-red);
+<<<<<<< HEAD
 }
 
 /*  VIDEOS */
 
 .profile-creator .stage.media .video-data {
+=======
+} */
+
+/*  VIDEOS */
+
+/* .profile-creator .stage.media .video-data {
+>>>>>>> ui-overhaul
     display: flex;
     align-items: center;
     justify-content: center;
@@ -551,13 +701,21 @@
     color: var(--gn-red);
     font-size: 2rem;
     cursor: pointer;
+<<<<<<< HEAD
 }
+=======
+} */
+>>>>>>> ui-overhaul
 
 
 
 /* SOCIAL MEDIA */
 
+<<<<<<< HEAD
 .profile-creator .stage.social-media .social-media-inputs {
+=======
+/* .profile-creator .stage.social-media .social-media-inputs {
+>>>>>>> ui-overhaul
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -593,12 +751,20 @@
 
 .profile-creator .stage.social-media .soundcloud-icon .icon {
     font-size: 2rem;
+<<<<<<< HEAD
 }
+=======
+} */
+>>>>>>> ui-overhaul
 
 
 /* FINAL */
 
+<<<<<<< HEAD
 .profile-creator .stage.final .email-input {
+=======
+/* .profile-creator .stage.final .email-input {
+>>>>>>> ui-overhaul
     display: flex;
     align-items: center;
     gap:5px;
@@ -630,7 +796,11 @@
 .profile-creator .stage.final .message.error .icon {
     color: var(--gn-red);
     margin-right: 5px;
+<<<<<<< HEAD
 }
+=======
+} */
+>>>>>>> ui-overhaul
 
 
 
@@ -640,12 +810,20 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+<<<<<<< HEAD
     margin: 1rem 5%;
 }
 
 .profile-creator .bottom {
     width:90%;
     margin: 0 auto;
+=======
+    margin:0 1rem;
+}
+
+.profile-creator .bottom {
+    margin: 0 1rem;
+>>>>>>> ui-overhaul
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -663,6 +841,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+<<<<<<< HEAD
 }
 
 .profile-creator .progress-bar-container {
@@ -699,4 +878,6 @@
     height: 100%;
     background-color: var(--gn-black);
     transition: width 0.4s ease;
+=======
+>>>>>>> ui-overhaul
 }

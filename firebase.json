@@ -26,5 +26,18 @@
       "enabled": true,
       "port": 4000
     }
+  },
+  "hosting": {
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Permissions-Policy",
+            "value": "payment=(self \"https://js.stripe.com\")"
+          }
+        ]
+      }
+    ]
   }
 }

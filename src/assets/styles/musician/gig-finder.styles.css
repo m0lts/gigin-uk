@@ -1,6 +1,7 @@
 
 .gig-finder {
     min-height: 100vh;
+<<<<<<< HEAD
     max-width: 100vw;
     display: grid;
     grid-template-rows: 60px auto;
@@ -102,6 +103,279 @@
 
 .gig-finder .preview-gig-list::-webkit-scrollbar {
     display: none;
+=======
+    height:100vh;
+    max-height: 100vh;
+    display: grid;
+    grid-template-rows: 60px auto;
+    overflow: hidden;
+}
+
+.gig-finder .body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: calc(100% - 400px);
+    min-height: 100%;
+    padding: 0 2.5%;
+    padding-bottom: 1rem;
+    overflow: hidden;
+}
+
+.gig-finder .body .top-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+}
+  
+.gig-finder .body .top-banner .filter-header {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.gig-finder .body .top-banner .results-header {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.gig-finder .body .top-banner .results-header .select {
+    padding:0.5rem;
+    border: 1px solid transparent;
+    outline: 1px solid transparent;
+    background-color: var(--gn-grey-300);
+    border-radius: 5px;
+    font-weight: 500;
+    transition: all 0.1s ease-in-out;
+}
+
+.gig-finder .body .top-banner .results-header .select:focus {
+    outline-color: var(--gn-off-black);
+    border-color: var(--gn-off-black);
+}
+  
+.gig-finder .body .filter-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-right: auto;
+}
+  
+.gig-finder .body .content-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    height: 90%;
+    max-height: 90%;
+    width: 100%;
+    transition: grid-template-columns 0.3s ease;
+}
+  
+.gig-finder .body .content-grid.with-filters {
+    grid-template-columns: 300px auto;
+}
+  
+.gig-finder .filters-container {
+    background: white;
+    padding-right: 1rem;
+    height:100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-y: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    position: relative;
+  }
+  
+.gig-finder .filters-container::-webkit-scrollbar {
+    display: none;
+}
+
+.gig-finder .filters-container .filter-buttons,
+.gig-finder .filters-container h2 {
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+    position: sticky;
+    bottom: 0;
+    width:100%;
+    padding: 0.5rem 0;
+    background-color: var(--gn-white);
+}
+
+.gig-finder .filters-container h2 {
+    top: 0;
+}
+
+.gig-finder .filters-container .filters-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap:1rem;
+}
+
+.gig-finder .filters-container .filters-body .button-toggle-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding:0.1rem;
+}
+
+.gig-finder .filters-container .filters-body .button-toggle-group .btn {
+    background-color: var(--gn-white);
+    border:1px solid var(--gn-grey-400);
+    outline: 1px solid transparent;
+    border-radius: 0.5rem;
+    padding:0.5rem 0.75rem;
+    font-weight: 500;
+    transition: all 200ms linear;
+}
+
+.gig-finder .filters-container .filters-body .button-toggle-group .btn:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.gig-finder .filters-container .filters-body .button-toggle-group .btn.selected {
+    border-color: var(--gn-off-black);
+    outline-color: var(--gn-off-black);
+}
+
+.gig-finder .filters-container .select:focus {
+    outline-color: var(--gn-off-black);
+}
+
+.gig-finder .filters-container .checkbox {
+    margin-bottom: 2px;
+    text-transform: none;
+    font-size: 1rem;
+    color: var(--gn-black);
+    font-weight: 400;
+    display: flex;
+    flex-direction: row-reverse;
+    cursor: pointer;
+}
+
+.gig-finder .filters-container .checkbox #genres {
+    outline:none;
+}
+
+.gig-finder .filters-container .calendar {
+    width:fit-content;
+    position: relative;
+    margin-left: 0.5rem;
+}
+
+.gig-finder .filters-container .calendar .react-datepicker {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+.gig-finder .filters-container .calendar .react-datepicker__header,
+.gig-finder .filters-container .calendar .react-datepicker__current-month,
+.gig-finder .filters-container .calendar .react-datepicker__day-name {
+    background-color: var(--gn-grey-300);
+}
+
+.gig-finder .filters-container .calendar .react-datepicker__day--selected,
+.gig-finder .filters-container .calendar .react-datepicker__day--in-range,
+.gig-finder .filters-container .calendar .react-datepicker__day--in-selecting-range {
+    background-color: var(--gn-off-black);
+    color: var(--gn-white);
+}
+
+.gig-finder .filters-container .filter-buttons {
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+}
+
+.gig-finder .output-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+  
+.gig-finder .output-container .map {
+    border-radius: 1rem;
+    width: 100%;
+    flex-grow: 1;
+    position: relative;
+    transition: height 0.3s ease;
+}
+
+.gig-finder .output-container .map .btn.primary {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.gig-finder .output-container .map .map-loading {
+    position: absolute;
+    top:1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width:fit-content;
+    height: fit-content;
+    padding: 0.5rem;
+    background-color: var(--gn-grey-200);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:0.5rem;
+    border-radius: 2rem;
+    box-shadow: 0 0 5px var(--gn-grey-400);
+}
+
+.gig-finder .output-container .map .map-loading span {
+    font-weight: 500;
+    color: var(--gn-off-black);
+}
+  
+.gig-finder .preview-gig-container {
+    width: 100%;
+    padding: 1rem;
+    background: var(--gn-white);
+    overflow-x: auto;
+    overflow-y: hidden;
+    z-index: 1;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.gig-finder .preview-gig-container::-webkit-scrollbar {
+    display: none;
+}
+
+.gig-finder .preview-gig-list {
+    display: flex;
+    gap: 1rem;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+  
+.gig-finder .preview-gig-item {
+    min-width: 325px;
+    width:325px;
+    max-width: 325px;
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+>>>>>>> ui-overhaul
 }
 
 .gig-finder .preview-gig-list .preview-gig-item {
@@ -111,7 +385,11 @@
     box-shadow: 0 0 5px var(--gn-shadow);
     border-radius: 1rem;
     display: grid;
+<<<<<<< HEAD
     grid-template-columns: 75% 25%;
+=======
+    grid-template-columns: 80% 20%;
+>>>>>>> ui-overhaul
     width: 100%;
     height: 75px;
     padding: 0;
@@ -145,12 +423,26 @@
     align-items: center;
     gap:10px;
     height: 100%;
+<<<<<<< HEAD
 }
 
 .gig-finder .preview-gig-list .preview-gig-img {
     width:25%;
     height:100%;
     overflow: hidden;
+=======
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.gig-finder .preview-gig-list .preview-gig-img {
+    width:30%;
+    height:100%;
+    max-height: 75px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 0.5rem;
+>>>>>>> ui-overhaul
 }
 
 .gig-finder .preview-gig-list .preview-gig-img img {
@@ -164,6 +456,14 @@
     transform: scale(1.1);
 }
 
+<<<<<<< HEAD
+=======
+.gig-finder .preview-gig-list .preview-gig-info {
+    width:100%;
+    overflow: hidden;
+}
+
+>>>>>>> ui-overhaul
 .gig-finder .preview-gig-list .preview-gig-info p {
     font-size: 0.9rem;
 }
@@ -183,6 +483,14 @@
     justify-content: center;
 }
 
+<<<<<<< HEAD
+=======
+.gig-finder .preview-gig-list .preview-gig-budget .budget.text {
+    font-size: 1rem;
+    text-align: center;
+}
+
+>>>>>>> ui-overhaul
 
 /* CONTROL BUTTON */
 
@@ -205,6 +513,7 @@
     border:1px solid var(--gn-grey-500);
 }
 
+<<<<<<< HEAD
 
 /* LIST VIEW */
 
@@ -237,6 +546,55 @@
 
 .gig-finder .gigs-list .gig-item:hover {
     box-shadow: 5px 5px 10px var(--gn-shadow);
+=======
+.gig-finder .btn.danger {
+    top:2px;
+}
+
+.gig-finder .btn.danger .icon {
+    font-size: 0.75rem;
+}
+
+
+/* LIST VIEW */
+
+.gig-finder .output-container.list-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow-y: auto; /* <-- was scroll */
+    overflow-x: hidden;
+}
+
+.gig-finder .list {
+    flex: 1; /* fill container */
+    overflow-y: auto;
+    padding-bottom: 1rem;
+}
+
+.gig-finder .list .gigs-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.gig-finder .gigs-list .gig-item {
+    width: 25%;
+    min-width: 250px;
+    max-width: 275px;
+    max-height: 250px;
+    border-radius: 1rem;
+    overflow: hidden;
+    cursor: pointer;
+    border:1px solid transparent;
+    transition: all 200ms linear;
+}
+
+.gig-finder .gigs-list .gig-item:hover {
+    border:1px solid var(--gn-grey-300);
+    box-shadow: 0 0 4px var(--gn-shadow);
+>>>>>>> ui-overhaul
 }
 
 .gig-finder .gigs-list .gig-item:hover .gig-img img {
@@ -244,6 +602,10 @@
 }
 
 .gig-finder .gigs-list .gig-item .gig-img {
+<<<<<<< HEAD
+=======
+    border-radius: 1rem;
+>>>>>>> ui-overhaul
     width:100%;
     height: 60%;
     overflow: hidden;
@@ -263,7 +625,11 @@
     padding:5px 10px;
     display: flex;
     flex-direction: column;
+<<<<<<< HEAD
     justify-content: space-evenly;
+=======
+    gap:2px;
+>>>>>>> ui-overhaul
 }
 
 .gig-finder .gigs-list .gig-item .gig-info .venue-and-location {
@@ -290,7 +656,46 @@
     justify-content: space-between;
 }
 
+<<<<<<< HEAD
 .gig-finder .list-view .no-gigs {
     margin:5% 0;
     text-align: center;
+=======
+.gig-finder .list .no-gigs {
+    margin:5% 0;
+    text-align: center;
+}
+
+.gig-finder .gigs-list .gig-item .venue-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--gn-off-black);
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.gig-finder .gigs-list .gig-item .venue-distance {
+    font-weight: 300;
+    font-size: 0.8rem;
+    color: var(--gn-off-black);
+    text-wrap: nowrap;
+}
+
+.gig-finder .gigs-list .gig-item .venue-distance .icon {
+    font-size: 0.8rem;
+}
+
+.gig-finder .gigs-list .gig-item .text {
+    font-weight: 400 !important;
+    font-size: 0.9rem;
+    margin:0;
+}
+
+.gig-finder .gigs-list .gig-item .fee {
+    margin-top: 5px;
+    font-size: 1.1rem;
+    color: var(--gn-off-black);
+>>>>>>> ui-overhaul
 }

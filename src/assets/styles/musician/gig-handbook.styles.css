@@ -1,6 +1,12 @@
 .modal .gig-handbook {
     min-width:55vw;
     max-width: 60vw;
+<<<<<<< HEAD
+=======
+    min-height: fit-content;
+    display: flex;
+    flex-direction: column;
+>>>>>>> ui-overhaul
 }
 
 @media (max-width: 1268px) {
@@ -17,7 +23,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+<<<<<<< HEAD
     margin-bottom: 5px;
+=======
+    border-radius: 1rem;
+    padding: 1rem !important;
+>>>>>>> ui-overhaul
 }
 
 .modal .gig-handbook .head .venue-info {
@@ -138,13 +149,25 @@
     overflow: auto;
 }
 
+<<<<<<< HEAD
 .modal .gig-handbook .body .secondary-info.extra-information {
+=======
+.modal .gig-handbook .body .secondary-info .extra-information {
+>>>>>>> ui-overhaul
     grid-column: 2 / 3;
     grid-row-start: 2;
     grid-row-end: 3;
     overflow: auto;
 }
 
+<<<<<<< HEAD
+=======
+.modal .gig-handbook .body .secondary-info .extra-information.full {
+    grid-row-start: 1;
+    grid-row-end: 3;
+}
+
+>>>>>>> ui-overhaul
 .modal .gig-handbook .body .secondary-info .info-box.fee-clearance .fee-clearance-details {
     padding: 1rem 0;
 }
@@ -161,12 +184,36 @@
     text-align: center;
 }
 
+<<<<<<< HEAD
+=======
+/* Cancellations */
+
+.modal .modal-content.confirmation-modal .head {
+    background-color: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:0.25rem;
+    margin-bottom: 1rem;
+}
+
+.modal .modal-content.confirmation-modal .body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+>>>>>>> ui-overhaul
 .modal .modal-content.confirmation-modal select {
     font-weight: 400;
     border-color: var(--gn-grey-400);
     border-radius: 5px;
     outline: 1px solid transparent;
     padding:5px;
+<<<<<<< HEAD
+=======
+    margin-bottom: 1rem;
+>>>>>>> ui-overhaul
     transition: outline 200ms linear, border 200ms linear;
 }
 

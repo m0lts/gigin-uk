@@ -1,39 +1,58 @@
-import { useEffect } from "react";
-import { Header } from "../components/musician-components/Header"
-import { useAuth } from "../hooks/useAuth"
-import '/styles/common/dashboard.styles.css'
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo } from 'react';
+import { useAuth } from '@hooks/useAuth'
+import { MusicianDashboardProvider } from '../context/MusicianDashboardContext';
+import '@styles/shared/dashboard.styles.css'
+import { ProfileCreator } from '../features/musician/profile-creator/ProfileCreator';
 
-export const MusicianDashboardLayout = ({ children, setAuthModal, setAuthType, user, setAuthClosable }) => {
-
+export const MusicianDashboardLayout = ({
+    children,
+    setAuthModal,
+    setAuthType,
+    user,
+    setAuthClosable,
+    setNoProfileModal,
+    noProfileModal
+  }) => {
     const { loading } = useAuth();
-    const navigate = useNavigate();
 
+    const hasBasics = useMemo(() => {
+      const p = user?.musicianProfile || null;
+      const hasName = typeof p?.name === 'string' && p.name.trim().length >= 2;
+      const hasOnboarded = !!p?.onboarded;
+      return hasName && hasOnboarded;
+    }, [user?.musicianProfile]);
+  
     useEffect(() => {
-        if (!loading && !user) {
-            setAuthModal(true);
-            setAuthClosable(false);
-        }
-        if (user && !user.musicianProfile) {
-            navigate('/create-musician-profile')
-        }
-        if (user.musicianProfile && !user.musicianProfile.completed) {
-            const musicianProfile = user.musicianProfile;
-            navigate('/create-musician-profile', { state: { musicianProfile } })
-        }
-    }, [user, loading])
+      if (!loading && !user) {
+        setAuthModal(true);
+        setAuthType?.('login');
+        setAuthClosable?.(false);
+        return;
+      }
 
+      if (!loading && user && !user.musicianProfile) {
+        setNoProfileModal(true);
+        setAuthClosable?.(false);
+        return;
+      }
 
+      if (!loading && user?.musicianProfile && !hasBasics) {
+        setNoProfileModal(true);
+        setAuthClosable?.(false);
+        return;
+      }
+
+      if (!loading && user && hasBasics) {
+        setNoProfileModal(false);
+        setAuthClosable?.(true);
+      }
+    }, [loading, user, hasBasics, setAuthModal, setAuthType, setAuthClosable]);
+  
     return (
+      <MusicianDashboardProvider user={user}>
         <section className="dashboard">
-            <Header 
-                setAuthType={setAuthType}
-                setAuthModal={setAuthModal}
-                user={user}
-            />
-            <main className="main">
-                { children }
-            </main>
+          {children}
         </section>
-    )
-}
+      </MusicianDashboardProvider>
+    );
+  };

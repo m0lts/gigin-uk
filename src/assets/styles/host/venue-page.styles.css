@@ -1,0 +1,300 @@
+
+.venue-page-body {
+    margin: 2rem auto;
+    padding-bottom: 5rem !important;
+    margin-top: 0;
+}
+
+
+/* HERO */
+
+.venue-page-body .venue-page-hero {
+    height: 40vh; /* not just min-height */
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    border-radius: 0 0 1rem 1rem;
+    box-shadow: 0 0 10px var(--gn-grey-500);
+    margin-bottom: 1rem;
+  }
+  
+.venue-page-body .venue-page-hero .background-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 120%; /* make image taller than container */
+    object-fit: cover;
+    z-index: 0;
+    transition: transform 0.3s ease-out;
+}
+
+.venue-page-body .venue-page-hero .primary-information {
+    position: relative;
+    z-index: 1;
+    width:100%;
+    color: var(--gn-white);
+    display: flex;
+    flex-direction: column;
+    margin:1rem 1.5rem;
+}
+
+.venue-page-body .venue-page-hero .primary-information .verified-tag {
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.venue-page-body .venue-page-hero .primary-information .verified-tag .icon {
+    font-size: 1.5rem;
+}
+
+.venue-page-body .venue-page-hero .primary-information .verified-tag p,
+.venue-page-body .venue-page-hero .primary-information .number-of-gigs {
+    font-size: 1rem;
+    font-weight: 500;
+    text-shadow: 0 0 10px var(--gn-grey-700);
+}
+
+.venue-page-body .venue-page-hero .primary-information .venue-name {
+    font-size: 4rem;
+    text-shadow: 0 0 10px var(--gn-grey-700);
+}
+
+.venue-page-body .venue-page-hero .primary-information .venue-name .orange-dot {
+    color: var(--gn-orange);
+    font-size: 5rem;
+}
+
+.venue-page-body .venue-page-hero .primary-information .action-buttons {
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.venue-page-body .venue-page-information {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 65% auto;
+    gap: 2rem;
+    align-items: start;
+  }
+
+.venue-page-body .venue-page-information .venue-page-details {
+    width: 100%;
+    display: grid;
+    grid-column: 1 / 2;
+    grid-template-columns: 30% 70%;
+    gap: 2rem;
+    padding:1rem;
+    padding-left: 0;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section h2 {
+    margin-bottom: 0.5rem;
+}
+  
+.venue-page-body .venue-page-information .venue-page-details .section.bio {
+    grid-column: 1 / 3;
+    height:fit-content;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section.bio p {
+    font-size: 1.1rem;
+}
+  
+.venue-page-body .venue-page-information .venue-page-details .section.photos {
+    grid-column: 2 / 3;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section.photos .photos-collage {
+    column-count: 3;
+    column-gap: 0.75rem;
+}
+  
+.venue-page-body .venue-page-information .venue-page-details .section.photos .collage-item {
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    margin: 0 0 0.75rem;
+    display: block;
+}
+  
+.venue-page-body .venue-page-information .venue-page-details .section.photos .collage-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+@media (max-width: 1100px) {
+    .section.photos .photos-collage { column-count: 2; }
+}
+@media (max-width: 700px) {
+    .section.photos .photos-collage { column-count: 1; }
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section.secondary-information {
+    grid-column: 1 / 2;
+    display: flex;
+    flex-direction: column;
+    gap:1rem;
+    overflow: hidden;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section .location .map-container {
+    min-height: 150px;
+    min-width: 100%;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section .location h5 {
+    font-size: 1rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section .location .btn {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+    margin-top: 0.5rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section .website a {
+    width: 100%;
+    display: inline-block;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 1.1rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section .socials-buttons {
+    display: flex;
+    align-items: center;
+    gap:0.5rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section .socials-buttons a .icon {
+    font-size: 2rem;
+    color: var(--gn-off-black);
+}
+
+
+/* GIGS */
+
+.venue-page-body .venue-page-information .venue-page-gigs {
+    margin-top: 1rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box {
+    display: flex;
+    flex-direction: column;
+    gap:0.5rem;
+    margin-bottom: 2rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .gigs-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .gigs-box-header .btn.text {
+    font-size: 0.8rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig {
+    border:1px solid var(--gn-grey-350);
+    border-radius: 0.5rem;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig:hover {
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .date-box {
+    background-color: var(--gn-grey-250);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .gig-type {
+    display: inline-flex;
+    align-items: center;
+    gap:5px;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .gig-type .icon {
+    color: var(--gn-grey-700);
+    font-size: 1.25rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musician {
+    display: flex;
+    justify-content: space-between;
+    gap:0.5rem;
+    width:60%;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musician .left {
+    display: flex;
+    align-items: center;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musicians {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+  
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musicians img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 1px var(--gn-grey-300);
+}
+  
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musicians .musician-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--gn-grey-800);
+    margin-left: 0.5rem;
+}
+
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .btn.primary-alt,
+.venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .btn.tertiary {
+    padding:0.3rem 0.5rem;
+    padding-bottom: 0.4rem;
+    font-size: 0.9rem;
+}
+
+
+/* REQUEST MODAL */
+
+.modal.musician-request .modal-content {
+    max-width: 400px;
+}
+
+.modal.musician-request .modal-content .input {
+    width:100%;
+    height:100px;
+    margin-bottom: 1rem;
+    resize: none;
+    overflow: auto;
+    padding:0.5rem;
+}

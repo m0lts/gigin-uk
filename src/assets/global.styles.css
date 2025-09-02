@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
 *, *::after, *::before {
     box-sizing: border-box;
@@ -6,7 +6,7 @@
     padding: 0;
 
     /* Typography */
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 14px;
     --gn-bold: 600;
     --gn-semi-bold: 500;
@@ -15,21 +15,24 @@
 
     /* Colours */
     --gn-orange: #FF6C4B;
-    --gn-offset-orange: #ffe9e4;
+    --gn-offset-orange: #fff1ee;
+    --gn-deep-orange: rgba(255, 47, 0, 0.099);
     --gn-white: #ffffff;
     --gn-grey-100: #fdfdfd;
     --gn-grey-200: #fcfcfc;
+    --gn-grey-250: #f9f9f9;
     --gn-grey-300: #f5f5f5;
     --gn-grey-350: #e6e6e6;
     --gn-grey-400: #d4d4d4;
     --gn-grey-500: #acacac;
     --gn-grey-600: #808080;
+    --gn-grey-700: #555555;
     --gn-off-black: #333333;
     --gn-black: #000000;
     --gn-red: #ff0000;
-    --gn-offset-red: #ff000009;
-    --gn-green: #09b900;
-    --gn-offset-green: #09b90009;
+    --gn-offset-red: #ffefef;
+    --gn-green: #2ad921;
+    --gn-offset-green: #e7ffe6;
     --gn-overlay: #80808058;
     --gn-overlay-dark: #80808096;
     --gn-shadow: #0000001a;
@@ -38,7 +41,7 @@
     /* Common spacing */
     --gn-btn-padding-x: 14px;
     --gn-btn-padding-y: 7px;
-    --gn-btn-border-radius: 5px;
+    --gn-btn-border-radius: 0.5rem;
     --gn-border-radius: 14px;
     --gn-spacing-x: 14px;
 }
@@ -74,7 +77,7 @@ h5 {
 }
 h6 {
     text-transform: uppercase;
-    color: var(--dark-grey);
+    color: var(--gn-grey-600);
     font-size: 0.75rem;
     font-weight: 600;
 }
@@ -87,7 +90,7 @@ a, .link, li {
     font-weight: 400;
 }
 p, a, span, label, input, button, select, option, textarea, li {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
 .small-screen-message {
@@ -98,4 +101,33 @@ p, a, span, label, input, button, select, option, textarea, li {
     justify-content: center;
     align-items: center;
     gap:1rem;
+}
+
+.tooltip-wrapper {
+    position: relative;
+    display: inline-block;
+}
+  
+.tooltip-wrapper::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 150px;
+    max-width: 300px;
+    background: var(--gn-off-black);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease-in-out;
+    z-index: 10;
+}
+  
+.tooltip-wrapper:hover::after {
+    opacity: 1;
 }

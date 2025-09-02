@@ -3,21 +3,22 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {
     "lint": "eslint .",
-    "serve": "firebase emulators:start --only functions",
-    "shell": "firebase functions:shell",
-    "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "serve:dev": "firebase use dev && firebase emulators:start --only functions",
+    "deploy:dev": "firebase use dev && firebase deploy --only functions",
+    "serve:prod": "firebase use prod && firebase emulators:start --only functions",
+    "deploy:prod": "firebase use prod && firebase deploy --only functions",
+    "logs:dev": "firebase functions:log --project dev",
+    "logs:prod": "firebase functions:log --project prod"
   },
   "engines": {
-    "node": "18"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
     "@google-cloud/tasks": "^5.5.1",
     "cors": "^2.8.5",
-    "firebase-admin": "^12.1.0",
-    "firebase-functions": "^5.0.0",
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.4.0",
     "google-auth-library": "^9.15.0",
     "nodemailer": "^6.9.14",
     "stripe": "^16.10.0"
@@ -25,7 +26,7 @@
   "devDependencies": {
     "eslint": "^8.15.0",
     "eslint-config-google": "^0.14.0",
-    "firebase-functions-test": "^3.1.0"
+    "firebase-functions-test": "^3.4.1"
   },
   "private": true
 }

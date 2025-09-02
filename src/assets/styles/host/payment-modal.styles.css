@@ -3,7 +3,12 @@
 }
 
 .payment.modal .modal-content {
-    overflow: hidden;
+    overflow-y: auto;
+    max-width: 500px;
+}
+
+.payment.modal .modal-header.card {
+    margin-bottom: 0.5rem;
 }
 
 .payment.modal .payment-details {
@@ -17,6 +22,7 @@
     align-items: center;
     justify-content: center;
     gap:10px;
+    margin-bottom: 2rem;
 }
 
 .payment.modal .payment-details .payment-line {
@@ -31,7 +37,6 @@
     width:100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: flex-start;
 }
 
@@ -41,6 +46,8 @@
     flex-direction: column;
     align-items: center;
     gap:10px;
+    margin: 1rem 0;
+    margin-bottom: 2rem;
 }
 
 .payment.modal .card-list .card-item {
@@ -61,7 +68,7 @@
 }
 
 .payment.modal .card-list .card-item.selected {
-    outline: 2px solid var(--gn-grey-600);
+    outline: 2px solid var(--gn-off-black);
     border: 1px solid transparent;
 }
 
@@ -90,14 +97,38 @@
     font-size: 0.8rem;
 }
 
+.payment.modal .pay-btn {
+    width: 100%;
+}
+
 .payment.modal .payment-success,
 .payment.modal .making-payment {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap:25px;
+}
+
+.payment.modal .payment-success h2,
+.payment.modal .making-payment h2 {
+    margin-bottom: 5px;
+    margin-top: 1rem;
+}
+
+.payment.modal .payment-success .subtext,
+.payment.modal .making-payment .subtext {
+    text-align: center;
+    margin-bottom: 0.5rem;
 }
 
 .payment.modal .payment-success .icon {
-    font-size: 4rem;
+    font-size: 2rem;
 }
+
+.payment.modal .back-button {
+    margin-bottom: 1rem;
+}
+
+.payment.modal .modal-content .wallets {
+    margin-bottom: 1rem;
+}
+

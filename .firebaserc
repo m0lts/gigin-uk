@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "giginltd-16772"
+    "prod": "giginltd-16772",
+    "dev": "giginltd-dev"
   },
   "targets": {},
   "etags": {}

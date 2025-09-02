@@ -1,16 +1,17 @@
-import { useState, useEffect } from "react";
-import { loadConnectAndInitialize } from "@stripe/connect-js";
+import { useState, useEffect } from 'react';
+import { loadConnectAndInitialize } from '@stripe/connect-js';
 
 export const useStripeConnect = (connectedAccountId) => {
   const [stripeConnectInstance, setStripeConnectInstance] = useState();
+  const accountSessionUrl = import.meta.env.VITE_STRIPE_ACCOUNT_SESSION_URL;
 
   useEffect(() => {
     if (connectedAccountId) {
       const fetchClientSecret = async () => {
-          const response = await fetch("https://stripeaccountsession-gxujnzd2uq-ey.a.run.app", {
-          method: "POST",
+          const response = await fetch(accountSessionUrl, {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             account: connectedAccountId,
@@ -19,7 +20,7 @@ export const useStripeConnect = (connectedAccountId) => {
 
         if (!response.ok) {
           const { error } = await response.json();
-          throw ("An error occurred: ", error);
+          throw ('An error occurred: ', error);
         } else {
           const { client_secret: clientSecret } = await response.json();
           return clientSecret;
@@ -28,12 +29,12 @@ export const useStripeConnect = (connectedAccountId) => {
 
       setStripeConnectInstance(
         loadConnectAndInitialize({
-          publishableKey: 'pk_live_51Py8lOHI8M50kHhRvjzq6CjfiliJkeME3oaFpOhWLkIcx750xKeR68QwEgoanKf2GpH9ynizyl5RA1E1mBs5z9HQ00YNyhYnat',
+          publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
           fetchClientSecret,
           appearance: {
-            overlays: "dialog",
+            overlays: 'dialog',
             variables: {
-              colorPrimary: "#000",
+              colorPrimary: '#000',
             },
           },
         })
@@ -43,5 +44,3 @@ export const useStripeConnect = (connectedAccountId) => {
 
   return stripeConnectInstance;
 };
-
-export default useStripeConnect;

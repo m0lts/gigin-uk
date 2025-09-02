@@ -1,9 +1,9 @@
-import { useEffect } from "react"
-import { Header as MusicianHeader } from "../components/musician-components/Header"
-import { Header as VenuesHeader } from "../components/venue-components/Header"
-import { Header as CommonHeader } from "../components/common/Header"
-import '/styles/common/layouts.styles.css'
-import { useNavigate } from "react-router-dom"
+import { useEffect } from 'react'
+import { Header as MusicianHeader } from '@features/musician/components/Header'
+import { Header as VenuesHeader } from '@features/venue/components/Header'
+import { Header as CommonHeader } from '@features/shared/components/Header'
+import '@styles/shared/layouts.styles.css'
+import { useNavigate } from 'react-router-dom'
 
 export const MessagesLayout = ({ children, setAuthModal, setAuthType, user, logout }) => {
 
@@ -16,7 +16,7 @@ export const MessagesLayout = ({ children, setAuthModal, setAuthType, user, logo
     }, [user])
 
     return (
-        <section className="layout-messages">
+        <section className='layout-messages'>
             {(user && user.musicianProfile && user.venueProfiles && user.venueProfiles.length > 0) ? (
                 <CommonHeader
                     setAuthModal={setAuthModal}
@@ -42,7 +42,7 @@ export const MessagesLayout = ({ children, setAuthModal, setAuthType, user, logo
                     user={user}
                 />
             )}
-            <main className="body">{children}</main>
+            <main className='body'>{children}</main>
         </section>
     )
 }

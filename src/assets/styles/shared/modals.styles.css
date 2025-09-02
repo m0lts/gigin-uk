@@ -1,0 +1,584 @@
+
+.modal {
+    position: fixed;
+    z-index: 1000;
+    width:100%;
+    height:100%;
+    top:0;
+    left:0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+    background-color: var(--gn-overlay);
+}
+
+.modal.welcome {
+    backdrop-filter: none;
+}
+
+.modal-content {
+    position: relative;
+    min-width: 450px;
+    max-width: 75vw;
+    max-height: 75vh;
+    padding:2.5rem;
+    padding-top: 3rem;
+    background-color: var(--gn-white);
+    border-radius: var(--gn-border-radius);
+    border:1px solid var(--gn-grey-350);
+    gap:2rem;
+    box-shadow: 0 0 20px var(--gn-shadow);
+    transition: width 0.5s linear height 0.5s linear;
+}
+
+.modal-padding {
+    border-radius: 1.5rem;
+    padding:1rem;
+    padding-bottom: 0;
+    background-color: var(--gn-grey-300);
+}
+
+.modal-padding .bottom-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:4px;
+    margin:2rem auto;
+}
+
+.modal-content .btn.close {
+    position: absolute;
+    top:5px;
+    right:5px;
+    color: var(--gn-red);
+    background-color: transparent;
+}
+
+.modal-content.welcome {
+    padding:2rem;
+    min-width: 450px;
+    max-width: 450px;
+    overflow: hidden;
+}
+
+.modal-content.welcome .body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:10px;
+}
+
+.modal-content.welcome .body h4 {
+    text-align: center;
+}
+
+.modal-header {
+    margin-bottom: 1.5rem;
+}
+
+.modal-header .icon {
+    font-size: 1.5rem;
+}
+
+.modal-header h2 {
+    margin: 0.25rem 0;
+}
+
+.modal-header p {
+    color: var(--gn-grey-700);
+}
+
+.modal-buttons {
+    display: flex;
+    align-items: center;
+    gap:1rem;
+}
+
+.modal-content.scrollable {
+    overflow-y: scroll;
+    scrollbar-width: none;       /* Firefox */
+    -ms-overflow-style: none;    /* IE 10+ */
+}
+
+.modal-content.scrollable::-webkit-scrollbar {
+    display: none;               /* Chrome, Safari, Opera */
+}
+
+
+/* AUTH MODAL */
+.modal-content.auth {
+    border: none;
+    width:450px;
+    max-width: 500px;
+}
+
+.modal-content.auth .head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:1rem;
+    margin-bottom: 1rem;
+}
+
+.modal-content.auth .head h2 {
+    font-size: 1.5rem;
+}
+
+.modal-content.auth .head .logo {
+    font-size: 2rem;
+    margin:0 auto;
+}
+
+.modal-content.auth .head p {
+    font-weight: 400;
+    text-align: center;
+}
+
+.modal-padding.auth .change-auth-type {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:4px;
+    margin:2rem 0;
+}
+
+.modal-padding.auth .change-auth-type-text {
+    color: var(--gn-grey-600);
+}
+
+.modal-padding.auth .change-auth-type .btn {
+    font-weight: 500;
+    text-decoration: underline;
+    cursor:pointer;
+}
+
+.modal-padding.auth .change-auth-type .btn:hover {
+    color: var(--gn-grey-600);
+}
+
+
+/* VENUE BUILDER SAVED PROFILE */
+.modal .saved-profile h2 {
+    margin-bottom: 5px;
+}
+
+.modal .saved-profile .saved-profile-card {
+    border:1px solid var(--gn-grey-350);
+    outline:1px solid transparent;
+    margin-top:2rem;
+    border-radius: 1rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 200ms ease-in-out;
+}
+
+.modal .saved-profile .saved-profile-card:hover {
+    border-color: var(--gn-off-black);
+    outline-color: var(--gn-off-black);
+}
+
+.modal .saved-profile .saved-profile-card .img-thumbnail {
+    background-color: var(--gn-grey-350);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    width:75px;
+    height:75px;
+    object-fit: cover;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.modal .saved-profile .saved-profile-card .img-thumbnail img {
+    width:75px;
+    height:75px;
+    object-fit: cover;
+}
+
+/* Musician Profile Error */
+
+.modal .venue-builder-error .modal-content {
+    max-width: 300px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal .venue-builder-error .modal-content h2 {
+    margin-bottom: 5px;
+}
+
+/* CONFIRM MODALS */
+.modal.confirm .modal-content {
+    max-width: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal.confirm .modal-content h3 {
+    text-align: center;
+}
+
+/* LOADING MODAL */
+
+.modal.loading .modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal.loading .modal-content .loading-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:0.5rem;
+}
+
+.modal.loading .modal-content .loading-text p {
+    color: var(--gn-grey-700);
+}
+
+/* VENUE MESSAGES GIG INFO */
+
+.modal.gig-information .modal-content {
+    min-height: fit-content !important;
+}
+
+.modal.gig-information .top-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal.gig-information .venue {
+    padding:0.5rem 0;
+    margin: 0rem 1.5rem;
+}
+
+.modal.gig-information .venue .photo {
+    margin-bottom: 0.5rem;
+    width: 100%;
+    height: 150px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.modal.gig-information .venue .photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal.gig-information .event-information {
+    margin: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--gn-grey-300);
+    border-top: 1px solid var(--gn-grey-300);
+}
+
+.modal.gig-information .location {
+    margin-left: 1.5rem;
+    margin-right: 1.5rem;
+}
+
+.modal.gig-information .budgets {
+    border:1px solid var(--gn-grey-300);
+    margin: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    padding: 1rem;
+}
+
+.modal.gig-information .budget-container {
+    text-align: center;
+}
+
+.modal.gig-information .date-and-time {
+    margin: 0.25rem 1.5rem;
+}
+
+.modal.gig-information .details {
+    margin: 1rem 1.5rem;
+}
+
+.modal.gig-information .details-list {
+    width:100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:5px;
+}
+
+.modal.gig-information .details-list .detail {
+    text-align: center;
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px var(--gn-shadow);
+    padding: 1rem 0.5rem;
+}
+
+.modal.gig-information .details-list .detail .data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.modal.gig-information .map {
+    box-shadow: 0 0 5px var(--gn-shadow);
+    margin: 0.25rem 1.5rem;
+    height:240px;
+    border-radius: 10px;
+    padding-bottom: 1rem;
+}
+
+
+/* INVITE MUSICIAN TO GIG MODAL */
+
+.modal.invite-musician .modal-content {
+    min-height: 75vh;
+    display: flex;
+    flex-direction: column;
+    gap:0;
+}
+
+.modal.invite-musician .modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap:1rem;
+}
+
+
+.modal.invite-musician .modal-header .or-separator {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.modal.invite-musician .modal-header .or-separator span {
+    width:50%;
+    border-top: 1px solid var(--gn-grey-400);
+}
+
+.modal.invite-musician .gig-selection {
+    width:100%;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-bottom: 1rem;
+    padding: 0 0.1rem;
+}
+
+.modal.invite-musician .gig-selection .card {
+    position: relative;
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-white);
+    border-radius: var(--gn-btn-border-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding:1rem;
+    gap:5px;
+    text-align: left;
+    margin-bottom: 0.5rem;
+    outline: 1px solid transparent;
+    transition: all 200ms linear;
+}
+
+.modal.invite-musician .gig-selection .card .text {
+    font-size: 1rem;
+}
+
+.modal.invite-musician .gig-selection .card .sub-text {
+    font-size: 0.9rem;
+}
+
+.modal.invite-musician .gig-selection .card:hover {
+    border-color: var(--gn-off-black);
+}
+
+.modal.invite-musician .gig-selection .card.selected {
+    border-color: var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+}
+
+
+/* GIG PAGE NEGOTIATE MODAL */
+
+/* NEGOTIATE MODAL */
+
+.modal.negotiation .modal-content {
+    max-width: 300px;
+}
+
+.modal.negotiation .modal-content .input {
+    border:1px solid var(--gn-grey-350);
+    width:100%;
+    text-align: center;
+    margin-bottom: 1rem;
+    border-radius: 1rem;
+    font-size: 1.25rem;
+    outline: 1px solid transparent;
+    transition: all 0.2s linear;
+}
+
+.modal.negotiation .modal-content .input:focus {
+    border:1px solid var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+}
+
+/* MUSICIAN STRIPE ACCOUNT MODALS */
+
+.modal.stripe-account .modal-content {
+    max-width: 500px;
+    overflow-y: scroll;
+    position: relative;
+    padding:0;
+    /* Hide scrollbar for Webkit browsers (Chrome, Safari, Edge) */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.modal.stripe-account .modal-content::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
+.modal.stripe-account .modal-content .modal-header {
+    position: sticky;
+    top:0;
+    left:0;
+    width:100%;
+    background-color: var(--gn-white);
+    padding:2rem;
+    padding-bottom: 0.5rem;
+    z-index: 1;
+}
+
+.modal.stripe-account .modal-content .modal-header .more-information {
+    border:1px solid var(--gn-red);
+    border-radius: 0.5rem;
+    padding:0.5rem;
+    background-color: var(--gn-offset-red);
+    margin-top: 0.5rem;
+}
+
+.modal.stripe-account .modal-content .modal-header .more-information p,
+.modal.stripe-account .modal-content .modal-header .more-information .icon {
+    color: var(--gn-red);
+    font-size: 0.8rem;
+}
+
+.modal.stripe-account .modal-content .modal-body {
+    padding: 0 2rem;
+    padding-bottom: 2rem;
+}
+
+.modal.more-information .modal-content {
+    max-width: 500px;
+    overflow-y: scroll;
+    position: relative;
+    padding:0;
+    /* Hide scrollbar for Webkit browsers (Chrome, Safari, Edge) */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.modal.more-information .modal-content::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
+.modal.more-information .modal-content .modal-header {
+    position: sticky;
+    top:0;
+    left:0;
+    width:100%;
+    background-color: var(--gn-white);
+    padding:2rem;
+    padding-top: 3rem;
+    padding-bottom: 1rem;
+    z-index: 1;
+}
+
+.modal.more-information .modal-content .modal-header .icon {
+    font-size: 2rem;
+}
+
+.modal.more-information .modal-content .modal-body {
+    padding: 0 2rem;
+    padding-bottom: 2rem;
+}
+
+.modal.more-information .modal-content .modal-body ol,
+.modal.more-information .modal-content .modal-body ul {
+    padding:0 1rem;
+    list-style-type: none;
+    display: flex;
+    flex-direction: column;
+    gap:0.5rem;
+    margin: 1rem 0;
+}
+
+.modal.more-information .modal-content .modal-body .no-padding {
+    padding: 0;
+}
+
+.modal.more-information .modal-content .modal-body strong {
+    font-weight: 600;
+}
+
+.modal.more-information .modal-content .modal-body hr {
+    border: none;
+    border-top: 1px solid var(--gn-grey-400);
+    margin: 1.5rem 0;
+}
+
+/* CONFIRM DELETION AND CANCELLATION MODAL - VENUE SIDE */
+.modal.cancel-gig .modal-content {
+    max-width: 350px;
+}
+
+.modal.cancel-gig .modal-content  h3 {
+    text-align: center;
+}
+
+.modal.cancel-gig .modal-content .modal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    margin: 1rem 0;
+}
+
+.modal.cancel-gig .modal-content .modal-body select {
+    padding:10px 5px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    transition: all 0.1s ease-in-out;
+}
+
+.modal.cancel-gig .modal-content .modal-body select:focus {
+    border:1px solid var(--gn-off-black);
+    outline:1px solid var(--gn-off-black);
+}
+
+.modal.cancel-gig .modal-content .modal-body textarea {
+    resize: none;
+    width:300px;
+    height:100px;
+}

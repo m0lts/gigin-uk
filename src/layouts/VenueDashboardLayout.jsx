@@ -1,36 +1,30 @@
-import { useEffect } from "react";
-import { Header } from "../components/venue-components/Header"
-import { useAuth } from "../hooks/useAuth"
-import '/styles/common/dashboard.styles.css'
-import { useNavigate } from "react-router-dom";
+import { useEffect } from 'react';
+import { useAuth } from '@hooks/useAuth'
+import '@styles/shared/dashboard.styles.css'
+import { useLocation, useNavigate } from 'react-router-dom';
+import { VenueDashboardProvider } from '@context/VenueDashboardContext';
 
 export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user, setAuthClosable }) => {
 
     const { loading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
         if (!loading && !user) {
             setAuthModal(true);
             setAuthClosable(false);
         }
-
         if (user && !user.venueProfiles) {
             navigate('/venues/add-venue')
         }
-
     }, [user])
 
     return (
-        <section className="dashboard">
-            <Header 
-                setAuthType={setAuthType}
-                setAuthModal={setAuthModal}
-                user={user}
-            />
-            <main className="main">
+        <VenueDashboardProvider user={user}>
+            <section className="dashboard">
                 { children }
-            </main>
-        </section>
+            </section>
+        </VenueDashboardProvider>
     )
-}
+};
