@@ -495,17 +495,27 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             </div>
                           </td>
                           {windowWidth > 1268 && (
-                            <td className={`centre ${gig.applicants.some(app => !app.viewed && app.invited !== true) ? 'has-new-applications' : ''}`}>
-                              {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
-                                '-'
-                              ) : (
-                                <>
-                                  {gig.applicants.some(app => !app.viewed && app.invited !== true)
-                                    ? `${gig.applicants.filter(app => !app.viewed && app.invited !== true).length} Unseen`
-                                    : gig.applicants.length}
-                                </>
-                              )}
+                            gig?.applicants && gig?.applicants?.length ? (
+                              <td className={`centre ${gig?.applicants.some(app => !app.viewed && app.invited !== true) ? 'has-new-applications' : ''}`}>
+                                {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
+                                  '-'
+                                ) : (
+                                  <>
+                                    {gig?.applicants.some(app => !app.viewed && app.invited !== true)
+                                      ? `${gig?.applicants.filter(app => !app.viewed && app.invited !== true).length} Unseen`
+                                      : gig?.applicants.length}
+                                  </>
+                                )}
+                              </td>
+                            ) : (
+                              <td className={`centre`}>
+                                {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
+                                  '-'
+                                ) : (
+                                  '0'
+                                )}
                             </td>
+                            )
                           )}
                           <td className="options-cell" onClick={(e) => e.stopPropagation()}>
                               <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
