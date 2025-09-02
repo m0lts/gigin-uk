@@ -82,17 +82,20 @@ export const GigInformation = ({ gigId, gigData, setGigData, venueGigs = [] }) =
                         <h4>{gigData.venue.address}</h4>
                     </div>
                 </div>
-                <div className='budgets'>
-                    <div className='budget-container'>
-                        <h6>{gigData.agreedFee ? 'Gig Fee' : 'Venue Budget'}</h6>
-                        <h2 style={{ textDecoration: gigData.negotiatedFee ? 'line-through' : 'none' }}>{gigData.agreedFee ? gigData.agreedFee : gigData.budget}</h2>                    </div>
-                    {gigData.negotiatedFee && (
+                {(gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && (
+                    <div className='budgets'>
                         <div className='budget-container'>
-                            <h6>Negotiated Fee:</h6>
-                            <h2>£{gigData.negotiatedFee}</h2>
+                            <h6>{gigData.agreedFee ? 'Gig Fee' : 'Venue Budget'}</h6>
+                            <h2 style={{ textDecoration: gigData.negotiatedFee ? 'line-through' : 'none' }}>{gigData.agreedFee ? gigData.agreedFee : gigData.budget}</h2>
                         </div>
-                    )}
-                </div>
+                        {gigData.negotiatedFee && (
+                            <div className='budget-container'>
+                                <h6>Negotiated Fee:</h6>
+                                <h2>£{gigData.negotiatedFee}</h2>
+                            </div>
+                        )}
+                    </div>
+                )}
                 <div className='details'>
                     <div className='details-list'>
                         <div className='detail'>

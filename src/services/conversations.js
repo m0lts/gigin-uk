@@ -347,6 +347,78 @@ export async function rewriteVenueConversationsAndMessages({
   return { conversationsUpdated, messagesUpdated };
 }
 
+/**
+ * Declines all *other* applicants, updates their conversations, and
+ * posts an announcement that the gig was confirmed with another musician.
+ * Also sets conversation pending messages (application/invitation/negotiation) -> "declined".
+ *
+ * @param {object} gigData
+ * @param {string} acceptedMusicianId
+ * @returns {Promise<Array>} newApplicants array
+ */
+export const notifyOtherApplicantsGigConfirmed = async (gigData, acceptedMusicianId) => {
+  const applicants = Array.isArray(gigData.applicants) ? gigData.applicants : [];
+  const otherIds = applicants
+    .map(a => a?.id)
+    .filter(Boolean)
+    .filter(id => id !== acceptedMusicianId);
+
+  // 1) Update applicants: others -> declined (keep accepted as is)
+  const newApplicants = applicants.map(a =>
+    a?.id === acceptedMusicianId ? a : { ...a, status: "declined" }
+  );
+
+  // 2) Flip pending messages to declined + add announcement for other applicants' conversations
+  const convSnap = await getDocs(
+    query(collection(firestore, "conversations"), where("gigId", "==", gigData.gigId))
+  );
+
+  const pendingTypes = ["application", "invitation", "negotiation"];
+  const text = "This gig has been confirmed with another musician. Applications are now closed.";
+
+  for (const convDoc of convSnap.docs) {
+    const data = convDoc.data() || {};
+    const participants = data.participants || [];
+    const isVenueAndOtherApplicant =
+      participants.includes(gigData.venueId) && otherIds.some(id => participants.includes(id));
+
+    if (!isVenueAndOtherApplicant) continue;
+
+    const messagesRef = collection(firestore, "conversations", convDoc.id, "messages");
+
+    // Fetch all pending application/invitation/negotiation messages
+    const pendingSnap = await getDocs(
+      query(messagesRef, where("status", "==", "pending"), where("type", "in", pendingTypes))
+    );
+
+    const batch = writeBatch(firestore);
+
+    pendingSnap.forEach(m => batch.update(m.ref, { status: "declined" }));
+
+    // Announcement
+    const announceRef = doc(messagesRef);
+    batch.set(announceRef, {
+      senderId: "system",
+      text,
+      timestamp: serverTimestamp(),
+      type: "announcement",
+      status: "gig confirmed",
+    });
+
+    // Close conversation
+    batch.update(convDoc.ref, {
+      lastMessage: text,
+      lastMessageTimestamp: serverTimestamp(),
+      lastMessageSenderId: "system",
+      status: "closed",
+    });
+
+    await batch.commit();
+  }
+
+  return newApplicants;
+};
+
 /*** DELETE OPERATIONS ***/
 
 /**

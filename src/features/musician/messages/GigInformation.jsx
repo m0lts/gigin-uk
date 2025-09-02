@@ -115,7 +115,7 @@ export const GigInformation = ({ gigId, gigData, setGigData }) => {
                 <div className='location'>
                     <h5>{gigData.venue.address}</h5>
                 </div>
-                {gigData.kind !== 'Open Mic' && (
+                {(gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && (
                     <div className='budgets'>
                         <div className='budget-container'>
                             <h6>{gigData.agreedFee ? 'Gig Fee' : 'Venue Budget'}</h6>

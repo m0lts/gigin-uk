@@ -1,7 +1,7 @@
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 import { CameraIcon, DashboardIconLight, HouseIconLight } from '@features/shared/ui/extras/Icons';
 import '@styles/host/venue-builder.styles.css'
-import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
 
 export const UploadingProfile = ({ text, progress }) => {
@@ -9,7 +9,7 @@ export const UploadingProfile = ({ text, progress }) => {
         <div className='uploading-profile'>
             <NoTextLogo />
             <h1>{text}</h1>
-            <LoadingThreeDots />
+            <LoadingSpinner width={50} height={50} />
             <div className='progress-bar-container'>
                 <div className='progress-bar' style={{ width: `${progress}%` }}></div>
             </div>

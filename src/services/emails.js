@@ -1303,7 +1303,7 @@ export const sendBandInviteEmail = async ({ to, band, link, baseUrl }) => {
  * @param {string} params.to - Recipient email address.
  * @param {string} params.musicianId - Musician UID to include in the testimonial link.
  * @param {string} params.musicianName - Musician display name.
- * @param {string} [params.baseUrl="https://gigin.ltd"] - Base URL for the testimonial page (e.g. your production domain).
+ * @param {string} [params.baseUrl="https://giginmusic.com"] - Base URL for the testimonial page (e.g. your production domain).
  * @returns {Promise<void>}
  *
  * @example
@@ -1311,14 +1311,14 @@ export const sendBandInviteEmail = async ({ to, band, link, baseUrl }) => {
  *   to: 'friend@example.com',
  *   musicianId: 'abc123',
  *   musicianName: 'Neon Owls',
- *   baseUrl: 'https://gigin.ltd'
+ *   baseUrl: 'https://giginmusic.com'
  * });
  */
 export const sendTestimonialRequestEmail = async ({
   to,
   musicianId,
   musicianName,
-  baseUrl = 'https://gigin.ltd',
+  baseUrl = 'https://giginmusic.com',
 }) => {
   const subject = `Gigin Testimonial Request From ${musicianName}`;
   const link = `${baseUrl}/testimonials?musicianId=${encodeURIComponent(

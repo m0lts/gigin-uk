@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { leaveBand } from '@services/bands';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { getBandsByMusicianId } from '@services/bands';
-import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, StarIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, NoImageIcon, StarIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { OverviewTab } from '../profile/OverviewTab';
 import { MusicTab } from '../profile/MusicTab';
@@ -92,7 +92,14 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   return (
       <>
         <div className="musician-profile-hero">
-            <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
+          {bandProfile?.picture ? (
+              <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
+          ) : (
+              <div className="background-image empty">
+                  <NoImageIcon />
+                  <h4>No Band Image</h4>
+              </div>
+          )}
             <div className="primary-information">
                 {bandProfile?.verified && (
                     <div className="verified-tag">

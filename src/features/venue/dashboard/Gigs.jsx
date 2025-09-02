@@ -9,17 +9,23 @@ import {
     TickIcon,
 CloseIcon } from '@features/shared/ui/extras/Icons';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { CalendarIconSolid, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, FilterIconEmpty, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch, duplicateGig, saveGigTemplate, updateGigDocument } from '@services/gigs';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { openInNewTab } from '../../../services/utils/misc';
 import { RequestCard } from '../components/RequestCard';
-import { removeVenueRequest } from '../../../services/venues';
+import { getVenueProfileById, removeVenueRequest } from '../../../services/venues';
 import Portal from '../../shared/components/Portal';
+import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
+import { cancelGigAndRefund } from '../../../services/functions';
+import { getOrCreateConversation } from '../../../services/conversations';
+import { postCancellationMessage } from '../../../services/messages';
+import { getGigById, logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
+import { getMusicianProfileByMusicianId, updateMusicianCancelledGig } from '../../../services/musicians';
 
 
-export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests }) => {
+export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user }) => {
     const location = useLocation();
     const navigate = useNavigate();
   
@@ -33,6 +39,11 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     const [confirmType, setConfirmType] = useState('');
     const [openOptionsGigId, setOpenOptionsGigId] = useState(null);
     const [showMusicianRequests, setShowMusicianRequests] = useState(false);
+    const [cancellationReason, setCancellationReason] = useState({
+      reason: '',
+      extraDetails: '',
+    });
+    const [loading, setLoading] = useState(false);
 
     const visibleRequests = useMemo(() => {
       return requests.filter(request => !request.removed);
@@ -88,15 +99,17 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         dateObj.setMinutes(minutes);
         dateObj.setSeconds(0);
         dateObj.setMilliseconds(0);
-        const gigDateTime = new Date(dateObj); // local datetime
+        const gigDateTime = new Date(dateObj);
     
         const isoDate = gigDateTime.toISOString().split('T')[0];
     
-        const acceptedApplicant = gig.applicants?.some(app => app.status === 'confirmed');
+        const confirmedApplicant = gig.applicants?.some(app => app.status === 'confirmed');
+        const acceptedApplicant = gig.applicants?.some(app => app.status === 'accepted');
         let status = 'past';
     
         if (gigDateTime > now) {
-          if (acceptedApplicant) status = 'confirmed';
+          if (confirmedApplicant) status = 'confirmed';
+          else if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) status = 'awaiting payment'
           else if (gig.status === 'open') status = 'upcoming';
           else status = 'closed';
         }
@@ -197,6 +210,99 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           }
       };
 
+      const formatCancellationReason = (reason) => {
+        if (reason === 'fee') {
+            return "they're not happy with the fee";
+        } else if (reason === 'availability') {
+            return 'of availability';
+        } else if (reason === 'double-booking') {
+            return 'of a double booking';
+        } else if (reason === 'personal-reasons') {
+            return 'of personal reasons';
+        } else if (reason === 'illness') {
+            return 'of illness';
+        } else if (reason === 'information') {
+            return 'of not enough information';
+        } else {
+            return 'of other reasons';
+        }
+    }
+
+      const handleCancelSelected = async () => {
+        if (selectedGigs.length === 0) return;
+        setLoading(true);
+        try {
+            const nextGig = gigs.filter(g => g.gigId === selectedGigs[0])[0];
+            const gigId = nextGig.gigId;
+            console.log(nextGig);
+            console.log(nextGig.venueId)
+            const venueProfile = await getVenueProfileById(nextGig.venueId);
+            console.log('here')
+            const isOpenMic = nextGig.kind === 'Open Mic';
+            const isTicketed = nextGig.kind === 'Ticketed Gig';
+            if (!isOpenMic && !isTicketed) {
+                const taskNames = [
+                    nextGig.clearPendingFeeTaskName,
+                    nextGig.automaticMessageTaskName,
+                ];
+                console.log('in here')
+                await cancelGigAndRefund({
+                    taskNames,
+                    transactionId: nextGig.paymentIntentId,
+                });
+            }
+            const handleMusicianCancellation = async (musician) => {
+              console.log('in here cancellation')
+                const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
+                await postCancellationMessage(
+                  conversationId,
+                  user.uid,
+                  `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                    cancellationReason
+                  )}. We apologise for any inconvenience caused.`,
+                  'venue'
+                );
+                await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
+                await updateMusicianCancelledGig(musician.musicianId, gigId);
+                await logGigCancellation(gigId, musician.musicianId, cancellationReason);
+              };
+          
+              if (isOpenMic) {
+                const bandOrMusicianProfiles = await Promise.all(
+                  nextGig.applicants
+                    .filter(app => app.status === 'confirmed')
+                    .map(app => getMusicianProfileByMusicianId(app.id))
+                );
+                for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
+                  await handleMusicianCancellation(musician);
+                }
+            } else {
+              const confirmedApplicant = nextGig.applicants.find(app => app.status === 'confirmed');
+              if (!confirmedApplicant) {
+                console.error("No confirmed applicant found");
+                return;
+              }
+              const musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+              await handleMusicianCancellation(musicianProfile);
+            }
+            setLoading(false);
+            window.location.reload();
+            toast.success('Gig cancellation successful.')
+            setConfirmModal(false);
+            setSelectedGigs([]);
+            setCancellationReason({
+              reason: '',
+              extraDetails: '',
+            })
+            setConfirmType(null);
+            setConfirmMessage(null)
+        } catch (error) {
+            console.error('Error cancelling task:', error.message);
+            setLoading(false);
+            toast.error('Failed to cancel gig.')
+        }
+    };
+
       const handleCloneAsTemplate = async (gig) => {
         const templateId = uuidv4();
         const templateData = {
@@ -241,7 +347,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           },
           buildingForMusician: true,
           showGigPostModal: true,
-          skipTemplate:true,
+          skipTemplate: true,
+          requestId: request.id,
       }})
     };
 
@@ -441,9 +548,10 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     
                     const StatusIcon = {
                       upcoming: <ClockIcon />,
+                      'awaiting payment': <ExclamationIconSolid />,
                       confirmed: <TickIcon />,
-                      closed: <CloseIcon />,
-                      past: <PreviousIcon />
+                      closed: <ErrorIcon />,
+                      past: <PreviousIcon />,
                     }[gig.status];
     
                     return (
@@ -476,7 +584,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               <td></td>
                           )} */}
                           <td>{gig.gigName}</td>
-                          <td>{gig.startTime} {gig.dateObj.toLocaleDateString('en-GB')}</td>
+                          <td>{gig.startTime} - {gig.dateObj.toLocaleDateString('en-GB')}</td>
                           <td className='truncate'>{gig.venue.venueName}</td>
                           {windowWidth > 880 && (
                             <td className='centre'>
@@ -484,14 +592,18 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                 'Open Mic'
                               ) : gig.kind === 'Ticketed Gig' ? (
                                 'Ticketed'
+                              ) : gig?.agreedFee && (gig.agreedFee !== gig.budget) ? (
+                                gig.agreedFee
+                              ) : gig.budget === '£' || gig.budget === '£0' ? (
+                                'No Fee'
                               ) : (
                                 gig.budget
                               )}
                             </td>
                           )}
-                          <td className={`status-box ${gig.status}`}>
-                            <div className={`status ${gig.status}`}>
-                              {StatusIcon} {gig.status.charAt(0).toUpperCase() + gig.status.slice(1)}
+                          <td className={`status-box ${gig.status === 'awaiting payment' ? 'closed' : gig.status}`}>
+                            <div className={`status ${gig.status === 'awaiting payment' ? 'closed' : gig.status}`}>
+                              {StatusIcon} {gig.status}
                             </div>
                           </td>
                           {windowWidth > 1268 && (
@@ -592,7 +704,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                         Copy Private Link <LinkIcon />
                                     </button>
                                   )}
-                                  {gig.dateTime > now && gig.status !== 'confirmed' && (
+                                  {gig.dateTime > now && gig.status !== 'confirmed' ? (
                                       <button 
                                           onClick={() => {
                                               closeOptionsMenu();
@@ -603,7 +715,19 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           }}>
                                               Delete
                                               <DeleteGigIcon />
-                                          </button>
+                                      </button>
+                                  ) : gig.dateTime > now && gig.status === 'confirmed' && (
+                                        <button 
+                                          onClick={() => {
+                                              closeOptionsMenu();
+                                              setSelectedGigs([gig.gigId]);
+                                              setConfirmType('cancel');
+                                              setConfirmModal(true);
+                                              setConfirmMessage(`Are you sure you want to cancel this gig?`); 
+                                          }}>
+                                              Cancel
+                                              <CancelIcon />
+                                      </button>
                                   )}
                                   </div>
                               )}
@@ -638,21 +762,54 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           )}
             {confirmModal && (
               <Portal>
-                <div className="modal confirm" onClick={() => setConfirmModal(false)}>
+                {!loading ? (
+                <div className="modal cancel-gig" onClick={() => setConfirmModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h3>
-                            {confirmMessage}
-                        </h3>
-                        <div className='two-buttons'>
-                            <button className="btn tertiary" onClick={() => setConfirmModal(false)}>Cancel</button>
+                        <h3>{confirmMessage}</h3>
+                        {confirmType === 'cancel' && (
+                          <div className="modal-body">
+                            <div className="text">
+                                <h4>What's your reason for cancelling?</h4>
+                            </div>
+                            <div className="input-container">
+                                <select className='select' id='cancellation-reason' value={cancellationReason.reason} onChange={(e) => setCancellationReason((prev) => ({
+                                        ...prev,
+                                        reason: e.target.value,
+                                    }))}>
+                                    <option value=''>Please select a reason</option>
+                                    <option value='fee'>Fee Dispute</option>
+                                    <option value='availability'>Availability</option>
+                                    <option value='double-booking'>Double Booking</option>
+                                    <option value='personal-reasons'>Personal Reasons</option>
+                                    <option value='illness'>Illness</option>
+                                    <option value='information'>Not Enough Information</option>
+                                    <option value='other'>Other</option>
+                                </select>
+                            </div>
+                            <div className="input-container">
+                                <label htmlFor="extraDetails" className='label'>Add any extra details below:</label>
+                                <textarea name="extra-details" value={cancellationReason.extraDetails} id="extraDetails" className='input' onChange={(e) => setCancellationReason((prev) => ({
+                                        ...prev,
+                                        extraDetails: e.target.value,
+                                    }))}></textarea>
+                            </div>
+                          </div>
+                        )}
+                        <div className='two-buttons' style={{ marginTop: '1rem'}}>
+                            <button className="btn tertiary" onClick={() => setConfirmModal(false)}>Close</button>
                             {confirmType === 'delete' ? (
                                 <button className="btn danger" onClick={handleDeleteSelected}>Delete</button>
+                            ) : confirmType === 'cancel' ? (
+                                <button className="btn danger" onClick={handleCancelSelected}>Cancel</button>
                             ) : (
-                                <button className="btn primary" onClick={handleDuplicateSelected}>Duplicate</button>
+                              <button className="btn primary" onClick={handleDuplicateSelected}>Duplicate</button>
                             )}
                         </div>
                     </div>
                 </div>
+                  ) : (
+                    <LoadingModal title={confirmType === 'delete' ? 'Deleting Gig' : confirmType === 'cancel' ? 'Cancelling Gig' : 'Duplicating Gig'}/>
+                  )}
               </Portal>
             )}
         </div>

@@ -16,9 +16,10 @@ import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '../../../services/utils/misc';
 import { logGigCancellation, revertGigAfterCancellation } from '../../../services/gigs';
 import { updateMusicianCancelledGig } from '../../../services/musicians';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 
-export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation, fromOptionsMenu, setFromOptionsMenu }) => {
+export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation }) => {
 
     const { user } = useAuth();
 
@@ -116,21 +117,29 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                 gigForHandbook.clearPendingFeeTaskName,
                 gigForHandbook.automaticMessageTaskName,
             ];
-            await cancelGigAndRefund({
-                taskNames,
-                transactionId: gigForHandbook.paymentIntentId,
-            });
+            if (gigForHandbook.kind !== 'Ticketed Gig' && gigForHandbook.kind !== 'Open Mic') {
+                await cancelGigAndRefund({
+                    taskNames,
+                    transactionId: gigForHandbook.paymentIntentId,
+                });
+            }
             const gigId = gigForHandbook.gigId;
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(gigForHandbook.venueId);
             const conversationId = await  getOrCreateConversation(musicianProfile, gigForHandbook, venueProfile, 'cancellation');
+            let messageText;
+            if (gigForHandbook.kind === 'Ticketed Gig') {
+                messageText = `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(cancellationReason)}. The gig has been re-posted for musicians to apply to.`
+            } else if (gigForHandbook.kind === 'Open Mic') {
+                messageText = `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(cancellationReason)}.`
+            } else {
+                messageText = `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(cancellationReason)}. You have been refunded the gig fee - refunds can take 3–10 business days to appear in your account. The gig has been re-posted for musicians to apply to.`
+            }
             await postCancellationMessage(
                 conversationId,
                 user.uid,
-                `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(
-                  cancellationReason
-                )}. You have been refunded the gig fee - refunds can take 3–10 business days to appear in your account. The gig has been re-posted for musicians to apply to.`,
-                {cancellingParty: 'musician'}
+                messageText,
+                'Musician',
             );
             await revertGigAfterCancellation(gigForHandbook, musicianId, cancellationReason);
             await updateMusicianCancelledGig(musicianId, gigId);
@@ -147,10 +156,8 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
     const handleCancelNo = () => {
         setShowConfirmation(false);
         setAskCancellationReason(false);
-        if (fromOptionsMenu) {
-            setShowGigHandbook(false);
-        }
     };
+
 
     return (
         <div className='modal' onClick={handleModalClick}>
@@ -158,9 +165,9 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                 <div className='modal-content confirmation-modal' onClick={(e) => e.stopPropagation()}>
                     {loading ? (
                         <>
+                            <LoadingSpinner />
                             <h3>Cancelling gig...</h3>
                             <p>Please don't leave this window or close your browser.</p>
-                            <LoadingThreeDots />
                         </>
                     ) : !askCancellationReason ? (
                         <> 
@@ -169,11 +176,11 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                                 <p>The venue will be refunded the gig fee and the gig re-listed.</p>
                             </div>
                             <div className='two-buttons'>
-                                <button className='btn danger' onClick={() => setAskCancellationReason(true)}>
-                                    Yes, Cancel Gig
-                                </button>
                                 <button className='btn tertiary' onClick={handleCancelNo}>
                                     No
+                                </button>
+                                <button className='btn danger' onClick={() => setAskCancellationReason(true)}>
+                                    Yes, Cancel Gig
                                 </button>
                             </div>
                         </>
@@ -196,11 +203,11 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                                 </select>
                             </div>
                             <div className='two-buttons'>
-                                <button className='btn danger' onClick={handleConfirmCancel} disabled={!cancellationReason}>
-                                    Confirm Cancellation
-                                </button>
                                 <button className='btn secondary' onClick={handleCancelNo}>
                                     Go Back
+                                </button>
+                                <button className='btn danger' onClick={handleConfirmCancel} disabled={!cancellationReason}>
+                                    Confirm Cancellation
                                 </button>
                             </div>
                         </>

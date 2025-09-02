@@ -29,7 +29,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                 ? buildingForMusicianData?.id
                 : uuidv4();
     
-            const link = `https://www.gigin.ltd/gig/${formData.gigId}?token=${token}`;
+            const link = `https://www.giginmusic.com/gig/${formData.gigId}?token=${token}`;
     
             setPrivateApplicationsToken(token);
             setPrivateApplicationsLink(link);

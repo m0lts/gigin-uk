@@ -24,6 +24,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
     const [awaitingResponse, setAwaitingResponse] = useState([]);
     const [showGigHandbook, setShowGigHandbook] = useState(false);
     const [showSocialsModal, setShowSocialsModal] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false)
 
     const isOnlyNameFilled = useMemo(() => {
         const p = musicianProfile;
@@ -258,6 +259,8 @@ const toMs = (dt) => {
                         showGigHandbook={showGigHandbook}
                         gigForHandbook={nextGig}
                         musicianId={musicianProfile.musicianId}
+                        showConfirmation={showConfirmation}
+                        setShowConfirmation={setShowConfirmation}
                     />
                 )}
                 {showSocialsModal && (

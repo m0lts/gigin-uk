@@ -508,8 +508,6 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                     musicianId={musicianId}
                     showConfirmation={userCancelling}
                     setShowConfirmation={setUserCancelling}
-                    fromOptionsMenu={fromOptionsMenu}
-                    setFromOptionsMenu={setFromOptionsMenu}
                 />
             )}
         </>

@@ -170,12 +170,14 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                             <NewTabIcon />
                                         </h3>
                                         <div className='buttons' style={{ display: 'flex', alignItems: 'center', gap:5}}>
-                                            <button
-                                                className='btn tertiary'
-                                                onClick={() => setShowGigModal(prev => !prev)}
-                                                >
-                                                Gig Info
-                                            </button>
+                                            {gigData && (
+                                                <button
+                                                    className='btn tertiary'
+                                                    onClick={() => setShowGigModal(prev => !prev)}
+                                                    >
+                                                    Gig Info
+                                                </button>
+                                            )}
                                             <button
                                                 className="btn icon"
                                                 onClick={(e) => {
@@ -219,7 +221,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                         <h4>You have no messages</h4>
                     </div>
                 )}
-                {(showGigModal && activeConversation) && (
+                {(showGigModal && activeConversation && gigData) && (
                     <Portal>
                         <div
                             className="modal gig-information"

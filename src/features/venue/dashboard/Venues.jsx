@@ -36,6 +36,7 @@ export const Venues = ({ venues, user }) => {
         const { venueId } = venueToDelete;
         try {
             setLoading(true);
+            setShowDeleteModal(false);
             await deleteVenueProfile(venueId);
             await removeVenueIdFromUser(user.uid, venueId);
             const gigs = await getGigsByVenueId(venueId);
@@ -52,7 +53,6 @@ export const Venues = ({ venues, user }) => {
             }
             await deleteTemplatesByVenueId(venueId);
             await deleteFolderFromStorage(`venues/${venueId}`);
-            setLoading(false)
             navigate(0);
             toast.success('Venue Deleted');
         } catch (error) {
@@ -66,8 +66,8 @@ export const Venues = ({ venues, user }) => {
       };
 
     const copyToClipboard = (venueId) => {
-        navigator.clipboard.writeText(`https://gigin.ltd/venues/${venueId}`).then(() => {
-            toast.success(`Copied Venue Link: https://gigin.ltd/venues/${venueId}`);
+        navigator.clipboard.writeText(`https://giginmusic.com/venues/${venueId}`).then(() => {
+            toast.success(`Copied Venue Link: https://giginmusic.com/venues/${venueId}`);
         }).catch((err) => {
             toast.error('Failed to copy link. Please try again.')
             console.error('Failed to copy link: ', err);

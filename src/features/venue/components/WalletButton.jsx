@@ -46,7 +46,6 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded, musicianPro
       onConfirm={handleConfirm}
       options={{
         paymentMethodOrder: ['apple_pay', 'google_pay', 'link'],
-        buttonType: { type: 'default' },
         buttonHeight: 44,
       }}
     />

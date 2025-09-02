@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { CardForm } from '@features/shared/components/CardDetails'
 import '@assets/styles/host/payment-modal.styles.css'
 import { SuccessIcon, PlusIcon } from '@features/shared/ui/extras/Icons'
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading'
 import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
@@ -11,6 +10,7 @@ import { listenToPaymentStatus } from '../../../services/payments';
 import { WalletButton } from './WalletButton';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export const PaymentModal = ({
@@ -33,10 +33,9 @@ export const PaymentModal = ({
   
     useEffect(() => {
       if (!paymentIntentId) return;
-  
       setMakingPayment(true);
-  
       const unsubscribe = listenToPaymentStatus(paymentIntentId, (status) => {
+        console.log('Listener status:', status)
         if (status === "succeeded") {
           setPaymentSuccess(true);
           setMakingPayment(false);
@@ -48,7 +47,6 @@ export const PaymentModal = ({
           setMakingPayment(true);
         }
       });
-  
       return () => unsubscribe();
     }, [paymentIntentId]);
   
@@ -59,14 +57,25 @@ export const PaymentModal = ({
       unknown: null
     };
   
+    // useEffect(() => {
+    //   const defaultCard = savedCards.find(
+    //     (card) => card.card.id === card.customer?.default_source
+    //   );
+    //   if (defaultCard) {
+    //     setSelectedCardId(defaultCard.id);
+    //   }
+    // }, [savedCards]);
+
     useEffect(() => {
-      const defaultCard = savedCards.find(
-        (card) => card.card.id === card.customer?.default_source
-      );
-      if (defaultCard) {
-        setSelectedCardId(defaultCard.id);
-      }
-    }, [savedCards]);
+      if (selectedCardId) return;
+      if (!Array.isArray(savedCards) || savedCards.length === 0) return;
+      const defaultPmId = savedCards[0]?.customer?.invoice_settings?.default_payment_method
+        || savedCards[0]?.customer?.default_source;
+      const defaultCard = defaultPmId
+        ? savedCards.find(c => c?.id === defaultPmId)
+        : null;
+      setSelectedCardId((defaultCard || savedCards[0])?.id || null);
+    }, [savedCards, selectedCardId]);
   
     const handleCardSelection = (cardId) => {
       setSelectedCardId(cardId);
@@ -91,8 +100,8 @@ export const PaymentModal = ({
           {/* PAYMENT PROCESSING */}
           {makingPayment ? (
             <div className="making-payment">
-              <LoadingThreeDots />
-              <h2>We’re processing your payment</h2>
+              <LoadingSpinner />
+              <h2>Processing payment</h2>
               <p className="subtext">
                 Please keep this window open until we confirm your payment.
               </p>
@@ -104,13 +113,8 @@ export const PaymentModal = ({
             /* SUCCESS STATE */
             <div className="payment-success">
               <SuccessIcon className="success-animate" />
-              <h2>Payment Successful!</h2>
-              <h4>
-                We’ve received your payment!
-              </h4>
-              <button className="btn primary" onClick={onClose}>
-                Close
-              </button>
+              <h2>Payment Received</h2>
+              <p className='subtext'>The gig will be confirmed when the payment has been processed...</p>
             </div>
           ) : savedCards.length > 0 && !addingNewCard ? (
             /* CARD SELECTION + SUMMARY */
@@ -155,7 +159,7 @@ export const PaymentModal = ({
                 }}
               />
               </div>
-              <h3 className="subtitle">Select a saved card</h3>
+              <h3 className="subtitle">Select Card</h3>
               <ul className="card-list">
                 {savedCards.map((card) => (
                   <li
@@ -183,11 +187,6 @@ export const PaymentModal = ({
                         </h6>
                       </div>
                     </div>
-                    {card.customer?.default_source === card.card.id && (
-                      <div className="card-type">
-                        <p>Default</p>
-                      </div>
-                    )}
                   </li>
                 ))}
                 <li
@@ -222,6 +221,7 @@ export const PaymentModal = ({
                 setCardDetails={setSavedCards}
                 cardDetails={savedCards}
                 setAddingNewCard={setAddingNewCard}
+                handleCardSelection={handleCardSelection}
               />
             </>
           )}

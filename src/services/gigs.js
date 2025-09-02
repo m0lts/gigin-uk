@@ -83,13 +83,15 @@ export const saveGigTemplate = async (templateData) => {
  * @param {string} reason - The cancellation reason.
  * @returns {Promise<void>}
  */
-export const logGigCancellation = async (gigId, musicianId, reason) => {
+export const logGigCancellation = async (gigId, musicianId, reason, cancellingParty = 'musician', venueId = null) => {
   const cancellationRef = collection(firestore, 'cancellations');
   await addDoc(cancellationRef, {
     gigId,
     musicianId,
+    venueId,
     reason,
     timestamp: Timestamp.now(),
+    cancellingParty,
   });
 };
 
@@ -530,7 +532,7 @@ export const acceptGigOffer = async (gigData, musicianProfileId, nonPayableGig =
       applicants: updatedApplicants,
       agreedFee: `${agreedFee}`,
       paid: nonPayableGig,
-      status: gigData.kind !== 'Open Mic' ? 'closed' : 'open',
+      status: (nonPayableGig && gigData.kind === 'Ticketed Gig') ? 'closed' : 'open',
     });
     return { updatedApplicants, agreedFee };
 };
@@ -542,14 +544,15 @@ export const acceptGigOffer = async (gigData, musicianProfileId, nonPayableGig =
  * @returns {Promise<Array>} - The updated applicants array.
  */
 export const declineGigApplication = async (gigData, musicianProfileId) => {
-    const updatedApplicants = gigData.applicants.map(applicant =>
-      applicant.id === musicianProfileId
-        ? { ...applicant, status: 'declined' }
-        : { ...applicant }
-    );
-    const gigRef = doc(firestore, 'gigs', gigData.gigId);
-    await updateDoc(gigRef, { applicants: updatedApplicants });
-    return updatedApplicants;
+  const applicants = Array.isArray(gigData.applicants) ? gigData.applicants : [];
+  const updatedApplicants = applicants.map(applicant =>
+    applicant.id === musicianProfileId
+      ? { ...applicant, status: 'declined' }
+      : applicant
+  );
+  const gigRef = doc(firestore, 'gigs', gigData.gigId);
+  await updateDoc(gigRef, { applicants: updatedApplicants });
+  return updatedApplicants;
 };
 
 /**
@@ -626,16 +629,22 @@ export const removeGigApplicant = async (gigId, musicianId) => {
 
 /**
  * Reverts a gig to an open state after cancellation and removes the musician from the applicant list.
+ * Also re-opens conversations with the remaining applicants and announces the reopening.
+ *
  * @param {object} gigData - The full gig object.
  * @param {string} musicianId - The ID of the cancelling musician.
  * @param {string} cancellationReason - The cancellation reason provided.
  * @returns {Promise<void>}
  */
 export const revertGigAfterCancellation = async (gigData, musicianId, cancellationReason) => {
-  const gigRef = doc(firestore, 'gigs', gigData.gigId);
-  const updatedApplicants = gigData.applicants.filter(app => app.id !== musicianId);
+  const gigRef = doc(firestore, "gigs", gigData.gigId);
+
+  // 1) Remove cancelling musician and set all other applicants back to "pending"
+  const remaining = Array.isArray(gigData.applicants) ? gigData.applicants.filter(a => a.id !== musicianId) : [];
+  const reopenedApplicants = remaining.map(a => ({ ...a, status: "pending" }));
+
   await updateDoc(gigRef, {
-    applicants: updatedApplicants,
+    applicants: reopenedApplicants,
     agreedFee: deleteField(),
     disputeClearingTime: deleteField(),
     disputeLogged: deleteField(),
@@ -644,9 +653,62 @@ export const revertGigAfterCancellation = async (gigData, musicianId, cancellati
     clearPendingFeeTaskName: deleteField(),
     automaticMessageTaskName: deleteField(),
     paid: false,
-    status: 'open',
+    status: "open",
     cancellationReason,
   });
+
+  // 2) Notify other applicants: reopen their conversations & flip message statuses back to "pending"
+  const venueId = gigData.venueId; // assumes gigData.venueId exists
+  const otherApplicantIds = new Set(reopenedApplicants.map(a => a.id));
+
+  const convSnap = await getDocs(
+    query(collection(firestore, "conversations"), where("gigId", "==", gigData.gigId))
+  );
+
+  const pendingTypes = ["application", "invitation", "negotiation"];
+  const reopenText = "This gig has reopened. Applications are open again.";
+
+  // For each conversation, if it's between the venue and one of the remaining applicants, reopen it.
+  for (const convDoc of convSnap.docs) {
+    const convData = convDoc.data() || {};
+    const participants = convData.participants || [];
+    const matchedApplicantId = [...otherApplicantIds].find(id => participants.includes(id));
+
+    const isVenueAndApplicant = participants.includes(venueId) && matchedApplicantId;
+    if (!isVenueAndApplicant) continue;
+
+    const messagesRef = collection(firestore, "conversations", convDoc.id, "messages");
+
+    // Query messages that were previously marked as apps-closed for the application flow
+    const closedSnap = await getDocs(
+      query(messagesRef, where("status", "==", "apps-closed"), where("type", "in", pendingTypes))
+    );
+
+    const batch = writeBatch(firestore);
+
+    // Flip apps-closed -> pending
+    closedSnap.forEach(msgDoc => batch.update(msgDoc.ref, { status: "pending" }));
+
+    // Add announcement about reopening
+    const announcementRef = doc(messagesRef);
+    batch.set(announcementRef, {
+      senderId: "system",
+      text: reopenText,
+      timestamp: serverTimestamp(),
+      type: "announcement",
+      status: "reopened",
+    });
+
+    // Reopen conversation meta
+    batch.update(convDoc.ref, {
+      lastMessage: reopenText,
+      lastMessageTimestamp: serverTimestamp(),
+      lastMessageSenderId: "system",
+      status: "open",
+    });
+
+    await batch.commit();
+  }
 };
 
 /**
@@ -710,6 +772,7 @@ export const deleteGig = async (gigId) => {
 
 /**
  * Deletes a gig and cleans up references in venue and musician documents.
+ * Also notifies all applicants that the gig was cancelled and closes pending messages.
  *
  * @param {string} gigId - Firestore document ID of the gig to delete.
  * @returns {Promise<void>}
@@ -717,32 +780,39 @@ export const deleteGig = async (gigId) => {
 export const deleteGigAndInformation = async (gigId) => {
   const gigRef = doc(firestore, 'gigs', gigId);
   const gigSnap = await getDoc(gigRef);
-
   if (!gigSnap.exists()) {
     console.warn(`Gig with ID ${gigId} does not exist.`);
     return;
   }
 
   const gigData = gigSnap.data();
+  const venueId = gigData.venueId;
+  const applicants = Array.isArray(gigData.applicants) ? gigData.applicants : [];
+  const ts = Timestamp.now();
+
+  // Batch for: delete gig, update venue, update musician profiles, and conversation updates
   const batch = writeBatch(firestore);
 
-  // 1. Delete the gig document
+  // 1) Delete the gig doc
   batch.delete(gigRef);
 
-  // 2. Remove gig from the venueProfile.gigs array
-  const venueId = gigData.venueId;
-  const venueRef = doc(firestore, 'venueProfiles', venueId);
-  const venueSnap = await getDoc(venueRef);
-  if (venueSnap.exists()) {
-    const venueData = venueSnap.data();
-    const updatedGigs = (venueData.gigs || []).filter(g => g.gigId !== gigId);
-    batch.update(venueRef, { gigs: updatedGigs });
+  // 2) Remove from venue profile's gigs array
+  if (venueId) {
+    const venueRef = doc(firestore, 'venueProfiles', venueId);
+    const venueSnap = await getDoc(venueRef);
+    if (venueSnap.exists()) {
+      const venueData = venueSnap.data();
+      // If venueData.gigs is array of IDs:
+      const updatedGigs = (venueData.gigs || []).filter((id) => id !== gigId);
+      // If it's array of objects { gigId }, swap the line above for:
+      // const updatedGigs = (venueData.gigs || []).filter((g) => g.gigId !== gigId);
+      batch.update(venueRef, { gigs: updatedGigs });
+    }
   }
 
-  // 3. Remove gig from each applicant's gigApplications
-  const applicants = gigData.applicants || [];
+  // 3) Remove gig from each applicant's musicianProfile.gigApplications
   for (const applicant of applicants) {
-    const musicianId = applicant.id;
+    const musicianId = applicant?.id;
     if (!musicianId) continue;
 
     const musicianRef = doc(firestore, 'musicianProfiles', musicianId);
@@ -756,6 +826,64 @@ export const deleteGigAndInformation = async (gigId) => {
     }
   }
 
+  // 4) Notify each applicant’s conversation about the cancellation:
+  //    - Set all pending application/invitation/negotiation messages to "apps-closed"
+  //    - Add an announcement system message "This gig has been cancelled by the venue."
+  //    - Update conversation last message fields and close the conversation
+  const pendingTypes = ['application', 'invitation', 'negotiation'];
+  const cancellationText = 'This gig has been deleted by the venue.';
+
+  for (const applicant of applicants) {
+    const applicantId = applicant?.id;
+    if (!applicantId) continue;
+
+    // Query conversations for this gig & applicant
+    // (We can’t do two array-contains filters on the same field,
+    //  so we filter for the applicant and gigId in Firestore, and
+    //  check venueId in-memory.)
+    const convsQ = query(
+      collection(firestore, 'conversations'),
+      where('gigId', '==', gigId),
+      where('participants', 'array-contains', applicantId)
+    );
+    const convsSnap = await getDocs(convsQ);
+
+    for (const convDoc of convsSnap.docs) {
+      const convData = convDoc.data() || {};
+      const participants = Array.isArray(convData.participants) ? convData.participants : [];
+      if (!participants.includes(venueId)) continue; // ensure it’s the venue–applicant conversation
+
+      const conversationRef = doc(firestore, 'conversations', convDoc.id);
+      const messagesRef = collection(conversationRef, 'messages');
+      
+      // 1) Set ALL messages of those types to apps-closed
+      const typeQ = query(messagesRef, where('type', 'in', pendingTypes));
+      const typeSnap = await getDocs(typeQ);
+      typeSnap.forEach((msgDoc) => {
+        batch.update(msgDoc.ref, { status: 'apps-closed' });
+      });
+      
+      // 2) Add system announcement
+      const newMsgRef = doc(messagesRef);
+      batch.set(newMsgRef, {
+        senderId: 'system',
+        text: cancellationText,
+        timestamp: ts,
+        type: 'announcement',
+        status: 'gig deleted',
+      });
+      
+      // 3) Update conversation last-message fields
+      batch.update(conversationRef, {
+        lastMessage: cancellationText,
+        lastMessageTimestamp: ts,
+        lastMessageSenderId: 'system',
+        status: 'closed',
+      });
+    }
+  }
+
+  // Commit everything
   await batch.commit();
 };
 
@@ -768,7 +896,7 @@ export const deleteGigAndInformation = async (gigId) => {
 export const deleteGigsBatch = async (gigIds) => {
   for (const gigId of gigIds) {
     try {
-      await deleteGig(gigId);
+      await deleteGigAndInformation(gigId);
     } catch (error) {
       console.error(`Failed to delete gig ${gigId}:`, error);
     }

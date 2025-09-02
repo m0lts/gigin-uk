@@ -13,10 +13,11 @@ import '@styles/shared/card-details.styles.css'
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading'
 import { createStripePaymentMethod, saveStripePaymentMethod } from '@services/functions';
 import { toast } from 'sonner';
+import { LoadingSpinner } from '../ui/loading/Loading';
 
 
 // Card input form component
-export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNewCardSaved, setAddingNewCard }) => {
+export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNewCardSaved, setAddingNewCard, handleCardSelection }) => {
     const stripe = useStripe();
     const elements = useElements();
     const [loading, setLoading] = useState(false);
@@ -94,13 +95,15 @@ export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNe
             setSaveCardModal(false);
             toast.success('Card saved.');
           } else {
+            console.log(data);
             toast.error('Error saving card details. Please try again.');
             setSaveCardModal(false);
           }
         } else if (activityType === 'making payment') {
+          handleCardSelection(pm.id)
           setCardDetails((prev) => [...prev, pm]);
-          setAddingNewCard(false);
           if (saveCard) await saveStripePaymentMethod(pm.id);
+          setAddingNewCard(false);
         }
       } catch (err) {
         console.error('Error processing card:', err);
@@ -150,7 +153,6 @@ return (
                 {cardBrand !== 'unknown' && (
                     <img
                         src={cardBrandIcons[cardBrand]}
-                        alt='Card Type'
                         className='card-brand-icon'
                     />
                 )}
@@ -305,7 +307,9 @@ return (
               </label>
           </div>)}
           {loading ? (
-            <LoadingThreeDots />
+            <div className="loading-card-details">
+              <LoadingSpinner width={20} height={20} />
+            </div>
           ) : (
             <button className='btn primary' onClick={handleSave} disabled={loading}>
               {activityType === 'adding card' ? 'Save Card' : 'Next'}

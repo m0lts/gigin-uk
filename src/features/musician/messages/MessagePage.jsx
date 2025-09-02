@@ -195,7 +195,11 @@ export const MessagePage = () => {
                                                 </h6>
                                             </div>
                                         </div>
-                                        {hasUnreadMessages && <div className='notification-dot'></div>}
+                                        {hasUnreadMessages && (
+                                            <div className='notification-dot'>
+                                                <span className="dot"></span>
+                                            </div>
+                                        )}
                                     </li>
                                 );
                             })
@@ -254,19 +258,19 @@ export const MessagePage = () => {
                         </>
                     )}
                 </div>
-                <div className='column information'>
-                    {activeConversation && (
-                        <>
-                            <div className='top-banner'>
-                                <h2>Gig Information</h2>
-                                <button className='btn tertiary' onClick={(e) => openInNewTab(`/gig/${activeConversation.gigId}`, e)}><NewTabIcon /></button>
-                            </div>
-                            <div className='gig-information'>
-                                <GigInformation gigId={activeConversation.gigId} gigData={gigData} setGigData={setGigData} />
-                            </div>
-                        </>
-                    )}
-                </div>
+                    <div className='column information'>
+                        {activeConversation && (
+                            <>
+                                <div className='top-banner'>
+                                    <h2>Gig Information</h2>
+                                    <button className='btn tertiary' onClick={(e) => openInNewTab(`/gig/${activeConversation.gigId}`, e)}><NewTabIcon /></button>
+                                </div>
+                                <div className='gig-information'>
+                                    <GigInformation gigId={activeConversation.gigId} gigData={gigData} setGigData={setGigData} />
+                                </div>
+                            </>
+                        )}
+                    </div>
             </div>
         )
     } else {

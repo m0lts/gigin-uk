@@ -157,7 +157,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     };
 
     const copyToClipboard = (venueId) => {
-        navigator.clipboard.writeText(`https://gigin.ltd/venues/${venueId}`).then(() => {
+        navigator.clipboard.writeText(`https://giginmusic.com/venues/${venueId}`).then(() => {
             toast.success('Link copied to clipboard');
         }).catch((err) => {
             toast.error('Failed to copy link. Please try again.')

@@ -633,13 +633,15 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
             }
             const pictureFile = formData.picture;
             let pictureUrl;
-            if (band) {
-                pictureUrl = await uploadFileToStorage(pictureFile, `bands/${formData.musicianId}/profileImg/${pictureFile.name}`);
-                await uploadProfilePicture(pictureFile, formData.musicianId);
-            } else {
-                pictureUrl = await uploadProfilePicture(pictureFile, formData.musicianId);
-                if (formData.bands.length > 0) {
-                    await updateBandMemberImg(formData.musicianId, pictureUrl, formData.bands);
+            if (pictureFile !== '') {
+                if (band) {
+                    pictureUrl = await uploadFileToStorage(pictureFile, `bands/${formData.musicianId}/profileImg/${pictureFile.name}`);
+                    await uploadProfilePicture(pictureFile, formData.musicianId);
+                } else {
+                    pictureUrl = await uploadProfilePicture(pictureFile, formData.musicianId);
+                    if (formData.bands.length > 0) {
+                        await updateBandMemberImg(formData.musicianId, pictureUrl, formData.bands);
+                    }
                 }
             }
             const keywords = generateSearchKeywords(formData.name);

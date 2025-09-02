@@ -27,6 +27,7 @@ import { sendGigInvitationMessage } from '../../../services/messages';
 import { formatDate } from '../../../services/utils/dates';
 import { inviteToGig } from '../../../services/gigs';
 import Portal from '../../shared/components/Portal';
+import { removeVenueRequest } from '../../../services/venues';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -34,7 +35,7 @@ function formatPounds(amount) {
     return Number.isInteger(rounded) ? `£${rounded}` : `£${rounded.toFixed(2)}`;
 }
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests }) => {
     const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
@@ -298,6 +299,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         setStage(prevStage => prevStage - 1);
         setError('')
     };
+
 
     const renderStageContent = () => {
         switch (stage) {
@@ -619,7 +621,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
               } = formData;
               const privateLink =
                 base.privateApplications
-                  ? `https://www.gigin.ltd/gig/${occurrenceGigId}?token=${base.privateApplicationToken ?? uuidv4()}`
+                  ? `https://www.giginmusic.com/gig/${occurrenceGigId}?token=${base.privateApplicationToken ?? uuidv4()}`
                   : null;
               const singleGig = {
                 ...base,
@@ -665,6 +667,13 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                   text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')} for ${firstGigDoc.budget}.
                     ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
                 });
+                if (requestId) {
+                    await removeVenueRequest(requestId);
+                    setRequests(prev => 
+                        prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
+                    );
+                    setRequestId(null);
+                }
                 setBuildingForMusician(false);
                 setBuildingForMusicianData(false);
             }

@@ -99,9 +99,8 @@
     height:fit-content;
     min-width: 100%;
     max-width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: 55px auto 10px;
     gap:0.5rem;
     padding: 0.75rem 0.5rem;
     cursor: pointer;
@@ -110,6 +109,7 @@
     transition: background-color 100ms linear;
     border:1px solid transparent;
 }
+
 
 .message-page .column.conversations .conversations-list .conversation:hover {
     background-color: var(--gn-grey-300);
@@ -150,9 +150,8 @@
 }
 
 .message-page .column.conversations .conversations-list .conversation-text {
-    max-width:80%;
-    min-width: 80%;
-    width:100%;
+    max-width:100%;
+    min-width: 100%;
     display: flex;
     flex-direction: column;
     gap:3px;
@@ -164,8 +163,16 @@
 }
 
 .message-page .column.conversations .conversations-list .notification-dot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.message-page .column.conversations .conversations-list .notification-dot .dot {
     height:10px;
     width:10px;
+    min-height: 10px;
+    min-width: 10px;
     background-color: var(--gn-orange);
     border-radius: 50%;
 }
@@ -370,18 +377,17 @@
 
 .message-page .message.announcement {
     max-width: 100%;
-    width:90%;
+    width:80%;
     margin: auto;
-    padding: 1.5rem 2rem;
-    padding-top: 1rem;
+    padding: 2rem 1rem;
     border:none;
-    background-color: var(--gn-grey-300);
-    box-shadow: none;
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-350);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-evenly;
-    gap:0.75rem;
+    gap:5px;
 }
 
 .message-page .message.announcement h4 {

@@ -131,7 +131,9 @@ exports.savePaymentMethod = onCall(
     {
       secrets: [stripeLiveKey, stripeTestKey],
       region: "europe-west3",
-      timeoutSeconds: 3600,
+      timeoutSeconds: 180,
+      minInstances: 0,
+      maxInstances: 2,
     },
     async (request) => {
       const {paymentMethodId} = request.data;
@@ -1108,13 +1110,13 @@ exports.automaticReviewMessage = onRequest(
           audience: "musician",
           musicianName,
           venueName,
-          baseUrl: "https://gigin.ltd",
+          baseUrl: "https://giginmusic.com",
         });
         const venueMessage = reviewPromptEmail({
           audience: "venue",
           musicianName,
           venueName,
-          baseUrl: "https://gigin.ltd",
+          baseUrl: "https://giginmusic.com",
         });
         await mailRef.add({to: musicianEmail, message: musicianMessage});
         await mailRef.add({to: venueEmail, message: venueMessage});
@@ -1324,8 +1326,8 @@ exports.changeBankDetails = onCall(
           const stripe = new Stripe(key);
           const accountLink = await stripe.accountLinks.create({
             account: accountId,
-            refresh_url: "https://gigin.ltd/dashboard/finances",
-            return_url: "https://gigin.ltd/dashboard/finances",
+            refresh_url: "https://giginmusic.com/dashboard/finances",
+            return_url: "https://giginmusic.com/dashboard/finances",
             type: "account_onboarding",
           });
           return {url: accountLink.url};
@@ -1421,8 +1423,8 @@ exports.getConnectAccountStatus = onCall(
         if (status !== "all_good" || needsOnboarding) {
           const link = await stripe.accountLinks.create({
             account: accountId,
-            refresh_url: "https://gigin.ltd/dashboard/finances?retry=true",
-            return_url: "https://gigin.ltd/dashboard/finances?done=true",
+            refresh_url: "https://giginmusic.com/dashboard/finances?retry=true",
+            return_url: "https://giginmusic.com/dashboard/finances?done=true",
             type: needsOnboarding ? "account_onboarding" : "account_update",
           });
           resolveUrl = link.url;
@@ -2011,31 +2013,41 @@ const handlePaymentSuccess = async (paymentIntent) => {
               status: "closed",
             });
       } else {
-        const pendingMessagesQuery =
-        messagesRef.where("status", "==", "pending");
-        const pendingMessagesSnapshot = await pendingMessagesQuery.get();
-        if (!pendingMessagesSnapshot.empty) {
-          pendingMessagesSnapshot.forEach(async (pendingMessageDoc) => {
-            const pendingMessageRef = messagesRef.doc(pendingMessageDoc.id);
-            await pendingMessageRef.update({
-              status: "declined",
-            });
-          });
-        }
-        await messagesRef.add({
+        const pendingTypes = ["application", "invitation", "negotiation"];
+        const convRef =
+        admin.firestore().collection("conversations").doc(conversationId);
+        const messagesRef = convRef.collection("messages");
+        const updatedApplicants = (gigData.applicants || []).map((app) =>
+          app.id !== applicantId ?
+            {...app, status: "declined"} :
+            app,
+        );
+        const batch = admin.firestore().batch();
+        const gigRef = admin.firestore().collection("gigs").doc(gigData.gigId);
+        batch.update(gigRef, {applicants: updatedApplicants});
+        const pendingMessagesSnapshot = await messagesRef
+            .where("type", "in", pendingTypes)
+            .get();
+        pendingMessagesSnapshot.forEach((docSnap) => {
+          batch.update(docSnap.ref, {status: "apps-closed"});
+        });
+        const announcementRef = messagesRef.doc();
+        batch.set(announcementRef, {
           senderId: "system",
-          text: "This gig has been booked or deleted.",
-          timestamp: timestamp,
+          text: "The gig has been confirmed with " +
+          "another musician. Applications are now closed.",
+          timestamp,
           type: "announcement",
           status: "gig booked",
         });
-        await admin.firestore().collection("conversations")
-            .doc(conversationId).update({
-              lastMessage: "This gig has been booked or deleted.",
-              lastMessageTimestamp: timestamp,
-              lastMessageSenderId: "system",
-              status: "closed",
-            });
+        batch.update(convRef, {
+          lastMessage: "The gig has been confirmed with " +
+          "another musician. Applications are now closed.",
+          lastMessageTimestamp: timestamp,
+          lastMessageSenderId: "system",
+          status: "closed",
+        });
+        await batch.commit();
       }
       const calendarLink = generateCalendarLink({
         title: `Gig at ${gigData.venue.venueName}`,
@@ -2046,7 +2058,6 @@ const handlePaymentSuccess = async (paymentIntent) => {
         description: `Gig confirmed with fee: ${gigData.agreedFee}`,
         location: gigData.venue.address,
       });
-
       const mailRef = admin.firestore().collection("mail");
       const mailMessage = gigConfirmedEmail({
         musicianName,
@@ -2059,6 +2070,10 @@ const handlePaymentSuccess = async (paymentIntent) => {
         to: musicianEmail,
         message: mailMessage,
       });
+      await notifyOtherMusiciansOfGigConfirmation(
+          gigData,
+          musicianProfile.musicianId,
+      );
     });
     console.log(
         `Gig ${gigId} updated successfully after payment confirmation.`,
@@ -2151,4 +2166,8 @@ const handlePaymentFailure = async (failedIntent) => {
     console.error("Error handling payment failure:", error.message);
     throw new Error("Error updating gig and other data after payment failure.");
   }
+};
+
+const notifyOtherMusiciansOfGigConfirmation = async (gigData) => {
+
 };

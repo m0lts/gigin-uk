@@ -18,6 +18,8 @@ import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
 import { formatDate } from '../../../services/utils/dates';
 import Portal from '../../shared/components/Portal';
+import AddToCalendarButton from '../../shared/components/AddToCalendarButton';
+import { notifyOtherApplicantsGigConfirmed } from '../../../services/conversations';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
@@ -91,14 +93,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (gigData.date.toDate() < new Date()) return console.error('Gig is in the past.');
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId);
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
+            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig);
             setGigData((prevGigData) => ({
                 ...prevGigData,
                 applicants: updatedApplicants,
                 agreedFee: `${agreedFee}`,
                 paid: false,
             }));
-            await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole);
+            await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole, nonPayableGig);
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigAcceptedEmail({
@@ -108,7 +111,11 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 gigData,
                 agreedFee,
                 profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                nonPayableGig,
             });
+            if (nonPayableGig) {
+                await notifyOtherApplicantsGigConfirmed(gigData, musicianProfileId);
+            }
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
@@ -331,7 +338,41 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
           }
           return part;
         });
+    };
+
+    const toDate = (val) => {
+        if (!val) return null;
+        if (val.toDate) return val.toDate();            // Firestore Timestamp
+        if (val instanceof Date) return val;
+        const d = new Date(val);                         // ISO/string/number
+        return isNaN(d.getTime()) ? null : d;
       };
+
+    const start = toDate(gigData?.startDateTime);
+    const durationMs = Number(gigData?.duration || 0) * 60_000;
+    const end = start ? new Date(start.getTime() + durationMs) : null;
+
+    const hasBeenDeleted = messages.some((m) => m.status === 'gig deleted');
+
+    if (!gigData && hasBeenDeleted) {
+      const deletedMessage = messages.find((m) => m.status === 'gig deleted');
+      return (
+        <div className='message-container' style={{ marginTop: '2rem'}}>
+          <div className='message announcement'>
+            <>
+              {deletedMessage?.timestamp && (
+                <h6>
+                  {new Date(deletedMessage.timestamp.seconds * 1000).toLocaleString()}
+                </h6>
+              )}
+              <h4>
+                This gig has been deleted by the venue.
+              </h4>
+            </>
+          </div>
+        </div>
+      );
+    }
     
     return (
         <>
@@ -409,7 +450,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Declined
                                             </div>
                                         </div>
-                                        {message.status !== 'countered' && (
+                                        {message.status !== 'countered'  && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' &&  (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                             <h4>Send Counter Offer:</h4>
                                             <div className='input-group'>
@@ -451,7 +492,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Declined
                                             </div>
                                         </div>
-                                        {message.status !== 'countered' && (
+                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic')  && message.status !== 'apps-closed' &&  (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                 <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>
@@ -531,7 +572,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (
+                                            {message.status !== 'countered'  && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                    <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>
@@ -570,6 +611,17 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{gigData.venue.venueName} has accepted your application. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
+                                        {gigData && (
+                                            <AddToCalendarButton
+                                                event={{
+                                                    title: `Gig at ${gigData?.venue?.venueName}`,
+                                                    start: start,
+                                                    end: end,
+                                                    description: `Gig confirmed with fee: ${gigData?.agreedFee}`,
+                                                    location: gigData?.venue?.address,
+                                                }}
+                                            />
+                                        )}
                                     </>
                                 ) : message.status === 'awaiting payment' && userRole === 'venue' ? (
                                     <>
@@ -589,10 +641,39 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
                                     </>
                                 ) : message.status === 'gig confirmed' ? (
-                                    <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'Your payment split will arrive in your account 24 hours after the gig has been performed.'}</h4>
-                                    </>
+                                    (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
+                                        <>
+                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                            <h4>Your application has been accepted by the venue. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
+                                            {gigData && (
+                                                <AddToCalendarButton
+                                                    event={{
+                                                        title: `Gig at ${gigData?.venue?.venueName}`,
+                                                        start: start,
+                                                        end: end,
+                                                        description: `Gig confirmed with fee: ${gigData?.agreedFee}`,
+                                                        location: gigData?.venue?.address,
+                                                    }}
+                                                />
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                            <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
+                                            {gigData && (
+                                                <AddToCalendarButton
+                                                    event={{
+                                                        title: `Gig at ${gigData?.venue?.venueName}`,
+                                                        start: start,
+                                                        end: end,
+                                                        description: `Gig confirmed with fee: ${gigData?.agreedFee}`,
+                                                        location: gigData?.venue?.address,
+                                                    }}
+                                                />
+                                            )}
+                                        </>
+                                    )
                                 ) : message.status === 'payment failed' && userRole === 'venue' ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
@@ -603,7 +684,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>The gig will be confirmed when the venue has paid the gig fee.</h4>
                                     </>
-                                ) : message.status === 'cancellation' && userRole === 'venue' ? (
+                                ) : message.status === 'cancellation' && message?.cancellingParty === 'venue' ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text}</h4>
@@ -613,7 +694,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>You cancelled the gig. The gig fee has been refunded to the venue.</h4>
                                     </>
-                                ) : message.status === 'dispute' && (
+                                ) : message.status === 'dispute' ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text}</h4>
+                                    </>
+                                ) : message.status === 'gig deleted' && (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text}</h4>

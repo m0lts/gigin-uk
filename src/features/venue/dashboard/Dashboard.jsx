@@ -52,6 +52,7 @@ export const VenueDashboard = ({ user }) => {
     const [conversations, setConversations] = useState([]);
     const [buildingForMusician, setBuildingForMusician] = useState(false);
     const [buildingForMusicianData, setBuildingForMusicianData] = useState(false);
+    const [requestId, setRequestId] = useState(null);
     const location = useLocation();
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname), [location.pathname]);
   
@@ -62,6 +63,7 @@ export const VenueDashboard = ({ user }) => {
       if (location.state?.showGigPostModal) setGigPostModal(true);
       if (location.state?.buildingForMusician) setBuildingForMusician(true);
       if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
+      if (location.state?.requestId) setRequestId(location.state?.requestId);
     }, [location]);
   
     useEffect(() => {
@@ -125,7 +127,7 @@ export const VenueDashboard = ({ user }) => {
                 <div className="output">
                     <Routes>
                         {/* <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} /> */}
-                        <Route index path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} />} />
+                        <Route index path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} user={user} />} />
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} />} />
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
@@ -151,6 +153,9 @@ export const VenueDashboard = ({ user }) => {
                   setBuildingForMusicianData={setBuildingForMusicianData}
                   refreshTemplates={refreshTemplates}
                   refreshGigs={refreshGigs}
+                  requestId={requestId}
+                  setRequestId={setRequestId}
+                  setRequests={setRequests}
                 />
               </Portal>
             )

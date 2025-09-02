@@ -136,7 +136,6 @@ export const sendGigAcceptedMessage = async (conversationId, originalMessageId, 
       lastMessageTimestamp: timestamp,
       lastMessageSenderId: senderId,
     });
-  
     return timestamp;
 };
 
@@ -276,6 +275,12 @@ export const postCancellationMessage = async (conversationId, senderId, message,
     cancellingParty: cancellingParty,
     timestamp: Timestamp.now(),
   });
+  const conversationRef = doc(firestore, 'conversations', conversationId);
+  await updateDoc(conversationRef, {
+    lastMessage: `Unfortunately, ${cancellingParty} has had to cancel.`,
+    lastMessageTimestamp: Timestamp.now(),
+    lastMessageSenderId: senderId,
+  })
 };
 
 

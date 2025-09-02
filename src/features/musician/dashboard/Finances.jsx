@@ -324,7 +324,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                         <div className='text-information'>
                                             <p>If you aren't operating as a business, select Individual/Sole Trader. If you are operating as a business, you must select the type of business you are. This is required for legal compliance.</p>
                                             <p>When Stripe asks for a website link, enter your gigin profile link:</p>
-                                            <p className="link" onClick={(e) => {e.stopPropagation(); handleCopy(`https://gigin.ltd/${musicianProfile.musicianId}`)}}>https://gigin.ltd/{musicianProfile.musicianId} <CopyIcon /></p>
+                                            <p className="link" onClick={(e) => {e.stopPropagation(); handleCopy(`https://giginmusic.com/${musicianProfile.musicianId}`)}}>https://giginmusic.com/{musicianProfile.musicianId} <CopyIcon /></p>
                                         </div>
                                     </div>
                                 )}

@@ -28,7 +28,7 @@ export const FinalStage = ({ musicianName, musicianId }) => {
                 html: `
                   <p>${musicianName} has asked if you could provide a testimonial for them on Gigin.</p>
                   <p>You can provide your testimonial by clicking the link below:</p>
-                  <a href='https://gigin.ltd/testimonials?musicianId=${musicianId}&musicianName=${musicianName}' target='_blank'>Provide Testimonial</a>
+                  <a href='https://giginmusic.com/testimonials?musicianId=${musicianId}&musicianName=${musicianName}' target='_blank'>Provide Testimonial</a>
                 `,
               });
             setMessage({

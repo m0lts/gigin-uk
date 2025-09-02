@@ -35,7 +35,7 @@ function buildGoogleCalUrl({ title, start, end, description = "", location = "" 
  */
 function buildICS({ title, start, end, description = "", location = "" }) {
   const fmt = (d) => new Date(d).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-  const uid = `${Date.now()}@gigin.ltd`;
+  const uid = `${Date.now()}@giginmusic.com`;
 
   return [
     "BEGIN:VCALENDAR",

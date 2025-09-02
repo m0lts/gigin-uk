@@ -4,7 +4,7 @@ export const gigFeeReleasedEmail = (musicianName, venueName, isAdmin) => {
   const subject = "Your gig fee is available!";
   const text =
       "We have just cleared your gig fee. You can now withdraw it to your bank account.";
-  const financesUrl = "https://gigin.ltd/dashboard/finances";
+  const financesUrl = "https://giginmusic.com/dashboard/finances";
   const baseStyles = {
     bodyBg: "#f9f9f9",
     cardBg: "#ffffff",
@@ -116,14 +116,14 @@ export const gigFeeReleasedEmail = (musicianName, venueName, isAdmin) => {
  * @param {'musician'|'venue'} params.audience - Who is receiving the email.
  * @param {string} params.musicianName - Musician's display name.
  * @param {string} params.venueName - Venue display name.
- * @param {string} [params.baseUrl='https://gigin.ltd'] - Base URL for login/review.
+ * @param {string} [params.baseUrl='https://giginmusic.com'] - Base URL for login/review.
  * @return {Promise<void>}
  */
 export const reviewPromptEmail = ({
   audience,
   musicianName,
   venueName,
-  baseUrl = "https://gigin.ltd",
+  baseUrl = "https://giginmusic.com",
 }) => {
   const subject =
       audience === "musician" ? "How did the gig go?" : "How was the performance?";

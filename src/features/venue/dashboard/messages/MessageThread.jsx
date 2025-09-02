@@ -19,6 +19,10 @@ import AddToCalendarButton from '../../../shared/components/AddToCalendarButton'
 import { toast } from 'sonner';
 import { formatDate } from '../../../../services/utils/dates';
 import Portal from '../../../shared/components/Portal';
+import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
+import { loadStripe } from '@stripe/stripe-js';
+import { notifyOtherApplicantsGigConfirmed } from '../../../../services/conversations';
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
@@ -26,7 +30,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const [newMessage, setNewMessage] = useState('');
     const [userRole, setUserRole] = useState('');
     const [allowCounterOffer, setAllowCounterOffer] = useState(false);
-    const [newCounterOffer, setNewCounterOffer] = useState('');
+    const [newCounterOffer, setNewCounterOffer] = useState('£');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [savedCards, setSavedCards] = useState([]);
     const [loadingPaymentDetails, setLoadingPaymentDetails] = useState(false);
@@ -100,7 +104,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 agreedFee: `${agreedFee}`,
                 paid: false,
             }));
-            await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole);
+            await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole, nonPayableGig);
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigAcceptedEmail({
@@ -112,6 +116,9 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 isNegotiated: false,
                 nonPayableGig
             });
+            if (nonPayableGig) {
+                await notifyOtherApplicantsGigConfirmed(gigData, musicianProfileId);
+            }
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
@@ -139,7 +146,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 agreedFee,
                 isNegotiated: true,
               });
-            console.log('Agreed fee:', agreedFee);
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
@@ -237,6 +243,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
             });
             setAllowCounterOffer(false);
+            setNewCounterOffer('£');
         } catch (error) {
             console.error('Error sending counter-offer:', error);
         }
@@ -282,7 +289,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 const { error } = await stripe.confirmCardPayment(result.clientSecret, { payment_method: result.paymentMethodId || cardId });
                 if (error) {
                   setPaymentSuccess(false);
-                  toast.error(error.message || 'Authentication failed. Please try another card.');
+                  toast.error('Authentication failed. Please try another card.');
                   return;
                 }
                 setPaymentSuccess(true);
@@ -325,15 +332,37 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
     const toDate = (val) => {
         if (!val) return null;
-        if (val.toDate) return val.toDate();            // Firestore Timestamp
+        if (val.toDate) return val.toDate();
         if (val instanceof Date) return val;
-        const d = new Date(val);                         // ISO/string/number
+        const d = new Date(val);
         return isNaN(d.getTime()) ? null : d;
       };
       
     const start = toDate(gigData?.startDateTime);
     const durationMs = Number(gigData?.duration || 0) * 60_000;
     const end = start ? new Date(start.getTime() + durationMs) : null;
+
+    const hasBeenDeleted = messages.some((m) => m.status === 'gig deleted');
+
+    if (!gigData && hasBeenDeleted) {
+      const deletedMessage = messages.find((m) => m.status === 'gig deleted');
+      return (
+        <div className='message-container' style={{ marginTop: '2rem'}}>
+          <div className='message announcement'>
+            <>
+              {deletedMessage?.timestamp && (
+                <h6>
+                  {new Date(deletedMessage.timestamp.seconds * 1000).toLocaleString()}
+                </h6>
+              )}
+              <h4>
+                This gig has been deleted by the venue.
+              </h4>
+            </>
+          </div>
+        </div>
+      );
+    }
 
     return (
         <>
@@ -368,6 +397,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             
                 const senderGroup = getGroupOfParticipant(message.senderId);
                 const isSameGroup = senderGroup === userGroup;
+
                 return (
                     <div className='message-container' key={message.id}>
                         <div className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >
@@ -411,7 +441,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Declined
                                             </div>
                                         </div>
-                                        {message.status !== 'countered' && (
+                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                             <h4>Send Counter Offer:</h4>
                                             <div className='input-group'>
@@ -453,7 +483,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Declined
                                             </div>
                                         </div>
-                                        {message.status !== 'countered' && (
+                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                 <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>
@@ -533,7 +563,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (
+                                            {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                    <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>
@@ -573,7 +603,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
                                         {loadingPaymentDetails || gigData?.status === 'payment processing' ? (
-                                            <LoadingThreeDots />
+                                            <LoadingSpinner width={20} height={20} marginTop={16} />
                                         ) : (
                                             <button className='btn primary complete-payment' onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
                                                 Complete Payment
@@ -590,6 +620,17 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <>
                                             <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                             <h4>You have accepted the musician's application. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
+                                            {gigData && (
+                                                <AddToCalendarButton
+                                                    event={{
+                                                        title: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} at ${gigData?.venue?.venueName}`,
+                                                        start: start,
+                                                        end: end,
+                                                        description: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} confirmed.`,
+                                                        location: gigData?.venue?.address,
+                                                    }}
+                                                />
+                                            )}
                                         </>
                                     ) : (
                                         <>
@@ -624,11 +665,23 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h4>{message.text}</h4>
                                     </>
                                 ) : message.status === 'cancellation' && message?.cancellingParty === userRole ? (
+                                    gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic' ? (
+                                        <>
+                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                            <h4>You cancelled the gig. The gig fee has been refunded to {message?.cancellingParty === 'venue' ? 'your card. Please allow 3-10 days for the refund to be processed' : 'the venue'}.</h4>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                            <h4>You cancelled the gig.</h4>
+                                        </>
+                                    )
+                                ) : message.status === 'dispute' ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>You cancelled the gig. The gig fee has been refunded to the venue.</h4>
+                                        <h4>{message.text}</h4>
                                     </>
-                                ) : message.status === 'dispute' && (
+                                ) : message.status === 'gig deleted' && (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text}</h4>

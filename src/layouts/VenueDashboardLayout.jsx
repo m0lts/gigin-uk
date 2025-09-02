@@ -9,18 +9,15 @@ export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user
     const { loading } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const newUser = location.state?.newUser;
 
     useEffect(() => {
         if (!loading && !user) {
             setAuthModal(true);
             setAuthClosable(false);
         }
-
         if (user && !user.venueProfiles) {
             navigate('/venues/add-venue')
         }
-
     }, [user])
 
     return (

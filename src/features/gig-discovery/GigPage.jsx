@@ -35,9 +35,9 @@ import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { getMusicianProfilesByIds, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateBandMembersGigApplications } from '../../services/musicians';
 import { getBandMembers } from '../../services/bands';
 import { acceptGigOffer, getGigById, getGigsByIds } from '../../services/gigs';
-import { getMostRecentMessage, sendGigAcceptedMessage } from '../../services/messages';
+import { getMostRecentMessage, sendCounterOfferMessage, sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../services/messages';
 import { toast } from 'sonner';
-import { sendInvitationAcceptedEmailToVenue } from '../../services/emails';
+import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/emails';
 import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
@@ -47,6 +47,7 @@ import { getUserById } from '../../services/users';
 import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
+import { notifyOtherApplicantsGigConfirmed } from '../../services/conversations';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal }) => {
     const { gigId } = useParams();
@@ -466,24 +467,48 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             const profileType = musicianProfile.bandProfile ? 'band' : 'musician';
             const senderName = musicianProfile.name;
             const venueName = gigData.venue?.venueName || 'the venue';
-            await sendNegotiationMessage(conversationId, {
-                senderId: user.uid,
-                oldFee: gigData.budget,
-                newFee: newOffer,
-                text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${venueName}`,
-                profileId: musicianProfile.musicianId,
-                profileType
-            });
-
-            await sendNegotiationEmail({
-                to: venueProfile.email,
-                musicianName: senderName,
-                venueName,
-                oldFee: gigData.budget,
-                newFee: newOffer,
-                date: formatDate(gigData.date),
-                profileType
-            });
+            if (invitedToGig) {
+                const invitationMessage = await getMostRecentMessage(conversationId, 'invitation');
+                await updateDeclinedApplicationMessage(
+                    conversationId,
+                    invitationMessage.id,
+                    user.uid,
+                    'musician',
+                );
+                await sendCounterOfferMessage(
+                    conversationId,
+                    invitationMessage.id,
+                    user.uid,
+                    newOffer,
+                    gigData.budget,
+                    'musician',
+                )
+                await sendCounterOfferEmail({
+                    userRole: 'musician',
+                    musicianProfile: musicianProfile,
+                    venueProfile: venueProfile,
+                    gigData,
+                    newOffer,
+                });
+            } else {
+                await sendNegotiationMessage(conversationId, {
+                    senderId: user.uid,
+                    oldFee: gigData.budget,
+                    newFee: newOffer,
+                    text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${venueName}`,
+                    profileId: musicianProfile.musicianId,
+                    profileType
+                });
+                await sendNegotiationEmail({
+                    to: venueProfile.email,
+                    musicianName: senderName,
+                    venueName,
+                    oldFee: gigData.budget,
+                    newFee: newOffer,
+                    date: formatDate(gigData.date),
+                    profileType
+                });
+            }
             toast.success('Negotiation sent to venue.')
         } catch (error) {
             console.error('Error sending negotiation message:', error);
@@ -542,6 +567,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 agreedFee: agreedFee,
                 nonPayableGig: nonPayableGig,
             })
+            if (nonPayableGig) {
+                await notifyOtherApplicantsGigConfirmed(gigData, musicianId);
+            }
             toast.success('Invitation Accepted.')
         } catch (error) {
             toast.error('Error accepting gig invitation. Please try again.')
@@ -1067,7 +1095,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 <Portal>
                     <div className='modal negotiation' onClick={() => setNegotiateModal(false)}>
                         {applyingToGig ? (
-                            <div className="modal-content">
+                            <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap:'1rem'}}>
                                 <LoadingSpinner width={50} height={50} />
                                 <h3>Sending Negotiation...</h3>
                             </div>
