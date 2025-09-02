@@ -503,6 +503,48 @@ export const updateBandAdmin = async (bandId, newAdminData, roleUpdates = {}) =>
   return refreshedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
 
+/**
+ * Updates a musician's image in all band documents where they are a member.
+ *
+ * 1) Reads the musician profile's `bands` array.
+ * 2) For each band, updates the band doc's `members` array (sets `img`).
+ * 3) Upserts the subcollection document: bands/{bandId}/members/{musicianProfileId} with { memberImg }.
+ *
+ * @param {string} musicianProfileId - The musician profile ID whose image changed.
+ * @param {string} pictureUrl - The new picture URL to set.
+ * @returns {Promise<void>}
+ */
+export const updateBandMemberImg = async (musicianProfileId, pictureUrl, bands) => {
+  if (!musicianProfileId || !pictureUrl || !bands) return;
+  if (!Array.isArray(bands) || bands.length === 0) return;
+  const batch = writeBatch(firestore);
+  for (const bandId of bands) {
+    try {
+      const bandRef = doc(firestore, 'bands', bandId);
+      const bandSnap = await getDoc(bandRef);
+      if (!bandSnap.exists()) continue;
+      const bandData = bandSnap.data() || {};
+      const members = Array.isArray(bandData.members) ? bandData.members : [];
+      const updatedMembers = members.map(m =>
+        (m && m.id === musicianProfileId)
+          ? { ...m, img: pictureUrl }
+          : m
+      );
+      const membersChanged =
+        members.length !== updatedMembers.length ||
+        members.some((m, i) => (m?.img !== updatedMembers[i]?.img));
+      if (membersChanged) {
+        batch.set(bandRef, { members: updatedMembers }, { merge: true });
+      }
+      const memberRef = doc(firestore, 'bands', bandId, 'members', musicianProfileId);
+      batch.set(memberRef, { memberImg: pictureUrl }, { merge: true });
+    } catch (err) {
+      console.error(`updateBandMemberImg: failed for band ${bandId}`, err);
+    }
+  }
+  await batch.commit();
+};
+
 
 /*** DELETE OPERATIONS ***/
 

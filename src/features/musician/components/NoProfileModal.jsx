@@ -185,9 +185,10 @@ export const NoProfileModal = ({
                 picture: pictureUrl || '',
                 email: user?.email || '',
                 joinPassword: bandPassword,
+                onboarded: true,
                 admin: {
-                userId: user?.uid,
-                musicianId: musicianProfile.id || musicianProfile.musicianId,
+                    userId: user?.uid,
+                    musicianId: musicianProfile.id || musicianProfile.musicianId,
                 },
                 members: [
                     {
@@ -212,8 +213,8 @@ export const NoProfileModal = ({
                 musicianType: 'Band',
                 bandProfile: true,
                 searchKeywords: keywords,
-                updatedAt: Timestamp.now(),
                 createdAt: Timestamp.now(),
+                onboarded:true,
             };
             await createMusicianProfile(bandId, musicianProfileData, user.uid);
             toast.success('Band created!');
@@ -273,7 +274,6 @@ export const NoProfileModal = ({
                             className={`card ${selectedUserType === 'musician' ? 'selected' : ''}`}
                             onClick={async () => {
                                 if (musicianProfile) {
-                                    console.log('musician profile already created')
                                     handleSelect('musician')
                                 } else {
                                     setStage(Stage.LOADING);

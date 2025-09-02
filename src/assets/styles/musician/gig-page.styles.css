@@ -271,6 +271,15 @@
     margin-top: 1rem;
 }
 
+.gig-page-body .action-box-buttons .applying-to-gig {
+    width:100%;
+    display: flex;
+    margin: 2rem 0;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    justify-content: center;
+}
+
 .gig-page-body .action-box-buttons .btn {
     width: 100%;
 }
@@ -500,6 +509,7 @@
     max-width: 75vw;
     margin-top:0.5rem;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     gap:1rem;

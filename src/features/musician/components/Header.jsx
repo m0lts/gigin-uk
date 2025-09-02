@@ -215,7 +215,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                 </div>
                                 {
                                 newMessages ? (
-                                    <Link className='link item message' to={'/messages'}>
+                                    <Link className='link item' to={'/messages'}>
                                             Messages
                                             <MailboxFullIcon />
                                     </Link>

@@ -360,35 +360,37 @@ return (
                     <h4 className="number-of-gigs">
                       {profile?.gigsPerformed || 0} Gigs Performed
                     </h4>
-                    <div className="action-buttons">
-                      <button
-                          className="btn quaternary"
-                          onClick={() => handleInviteMusician()}
-                      >
-                          Invite to Gig
-                      </button>
-                      {!musicianSaved ? (
-                          <button className='btn quaternary' onClick={handleSaveMusician}>
-                              {savingMusician ? (
-                                  <LoadingSpinner width={10} height={10} />
-                              ) : (
-                                  <>
-                                      Save
-                                  </>
-                              )}
-                          </button>
-                      ) : (
-                          <button className='btn quaternary' onClick={handleUnsaveMusician}>
-                              {savingMusician ? (
-                                  <LoadingSpinner width={10} height={10} />
-                              ) : (
-                                  <>
-                                      Unsave
-                                  </>
-                              )}
-                          </button>   
-                      )}
-                    </div>
+                    {user.venueProfiles && user.venueProfiles.length > 0 && (
+                      <div className="action-buttons">
+                        <button
+                            className="btn quaternary"
+                            onClick={() => handleInviteMusician()}
+                        >
+                            Invite to Gig
+                        </button>
+                        {!musicianSaved ? (
+                            <button className='btn quaternary' onClick={handleSaveMusician}>
+                                {savingMusician ? (
+                                    <LoadingSpinner width={10} height={10} />
+                                ) : (
+                                    <>
+                                        Save
+                                    </>
+                                )}
+                            </button>
+                        ) : (
+                            <button className='btn quaternary' onClick={handleUnsaveMusician}>
+                                {savingMusician ? (
+                                    <LoadingSpinner width={10} height={10} />
+                                ) : (
+                                    <>
+                                        Unsave
+                                    </>
+                                )}
+                            </button>   
+                        )}
+                      </div>
+                    )}
                 </div>
             </div>
         </>

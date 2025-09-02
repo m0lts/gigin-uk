@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import '@styles/musician/musician-profile.styles.css'
-import { ProfilePreview } from './profile-preview/ProfilePreview';
 import { ProfileForm } from './profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
 import { NoImageIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';

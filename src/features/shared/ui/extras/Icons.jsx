@@ -35,9 +35,9 @@ import { faCoins as faCoinsSolid } from '@fortawesome/free-solid-svg-icons'
 import { faFilter as faFullFilter } from '@fortawesome/free-solid-svg-icons'
 import { faFilter as faEmptyFilter } from '@fortawesome/pro-regular-svg-icons'
 import { faTrashList as faTrashMultiple, faTrash, faClone, faEllipsis, faArrowUpFromBracket } from '@fortawesome/pro-regular-svg-icons'
-import { faMailbox as faMailbox } from '@fortawesome/pro-light-svg-icons';
+import { faMailbox as faMailbox } from '@fortawesome/pro-regular-svg-icons';
 import { faMailbox as faMailboxSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faMailboxFlagUp as faMailboxFlagUp } from '@fortawesome/pro-light-svg-icons';
+import { faMailboxFlagUp as faMailboxFlagUp } from '@fortawesome/pro-regular-svg-icons';
 import { faMailboxFlagUp as faMailboxFlagUpSolid } from '@fortawesome/pro-solid-svg-icons';
 
 

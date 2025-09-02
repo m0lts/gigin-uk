@@ -18,7 +18,7 @@ import { MusicianProfile } from '../components/MusicianProfile';
 import Portal from '../../shared/components/Portal';
 
 export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
-  const { refreshMusicianProfile } = useMusicianDashboard();
+  const { refreshMusicianProfile, loading, setLoading } = useMusicianDashboard();
   const { bandId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,7 +26,6 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const [bandProfile, setBandProfile] = useState(state?.band || null);
   const [bandMembers, setBandMembers] = useState(state?.band?.members || null);
   const [showPreview, setShowPreview] = useState(state?.preview === false ? false : true);
-  const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [expand, setExpand] = useState(['your-sound', 'media-upload', 'further-information', 'social-media']);
@@ -39,59 +38,63 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const bandAdmin = musicianProfile.musicianId === bandProfile?.bandInfo?.admin?.musicianId;
 
   useEffect(() => {
-    console.log('band profiles', bandProfiles)
-    const found = bandProfiles.find((b) => b.id === bandId);
-    if (found) {
-      setBandProfile(found);
-      setBandMembers(found.members);
-    };
-  }, [bandProfiles, bandId, musicianProfile.bands]);
+    if (!state) {
+      const found = bandProfiles.find((b) => b.id === bandId);
+      if (found) {
+        setBandProfile(found);
+        setBandMembers(found.members);
+      };
+    }
+  }, [bandProfiles, bandId, musicianProfile.bands, state]);
 
   const handleLeaveBand = async () => {
     try {
       setLoading(true);
       await leaveBand(bandProfile.id, musicianProfile.musicianId, musicianProfile.userId);
       await refreshMusicianProfile();
-      setTimeout(() => {
-        toast.success('Left the band.');
-        navigate('/dashboard/bands');
-    }, 1500);
+      toast.success('Left the band.');
+      navigate('/dashboard/bands');
     } catch (err) {
       console.error('Failed to leave band:', err);
       toast.error('Failed to leave the band. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleDeleteBand = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       await deleteBand(bandProfile.id);
       await refreshMusicianProfile();
-      setTimeout(() => {
-        toast.success('Band deleted.');
-        navigate('/dashboard/bands');
-      }, 1500);
+      toast.success('Band deleted.');
+      navigate('/dashboard/bands');
     } catch (err) {
       console.error('Failed to delete band:', err);
       toast.error('Failed to delete band. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
   
   if (!bandProfile) {
-    console.log('no band profile')
     return <LoadingScreen />
   }
+
+  if (loading) {
+    return <LoadingScreen />
+  }
+
+  const loadBandFromProfiles = () => {
+    const found = (bandProfiles || []).find(b => (b.id || b.bandId) === bandId);
+    if (found) {
+      setBandProfile(found);
+      setBandMembers(found.members || null);
+    }
+  };
 
   return (
       <>
         <div className="musician-profile-hero">
             <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
             <div className="primary-information">
-                {!bandProfile?.verified && (
+                {bandProfile?.verified && (
                     <div className="verified-tag">
                         <VerifiedIcon />
                         <p>Verified Band</p>
@@ -105,14 +108,24 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
                     {bandProfile?.gigsPerformed || 0} Gigs Performed
                 </h4>
                 <div className="action-buttons">
-                  {musicianProfile?.musicianId === bandProfile?.bandInfo?.admin?.musicianId ? (
+                  {bandAdmin ? (
                     <>
-                      <button className="btn quaternary" onClick={() => setShowPreview(!showPreview)}>
-                          {showPreview ? (
-                            'Edit Profile'
-                          ) : (
-                            'View Profile'
-                          )}
+                      <button className="btn quaternary" onClick={() => {
+                          const next = !showPreview;
+                          setShowPreview(next);
+                          if (next) {
+                            navigate(location.pathname, { replace: true, state: null });
+                            setBandProfile(null);
+                            setBandMembers(null);
+                            loadBandFromProfiles();
+                          }
+                        }}
+                      >
+                        {showPreview ? (
+                          'Edit Profile'
+                        ) : (
+                          'View Profile'
+                        )}
                       </button>
                       {/* COLLAPSED HEADER (shown when NOT expanded) */}
                       {isPrimaryOpen && !showPreview ? (
@@ -155,6 +168,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
                     expand={expand}
                     setExpand={setExpand}
                     band={true}
+                    bandAdmin={bandAdmin}
                 />
             </div>
         ) : (

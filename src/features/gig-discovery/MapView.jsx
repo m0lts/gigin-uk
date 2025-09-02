@@ -7,20 +7,42 @@ import { LoadingSpinner, LoadingThreeDots } from '../shared/ui/loading/Loading';
 import { openInNewTab } from '../../services/utils/misc';
 import { MapIcon } from '../shared/ui/extras/Icons';
 
+const labelFor = (g) =>
+((g.budget === '£' || g.budget === 'No Fee') && (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
+  ? g.kind
+  : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
+
+const toFeatureCollection = (list) => ({
+  type: 'FeatureCollection',
+  features: (list || [])
+    .map((gig) => {
+      return {
+        type: 'Feature',
+        properties: {
+          gigId: gig.gigId,
+          budget: gig.budget,
+          kind: gig.kind,
+          label: labelFor(gig),
+        },
+        geometry: { type: 'Point', coordinates: gig.coordinates },
+      };
+    })
+    .filter(Boolean),
+});
+
 export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, gigMarkerDisplay, userLocation, onSearchArea }) => {
 
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null)
     const sourceId = 'gigs';
     const latestGigsRef = useRef(upcomingGigs);
-  latestGigsRef.current = upcomingGigs; 
+    latestGigsRef.current = upcomingGigs; 
 
     const centerLngLat = userLocation
     ? [userLocation.longitude, userLocation.latitude]
     : [0.1218, 52.2053];
 
     useEffect(() => {
-
       if (!mapContainerRef.current || mapRef.current) return;
         mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
         const map = new mapboxgl.Map({
@@ -34,7 +56,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
     
           map.addSource(sourceId, {
             type: 'geojson',
-            data: { type: 'FeatureCollection', features: [] },
+            data: toFeatureCollection(latestGigsRef.current),
             cluster: true,
             clusterMaxZoom: 14,
             clusterRadius: 50,
@@ -206,40 +228,19 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
     
         mapRef.current = map;
         return () => { map.remove(); mapRef.current = null; };
-      }, []);
+    }, []);
 
-      useEffect(() => {
+    useEffect(() => {
         if (!mapRef.current || !userLocation) return;
         mapRef.current.easeTo({ center: centerLngLat, duration: 500 });
-      }, [userLocation]);
+    }, [userLocation]);
     
-      // update source data when gigs change
-      useEffect(() => {
-        const map = mapRef.current;
-        if (!map) return;
-    
-        const labelFor = (g) =>
-          ((g.budget === '£' || g.budget === 'No Fee') && (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
-            ? g.kind
-            : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
-    
-        const data = {
-          type: 'FeatureCollection',
-          features: (upcomingGigs || []).map(gig => ({
-            type: 'Feature',
-            properties: {
-              gigId: gig.gigId,
-              budget: gig.budget,
-              kind: gig.kind,
-              label: labelFor(gig),
-            },
-            geometry: { type: 'Point', coordinates: gig.coordinates },
-          })),
-        };
-    
-        const src = map.getSource(sourceId);
-        if (src) src.setData(data);
-      }, [upcomingGigs]);
+    useEffect(() => {
+      if (!mapRef.current) return;
+      const src = mapRef.current.getSource(sourceId);
+      if (src) src.setData(toFeatureCollection(upcomingGigs));
+    }, [upcomingGigs]);
+  
 
     function formatGigRange(gigStartTime, duration) {
         const [startHour, startMinute] = gigStartTime.split(':').map(Number);
@@ -249,8 +250,6 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
         const formatTime = (date) => date.toTimeString().slice(0, 5);
         return `${formatTime(startDate)}-${formatTime(endDate)}`;
     }
-
-    console.log(clickedGigs)
 
     return (
       <div className="output-container">

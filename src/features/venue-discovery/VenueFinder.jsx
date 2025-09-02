@@ -84,6 +84,7 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType }) => {
                   setLoading(false);
                 }
               }}
+              user={user}
             />
           </div>
         </div>

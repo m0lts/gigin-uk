@@ -73,6 +73,7 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
     const handleSubmit = async () => {
       setLoading(true);
       try {
+        console.log('Musician ID of creator:', musicianProfile.id);
         const pictureFile = formData.picture;
         const pictureUrl = await uploadFileToStorage(pictureFile, `bands/${formData.bandId}/profileImg/${pictureFile.name}`);
         const bandPassword = generateBandPassword();
@@ -95,10 +96,10 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
         };
         await createBandProfile(formData.bandId, updatedFormData, user.uid, musicianProfile);
         await updateUserDocument(user.uid, {
-            bands: arrayUnion(formData.bandId)
+          bands: arrayUnion(formData.bandId)
         })
         await updateMusicianProfile(musicianProfile.id, {
-            bands: arrayUnion(formData.bandId)
+          bands: arrayUnion(formData.bandId)
         })
         const keywords = generateSearchKeywords(formData.name);
         const musicianProfileData = {
@@ -109,9 +110,11 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
           musicianType: 'Band',
           bandProfile: true,
           searchKeywords: keywords,
-          updatedAt: Timestamp.now(),
           createdAt: Timestamp.now()
         }
+        delete musicianProfileData.bandId;
+        console.log("'Musician ID' of band created:", formData.bandId);
+        console.log("Musician profile's bands array should contain band id. That id should correlate to the band's document id & musician id. Also, band's members should include musician id correctly.")
         await createMusicianProfile(formData.bandId, musicianProfileData, user.uid);
         refreshData();
         navigate(`/dashboard/bands`);

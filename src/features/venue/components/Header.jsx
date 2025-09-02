@@ -142,7 +142,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                         </div>
                                     </Link>
                                     {newMessages ? (
-                                        <Link className='link item message no-margin' to={'/venues/dashboard/messages'}>
+                                        <Link className='link item no-margin' to={'/venues/dashboard/messages'}>
                                                 Messages
                                                 <MailboxFullIcon />
                                         </Link>

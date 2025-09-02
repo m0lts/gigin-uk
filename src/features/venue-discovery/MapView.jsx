@@ -32,7 +32,7 @@ const toFeatureCollection = (list) => ({
     .filter(Boolean),
 });
 
-export const MapOutput = ({ venues, loading, userLocation, onSearchArea }) => {
+export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const latestVenuesRef = useRef(venues);
@@ -157,7 +157,13 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea }) => {
         if (!features.length) return;
         const ids = new Set(features.map((f) => f.properties?.id).filter(Boolean));
         const match = (latestVenuesRef.current || []).find((v) => ids.has(v.id));
-        if (match) window.open(`/venues/${match.id}`, '_blank', 'noopener,noreferrer');
+        if (match) {
+          if (user?.musicianProfile) {
+            window.open(`/venues/${match.id}?musicianId=${user.musicianProfile.id}`, '_blank', 'noopener,noreferrer')
+          } else {
+            window.open(`/venues/${match.id}`, '_blank', 'noopener,noreferrer')
+          }
+        };
       };
 
       map.on('click', 'unclustered-hit', handleUnclusteredClick);

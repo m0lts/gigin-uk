@@ -5,6 +5,16 @@
     padding-left:0 !important;
 }
 
+.profile .profile-form.not-admin {
+    border:1px solid red;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+    align-items: center;
+    justify-content: center;
+}
+
 .profile .profile-form .profile-section .btn.secondary {
     display: flex;
     align-items: center;
@@ -683,6 +693,9 @@
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks {
     position: sticky;
     top:1rem;
+    max-width: 100%;
+    overflow: hidden;
+    padding:0.25rem;
 }
 
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .gigs-box {
@@ -790,6 +803,7 @@
 }
 
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .musician-tracks .track-details {
+    max-width: 100%;
     padding:0.5rem 0;
     padding-left: 0.25rem;
 }
@@ -801,7 +815,7 @@
     overflow: hidden;          /* hide overflow */
     text-overflow: ellipsis;   /* show … */
     display: block;            /* or inline-block/flex item */
-    max-width: 100%;  
+    width: 90%;  
 }
 
 .musician-profile .musician-profile-body .musician-profile-gigs-and-tracks .track-player {

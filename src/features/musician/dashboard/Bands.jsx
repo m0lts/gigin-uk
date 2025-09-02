@@ -26,9 +26,7 @@ export const Bands = ({ bandProfiles }) => {
     if (e < 2500) return '£1k+';
     if (e < 5000) return '£2.5k+';
     return '£5k+';
-};
-
-console.log(bandProfiles)
+  };
 
   return (
     <>
@@ -128,7 +126,7 @@ console.log(bandProfiles)
                         </div>
                       </>
                     )}
-                    <button className="btn primary" onClick={() => navigate(`/dashboard/bands/${band.id}`, { state: band })}>
+                    <button className="btn primary" onClick={() => navigate(`/dashboard/bands/${band.id}`, { state: {band: band} })}>
                         <span>View Band Profile <RightChevronIcon /></span>
                     </button>
                 </div>

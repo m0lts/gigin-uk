@@ -92,10 +92,10 @@ const toMs = (dt) => {
       .map(gig => {
         const applicants = Array.isArray(gig.applicants) ? gig.applicants : []
         const matchedApplicant = applicants.find(a =>
+            userProfileIds.has(a?.id) &&
             a?.invited === true &&
-            a?.viewed === true || !a?.viewed &&
-            userProfileIds.has(a?.id)
-        );
+            (a?.viewed === false || a?.viewed === undefined)
+          );
         if (!matchedApplicant) return null;
         const t = toMs(gig.startDateTime);
         if (!Number.isFinite(t) || t <= now) return null;
@@ -209,29 +209,16 @@ const toMs = (dt) => {
                     )}
                 </div>
                 <div className="awaiting-response-container">
-                    {awaitingResponse.length ? (
+                    {awaitingResponse.length > 0 ? (
                         <div className="awaiting-response">
                             <div className="heading">
                                 <h2>Awaiting Your Response</h2>
-                                <button className="btn text" onClick={() => navigate('dashboard/gigs')}>
+                                <button className="btn text" onClick={() => navigate('/dashboard/gigs')}>
                                     See All
                                 </button>
                             </div>
                             <div className='body gigs musician'>
                                     <table>
-                                        <thead>
-                                            <tr>
-                                                {(bandProfiles && bandProfiles.length) && (
-                                                    <th id="profile">
-                                                        Profile
-                                                    </th>
-                                                )}
-                                                <th id='date'>
-                                                    Time and Date
-                                                </th>
-                                                <th>Venue</th>
-                                            </tr>
-                                        </thead>
                                         <tbody>
                                             {awaitingResponse.slice(0, 10).map((gig) => {
                                                 const dt = gig.startDateTime?.toDate
@@ -240,12 +227,12 @@ const toMs = (dt) => {
                                                 return (
                                                 <tr key={gig.id} onClick={() => navigate('/dashboard/gigs')}>
                                                     {(bandProfiles && bandProfiles.length) && (
-                                                    <td className="applied-profile-name">{gig._invitedProfileName}</td>
+                                                        <td className="applied-profile-name">{gig._invitedProfileName}</td>
                                                     )}
                                                     <td>
-                                                    {dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                                    {' - '}
-                                                    {dt.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                        {dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                        {' - '}
+                                                        {dt.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                     </td>
                                                     <td>{gig.venue?.venueName}</td>
                                                 </tr>

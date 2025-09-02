@@ -209,8 +209,8 @@ export const GigFinder = ({ user, setAuthModal, setAuthType }) => {
     );
 };
 
-                        // <ListView
-                        //     upcomingGigs={gigs}
-                        //     location={userLocation}
-                        //     loading={loading}
-                        // />
+// <ListView
+//     upcomingGigs={gigs}
+//     location={userLocation}
+//     loading={loading}
+// />
