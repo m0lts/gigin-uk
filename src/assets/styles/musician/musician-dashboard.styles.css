@@ -1,45 +1,3 @@
-<<<<<<< HEAD
-.window.musician {
-    max-height: 100%;
-}
-
-.window.musician .profile {
-    height: 100%;
-}
-
-.window .body.finances .tile.connect-account {
-    grid-row-start: 2;
-    grid-row-end: 4;
-}
-
-.window.musician .body.finances .tile.connect-account {
-    grid-row-start: 1;
-    grid-row-end: 4;
-}
-
-.window.musician .body.finances .tile.connect-account h2 {
-    background-color: var(--gn-white);
-}
-
-.window .body.finances .tile.your-fees {
-    grid-row-start: 1;
-    grid-row-end: 3;
-}
-
-.window .body.finances .tile.earnings .earnings-flex {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 75%;
-    gap:2.5%;
-}
-
-.window .body.finances .tile.earnings .earnings-flex .earnings-type {
-    border:1px solid var(--gn-grey-300);
-    border-radius: 1rem;
-    box-shadow: 0 0 10px var(--gn-grey-400);
-    padding:2rem;
-=======
 
 .window.musicians .top-bar {
     background-color: transparent;
@@ -1046,16 +1004,11 @@
 
 .window.musicians .body.gigs .modal.confirm .modal-content {
     max-width: 250px;
->>>>>>> ui-overhaul
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-<<<<<<< HEAD
-.window .body.finances .tile.withdraw .amount {
-    height: 75%;
-=======
 .window.musicians .body.gigs .modal.confirm .modal-content h3 {
     text-align: center;
 }
@@ -1597,7 +1550,6 @@
 .window.musicians .body.bands .no-bands {
     width:100%;
     height: 60vh;
->>>>>>> ui-overhaul
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1605,137 +1557,6 @@
     gap:5px;
 }
 
-<<<<<<< HEAD
-.window .body.finances .tile.connect-account .stripe-window {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap:2rem;
-    height:80%;
-}
-
-.window .body.finances .tile.connect-account .stripe-window h4 {
-    text-align: center;
-}
-
-.window .body.finances .tile.connect-account.graph canvas {
-    min-height: 80%;
-}
-
-/* OVERVIEW */
-
-.window.dashboard.musician .overview-page {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(8, 1fr);
-    gap:1rem;
-    width:100%;
-    height: 100%;
-    overflow: auto;
-    padding: 2.5%;
-}
-
-.window.dashboard.musician .overview-page .grid-tile {
-    border-radius: 1rem;
-    box-shadow: 2px 2px 5px var(--gn-shadow);
-    padding: 5px 10px;
-    overflow: auto;
-    transition: all 200ms linear;
-}
-
-.window.dashboard.musician .overview-page .grid-tile.hoverable:hover {
-    background-color: var(--gn-grey-300);
-    cursor: pointer;
-    border-color: transparent;
-}
-
-.window.dashboard.musician .overview-page .grid-tile.loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.window.dashboard.musician .overview-page .grid-tile:nth-of-type(1) {
-    grid-column-start: 1;
-    grid-column-end: 6;
-    grid-row-start: 1;
-    grid-row-end: 5;
-}
-
-.window.dashboard.musician .overview-page .grid-tile:nth-of-type(2) {
-    grid-column-start: 6;
-    grid-column-end: 9;
-    grid-row-start: 1;
-    grid-row-end: 7;
-}
-
-.window.dashboard.musician .overview-page .grid-tile:nth-of-type(3) {
-    grid-column-start: 1;
-    grid-column-end: 6;
-    grid-row-start: 5;
-    grid-row-end: 9;
-}
-
-.window.dashboard.musician .overview-page .grid-tile:nth-of-type(4) {
-    grid-column-start: 6;
-    grid-column-end: 9;
-    grid-row-start: 7;
-    grid-row-end: 9;
-}
-
-@media (max-width: 1268px) {
-    .window.dashboard.musician .overview-page .grid-tile:nth-of-type(1) {
-        grid-column-start: 1;
-        grid-column-end: 9;
-        grid-row-start: 1;
-        grid-row-end: 5;
-    }
-
-    .window.dashboard.musician .overview-page .grid-tile:nth-of-type(2) {
-        display: none;
-    }
-
-    .window.dashboard.musician .overview-page .grid-tile:nth-of-type(4) {
-        display: none;
-    }
-
-    .window.dashboard.musician .overview-page .grid-tile:nth-of-type(3) {
-        grid-column-start: 1;
-        grid-column-end: 9;
-        grid-row-start: 5;
-        grid-row-end: 9;
-    }
-    
-    .window .body.finances .tile.your-fees {
-        grid-row-start: 1;
-        grid-row-end: 2;
-    }
-    }
-
-/* .window.dashboard.musician .overview-page .grid-tile:nth-of-type(3) {
-    grid-column-start: 1;
-    grid-column-end: 5;
-    grid-row-start: 5;
-    grid-row-end: 9;
-}
-
-.window.dashboard.musician .overview-page .grid-tile:nth-of-type(4) {
-    grid-column-start: 5;
-    grid-column-end: 7;
-    grid-row-start: 5;
-    grid-row-end: 9;
-}
-
-.window.dashboard.musician .overview-page .grid-tile:nth-of-type(5) {
-    grid-column-start: 7;
-    grid-column-end: 9;
-    grid-row-start: 7;
-    grid-row-end: 9;
-} */
-
-.window.dashboard.musician .overview-page .no-pending-fees {
-=======
 /* FINANCES */
 
 .window.musicians .head.finances .account-status {
@@ -1942,35 +1763,10 @@
 }
 
 .window.musicians .body.finances .connect-account .stripe-window .loading-state {
->>>>>>> ui-overhaul
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-<<<<<<< HEAD
-    gap:1rem;
-    height: 90%;
-}
-
-.window.dashboard.musician .overview-page .no-pending-fees .icon {
-    font-size: 2rem;
-}
-
-.window.dashboard.musician .overview-page .find-gig {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    padding-left: 25%;
-    gap:5%;
-}
-
-.window.dashboard.musician .overview-page .find-gig .icon {
-    font-size: 2rem;
-}
-
-.window.dashboard.musician .overview-page table {
-=======
     gap:5px;
 }
 
@@ -2042,7 +1838,6 @@
 }
 
 .window.musicians .body.finances table {
->>>>>>> ui-overhaul
     width: 100%;
     margin: 10px 0;
     font-size: 16px;
@@ -2051,19 +1846,6 @@
     border-spacing: 0;
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table tbody tr,
-.window.dashboard.musician .overview-page table thead tr {
-    border-bottom: 1px solid var(--gn-grey-350);
-}
-
-.window.dashboard.musician .overview-page table thead tr {
-    text-align: left;
-}
-
-.window.dashboard.musician .overview-page table thead tr th {
-    font-weight: 500;
-=======
 .window.musicians .body.finances table tbody tr,
 .window.musicians .body.finances table thead tr {
     border-bottom: 1px solid var(--gn-grey-350);
@@ -2075,23 +1857,10 @@
 
 .window.musicians .body.finances table thead tr th {
     font-weight: 400;
->>>>>>> ui-overhaul
     font-size: 0.9rem;
     color: var(--gn-black);
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table th,
-.window.dashboard.musician .overview-page table td {
-    padding: 5px 0px 5px 10px;
-}
-
-.window.dashboard.musician .overview-page table tbody td {
-    font-weight: var(--gn-semi-bold);
-}
-
-.window.dashboard.musician .overview-page table #date {
-=======
 .window.musicians .body.finances table th,
 .window.musicians .body.finances table td {
     padding: 5px 0px 5px 10px;
@@ -2099,47 +1868,22 @@
 
 
 .window.musicians .body.finances table #date {
->>>>>>> ui-overhaul
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table .centre {
-    text-align: center;
-}
-
-.window.dashboard.musician .overview-page table .status-box {
-=======
 .window.musicians .body.finances table .centre {
     text-align: center;
 }
 
 .window.musicians .body.finances table .status-box {
     width:100%;
->>>>>>> ui-overhaul
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table .status {
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap:5px;
-    padding:5px;
-    width:fit-content;
-    border-radius: 5px;
-    text-transform: capitalize;
-}
-
-.window.dashboard.musician .overview-page table .status.succeeded,
-.window.dashboard.musician .overview-page table .status.confirmed {
-=======
 .window.musicians .body.finances table .status {
     font-size: 0.8rem;
     display: inline-flex;
@@ -2166,152 +1910,40 @@
   }
 
 .window.musicians .body.finances table .status.succeeded {
->>>>>>> ui-overhaul
     border:1px solid rgb(0, 219, 0);
     background-color: rgba(0, 239, 0, 0.1);
     color: rgb(0, 219, 0);
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table .status.upcoming,
-.window.dashboard.musician .overview-page table .status.awaiting-payment {
-=======
 .window.musicians .body.finances table .status.upcoming {
->>>>>>> ui-overhaul
     border:1px solid orange;
     background-color: rgba(255, 166, 0, 0.1);
     color: orange;
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table .status.pending {
-=======
 .window.musicians .body.finances table .status.pending {
->>>>>>> ui-overhaul
     border:1px solid orange;
     background-color: rgba(255, 166, 0, 0.1);
     color: orange;
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table .status.previous {
-=======
 .window.musicians .body.finances table .status.past {
->>>>>>> ui-overhaul
     border:1px solid gray;
     background-color: rgba(128, 128, 128, 0.1);
     color: gray;
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table .status.declined {
-=======
 .window.musicians .body.finances table .status.declined {
->>>>>>> ui-overhaul
     border:1px solid var(--gn-red);
     background-color: var(--gn-offset-red);
     color: var(--gn-red);
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page table tbody tr:hover {
-=======
 .window.musicians .body.finances table tbody tr:hover {
->>>>>>> ui-overhaul
     background-color: var(--gn-grey-300);
     cursor: pointer;
 }
 
-<<<<<<< HEAD
-.window.dashboard.musician .overview-page .next-gig {
-    display: grid;
-    grid-template-rows: 47.5% 47.5%;
-    gap:5%;
-    padding: 1rem;
-    cursor: pointer;
-}
-
-.window.dashboard.musician .overview-page .next-gig:hover {
-    background-color: var(--gn-grey-300);
-}
-
-
-.window.dashboard.musician .overview-page .next-gig .top {
-    border:1px solid var(--gn-grey-350);
-    border-radius: 10px;
-    box-shadow: 0 0 5px var(--gn-shadow);
-    background-color: var(--gn-white);
-}
-
-.window.dashboard.musician .overview-page .next-gig .top {
-    padding: 1rem 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.window.dashboard.musician .overview-page .next-gig .top .right {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap:5px;
-}
-
-.window.dashboard.musician .overview-page .next-gig .bottom {
-    display: grid;
-    grid-template-columns: 75% 20%;
-    width:100%;
-    height:100%;
-    gap:5%;
-}
-
-.window.dashboard.musician .overview-page .next-gig .bottom .map-container {
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 0 5px var(--gn-shadow);
-}
-.window.dashboard.musician .overview-page .next-gig .bottom .name-and-address {
-    display: flex;
-    align-items: flex-end;
-    gap:1rem;
-    margin-bottom: 5px;
-}
-
-.window.dashboard.musician .overview-page .next-gig .bottom .name-and-address h2 {
-    line-height: 1.5rem;
-}
-
-.window.dashboard.musician .overview-page .next-gig .bottom .right {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.window.dashboard.musician .overview-page .next-gig .top .icon-and-title {
-    display: flex;
-    align-items: center;
-    gap:1rem;
-    margin-bottom: 1rem;
-}
-
-.window.dashboard.musician .overview-page .next-gig .top .icon-container {
-    background-color: var(--gn-off-black);
-    box-shadow: 0 0 10px var(--gn-grey-400);
-    padding: 1rem;
-    border-radius: 10px;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.window.dashboard.musician .overview-page .next-gig .top .icon-container .icon {
-    color: var(--gn-white);
-    font-size: 2rem;
-}
-
-=======
 .window.musicians .body.finances table .no-receipts .data .flex {
     display: flex;
     flex-direction: column;
@@ -2324,4 +1956,3 @@
 .window.musicians .body.finances table .no-receipts .data .icon {
     font-size: 3rem;
 }
->>>>>>> ui-overhaul

@@ -5,8 +5,6 @@
     padding-bottom: 5rem !important;
 }
 
-<<<<<<< HEAD
-=======
 .gig-page-body .loading-state {
     width:100%;
     min-height:75vh;
@@ -30,7 +28,6 @@
 .gig-page-body h4 {
     font-size: 1.25rem;
 }
->>>>>>> ui-overhaul
 
 /* VENUE TITLE */
 
@@ -49,11 +46,8 @@
 
 .gig-page-body .head .title h1 {
     line-height: 110%;
-<<<<<<< HEAD
-=======
     font-size: 2.5rem;
     font-weight: 600;
->>>>>>> ui-overhaul
 }
 
 .gig-page-body .head .options .btn:first-of-type {
@@ -194,17 +188,11 @@
     grid-column-end: 2;
 }
 
-<<<<<<< HEAD
-.gig-page-body .gig-info .details,
-.gig-page-body .gig-info .timeline,
-.gig-page-body .gig-info .location,
-=======
 .gig-page-body .gig-info .gig-host,
 .gig-page-body .gig-info .details,
 .gig-page-body .gig-info .timeline,
 .gig-page-body .gig-info .location,
 .gig-page-body .gig-info .equipment,
->>>>>>> ui-overhaul
 .gig-page-body .gig-info .description,
 .gig-page-body .gig-info .extra-info,
 .gig-page-body .gig-info .socials {
@@ -212,16 +200,6 @@
     padding: 1rem 0;
 }
 
-<<<<<<< HEAD
-
-/* ACTION BOX */
-.gig-page-body .action-box {
-    grid-column-start: 2;
-    grid-column-end: 3;
-    position: sticky;
-    top: 1rem;
-    width: 100%;
-=======
 .gig-page-body .gig-info .gig-host h5 {
     font-weight: 500;
     margin-bottom: 5px;
@@ -242,7 +220,6 @@
 
 .gig-page-body .action-box {
     width:100%;
->>>>>>> ui-overhaul
     background: var(--gn-white);
     padding: 1rem;
     box-shadow: 0 0 10px var(--gn-shadow);
@@ -264,13 +241,10 @@
     gap:5px;
 }
 
-<<<<<<< HEAD
-=======
 .gig-page-body .action-box-budget h2 {
     font-size: 1.75rem;
 }
 
->>>>>>> ui-overhaul
 .gig-page-body .action-box-fees {
     margin: 1rem 0;
 }
@@ -293,8 +267,6 @@
     font-size: 0.9rem;
 }
 
-<<<<<<< HEAD
-=======
 .gig-page-body .action-box-buttons {
     margin-top: 1rem;
 }
@@ -308,7 +280,6 @@
     justify-content: center;
 }
 
->>>>>>> ui-overhaul
 .gig-page-body .action-box-buttons .btn {
     width: 100%;
 }
@@ -318,11 +289,6 @@
     gap:5px;
 }
 
-<<<<<<< HEAD
-.gig-page .input {
-    padding:10px 5px;
-    border: 1px solid var(--gn-grey-400);
-=======
 .gig-page-body .action-box-buttons .private-applications {
     text-align: center;
     margin-top: -0.5rem;
@@ -336,7 +302,6 @@
 .gig-page .input {
     padding:10px 5px;
     border: 1px solid transparent;
->>>>>>> ui-overhaul
     border-radius: 5px;
     background-color: var(--gn-white);
     text-align: center;
@@ -349,8 +314,6 @@
     outline:none;
 }
 
-<<<<<<< HEAD
-=======
 .gig-page .gig-kind {
     display: flex;
     align-items: flex-start;
@@ -367,7 +330,6 @@
 .gig-page-body .profile-select-wrapper label {
     font-weight: 500;
 }
->>>>>>> ui-overhaul
 
 /* IMPORTANT INFO */
 
@@ -383,33 +345,6 @@
     padding: 0.5rem 0;
 }
 
-<<<<<<< HEAD
-/* DETAILS */
-
-.gig-page-body .details-list {
-    width:100%;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap:5px;
-}
-
-.gig-page-body .details-list .detail {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border:1px solid var(--gn-grey-350);
-    border-radius: 1rem;
-    box-shadow: 0 0 5px var(--gn-shadow);
-    padding: 1rem;
-}
-
-.gig-page-body .details-list .detail .data {
-    margin-top: 5px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-=======
 .gig-page-body .important-info .date-and-time .btn {
     display: flex;
     align-items: center;
@@ -448,7 +383,6 @@
 .gig-page-body .details .detail .detail-title {
     font-weight: 500;
     font-size: 1.1rem;
->>>>>>> ui-overhaul
 }
 
 
@@ -460,11 +394,7 @@
     justify-content: center;
     width: 100%;
     margin: 2rem 0;
-<<<<<<< HEAD
-    overflow-x: auto;
-=======
     overflow-x: hidden;
->>>>>>> ui-overhaul
     border-bottom: 1px solid var(--gn-grey-500);
 }
 
@@ -512,20 +442,6 @@
     font-size: 0.9rem;
     text-align: center;
     font-weight: 500;
-<<<<<<< HEAD
-}
-
-.gig-page-body .timeline-context p {
-    font-size: 0.8rem;
-    text-align: center;
-}
-
-.gig-page-body .timeline .disclaimers p {
-    font-size: 0.8rem;
-    margin-top: 0.5rem;
-}
-
-=======
     margin-bottom: 2px;
 }
 
@@ -554,7 +470,6 @@
 }
 
 
->>>>>>> ui-overhaul
 /* DESCRIPTION */
 
 .gig-page-body .description h4 {
@@ -575,77 +490,40 @@
 .gig-page-body .socials .links {
     display: flex;
     align-items: center;
-<<<<<<< HEAD
-    gap: 2rem;
-=======
     gap: 1rem;
->>>>>>> ui-overhaul
     margin-top: 1rem;
 }
 
 .gig-page-body .socials .links .icon {
     font-size: 2rem;
-<<<<<<< HEAD
-}
-
-
-/* SIMILAR GIGS */
-
-/* .gig-page-body .similar-gigs {
-=======
     color: var(--gn-off-black);
 }
 
 /* SIMILAR GIGS */
 
 .gig-page-body .similar-gigs {
->>>>>>> ui-overhaul
     padding-top: 1rem;
 }
 
 .gig-page-body .similar-gigs-list {
     max-width: 75vw;
     margin-top:0.5rem;
-<<<<<<< HEAD
-    padding: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap:1rem;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-
-.gig-page-body .similar-gigs-list::-webkit-scrollbar {
-    display: none;
-=======
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     gap:1rem;
->>>>>>> ui-overhaul
 }
 
 .gig-page-body .similar-gigs-list .similar-gig-item {
     background-color: var(--gn-white);
-<<<<<<< HEAD
-    border: 1px solid var(--gn-grey-400);
-=======
     border: 1px solid var(--gn-grey-350);
->>>>>>> ui-overhaul
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-<<<<<<< HEAD
-    min-width: 300px;
-=======
     width:100%;
->>>>>>> ui-overhaul
     height: 75px;
     padding: 0.5rem;
     padding-right: 1rem;
@@ -697,8 +575,4 @@
     display: flex;
     align-items: center;
     justify-content: center;
-<<<<<<< HEAD
-} */
-=======
 }
->>>>>>> ui-overhaul
