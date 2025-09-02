@@ -82,6 +82,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
         setAuthClosable(true);
       }
     } catch (err) {
+      console.log(err)
       switch (err.error.code) {
         case 'auth/email-already-in-use':
           setError({ status: true, input: 'email', message: '*Email already in use.' });

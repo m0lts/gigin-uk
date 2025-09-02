@@ -210,7 +210,7 @@ export const useAuth = () => {
       }
       return { needsEmailVerify: true };
     } catch (error) {
-      console.log(error)
+      console.log('signup function', error)
       setUser(null);
       throw { error }
     }
@@ -301,23 +301,23 @@ const resetPassword = async (rawEmail) => {
       }
     } catch (error) {
       console.log(error);
-      if (error?.code === 'auth/account-exists-with-different-credential') {
-        const email = error.customData?.email;
-        const methods = email ? await fetchSignInMethodsForEmail(auth, email) : [];
-        throw {
-          error: {
-            code: error.code,
-            message: `Account already exists with: ${methods.join(', ')}`,
-          },
-        };
-      } else if (error?.code === 'auth/popup-closed-by-user') {
-        throw {
-          error: {
-            code: error.code,
-            message: '*Google Sign In Failed',
-          },
-        };
-      }
+      // if (error?.code === 'auth/account-exists-with-different-credential') {
+      //   const email = error.customData?.email;
+      //   const methods = email ? await fetchSignInMethodsForEmail(auth, email) : [];
+      //   throw {
+      //     error: {
+      //       code: error.code,
+      //       message: `Account already exists with: ${methods.join(', ')}`,
+      //     },
+      //   };
+      // } else if (error?.code === 'auth/popup-closed-by-user') {
+      //   throw {
+      //     error: {
+      //       code: error.code,
+      //       message: '*Google Sign In Failed',
+      //     },
+      //   };
+      // }
       throw { error };
     }
   };
@@ -371,15 +371,15 @@ const resetPassword = async (rawEmail) => {
         navigate('/');
       }
     } catch (error) {
-      if (error?.code === 'auth/popup-closed-by-user') {
-        throw {
-          error: {
-            code: error.code,
-            message: `*Google Sign Up Failed`,
-          }
-        };
-      }
       throw { error };
+      // if (error?.code === 'auth/popup-closed-by-user') {
+      //   throw {
+      //     error: {
+      //       code: error.code,
+      //       message: `*Google Sign Up Failed`,
+      //     }
+      //   };
+      // }
     }
   };
 
