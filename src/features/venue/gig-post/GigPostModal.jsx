@@ -578,20 +578,16 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 templateId: _discardTemplateId,
                 createdAt: _discardCreatedAt,
                 gigId: _discardGigId,
-                ...base // everything else you do want
+                ...base
               } = formData;
-          
-              // one unique ID per slot for THIS occurrence
               const groupIds = Array.from({ length: allSlots.length }, () => uuidv4());
-          
               for (let i = 0; i < allSlots.length; i++) {
                 const slot = allSlots[i];
                 const slotGigId = groupIds[i];
                 const slotBudgetValue = budgetValues[i];
                 const slotBudgetText = formatPounds(slotBudgetValue);
-          
                 const slotGig = {
-                  ...base,                              // clean base (no gigSlots from formData)
+                  ...base,
                   gigId: slotGigId,
                   date: occDate,
                   gigName: `${formData.gigName} (Set ${i + 1})`,
@@ -603,18 +599,14 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                   budget: slotBudgetText,
                   ...getGeoField(formData.coordinates),
                   budgetValue: slotBudgetValue,
-          
-                  // ✅ only ids of the *other* slots in this occurrence
                   gigSlots: groupIds.filter(id => id !== slotGigId),
+                  applicants: [],
                 };
-          
                 allGigsToPost.push(slotGig);
                 if (!firstGigDoc) firstGigDoc = slotGig;
               }
             } else {
-              // single-slot occurrence
               const occurrenceGigId = uuidv4();
-          
               const {
                 gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
@@ -625,12 +617,10 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 gigId: _discardGigId,
                 ...base
               } = formData;
-          
               const privateLink =
                 base.privateApplications
                   ? `https://www.gigin.ltd/gig/${occurrenceGigId}?token=${base.privateApplicationToken ?? uuidv4()}`
                   : null;
-          
               const singleGig = {
                 ...base,
                 gigId: occurrenceGigId,
@@ -641,7 +631,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 ...getGeoField(base.coordinates),
                 budgetValue: getBudgetValue(base.budget),
                 privateApplicationsLink: privateLink,
-                // no gigSlots on single-slot gigs
+                applicants: [],
               };
           
               allGigsToPost.push(singleGig);
