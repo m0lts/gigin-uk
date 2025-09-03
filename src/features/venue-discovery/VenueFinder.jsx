@@ -9,7 +9,7 @@ import { TopBanner } from './TopBanner';
 import { fetchNearbyVenues } from '../../services/venues';
 import Portal from '../shared/components/Portal';
 
-export const VenueFinder = ({ user, setAuthModal, setAuthType }) => {
+export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, noProfileModal }) => {
   const [venues, setVenues] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -55,9 +55,9 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType }) => {
   return (
     <section className='gig-finder'>
       {!user || !user.musicianProfile ? (
-        <CommonHeader setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} />
+        <CommonHeader setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} />
       ) : (
-        <MusicianHeader setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} />
+        <MusicianHeader setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} />
       )}
       <div className="body">
         <TopBanner venueCount={venues.length} />
