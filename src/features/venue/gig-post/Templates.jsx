@@ -57,14 +57,38 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetForm
     };
 
     const formatDate = (date) => {
-        const d = date.toDate();
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = d.getFullYear();
-        const hours = String(d.getHours()).padStart(2, '0');
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        return `${hours}:${minutes} - ${day}/${month}/${year}`;
-    }
+        try {
+          let d;
+      
+          if (!date) return "Invalid date";
+      
+          // Firestore Timestamp with toDate()
+          if (typeof date.toDate === "function") {
+            d = date.toDate();
+          }
+          // Already a JS Date
+          else if (date instanceof Date) {
+            d = date;
+          }
+          // ISO/string/number timestamp
+          else {
+            d = new Date(date);
+          }
+      
+          if (isNaN(d.getTime())) return "Invalid date";
+      
+          const day = String(d.getDate()).padStart(2, "0");
+          const month = String(d.getMonth() + 1).padStart(2, "0");
+          const year = d.getFullYear();
+          const hours = String(d.getHours()).padStart(2, "0");
+          const minutes = String(d.getMinutes()).padStart(2, "0");
+      
+          return `${hours}:${minutes} - ${day}/${month}/${year}`;
+        } catch (err) {
+          console.error("Error formatting date:", err, date);
+          return "Invalid date";
+        }
+      };
 
     return (
         <>  
