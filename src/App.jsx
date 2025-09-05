@@ -75,6 +75,13 @@ export default function App() {
   }
 
   useEffect(() => {
+    // ✅ Skip all checks in dev mode
+    if (import.meta.env.MODE === 'development') {
+      setVerifyEmailModal(false);
+      setVerifyInfoModal(false);
+      return;
+    }
+  
     const u = auth.currentUser;
     if (!u) {
       setVerifyEmailModal(false);
@@ -92,7 +99,7 @@ export default function App() {
     const hours = (Date.now() - createdAtMs) / 36e5;
     setVerifyEmailModal(hours >= 48);
     if (newUser) setVerifyInfoModal(true);
-  }, [user]);
+  }, [user, newUser]);
 
   if (loading) {
     return <LoadingScreen />;

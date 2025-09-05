@@ -107,6 +107,27 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         fetchVenueAndGigs();
     }, [venueId]);
 
+    useEffect(() => {
+        if (!venueViewing) return;
+        const isMusician = !!user?.musicianProfile?.id;
+        const shouldHideVenueView = !user || isMusician;
+        if (!shouldHideVenueView) return;
+        const params = new URLSearchParams(searchParams);
+        params.delete('venueViewing');
+        if (isMusician) {
+          params.set('musicianId', user.musicianProfile.id);
+        } else {
+          params.delete('musicianId');
+        }
+        navigate(
+          {
+            pathname: `/venues/${venueId}`,
+            search: params.toString() ? `?${params.toString()}` : '',
+          },
+          { replace: true }
+        );
+      }, [venueViewing, user, searchParams, venueId, navigate]);
+
 
     useMapbox({
         containerRef: mapContainerRef,
