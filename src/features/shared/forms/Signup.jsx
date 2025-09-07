@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { GoogleIcon } from '../ui/extras/Icons';
 import { PhoneField, isValidE164 } from './PhoneField';
 import { phoneExists } from '../../../services/users';
+import { getPhoneExistsBoolean } from '../../../services/functions';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
@@ -68,7 +69,8 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     setLoading(true);
 
     try {
-      if (await phoneExists(credentials.phoneNumber)) {
+      const exists = await getPhoneExistsBoolean(credentials.phoneNumber);
+      if (exists) {
         setError({ status: true, input: 'phoneNumber', message: '*Phone number already in use.' });
         return;
       }

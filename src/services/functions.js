@@ -244,3 +244,9 @@ export const getConnectAccountStatus = async () => {
   const { data } = await fn();
   return data;
 };
+
+export const getPhoneExistsBoolean = async (phoneNumber) => {
+  const fn = httpsCallable(functions, 'getPhoneExistsBoolean');
+  const { data } = await fn({ phoneNumber });
+  return !!data; // expect boolean
+};

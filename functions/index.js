@@ -404,6 +404,30 @@ exports.confirmPayment = onCall(
       }
     });
 
+exports.getPhoneExistsBoolean = onCall(
+    {
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
+    async (request) => {
+      try {
+        const {phoneNumber} = request.data || {};
+        if (!phoneNumber) {
+          throw new Error("phoneNumber is required");
+        }
+        const snap = await admin
+            .firestore()
+            .collection("users")
+            .where("phoneNumber", "==", phoneNumber)
+            .limit(1)
+            .get();
+        return !snap.empty;
+      } catch (error) {
+        console.error("Error checking phone existence:", error);
+        throw new Error("Unable to check phone number.");
+      }
+    });
+
 exports.createGigPaymentIntent = onCall(
     {
       secrets: [stripeLiveKey, stripeTestKey],
@@ -2070,10 +2094,6 @@ const handlePaymentSuccess = async (paymentIntent) => {
         to: musicianEmail,
         message: mailMessage,
       });
-      await notifyOtherMusiciansOfGigConfirmation(
-          gigData,
-          musicianProfile.musicianId,
-      );
     });
     console.log(
         `Gig ${gigId} updated successfully after payment confirmation.`,
