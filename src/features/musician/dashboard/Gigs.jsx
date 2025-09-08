@@ -82,7 +82,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
             if (applicant.status === 'confirmed') {
                 return { icon: <TickIcon />, text: 'Confirmed' };
             }
-            if (applicant.status === 'accepted') {
+            if (applicant.status === 'accepted' || applicant.status === 'payment processing') {
                 return { icon: <ClockIcon />, text: 'Awaiting Venue Payment' };
             }
             if (applicant.status === 'pending' && applicant.invited) {
@@ -405,7 +405,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             </tr>
                                         )}
                                         <tr onClick={
-                                            gigStatus.text.toLowerCase() === 'confirmed'
+                                            gigStatus?.text.toLowerCase() === 'confirmed'
                                                 ? () => openGigHandbook(gig)
                                                 : gig.privateApplications ?
                                                 (e) => openInNewTab(`${gig.privateApplicationsLink}`, e) :
@@ -448,15 +448,15 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             </td>
                                             <td
                                                 className={`status-box ${
-                                                    gigStatus.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus.text.toLowerCase() === 'awaiting your response' || gigStatus.text.toLowerCase() === 'awaiting venue response' ? 'pending' : gigStatus.text.toLowerCase() === 'not applied' ? 'past' : gigStatus.text.toLowerCase() 
+                                                    gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase() 
                                                 }`}
                                             >
                                                 <div
                                                     className={`status ${
-                                                        gigStatus.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus.text.toLowerCase() === 'awaiting your response' || gigStatus.text.toLowerCase() === 'awaiting venue response' ? 'pending' : gigStatus.text.toLowerCase() === 'not applied' ? 'past' : gigStatus.text.toLowerCase()
+                                                        gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase()
                                                     }`}
                                                 >
-                                                    {gigStatus.icon} {gigStatus.text}
+                                                    {gigStatus.icon} {gigStatus?.text}
                                                 </div>
                                             </td>
                                             <td className="options-cell" onClick={(e) => e.stopPropagation()}>

@@ -165,6 +165,7 @@ export const VenueDashboard = ({ user }) => {
                 <ReviewModal
                     gigData={gigToReview}
                     reviewer='venue'
+                    setGigData={setGigToReview}
                     onClose={() => {
                         setShowReviewModal(false);
                         localStorage.setItem(`reviewedGig-${gigToReview.gigId}`, 'true');

@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/payments';
 import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/emails';
 import Portal from './Portal';
+import { getOrCreateConversation } from '../../../services/conversations';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);

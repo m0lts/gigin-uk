@@ -1826,8 +1826,10 @@ const handlePaymentSuccess = async (paymentIntent) => {
   formattedGigDate.setHours(hours);
   formattedGigDate.setMinutes(minutes);
   formattedGigDate.setSeconds(0);
+  // const disputePeriodDate =
+  // new Date(formattedGigDate.getTime() + 48 * 60 * 60 * 1000);
   const disputePeriodDate =
-  new Date(formattedGigDate.getTime() + 48 * 60 * 60 * 1000);
+  new Date(formattedGigDate.getTime() + 60 * 60 * 1000);
   const maxAllowedDate = new Date(Date.now() + 720 * 60 * 60 * 1000);
   const gigStartDate =
   new Date(formattedGigDate.getTime());

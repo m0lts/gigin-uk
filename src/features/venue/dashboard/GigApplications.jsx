@@ -466,7 +466,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                         Applications for "{gigInfo.gigName}"
                     </h1>
                     <h3>{gigInfo.startTime} {formatDate(gigInfo.date)} at {venueName}</h3>
-                    <button className="btn text" style={{ marginTop: 5 }} onClick={(e) => openInNewTab(`/gig/${gigInfo.gigId}?venue=true`, e)}>Visit Gig Page <NewTabIcon /></button>
+                    <button className="btn text" style={{ marginTop: 5 }} onClick={(e) => openInNewTab(`/gig/${gigInfo.gigId}?venueViewing=true`, e)}>Visit Gig Page <NewTabIcon /></button>
                 </div>
                 {getLocalGigDateTime(gigInfo) > now && (
                     <div className='action-buttons'>
