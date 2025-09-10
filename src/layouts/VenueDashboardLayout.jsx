@@ -12,6 +12,7 @@ export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user
 
     useEffect(() => {
         if (!loading && !user) {
+            navigate('/venues')
             setAuthModal(true);
             setAuthClosable(false);
         }

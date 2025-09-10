@@ -35,7 +35,7 @@ function formatPounds(amount) {
     return Number.isInteger(rounded) ? `£${rounded}` : `£${rounded.toFixed(2)}`;
 }
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests }) => {
     const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
@@ -125,8 +125,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         refreshTemplates();
         refreshGigs();
     }, []);
-
-    console.log(formData)
 
     useEffect(() => {
         if (buildingForMusician && buildingForMusicianData) {
@@ -507,6 +505,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
         return isNaN(parsed) ? null : parsed;
     };
 
+
     const handlePostGig = async () => {
         setLoading(true);
         try {
@@ -576,7 +575,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
               }
               const budgetValues = budgets.map(b => parseInt(String(b).replace(/[^\d]/g, ''), 10) || 0);
           
-              // ⚠️ Strip fields that must NOT carry over from formData
               const {
                 gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
@@ -614,7 +612,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 if (!firstGigDoc) firstGigDoc = slotGig;
               }
             } else {
-              const occurrenceGigId = uuidv4();
+              const occurrenceGigId = editGigData ? formData.gigId : uuidv4();
               const {
                 gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
@@ -648,6 +646,17 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
             }
             }
             await postMultipleGigs(formData.venueId, allGigsToPost);
+            const newGigIds = allGigsToPost.map(g => g.gigId);
+            setVenueProfiles(prev => {
+                if (!Array.isArray(prev)) return prev;
+                return prev.map(vp => {
+                    const vpId = vp?.id ?? vp?.venueId;
+                    if (vpId !== formData.venueId) return vp;
+                    const existing = Array.isArray(vp.gigs) ? vp.gigs : [];
+                    const gigs = Array.from(new Set([...existing, ...newGigIds]));
+                    return { ...vp, gigs };
+                });
+            });
             if (buildingForMusician && firstGigDoc) {
                 const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
                 const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);

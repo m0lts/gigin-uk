@@ -6,7 +6,7 @@ import VenueImg from '@assets/images/venue-welcome.png';
 import '@styles/host/info.styles.css'
 import Portal from '../../shared/components/Portal';
 
-export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
+export const VenueHome = ({ user, setAuthModal, setAuthType, setNoProfileModal, noProfileModal, setNoProfileModalClosable }) => {
 
     const navigate = useNavigate();
     const [showErrorModal, setShowErrorModal] = useState(false);
@@ -25,6 +25,8 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
         }
     }
 
+    console.log(user)
+
     return (
         <div className='venue-welcome-page'>
             {user && !user.musicianProfile && !user.venueProfiles ? (
@@ -32,12 +34,20 @@ export const VenueHome = ({ user, setAuthModal, setAuthType }) => {
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
                     user={user}
+                    setNoProfileModal={setNoProfileModal}
+                    noProfileModal={noProfileModal}
+                    noProfileModalClosable={true}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
                 />
             ) : (
                 <VenuesHeader
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
                     user={user}
+                    setNoProfileModal={setNoProfileModal}
+                    noProfileModal={noProfileModal}
+                    noProfileModalClosable={true}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
                 />
             )}
             <div className='body'>

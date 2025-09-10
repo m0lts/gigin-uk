@@ -32,7 +32,7 @@ import { openInNewTab } from '@services/utils/misc';
 import { createVenueRequest, getMusicianProfileByMusicianId } from '../../../services/musicians';
 import { toast } from 'sonner';
 import { getOrCreateConversation } from '../../../services/conversations';
-import { CashIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, QuestionCircleIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { AmpIcon, CashIcon, LinkIcon, MicrophoneIconSolid, MonitorIcon, NewTabIcon, OptionsIcon, PianoIcon, PlugIcon, QuestionCircleIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
@@ -53,6 +53,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [requestMessage, setRequestMessage] = useState('');
     const [confirmedGigs, setConfirmedGigs] = useState([]);
+    const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
         if (!venueId) return;
@@ -182,6 +183,30 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         window.open(baseUrl + queryParams, '_blank');
     };
 
+    const formatEquipmentIcon = (input) => {
+        if (input === 'PA System' || input === 'Speakers') {
+            return <SpeakersIcon />
+        } else if (input === 'Stage Monitors') {
+            return <MonitorIcon />
+        } else if (input === 'Guitar Amp' || input === 'Bass Amp') {
+            return <AmpIcon />
+        } else if (input === 'Mixing/Sound Desk') {
+            return <ClubIcon />
+        } else if (input === 'DI Boxes') {
+            return <PlugIcon />
+        } else if (input === 'Cables (XLRs, Jack Leads)') {
+            return <LinkIcon />
+        } else if (input === 'Guitar') {
+            return <GuitarsIcon />
+        } else if (input === 'Piano/Keyboard') {
+            return <PianoIcon />
+        } else if (input === 'Bass') {
+            return <PlugIcon />
+        } else {
+            return <MicrophoneIcon />
+        }
+    }
+
     return (
         <div className='venue-page'>
             {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
@@ -271,6 +296,22 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
                                             Get Directions <NewTabIcon />
                                         </button>
+                                    </div>
+                                    <div className="info-box equipment">
+                                        <div className="info-box-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                            <h2>Equipment at {venueData.name}</h2>
+                                            <button className="btn text" onClick={() => setExpanded(!expanded)}>
+                                                {expanded ? 'Hide' : 'Show'}
+                                            </button>
+                                        </div>
+                                        {expanded && venueData.type === 'Public Establishment' && (
+                                            venueData.equipment.map((e) => (
+                                                <span className="equipment-item" key={e}>
+                                                    {formatEquipmentIcon(e)}
+                                                    {e}
+                                                </span>
+                                            ))
+                                        )}
                                     </div>
                                     {venueData?.website && (
                                         <div className="info-box website">

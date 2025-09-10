@@ -28,6 +28,7 @@ export const VenueDashboard = ({ user }) => {
     const {
       loading,
       venueProfiles,
+      setVenueProfiles,
       gigs,
       incompleteGigs,
       templates,
@@ -141,7 +142,8 @@ export const VenueDashboard = ({ user }) => {
               <Portal>
                 <GigPostModal 
                   setGigPostModal={setGigPostModal} 
-                  venueProfiles={venueProfiles} 
+                  venueProfiles={venueProfiles}
+                  setVenueProfiles={setVenueProfiles}
                   user={user} 
                   templates={templates} 
                   incompleteGigs={incompleteGigs} 

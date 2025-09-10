@@ -5,7 +5,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '@services/utils/dates';
 import { LoadingSpinner, LoadingThreeDots } from '../shared/ui/loading/Loading';
 import { openInNewTab } from '../../services/utils/misc';
-import { MapIcon } from '../shared/ui/extras/Icons';
+import { CloseIcon, MapIcon } from '../shared/ui/extras/Icons';
 
 const labelFor = (g) =>
 ((g.budget === '£' || g.budget === 'No Fee') && (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
@@ -282,6 +282,13 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
         {clickedGigs.length > 0 && (
           <div className="preview-gig-container">
             <ul className="preview-gig-list">
+              <button
+                className="btn danger clear-all"
+                onClick={() => setClickedGigs([])}
+              >
+                <ErrorIcon />
+                Clear All
+              </button>
               {clickedGigs.map((gig, i) => (
                 <li key={i} className="preview-gig-item" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
                   <button className="btn danger" onClick={(e) => {

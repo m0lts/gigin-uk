@@ -8,7 +8,7 @@ import { Photos } from './Photos';
 import { AdditionalDetails } from './AdditionalDetails';
 import '@styles/host/venue-builder.styles.css'
 import { UploadingProfile } from './UploadingProfile';
-import { arrayUnion, arrayRemove, GeoPoint } from 'firebase/firestore';
+import { arrayUnion, arrayRemove, GeoPoint, deleteField } from 'firebase/firestore';
 import { createVenueProfile, deleteVenueProfile } from '@services/venues';
 import { updateUserDocument } from '@services/users';
 import { useResizeEffect } from '@hooks/useResizeEffect';
@@ -19,9 +19,12 @@ import { toast } from 'sonner';
 import { Links } from './Links';
 import { geohashForLocation } from 'geofire-common';
 import Portal from '../../shared/components/Portal';
+import { useAuth } from '../../../hooks/useAuth';
+import { deleteVenueProfileInUserDocument } from '../../../services/users';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
+    const { setUser } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const { venue } = location.state || {};
@@ -156,6 +159,34 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             progressIntervals.forEach((value, index) => {
                 setTimeout(() => setProgress(value), 1000 * (index + 1));
             });
+            setUser(prev => {
+                if (!prev) return prev;
+              
+                const prevProfiles = Array.isArray(prev.venueProfiles) ? prev.venueProfiles : [];
+              
+                const newProfile = {
+                  ...updatedFormData,
+                  id: formData.venueId,
+                  venueId: formData.venueId,
+                };
+              
+                const idx = prevProfiles.findIndex(p => (p?.id ?? p?.venueId) === formData.venueId);
+              
+                const nextProfiles =
+                  idx >= 0
+                    ? [
+                        ...prevProfiles.slice(0, idx),
+                        { ...prevProfiles[idx], ...newProfile },
+                        ...prevProfiles.slice(idx + 1),
+                      ]
+                    : [...prevProfiles, newProfile];
+              
+                return {
+                  ...prev,
+                  venueProfiles: nextProfiles,
+                  lastUpdatedAt: Date.now(),
+                };
+              });
             setTimeout(() => {
                 navigate('/venues/dashboard/gigs', { state: { newUser: true } });
                 setUploadingProfile(false)
@@ -179,8 +210,14 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
     const handleSaveAndExit = async () => {
         if (formData.name === '') {
-            navigate(-1);
-            return;
+            if (Array.isArray(user.venueProfiles) && user.venueProfiles.length < 1) {
+                await deleteVenueProfileInUserDocument(user.uid);
+                window.location.href = '/';
+                return;
+            } else {
+                navigate(-1);
+                return;
+            }
         }
         try {
             setSaving(true);
@@ -208,8 +245,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             await updateUserDocument(user.uid, {
                 venueProfiles: arrayUnion(formData.venueId),
             });
-            console.log(user)
-            if (updatedFormData.completed || user.venueProfiles.length > 0) {
+            if (updatedFormData.completed || (user?.venueProfiles && user?.venueProfiles?.length > 1)) {
                 navigate('/venues/dashboard/gigs')
             } else {
                 navigate('/venues');
@@ -234,18 +270,22 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
     const handleDeleteSavedProfile = async () => {
         try {
-            await deleteVenueProfile(savedProfile.venueId);
-            await updateUserDocument(user.uid, {
-                venueProfiles: arrayRemove(savedProfile.venueId),
-            });
-            setCompleteSavedProfileModal(false);
-            setSavedProfile();
-            toast.info('Saved profile deleted.')
+          await deleteVenueProfile(savedProfile.venueId);
+          await updateUserDocument(user.uid, {
+            venueProfiles: arrayRemove(savedProfile.venueId),
+          });
+          if (Array.isArray(user.venueProfiles) && user.venueProfiles.length < 1) {
+            console.log('running delete')
+            await deleteVenueProfileInUserDocument(user.uid);
+          }
+          setCompleteSavedProfileModal(false);
+          setSavedProfile(undefined);
+          toast.info('Saved profile deleted.');
         } catch (error) {
-            toast.error('Failed to delete saved profile.')
-            console.error(error);
+          toast.error('Failed to delete saved profile.');
+          console.error(error);
         }
-    }
+      };
 
     const getCurrentStep = () => {
         if (location.pathname.includes('venue-details')) return 2;

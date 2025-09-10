@@ -82,6 +82,22 @@ export const updateUserDocument = async (userId, data) => {
 /*** DELETE OPERATIONS ***/
 
 /**
+ * Deletes a venue document reference from the user document in Firestore.
+ *
+ * @param {string} userId - Firestore document ID of the user profile to delete.
+ * @returns {Promise<void>}
+ */
+export const deleteVenueProfileInUserDocument = async (userId) => {
+  try {
+    const userRef = doc(firestore, 'users', userId);
+    await updateDoc(userRef, { venueProfiles: deleteField() });
+  } catch (error) {
+    console.error('Error deleting user profile:', error);
+    throw error;
+  }
+};
+
+/**
  * Deletes a user document from Firestore.
  *
  * @param {string} userId - Firestore document ID of the user profile to delete.

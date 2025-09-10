@@ -1,8 +1,0 @@
-.layout-messages {
-    display: grid;
-    grid-template-rows: 60px auto;
-    height:100vh;
-}
-.layout-messages .body {
-    height: 100%;
-}

@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(2px);
+  background-color: #fff;
 }
 
 .loading-screen .loading-body {

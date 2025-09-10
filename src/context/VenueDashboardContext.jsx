@@ -104,7 +104,7 @@ export const VenueDashboardProvider = ({ user, children }) => {
 
   return (
     <VenueDashboardContext.Provider
-      value={{ loading, venueProfiles, gigs, incompleteGigs, templates, requests, setRequests, stripe, refreshData, setStripe,
+      value={{ loading, venueProfiles, setVenueProfiles, gigs, incompleteGigs, templates, requests, setRequests, stripe, refreshData, setStripe,
         refreshGigs,
         refreshTemplates,
         refreshStripe }}

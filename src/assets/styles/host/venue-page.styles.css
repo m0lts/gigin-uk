@@ -165,6 +165,18 @@
     margin-top: 0.5rem;
 }
 
+.venue-page-body .venue-page-information .venue-page-details .section .equipment .equipment-item {
+    display: flex;
+    gap:5px;
+    align-items: center;
+    padding:1rem 0.5rem;
+    font-weight: 400;
+}
+
+.venue-page-body .venue-page-information .venue-page-details .section .equipment .equipment-item .icon {
+    font-size: 1.25rem;
+}
+
 .venue-page-body .venue-page-information .venue-page-details .section .website a {
     width: 100%;
     display: inline-block;

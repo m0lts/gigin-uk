@@ -287,7 +287,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
             await addDoc(messagesRef, {
                 senderId: user.uid,
-                text: `${venueToSend.accountName} has invited you to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
+                text:`${venueToSend.accountName} invited ${musicianProfile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
                 type: "invitation",
                 status: 'Pending...',
                 timestamp: Timestamp.now(),

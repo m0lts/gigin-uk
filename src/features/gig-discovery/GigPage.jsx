@@ -205,8 +205,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return () => { cancelled = true; };
     }, [gigId, user, inviteToken]);
 
-    console.log(gigData)
-
 
     useEffect(() => {
         if (!selectedProfile || !gigData) {
@@ -367,7 +365,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     };
 
     const handleGigApplication = async () => {
-        console.log(selectedProfile)
         const { valid, musicianProfile } = validateMusicianUser({
             user,
             setAuthModal,

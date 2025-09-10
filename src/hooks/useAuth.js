@@ -81,19 +81,26 @@ export const useAuth = () => {
             const musicianRef = doc(firestore, 'musicianProfiles', musicianId);
             musicianUnsubRef.current = onSnapshot(musicianRef, (musSnap) => {
               const musicianData = musSnap.exists() ? { id: musicianId, ...musSnap.data() } : null;
-
-              // merge latest musician into current user state
-              setUser((prev) => ({
-                ...(prev || userData), // fall back to current userData on first tick
-                musicianProfile: musicianData || undefined,
-              }));
+              setUser((prev) => {
+                const base = prev ?? userData;           // first tick fallback
+                const next = { ...base };
+                if (musicianData) {
+                  next.musicianProfile = musicianData;   // add only when present
+                } else {
+                  delete next.musicianProfile;           // ensure key is removed, not undefined
+                }
+                return next;
+              });
               setLoading(false);
             }, (err) => {
               console.error('Musician snapshot error:', err);
             });
           } else {
-            // no musician profile -> clear and update user
-            setUser({ ...userData, musicianProfile: undefined });
+            setUser((prev) => {
+              const merged = { ...(prev || {}), ...userData };
+              const { musicianProfile, ...rest } = merged; // strip the key entirely
+              return rest;
+            });
             setLoading(false);
           }
         } else {
@@ -102,7 +109,6 @@ export const useAuth = () => {
             // keep any existing musicianProfile from the musician listener
             ...(prev || {}),
             ...userData,
-            musicianProfile: prev?.musicianProfile, 
           }));
           setLoading(false);
         }
@@ -385,6 +391,7 @@ const resetPassword = async (rawEmail) => {
 
   return {
     user,
+    setUser,
     loading,
     checkCredentials,
     login,

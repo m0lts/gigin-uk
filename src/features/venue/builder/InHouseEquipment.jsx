@@ -45,7 +45,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
         'Mixing/Sound Desk',
         'DI Boxes',
         'Cables (XLRs, Jack Leads)',
-        'Guiter',
+        'Guitar',
         'Piano/Keyboard',
         'Bass'
       ]
