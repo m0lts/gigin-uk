@@ -595,7 +595,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 </div>
                                             )}
                                         </>
-                                    ) : (
+                                    ) : message.status !== 'declined' && (
                                         <div className='two-buttons'>
                                             <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
                                                 Accept
