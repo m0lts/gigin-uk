@@ -191,7 +191,7 @@ export const MessagePage = () => {
                                                     {conversation.lastMessage}
                                                 </p>
                                                 <h6 className='conversation-date'>
-                                                    {new Date(conversation.lastMessageTimestamp.seconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                                    {new Date(conversation?.lastMessageTimestamp?.seconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                                                 </h6>
                                             </div>
                                         </div>

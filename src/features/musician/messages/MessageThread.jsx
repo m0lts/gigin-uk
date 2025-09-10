@@ -541,7 +541,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Accepted
                                             </div>
                                         </div>
-                                    ) : message.status === 'declined' && (
+                                    ) : message.status === 'declined' || message.status === 'apps-closed' && (
                                         <>
                                             <div className='status-box'>
                                                 <div className='status rejected'>

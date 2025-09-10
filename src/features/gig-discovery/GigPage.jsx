@@ -949,18 +949,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             <h3>{formatDate(gigData.date)}, {gigData.startTime}</h3>
                                         </div>
                                     </div>
-                                    {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig') || !venueVisiting && (
+                                    {/* {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig' && !venueVisiting) && (
                                         <div className='action-box-fees'>
                                             <div className='action-box-service-fee'>
-                                                <p>Service Fee</p>
-                                                <p>£{calculateServiceFee(gigData.budget)}</p>
+                                            <p>Service Fee</p>
+                                            <p>£{calculateServiceFee(gigData.budget)}</p>
                                             </div>
                                             <div className='action-box-total-income'>
-                                                <p>Total Income</p>
-                                                <p>£{calculateTotalIncome(gigData.budget)}</p>
+                                            <p>Total Income</p>
+                                            <p>£{calculateTotalIncome(gigData.budget)}</p>
                                             </div>
                                         </div>
-                                    )}
+                                    )} */}
                                     {!(user?.venueProfiles?.length > 0 && !user.musicianProfile) && !venueVisiting && (
                                         <>
                                             {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && !applyingToGig && (

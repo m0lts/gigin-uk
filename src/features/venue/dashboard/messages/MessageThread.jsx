@@ -116,7 +116,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 isNegotiated: false,
                 nonPayableGig
             });
-            if (!nonPayableGig) {
+            if (gigData.kind === "Ticketed Gig") {
                 await notifyOtherApplicantsGigConfirmed(gigData, musicianProfileId);
             }
         } catch (error) {
