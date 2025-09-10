@@ -137,7 +137,7 @@ export const MessagePage = () => {
                                     : musicianAccount?.participantId;
 
                                 const hasUnreadMessages =
-                                    conversation.lastMessageTimestamp.seconds > (conversation.lastViewed?.[user.uid]?.seconds || 0) &&
+                                    conversation.lastMessageTimestamp?.seconds > (conversation.lastViewed?.[user.uid]?.seconds || 0) &&
                                     conversation?.lastMessageSenderId !== user.uid &&
                                     !location.pathname.includes(conversation.id);
                                 

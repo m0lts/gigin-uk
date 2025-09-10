@@ -14,6 +14,11 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
         handleInputChange({
             kind: e,
         });
+        if (e === 'Open Mic') {
+            handleInputChange({
+                budget: '£'
+            })
+        }
     };
 
     const gigTypes = formData.venue.type === 'Personal Space' ? ['Background Music', 'Live Music', 'House Party', 'Wedding'] : ['Background Music', 'Live Music', 'Wedding', 'Open Mic'];

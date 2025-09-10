@@ -31,7 +31,7 @@ export const ConversationItem = ({
     : musicianAccount?.participantId;
 
   const hasUnreadMessages =
-    conversation.lastMessageTimestamp.seconds > (conversation.lastViewed?.[user.uid]?.seconds || 0) &&
+    conversation.lastMessageTimestamp?.seconds > (conversation.lastViewed?.[user.uid]?.seconds || 0) &&
     conversation?.lastMessageSenderId !== user.uid;
 
   return (

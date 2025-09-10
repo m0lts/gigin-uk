@@ -116,7 +116,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 isNegotiated: false,
                 nonPayableGig
             });
-            if (nonPayableGig) {
+            if (!nonPayableGig) {
                 await notifyOtherApplicantsGigConfirmed(gigData, musicianProfileId);
             }
         } catch (error) {
@@ -397,8 +397,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             
                 const senderGroup = getGroupOfParticipant(message.senderId);
                 const isSameGroup = senderGroup === userGroup;
-
-                console.log(message)
 
                 return (
                     <div className='message-container' key={message.id}>

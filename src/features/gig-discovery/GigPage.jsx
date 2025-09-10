@@ -949,7 +949,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             <h3>{formatDate(gigData.date)}, {gigData.startTime}</h3>
                                         </div>
                                     </div>
-                                    {!(gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig') || !venueVisiting && (
+                                    {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig') || !venueVisiting && (
                                         <div className='action-box-fees'>
                                             <div className='action-box-service-fee'>
                                                 <p>Service Fee</p>
