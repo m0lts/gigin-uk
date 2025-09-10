@@ -398,6 +398,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 const senderGroup = getGroupOfParticipant(message.senderId);
                 const isSameGroup = senderGroup === userGroup;
 
+                console.log(message)
+
                 return (
                     <div className='message-container' key={message.id}>
                         <div className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >
@@ -476,7 +478,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Accepted
                                             </div>
                                         </div>
-                                    ) : (message.status === 'declined' || message.status === 'countered') ? (
+                                    ) : (message.status === 'declined' || message.status === 'countered' || message.status === 'apps-closed') ? (
                                         <>
                                         <div className='status-box'>
                                             <div className='status rejected'>
@@ -505,7 +507,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                         )}
                                         </>
-                                    ) : message.status !== 'countered' && (
+                                    ) : message.status !== 'countered' && message.status !== 'apps-closed' && (
                                         <div className='two-buttons'>
                                             <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
                                                 Accept
@@ -556,7 +558,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Accepted
                                             </div>
                                         </div>
-                                    ) : (message.status === 'declined' || message.status === 'countered') ? (
+                                    ) : (message.status === 'declined' || message.status === 'countered' || message.status === 'apps-closed') ? (
                                         <>
                                             <div className='status-box'>
                                                 <div className='status rejected'>
@@ -682,7 +684,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text}</h4>
                                     </>
-                                ) : message.status === 'gig deleted' && (
+                                ) : message.status === 'gig deleted' ? (
+                                    <>
+                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h4>{message.text}</h4>
+                                    </>
+                                ) : message.status === 'gig booked' && (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text}</h4>

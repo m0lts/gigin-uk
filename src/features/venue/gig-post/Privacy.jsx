@@ -16,7 +16,7 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
         });
     };
 
-    const gigTypes = formData.venue.type === 'Public Establishment' ? ['Background Music', 'Live Music', 'Wedding', 'Open Mic'] : ['Background Music', 'Live Music', 'House Party', 'Wedding'];
+    const gigTypes = formData.venue.type === 'Personal Space' ? ['Background Music', 'Live Music', 'House Party', 'Wedding'] : ['Background Music', 'Live Music', 'Wedding', 'Open Mic'];
 
     const filterGigIcon = (gig) => {
         switch (gig) {

@@ -290,14 +290,14 @@ exports.confirmPayment = onCall(
           const bandSnap =
           await admin
               .firestore()
-              .collection("musicianProfiles")
+              .collection("bands")
               .doc(applicantId)
               .get();
           if (!bandSnap.exists) {
             throw new Error(`Band profile ${applicantId} not found.`);
           }
           const band = bandSnap.data() || {};
-          recipientMusicianId = band.bandInfo.admin.musicianId;
+          recipientMusicianId = band.admin.musicianId;
           if (!recipientMusicianId) {
             throw new Error(
                 `Band ${applicantId} missing admin/owner musician id.`,
@@ -361,6 +361,7 @@ exports.confirmPayment = onCall(
         }, {merge: true});
         return {success: true, paymentIntent};
       } catch (error) {
+        console.error("Error confirming payment:", error);
         const pi = error.raw.payment_intent;
         const needsSCA =
           error.code === "authentication_required" ||
@@ -387,7 +388,6 @@ exports.confirmPayment = onCall(
             error: "Authentication required",
           };
         }
-        console.error("Error confirming payment:", error);
         if (error.type === "StripeCardError") {
           return {success: false, error: error.message};
         } else if (error.type === "StripeInvalidRequestError") {
