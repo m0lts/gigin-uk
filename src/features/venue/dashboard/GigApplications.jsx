@@ -163,6 +163,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return console.error('Gig is in the past.');
             const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig";
+            let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
                 const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianProfileId);
                 setGigInfo((prevGigInfo) => ({
@@ -178,6 +179,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                     agreedFee: `${agreedFee}`,
                     paid: false,
                 }));
+                globalAgreedFee = agreedFee;
             }
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(gigInfo.venueId);
@@ -188,14 +190,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigInfo.budget, 'venue', nonPayableGig);
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
-                await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, agreedFee, 'venue', nonPayableGig);
+                await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, globalAgreedFee, 'venue', nonPayableGig);
             }
             await sendGigAcceptedEmail({
                 userRole: 'venue',
                 musicianProfile: musicianProfile,
                 venueProfile: venueProfile,
                 gigData: gigInfo,
-                agreedFee: agreedFee,
+                agreedFee: globalAgreedFee,
                 isNegotiated: false,
                 nonPayableGig,
             })

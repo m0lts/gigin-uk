@@ -546,8 +546,12 @@ export const acceptGigOffer = async (gigData, musicianProfileId, nonPayableGig =
 export const acceptGigOfferOM = async (gigData, musicianProfileId) => {
   const updatedApplicants = gigData.applicants.map(applicant => {
     if (applicant.id === musicianProfileId) {
-      return { ...applicant, status: 'confirmed' }
-    } 
+      return {
+        ...applicant,
+        status: 'confirmed',
+      };
+    }
+    return { ...applicant };
   });
   const gigRef = doc(firestore, 'gigs', gigData.gigId);
   await updateDoc(gigRef, {

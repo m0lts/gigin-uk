@@ -99,6 +99,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (gigData.startDateTime.toDate() < new Date()) return console.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
+            let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
                 const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianProfileId);
                 setGigData((prevGigData) => ({
@@ -114,8 +115,9 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     agreedFee: `${agreedFee}`,
                     paid: false,
                 }));
+                globalAgreedFee = agreedFee;
             }
-            await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole, nonPayableGig);
+            await sendGigAcceptedMessage(conversationId, messageId, user.uid, globalAgreedFee, userRole, nonPayableGig);
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigAcceptedEmail({
@@ -123,7 +125,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 musicianProfile: musicianProfileData,
                 venueProfile: venueData,
                 gigData,
-                agreedFee,
+                globalAgreedFee,
                 isNegotiated: false,
                 nonPayableGig
             });

@@ -495,7 +495,7 @@ export const sendGigAcceptedEmail = async ({
         <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${formattedDate}</td>
       </tr>
       <tr>
-        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Fee:</strong> ${agreedFee}</td>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Fee:</strong> ${!nonPayableGig && (agreedFee)}</td>
       </tr>
     </table>
     <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
@@ -526,7 +526,7 @@ export const sendGigAcceptedEmail = async ({
         <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${formattedDate}</td>
       </tr>
       <tr>
-        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Fee:</strong> ${agreedFee}</td>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Fee:</strong>${!nonPayableGig && (agreedFee)}</td>
       </tr>
     </table>
     <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
