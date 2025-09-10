@@ -318,7 +318,7 @@ exports.confirmPayment = onCall(
                 date: gigDate,
                 venueName: gigData.venue.venueName,
                 venueId: gigData.venueId,
-                applicantId,
+                applicantId: musicianProfileId,
                 applicantType,
                 recipientMusicianId,
                 paymentMessageId,
@@ -2043,14 +2043,7 @@ const handlePaymentSuccess = async (paymentIntent) => {
         const convRef =
         admin.firestore().collection("conversations").doc(conversationId);
         const messagesRef = convRef.collection("messages");
-        const updatedApplicants = (gigData.applicants || []).map((app) =>
-          app.id !== applicantId ?
-            {...app, status: "declined"} :
-            app,
-        );
         const batch = admin.firestore().batch();
-        const gigRef = admin.firestore().collection("gigs").doc(gigData.gigId);
-        batch.update(gigRef, {applicants: updatedApplicants});
         const pendingMessagesSnapshot = await messagesRef
             .where("type", "in", pendingTypes)
             .get();

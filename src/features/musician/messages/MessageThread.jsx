@@ -597,7 +597,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 </div>
                                             )}
                                         </>
-                                    ) : message.status !== 'countered' && (
+                                    ) : message.status !== 'countered' && message.status !== "apps-closed" && (
                                         <div className='two-buttons'>
                                             <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
                                                 Accept
