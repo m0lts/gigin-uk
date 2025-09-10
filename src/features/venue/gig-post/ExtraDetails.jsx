@@ -21,6 +21,7 @@ export const GigExtraDetails = ({ formData, handleInputChange }) => {
               onChange={(e) => handleTechnicalInfoChange(e.target.value)}
               value={formData.technicalInformation}
               placeholder='Add information about sound technician requirements or other technical points...'
+              maxLength={250}
             ></textarea>
           </div>
           </div>

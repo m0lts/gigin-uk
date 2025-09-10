@@ -16,6 +16,7 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
     const navigate = useNavigate();
 
     const handleLocationSelect = (venue) => {
+        console.log(venue)
         handleInputChange({
             venueId: venue.venueId,
             venue: {
@@ -23,6 +24,7 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
                 address: venue.address,
                 photo: venue.photos[0],
                 userId: user.uid,
+                type: venue.type,
             },
             coordinates: venue.coordinates,
         });
@@ -87,8 +89,7 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
                     </div>
                 )}
                 <button className='btn secondary add-venue' onClick={() => navigate('/venues/add-venue')}>
-                    <VenueBuilderIcon />
-                    <span style={{ marginLeft: '5px' }}>Add another venue</span>
+                    Add Venue
                 </button>
             </div>
         </>

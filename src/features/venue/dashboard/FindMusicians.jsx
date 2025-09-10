@@ -224,20 +224,20 @@ export const FindMusicians = ({ user }) => {
                             <div className="musician-card-flex">
                                 <div className="musician-name-type">
                                     <h2>{name}</h2>
-                                    <p>{musicianType}</p>
+                                    {/* <p>{musicianType}</p> */}
                                 </div>
                                 <button className="btn icon" onClick={() => handleMusicianSave(musician)}>
                                     {user?.savedMusicians?.includes(id) ? <SavedIcon /> : <SaveIcon />}
                                 </button>
                             </div>
 
-                            {genres.length > 0 && (
+                            {/* {genres.length > 0 && (
                                 <div className="genre-tags">
                                     {genres.map((g) => (
                                     <span className="genre-tag" key={g}>{g}</span>
                                     ))}
                                 </div>
-                            )}
+                            )} */}
 
                             <button
                                 className="btn tertiary"
@@ -245,7 +245,6 @@ export const FindMusicians = ({ user }) => {
                                 disabled={!id}
                             >
                                 <span>Open Profile</span>
-                                <NewTabIcon />
                             </button>
                         </div>
                         );

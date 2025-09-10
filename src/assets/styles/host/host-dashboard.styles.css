@@ -1162,6 +1162,8 @@
     position: relative;
     width: 100%;
     border-radius: 0.5rem;
+    aspect-ratio: 16 / 9;
+    height: 200px;
 }
 
 .window.venues .body.musicians .musician-card .media-container.empty .profile-picture-only {

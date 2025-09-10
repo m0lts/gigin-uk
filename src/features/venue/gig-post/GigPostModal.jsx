@@ -45,6 +45,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
             address: '',
             photo: null,
             userId: user.uid,
+            type: ''
         },
         date: null,
         dateUndecided: false,
@@ -85,6 +86,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 venueName: '',
                 address: '',
                 photo: null,
+                type: '',
+                userId: '',
             },
             date: null,
             dateUndecided: false,
@@ -121,7 +124,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
     useEffect(() => {
         refreshTemplates();
         refreshGigs();
-    }, [])
+    }, []);
+
+    console.log(formData)
 
     useEffect(() => {
         if (buildingForMusician && buildingForMusicianData) {
@@ -603,6 +608,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                   budgetValue: slotBudgetValue,
                   gigSlots: groupIds.filter(id => id !== slotGigId),
                   applicants: [],
+                  status: 'open',
                 };
                 allGigsToPost.push(slotGig);
                 if (!firstGigDoc) firstGigDoc = slotGig;
@@ -634,6 +640,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, templates, incomp
                 budgetValue: getBudgetValue(base.budget),
                 privateApplicationsLink: privateLink,
                 applicants: [],
+                status: 'open',
               };
           
               allGigsToPost.push(singleGig);

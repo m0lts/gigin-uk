@@ -51,7 +51,7 @@ export const OpenMicGig = ({ formData, handleInputChange, error }) => {
 
                         {formData.limitApplications === true && (
                             <>
-                                <label htmlFor="numberOfApplications" className="label">Maximum number of applicants</label>
+                                <label htmlFor="numberOfApplications" className="label">Maximum number of applicants (Max 15)</label>
                                 <input
                                     className='input'
                                     type='number'
@@ -59,8 +59,20 @@ export const OpenMicGig = ({ formData, handleInputChange, error }) => {
                                     id='numberOfApplications'
                                     min={1}
                                     max={15}
-                                    value={formData.numberOfApplicants || 0}
-                                    onChange={(e) => handleInputChange({ numberOfApplicants: parseInt(e.target.value, 10) })}
+                                    value={formData.numberOfApplicants || 1}
+                                    onChange={(e) => {
+                                        let value = parseInt(e.target.value, 10);
+                                
+                                        if (isNaN(value)) {
+                                          value = 1; // default fallback
+                                        }
+                                
+                                        // enforce hard bounds
+                                        if (value < 1) value = 1;
+                                        if (value > 15) value = 15;
+                                
+                                        handleInputChange({ numberOfApplicants: value });
+                                      }}
                                 />
                             </>
                         )}

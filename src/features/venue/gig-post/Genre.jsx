@@ -76,6 +76,8 @@ export const GigGenre = ({ formData, handleInputChange, error }) => {
                             id='extraInformation' 
                             onChange={(e) => handleExtraInfoChange(e.target.value)}
                             value={formData.extraInformation}
+                            placeholder="We love 80's pop covers..."
+                            maxLength={250}
                         ></textarea>
                     </div>
                 </div>

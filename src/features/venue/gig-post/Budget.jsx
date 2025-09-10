@@ -4,13 +4,14 @@ import { CoinsIcon, CoinsIconSolid, TicketIcon, TicketIconLight } from '../../sh
 export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setError, setStage }) => {
 
     const budgetInputRef = useRef(null);
-    const [localKind, setLocalKind] = useState(formData.kind === 'Live Music' ? 'Flat Fee' : 'Ticketed Gig');
+    const [localKind, setLocalKind] = useState((formData.kind === 'Live Music' || formData.kind === 'Wedding' || formData.kind === 'Background Music') ? 'Flat Fee' : 'Ticketed Gig');
     const [showSecondStage, setShowSecondStage] = useState(formData.kind ? true : false);
+    const [showPaymentOptions, setShowPaymentOptions] = useState((formData.kind === 'Wedding' || formData.kind === 'Background Music') ? false : true);
 
     useEffect(() => {
         if (budgetInputRef.current) {
             budgetInputRef.current.focus();
-        }
+        };
     }, []);
 
     const formatPoundsInput = (raw) => {
@@ -96,9 +97,10 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
     return (
         <>
             <div className='head'>
-                <h1 className='title'>Payment Method</h1>
+                <h1 className='title'>{showPaymentOptions ? 'Payment Method' : "Enter Your Budget"}</h1>
             </div>
             <div className='body budget'>
+                {showPaymentOptions && (
                     <div className="selections">
                         <div className={`card ${localKind === 'Ticketed Gig' ? 'selected' : ''}`} onClick={() => handleKindSelect('Ticketed Gig')}>
                             {localKind === 'Ticketed Gig' ? (
@@ -117,12 +119,15 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
                             <h4 className='text'>Flat Fee</h4>
                         </div>
                     </div>
+                )}
                     {showSecondStage && localKind === 'Flat Fee' ? (
                         <div className="budget-container">
-                            {extraSlots.length > 0 ? (
-                                <h4>Enter a budget for each set.</h4>
-                            ) : (
-                                <h4>What's your budget for the evening?</h4>
+                            {showPaymentOptions && (
+                                extraSlots.length > 0 ? (
+                                    <h4>Enter a budget for each set.</h4>
+                                ) : (
+                                    <h4>What's your budget for the evening?</h4>
+                                )
                             )}
                             {allSlots.length === 1 ? (
                                 <div className='input-group'>

@@ -16,7 +16,7 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
         });
     };
 
-    const gigTypes = ['Background Music', 'Live Music', 'House Party', 'Wedding', 'Open Mic'];
+    const gigTypes = formData.venue.type === 'Public Establishment' ? ['Background Music', 'Live Music', 'Wedding', 'Open Mic'] : ['Background Music', 'Live Music', 'House Party', 'Wedding'];
 
     const filterGigIcon = (gig) => {
         switch (gig) {
@@ -69,7 +69,7 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
                 )} */}
                 <div className='type-of-gig'>
                     {gigTypes.map((gt) => (
-                        <div className={`card ${formData.kind === gt ? 'selected' : ''}`} key={gt} onClick={() => handleKindSelect(gt)}>
+                        <div className={`card ${formData.kind === gt || (formData.kind === 'Ticketed Gig' && gt === 'Live Music') ? 'selected' : ''}`} key={gt} onClick={() => handleKindSelect(gt)}>
                             {filterGigIcon(gt)}
                             <h4>{gt}</h4>
                         </div>
