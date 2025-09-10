@@ -43,7 +43,7 @@ export const AdditionalDetails = ({ formData, handleInputChange, stepError, setS
                     <textarea
                         className={`${stepError && fieldError === 'description' ? 'error' : ''}`}
                         id='description'
-                        placeholder='Tell us a bit about the venue and what makes it special…'
+                        placeholder="We're a venue housed in a history brewery built in..."
                         value={formData.description}
                         onChange={(e) => handleInputChange('description', e.target.value)}
                         onClick={() => {setStepError(null); setFieldError(null)}}
@@ -65,7 +65,7 @@ export const AdditionalDetails = ({ formData, handleInputChange, stepError, setS
                 <button className='btn secondary' onClick={() => navigate(-1)}>
                     Back
                 </button>
-                <button className='btn primary' onClick={() => handleNext()}>Next</button>
+                <button className='btn primary' onClick={() => handleNext()}>Continue</button>
             </div>
         </div>
     );

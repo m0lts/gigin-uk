@@ -7,6 +7,7 @@ import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 // Styles
 import '@styles/forms/forms.styles.css';
 import { toast } from 'sonner';
+import { LoadingSpinner } from '../ui/loading/Loading';
 
 
 export const ForgotPasswordForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, resetPassword, setAuthModal, loading, setLoading, authClosable }) => {
@@ -115,7 +116,7 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
               </div>
             )}
             {loading ? (
-              <LoadingThreeDots />
+              <LoadingSpinner marginTop={'1.25rem'} />
             ) : (
               <>
                 <button

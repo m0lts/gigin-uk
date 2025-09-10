@@ -13,6 +13,7 @@ import { GoogleIcon } from '../ui/extras/Icons';
 import { PhoneField, isValidE164 } from './PhoneField';
 import { phoneExists } from '../../../services/users';
 import { getPhoneExistsBoolean } from '../../../services/functions';
+import { LoadingSpinner } from '../ui/loading/Loading';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
@@ -258,7 +259,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
             </div>
           </div>
           {loading ? (
-            <LoadingThreeDots />
+            <LoadingSpinner marginTop={'1.25rem'} />
           ) : (
               <button
                 type='submit'

@@ -9,10 +9,12 @@ export const UploadingProfile = ({ text, progress }) => {
         <div className='uploading-profile'>
             <NoTextLogo />
             <h1>{text}</h1>
-            <LoadingSpinner width={50} height={50} />
-            <div className='progress-bar-container'>
-                <div className='progress-bar' style={{ width: `${progress}%` }}></div>
-            </div>
+            <LoadingSpinner marginTop={'1.25rem'} />
+            {progress && (
+                <div className='progress-bar-container'>
+                    <div className='progress-bar' style={{ width: `${progress}%` }}></div>
+                </div>
+            )}
             <p className='warning'>Please do not refresh the page or close this window.</p>
         </div>
     )

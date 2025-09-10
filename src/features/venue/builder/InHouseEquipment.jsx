@@ -54,8 +54,8 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
         <div className='stage equipment'>
             <div className="stage-content">
                 <div className="stage-definition">
-                <h1>Do You Provide Any Equipment?</h1>
-<p className='stage-copy'>Let musicians know what gear is available at your venue, so they can bring only what they need.</p>                </div>
+                <h1>Equipment in the Venue</h1>
+                <p className='stage-copy'>Let musicians know what equipment is available at your venue, so they can bring only what they need.</p>                </div>
                 <div className='selections large'>
                     <button 
                         className={`card small centered ${equipmentAvailable === 'yes' ? 'selected' : ''}${stepError ? 'error' : ''}`}

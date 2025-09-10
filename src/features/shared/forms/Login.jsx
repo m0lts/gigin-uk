@@ -7,6 +7,7 @@ import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 // Styles
 import '@styles/forms/forms.styles.css'
 import { GoogleIcon } from '../ui/extras/Icons';
+import { LoadingSpinner } from '../ui/loading/Loading';
 
 
 
@@ -158,7 +159,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
             </div>
           )}
           {loading ? (
-            <LoadingThreeDots />
+            <LoadingSpinner marginTop={'1.2rem'} />
           ) : (
             <>
               <button

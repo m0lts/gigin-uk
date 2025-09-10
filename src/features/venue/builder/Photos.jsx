@@ -6,6 +6,14 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { CameraIcon, DeleteGigIcon, RepositionIcon, SaveIcon } from '../../shared/ui/extras/Icons';
 
 const ItemType = 'IMAGE';
+const MAX_IMAGES = 12;
+const IMAGE_MIME = /^image\//i;
+
+const prepareIncomingFiles = (fileList, currentCount) => {
+  const incoming = Array.from(fileList).filter(f => IMAGE_MIME.test(f.type));
+  const availableSlots = Math.max(0, MAX_IMAGES - currentCount);
+  return incoming.slice(0, availableSlots).map(file => ({ file, offsetY: 0 }));
+};
 
 const DraggableImage = ({
     image,
@@ -17,6 +25,7 @@ const DraggableImage = ({
     isRepositioning,
     setIsRepositioning,
     updatePrimaryOffset,
+    venueName,
   }) => {
     const isDraggable = !isPrimary;
     const [, ref] = useDrag({
@@ -65,7 +74,6 @@ const DraggableImage = ({
         if (image?.file instanceof File) return URL.createObjectURL(image.file);
         return '';
       }, [image]);
-
   
     return (
       <div ref={isDraggable ? (node) => ref(drop(node)) : null} className="image-row-card">
@@ -92,18 +100,22 @@ const DraggableImage = ({
             }}
           />
         </div>
+
+        {isPrimary && venueName && (
+          <h1 className="venue-name">{venueName}<span className='orange-dot'>.</span></h1>
+        )}
   
         <div className="image-actions">
           {isPrimary ? (
             <>
-              <button className="btn tertiary close" onClick={() => removeImage(index)}>
-                <DeleteGigIcon />
+              <button className="btn danger" onClick={() => removeImage(index)}>
+                Delete Image
               </button>
               <button
-                className="btn secondary"
+                className="btn tertiary"
                 onClick={() => setIsRepositioning((prev) => !prev)}
               >
-                {isRepositioning ? <SaveIcon /> : <RepositionIcon />}
+                {isRepositioning ? 'Save Position' : 'Reposition'}
               </button>
             </>
           ) : (
@@ -161,8 +173,13 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
           const wrappedImages = images.map((img) =>
             typeof img === 'object' && 'file' in img ? img : { file: img, offsetY: 0 }
           );
-          setPrimaryImage(wrappedImages[0]);
-          setOtherImages(wrappedImages.slice(1));
+          // Clamp to MAX_IMAGES if something upstream added too many
+          const clamped = wrappedImages.slice(0, MAX_IMAGES);
+          if (wrappedImages.length > MAX_IMAGES) {
+            setStepError?.(`You can upload up to ${MAX_IMAGES} images.`);
+          }
+          setPrimaryImage(clamped[0] || null);
+          setOtherImages(clamped.slice(1));
         } else {
           setPrimaryImage(null);
           setOtherImages([]);
@@ -170,16 +187,33 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
       }, [images]);
 
       const handleFileChange = (event) => {
-        const files = Array.from(event.target.files);
-        const wrappedFiles = files.map(file => ({ file, offsetY: 0 }));
-        setImages(prevImages => [...prevImages, ...wrappedFiles]);
+        const currentCount = images.length;
+        const wrappedFiles = prepareIncomingFiles(event.target.files, currentCount);
+      
+        // If user tried non-image files or exceeded cap, surface helpful error
+        const triedNonImage = Array.from(event.target.files).some(f => !IMAGE_MIME.test(f.type));
+        const overCap = currentCount + Array.from(event.target.files).length > MAX_IMAGES;
+      
+        if (triedNonImage) setStepError?.('Only image files are allowed.');
+        if (overCap) setStepError?.(`You can upload up to ${MAX_IMAGES} images.`);
+      
+        if (wrappedFiles.length === 0) return;
+        setImages(prev => [...prev, ...wrappedFiles]);
       };
       
       const handleDrop = (event) => {
         event.preventDefault();
-        const files = Array.from(event.dataTransfer.files);
-        const wrappedFiles = files.map(file => ({ file, offsetY: 0 }));
-        setImages(prevImages => [...prevImages, ...wrappedFiles]);
+        const currentCount = images.length;
+        const wrappedFiles = prepareIncomingFiles(event.dataTransfer.files, currentCount);
+      
+        const triedNonImage = Array.from(event.dataTransfer.files).some(f => !IMAGE_MIME.test(f.type));
+        const overCap = currentCount + Array.from(event.dataTransfer.files).length > MAX_IMAGES;
+      
+        if (triedNonImage) setStepError?.('Only image files are allowed.');
+        if (overCap) setStepError?.(`You can upload up to ${MAX_IMAGES} images.`);
+      
+        if (wrappedFiles.length === 0) return;
+        setImages(prev => [...prev, ...wrappedFiles]);
       };
 
     const handleDragOver = (event) => {
@@ -236,19 +270,24 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                         >
                             <input
                                 type='file'
+                                accept="image/*" 
                                 multiple
                                 onChange={handleFileChange}
                                 onClick={() => setStepError(null)}
                                 style={{ display: 'none' }}
                                 id='fileInput'
                             />
-                            <label htmlFor='fileInput' className='upload-label'>
-                                <CameraIcon />
-                                <div className="text">
-                                    <h4>Click here to upload images, or drag and drop them here.</h4>
-                                    <p>Add at least 3 images.</p>
-                                </div>
-                            </label>
+                        <label
+                          htmlFor="fileInput"
+                          className={`upload-label ${images.length >= MAX_IMAGES ? 'disabled' : ''}`}
+                          style={{ pointerEvents: images.length >= MAX_IMAGES ? 'none' : 'auto', opacity: images.length >= MAX_IMAGES ? 0.6 : 1 }}
+                        >
+                          <CameraIcon />
+                          <div className="text">
+                            <h4>{images.length >= MAX_IMAGES ? `Limit reached (${MAX_IMAGES})` : 'Click here to upload images, or drag and drop them here.'}</h4>
+                            <p>Add at least 3 images.</p>
+                          </div>
+                        </label>
                         </div>
                         {images.length > 0 && (
                             <>
@@ -276,6 +315,7 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                                                 isRepositioning={isRepositioning}
                                                 setIsRepositioning={setIsRepositioning}
                                                 updatePrimaryOffset={updatePrimaryOffset}
+                                                venueName={formData?.name}
                                             />
                                         </div>
                                     ) : (
@@ -290,13 +330,13 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                                 <div className='preview'>
                                     {otherImages.map((image, index) => (
                                         <DraggableImage
-                                        key={`image-${index}`}
-                                        image={image}
-                                        index={index + 1}
-                                        moveImage={moveImage}
-                                        removeImage={removeImage}
-                                        totalImages={images.length}
-                                        isPrimary={false}
+                                          key={`image-${index}`}
+                                          image={image}
+                                          index={index + 1}
+                                          moveImage={moveImage}
+                                          removeImage={removeImage}
+                                          totalImages={images.length}
+                                          isPrimary={false}
                                         />
                                     ))}
                                 </div>

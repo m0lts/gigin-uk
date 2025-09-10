@@ -584,6 +584,20 @@
     align-items: center;
     justify-content: center;
 }
+
+.venue-builder .stage.photos .banner-preview .image-row-card .venue-name {
+    position: absolute;
+    color: var(--gn-white);
+    top:15rem;
+    left:1rem;
+    font-size: 4rem;
+    text-shadow: 0 0 10px var(--gn-grey-700);
+}
+
+.venue-builder .stage.photos .banner-preview .image-row-card .venue-name .orange-dot {
+    color: var(--gn-orange);
+    font-size: 5rem;
+}
   
 .venue-builder .stage.photos .banner-preview .image-thumbnail {
     width:100%;
@@ -601,11 +615,6 @@
     display: flex;
     flex-direction: column;
     gap:5px;
-}
-
-.venue-builder .stage.photos .banner-preview .image-actions .btn.tertiary {
-    background-color: var(--gn-red);
-    color: var(--gn-white);
 }
   
 .venue-builder .stage.photos .upload.empty-primary {

@@ -12,9 +12,9 @@ import { arrayUnion, arrayRemove, GeoPoint } from 'firebase/firestore';
 import { createVenueProfile, deleteVenueProfile } from '@services/venues';
 import { updateUserDocument } from '@services/users';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { TickIcon } from '../../shared/ui/extras/Icons';
+import { BuildingIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
 import { uploadImageArrayWithFallback } from '../../../services/storage';
-import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
 import { Links } from './Links';
 import { geohashForLocation } from 'geofire-common';
@@ -94,7 +94,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
     }, [venue])
 
     const [uploadingProfile, setUploadingProfile] = useState(false);
-    const [uploadText, setUploadText] = useState('Adding You To The Gigin Map');
+    const [uploadText, setUploadText] = useState(`Adding ${formData?.name} To The Gigin Map`);
     const [progress, setProgress] = useState(1);
     const [completeSavedProfileModal, setCompleteSavedProfileModal] = useState(false);
     const [savedProfile, setSavedProfile] = useState();
@@ -136,6 +136,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
     };
 
     const handleSubmit = async () => {
+        setUploadText(`Adding ${formData?.name} To The Gigin Map`);
         setUploadingProfile(true);
         try {
             const imageFiles = formData.photos;
@@ -207,7 +208,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             await updateUserDocument(user.uid, {
                 venueProfiles: arrayUnion(formData.venueId),
             });
-            if (updatedFormData.completed) {
+            console.log(user)
+            if (updatedFormData.completed || user.venueProfiles.length > 0) {
                 navigate('/venues/dashboard/gigs')
             } else {
                 navigate('/venues');
@@ -431,9 +433,11 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
     const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
 
     return (
-        <div className={`venue-builder ${uploadingProfile ? 'upload-screen' : ''}`}>
+        <div className={`venue-builder ${uploadingProfile || saving ? 'upload-screen' : ''}`}>
             {uploadingProfile ? (
                 <UploadingProfile text={uploadText} progress={progress} />
+            ) : saving ? (
+                <UploadingProfile text={'Saving...'} progress={null} />
             ) : (
                 <>
                     <aside className='left'>
@@ -517,13 +521,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                                 </div>
                             )}
                             </div>
-                        {saving ? (
-                            <LoadingThreeDots />
-                        ) : (
                             <button className='btn secondary' onClick={handleSaveAndExit}>
                                 Save and Exit
                             </button>
-                        )}
                     </aside>
                     <section className='right'>
                         {windowWidth < 1000 && (
@@ -549,8 +549,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
                     <div className='modal' onClick={handleDeleteSavedProfile}>
                         <div className="modal-padding" onClick={(e) => e.stopPropagation()}>
                             <div className='modal-content saved-profile'>
-                                <h2>You Have an Unfinished Profile</h2>
-                                <p>Would you like to continue where you left off?</p>
+                                <div className="modal-header">
+                                    <BuildingIcon />
+                                    <h2>Continue Building {savedProfile?.name}?</h2>
+                                </div>
                                 <div
                                     className="saved-profile-card"
                                     onClick={() => {
