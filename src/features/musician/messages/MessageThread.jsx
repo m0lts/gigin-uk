@@ -425,6 +425,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                         Check my Profile
                                                     </button>
                                                 )}
+                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                             </div>
 
                                         ) : (

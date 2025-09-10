@@ -14,7 +14,8 @@ import {
   orderBy,
   writeBatch,
   limit,
-  startAfter
+  startAfter,
+  serverTimestamp
 } from 'firebase/firestore';
 import { formatDate } from './utils/dates';
 import { getBandMembers } from './bands';
