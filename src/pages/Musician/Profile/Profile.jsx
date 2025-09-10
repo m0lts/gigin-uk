@@ -285,13 +285,23 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
     
             // Navigate the user to the messages page after conversation creation
             const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-            await addDoc(messagesRef, {
-                senderId: user.uid,
-                text:`${venueToSend.accountName} invited ${musicianProfile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
-                type: "invitation",
-                status: 'Pending...',
-                timestamp: Timestamp.now(),
-            });
+            if (gigData.kind === 'Ticketed Gig' || gigData.kind === 'Open Mic') {
+                await addDoc(messagesRef, {
+                    senderId: user.uid,
+                    text:`${venueToSend.accountName} invited ${musicianProfile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)}.`,
+                    type: "invitation",
+                    status: 'Pending...',
+                    timestamp: Timestamp.now(),
+                });
+            } else {
+                await addDoc(messagesRef, {
+                    senderId: user.uid,
+                    text:`${venueToSend.accountName} invited ${musicianProfile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
+                    type: "invitation",
+                    status: 'Pending...',
+                    timestamp: Timestamp.now(),
+                });
+            }
 
             setInviteMusicianModal(false);
             setInvitedMusician(true);

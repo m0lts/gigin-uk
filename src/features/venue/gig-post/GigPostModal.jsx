@@ -679,11 +679,20 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 await updateMusicianProfile(musicianProfile.id, {
                   gigApplications: updatedGigApplicationsArray,
                 });
-                await sendGigInvitationMessage(conversationId, {
-                  senderId: user.uid,
-                  text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')} for ${firstGigDoc.budget}.
-                    ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
-                });
+                if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
+                    await sendGigInvitationMessage(conversationId, {
+                        senderId: user.uid,
+                        text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')} for ${firstGigDoc.budget}.
+                          ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
+                      });
+                } else {
+                    await sendGigInvitationMessage(conversationId, {
+                        senderId: user.uid,
+                        text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')}.
+                          ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
+                      });
+                }
+
                 if (requestId) {
                     await removeVenueRequest(requestId);
                     setRequests(prev => 

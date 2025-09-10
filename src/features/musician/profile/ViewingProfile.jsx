@@ -187,10 +187,17 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                 gigApplications: updatedGigApplicationsArray,
             });
             const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueToSend, 'invitation');
-            await sendGigInvitationMessage(conversationId, {
-                senderId: user.uid,
-                text: `${venueToSend.accountName} invited ${musicianProfile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
-            })
+            if (gigData.kind === 'Ticketed Gig' || gigData.kind === 'Open Mic') {
+                await sendGigInvitationMessage(conversationId, {
+                    senderId: user.uid,
+                    text: `${venueToSend.accountName} invited ${musicianProfile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)}.`,
+                })
+            } else {
+                await sendGigInvitationMessage(conversationId, {
+                    senderId: user.uid,
+                    text: `${venueToSend.accountName} invited ${musicianProfile.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(gigData.date)} for ${gigData.budget}.`,
+                })
+            }
             setInviteMusicianModal(false);
             toast.success(`Invite sent to ${musicianProfile.name}`)
         } catch (error) {
