@@ -431,6 +431,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         ) : (
                                             <>
                                                 Gig invitation sent.
+                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                             </>
                                         )}
                                     </h4>
@@ -661,7 +662,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     ) : (
                                         <>
                                             <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
+                                            <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 48 hours after the gig has been performed.' : userRole !== 'venue' && activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
                                             {gigData && (
                                                 <AddToCalendarButton
                                                     event={{

@@ -403,10 +403,10 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                         <div className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >
                             {(message.type === 'application' || message.type === 'invitation') && isSameGroup ? (
                                 <>
-                                    <h4>
+                                    <div>
                                         {message.type === 'application' ? (
                                             <div className='accepted-group'>
-                                                Gig application sent.
+                                                <h4>Gig application sent.</h4>
                                                 {userRole !== 'venue' && activeConversation.bandConversation ? (
                                                     <button className='btn primary' onClick={() => navigate(`/dashboard/bands/${activeConversation.accountNames.find(account => account.role === 'band')}`)}>
                                                         Check Band Profile
@@ -420,10 +420,11 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
                                         ) : (
                                             <>
-                                                Gig invitation sent.
+                                                <h4>Gig invitation sent.</h4>
+                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                             </>
                                         )}
-                                    </h4>
+                                    </div>
                                     {message.status === 'accepted' ? (
                                         <div className='accepted-group'>
                                             <div className='status-box'>
