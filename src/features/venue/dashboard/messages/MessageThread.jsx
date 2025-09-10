@@ -364,6 +364,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
       );
     }
 
+    console.log(messages)
+
     return (
         <>
         <div className='messages'>
@@ -620,8 +622,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                         <>
                                             <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>You have accepted the musician's application. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
-                                            {gigData && (
+                                            <h4>{message.text}</h4>
+                                            {gigData && message.text === "The venue has accepted the musician's application." && (
                                                 <AddToCalendarButton
                                                     event={{
                                                         title: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} at ${gigData?.venue?.venueName}`,

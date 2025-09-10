@@ -454,7 +454,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Declined
                                             </div>
                                         </div>
-                                        {message.status !== 'countered'  && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' &&  (
+                                        {message.status !== 'countered'  && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' &&  (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                             <h4>Send Counter Offer:</h4>
                                             <div className='input-group'>
@@ -614,8 +614,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 {(gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{gigData.venue.venueName} has accepted your application. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
-                                        {gigData && (
+                                        <h4>{message.text}</h4>
+                                        {gigData && message.text !== "This gig has been confirmed with another musician. Applications are now closed." && (
                                             <AddToCalendarButton
                                                 event={{
                                                     title: `Gig at ${gigData?.venue?.venueName}`,

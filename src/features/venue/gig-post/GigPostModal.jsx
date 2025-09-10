@@ -612,7 +612,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 if (!firstGigDoc) firstGigDoc = slotGig;
               }
             } else {
-              const occurrenceGigId = editGigData ? formData.gigId : uuidv4();
+              const occurrenceGigId = editGigData ? formData.gigId : formData.privateApplications ? formData.gigId : uuidv4();
               const {
                 gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
@@ -625,7 +625,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               } = formData;
               const privateLink =
                 base.privateApplications
-                  ? `https://www.giginmusic.com/gig/${occurrenceGigId}?token=${base.privateApplicationToken ?? uuidv4()}`
+                  ? `https://www.giginmusic.com/gig/${formData.gigId}?token=${base.privateApplicationToken ?? uuidv4()}`
                   : null;
               const singleGig = {
                 ...base,
@@ -645,6 +645,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               if (!firstGigDoc) firstGigDoc = singleGig;
             }
             }
+            console.log(allGigsToPost)
             await postMultipleGigs(formData.venueId, allGigsToPost);
             const newGigIds = allGigsToPost.map(g => g.gigId);
             setVenueProfiles(prev => {
