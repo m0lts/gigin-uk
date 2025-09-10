@@ -538,6 +538,27 @@ export const acceptGigOffer = async (gigData, musicianProfileId, nonPayableGig =
 };
 
 /**
+ * Accepts the gig offer and writes for an open mic
+ * @param {string} gigData - The gig data.
+ * @param {Array} musicianProfileId - The musician's profile ID.
+ * @returns {Promise<void>}
+ */
+export const acceptGigOfferOM = async (gigData, musicianProfileId) => {
+  const updatedApplicants = gigData.applicants.map(applicant => {
+    if (applicant.id === musicianProfileId) {
+      return { ...applicant, status: 'confirmed' }
+    } 
+  });
+  const gigRef = doc(firestore, 'gigs', gigData.gigId);
+  await updateDoc(gigRef, {
+    applicants: updatedApplicants,
+    paid: true,
+    status: 'open',
+  });
+  return { updatedApplicants };
+};
+
+/**
  * Declines a gig offer by updating the applicant status to 'declined'.
  * @param {object} gigData - The full gig object.
  * @param {string} musicianProfileId - The ID of the musician to decline.

@@ -22,6 +22,7 @@ import Portal from '../../../shared/components/Portal';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { loadStripe } from '@stripe/stripe-js';
 import { notifyOtherApplicantsGigConfirmed } from '../../../../services/conversations';
+import { acceptGigOfferOM } from '../../../../services/gigs';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
@@ -86,6 +87,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     };
 
+
     const handleCounterOffer = (e) => {
         const value = e.target.value.replace(/[^0-9]/g, '');
         setNewCounterOffer(`£${value}`)
@@ -97,13 +99,22 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (gigData.startDateTime.toDate() < new Date()) return console.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig);
-            setGigData((prevGigData) => ({
-                ...prevGigData,
-                applicants: updatedApplicants,
-                agreedFee: `${agreedFee}`,
-                paid: false,
-            }));
+            if (gigData.kind === 'Open Mic') {
+                const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianProfileId);
+                setGigData((prevGigData) => ({
+                    ...prevGigData,
+                    applicants: updatedApplicants,
+                    paid: true,
+                }));
+            } else {
+                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig);
+                setGigData((prevGigData) => ({
+                    ...prevGigData,
+                    applicants: updatedApplicants,
+                    agreedFee: `${agreedFee}`,
+                    paid: false,
+                }));
+            }
             await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole, nonPayableGig);
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);

@@ -23,7 +23,7 @@ import { removeGigFromVenue } from '@services/venues';
 import { confirmGigPayment, fetchSavedCards } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
-import { acceptGigOffer, deleteGigAndInformation, logGigCancellation, revertGigAfterCancellationVenue, updateGigDocument } from '../../../services/gigs';
+import { acceptGigOffer, acceptGigOfferOM, deleteGigAndInformation, logGigCancellation, revertGigAfterCancellationVenue, updateGigDocument } from '../../../services/gigs';
 import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { getVenueProfileById } from '../../../services/venues';
@@ -163,13 +163,22 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return console.error('Gig is in the past.');
             const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig";
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigInfo, musicianId, nonPayableGig);
-            setGigInfo((prevGigInfo) => ({
-                ...prevGigInfo,
-                applicants: updatedApplicants,
-                agreedFee: `${agreedFee}`,
-                paid: false,
-            }));
+            if (gigInfo.kind === 'Open Mic') {
+                const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianProfileId);
+                setGigInfo((prevGigInfo) => ({
+                    ...prevGigInfo,
+                    applicants: updatedApplicants,
+                    paid: true,
+                }));
+            } else {
+                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigInfo, musicianId, nonPayableGig);
+                setGigInfo((prevGigInfo) => ({
+                    ...prevGigInfo,
+                    applicants: updatedApplicants,
+                    agreedFee: `${agreedFee}`,
+                    paid: false,
+                }));
+            }
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(gigInfo.venueId);
             const conversationId = await getOrCreateConversation(musicianProfile, gigInfo, venueProfile, 'application');
