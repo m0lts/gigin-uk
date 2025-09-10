@@ -373,8 +373,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         </div>
       );
     }
-
-    console.log(messages)
     
     return (
         <>

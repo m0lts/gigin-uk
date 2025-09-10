@@ -112,7 +112,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         const applicant = gig?.applicants?.find(a => a?.id === profile?.musicianId);
         const invited = !!(applicant && applicant.invited === true) || (gig?.privateApplications && gig.privateApplicationToken === inviteToken);
         const applied = !!(applicant && applicant.invited !== true);
-        const accepted = !!(applicant && applicant.status === 'accepted');
+        const accepted = !!(applicant && applicant.status === 'accepted' || applicant.status === 'confirmed');
         return { invited, applied, accepted };
     };
       

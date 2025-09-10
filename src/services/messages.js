@@ -121,7 +121,7 @@ export const sendGigAcceptedMessage = async (conversationId, originalMessageId, 
         status: 'accepted',
     });
     const timestamp = Timestamp.now();
-    const announcement = !nonPayableGig ? `The ${userRole} has accepted the gig for a fee of ${agreedFee}.` : `The ${userRole} has accepted the musician's application.`;
+    const announcement = !nonPayableGig ? `The ${userRole} has accepted the gig for a fee of ${agreedFee}.` : `The ${userRole} has accepted the gig. The gig is now confirmed`;
     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     await addDoc(messagesRef, {
       senderId,
