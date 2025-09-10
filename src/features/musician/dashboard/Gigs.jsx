@@ -395,7 +395,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                 );
                                 const thisGigIsSaved = savedGigs.some(g => g.gigId === gig.gigId);
                                 return (
-                                    <React.Fragment key={gig.id}>
+                                    <React.Fragment key={index}>
                                         {isFirstPreviousGig && (
                                             <tr className='filler-row'>
                                                 <td className='data' colSpan={7}>
@@ -418,16 +418,14 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                 }
                                             }}
                                         >
-                                            {(musicianProfile.bands) && (
-                                                <td className="applied-profile-name">
-                                                    {applicant.invited && !applicant.viewed && (
-                                                        <div className="new-invite">
-                                                            <p>NEW INVITE</p>
-                                                        </div>
-                                                    )}
-                                                    {appliedProfile?.profileName}
-                                                </td>
-                                            )}
+                                            <td className="applied-profile-name">
+                                                {applicant?.invited && !applicant?.viewed && (
+                                                    <div className="new-invite">
+                                                        <p>NEW INVITE</p>
+                                                    </div>
+                                                )}
+                                                {appliedProfile?.profileName || musicianProfile.name}
+                                            </td>
                                             <td>
                                             {gig.startDateTime.toDate().toLocaleTimeString('en-GB', {
                                                 hour: '2-digit',
