@@ -99,25 +99,6 @@
     outline:1px solid var(--gn-off-black);
 }
 
-.body.messages .filters .btn.tertiary {
-    display: flex;
-    align-items: center;
-    gap:0.5rem;
-    font-weight: 400;
-    color: var(--gn-grey-700);
-}
-
-.body.messages .filters .btn.tertiary:hover {
-    background-color: var(--gn-grey-350);
-    border-color: transparent;
-    box-shadow: none;
-}
-
-.body.messages .filters .btn.tertiary.open {
-    background-color: var(--gn-grey-350);
-    color:var(--gn-black);
-}
-
 .body.messages .column.conversations .conversations-list {
     list-style-type: none;
     display: flex;

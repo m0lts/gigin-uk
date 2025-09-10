@@ -20,7 +20,7 @@ import { TopBar } from './TopBar';
 import Portal from '../../shared/components/Portal';
 
 
-export const MusicianDashboard = ({ user }) => {
+export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalClosable }) => {
 
   const {
     loading,

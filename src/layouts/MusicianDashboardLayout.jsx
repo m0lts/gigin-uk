@@ -11,7 +11,8 @@ export const MusicianDashboardLayout = ({
     user,
     setAuthClosable,
     setNoProfileModal,
-    noProfileModal
+    noProfileModal,
+    setNoProfileModalClosable
   }) => {
     const { loading } = useAuth();
 
@@ -36,8 +37,16 @@ export const MusicianDashboardLayout = ({
         return;
       }
 
+      if (!loading && user?.musicianProfile === undefined) {
+        setNoProfileModal(true);
+        setNoProfileModalClosable(false);
+        setAuthClosable?.(false);
+        return;
+      }
+
       if (!loading && user?.musicianProfile && !hasBasics) {
         setNoProfileModal(true);
+        setNoProfileModalClosable(false);
         setAuthClosable?.(false);
         return;
       }
@@ -50,9 +59,11 @@ export const MusicianDashboardLayout = ({
   
     return (
       <MusicianDashboardProvider user={user}>
-        <section className="dashboard">
-          {children}
-        </section>
+        {hasBasics && (
+          <section className="dashboard">
+            {children}
+          </section>
+        )}
       </MusicianDashboardProvider>
     );
   };

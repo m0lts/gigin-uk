@@ -88,13 +88,13 @@ export const TopBar = ({ user, bandProfiles }) => {
                   <div className="breadcrumbs">
                       {breadcrumbs.map((crumb, index) => (
                           <React.Fragment key={crumb.path}>
-                          <div className="breadcrumb">
+                          <Link className="breadcrumb" to={crumb.path}>
                               {index !== breadcrumbs.length - 1 ? (
-                              <Link to={crumb.path} className='breadcrumb-link'>{crumb.label}</Link>
+                              <p className='breadcrumb-link'>{crumb.label}</p>
                               ) : (
                                 <p className='breadcrumb-text'>{crumb.label}</p>
                               )}
-                          </div>
+                          </Link>
                           {index !== breadcrumbs.length - 1 && (
                               <div className="breadcrumb-separator">
                               <RightChevronIcon />
@@ -119,7 +119,7 @@ export const TopBar = ({ user, bandProfiles }) => {
                         </button>
                     </Link>
                     <Link className='link' to={'/dashboard'}>
-                        <button className={`btn secondary ${location.pathname === '/dashboard' ? 'disabled' : ''}`}>
+                        <button className={`btn secondary ${location.pathname.includes('dashboard') ? 'disabled' : ''}`}>
                             <DashboardIconLight />
                             Dashboard
                         </button>

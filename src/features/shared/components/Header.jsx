@@ -9,7 +9,7 @@ import { ProfileCreator } from '../../musician/profile-creator/ProfileCreator';
 import { ExitIcon, MapIcon } from '../ui/extras/Icons';
 import { NoProfileModal } from '../../musician/components/NoProfileModal';
 
-export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoProfileModal }) => {
+export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoProfileModal, noProfileModalClosable = false, setNoProfileModalClosable }) => {
     
     const { logout } = useAuth();
     const navigate = useNavigate();
@@ -60,7 +60,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                     Find a Gig
                                 </button>
                             </Link>
-                            <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`} onClick={() => setNoProfileModal(true)}>
+                            <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(noProfileModalClosable)}}>
                                 <GuitarsIcon />
                                 Create a Musician Profile
                             </button>

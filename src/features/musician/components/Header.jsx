@@ -28,7 +28,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';
 import { NoProfileModal } from './NoProfileModal';
 
-export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModal, setNoProfileModal }) => {
+export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModal, setNoProfileModal, setNoProfileModalClosable, noProfileModalClosable = false }) => {
     
     const { logout } = useAuth();
     const navigate = useNavigate();
@@ -73,15 +73,15 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
     }
 
     const headerStyle = {
-        padding: location.pathname.includes('dashboard') ? '0 1rem' : location.pathname.startsWith('/gig/') 
+        padding: (location.pathname.includes('dashboard') || location.pathname.includes('venues')) ? '0 1rem' : location.pathname.startsWith('/gig/') 
         ? `0 ${padding}` 
         : '0 1rem',
       };
 
     const menuStyle = {
-        right: location.pathname.includes('dashboard') ? '1rem' : '5%',
+        right: (location.pathname.includes('dashboard') || location.pathname.includes('venues')) ? '1rem' : '5%',
       };
-    
+
     return (
         <header className='header default' style={headerStyle}>
             {user ? (
@@ -100,13 +100,13 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                 </Link>
                             ) : (
                                 <>
-                                    <Link className='link' to={'/find-a-gig'}>
+                                    <Link className='link no-margin' to={'/find-a-gig'}>
                                         <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                                             <MapIcon />
                                             Find a Gig
                                         </button>
                                     </Link>
-                                    <Link className='link' to={'/find-venues'}>
+                                    <Link className='link no-margin' to={'/find-venues'}>
                                         <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
                                             <TelescopeIcon />
                                             Find a Venue
@@ -122,7 +122,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                             </Link>
                                         )
                                     ) : (
-                                        <button className='btn secondary' onClick={() => setNoProfileModal(true)}>
+                                        <button className='btn secondary' onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(noProfileModalClosable)}}>
                                             <GuitarsIcon />
                                             Create Musician Profile
                                         </button>
@@ -229,12 +229,12 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                 <div className='break' />
                                 <h6 className='title'>musicians</h6>
                                 {user.musicianProfile ? (
-                                    <Link className='link item' to={'/dashboard'}>
+                                    <Link className='link item no-margin' to={'/dashboard'}>
                                         Dashboard
                                         <DashboardIconLight />
                                     </Link>
                                 ) : (
-                                    <Link className='link item' onClick={() => setNoProfileModal(true)}>
+                                    <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
                                         Create Musician Profile
                                         <GuitarsIcon />
                                     </Link>

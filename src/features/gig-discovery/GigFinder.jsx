@@ -13,8 +13,7 @@ import { FilterPanel } from './FilterPanel';
 import { TopBanner } from './TopBanner';
 import Portal from '../shared/components/Portal';
 
-export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal,
-  noProfileModal }) => {
+export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, noProfileModal, setNoProfileModalClosable }) => {
 
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -138,6 +137,8 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal,
                     user={user}
                     setNoProfileModal={setNoProfileModal}
                     noProfileModal={noProfileModal}
+                    noProfileModalClosable={true}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
                 />
             ) : (
                 <MusicianHeader
@@ -146,6 +147,8 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal,
                     user={user}
                     setNoProfileModal={setNoProfileModal}
                     noProfileModal={noProfileModal}
+                    noProfileModalClosable={true}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
                 />
             )}
             <div className="body">

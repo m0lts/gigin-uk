@@ -774,6 +774,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder='Type your message...'
+                    maxLength={500}
                 />
                 <button type='submit' className='btn primary'><SendMessageIcon /></button>
             </form>

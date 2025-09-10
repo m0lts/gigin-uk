@@ -20,6 +20,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { uploadProfilePicture } from '../../../services/storage';
 import '@styles/musician/no-profile.styles.css'
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { useNavigate } from 'react-router-dom';
 
 // Helpers
 const slideVariants = {
@@ -40,8 +41,10 @@ const Stage = {
 export const NoProfileModal = ({
   isOpen,
   onClose,
+  noProfileModalClosable
 }) => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [stage, setStage] = useState(Stage.SELECT);
     const [direction, setDirection] = useState(1);
     const [selectedUserType, setSelectedUserType] = useState(null);
@@ -139,7 +142,7 @@ export const NoProfileModal = ({
         }
     };
 
-    const handleSkipMusician = async () => {
+    const handleSkipMusician = async (redirect) => {
         setLoadingMessage('Saving…');
         setStage(Stage.LOADING);
         try {
@@ -149,6 +152,9 @@ export const NoProfileModal = ({
               updatedAt: Timestamp.now(),
             };
             await updateMusicianProfile(musicianId, payload);
+            if (redirect) {
+                navigate(redirect);
+            }
             window.location.reload();
             onClose?.();
           } catch (e) {
@@ -241,10 +247,14 @@ export const NoProfileModal = ({
 
     if (!isOpen) return null;
 
+
+
     return (
         <div className="modal profile-select" role="dialog" aria-modal="true">
         <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
-
+            {noProfileModalClosable && (
+                <button className="btn tertiary close" onClick={onClose}>Close</button>
+            )}
             <AnimatePresence mode="wait" custom={direction}>
                 {stage === Stage.SELECT && (
                     <motion.div
@@ -411,7 +421,7 @@ export const NoProfileModal = ({
                             Skip
                         </button>
                         <div className="action-buttons">
-                            <button className="btn secondary">
+                            <button className="btn secondary" onClick={() => handleSkipMusician('/dashboard/profile')}>
                                 Full Profile Set Up
                             </button>
                             <button className="btn primary" onClick={handleSaveMusician} disabled={!musicianId}>

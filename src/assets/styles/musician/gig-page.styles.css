@@ -169,7 +169,7 @@
     width: 100%;
     display: grid;
     grid-template-columns: auto 350px;
-    gap:2.5%;
+    gap:1rem;
     margin-top: 1rem;
 }
 
@@ -197,7 +197,7 @@
 .gig-page-body .gig-info .extra-info,
 .gig-page-body .gig-info .socials {
     border-bottom: 1px solid var(--gn-grey-300);
-    padding: 1rem 0;
+    padding: 1.5rem 0;
 }
 
 .gig-page-body .gig-info .gig-host h5 {

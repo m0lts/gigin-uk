@@ -136,7 +136,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                     ))}
                                 </select>
                                 <button className="btn tertiary" onClick={handleShowArchived}>
-                                    {showArchived ? <InboxIcon /> : <ArchiveIcon />}
+                                    {showArchived ? 'Inbox' : 'Archived'}
                                 </button>
                             </div>
                             <ul className='conversations-list'>
@@ -179,13 +179,14 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                 </button>
                                             )}
                                             <button
-                                                className="btn icon"
+                                                className="btn tertiary"
+                                                style={{ display: 'flex', alignItems: 'center', gap:'0.5rem'}}
                                                 onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleArchiveConversation(activeConversation, !showArchived);
                                                 }}
                                             >
-                                                <ArchiveIcon />
+                                                Archive <ArchiveIcon /> 
                                             </button>
                                         </div>
                                     </div>

@@ -38,7 +38,7 @@ import { acceptGigOffer, getGigById, getGigsByIds } from '../../services/gigs';
 import { getMostRecentMessage, sendCounterOfferMessage, sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../services/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/emails';
-import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon } from '../shared/ui/extras/Icons';
+import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
 import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
@@ -49,7 +49,7 @@ import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
 import { notifyOtherApplicantsGigConfirmed } from '../../services/conversations';
 
-export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal }) => {
+export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId } = useParams();
     const navigate = useNavigate();
 
@@ -647,6 +647,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
                     padding={padding}
+                    setNoProfileModal={setNoProfileModal}
                 />
             ) : (
                 <MusicianHeader
@@ -654,6 +655,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
                     padding={padding}
+                    setNoProfileModal={setNoProfileModal}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
+                    noProfileModalClosable={true}
                 />
             )}
             <section className='gig-page-body' style={{ width: `${width}`}}>
@@ -701,11 +705,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 <div className='important-info'>
                                     <div className='date-and-time'>
                                         <h2>{gigData.venue.venueName}</h2>
-                                        <button className="btn text" onClick={
+                                        <button className="btn secondary" onClick={
                                             selectedProfile && selectedProfile?.id ? 
                                             (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e)
                                             : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
-                                            Venue Page <NewTabIcon />
+                                            <VenueIconSolid /> See {venueProfile?.name && venueProfile.name + "'s"} Venue Page
                                         </button>
                                     </div>
                                     <div className='address'>
@@ -839,12 +843,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 </div>
                                 {venueProfile?.description && (
                                     <div className='description'>
-                                        <h4>Description</h4>
+                                        <h4>About {venueProfile?.name}</h4>
                                         <p>{venueProfile?.description}</p>
                                     </div>
                                 )}
                                 <div className='extra-info'>
-                                    <h4 className='subtitle'>Extra Info</h4>
+                                    <h4 className='subtitle'>Additional Technical Information</h4>
                                     {gigData.applicants.length > 0 && (
                                         <div className='info'>
                                             <h6>Gig Applications</h6>
@@ -948,7 +952,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             <h3>{formatDate(gigData.date)}, {gigData.startTime}</h3>
                                         </div>
                                     </div>
-                                    {!(gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig') && (
+                                    {!(gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig') || !venueVisiting && (
                                         <div className='action-box-fees'>
                                             <div className='action-box-service-fee'>
                                                 <p>Service Fee</p>

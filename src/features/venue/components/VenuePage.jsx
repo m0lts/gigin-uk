@@ -48,23 +48,11 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [venueGigs, setVenueGigs] = useState([]);
     const [loading, setLoading] = useState(true);
     const mapContainerRef = useRef(null);
-    const [padding, setPadding] = useState('5%');
     const [fullscreenImage, setFullscreenImage] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [width, setWidth] = useState('100%');
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [requestMessage, setRequestMessage] = useState('');
     const [confirmedGigs, setConfirmedGigs] = useState([]);
-
-    useResizeEffect((width) => {
-        if (width > 1100) {
-          setPadding('10%');
-          setWidth('95%');
-        } else {
-          setPadding('2.5%');
-          setWidth('95%');
-        }
-    });
 
     useEffect(() => {
         if (!venueId) return;
@@ -201,14 +189,12 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                     user={user}
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
-                    padding={padding}
                 />
             ) : (
                 <MusicianHeader
                     user={user}
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
-                    padding={padding}
                 />
             )}
             <section className='venue-page-body'>
@@ -271,7 +257,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                 )}
                             </div>
                         </div>
-                        <div className="venue-page-information" style={{ width: `${width}`, margin: '0 auto'}}>
+                        <div className="venue-page-information" style={{ width: `95%`, margin: '0 auto'}}>
                             <div className="venue-page-details">
                                 <div className="section bio">
                                     <h2>Bio</h2>
