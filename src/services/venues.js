@@ -14,7 +14,8 @@ import {
   orderBy,
   setDoc,
   runTransaction,
-  GeoPoint
+  GeoPoint,
+  writeBatch
 } from 'firebase/firestore';
 import { updateVenueGigsAccountName } from './gigs';
 import { rewriteVenueConversationsAndMessages } from './conversations';
@@ -221,10 +222,10 @@ export const getTemplatesByVenueIds = async (venueIds) => {
 export const updateVenueProfileAccountNames = async (userId, venueProfileIds, newAccountName) => {
   if (!userId || !venueProfileIds?.length || !newAccountName) return;
 
-  const batch = writeBatch(db);
+  const batch = writeBatch(firestore);
 
-  venueProfileIds.forEach((profileId) => {
-    const profileRef = doc(db, 'venueProfiles', profileId);
+  venueProfileIds.forEach((profile) => {
+    const profileRef = doc(firestore, 'venueProfiles', profile.id);
     batch.update(profileRef, { accountName: newAccountName });
   });
 

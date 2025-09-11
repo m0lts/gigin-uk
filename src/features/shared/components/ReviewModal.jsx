@@ -16,6 +16,8 @@ import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../service
 import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/emails';
 import Portal from './Portal';
 import { getOrCreateConversation } from '../../../services/conversations';
+import { LoadingSpinner } from '../ui/loading/Loading';
+import { LoadingModal } from '../ui/loading/LoadingModal';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);
@@ -162,24 +164,22 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
 
     if (loading) {
         return (
-            <div className='modal'>
-                <div className='modal-content review'>
-                    <LoadingThreeDots />
-                </div>
-            </div>
+            <LoadingModal />
         );
     }
 
     return (
-        <div className='modal' onClick={onClose}>
+        <div className='modal' onClick={() => onClose(false)}>
             <div className='modal-content review' onClick={(e) => e.stopPropagation()}>
                 {(showDisputeForm && disputeAllowed) ? (
                     <div className='leave-review'>
                         {reviewer === 'venue' ? (
                             <div className='review-head'>
-                                <figure className='musician-img-cont'>
-                                    <img src={musicianProfile.picture} alt={musicianProfile.name} className='musician-img' />
-                                </figure>
+                                {musicianProfile?.picture && (
+                                    <figure className='musician-img-cont'>
+                                        <img src={musicianProfile.picture} alt={musicianProfile.name} className='musician-img' />
+                                    </figure>
+                                )}
                                 <div className='name-and-reviews'>
                                     <h2>{musicianProfile?.name || 'the musician'}</h2>
                                     {musicianProfile.avgReviews ? (
@@ -360,7 +360,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                         )}
                     </div>
                 )}
-                <button className='btn tertiary close' onClick={onClose}>
+                <button className='btn tertiary close' onClick={() => onClose(false)}>
                     Close
                 </button>
             </div>

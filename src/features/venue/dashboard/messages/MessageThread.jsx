@@ -807,6 +807,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                         onClose={(reviewSubmitted) => {
                             setShowReviewModal(false);
                             if (reviewSubmitted) {
+                                console.log('submitted')
                                 handleMessageReviewed();
                             }
                         }}

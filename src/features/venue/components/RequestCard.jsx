@@ -33,7 +33,9 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
     <div key={request.id} ref={ref} className="request-card">
       <div className="top-banner">
         <div className="musician-info" onClick={(e) => openInNewTab(`/${request.musicianId}`, e)}>
-          <img src={request.musicianImage} alt={`${request.musicianName}`} className="avatar" />
+          {request.musicianImage && (
+            <img src={request.musicianImage} alt={`${request.musicianName}`} className="avatar" />
+          )}
           <div>
             <h3>{request.musicianName}</h3>
             <p className="timestamp">{new Date(request.createdAt.toDate()).toLocaleString()}</p>
