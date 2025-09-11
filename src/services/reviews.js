@@ -32,45 +32,60 @@ import { incrementRating } from '@services/utils/misc';
  * @returns {Promise<string>} - Returns the ID of the submitted review document.
  */
 export const submitReview = async ({
-    reviewer,
+  reviewer,
+  musicianId,
+  venueId,
+  gigId,
+  rating,        // now "positive" | "negative"
+  reviewText,
+  profile,
+}) => {
+  const reviewData = {
     musicianId,
     venueId,
     gigId,
-    rating,
-    reviewText,
-    profile,
-  }) => {
-    const reviewData = {
-      musicianId,
-      venueId,
-      gigId,
-      reviewWrittenBy: reviewer,
-      rating,
-      reviewText: reviewText?.trim() || null,
-      timestamp: Timestamp.now(),
-    };
-    const reviewRef = await addDoc(collection(firestore, 'reviews'), reviewData);
-    const reviewId = reviewRef.id;
-    if (reviewer === 'venue') {
-      await updateDoc(doc(firestore, 'musicianProfiles', musicianId), {
-        reviews: arrayUnion(reviewId),
-        avgReviews: incrementRating(profile?.avgReviews || { totalReviews: 0, avgRating: 0 }, rating),
-      });
-      await updateDoc(doc(firestore, 'gigs', gigId), {
-        venueHasReviewed: true,
-      });
-    } else if (reviewer === 'musician') {
-      await updateDoc(doc(firestore, 'venueProfiles', venueId), {
-        reviews: arrayUnion(reviewId),
-        avgReviews: incrementRating(profile?.avgReviews || { totalReviews: 0, avgRating: 0 }, rating),
-      });
-      await updateDoc(doc(firestore, 'gigs', gigId), {
-        musicianHasReviewed: true,
-      });
-    }
-  
-    return reviewId;
+    reviewWrittenBy: reviewer,
+    rating, // store raw "positive"/"negative"
+    reviewText: reviewText?.trim() || null,
+    timestamp: Timestamp.now(),
   };
+
+  const reviewRef = await addDoc(collection(firestore, 'reviews'), reviewData);
+  const reviewId = reviewRef.id;
+
+  // ensure profile.avgReviews has sane defaults
+  const currentStats = profile?.avgReviews || {
+    totalReviews: 0,
+    positive: 0,
+    negative: 0,
+  };
+
+  const updatedStats = {
+    totalReviews: currentStats.totalReviews + 1,
+    positive: currentStats.positive + (rating === "positive" ? 1 : 0),
+    negative: currentStats.negative + (rating === "negative" ? 1 : 0),
+  };
+
+  if (reviewer === 'venue') {
+    await updateDoc(doc(firestore, 'musicianProfiles', musicianId), {
+      reviews: arrayUnion(reviewId),
+      avgReviews: updatedStats,
+    });
+    await updateDoc(doc(firestore, 'gigs', gigId), {
+      venueHasReviewed: true,
+    });
+  } else if (reviewer === 'musician') {
+    await updateDoc(doc(firestore, 'venueProfiles', venueId), {
+      reviews: arrayUnion(reviewId),
+      avgReviews: updatedStats,
+    });
+    await updateDoc(doc(firestore, 'gigs', gigId), {
+      musicianHasReviewed: true,
+    });
+  }
+
+  return reviewId;
+};
 
 /**
  * Submits a testimonial for a musician.

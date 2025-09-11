@@ -124,7 +124,6 @@ export const SavedMusicians = ({ user }) => {
                             genres = [],
                             musicianType = '',
                             videos = [],
-                            avgReviews,
                             totalEarnings,
                             followers,
                         } = musician;

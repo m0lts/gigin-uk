@@ -18,6 +18,7 @@ import Portal from './Portal';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { LoadingModal } from '../ui/loading/LoadingModal';
+import { ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);
@@ -28,7 +29,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
     const [disputeReason, setDisputeReason] = useState('');
     const [disputeSubmitted, setDisputeSubmitted] = useState(false);
     const [disputeAllowed, setDisputeAllowed] = useState(true);
-    const [rating, setRating] = useState(0);
+    const [rating, setRating] = useState(null);
     const [reviewText, setReviewText] = useState('');
     const [reviewingAfterDispute, setReviewingAfterDispute] = useState(false);
 
@@ -153,7 +154,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                 venueHasReviewed: reviewer === 'venue',
             }));
             toast.success('Review submitted!');
-            setRating(0);
+            setRating(null);
             setReviewText('');
             onClose(true);
         } catch (error) {
@@ -183,7 +184,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 <div className='name-and-reviews'>
                                     <h2>{musicianProfile?.name || 'the musician'}</h2>
                                     {musicianProfile.avgReviews ? (
-                                        <h3><StarIcon />  {musicianProfile.avgReviews.avgRating} ({musicianProfile.avgReviews.totalReviews}) </h3>
+                                        <h3>{musicianProfile.avgReviews.totalReviews}</h3>
                                     ) : (
                                         <h6>No Reviews</h6>
                                     )}
@@ -197,7 +198,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 <div className='name-and-reviews'>
                                     <h2>{gigData.venue.venueName || 'the venue'}</h2>
                                     {venueProfile.avgReviews ? (
-                                        <h3><StarIcon />  {venueProfile.avgReviews.avgRating} ({venueProfile.avgReviews.totalReviews}) </h3>
+                                        <h3>{venueProfile.avgReviews.totalReviews}</h3>
                                     ) : (
                                         <h6>No Reviews</h6>
                                     )}
@@ -265,30 +266,25 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 <div className='name-and-reviews'>
                                     <h2>{musicianProfile?.name || 'the musician'}</h2>
                                     {musicianProfile?.avgReviews ? (
-                                        <h3><StarIcon />  {musicianProfile.avgReviews.avgRating} ({musicianProfile.avgReviews.totalReviews}) </h3>
+                                        <h3>{musicianProfile.avgReviews.totalReviews}</h3>
                                     ) : (
                                         <h6>No Reviews</h6>
                                     )}
                                 </div>
                             </div>
                             <div className='review-body'>
-                                <div className='star-rating'>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <span
-                                            key={star}
-                                            className='star'
-                                            onClick={() => setRating(star)}
-                                        >
-                                            {rating >= star ? <StarIcon /> : <StarEmptyIcon />}
-                                        </span>
-                                    ))}
+                                <div className="review-buttons">
+                                    <button className={`btn secondary ${rating === 'negative' ? 'selected' : ''}`} onClick={() => setRating('negative')}>Negative <ThumbsDownIcon /></button>
+                                    <button className={`btn secondary ${rating === 'positive' ? 'selected' : ''}`} onClick={() => setRating('positive')}>Positive <ThumbsUpIcon /></button>
                                 </div>
-                                <textarea
-                                    value={reviewText}
-                                    onChange={(e) => setReviewText(e.target.value)}
-                                    placeholder='Write your review (optional)...'
-                                    disabled={!rating}
-                                />
+                                {rating && (
+                                    <textarea
+                                        value={reviewText}
+                                        onChange={(e) => setReviewText(e.target.value)}
+                                        placeholder='Write your review (optional)...'
+                                        disabled={!rating}
+                                    />
+                                )}
                                 {disputeAllowed && !reviewingAfterDispute ? (
                                     <div className='two-buttons'>
                                         <button
@@ -322,30 +318,25 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 <div className='name-and-reviews'>
                                     <h2>{venueProfile?.name || 'the musician'}</h2>
                                     {venueProfile.avgReviews ? (
-                                        <h3><StarIcon />  {venueProfile.avgReviews.avgRating} ({venueProfile.avgReviews.totalReviews}) </h3>
+                                        <h3>{venueProfile.avgReviews.totalReviews}</h3>
                                     ) : (
                                         <h6>No Reviews</h6>
                                     )}
                                 </div>
                             </div>
                             <div className='review-body'>
-                                <div className='star-rating'>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <span
-                                            key={star}
-                                            className='star'
-                                            onClick={() => setRating(star)}
-                                        >
-                                            {rating >= star ? <StarIcon /> : <StarEmptyIcon />}
-                                        </span>
-                                    ))}
+                                <div className="review-buttons">
+                                    <button className={`btn secondary ${rating === 'negative' ? 'selected' : ''}`} onClick={() => setRating('negative')}>Negative <ThumbsDownIcon /></button>
+                                    <button className={`btn secondary ${rating === 'positive' ? 'selected' : ''}`} onClick={() => setRating('positive')}>Positive <ThumbsUpIcon /></button>
                                 </div>
-                                <textarea
-                                    value={reviewText}
-                                    onChange={(e) => setReviewText(e.target.value)}
-                                    placeholder='Write your review (optional)...'
-                                    disabled={!rating}
-                                />
+                                {rating && (
+                                    <textarea
+                                        value={reviewText}
+                                        onChange={(e) => setReviewText(e.target.value)}
+                                        placeholder='Write your review (optional)...'
+                                        disabled={!rating}
+                                    />
+                                )}
                                 <button
                                     className='btn primary'
                                     onClick={handleSubmitReview}

@@ -87,7 +87,15 @@ const toMs = (dt) => {
           return Number.isFinite(t) && t > now;
         })
         .sort((a, b) => toMs(a.startDateTime) - toMs(b.startDateTime))[0] || null;
-    setNextGig(nextConfirmedFutureGig);
+        setNextGig(
+            nextConfirmedFutureGig
+              ? {
+                  ...nextConfirmedFutureGig,
+                  _profileId: primaryProfile?.id ?? primaryProfile?.musicianId ?? null,
+                  _profileName: primaryProfile?.name ?? null,
+                }
+              : null
+          );
 
     const awaiting = gigs
       .map(gig => {
@@ -116,6 +124,8 @@ const toMs = (dt) => {
     const formatName = (name) => {
         return name.split(' ')[0];
     };
+
+    console.log(nextGig)
 
     return (
         <>
@@ -196,7 +206,7 @@ const toMs = (dt) => {
                                     See Details
                                 </button>
                             </div>
-                            <h2>{musicianProfile.name} @ {nextGig.venue.venueName}</h2>
+                            <h2>{nextGig._profileName} @ {nextGig.venue.venueName}</h2>
                             <h3>{formatDate(nextGig.startDateTime, 'withTime')}</h3>
                         </div>
                     ) : (

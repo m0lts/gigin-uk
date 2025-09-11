@@ -190,7 +190,6 @@ export const FindMusicians = ({ user }) => {
                             genres = [],
                             musicianType = '',
                             videos = [],
-                            avgReviews,
                             totalEarnings,
                             followers,
                         } = musician;

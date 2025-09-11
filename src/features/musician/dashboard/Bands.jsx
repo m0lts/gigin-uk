@@ -74,23 +74,6 @@ export const Bands = ({ bandProfiles }) => {
                             ))}
                         </div>
                         <div className="stats-container">
-                            {band?.avgReviews?.avgRating ? (
-                                <div className="stats-box avg-rating">
-                                    <span className="large-item">
-                                        <StarIcon />
-                                        {band.avgReviews.avgRating}
-                                    </span>
-                                    <span className='text'>avg rating</span>
-                                </div>
-                            ) : (
-                                <div className="stats-box avg-rating">
-                                    <span className="large-item">
-                                        <StarIcon />
-                                        -
-                                    </span>
-                                    <span className='text'>no ratings</span>
-                                </div>
-                            )}
                             <span className="spacer"></span>
                             {band?.totalEarnings ? (
                                 <div className="stats-box earnings">

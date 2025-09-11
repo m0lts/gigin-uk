@@ -250,12 +250,6 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                             <div className='profile-details'>
                                 <h1>{musicianProfile.name}</h1>
                                 <h4>{musicianProfile?.bandProfile ? 'Band' : 'Musician'}</h4>
-                                <div className='data'>
-                                    {musicianProfile.avgReviews && (
-                                        <h6><StarIcon /> {musicianProfile.avgReviews.avgRating} ({musicianProfile.avgReviews.totalReviews})</h6>
-                                    )}
-                                    <h6>{musicianProfile?.gigsPerformed || '0'} gigs played</h6>
-                                </div>
                                 <div className='genre-tags'>
                                     {musicianProfile.genres && musicianProfile.genres.map((genre, index) => (
                                         <div className='genre-tag' key={index}>

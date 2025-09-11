@@ -468,7 +468,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
         setApplyingToGig(true);
         try {
-            const updatedApplicants = await negotiateGigFee(gigId, musicianProfile, newOffer, sender = 'musician');
+            const updatedApplicants = await negotiateGigFee(gigId, musicianProfile, newOffer, 'musician');
             setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
             if (musicianProfile.bandProfile) {
                 await updateBandMembersGigApplications(musicianProfile, gigId);

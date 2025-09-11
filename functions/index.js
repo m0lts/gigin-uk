@@ -1885,7 +1885,7 @@ const handlePaymentSuccess = async (paymentIntent) => {
         gigData.agreedFee.replace("£", "").trim() :
         gigData.agreedFee;
       const n = Number(raw);
-      return Math.round(n * 0.95 * 100) / 100;
+      return Math.round(n * 1 * 100) / 100;
     })();
     const updatedApplicants = (gigData.applicants || []).map((a) =>
       a.id === applicantId ? {...a, status: "confirmed"} : {...a},

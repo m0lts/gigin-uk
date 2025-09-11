@@ -82,7 +82,7 @@ export const PaymentModal = ({
     };
   
     const baseFee = gigData?.agreedFee && (parseFloat(String(gigData.agreedFee).replace(/[^\d.]/g, "")) || 0);
-    const totalPounds = baseFee * 1.05;
+    const totalPounds = baseFee * 1.00;
     const totalDue = `${totalPounds.toFixed(2)}`;
     const amountSubunits = Math.round(totalPounds * 100);
   
@@ -127,16 +127,8 @@ export const PaymentModal = ({
               {gigData?.agreedFee && (
                     <div className='payment-details'>
                         <div className='payment-line'>
-                            <h6>Agreed gig fee:</h6>
-                            <h3>{gigData.agreedFee}</h3>
-                        </div>
-                        <div className='payment-line'>
-                            <h6>Service fee:</h6>
-                            <h3>£{(parseFloat(gigData.agreedFee.replace('£', '')) * 0.05).toFixed(2)}</h3>
-                        </div>
-                        <div className='payment-line'>
                             <h6>Total Payment Due:</h6>
-                            <h1>£{totalDue}</h1>
+                            <h1>{gigData.agreedFee}</h1>
                         </div>
                     </div>
                 )}

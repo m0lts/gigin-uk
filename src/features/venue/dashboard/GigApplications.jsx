@@ -165,7 +165,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig";
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianProfileId);
+                const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianId);
                 setGigInfo((prevGigInfo) => ({
                     ...prevGigInfo,
                     applicants: updatedApplicants,
@@ -186,7 +186,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             const conversationId = await getOrCreateConversation(musicianProfile, gigInfo, venueProfile, 'application');
             if (proposedFee === gigInfo.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
-                console.log(applicationMessage)
                 await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigInfo.budget, 'venue', nonPayableGig);
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
@@ -689,7 +688,19 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </button>
                                                         </>
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && applicant?.invited && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && gigInfo.kind === 'Open Mic' && gigAlreadyConfirmed && sender !== 'venue' && (
+                                                        <>
+                                                            <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                <TickIcon />
+                                                                Accept
+                                                            </button>
+                                                            <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                <ErrorIcon />
+                                                                Decline
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && applicant?.invited && !gigAlreadyConfirmed && (
                                                         <div className='status-box'>
                                                             <div className='status upcoming'>
                                                                 <ClockIcon />
@@ -705,12 +716,20 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && (
+                                                    {status === 'pending' && gigAlreadyConfirmed && gigInfo.kind !== 'Open Mic' && (
+                                                        <div className='status-box'>
+                                                            <div className='status declined'>
+                                                                <ErrorIcon />
+                                                                Declined
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && (
                                                         <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.id)}}>
                                                             Negotiate Fee
                                                         </button>
                                                     )}
-                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind === 'Ticketed Gig' || gigInfo.kind === 'Open Mic') && (
+                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind === 'Ticketed Gig' || gigInfo.kind === 'Open Mic') && applicant?.invited && (
                                                         <div className='status-box'>
                                                             <div className='status declined'>
                                                                 <ErrorIcon />

@@ -49,9 +49,16 @@
     gap:10px
 }
 
-.modal .modal-content.review .leave-review .review-body .star-rating .star .icon {
-    color: gold;
-    font-size: 2rem;
+.modal .modal-content.review .leave-review .review-body .review-buttons {
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+}
+
+.modal .modal-content.review .leave-review .review-body .review-buttons .btn.selected {
+    background-color: var(--gn-grey-350);
 }
 
 .modal .modal-content.review .leave-review .review-body textarea {
