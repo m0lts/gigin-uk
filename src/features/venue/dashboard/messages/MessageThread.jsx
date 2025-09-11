@@ -239,7 +239,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 toast.info('Please enter a valid value.');
                 return;
             }
-            const updatedApplicants = await updateGigWithCounterOffer(gigData, musicianProfileId, newFee);
+            const updatedApplicants = await updateGigWithCounterOffer(gigData, musicianProfileId, newFee, 'venue');
             setGigData((prev) => ({ ...prev, applicants: updatedApplicants }));
             await sendCounterOfferMessage(
                 conversationId,

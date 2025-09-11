@@ -154,7 +154,7 @@ export const updateDeclinedApplicationMessage = async (
     originalMessageId,
     senderId,
     userRole,
-    fee = false,
+    fee = null,
   ) => {
     const timestamp = Timestamp.now();
     const messageRef = doc(firestore, 'conversations', conversationId, 'messages', originalMessageId);

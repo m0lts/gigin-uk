@@ -114,7 +114,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 }));
                 globalAgreedFee = agreedFee;
             }
-            await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole, nonPayableGig);
+            await sendGigAcceptedMessage(conversationId, messageId, user.uid, globalAgreedFee, userRole, nonPayableGig);
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigAcceptedEmail({
@@ -122,7 +122,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 musicianProfile: musicianProfileData,
                 venueProfile: venueData,
                 gigData,
-                agreedFee,
+                globalAgreedFee,
                 profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
                 nonPayableGig,
             });
@@ -238,7 +238,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 toast.info('Please enter a valid value.');
                 return;
             }
-            const updatedApplicants = await updateGigWithCounterOffer(gigData, musicianProfileId, newFee);
+            const updatedApplicants = await updateGigWithCounterOffer(gigData, musicianProfileId, newFee, 'musician');
             setGigData((prev) => ({ ...prev, applicants: updatedApplicants }));
             await sendCounterOfferMessage(
                 conversationId,
@@ -512,7 +512,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Declined
                                             </div>
                                         </div>
-                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic')  && message.status !== 'apps-closed' &&  (
+                                        {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic')  && message?.status !== 'apps-closed' &&  (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                 <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>

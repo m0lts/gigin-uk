@@ -465,7 +465,7 @@ export const inviteToGig = async (gigId, musicianProfile) => {
  * @param {string|number} newFee - The proposed new fee.
  * @returns {Promise<Array>} - The updated applicants array.
  */
-export const negotiateGigFee = async (gigId, musicianProfile, newFee) => {
+export const negotiateGigFee = async (gigId, musicianProfile, newFee, sender) => {
     const gig = await getGigById(gigId);
     if (!gig) return [];
     const newApplication = {
@@ -473,6 +473,7 @@ export const negotiateGigFee = async (gigId, musicianProfile, newFee) => {
         timestamp: Timestamp.now(),
         fee: newFee || '£0',
         status: 'pending',
+        sentBy: sender,
     };
     const updatedApplicants = [...(gig.applicants || []), newApplication];
     await updateGigApplicants(gigId, updatedApplicants);
@@ -591,7 +592,7 @@ export const declineGigApplication = async (gigData, musicianProfileId) => {
  * @param {number} newFee - The newly proposed fee.
  * @returns {Promise<Array>} Updated applicants array.
  */
-export const updateGigWithCounterOffer = async (gigData, musicianProfileId, newFee) => {
+export const updateGigWithCounterOffer = async (gigData, musicianProfileId, newFee, sender) => {
     const updatedApplicants = gigData.applicants.map(applicant => {
       if (applicant.id === musicianProfileId) {
         return {
@@ -599,6 +600,7 @@ export const updateGigWithCounterOffer = async (gigData, musicianProfileId, newF
           fee: newFee,
           timestamp: Timestamp.now(),
           status: 'pending',
+          sentBy: sender,
         };
       }
       return { ...applicant };

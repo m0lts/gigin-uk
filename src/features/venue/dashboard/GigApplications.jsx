@@ -220,16 +220,15 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 ...prevGigInfo,
                 applicants: updatedApplicants,
             }));
-            console.log(updatedApplicants)
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(gigInfo.venueId);
             const conversationId = await getOrCreateConversation(musicianProfile, gigInfo, venueProfile, 'application')
             if (proposedFee === gigInfo.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
-                await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, gigInfo.budget, 'venue');
+                await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, 'venue', gigInfo.budget);
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
-                await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, proposedFee, 'venue');
+                await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, 'venue', proposedFee);
             }
             await sendGigDeclinedEmail({
                 userRole: 'venue',
@@ -246,7 +245,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
     const sendToConversation = async (profileId) => {
         const conversations = await getConversationsByParticipantAndGigId(gigInfo.gigId, profileId)
         const conversationId = conversations[0].id;
-        navigate(`/messages?conversationId=${conversationId}`);
+        navigate(`/venues/dashboard/messages?conversationId=${conversationId}`);
     }
 
     const handleCompletePayment = async (profileId) => {
@@ -264,8 +263,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             setLoadingPaymentDetails(false);
         }
     };
-
-    console.log(makingPayment)
 
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true);
@@ -560,8 +557,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                             <tbody>
                                 {musicianProfiles.map((profile) => {
                                     const applicant = gigInfo?.applicants?.find(applicant => applicant.id === profile.id);
+                                    const sender = applicant ? applicant.sentBy : 'musician';
                                     const status = applicant ? applicant.status : 'pending';
-                                    const gigAlreadyConfirmed = gigInfo?.applicants?.some((a) => a.status === 'confirmed')
+                                    const gigAlreadyConfirmed = gigInfo?.applicants?.some((a) => a.status === 'confirmed');
                                     return (
                                         <tr key={profile.id} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
                                         onMouseLeave={() => setHoveredRowId(null)}>
@@ -662,7 +660,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'negotiating' && (
+                                                    {status === 'negotiating' || (status === 'pending' && sender === 'venue') && (
                                                         <div className='status-box'>
                                                             <div className='status upcoming'>
                                                                 <ClockIcon />
@@ -679,7 +677,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </button>
                                                         )
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && !gigAlreadyConfirmed && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && !gigAlreadyConfirmed && sender !== 'venue' && (
                                                         <>
                                                             <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
                                                                 <TickIcon />
