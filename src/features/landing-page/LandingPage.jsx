@@ -51,8 +51,8 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                     <div className="two-buttons">
                         {user?.musicianProfile ? (
                             <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-                        ) : user?.venueProfile ? (
-                            <button className="btn tertiary" onClick={() => navigate('/venues')}><VenueIconSolid />Create a Venue Profile</button>
+                        ) : user?.venueProfiles ? (
+                            <button className="btn tertiary" onClick={() => navigate('/venues')}><VenueIconSolid />Go To Dashboard</button>
                         ) : (
                             <>
                                 <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
