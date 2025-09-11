@@ -265,6 +265,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         }
     };
 
+    console.log(makingPayment)
+
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true);
         try {
@@ -281,6 +283,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                             : applicant
                     )
                 }));
+                setMakingPayment(false);
                 toast.info("Processing your payment...");
             } else if (result.requiresAction && result.clientSecret) {
                 const stripe = await stripePromise;
@@ -300,10 +303,12 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                     )
                 }));
                 toast.info('Payment authenticated. Finalizing…');
+                setMakingPayment(false);
                 return;
             } else {
                 setPaymentSuccess(false);
                 toast.error(result.error || 'Payment failed. Please try again.');
+                setMakingPayment(false);
             }
         } catch (error) {
             console.error('Error completing payment:', error);

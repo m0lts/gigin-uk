@@ -85,7 +85,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
             if (applicant.status === 'accepted' || applicant.status === 'payment processing') {
                 return { icon: <ClockIcon />, text: 'Awaiting Venue Payment' };
             }
-            if (applicant.status === 'pending' && applicant.invited) {
+            if (applicant.status === 'pending' && applicant?.invited) {
                 return { icon: <ClockIcon />, text: 'Awaiting Your Response' };
             }
             if (applicant.status === 'pending') {
@@ -386,8 +386,8 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                 const isFirstPreviousGig = index > 0 && gigDateTime < new Date() && 
                                     new Date(`${sortedGigs[index - 1].date.toDate().toISOString().split('T')[0]}T${sortedGigs[index - 1].startTime}`) >= new Date();
                                 const gigStatus = getGigStatus(gig);
-                                const foundApp = gigApplications?.find(app => app.gigId === gig.id);
-                                const appliedProfile = foundApp || musicianProfile.name;
+                                const foundApp = gigApplications?.find(app => app.gigId === gig.gigId);
+                                const appliedProfile = foundApp || null;
                                 const applicant = gig.applicants.find(
                                     (a) =>
                                       a.id === musicianId ||
@@ -413,7 +413,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                 (e) => openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile ? appliedProfile.profileId : null}`, e)
                                         }
                                             onMouseEnter={() => {
-                                                if (applicant?.invited && (!applicant.viewed || applicant.viewed == undefined)) {
+                                                if (applicant?.invited && (!applicant?.viewed || applicant?.viewed == undefined)) {
                                                     markInviteAsViewed(gig.gigId, applicant.id);
                                                 }
                                             }}
