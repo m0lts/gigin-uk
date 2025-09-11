@@ -14,7 +14,7 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
 
     const navigate = useNavigate();
 
-    const { login, signup, resetPassword, checkUser, loginWithGoogle } = useAuth();
+    const { login, signup, resetPassword, checkUser, loginWithGoogle, user } = useAuth();
     const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
     const [error, setError] = useState({ status: false, input: '', message: '' });
     const [loading, setLoading] = useState(false);
@@ -36,37 +36,54 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
     };
 
     return (
-        <div className='landing-page'>
-            <div className='heading'>
+        <div className={`landing-page ${user ? 'user' : ''}`}>
+            <div className={`heading`}>
                 <div className='welcome-hero'>
-                    <h1>Welcome to</h1>
+                    <h1>Welcome {user && 'back'} to</h1>
                     <TextLogoXL />
                 </div>
-                <div className="two-buttons">
-                    <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-                    <button className="btn tertiary" onClick={() => navigate('/venues')}><VenueIconSolid />Create a Venue Profile</button>
+                {!user ? (
+                    <div className="two-buttons">
+                        <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
+                        <button className="btn tertiary" onClick={() => navigate('/venues')}><VenueIconSolid />Create a Venue Profile</button>
+                    </div>
+                ) : (
+                    <div className="two-buttons">
+                        {user?.musicianProfile ? (
+                            <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
+                        ) : user?.venueProfile ? (
+                            <button className="btn tertiary" onClick={() => navigate('/venues')}><VenueIconSolid />Create a Venue Profile</button>
+                        ) : (
+                            <>
+                                <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
+                                <button className="btn tertiary" onClick={() => navigate('/venues')}><VenueIconSolid />Create a Venue Profile</button>    
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
+            {!user && (
+                <div className='sign-up-form'>
+                    <SignupForm
+                        authClosable={authClosable}
+                        setAuthClosable={setAuthClosable}
+                        credentials={credentials}
+                        setCredentials={setCredentials}
+                        error={error}
+                        setError={setError}
+                        clearCredentials={clearCredentials}
+                        clearError={clearError}
+                        setAuthType={setAuthType}
+                        signup={signup}
+                        setAuthModal={setAuthModal}
+                        loading={loading}
+                        setLoading={setLoading}
+                        checkUser={checkUser}
+                        noProfileModal={noProfileModal}
+                        setNoProfileModal={setNoProfileModal}
+                    />
                 </div>
-            </div>
-            <div className='sign-up-form'>
-                <SignupForm
-                    authClosable={authClosable}
-                    setAuthClosable={setAuthClosable}
-                    credentials={credentials}
-                    setCredentials={setCredentials}
-                    error={error}
-                    setError={setError}
-                    clearCredentials={clearCredentials}
-                    clearError={clearError}
-                    setAuthType={setAuthType}
-                    signup={signup}
-                    setAuthModal={setAuthModal}
-                    loading={loading}
-                    setLoading={setLoading}
-                    checkUser={checkUser}
-                    noProfileModal={noProfileModal}
-                    setNoProfileModal={setNoProfileModal}
-                />
-            </div>
+            )}
         </div>
     )
 }
