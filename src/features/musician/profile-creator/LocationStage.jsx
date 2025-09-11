@@ -4,6 +4,7 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { MapIcon } from '@features/shared/ui/extras/Icons';
 import { useMapbox } from '@hooks/useMapbox';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 
 export const LocationStage = ({ data, onChange, mapboxToken, error, setError, band = false }) => {
@@ -81,7 +82,7 @@ export const LocationStage = ({ data, onChange, mapboxToken, error, setError, ba
                         <MapIcon />
                     </div>
                 )}
-                {loading && <LoadingThreeDots />}
+                {loading && <LoadingSpinner />}
                 <select value={data.travelDistance || ''} onChange={handleSelectChange} className={`select ${error === 'travelDistance' ? 'error' : ''}`}>
                     <option value=''>How far are you typically willing to travel?</option>
                     <option value='only in my city'>Only in my city</option>

@@ -1762,6 +1762,7 @@
     text-align: center;
 }
 
+
 .window.musicians .body.finances .connect-account .stripe-window .loading-state {
     display: flex;
     flex-direction: column;
@@ -1776,6 +1777,10 @@
 
 .window.musicians .body.finances .connect-account .stripe-window .icon {
     font-size: 2rem;
+}
+
+.window.musicians .body.finances .connect-account .stripe-window .help-text .icon {
+    font-size: 1.5rem;
 }
 
 .window.musicians .body.finances .connect-account .stripe-window {

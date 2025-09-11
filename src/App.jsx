@@ -1,5 +1,5 @@
 // Dependencies
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 
 // Styles and extras
 import '@assets/fonts/fonts.css'
@@ -40,6 +40,7 @@ export default function App() {
 
   const { user, loading, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [authModal, setAuthModal] = useState(false);
   const [authType, setAuthType] = useState('login');
   const [authClosable, setAuthClosable] = useState(true);
@@ -60,6 +61,9 @@ export default function App() {
     } else {
       setAuthClosable(true);
     }
+    if (location.pathname === ('email-verified')) {
+      navigate('/')
+    }
   }, [location.pathname]);
 
   const getCreatedAtMs = (authUser, userDoc) => {
@@ -77,7 +81,7 @@ export default function App() {
 
   useEffect(() => {
     // ✅ Skip all checks in dev mode
-    if (import.meta.env.MODE === 'development') {
+    if (import.meta.env.MODE === 'development' || location.pathname.includes('gigin-uk-git-dev-gigin-dev-team.vercel.app')) {
       setVerifyEmailModal(false);
       setVerifyInfoModal(false);
       return;
@@ -129,7 +133,7 @@ export default function App() {
 
         {/* MUSICIAN ROUTES */}
         <Route path='/'>
-          <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><LandingPage /></MainLayout>} />
+          <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} /></MainLayout>} />
           <Route path='dashboard/*' element={<MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><MusicianDashboard user={user} /></MusicianDashboardLayout>} />
           <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
           <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />

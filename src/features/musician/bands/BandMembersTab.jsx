@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import Portal from '@features/shared/components/Portal'
 import { sendBandInviteEmail } from '../../../services/emails';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, viewing = false, bandAdmin }) => {
 
@@ -39,7 +40,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
       }, [band]);
 
     if (loading) {
-        return <LoadingThreeDots />
+        return <LoadingSpinner />
     }
 
     const generateInviteLink = async () => {
@@ -211,7 +212,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
     };
 
     if (loading) {
-        return <div className="band-members-tab"><LoadingThreeDots /></div>;
+        return <div className="band-members-tab"><LoadingSpinner /></div>;
     }
 
     return (

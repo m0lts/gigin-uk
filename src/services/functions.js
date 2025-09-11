@@ -250,3 +250,10 @@ export const getPhoneExistsBoolean = async (phoneNumber) => {
   const { data } = await fn({ phoneNumber });
   return !!data; // expect boolean
 };
+
+export const getEmailAddress = async (email) => {
+  const fn = httpsCallable(functions, "getUserEmail");
+  const res = await fn({ email });
+  // res.data = { found: boolean, user: object|null }
+  return res.data?.user || null;
+};

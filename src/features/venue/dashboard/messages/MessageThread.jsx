@@ -97,7 +97,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return console.error('Gig is in the past.');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
@@ -141,6 +141,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();    
         try {
             if (!gigData) return console.error('Gig data is missing');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId);
             setGigData(prev => ({
               ...prev,
@@ -168,6 +169,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData(prev => ({
                 ...prev,
@@ -200,6 +202,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData((prevGigData) => ({
                 ...prevGigData,
@@ -228,6 +231,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSendCounterOffer = async (newFee, messageId) => {
         try {
             if (!gigData) return console.error('Gig data is missing');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const value = (newFee || '').trim();
             const numericPart = value.replace(/£|\s/g, '');
             const num = Number(numericPart);
@@ -264,6 +268,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
 
     const handleCompletePayment = async () => {
+        if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
         setLoadingPaymentDetails(true);
         await fetchSavedCardsAndModal();
         setPaymentIntentId(null);

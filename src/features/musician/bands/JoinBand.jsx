@@ -7,6 +7,7 @@ import { joinBandByPassword, getBandByPassword } from '@services/bands';
 import { toast } from 'sonner';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 export const JoinBand = () => {
     const { user } = useAuth();
@@ -96,7 +97,7 @@ export const JoinBand = () => {
       }
     };
   
-    if (status === 'loading') return <LoadingThreeDots />;
+    if (status === 'loading') return <LoadingSpinner />;
   
     return (
       <div className="bands-page">
@@ -105,7 +106,7 @@ export const JoinBand = () => {
             <img src={band.picture} alt={band.name} />
             <h1>Join {band.name}?</h1>
             {loading ? (
-              <LoadingThreeDots />
+              <LoadingSpinner />
             ) : (
               <>
                 <button className="btn primary" onClick={handleConfirmJoin}>

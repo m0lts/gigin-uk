@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 import { arrayUnion } from 'firebase/firestore';
 import { updateMusicianProfile } from '@services/musicians';
 import { generateVideoThumbnail, uploadTracks, uploadVideosWithThumbnails } from '@services/storage';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 const VideoModal = ({ video, onClose }) => {
     return (
@@ -170,7 +171,7 @@ export const MusicTab = ({ videos, tracks, musicianId, setVideos, setTracks, set
                         video.file === 'uploading...' ? (
                             <div key={index} className='uploading-videos'>
                                 <h4>Uploading your videos...</h4>
-                                <LoadingThreeDots />
+                                <LoadingSpinner />
                             </div>
                         ) : (
                             <div key={index} className='video-item'>
@@ -248,7 +249,7 @@ export const MusicTab = ({ videos, tracks, musicianId, setVideos, setTracks, set
                         track.file === 'uploading...' ? (
                             <div key={index} className='uploading-tracks'>
                                 <h4>Uploading your tracks...</h4>
-                                <LoadingThreeDots />
+                                <LoadingSpinner />
                             </div>
                         ) : (
                             <div key={index} className='track-item'>

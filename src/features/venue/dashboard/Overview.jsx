@@ -17,7 +17,7 @@ import { NextGig } from '../components/NextGig';
 import { FeedbackSection } from './FeedbackSection';
 import { submitReview } from '../../../services/reviews';
 import { toast } from 'sonner';
-import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
 export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gigsToReview, setGigsToReview, requests }) => {
 
@@ -262,7 +262,7 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                                             onClick={() => handleSubmitReview(id, musician)}
                                             disabled={submittingReviews[id]}
                                         >
-                                            {submittingReviews[id] ? <LoadingThreeDots /> : 'Submit Review'}
+                                            {submittingReviews[id] ? <LoadingSpinner /> : 'Submit Review'}
                                         </button>
                                     </div>
                                 );

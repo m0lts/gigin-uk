@@ -106,6 +106,7 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
           musicianId: formData.bandId,
           picture: pictureUrl,
           email: user?.email,
+          onboarded: true,
           musicianType: 'Band',
           bandProfile: true,
           searchKeywords: keywords,

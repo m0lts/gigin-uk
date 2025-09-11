@@ -162,18 +162,18 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                             </div>
                             {user.musicianProfile && (
                                 newMessages ? (
-                                    <Link className='link item message' to={'/messages'}>
+                                    <Link className='link item no-margin' to={'/messages'}>
                                             Messages
                                             <MailboxFullIcon />
                                     </Link>
                                 ) : (
-                                    <Link className='link item' to={'/messages'}>
+                                    <Link className='link item no-margin' to={'/messages'}>
                                             Messages
                                             <MailboxEmptyIcon />
                                     </Link>
                                 )
                             )}
-                            <div className='break' />
+                            {/* <div className='break' />
                             <h6 className='title'>venues</h6>
                             {user.venueProfiles && user.venueProfiles.length > 0 ? (
                                 <>
@@ -191,12 +191,13 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                     Add my Venue
                                     <VenueBuilderIcon />
                                 </Link>
+                            )} */}
+                            {!user?.musicianProfile && (
+                                <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
+                                    Create a Musician Profile
+                                    <GuitarsIcon />
+                                </Link>
                             )}
-                            <div className='break' />
-                            <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
-                                Create a Musician Profile
-                                <GuitarsIcon />
-                            </Link>
                             <Link to={'/account'} className='item no-margin link'>
                                 Settings
                                 <SettingsIcon />

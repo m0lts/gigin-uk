@@ -101,6 +101,8 @@ export const MessagePage = () => {
         setShowArchived(prev => !prev);
     };
 
+    console.log(activeConversation)
+
     if (conversations.length > 0 || archivedConversations.length > 0) {
         return (
             <div className='message-page'>
@@ -263,8 +265,27 @@ export const MessagePage = () => {
                             <>
                                 <div className='top-banner'>
                                     <h2>Gig Information</h2>
-                                    <button className='btn tertiary' onClick={(e) => openInNewTab(`/gig/${activeConversation.gigId}`, e)}><NewTabIcon /></button>
-                                </div>
+                                    <button
+                                        className='btn tertiary'
+                                        onClick={(e) =>
+                                        gigData.privateApplications
+                                            ? openInNewTab(
+                                                `/gig/${activeConversation.gigId}?token=${gigData.privateApplicationToken}`,
+                                                e
+                                            )
+                                            : openInNewTab(
+                                                `/gig/${activeConversation.gigId}?appliedAs=${
+                                                activeConversation.accountNames.find(
+                                                    a => a.role === 'musician' || a.role === 'band'
+                                                )?.participantId
+                                                }`,
+                                                e
+                                            )
+                                        }
+                                    >
+                                        <NewTabIcon />
+                                    </button>
+                                    </div>
                                 <div className='gig-information'>
                                     <GigInformation gigId={activeConversation.gigId} gigData={gigData} setGigData={setGigData} />
                                 </div>

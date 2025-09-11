@@ -5,6 +5,7 @@ import '@styles/musician/testimonial-page.styles.css';
 import '@styles/forms/forms.styles.css';
 import { TextLogo } from '@features/shared/ui/logos/Logos';
 import { submitTestimonial } from '@services/reviews';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 export const Testimonials = () => {
     const location = useLocation();
@@ -50,7 +51,7 @@ export const Testimonials = () => {
             {submitting ? (
                 <div className='submitting-testimonial'>
                     <h4>Submitting your testimonial...</h4>
-                    <LoadingThreeDots />
+                    <LoadingSpinner />
                 </div>
             ) : (
                 submitted ? (

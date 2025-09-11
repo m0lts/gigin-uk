@@ -41,7 +41,7 @@ const Stage = {
 export const NoProfileModal = ({
   isOpen,
   onClose,
-  noProfileModalClosable
+  noProfileModalClosable = false
 }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -246,8 +246,6 @@ export const NoProfileModal = ({
     };
 
     if (!isOpen) return null;
-
-
 
     return (
         <div className="modal profile-select" role="dialog" aria-modal="true">

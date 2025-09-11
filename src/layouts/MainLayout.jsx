@@ -4,7 +4,7 @@ import { Header as VenuesHeader } from '@features/venue/components/Header'
 import { Header as CommonHeader} from '@features/shared/components/Header'
 import '@styles/shared/layouts.styles.css'
 
-export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout, setNoProfileModal, noProfileModal }) => {
+export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout, setNoProfileModal, noProfileModal, setNoProfileModalClosable }) => {
 
     return (
         <section className='layout-main'>
@@ -14,6 +14,7 @@ export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout, 
                     setAuthType={setAuthType}
                     user={user}
                     setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} 
+                    setNoProfileModalClosable={setNoProfileModalClosable}
                 />
             ) : (user && user.venueProfiles && user.venueProfiles.length > 0) ? (
                 <VenuesHeader
@@ -21,6 +22,8 @@ export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout, 
                     setAuthType={setAuthType}
                     user={user}
                     setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
+
                 />
             ) : (user && user.musicianProfile) ? (
                 <MusicianHeader
@@ -28,6 +31,8 @@ export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout, 
                     setAuthType={setAuthType}
                     user={user}
                     setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} 
+                    setNoProfileModalClosable={setNoProfileModalClosable}
+
                 />
             ) : (
                 <CommonHeader
@@ -36,6 +41,8 @@ export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout, 
                     user={user}
                     setNoProfileModal={setNoProfileModal}
                     noProfileModal={noProfileModal} 
+                    setNoProfileModalClosable={setNoProfileModalClosable}
+
                 />
             )}
             <main className='body'>{children}</main>

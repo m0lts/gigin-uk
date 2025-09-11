@@ -651,7 +651,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
                 searchKeywords: keywords,
                 email: user?.email,
                 location: nextLocation,
-                picture: pictureUrl,
+                picture: pictureUrl ? pictureUrl : null,
             };
             await createMusicianProfile(formData.musicianId, updatedFormData, user.uid);
             await updateUserDocument(user.uid, {

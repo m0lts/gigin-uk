@@ -227,15 +227,15 @@ const toMs = (dt) => {
                                                 : new Date(gig.startDateTime);
                                                 return (
                                                 <tr key={gig.id} onClick={() => navigate('/dashboard/gigs')}>
-                                                    {(bandProfiles && bandProfiles.length) && (
-                                                        <td className="applied-profile-name">{gig._invitedProfileName}</td>
-                                                    )}
+                                                    <td>{gig?.venue?.venueName}</td>
                                                     <td>
                                                         {dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
                                                         {' - '}
                                                         {dt.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                     </td>
-                                                    <td>{gig.venue?.venueName}</td>
+                                                    {(bandProfiles && bandProfiles.length) && (
+                                                        <td className="applied-profile-name">{gig._invitedProfileName}</td>
+                                                    )}
                                                 </tr>
                                                 );
                                             })}

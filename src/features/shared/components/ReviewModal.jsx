@@ -356,7 +356,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                             </div>
                             </>
                         ) : (
-                            <Skeleton height={100} width={300} />
+                            <LoadingSpinner marginTop={'1rem'} />
                         )}
                     </div>
                 )}

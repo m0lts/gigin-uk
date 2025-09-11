@@ -428,6 +428,40 @@ exports.getPhoneExistsBoolean = onCall(
       }
     });
 
+exports.getUserEmail = onCall(
+    {
+      region: "europe-west3",
+      timeoutSeconds: 3600,
+    },
+    async (request) => {
+      try {
+        const {email} = request.data || {};
+        if (!email) {
+          throw new Error("email is required");
+        }
+        const snap = await admin
+            .firestore()
+            .collection("users")
+            .where("email", "==", email)
+            .limit(1)
+            .get();
+        if (snap.empty) {
+          return {found: false, user: null};
+        }
+        const doc = snap.docs[0];
+        const data = doc.data();
+        const user = {
+          id: doc.id,
+          ...data,
+        };
+
+        return {found: true, user};
+      } catch (error) {
+        console.error("Error checking phone existence:", error);
+        throw new Error("Unable to check phone number.");
+      }
+    });
+
 exports.createGigPaymentIntent = onCall(
     {
       secrets: [stripeLiveKey, stripeTestKey],
@@ -1672,6 +1706,7 @@ exports.sweepPayments = onSchedule(
       timeZone: "Etc/UTC",
       timeoutSeconds: 300,
       memory: "256MiB",
+      secrets: [stripeLiveKey, stripeTestKey],
     },
     async () => {
       const db = getFirestore();

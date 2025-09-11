@@ -7,6 +7,7 @@ import { NoTextLogo } from "@features/shared/ui/logos/Logos";
 import { LoadingThreeDots } from "@features/shared/ui/loading/Loading";
 import { useAuth } from '@hooks/useAuth'
 import { useNavigate } from "react-router-dom";
+import { LoadingSpinner } from "../ui/loading/Loading";
 
 
 export const  VerifyEmailModal = ({ onClose }) => {
@@ -93,7 +94,7 @@ export const  VerifyEmailModal = ({ onClose }) => {
         <div className="modal-body" style={{ marginTop: 16 }}>
           <div className="two-buttons" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {checking ? (
-                <LoadingThreeDots />
+                <LoadingSpinner />
             ) : (
                 <button
                 type="button"
@@ -113,7 +114,7 @@ export const  VerifyEmailModal = ({ onClose }) => {
               title={cooldown > 0 ? `Try again in ${cooldown}s` : undefined}
             >
               {sending ? (
-                <LoadingThreeDots />
+                <LoadingSpinner />
               ) : cooldown > 0 ? (
                 `Resend email (${cooldown}s)`
               ) : (

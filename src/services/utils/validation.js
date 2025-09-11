@@ -16,6 +16,7 @@ export const validateMusicianUser = ({
   setAuthType,
   setNoProfileModal,
   setIncompleteMusicianProfile,
+  setNoProfileModalClosable,
   profile,
 }) => {
   if (!user) {
@@ -32,6 +33,7 @@ export const validateMusicianUser = ({
   if (!canApply) {
     setNoProfileModal?.(true);
     setIncompleteMusicianProfile?.(p || null);
+    setNoProfileModalClosable(true);
     return { valid: false, reasons };
   }
   return { valid: true, musicianProfile: p };

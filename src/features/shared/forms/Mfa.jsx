@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
+import { LoadingSpinner } from '../ui/loading/Loading';
 
 export const Mfa = ({
   verificationId: initialVerificationId,
@@ -93,7 +94,7 @@ export const Mfa = ({
           )}
 
           {loading ? (
-            <LoadingThreeDots />
+            <LoadingSpinner />
           ) : (
             <>
               <button

@@ -8,7 +8,7 @@ import { EmptyIcon } from '../../shared/ui/extras/Icons';
 import { useNavigate } from 'react-router-dom';
 import { getGigsByIds } from '../../../services/gigs';
 import { getReviewsByMusicianId } from '../../../services/reviews';
-import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
 export const ReviewsTab = ({ profile, viewingOwnProfile, setShowPreview, bandAdmin }) => {
     const [reviews, setReviews] = useState([]);
@@ -115,7 +115,7 @@ export const ReviewsTab = ({ profile, viewingOwnProfile, setShowPreview, bandAdm
 
     if (prevGigsLoading) {
         return (
-            <LoadingThreeDots />
+            <LoadingSpinner />
         )
     }
 

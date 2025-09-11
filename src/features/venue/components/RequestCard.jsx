@@ -45,10 +45,12 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
           Requested to play at: <strong>{venue?.name || 'Unknown Venue'}</strong>
         </p>
       </div>
-      <div className="request-message">
-        <h4>Request Message:</h4>
-        <p style={{ marginTop: 5}}>{request.message}</p>
-      </div>
+      {request.message && (
+        <div className="request-message">
+          <h4>Request Message:</h4>
+          <p style={{ marginTop: 5}}>{request.message}</p>
+        </div>
+      )}
       <div className="request-actions">
       <button className="btn secondary" onClick={() => handleRemoveRequest(request.id)}>
           Remove Request

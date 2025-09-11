@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createMusicianProfile } from '../services/musicians';
+import { getEmailAddress } from '../services/functions';
 
 export const useAuth = () => {
 
@@ -223,18 +224,12 @@ export const useAuth = () => {
   };
   
 const resetPassword = async (rawEmail) => {
-  const email = (rawEmail || '').trim().toLowerCase();
   try {
-    let q = query(collection(firestore, 'users'), where('email', '==', email), limit(1));
-    let snap = await getDocs(q);
-    if (snap.empty) {
-      q = query(collection(firestore, 'users'), where('email', '==', email), limit(1));
-      snap = await getDocs(q);
-    }
-    if (snap.empty) {
+    const email = (rawEmail || "").trim().toLowerCase();
+    const userDoc = await getEmailAddress(email);
+    if (!userDoc) {
       return { sent: false, reason: 'no-account' };
     }
-    const userDoc = snap.docs[0].data();
     if (userDoc.googleAccount === true) {
       return { sent: false, reason: 'google-only' };
     }

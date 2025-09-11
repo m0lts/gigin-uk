@@ -74,7 +74,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
       iconActive: <VenueIconSolid />,
     },
     {
-      path: '/venues/dashboard/musicians/find',
+      path: '/venues/dashboard/musicians',
       label: 'Musicians',
       icon: <MusicianIconLight />,
       iconActive: <MusicianIconSolid />,
@@ -124,7 +124,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
         )}
       </ul>
       <button className='btn primary' onClick={() => setGigPostModal(true)}>
-        Post a Gig <GigIcon />
+        Create Gig <GigIcon />
       </button>
       <ul className="menu">
         {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {

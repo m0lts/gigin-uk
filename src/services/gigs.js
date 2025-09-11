@@ -559,6 +559,10 @@ export const acceptGigOfferOM = async (gigData, musicianProfileId) => {
     paid: true,
     status: 'open',
   });
+  const musicianRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+  await updateDoc(musicianRef, {
+    confirmedGigs: arrayUnion(gigData.gigId),
+  })
   return { updatedApplicants };
 };
 

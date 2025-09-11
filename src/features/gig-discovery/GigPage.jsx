@@ -18,8 +18,6 @@ import {
     TicketIcon,
     TwitterIcon,
     WeddingIcon } from '@features/shared/ui/extras/Icons';
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/venues';
 import { updateMusicianGigApplications } from '@services/musicians';
@@ -109,12 +107,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     });
     
     const computeStatusForProfile = (gig, profile) => {
-        console.log(gig)
-        console.log(profile)
         const applicant = gig?.applicants?.find(a => a?.id === profile?.musicianId);
         const invited = !!(applicant && applicant.invited === true) || (gig?.privateApplications && gig.privateApplicationToken === inviteToken);
         const applied = !!(applicant && applicant.invited !== true);
-        console.log(applicant)
         const accepted = !!(
             applicant &&
             (applicant?.status === 'accepted' || applicant?.status === 'confirmed')
@@ -183,9 +178,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 }
               }
             }
+            const preferredProfile = appliedProfile
+                ? profiles.find(p => p.musicianId === appliedProfile || p.id === appliedProfile)
+                : null;
+
+            const finalSelected =
+                preferredProfile ||
+                (selectedProfile && profiles.find(p => p.musicianId === selectedProfile.musicianId)) ||
+                defaultSelected ||
+                null;
             setGigData(enrichedGig);
             setValidProfiles(profiles);
-            setSelectedProfile(prev => prev || defaultSelected);
+            setSelectedProfile(finalSelected);
             setHasAccessToPrivateGig(nextHasAccess);
             if (nextHasAccess) {
                 setInvitedToGig(nextHasAccess)
@@ -371,12 +375,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     };
 
     const handleGigApplication = async () => {
+        if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
         const { valid, musicianProfile } = validateMusicianUser({
             user,
             setAuthModal,
             setAuthType,
             setNoProfileModal,
             setIncompleteMusicianProfile,
+            setNoProfileModalClosable,
             profile: selectedProfile,
           });
           if (!valid || userAppliedToGig) return;
@@ -423,12 +429,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     }
 
     const handleNegotiateButtonClick = () => {
+        if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
         const { valid, musicianProfile } = validateMusicianUser({
             user,
             setAuthModal,
             setAuthType,
             setNoProfileModal,
             setIncompleteMusicianProfile,
+            setNoProfileModalClosable,
             profile: selectedProfile,
           });
       
@@ -447,6 +455,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setAuthType,
             setNoProfileModal,
             setIncompleteMusicianProfile,
+            setNoProfileModalClosable,
             profile: selectedProfile,
           });
         if (!valid) return;
@@ -529,6 +538,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setAuthType,
             setNoProfileModal,
             setIncompleteMusicianProfile,
+            setNoProfileModalClosable,
             profile: selectedProfile,
           });
         if (!valid) return;
@@ -546,7 +556,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         const musicianId = selectedProfile.id;
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (getLocalGigDateTime(gigData) < new Date()) return console.error('Gig is in the past.');
+            if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
             const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianId, nonPayableGig);
             setGigData((prevgigData) => ({
@@ -666,8 +676,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             <section className='gig-page-body' style={{ width: `${width}`}}>
                 {loading ? (
                     <div className='loading-state'>
-                        <LoadingSpinner width={40} height={40} />
-                        <h4>Loading Gig...</h4>
+                        <LoadingSpinner />
                     </div>
                 ) : (
                     <>
@@ -1089,21 +1098,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 )}
             </section>
 
-            {noProfileModal && (
-                <Portal>
-                    <NoProfileModal 
-                        isOpen={noProfileModal}
-                        onClose={() => {setNoProfileModal(false)}}
-                    />
-                </Portal>
-            )}
-
             {negotiateModal && (
                 <Portal>
                     <div className='modal negotiation' onClick={() => setNegotiateModal(false)}>
                         {applyingToGig ? (
                             <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap:'1rem'}}>
-                                <LoadingSpinner width={50} height={50} />
+                                <LoadingSpinner />
                                 <h3>Sending Negotiation...</h3>
                             </div>
                         ) : (

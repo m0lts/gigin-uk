@@ -13,7 +13,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatFeeDate } from '@services/utils/dates';
 import { toast } from 'sonner';
-import { BankAccountIcon, CoinsIconSolid, CopyIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, MoreInformationIcon, PaymentSystemIcon, PieChartIcon, StripeIcon, SuccessIcon, TickIcon, WarningIcon } from '../../shared/ui/extras/Icons';
+import { BankAccountIcon, CoinsIconSolid, CopyIcon, DeleteGigIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, MoreInformationIcon, PaymentSystemIcon, PieChartIcon, StripeIcon, SuccessIcon, TickIcon, WarningIcon } from '../../shared/ui/extras/Icons';
 import { deleteStripeConnectAccount } from '../../../services/functions';
 import { getConnectAccountStatus } from '../../../services/functions';
 import { getMusicianFees } from '../../../services/musicians';
@@ -71,7 +71,6 @@ export const Finances = ({ user, musicianProfile }) => {
     const [acctStatusLoading, setAcctStatusLoading] = useState(false);
     const [paymentSystemModal, setPaymentSystemModal] = useState(false);
     const [stripeSystemModal, setStripeSystemModal] = useState(false);
-    const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     useResizeEffect((width) => {
@@ -101,15 +100,6 @@ export const Finances = ({ user, musicianProfile }) => {
         load();
         return () => (ignore = true);
     }, [musicianProfile?.stripeAccountId]);
-
-    useEffect(() => {
-        const checkFirstTime = async () => {
-          if (user?.firstTimeInFinances !== false) {
-            setShowFirstTimeModal(true);
-          }
-        };
-        if (user?.uid) checkFirstTime();
-    }, [user]);
 
     const handleCopy = async (value) => {
         try {
@@ -287,7 +277,7 @@ export const Finances = ({ user, musicianProfile }) => {
                         </div>
                         {musicianProfile.bankDetailsAdded ? (
                             payingOut ? (
-                                <LoadingThreeDots />
+                                <LoadingSpinner />
                             ) : musicianProfile.withdrawableEarnings > 0 && (
                                 <button className='btn primary' onClick={handlePayout}>
                                     Withdraw Funds
@@ -322,7 +312,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                     <div className="more-information" onClick={() => setShowHelp(false)}>
                                         <MoreInformationIcon />
                                         <div className='text-information'>
-                                            <p>If you aren't operating as a business, select Individual/Sole Trader. If you are operating as a business, you must select the type of business you are. This is required for legal compliance.</p>
+                                            <p>Unless you are registered as a business, select Individual/Sole Trader.</p>
                                             <p>When Stripe asks for a website link, enter your gigin profile link:</p>
                                             <p className="link" onClick={(e) => {e.stopPropagation(); handleCopy(`https://giginmusic.com/${musicianProfile.musicianId}`)}}>https://giginmusic.com/{musicianProfile.musicianId} <CopyIcon /></p>
                                         </div>
@@ -330,7 +320,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                 )}
                                 <button className='btn secondary' onClick={(e) => {e.stopPropagation(); setShowHelp(!showHelp)}}>
                                     <MoreInformationIcon />
-                                    <h4>Helpful Setup Information</h4>
+                                    <h4>Help</h4>
                                 </button>
                             </div>
                             <div className={`stripe-window ${stripeConnectInstance ? 'stripe-active' : ''}`}>
@@ -346,7 +336,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                             <>
                                                 <BankAccountIcon />
                                                 <h2>Connect Your Bank Account</h2>
-                                                <h4>We use Stripe to securely manage bank connections. <br /> If you need any help or don't understand something, click the information button above.</h4>
+                                                <h4 className='help-text'>We use Stripe to securely manage bank connections. <br /> <br /> Click the information <MoreInformationIcon /> button above for help. This process should only take 2 minutes.</h4>
                                             </>
                                         )}
                                         {!accountCreatePending && !connectedAccountId && (
@@ -392,7 +382,8 @@ export const Finances = ({ user, musicianProfile }) => {
                                                 const musicianDoc = await getMusicianProfileByMusicianId(musicianProfile.musicianId);
                                                 const withdrawableFunds = musicianDoc.withdrawableEarnings;
                                                 if (withdrawableFunds && withdrawableFunds > 1) {
-                                                    const success = await transferStripeFunds(musicianProfile.stripeAccountId, withdrawableFunds * 100);
+                                                    const sanitisedWithdrawableFunds = Math.round(parseFloat(withdrawableFunds) * 100);
+                                                    const success = await transferStripeFunds(musicianProfile.stripeAccountId, sanitisedWithdrawableFunds);
                                                     if (success) {
                                                         await clearMusicianBalance(musicianProfile.musicianId);
                                                     } else {
@@ -757,33 +748,15 @@ export const Finances = ({ user, musicianProfile }) => {
                             </div>
                         </Portal>
                     )}
-                {showFirstTimeModal && (
-                    <Portal>
-                        <div className='modal' onClick={() => setShowFirstTimeModal(false)}>
-                            <div className='modal-content' onClick={(e) => e.stopPropagation()} style={{ maxWidth: '300px'}}>
-                            <div className="modal-header">
-                                <CoinsIconSolid />
-                                <h2>Your Finances</h2>
-                                <p>If you’re wanting to receive flat fee payments, this is where you can set up your bank account to withdraw gig payments from your gigin account.</p>
-                            </div>
-                            <div className="modal-body">
-                                <button className="btn primary" onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
-                                Ok
-                                </button>
-                            </div>
-                            <button className='btn tertiary close' onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>
-                                Close
-                            </button>
-                            </div>
-                        </div>
-                    </Portal>
-                )}
                 {showDeleteModal && (
                     <Portal>
                         {!deleting ? (
                             <div className='modal confirm' onClick={() => setShowDeleteModal(false)}>
                                 <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '300px'}}>
-                                    <h3>Are you sure you want to delete your stripe account?</h3>
+                                    <div className="modal-header">
+                                        <DeleteGigIcon />
+                                        <h2>Are you sure you want to delete your stripe account?</h2>
+                                    </div>
                                     <div className='two-buttons'>
                                         <button className="btn tertiary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
                                         <button className="btn danger" onClick={handleDeleteStripeAccount}>Delete</button>

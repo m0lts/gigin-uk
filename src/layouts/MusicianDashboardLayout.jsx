@@ -44,6 +44,10 @@ export const MusicianDashboardLayout = ({
         return;
       }
 
+      if (!loading && Array.isArray(user?.musicianProfile) && user.musicianProfile.length > 0) {
+        return;
+      }
+
       if (!loading && user?.musicianProfile && !hasBasics) {
         setNoProfileModal(true);
         setNoProfileModalClosable(false);

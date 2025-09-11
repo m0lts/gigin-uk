@@ -29,7 +29,7 @@ import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { openInNewTab } from '@services/utils/misc';
-import { createVenueRequest, getMusicianProfileByMusicianId } from '../../../services/musicians';
+import { createVenueRequest, getMusicianProfileByMusicianId, getMusicianProfilesByIds } from '../../../services/musicians';
 import { toast } from 'sonner';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { AmpIcon, CashIcon, LinkIcon, MicrophoneIconSolid, MonitorIcon, NewTabIcon, OptionsIcon, PianoIcon, PlugIcon, QuestionCircleIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
@@ -37,6 +37,7 @@ import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
 import Portal from '../../shared/components/Portal';
+import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
@@ -54,6 +55,9 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [requestMessage, setRequestMessage] = useState('');
     const [confirmedGigs, setConfirmedGigs] = useState([]);
     const [expanded, setExpanded] = useState(false);
+    const [loadingRequest, setLoadingRequest] = useState(false);
+    const [musicianProfiles, setMusicianProfiles] = useState([]);
+    const [selectedProfile, setSelectedProfile] = useState(null);
 
     useEffect(() => {
         if (!venueId) return;
@@ -142,8 +146,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
 
     const handleMusicianRequest = async () => {
         try {
-
-          const profile = await getMusicianProfileByMusicianId(musicianId);
+            setLoadingRequest(true);
+          const profile = selectedProfile;
           if (!profile) throw new Error('Musician profile not found');
           await createVenueRequest({
             venueId: venueData.id,
@@ -163,6 +167,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         } catch (err) {
           console.error('Error sending request:', err);
           toast.error('Failed to send request. Please try again.');
+        } finally {
+            setLoadingRequest(false);
         }
     };
 
@@ -206,6 +212,27 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             return <MicrophoneIcon />
         }
     }
+
+    const handleFetchMusicianProfiles = async () => {
+        try {
+            if (!user) return;
+            if (user?.bands && user.bands.length > 0 && musicianId) {
+                const allIds = [...user.bands, musicianId]
+                const profiles = await getMusicianProfilesByIds(allIds);
+                setMusicianProfiles(profiles);
+                console.log(profiles);
+                setLoadingRequest(false);
+            } else {
+                setSelectedProfile(user?.musicianProfile)
+                setLoadingRequest(false);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to request a gig.')
+        }
+    }
+
+    console.log(selectedProfile)
 
     return (
         <div className='venue-page'>
@@ -260,7 +287,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                 </h4>
                                 {(musicianId && !venueViewing) ? (
                                     <div className="action-buttons">
-                                        <button className="btn quaternary" onClick={() => setShowRequestModal(true)}>
+                                        <button className="btn quaternary" onClick={() => {setLoadingRequest(true); setShowRequestModal(true); handleFetchMusicianProfiles()}}>
                                             Request a Gig
                                         </button>
                                         {/* <button className="btn quaternary">
@@ -383,37 +410,63 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 )}
             </section>
             {showRequestModal && (
-                <Portal>
-                    <div className="modal musician-request" onClick={() => setShowRequestModal(false)}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                            <button className='btn close tertiary' onClick={() => setShowRequestModal(false)}>
-                                Close
-                            </button>
-                            <div className="modal-header">
-                                <RequestIcon />
-                                <h2>Request to perform at {venueData.name}</h2>
-                                <p>Send a gig request to the venue. If they accept your request, they'll build a gig for you and you'll automatically be invited.</p>
-                            </div>
-                            <div className="modal-body">
-                                <textarea
-                                    className="input"
-                                    rows={3}
-                                    placeholder="Write a message to the venue..."
-                                    value={requestMessage}
-                                    onChange={(e) => setRequestMessage(e.target.value)}
-                                />
-                                <div className="two-buttons">
-                                    <button className="btn tertiary" onClick={() => setShowRequestModal(false)}>
-                                        Cancel
-                                    </button>
-                                    <button className="btn primary" onClick={handleMusicianRequest}>
-                                        Request To Play Here
-                                    </button>
+                loadingRequest ? (
+                    <Portal>
+                        <LoadingModal />
+                    </Portal>
+                ) : (
+                    <Portal>
+                        <div className="modal musician-request" onClick={() => setShowRequestModal(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <button className='btn close tertiary' onClick={() => setShowRequestModal(false)}>
+                                    Close
+                                </button>
+                                <div className="modal-header">
+                                    <RequestIcon />
+                                    <h2>Request to perform at {venueData.name}</h2>
+                                    <p>Send a gig request to the venue. If they accept your request, they'll build a gig for you and you'll automatically be invited.</p>
+                                </div>
+                                <div className="modal-body form">
+                                    {musicianProfiles.length > 0 && (
+                                        <div className="input-group">
+                                            <select
+                                            value={selectedProfile?.id || ""}
+                                            onChange={(e) => {
+                                                const profileId = e.target.value;
+                                                const profile = musicianProfiles.find(p => p.id === profileId);
+                                                setSelectedProfile(profile || null);
+                                            }}
+                                            className='select'
+                                            >
+                                            <option value="">-- Select a profile --</option>
+                                            {musicianProfiles.map((profile) => (
+                                                <option key={profile.id} value={profile.id}>
+                                                {profile.name}
+                                                </option>
+                                            ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                    <textarea
+                                        className="input"
+                                        rows={3}
+                                        placeholder="Write a message to the venue..."
+                                        value={requestMessage}
+                                        onChange={(e) => setRequestMessage(e.target.value)}
+                                    />
+                                    <div className="two-buttons">
+                                        <button className="btn tertiary" onClick={() => setShowRequestModal(false)}>
+                                            Cancel
+                                        </button>
+                                        <button className="btn primary" onClick={() => handleMusicianRequest(selectedProfile)}>
+                                            Request To Play Here
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </Portal>
+                    </Portal>
+                )
             )}
         </div>
     );

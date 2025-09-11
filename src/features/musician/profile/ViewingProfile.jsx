@@ -29,6 +29,7 @@ import { filterInvitableGigsForMusician } from '../../../services/utils/filterin
 import { toast } from 'sonner';
 import { InviteIconSolid } from '../../shared/ui/extras/Icons';
 import Portal from '../../shared/components/Portal';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 
 export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
@@ -294,7 +295,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                                     {!musicianSaved ? (
                                         <button className='btn secondary' onClick={handleSaveMusician}>
                                             {savingMusician ? (
-                                                <LoadingThreeDots />
+                                                <LoadingSpinner />
                                             ) : (
                                                 <>
                                                     <SaveIcon />
@@ -305,7 +306,7 @@ export const MusicianProfile = ({ user, setAuthModal, setAuthType }) => {
                                     ) : (
                                         <button className='btn secondary' onClick={handleUnsaveMusician}>
                                             {savingMusician ? (
-                                                <LoadingThreeDots />
+                                                <LoadingSpinner />
                                             ) : (
                                                 <>
                                                     <SavedIcon />

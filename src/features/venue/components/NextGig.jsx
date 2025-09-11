@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
 import { updateMusicianCancelledGig } from '../../../services/musicians';
 import Portal from '../../shared/components/Portal';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 
 export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
@@ -164,7 +165,7 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                                     <h2>Cancelling gig...</h2>
                                     <p>Please don't leave this window or close your browser.</p>
                                 </div>
-                                <LoadingThreeDots />
+                                <LoadingSpinner />
                             </>
                         ) : !askCancellationReason ? (
                             <>
@@ -226,7 +227,7 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                                 <h3>Musicians Playing:</h3>
                                 <div className='head multiple-musicians'>
                                     {loadingMusicians ? (
-                                        <LoadingThreeDots />
+                                        <LoadingSpinner />
                                     ) : (
                                         openMicMusicians.map(musician => (
                                             <div

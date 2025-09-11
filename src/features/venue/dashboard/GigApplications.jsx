@@ -36,6 +36,7 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { cancelGigAndRefund } from '../../../services/functions';
 import { postCancellationMessage } from '../../../services/messages';
 import { updateMusicianCancelledGig } from '../../../services/musicians';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const VideoModal = ({ video, onClose }) => {
@@ -156,12 +157,11 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
     };
 
-
     const handleAccept = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
         event.stopPropagation();    
         try {
             if (!gigInfo) return console.error('Gig data is missing');
-            if (getLocalGigDateTime(gigInfo) < new Date()) return console.error('Gig is in the past.');
+            if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
             const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig";
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
@@ -214,7 +214,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         event.stopPropagation();
         try {
             if (!gigInfo) return console.error('Gig data is missing');
-            if (getLocalGigDateTime(gigInfo) < new Date()) return console.error('Gig is in the past.');
+            if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigInfo, musicianId);
             setGigInfo((prevGigInfo) => ({
                 ...prevGigInfo,
@@ -250,6 +250,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
     }
 
     const handleCompletePayment = async (profileId) => {
+        if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
         setLoadingPaymentDetails(true);
         try {
             const cards = await fetchSavedCards();
@@ -309,6 +310,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             setMusicianProfileId(null);
             setPaymentSuccess(false);
             toast.error('An error occurred while processing the payment. Please try again.');
+        } finally {
+            setMakingPayment(false);
         }
     };
 
@@ -522,7 +525,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             </div>
             <div className='body gigs'>
                 {loading ? (
-                    <LoadingThreeDots />
+                    <LoadingSpinner />
                 ) : (
                     <>
                     {new Date(gigInfo.disputeClearingTime) > getLocalGigDateTime(gigInfo) &&
@@ -664,7 +667,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                     )}
                                                     {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && (
                                                         loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
-                                                            <LoadingThreeDots />
+                                                            <LoadingSpinner />
                                                         ) : (
                                                             <button className='btn primary' onClick={(event) => {event.stopPropagation(); handleCompletePayment(profile.id)}}>
                                                                 Complete Payment

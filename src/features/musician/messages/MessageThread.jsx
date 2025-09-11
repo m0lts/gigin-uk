@@ -20,6 +20,8 @@ import { formatDate } from '../../../services/utils/dates';
 import Portal from '../../shared/components/Portal';
 import AddToCalendarButton from '../../shared/components/AddToCalendarButton';
 import { notifyOtherApplicantsGigConfirmed } from '../../../services/conversations';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { acceptGigOfferOM } from '../../../services/gigs';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
@@ -92,15 +94,26 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return console.error('Gig is in the past.');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig);
-            setGigData((prevGigData) => ({
-                ...prevGigData,
-                applicants: updatedApplicants,
-                agreedFee: `${agreedFee}`,
-                paid: false,
-            }));
+            let globalAgreedFee;
+            if (gigData.kind === 'Open Mic') {
+                const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianProfileId);
+                setGigData((prevGigData) => ({
+                    ...prevGigData,
+                    applicants: updatedApplicants,
+                    paid: true,
+                }));
+            } else {
+                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig);
+                setGigData((prevGigData) => ({
+                    ...prevGigData,
+                    applicants: updatedApplicants,
+                    agreedFee: `${agreedFee}`,
+                    paid: false,
+                }));
+                globalAgreedFee = agreedFee;
+            }
             await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole, nonPayableGig);
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
@@ -113,7 +126,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
                 nonPayableGig,
             });
-            if (nonPayableGig) {
+            if (gigData.kind === 'Ticketed Gig') {
                 await notifyOtherApplicantsGigConfirmed(gigData, musicianProfileId);
             }
         } catch (error) {
@@ -125,6 +138,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();    
         try {
             if (!gigData) return console.error('Gig data is missing');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId);
             setGigData(prev => ({
               ...prev,
@@ -154,6 +168,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData(prev => ({
                 ...prev,
@@ -186,6 +201,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData((prevGigData) => ({
                 ...prevGigData,
@@ -214,6 +230,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSendCounterOffer = async (newFee, messageId) => {
         try {
             if (!gigData) return console.error('Gig data is missing');
+            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
             const value = (newFee || '').trim();
             const numericPart = value.replace(/£|\s/g, '');
             const num = Number(numericPart);
@@ -248,6 +265,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     };
 
     const handleCompletePayment = async () => {
+        if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
         setLoadingPaymentDetails(true);
         await fetchSavedCardsAndModal();
     };
@@ -630,7 +648,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
                                         {loadingPaymentDetails || gigData?.status === 'payment processing' ? (
-                                            <LoadingThreeDots />
+                                            <LoadingSpinner />
                                         ) : (
                                             <button className='btn primary complete-payment' onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
                                                 Complete Payment
