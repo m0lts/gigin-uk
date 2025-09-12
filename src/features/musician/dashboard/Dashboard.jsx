@@ -18,6 +18,7 @@ import { mergeAndSortConversations } from '@services/utils/filtering';
 import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 import { TopBar } from './TopBar';
 import Portal from '../../shared/components/Portal';
+import { WelcomeModal } from '../components/WelcomeModal';
 
 
 export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalClosable }) => {
@@ -45,6 +46,8 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
   const [conversations, setConversations] = useState([]);
   const [unseenInvites, setUnseenInvites] = useState([]);
   const [refreshInvites, setRefreshInvites] = useState(true);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [revisitingModal, setRevisitingModal] = useState(false);
 
   const location = useLocation();
 
@@ -99,6 +102,8 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
           unseenInvites={unseenInvites}
           bandProfiles={bandProfiles}
           musicianProfile={musicianProfile}
+          setShowWelcomeModal={setShowWelcomeModal}
+          setRevisitingModal={setRevisitingModal}
         />
           <div className='window musicians'>
             <TopBar user={user} bandProfiles={bandProfiles} />
@@ -125,6 +130,16 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
               setShowReviewModal(false);
               localStorage.setItem(`reviewedGig-${gigToReview.gigId}`, 'true');
             }}
+          />
+        </Portal>
+      )}
+      {showWelcomeModal && (
+        <Portal>
+          <WelcomeModal
+            user={user}
+            setShowWelcomeModal={setShowWelcomeModal}
+            role='musician'
+            revisiting={revisitingModal}
           />
         </Portal>
       )}

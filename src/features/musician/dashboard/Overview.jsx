@@ -117,7 +117,7 @@ const toMs = (dt) => {
         const matchedApplicant = applicants.find(a =>
             userProfileIds.has(a?.id) &&
             a?.invited === true &&
-            (a?.viewed === false || a?.viewed === undefined)
+            (a?.status === 'pending' || a?.status === 'awaiting your response')
           );
         if (!matchedApplicant) return null;
         const t = toMs(gig.startDateTime);

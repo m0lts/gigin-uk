@@ -99,6 +99,10 @@ button {
     background-color: var(--gn-grey-350);
 }
 
+.btn.tertiary.active {
+    background-color: var(--gn-grey-350);
+}
+
 /* QUATERNARY BUTTONS */
 
 .btn.quaternary {

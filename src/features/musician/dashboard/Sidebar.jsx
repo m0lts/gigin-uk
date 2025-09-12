@@ -12,7 +12,7 @@ import { CalendarIconLight, CoinsIconSolid, DashboardIconLight, DashboardIconSol
 import { TextLogoMed } from '../../shared/ui/logos/Logos';
 import { FeedbackBox } from '../../venue/dashboard/FeedbackBox';
 
-export const Sidebar = ({ user, newMessages, unseenInvites, bandProfiles, musicianProfile }) => {
+export const Sidebar = ({ user, newMessages, unseenInvites, bandProfiles, musicianProfile, setShowWelcomeModal, setRevisitingModal }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const pathname = useMemo(() => location.pathname, [location.pathname]);
@@ -113,7 +113,7 @@ export const Sidebar = ({ user, newMessages, unseenInvites, bandProfiles, musici
             })}
           </ul>
           {pathname !== '/dashboard' && (
-            <FeedbackBox user={user} />
+            <FeedbackBox user={user} setShowWelcomeModal={setShowWelcomeModal} setRevisitingModal={setRevisitingModal} />
           )}
         </div>
       );
