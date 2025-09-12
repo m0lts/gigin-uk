@@ -385,7 +385,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     return (
         <>
         <div className='messages'>
-            {messages.length > 0 && (
+            {messagess.length > 0 && (
                 messages.map((message) => {
                     const getGroupOfParticipant = (participantId) => {
                         const entry = activeConversation.accountNames.find(acc => acc.accountId === participantId);
@@ -833,7 +833,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                         onClose={(reviewSubmitted) => {
                             setShowReviewModal(false);
                             if (reviewSubmitted) {
-                                console.log('submitted')
                                 handleMessageReviewed();
                             }
                         }}

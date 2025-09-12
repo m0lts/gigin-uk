@@ -7,7 +7,6 @@ import '@styles/shared/buttons.styles.css'
 import { LandingPage } from '@features/landing-page/LandingPage';
 import { useEffect, useState } from 'react';
 import { MainLayout } from '@layouts/MainLayout';
-import { VenueHome } from '@features/venue/builder/Home';
 import { NoHeaderFooterLayout } from '@layouts/NoHeaderFooterLayout';
 import { VenueBuilder } from '@features/venue/builder/VenueBuilder';
 import { useAuth } from '@hooks/useAuth';
@@ -34,6 +33,8 @@ import { NoProfileModal } from './features/musician/components/NoProfileModal';
 import { VenueFinder } from './features/venue-discovery/VenueFinder';
 import Portal from './features/shared/components/Portal';
 import { logClientError } from './services/errors';
+import { TermsAndConditions } from './features/legals/TermsAndConditions';
+import { PrivacyPolicy } from './features/legals/PrivacyPolicy';
 
 
 
@@ -62,8 +63,14 @@ export default function App() {
     } else {
       setAuthClosable(true);
     }
-    if (location.pathname === ('email-verified')) {
+    if (location.pathname === ('/email-verified')) {
       navigate('/')
+    }
+    if (location.pathname === ('/venues')) {
+      navigate('/')
+    }
+    if (location.pathname === ('/venues/add-venue')) {
+      setAuthClosable(false);
     }
   }, [location.pathname]);
 
@@ -173,8 +180,7 @@ export default function App() {
 
         {/* VENUES ROUTES */}
         <Route path='/venues'>
-          <Route index element={<VenueHome user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} />} />
-          <Route path='add-venue/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} /></NoHeaderFooterLayout>} />
+          <Route path='add-venue/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} setAuthType={setAuthType} /></NoHeaderFooterLayout>} />
           <Route path='dashboard/*' element={<VenueDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><VenueDashboard user={user} /></VenueDashboardLayout>} />
           <Route path='/venues/:venueId' element={<VenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
@@ -184,6 +190,8 @@ export default function App() {
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
         <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
         <Route path='/testimonials' element={<Testimonials />} />
+        <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
+        <Route path='/privacy-policy' element={<PrivacyPolicy />} />
         
       </Routes>
       

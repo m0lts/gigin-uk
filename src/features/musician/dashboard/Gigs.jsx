@@ -278,7 +278,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
         <>
             <div className='head gigs'>
                 <div className='title-container'>
-                    <h1 className='title'>Gig Applications</h1>
+                    <h1 className='title'>Gigs</h1>
                     {/* <h1 className='title'>{showSavedGigs ? 'Saved Gigs' : 'Gig Applications'}</h1>
                     <button className="btn primary" onClick={() => setShowSavedGigs(!showSavedGigs)}>
                         {!showSavedGigs ? 'Saved Gigs' : 'Gig Applications'}

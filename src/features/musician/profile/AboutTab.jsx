@@ -119,9 +119,6 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
         }
     };
 
-    console.log(musicianData.members)
-    console.log(musicianData.musicianId)
-
     if (!musicianData.genres && !musicianData.musicType && !musicianData.coordinates && !musicianData.equipment && !musicianData.socials && !musicianData.members) {
         return (
             <div className="nothing-to-display">

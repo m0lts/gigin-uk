@@ -1,5 +1,6 @@
 import '@styles/shared/footer.styles.css'
 import { TextLogoLink } from '@features/shared/ui/logos/Logos';
+import { Link } from 'react-router-dom';
 
 export const Footer = () => {
     return (
@@ -30,12 +31,12 @@ export const Footer = () => {
                     <li style={{ margin: '0 15px' }}>
                         <a href='/' style={{ textDecoration: 'none', color: '#333' }}>About</a>
                     </li>
-                    <li style={{ margin: '0 15px' }}>
-                        <a href='/#' style={{ textDecoration: 'none', color: '#333' }}>Privacy</a>
-                    </li>
-                    <li style={{ margin: '0 15px' }}>
-                        <a href='/#' style={{ textDecoration: 'none', color: '#333' }}>Terms</a>
-                    </li>
+                    <Link style={{ margin: '0 15px', textDecoration: 'none' }} to={'/privacy-policy'}>
+                        <span style={{ textDecoration: 'none', color: '#333' }}>Privacy Policy</span>
+                    </Link>
+                    <Link style={{ margin: '0 15px', textDecoration: 'none' }} to={'/terms-and-conditions'}>
+                        <span style={{ textDecoration: 'none', color: '#333' }}>Terms & Conditions</span>
+                    </Link>
                     <li style={{ margin: '0 15px' }}>
                         <a 
                             href='mailto:hq.gigin@gmail.com' 

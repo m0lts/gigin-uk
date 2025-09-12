@@ -22,7 +22,7 @@ import Portal from '../../shared/components/Portal';
 import { useAuth } from '../../../hooks/useAuth';
 import { deleteVenueProfileInUserDocument } from '../../../services/users';
 
-export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
+export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType }) => {
 
     const { setUser } = useAuth();
     const navigate = useNavigate();
@@ -56,11 +56,13 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
 
     useResizeEffect((width) => {
         setWindowWidth(width);
-      });
+    });
 
     useEffect(() => {
         if (!user) {
-            navigate('/venues')
+            setAuthModal(true);
+            setAuthClosable(false);
+            setAuthType('signup')
         }
         if (user?.musicianProfile) {
             setShowErrorModal(true);
@@ -248,7 +250,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             if (updatedFormData.completed || (user?.venueProfiles && user?.venueProfiles?.length > 1)) {
                 navigate('/venues/dashboard/gigs')
             } else {
-                navigate('/venues');
+                navigate('/');
             }
             toast.success('Venue profile saved.')
         } catch (error) {
@@ -275,7 +277,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable }) => {
             venueProfiles: arrayRemove(savedProfile.venueId),
           });
           if (Array.isArray(user.venueProfiles) && user.venueProfiles.length < 1) {
-            console.log('running delete')
             await deleteVenueProfileInUserDocument(user.uid);
           }
           setCompleteSavedProfileModal(false);

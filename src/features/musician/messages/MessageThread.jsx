@@ -158,7 +158,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 isNegotiated: true,
                 profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
               });
-            console.log('Agreed fee:', agreedFee);
         } catch (error) {
             console.error('Error updating gig document:', error);
         }
@@ -425,7 +424,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             
                 const senderGroup = getGroupOfParticipant(message.senderId);
                 const isSameGroup = senderGroup === userGroup;
-                console.log(messages)
                 return (
                     <div className='message-container' key={message.id}>
                         <div className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >

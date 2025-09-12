@@ -125,8 +125,6 @@ const toMs = (dt) => {
         return name.split(' ')[0];
     };
 
-    console.log(nextGig)
-
     return (
         <>
             <div className='body overview'>

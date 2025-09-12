@@ -32,7 +32,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/venues');
+      navigate('/');
     } catch (err) {
       toast.error('Failed to logout. Please try again.')
       console.error('Logout Failed:', err);

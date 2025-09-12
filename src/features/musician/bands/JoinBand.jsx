@@ -31,7 +31,6 @@ export const JoinBand = () => {
       const joinViaLink = async () => {
         if (!user) {
           setError('You must be logged in to join a band.');
-          console.log('user error');
           return;
         }
         if (!user.musicianProfile?.musicianId) {

@@ -35,7 +35,6 @@ export const PaymentModal = ({
       if (!paymentIntentId) return;
       setMakingPayment(true);
       const unsubscribe = listenToPaymentStatus(paymentIntentId, (status) => {
-        console.log('Listener status:', status)
         if (status === "succeeded") {
           setPaymentSuccess(true);
           setMakingPayment(false);

@@ -220,7 +220,6 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 const allIds = [...user.bands, musicianId]
                 const profiles = await getMusicianProfilesByIds(allIds);
                 setMusicianProfiles(profiles);
-                console.log(profiles);
                 setLoadingRequest(false);
             } else {
                 setSelectedProfile(user?.musicianProfile)
@@ -231,8 +230,6 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             toast.error('Failed to request a gig.')
         }
     }
-
-    console.log(selectedProfile)
 
     return (
         <div className='venue-page'>

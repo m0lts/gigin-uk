@@ -16,7 +16,6 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
     const navigate = useNavigate();
 
     const handleLocationSelect = (venue) => {
-        console.log(venue)
         handleInputChange({
             venueId: venue.venueId,
             venue: {

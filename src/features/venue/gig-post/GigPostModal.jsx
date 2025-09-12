@@ -645,7 +645,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               if (!firstGigDoc) firstGigDoc = singleGig;
             }
             }
-            console.log(allGigsToPost)
             await postMultipleGigs(formData.venueId, allGigsToPost);
             const newGigIds = allGigsToPost.map(g => g.gigId);
             setVenueProfiles(prev => {

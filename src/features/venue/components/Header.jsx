@@ -81,7 +81,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     const handleLogout = async () => {
         try {
             await logout();
-            navigate('/venues');
+            navigate('/');
         } catch (err) {
             console.error(err);
         } finally {

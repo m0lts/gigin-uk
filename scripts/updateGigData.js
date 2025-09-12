@@ -30,18 +30,15 @@ const migrateGigsToAddGeoHash = async () => {
         updates.geo = deleteField();
         batch.update(docSnap.ref, updates);
         updateCount++;
-        console.log(`Queued update for gig ${docSnap.id}`);
     }
   });
 
   if (updateCount === 0) {
-    console.log('No gigs needed migration.');
     return;
   }
 
   try {
     await batch.commit();
-    console.log(`✅ Migrated ${updateCount} gig(s) with new geo fields.`);
   } catch (err) {
     console.error('❌ Batch commit failed:', err);
   }

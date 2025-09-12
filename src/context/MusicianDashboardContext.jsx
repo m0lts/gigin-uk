@@ -167,7 +167,6 @@ export const MusicianDashboardProvider = ({ user, children }) => {
   };
 
   const refreshSingleBand = async (bandId) => {
-    console.log('Refreshing data for band:', bandId)
     try {
       const [profile, members, bandInfo] = await Promise.all([
         getMusicianProfileByMusicianId(bandId),
@@ -175,7 +174,6 @@ export const MusicianDashboardProvider = ({ user, children }) => {
         getBandDataOnly(bandId),
       ]);
       const updatedBand = { ...profile, bandId, members, bandInfo };
-      console.log("Update data:", updatedBand)
       setBandProfiles((prev) => {
         const filtered = prev.filter((b) => b.bandId !== bandId);
         return [...filtered, updatedBand];

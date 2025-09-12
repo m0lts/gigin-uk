@@ -101,8 +101,6 @@ export const MessagePage = () => {
         setShowArchived(prev => !prev);
     };
 
-    console.log(activeConversation)
-
     if (conversations.length > 0 || archivedConversations.length > 0) {
         return (
             <div className='message-page'>

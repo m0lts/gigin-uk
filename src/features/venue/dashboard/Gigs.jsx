@@ -234,10 +234,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         try {
             const nextGig = gigs.filter(g => g.gigId === selectedGigs[0])[0];
             const gigId = nextGig.gigId;
-            console.log(nextGig);
-            console.log(nextGig.venueId)
             const venueProfile = await getVenueProfileById(nextGig.venueId);
-            console.log('here')
             const isOpenMic = nextGig.kind === 'Open Mic';
             const isTicketed = nextGig.kind === 'Ticketed Gig';
             if (!isOpenMic && !isTicketed) {
@@ -245,14 +242,12 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                     nextGig.clearPendingFeeTaskName,
                     nextGig.automaticMessageTaskName,
                 ];
-                console.log('in here')
                 await cancelGigAndRefund({
                     taskNames,
                     transactionId: nextGig.paymentIntentId,
                 });
             }
             const handleMusicianCancellation = async (musician) => {
-              console.log('in here cancellation')
                 const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
                 await postCancellationMessage(
                   conversationId,

@@ -44,7 +44,6 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
     const headerStyle = {
         padding: location.pathname.includes('dashboard') ? '0 1rem' : '0 2.5%',
     };
-    
     return (
         <header className='header default' style={headerStyle}>
             {user ? (
@@ -64,7 +63,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                 <GuitarsIcon />
                                 Create a Musician Profile
                             </button>
-                            <Link className='link' to={'/venues'}>
+                            <Link className='link' to={'/venues/add-venue'}>
                                 <button className='btn text'>
                                     I'm a Venue
                                 </button>
@@ -79,6 +78,11 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                 <>
                     { getLocation() }
                     <nav className='nav-list right'>
+                        <Link className='link' to={'/venues/add-venue'}>
+                                <button className='btn text'>
+                                    I'm a Venue
+                                </button>
+                        </Link>
                         <Link className='link' to={'/find-a-gig'}>
                             <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                                 <MapIcon />

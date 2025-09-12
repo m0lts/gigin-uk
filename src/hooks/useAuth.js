@@ -154,7 +154,7 @@ export const useAuth = () => {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
       } else if (venueProfiles.length) {
-        navigate('/venues');
+        navigate('/venues/dashboard');
       } else {
         navigate('/find-a-gig');
       }
@@ -217,7 +217,6 @@ export const useAuth = () => {
       }
       return { needsEmailVerify: true };
     } catch (error) {
-      console.log('signup function', error)
       setUser(null);
       throw { error }
     }

@@ -95,7 +95,6 @@ export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNe
             setSaveCardModal(false);
             toast.success('Card saved.');
           } else {
-            console.log(data);
             toast.error('Error saving card details. Please try again.');
             setSaveCardModal(false);
           }

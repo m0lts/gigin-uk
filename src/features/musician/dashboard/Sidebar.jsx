@@ -55,7 +55,7 @@ export const Sidebar = ({ user, newMessages, unseenInvites, bandProfiles, musici
         },
         {
           path: '/dashboard/gigs',
-          label: 'Gig Applications',
+          label: 'Gigs',
           icon: <CalendarIconLight />,
           iconActive: <CalendarIconSolid />,
           notification: unseenInvites.length > 0,
