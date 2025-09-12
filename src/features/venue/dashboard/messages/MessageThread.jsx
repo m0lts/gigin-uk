@@ -452,7 +452,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 </div>
                                             </div>
                                         </div>
-                                    ) : (message.status === 'declined' || message.status === 'countered') && (
+                                    ) : (message.status === 'declined' || message.status === 'countered') ? (
                                         <>
                                         <div className='status-box'>
                                             <div className='status rejected'>
@@ -460,7 +460,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Declined
                                             </div>
                                         </div>
-                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && (
+                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                             <h4>Send Counter Offer:</h4>
                                             <div className='input-group'>
@@ -481,7 +481,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         </div>
                                         )}
                                         </>
-                                    )}
+                                    ) : message.status === 'withdrawn' && (
+                                        <div className='status-box'>
+                                        <div className='status rejected'>
+                                            <RejectedIcon />
+                                            Musician Withdrew Application
+                                        </div>
+                                    </div>
+                                )}
                                 </>
                             ) 
                             : (message.type === 'application' || message.type === 'invitation') && !isSameGroup ? (
@@ -502,7 +509,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Declined
                                             </div>
                                         </div>
-                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && (
+                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                 <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>
@@ -523,7 +530,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                         )}
                                         </>
-                                    ) : message.status !== 'countered' && message.status !== 'apps-closed' && (
+                                    ) : message.status !== 'countered' && message.status !== 'apps-closed' && message.status !== 'withdrawn' ? (
                                         <div className='two-buttons'>
                                             <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
                                                 Accept
@@ -531,6 +538,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
                                                 Decline
                                             </button>
+                                        </div>
+                                    ) : message.status === 'withdrawn' && (
+                                            <div className='status-box'>
+                                            <div className='status rejected'>
+                                                <RejectedIcon />
+                                                Musician Withdrew Application
+                                            </div>
                                         </div>
                                     )}
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
@@ -582,7 +596,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && (
+                                            {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                    <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>
@@ -603,7 +617,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 </div>
                                             )}
                                         </>
-                                    ) : (
+                                    ) : message.status !== 'withdrawn' ? (
                                         <div className='two-buttons'>
                                             <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
                                                 Accept
@@ -612,7 +626,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Decline
                                             </button>
                                         </div>
-                                    )}
+                                    ) : message.status === 'withdrawn' && (
+                                        <div className='status-box'>
+                                        <div className='status rejected'>
+                                            <RejectedIcon />
+                                            Musician Withdrew Application
+                                        </div>
+                                    </div>
+                                )}
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                 </>
                             ) : message.type === 'announcement' ? (

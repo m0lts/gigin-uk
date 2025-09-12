@@ -554,13 +554,13 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {musicianProfiles.map((profile) => {
+                                {musicianProfiles.map((profile, index) => {
                                     const applicant = gigInfo?.applicants?.find(applicant => applicant.id === profile.id);
                                     const sender = applicant ? applicant.sentBy : 'musician';
                                     const status = applicant ? applicant.status : 'pending';
                                     const gigAlreadyConfirmed = gigInfo?.applicants?.some((a) => a.status === 'confirmed');
                                     return (
-                                        <tr key={profile.id} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
+                                        <tr key={index} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
                                         onMouseLeave={() => setHoveredRowId(null)}>
                                             <td className='musician-name'>
                                                 {hoveredRowId === profile.id && (

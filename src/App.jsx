@@ -33,6 +33,7 @@ import { auth } from "@lib/firebase";
 import { NoProfileModal } from './features/musician/components/NoProfileModal';
 import { VenueFinder } from './features/venue-discovery/VenueFinder';
 import Portal from './features/shared/components/Portal';
+import { logClientError } from './services/errors';
 
 
 
@@ -79,6 +80,37 @@ export default function App() {
     return NaN;
   }
 
+  let __loggingNow = false;
+
+  window.addEventListener('error', (event) => {
+    if (__loggingNow || !event?.error) return;
+    __loggingNow = true;
+    logClientError({
+      message: event.error?.message || 'window.error',
+      stack: event.error?.stack || null,
+      path: window.location.pathname + window.location.search,
+      userAgent: navigator.userAgent,
+      extra: { source: 'window.error' },
+    }).finally(() => { __loggingNow = false; });
+  });
+  
+  window.addEventListener('unhandledrejection', (event) => {
+    if (__loggingNow) return;
+    const reason = event?.reason;
+    const message = typeof reason === 'string' ? reason : reason?.message || 'unhandledrejection';
+    const stack = typeof reason === 'object' ? reason?.stack || null : null;
+  
+    __loggingNow = true;
+    logClientError({
+      message,
+      stack,
+      path: window.location.pathname + window.location.search,
+      userAgent: navigator.userAgent,
+      extra: { source: 'unhandledrejection' },
+    }).finally(() => { __loggingNow = false; });
+  });
+
+  
   useEffect(() => {
     // ✅ Skip all checks in dev mode
     if (import.meta.env.MODE === 'development' || location.pathname.includes('gigin-uk-git-dev-gigin-dev-team.vercel.app')) {

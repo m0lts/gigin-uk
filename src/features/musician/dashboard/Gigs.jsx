@@ -14,7 +14,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, ExclamationIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SaveIcon, SavedIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { getVenueProfileById } from '../../../services/venues';
-import { markInviteAsViewed, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateMusicianCancelledGig, withdrawMusicianApplication } from '../../../services/musicians';
+import { getMusicianProfileByMusicianId, markInviteAsViewed, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateMusicianCancelledGig, withdrawMusicianApplication } from '../../../services/musicians';
 import { revertGigApplication } from '../../../services/gigs';
 import { toast } from 'sonner';
 
@@ -73,30 +73,32 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
         const applicant = gig.applicants.find(
             (applicant) =>
               applicant.id === musicianId ||
-              musicianProfile.bands?.includes(applicant.id)
-          );
+              musicianProfile?.bands?.includes(applicant.id)
+        );
         if (!applicant) {
             return { icon: <ExclamationIcon />, text: 'Not Applied' };
         }
         if (gigDate > now) {
-            if (applicant.status === 'confirmed') {
-                return { icon: <TickIcon />, text: 'Confirmed' };
+            const status = applicant?.status; // safe because applicant exists
+            if (status === 'confirmed') return { icon: <TickIcon />, text: 'Confirmed' };
+            if (status === 'accepted' || status === 'payment processing') {
+              return { icon: <ClockIcon />, text: 'Awaiting Venue Payment' };
             }
-            if (applicant.status === 'accepted' || applicant.status === 'payment processing') {
-                return { icon: <ClockIcon />, text: 'Awaiting Venue Payment' };
+            if (status === 'pending' && applicant?.invited) {
+              return { icon: <ClockIcon />, text: 'Awaiting Your Response' };
             }
-            if (applicant.status === 'pending' && applicant?.invited) {
-                return { icon: <ClockIcon />, text: 'Awaiting Your Response' };
+            if (status === 'pending') {
+              return { icon: <ClockIcon />, text: 'Awaiting Venue Response' };
             }
-            if (applicant.status === 'pending') {
-                return { icon: <ClockIcon />, text: 'Awaiting Venue Response' };
+            if (status === 'declined') {
+              return { icon: <RejectedIcon />, text: 'Declined' };
             }
-            if (applicant.status === 'declined') {
-                return { icon: <RejectedIcon />, text: 'Declined' };
-            }
-        } else {
-            return { icon: <PreviousIcon />, text: 'Past' };
-        }
+            if (status === 'withdrawn') {
+                return { icon: <RejectedIcon />, text: 'Withdrawn' };
+              }
+          }
+        return { icon: <PreviousIcon />, text: 'Past' };
+
     };
 
     const now = new Date();
@@ -214,13 +216,10 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
         }
     };
 
-
-    const handleWithdrawApplication = async (profileToWithdraw, gigId) => {
+    const handleWithdrawApplication = async (gigId, profileToWithdraw) => {
         try {
-            const updatedApplicants = await withdrawMusicianApplication(gigId, profileToWithdraw);
-            if (updatedApplicants) {
-              setGigs(prev => ({ ...prev, applicants: updatedApplicants }));
-            }
+            const musicianProfile = await getMusicianProfileByMusicianId(profileToWithdraw.profileId)
+            await withdrawMusicianApplication(gigId, musicianProfile);
             toast.success('Application withdrawn.');
           } catch (e) {
             console.error(e);
@@ -461,12 +460,12 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             </td>
                                             <td
                                                 className={`status-box ${
-                                                    gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' || gigStatus?.text.toLowerCase() === 'awaiting venue payment' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase() 
+                                                    gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' || gigStatus?.text.toLowerCase() === 'awaiting venue payment' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase() === 'withdrawn' ? 'declined' : gigStatus?.text.toLowerCase() 
                                                 }`}
                                             >
                                                 <div
                                                     className={`status ${
-                                                        gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' || gigStatus?.text.toLowerCase() === 'awaiting venue payment' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase()
+                                                        gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' || gigStatus?.text.toLowerCase() === 'awaiting venue payment' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase() === 'withdrawn' ? 'declined' : gigStatus?.text.toLowerCase()
                                                     }`}
                                                 >
                                                     {gigStatus.icon} {gigStatus?.text}
@@ -492,8 +491,8 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                         </button>
                                                         {(gigStatus.text === 'Confirmed' && gig.startDateTime.toDate() > now) ? (
                                                             <button onClick={() => { closeOptionsMenu(); setUserCancelling(true); setGigForHandbook(gig); setShowGigHandbook(true); setFromOptionsMenu(true) }} className='danger'>Cancel Gig <CancelIcon /></button>
-                                                        ) : ((gigStatus.text === 'Pending' || gigStatus.text === 'Waiting for Payment Confirmation') && gig.startDateTime.toDate() > now) && (
-                                                            <button onClick={() => { closeOptionsMenu(); handleWithdrawApplication(appliedProfile, gig.gigId) }} className='danger'>Remove Application <CancelIcon /></button>
+                                                        ) : (
+                                                            <button onClick={() => { closeOptionsMenu(); handleWithdrawApplication(gig.gigId, appliedProfile) }} className='danger'>Withdraw Application <CancelIcon /></button>
                                                         )}
                                                     </div>
                                                 )}

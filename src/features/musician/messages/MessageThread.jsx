@@ -425,6 +425,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             
                 const senderGroup = getGroupOfParticipant(message.senderId);
                 const isSameGroup = senderGroup === userGroup;
+                console.log(messages)
                 return (
                     <div className='message-container' key={message.id}>
                         <div className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >
@@ -443,13 +444,11 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                         Check my Profile
                                                     </button>
                                                 )}
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                             </div>
 
                                         ) : (
                                             <>
                                                 Gig invitation sent.
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                             </>
                                         )}
                                     </h4>
@@ -462,7 +461,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 </div>
                                             </div>
                                         </div>
-                                    ) : (message.status === 'declined' || message.status === 'countered' || message.status === 'apps-closed') && (
+                                    ) : (message.status === 'declined' || message.status === 'countered' || message.status === 'apps-closed') ? (
                                         <>
                                         <div className='status-box'>
                                             <div className='status rejected'>
@@ -491,7 +490,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         </div>
                                         )}
                                         </>
+                                    ) : message.status === 'withdrawn' && (
+                                        <div className='status-box'>
+                                            <div className='status rejected'>
+                                                <RejectedIcon />
+                                                Application Withdrawn
+                                            </div>
+                                        </div>
                                     )}
+                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                 </>
                             ) 
                             : (message.type === 'application' || message.type === 'invitation') && !isSameGroup ? (
@@ -533,7 +540,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                         )}
                                         </>
-                                    ) : message.status !== 'countered' && message.status !== 'apps-closed' && (
+                                    ) : message.status !== 'countered' && message.status !== 'apps-closed' ? (
                                         <div className='two-buttons'>
                                             <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
                                                 Accept
@@ -541,6 +548,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
                                                 Decline
                                             </button>
+                                        </div>
+                                    ) : message.status === 'withdrawn' && (
+                                        <div className='status-box'>
+                                            <div className='status rejected'>
+                                                <RejectedIcon />
+                                                Application Withdrawn
+                                            </div>
                                         </div>
                                     )}
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
@@ -559,7 +573,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 Accepted
                                             </div>
                                         </div>
-                                    ) : message.status === 'declined' || message.status === 'apps-closed' && (
+                                    ) : message.status === 'declined' || message.status === 'apps-closed' ? (
                                         <>
                                             <div className='status-box'>
                                                 <div className='status rejected'>
@@ -568,6 +582,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 </div>
                                             </div>
                                         </>
+                                    ) : message.status === 'withdrawn' && (
+                                        <div className='status-box'>
+                                            <div className='status rejected'>
+                                                <RejectedIcon />
+                                                Application Withdrawn
+                                            </div>
+                                        </div>
                                     )}
                                 </>
                             ) : message.type === 'negotiation' && !isSameGroup ? (
@@ -613,7 +634,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 </div>
                                             )}
                                         </>
-                                    ) : message.status !== 'countered' && message.status !== "apps-closed" && (
+                                    ) : message.status !== 'countered' && message.status !== "apps-closed" ? (
                                         <div className='two-buttons'>
                                             <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
                                                 Accept
@@ -621,6 +642,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
                                                 Decline
                                             </button>
+                                        </div>
+                                    ) : message.status === 'withdrawn' && (
+                                        <div className='status-box'>
+                                            <div className='status rejected'>
+                                                <RejectedIcon />
+                                                Application Withdrawn
+                                            </div>
                                         </div>
                                     )}
                                     <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>

@@ -511,6 +511,17 @@ export async function withdrawMusicianApplication(gigId, profile) {
       );
       await updateDoc(msgRef, { status: 'withdrawn' });
     }
+    const lastNegMsg = await getMostRecentMessage(conversationId, 'negotiation');
+    if (lastNegMsg?.id) {
+      const msgRef = doc(
+        firestore,
+        'conversations',
+        conversationId,
+        'messages',
+        lastNegMsg.id
+      );
+      await updateDoc(msgRef, { status: 'withdrawn' });
+    }
     await updateDoc(doc(firestore, 'conversations', conversationId), {
       lastMessage: 'Application withdrawn by musician.',
       lastMessageTimestamp: Timestamp.now(),

@@ -217,6 +217,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
     const [testimonialEmail, setTestimonialEmail] = useState('');
     const [testimonialMessage, setTestimonialMessage] = useState(null);
 
+
     useEffect(() => {
         if (!musicianProfile) return;
         const checkForSavedProfile = async () => {
@@ -631,27 +632,40 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
                     nextLocation = { ...nextLocation, city: geo.city, coordinates: geo.coordinates };
                 }
             }
-            const pictureFile = formData.picture;
-            let pictureUrl;
-            if (pictureFile !== '') {
-                if (band) {
-                    pictureUrl = await uploadFileToStorage(pictureFile, `bands/${formData.musicianId}/profileImg/${pictureFile.name}`);
-                    await uploadProfilePicture(pictureFile, formData.musicianId);
-                } else {
-                    pictureUrl = await uploadProfilePicture(pictureFile, formData.musicianId);
-                    if (formData.bands.length > 0) {
-                        await updateBandMemberImg(formData.musicianId, pictureUrl, formData.bands);
-                    }
+            const pictureVal = formData.picture; // could be File/Blob or URL string or ''
+            let pictureUrl =
+            typeof pictureVal === 'string' && pictureVal.trim()
+                ? pictureVal.trim() // keep existing URL
+                : null;
+
+            if (pictureVal && typeof pictureVal !== 'string') {
+            // treat as File/Blob
+            if (band) {
+                // if you really need both uploads, keep both; otherwise choose one
+                pictureUrl = await uploadFileToStorage(
+                pictureVal,
+                `bands/${formData.musicianId}/profileImg/${pictureVal.name}`
+                );
+                await uploadProfilePicture(pictureVal, formData.musicianId);
+            } else {
+                pictureUrl = await uploadProfilePicture(pictureVal, formData.musicianId);
+                if (Array.isArray(formData.bands) && formData.bands.length > 0) {
+                await updateBandMemberImg(formData.musicianId, pictureUrl, formData.bands);
                 }
             }
+            }
+
+            // ----- rest of payload -----
             const keywords = generateSearchKeywords(formData.name);
+            const isCompleted = !!(formData.name && pictureUrl);
+
             const updatedFormData = {
-                ...formData,
-                completed: !!(formData.name && formData.picture),
-                searchKeywords: keywords,
-                email: user?.email,
-                location: nextLocation,
-                picture: pictureUrl ? pictureUrl : null,
+            ...formData,
+            completed: isCompleted,
+            searchKeywords: keywords,
+            email: user?.email,
+            location: nextLocation,
+            picture: pictureUrl || null, // keep the URL or newly uploaded URL; null if none
             };
             await createMusicianProfile(formData.musicianId, updatedFormData, user.uid);
             await updateUserDocument(user.uid, {

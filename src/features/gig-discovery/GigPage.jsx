@@ -109,7 +109,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const computeStatusForProfile = (gig, profile) => {
         const applicant = gig?.applicants?.find(a => a?.id === profile?.musicianId);
         const invited = !!(applicant && applicant.invited === true) || (gig?.privateApplications && gig.privateApplicationToken === inviteToken);
-        const applied = !!(applicant && applicant.invited !== true);
+        const applied = !!(applicant && applicant.invited !== true && applicant.status !== 'withdrawn');
         const accepted = !!(
             applicant &&
             (applicant?.status === 'accepted' || applicant?.status === 'confirmed')
@@ -438,6 +438,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           } catch (e) {
             console.error(e);
             toast.error('Failed to withdraw application.');
+          } finally {
+            window.location.reload();
           }
     }
 
@@ -1034,7 +1036,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                             ) : null}
 
                                                             {showApplied && hasAccessToPrivateGig && (
-                                                                <button className='btn primary' onClick={handleWithdrawApplication}>
+                                                                <button className='btn secondary' onClick={handleWithdrawApplication} style={{ marginTop: '5px'}}>
                                                                     Withdraw Application
                                                                 </button>
                                                             )}
@@ -1072,7 +1074,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                             <button className='btn secondary' onClick={handleMessage}>Message</button>
                                                         )}
                                                     </div>
-                                                    <button className='btn secondary'>
+                                                    <button className='btn secondary' onClick={(e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
                                                         Other Gigs at {gigData.venue.venueName}
                                                     </button>
                                                     </>
