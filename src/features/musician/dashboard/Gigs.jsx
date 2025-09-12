@@ -14,7 +14,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, ExclamationIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SaveIcon, SavedIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { getVenueProfileById } from '../../../services/venues';
-import { markInviteAsViewed, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateMusicianCancelledGig } from '../../../services/musicians';
+import { markInviteAsViewed, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateMusicianCancelledGig, withdrawMusicianApplication } from '../../../services/musicians';
 import { revertGigApplication } from '../../../services/gigs';
 import { toast } from 'sonner';
 
@@ -214,20 +214,34 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
         }
     };
 
-    const handleCancelGigApplication = async (musicianId, gigData) => {
+
+    const handleWithdrawApplication = async (profileToWithdraw, gigId) => {
         try {
-          await updateMusicianCancelledGig(musicianId, gigData.gigId);
-          await revertGigApplication(gigData, musicianId);
+            const updatedApplicants = await withdrawMusicianApplication(gigId, profileToWithdraw);
+            if (updatedApplicants) {
+              setGigs(prev => ({ ...prev, applicants: updatedApplicants }));
+            }
+            toast.success('Application withdrawn.');
+          } catch (e) {
+            console.error(e);
+            toast.error('Failed to withdraw application.');
+          }
+    }
+
+    // const handleCancelGigApplication = async (musicianId, gigData) => {
+    //     try {
+    //       await updateMusicianCancelledGig(musicianId, gigData.gigId);
+    //       await revertGigApplication(gigData, musicianId);
       
-          setGigs(prev => prev.filter(g => g.gigId !== gigData.gigId));
-          setGigApplications(prev => prev.filter(app => app.gigId !== gigData.gigId));
+    //       setGigs(prev => prev.filter(g => g.gigId !== gigData.gigId));
+    //       setGigApplications(prev => prev.filter(app => app.gigId !== gigData.gigId));
       
-          toast.success('Gig application removed.');
-        } catch (error) {
-          console.error(error);
-          toast.error('Failed to cancel application. Please try again.');
-        }
-    };
+    //       toast.success('Gig application removed.');
+    //     } catch (error) {
+    //       console.error(error);
+    //       toast.error('Failed to cancel application. Please try again.');
+    //     }
+    // };
 
     const handleUnSaveGig = async (gig) => {
         const profileIds = allProfiles.map(p => p.musicianId);
@@ -479,7 +493,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                         {(gigStatus.text === 'Confirmed' && gig.startDateTime.toDate() > now) ? (
                                                             <button onClick={() => { closeOptionsMenu(); setUserCancelling(true); setGigForHandbook(gig); setShowGigHandbook(true); setFromOptionsMenu(true) }} className='danger'>Cancel Gig <CancelIcon /></button>
                                                         ) : ((gigStatus.text === 'Pending' || gigStatus.text === 'Waiting for Payment Confirmation') && gig.startDateTime.toDate() > now) && (
-                                                            <button onClick={() => { closeOptionsMenu(); handleCancelGigApplication(appliedProfile.profileId, gig) }} className='danger'>Remove Application <CancelIcon /></button>
+                                                            <button onClick={() => { closeOptionsMenu(); handleWithdrawApplication(appliedProfile, gig.gigId) }} className='danger'>Remove Application <CancelIcon /></button>
                                                         )}
                                                     </div>
                                                 )}

@@ -716,6 +716,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </div>
                                                         </div>
                                                     )}
+                                                    {status === 'withdrawn' && (
+                                                        <div className='status-box'>
+                                                            <div className='status declined'>
+                                                                <ErrorIcon />
+                                                                Musician Withdrew
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {status === 'pending' && gigAlreadyConfirmed && gigInfo.kind !== 'Open Mic' && (
                                                         <div className='status-box'>
                                                             <div className='status declined'>

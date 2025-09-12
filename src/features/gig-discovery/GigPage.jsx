@@ -30,7 +30,7 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
-import { getMusicianProfilesByIds, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateBandMembersGigApplications } from '../../services/musicians';
+import { getMusicianProfilesByIds, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/musicians';
 import { getBandMembers } from '../../services/bands';
 import { acceptGigOffer, getGigById, getGigsByIds } from '../../services/gigs';
 import { getMostRecentMessage, sendCounterOfferMessage, sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../services/messages';
@@ -426,6 +426,19 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         } finally {
             setApplyingToGig(false);
         }
+    }
+
+    const handleWithdrawApplication = async () => {
+        try {
+            const updatedApplicants = await withdrawMusicianApplication(gigId, selectedProfile);
+            if (updatedApplicants) {
+              setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
+            }
+            toast.success('Application withdrawn.');
+          } catch (e) {
+            console.error(e);
+            toast.error('Failed to withdraw application.');
+          }
     }
 
     const handleNegotiateButtonClick = () => {
@@ -1019,6 +1032,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                         Apply To Gig
                                                                     </button>
                                                             ) : null}
+
+                                                            {showApplied && hasAccessToPrivateGig && (
+                                                                <button className='btn primary' onClick={handleWithdrawApplication}>
+                                                                    Withdraw Application
+                                                                </button>
+                                                            )}
 
                                                             <div className='two-buttons'>
                                                                 {/* Negotiate */}

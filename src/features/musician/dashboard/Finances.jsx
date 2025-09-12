@@ -21,6 +21,7 @@ import { updateUserDocument } from '../../../services/users';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
+import { clearMusicianBalance } from '../../../services/payments';
 
 function CountdownTimer({ targetDate }) {
     const [label, setLabel] = React.useState("");
@@ -383,12 +384,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                                 const withdrawableFunds = musicianDoc.withdrawableEarnings;
                                                 if (withdrawableFunds && withdrawableFunds > 1) {
                                                     const sanitisedWithdrawableFunds = Math.round(parseFloat(withdrawableFunds) * 100);
-                                                    const success = await transferStripeFunds(musicianProfile.stripeAccountId, sanitisedWithdrawableFunds);
-                                                    if (success) {
-                                                        await clearMusicianBalance(musicianProfile.musicianId);
-                                                    } else {
-                                                        console.error('Error transferring funds to Stripe account.');
-                                                    }
+                                                    await transferStripeFunds(musicianProfile.stripeAccountId, sanitisedWithdrawableFunds);
                                                 }
                                                 window.location.reload();
                                                 toast.success('Stripe Account Linked!');

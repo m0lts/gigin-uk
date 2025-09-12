@@ -21,6 +21,7 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 import { getBandDataOnly, getBandMembers } from './bands';
+import { getMostRecentMessage } from './messages';
 
 /*** CREATE OPERATIONS ***/
 
@@ -424,3 +425,96 @@ export const removeGigFromMusician = async (musicianId, gigId) => {
     await updateDoc(ref, { gigApplications: updated });
   }
 };
+
+
+/**
+ * Withdraw a musician/band application from a gig.
+ *
+ * @param {string} gigId
+ * @param {Object} profile  // musician or band profile (same shape you pass to applyToGig)
+ *   - profile.musicianId (string)  // id used in applicants[].id and conversations.participants
+ *   - profile.bandProfile (boolean)
+ *   - profile.name (string)        // optional, not required here
+ *   - profile.gigApplications? (array) // optional, helpful to avoid extra reads
+ * @returns {Promise<Object[]|null>} Updated applicants array, or null if no gig/applicant found
+ */
+export async function withdrawMusicianApplication(gigId, profile) {
+  if (!gigId || !profile?.musicianId) {
+    throw new Error('gigId and profile.musicianId are required');
+  }
+  const applicantId = profile.musicianId;
+  const gigRef = doc(firestore, 'gigs', gigId);
+  const gigSnap = await getDoc(gigRef);
+  if (!gigSnap.exists()) return null;
+  const gig = gigSnap.data() || {};
+  const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+  const hasApplied = applicants.some(a => a?.id === applicantId);
+  if (!hasApplied) {
+    return applicants;
+  }
+  const target = applicants.find(a => a?.id === applicantId);
+  if (target?.status === 'accepted' || target?.status === 'confirmed') {
+    throw new Error('Cannot withdraw an accepted/confirmed application.');
+  }
+  const updatedApplicants = applicants.map(a =>
+    a?.id === applicantId ? { ...a, status: 'withdrawn' } : a
+  );
+  await updateDoc(gigRef, { applicants: updatedApplicants });
+  const batch = writeBatch(firestore);
+  const pruneApps = (apps = []) =>
+    apps.filter(entry => !(entry?.gigId === gigId && entry?.profileId === applicantId));
+  if (profile.bandProfile) {
+    const bandRef = doc(firestore, 'musicianProfiles', applicantId);
+    const bandSnap = await getDoc(bandRef);
+    if (bandSnap.exists()) {
+      const bandApps = Array.isArray(bandSnap.data().gigApplications)
+        ? bandSnap.data().gigApplications
+        : [];
+      batch.update(bandRef, { gigApplications: pruneApps(bandApps) });
+    }
+    const members = await getBandMembers(applicantId);
+    members.forEach(member => {
+      const memberRef = doc(firestore, 'musicianProfiles', member.id);
+      const memberApps = Array.isArray(member.gigApplications) ? member.gigApplications : [];
+      const next = pruneApps(memberApps);
+      if (next.length !== memberApps.length) {
+        batch.update(memberRef, { gigApplications: next });
+      }
+    });
+  } else {
+    const musicianRef = doc(firestore, 'musicianProfiles', applicantId);
+    let apps = Array.isArray(profile.gigApplications) ? profile.gigApplications : null;
+    if (!apps) {
+      const musSnap = await getDoc(musicianRef);
+      apps = Array.isArray(musSnap.data()?.gigApplications) ? musSnap.data().gigApplications : [];
+    }
+    batch.update(musicianRef, { gigApplications: pruneApps(apps) });
+  }
+  await batch.commit();
+  const convQ = query(
+    collection(firestore, 'conversations'),
+    where('gigId', '==', gigId),
+    where('participants', 'array-contains', applicantId)
+  );
+  const convSnap = await getDocs(convQ);
+  if (!convSnap.empty) {
+    const convDoc = convSnap.docs[0];
+    const conversationId = convDoc.id;
+    const lastAppMsg = await getMostRecentMessage(conversationId, 'application');
+    if (lastAppMsg?.id) {
+      const msgRef = doc(
+        firestore,
+        'conversations',
+        conversationId,
+        'messages',
+        lastAppMsg.id
+      );
+      await updateDoc(msgRef, { status: 'withdrawn' });
+    }
+    await updateDoc(doc(firestore, 'conversations', conversationId), {
+      lastMessage: 'Application withdrawn by musician.',
+      lastMessageTimestamp: Timestamp.now(),
+    });
+  }
+  return updatedApplicants;
+}

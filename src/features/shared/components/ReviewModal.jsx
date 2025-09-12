@@ -184,7 +184,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 <div className='name-and-reviews'>
                                     <h2>{musicianProfile?.name || 'the musician'}</h2>
                                     {musicianProfile.avgReviews ? (
-                                        <h3>{musicianProfile.avgReviews.totalReviews}</h3>
+                                        <h4>{musicianProfile.avgReviews.totalReviews} Review(s)</h4>
                                     ) : (
                                         <h6>No Reviews</h6>
                                     )}
@@ -198,7 +198,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 <div className='name-and-reviews'>
                                     <h2>{gigData.venue.venueName || 'the venue'}</h2>
                                     {venueProfile.avgReviews ? (
-                                        <h3>{venueProfile.avgReviews.totalReviews}</h3>
+                                        <h4>{venueProfile.avgReviews.totalReviews} Review(s)</h4>
                                     ) : (
                                         <h6>No Reviews</h6>
                                     )}
@@ -228,11 +228,11 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 rows='4'
                             />
                             <div className='two-buttons'>
-                                <button className='btn primary' onClick={handleDisputeSubmit} disabled={!disputeReason}>
-                                    Submit Report
-                                </button>
                                 <button className='btn secondary' onClick={() => setShowDisputeForm(false)}>
                                     Go Back
+                                </button>
+                                <button className='btn primary' onClick={handleDisputeSubmit} disabled={!disputeReason}>
+                                    Submit Report
                                 </button>
                             </div>
                         </div>
@@ -242,11 +242,11 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                         <h2>Report Logged</h2>
                         <p>We will look into your report and email you with our decision.</p>
                         <div className='two-buttons'>
-                            <button className='btn primary' onClick={() => setReviewingAfterDispute(true)}>
-                                Leave a Review
-                            </button>
                             <button className='btn secondary' onClick={() => onClose(true)}>
                                 Close
+                            </button>
+                            <button className='btn primary' onClick={() => setReviewingAfterDispute(true)}>
+                                Leave a Review
                             </button>
                         </div>
                     </div>
@@ -266,7 +266,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 <div className='name-and-reviews'>
                                     <h2>{musicianProfile?.name || 'the musician'}</h2>
                                     {musicianProfile?.avgReviews ? (
-                                        <h3>{musicianProfile.avgReviews.totalReviews}</h3>
+                                        <h4>{musicianProfile.avgReviews.totalReviews} Review(s)</h4>
                                     ) : (
                                         <h6>No Reviews</h6>
                                     )}
@@ -287,6 +287,9 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 )}
                                 {disputeAllowed && !reviewingAfterDispute ? (
                                     <div className='two-buttons'>
+                                        <button className='btn danger' onClick={() => setShowDisputeForm(true)}>
+                                            Report Issue
+                                        </button>
                                         <button
                                             className='btn primary'
                                             onClick={handleSubmitReview}
@@ -294,13 +297,11 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                         >
                                             Submit Review
                                         </button>
-                                        <button className='btn danger' onClick={() => setShowDisputeForm(true)}>
-                                            Report Issue
-                                        </button>
                                     </div>
                                 ) : (
                                     <button
                                         className='btn primary'
+                                        style={{ width: '100%'}}
                                         onClick={handleSubmitReview}
                                         disabled={!rating}
                                     >
@@ -318,7 +319,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 <div className='name-and-reviews'>
                                     <h2>{venueProfile?.name || 'the musician'}</h2>
                                     {venueProfile.avgReviews ? (
-                                        <h3>{venueProfile.avgReviews.totalReviews}</h3>
+                                        <h4>{venueProfile.avgReviews.totalReviews} Review(s)</h4>
                                     ) : (
                                         <h6>No Reviews</h6>
                                     )}
