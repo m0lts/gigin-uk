@@ -75,27 +75,41 @@ const toMs = (dt) => {
     const profileNameMap = {};
     if (musicianProfile?.id) profileNameMap[musicianProfile.id] = musicianProfile.name;
     bandProfiles?.forEach(b => { if (b?.id) profileNameMap[b.id] = b.name; });
+    const allProfiles = [
+    ...(musicianProfile ? [musicianProfile] : []),
+    ...(Array.isArray(bandProfiles) ? bandProfiles : []),
+    ].filter(Boolean);
+    
     const now = Date.now();
-    const confirmedForPrimary = gigs.filter(gig =>
-      Array.isArray(primaryProfile.confirmedGigs) &&
-      primaryProfile.confirmedGigs.includes(gig.gigId)
-    );
-    const nextConfirmedFutureGig =
-      confirmedForPrimary
-        .filter(gig => {
-          const t = toMs(gig.startDateTime);
-          return Number.isFinite(t) && t > now;
+    
+    // find earliest future confirmed gig across ALL profiles
+    const nextConfirmed = allProfiles
+    .flatMap((p) => {
+        const pid = p?.id ?? p?.musicianId;
+        const pname = p?.name ?? null;
+        const confirmed = Array.isArray(p?.confirmedGigs) ? p?.confirmedGigs : [];
+    
+        return gigs
+        .filter((g) => confirmed.includes(g?.gigId))
+        .map((g) => {
+            const t = toMs(g?.startDateTime);
+            return Number.isFinite(t) && t > now
+            ? { gig: g, t, profileId: pid, profileName: pname }
+            : null;
         })
-        .sort((a, b) => toMs(a.startDateTime) - toMs(b.startDateTime))[0] || null;
-        setNextGig(
-            nextConfirmedFutureGig
-              ? {
-                  ...nextConfirmedFutureGig,
-                  _profileId: primaryProfile?.id ?? primaryProfile?.musicianId ?? null,
-                  _profileName: primaryProfile?.name ?? null,
-                }
-              : null
-          );
+        .filter(Boolean);
+    })
+    .sort((a, b) => a.t - b.t)[0] || null;
+    
+    setNextGig(
+    nextConfirmed
+        ? {
+            ...nextConfirmed?.gig,
+            _profileId: nextConfirmed?.profileId,
+            _profileName: nextConfirmed?.profileName,
+        }
+        : null
+    );
 
     const awaiting = gigs
       .map(gig => {

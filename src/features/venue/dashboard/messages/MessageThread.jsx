@@ -385,7 +385,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     return (
         <>
         <div className='messages'>
-            {messagess.length > 0 && (
+            {messages.length > 0 && (
                 messages.map((message) => {
                     const getGroupOfParticipant = (participantId) => {
                         const entry = activeConversation.accountNames.find(acc => acc.accountId === participantId);
