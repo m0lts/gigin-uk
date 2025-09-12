@@ -239,7 +239,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 required
                 disabled={loading}
               />
-              <label htmlFor='terms'>I accept Gigin's <Link className='tc-link' to={'/'}>terms and conditions</Link>.</label>
+              <label htmlFor='terms'>I accept Gigin's <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions</Link>.</label>
             </div>
             <div className='input-group'>
               <input
