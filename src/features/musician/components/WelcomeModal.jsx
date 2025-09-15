@@ -7,20 +7,20 @@ export const WelcomeModal = ({ user, setShowWelcomeModal, role, revisiting = fal
 
     const musicianVideos = {
         'Finding Gigs':
-          'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials/musician/finding-gigs.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74',
+          'https://firebasestorage.googleapis.com/v0/b/giginltd-16772.firebasestorage.app/o/tutorials%2Fmusician%2Ffinding-gigs.mp4?alt=media&token=ecc3857d-1505-4080-996d-227a940c27bb',
         'Dashboard':
-          'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials/musician/dashboard.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74',
+          'https://firebasestorage.googleapis.com/v0/b/giginltd-16772.firebasestorage.app/o/tutorials%2Fmusician%2Fdashboard.mp4?alt=media&token=25b94994-530f-498d-8520-6b7c3855278e',
         'Finances':
-          'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials/musician/finances.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74',
+          'https://firebasestorage.googleapis.com/v0/b/giginltd-16772.firebasestorage.app/o/tutorials%2Fmusician%2Ffinances.mp4?alt=media&token=bf2b3bc7-6ac0-4fb9-920e-6c2ea78b4abe',
       };
     
       const venueVideos = {
         'Creating Gigs':
-          'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials/venue/creating-gigs.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74',
+          'https://firebasestorage.googleapis.com/v0/b/giginltd-16772.firebasestorage.app/o/tutorials%2Fvenue%2Fcreating-gigs.mp4?alt=media&token=c664835f-48c8-4626-acd4-d834e6f10226',
         'Dashboard':
-          'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials/venue/dashboard.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74',
+          'https://firebasestorage.googleapis.com/v0/b/giginltd-16772.firebasestorage.app/o/tutorials%2Fvenue%2Fdashboard.mp4?alt=media&token=d1240813-c98b-42e4-b2c7-de458c7a9455',
         'Paying for Gigs':
-          'https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/tutorials/venue/paying-for-gigs.mp4?alt=media&token=9d461a3e-e5b0-481c-bfd7-06f6899fcb74',
+          'https://firebasestorage.googleapis.com/v0/b/giginltd-16772.firebasestorage.app/o/tutorials%2Fvenue%2Fpaying-for-gigs.mp4?alt=media&token=254a5c2b-8ece-442d-bff7-efb304c63861',
       };
     
       const tabs = role === 'musician' ? musicianVideos : venueVideos;
