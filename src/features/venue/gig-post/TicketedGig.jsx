@@ -6,7 +6,7 @@ export const TicketedGig = ({ formData, handleInputChange, setStage }) => {
         <>
             <div className='head'>
                 <h1 className='title'>Ticketed Gigs Work Differently</h1>
-                <h4 className='text' style={{ marginTop: '1rem', fontSize: '1.1rem', width: '75%' }}>Musicians that play at a ticketed gig won't be paid by you, but will take home 100% of their ticket sales.</h4>
+                <h4 className='text' style={{ marginTop: '1rem', fontSize: '1.1rem', width: '75%' }}>Musicians that play at a ticketed gig won't be paid by you, but will take home 100% of the ticket revenue. Decide between yourself and the musician who should organise the ticket sales.</h4>
             </div>
             <div className='body open-mic'>
                 <div className='input-group'>

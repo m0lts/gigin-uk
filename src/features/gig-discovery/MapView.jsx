@@ -308,10 +308,10 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
                     </div>
                   </div>
                   <div className="preview-gig-budget">
-                  {((gig.budget === '£' || gig.budget === 'No Fee') && (gig.kind === 'Ticketed Gig' || gig.kind === 'Open Mic')) ? (
+                  {((gig.budget === '£' || gig.budget === 'No Fee' || gig.budget === '£0') && (gig.kind === 'Ticketed Gig' || gig.kind === 'Open Mic')) ? (
                     <h3 className='budget text'>{gig.kind}</h3>
                   ) : (
-                    <h3 className='budget'>{gig.budget !== '£' ? gig.budget : 'No Fee'}</h3>
+                    <h3 className='budget'>{(gig.budget !== '£' && gig.budget !== '£0') ? gig.budget : 'No Fee'}</h3>
                   )}
                   </div>
                 </li>

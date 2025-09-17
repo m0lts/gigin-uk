@@ -127,13 +127,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             if (!gig || cancelled) return;
             let enrichedGig = gig;
             if (gig?.venue?.userId) {
-              const userDoc = await getUserById(gig.venue.userId);
-              if (cancelled) return;
-              enrichedGig = { ...gig, user: userDoc };
+                const userDoc = await getUserById(gig.venue.userId);
+                if (cancelled) return;
+                enrichedGig = { ...gig, user: userDoc };
             }
             if (Array.isArray(enrichedGig?.gigSlots)) {
                 const ids = enrichedGig.gigSlots;
                 const otherGigs = await getGigsByIds(ids);
+
                 if (cancelled) return;
                 setOtherSlots(otherGigs.filter(g => (g.status || '').toLowerCase() !== 'closed'));
             }
@@ -141,12 +142,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             let bandProfiles = [];
             if (user?.musicianProfile?.bands?.length) {
               const rawBands = await getMusicianProfilesByIds(user.musicianProfile.bands);
+
               if (cancelled) return;
               if (Array.isArray(rawBands)) {
                 const keep = [];
                 for (const band of rawBands) {
                   try {
                     const members = await getBandMembers(band.musicianId);
+
                     const me = members.find(m => m.musicianProfileId === user.musicianProfile.musicianId);
                     if (me?.role === 'Band Leader' || me?.role === 'Admin') {
                       keep.push(stripFirestoreRefs(band));
@@ -203,6 +206,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             if (myIds.includes(enrichedGig.gigId)) setGigSaved(true);
             if (enrichedGig?.venueId) {
               const venue = await getVenueProfileById(enrichedGig.venueId);
+
               if (!cancelled && venue) setVenueProfile(venue);
             }
           } catch (err) {
@@ -957,7 +961,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                     {gigData.kind === 'Ticketed Gig' && (
                                                     <span
                                                         className="tooltip-wrapper"
-                                                        data-tooltip="A ticketed gig means the musician is responsible for ticket sales. Musicians keep 100% of their ticket proceeds."
+                                                        data-tooltip="A ticketed gig means the musicians receive 100% of the ticket revenue but the administration of ticket sales is to be discussed between the two of you."
                                                     >
                                                         <MoreInformationIcon />
                                                     </span>

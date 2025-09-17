@@ -566,15 +566,17 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 { startTime: formData.startTime, duration: formData.duration },
                 ...extraSlots
               ];
-          
-              const budgets = (formData.slotBudgets || []).slice(0, allSlots.length);
-              if (budgets.length !== allSlots.length || budgets.some(b => !b || !/\d/.test(b))) {
-                setLoading(false);
-                toast.error('Please enter a budget for each slot.');
-                return;
+
+              let budgetValues = [null];
+              if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
+                  const budgets = (formData.slotBudgets || []).slice(0, allSlots.length);
+                  if (budgets.length !== allSlots.length || budgets.some(b => !b || !/\d/.test(b))) {
+                    setLoading(false);
+                    toast.error('Please enter a budget for each slot.');
+                    return;
+                  }
+                  budgetValues = budgets.map(b => parseInt(String(b).replace(/[^\d]/g, ''), 10) || 0);
               }
-              const budgetValues = budgets.map(b => parseInt(String(b).replace(/[^\d]/g, ''), 10) || 0);
-          
               const {
                 gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
@@ -603,7 +605,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   duration: slot.duration,
                   budget: slotBudgetText,
                   ...getGeoField(formData.coordinates),
-                  budgetValue: slotBudgetValue,
+                  budgetValue: slotBudgetValue === undefined ? '£' : slotBudgetValue,
                   gigSlots: groupIds.filter(id => id !== slotGigId),
                   applicants: [],
                   status: 'open',
