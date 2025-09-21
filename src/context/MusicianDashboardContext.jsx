@@ -110,23 +110,36 @@ export const MusicianDashboardProvider = ({ user, children }) => {
     const run = async () => {
       if (!musicianProfile) return;
 
-      const ownApplications = (musicianProfile.gigApplications || []).map((app) => ({
-        ...app,
-        submittedBy: 'musician',
-        profileId: musicianProfile.musicianId,
-        profileName: musicianProfile.name,
-      }));
-
-      const bandApplications = bandProfiles.flatMap((band) =>
+      const ownApplications = (musicianProfile.gigApplications || []).map((app) => {
+          const isBand = app.profileId && (bandProfiles || []).some(b => b.bandId === app.profileId);
+          return {
+            ...app,
+            submittedBy: isBand ? 'band' : 'musician',
+            profileType: isBand ? 'band' : 'musician',
+            profileName: isBand
+              ? (bandProfiles.find(b => b.bandId === app.profileId)?.name || app.name)
+              : musicianProfile.name,
+          };
+        });
+        
+        const bandApplications = bandProfiles.flatMap((band) =>
         (band.gigApplications || []).map((app) => ({
           ...app,
           submittedBy: 'band',
-          profileId: band.bandId,
-          profileName: band.name,
+          profileType: 'band',
+          profileName: band.name ?? app.name,
         }))
       );
-
-      const allApplications = [...ownApplications, ...bandApplications];
+      
+      const uniqKey = (a) => `${a.gigId}:${a.profileId}`;
+      const allApplications = [...ownApplications, ...bandApplications]
+        .reduce((acc, a) => (acc.has(uniqKey(a)) ? acc : acc.add(uniqKey(a))), new Set())
+        && Array.from(
+          [...ownApplications, ...bandApplications]
+            .reduce((map, a) => map.set(uniqKey(a), a), new Map())
+            .values()
+        );
+      
       setGigApplications(allApplications);
 
       const ownSaved = musicianProfile.savedGigs || [];

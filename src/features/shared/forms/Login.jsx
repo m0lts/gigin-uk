@@ -55,13 +55,21 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
         setAuthClosable(true);
       }
     } catch (err) {
-      console.log(err)
       switch (err.error.code) {
+        case 'auth/user-not-found':
+          setError({ status: true, input: '', message: '*There is no user record corresponding with this identifier. The user may have been deleted.' });
+          break;
+        case 'auth/user-disabled':
+          setError({ status: true, input: '', message: '*The user account has been disabled by an administrator.' });
+          break;
+        case 'auth/account-exists-with-different-credential':
+          setError({ status: true, input: '', message: '*An account already exists with the same email address but different sign-in credentials. Sign in using a different associated email address.' });
+          break;
         case 'auth/invalid-credential':
-          setError({ status: true, input: '', message: '* Invalid Credentials.' });
+          setError({ status: true, input: '', message: '*Invalid Credentials.' });
           break;
         case 'auth/too-many-requests':
-          setError({ status: true, input: '', message: '* Too many unsuccessful login attempts. Please reset your password or try again later.' });
+          setError({ status: true, input: '', message: '*Too many unsuccessful login attempts. Please reset your password or try again later.' });
           break;
         default:
           setError({ status: true, input: '', message: err.message });

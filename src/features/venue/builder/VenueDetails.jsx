@@ -63,8 +63,15 @@ export const VenueDetails = ({ formData, handleInputChange, setStepError, stepEr
 
     const handleGeocodeCoordinates = async (coordinates) => {
         try {
+            const [lng, lat] = Array.isArray(coordinates) ? coordinates : [undefined, undefined];
+            if (typeof lng !== 'number' || typeof lat !== 'number') throw new Error('Invalid coordinates');
+            const params = new URLSearchParams({
+               access_token: mapboxToken,
+               limit: '1',
+               language: 'en'
+            });
             const response = await fetch(
-                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(coordinates)}.json?access_token=${mapboxToken}`
+               `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?${params.toString()}`
             );
 
             if (response.ok) {

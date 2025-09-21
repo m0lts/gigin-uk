@@ -250,13 +250,8 @@ export const updateMusicianProfile = async (musicianId, data) => {
  */
 export const updateMusicianGigApplications = async (profile, gigId) => {
   const musicianRef = doc(firestore, 'musicianProfiles', profile.musicianId);
-  const existingApps = Array.isArray(profile.gigApplications) ? profile.gigApplications : [];
-  const alreadyApplied = existingApps.some(
-    entry => entry.gigId === gigId && entry.profileId === profile.musicianId
-  );
-  if (alreadyApplied) return;
-  const updatedArray = [...existingApps, { gigId, profileId: profile.musicianId, name: profile.name }];
-  await updateDoc(musicianRef, { gigApplications: updatedArray });
+  const entry = { gigId, profileId: profile.musicianId, name: profile.name };
+  await updateDoc(musicianRef, { gigApplications: arrayUnion(entry) });
 };
 
 /**
@@ -265,42 +260,10 @@ export const updateMusicianGigApplications = async (profile, gigId) => {
  * @param {string} gigId - The gig ID being applied to.
  */
 export const updateBandMembersGigApplications = async (band, gigId) => {
-  const members = await getBandMembers(band.musicianId);
   const batch = writeBatch(firestore);
-
-  // Update each band member's profile
-  members.forEach(member => {
-    const gigApplications = Array.isArray(member.gigApplications) ? member.gigApplications : [];
-    const alreadyApplied = gigApplications.some(
-      entry => entry.gigId === gigId && entry.profileId === band.musicianId
-    );
-    if (!alreadyApplied) {
-      const musicianRef = doc(firestore, 'musicianProfiles', member.id);
-      batch.update(musicianRef, {
-        gigApplications: [...gigApplications, {
-          gigId,
-          profileId: band.musicianId,
-          name: band.name,
-        }],
-      });
-    }
-  });
-
-  // Update band profile
+  const bandEntry = { gigId, profileId: band.musicianId, name: band.name };
   const bandRef = doc(firestore, 'musicianProfiles', band.musicianId);
-  const bandGigApplications = Array.isArray(band.gigApplications) ? band.gigApplications : [];
-  const bandAlreadyApplied = bandGigApplications.some(entry => entry.gigId === gigId);
-
-  if (!bandAlreadyApplied) {
-    batch.update(bandRef, {
-      gigApplications: [...bandGigApplications, {
-        gigId,
-        profileId: band.musicianId,
-        name: band.name,
-      }],
-    });
-  }
-
+  batch.update(bandRef, { gigApplications: arrayUnion(bandEntry) });
   await batch.commit();
 };
 

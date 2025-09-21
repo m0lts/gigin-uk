@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => {
         '@styles': path.resolve(__dirname, 'src/assets/styles'),
         '@layouts': path.resolve(__dirname, 'src/layouts'),
         '@services': path.resolve(__dirname, 'src/services'),
+        '@icons': path.resolve(__dirname, 'src/features/shared/ui/extras/Icons'),
+        '@loading': path.resolve(__dirname, 'src/features/shared/ui/loading'),
+        '@logos': path.resolve(__dirname, 'src/features/shared/ui/logos/Logos'),
       },
     },
   };

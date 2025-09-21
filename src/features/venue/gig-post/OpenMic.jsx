@@ -29,7 +29,7 @@ export const OpenMicGig = ({ formData, handleInputChange, error }) => {
                     </div>
                 </div>
 
-                {formData.openMicApplications && (
+                {/* {formData.openMicApplications && (
                     <div className='input-group'>
                         <h6>Do you want to limit the number of musicians who can play?</h6>
                         <div className="selections">
@@ -77,7 +77,7 @@ export const OpenMicGig = ({ formData, handleInputChange, error }) => {
                             </>
                         )}
                     </div>
-                )}
+                )} */}
                 {error && (
                     <div className="error-cont" style={{ width: 'fit-content', margin: '1rem auto' }}>
                         <p className="error-message">{error}</p>

@@ -632,7 +632,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                   <div className="options-dropdown">
                                   <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <GigIcon /></button>
                                   {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && (
-                                      <button onClick={() => { closeOptionsMenu(); openGigPostModal(gig) }}>Edit <EditIcon /></button>
+                                      <button onClick={() => { closeOptionsMenu(); openGigPostModal(gig); console.log(gig) }}>Edit <EditIcon /></button>
                                   )}
                                   {gig.dateTime > now && (
                                       <button 
@@ -648,7 +648,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           <DuplicateGigIcon />
                                       </button>
                                   )}
-                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.kind !== 'Open Mic') ? (
+                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && gig.kind !== 'Open Mic') ? (
                                       <button
                                       onClick={async () => {
                                           closeOptionsMenu();
@@ -699,7 +699,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                         Copy Private Link <LinkIcon />
                                     </button>
                                   )}
-                                  {gig.dateTime > now && gig.status !== 'confirmed' ? (
+                                  {gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' ? (
                                       <button 
                                           onClick={() => {
                                               closeOptionsMenu();

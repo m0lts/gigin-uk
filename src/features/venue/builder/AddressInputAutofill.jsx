@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { AddressAutofill } from '@mapbox/search-js-react';
 import { toast } from 'sonner';
 
@@ -16,124 +16,159 @@ const parseMapboxFeature = (f) => {
       postcode: ctx.postcode?.text || '',
       country: ctx.country?.text || '',
       countryCode: (ctx.country?.short_code || '').toUpperCase(),
-      geometry: f.geometry, // { type, coordinates }
+      geometry: f.geometry,
     };
 };
 
-export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, setLocationAddress, setLocationCoordinates, locationAddress, handleInputChange, coordinatesError, setCoordinatesError, stepError, setStepError, errorField, setErrorField }) => {
-    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-    const [typedAddress, setTypedAddress] = useState(locationAddress || '');
-    useEffect(() => { setTypedAddress(locationAddress || ''); }, [locationAddress]);
 
-    const handleRetrieve = useCallback((res) => {
-        const f = res?.features?.[0];
-        if (!f) return;
-        const parts = parseMapboxFeature(f);
-    
-        setFeature({
+export const AddressInputAutofill = ({
+    expandForm,
+    setExpandForm,
+    setFeature,
+    setLocationAddress,
+    setLocationCoordinates,
+    locationAddress,
+    handleInputChange,
+    coordinatesError,
+    setCoordinatesError,
+    stepError,
+    setStepError,
+    errorField,
+    setErrorField,
+  }) => {
+    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+  
+    const [typedAddress, setTypedAddress] = useState(locationAddress || '');
+    const [hasChosenSuggestion, setHasChosenSuggestion] = useState(false);
+  
+    const justSelectedRef = useRef(false);
+  
+    const latestReqId = useRef(0);
+  
+    useEffect(() => {
+      setTypedAddress(locationAddress || '');
+    }, [locationAddress]);
+  
+    const applyPartsToState = useCallback((parts) => {
+      setFeature({
         type: 'Feature',
         geometry: parts.geometry,
         properties: {
-            full_address: parts.fullAddress,
-            line1: parts.line1,
-            city: parts.city,
-            region: parts.region,
-            postcode: parts.postcode,
-            country: parts.country,
-            countryCode: parts.countryCode,
+          full_address: parts.fullAddress,
+          line1: parts.line1,
+          city: parts.city,
+          region: parts.region,
+          postcode: parts.postcode,
+          country: parts.country,
+          countryCode: parts.countryCode,
         },
-        });
-    
-        const coords = parts.geometry?.coordinates;
-        if (coords) {
+      });
+  
+      const coords = parts.geometry?.coordinates;
+      if (Array.isArray(coords) && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
         setLocationCoordinates(coords);
         setCoordinatesError(false);
-        } else {
+      } else {
         setCoordinatesError(true);
-        }
-    
-        setLocationAddress(parts.fullAddress);
-        handleInputChange?.('address', parts.fullAddress);
-    }, [setFeature, setLocationAddress, setLocationCoordinates, setCoordinatesError, handleInputChange]);
-
+      }
+  
+      setLocationAddress(parts.fullAddress);
+      setTypedAddress(parts.fullAddress);
+      handleInputChange?.('address', parts.fullAddress);
+    }, [handleInputChange, setCoordinatesError, setFeature, setLocationAddress, setLocationCoordinates]);
+  
+    const handleRetrieve = useCallback((res) => {
+      const f = res?.features?.[0];
+      if (!f) return;
+      const parts = parseMapboxFeature(f);
+  
+      justSelectedRef.current = true;
+      setHasChosenSuggestion(true);
+  
+      applyPartsToState(parts);
+  
+      setTimeout(() => { justSelectedRef.current = false; }, 500);
+    }, [applyPartsToState]);
+  
     const geocodeAndSave = useCallback(async (address) => {
-        const q = (address || '').trim();
-        if (!q) return;
-        try {
-          const resp = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${mapboxToken}`
-          );
-          if (!resp.ok) throw new Error('Geocoding request failed');
-          const data = await resp.json();
-      
-          const best = data?.features?.[0];
-          if (!best) {
+      const q = (address || '').trim();
+      if (!q) return;
+  
+      const reqId = ++latestReqId.current;
+  
+      try {
+        const params = new URLSearchParams({
+          access_token: mapboxToken,
+          country: 'gb',
+          limit: '1',
+          language: 'en',
+        });
+  
+        const resp = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?${params.toString()}`
+        );
+        if (!resp.ok) throw new Error('Geocoding request failed');
+  
+        const data = await resp.json();
+  
+        if (reqId !== latestReqId.current) return;
+  
+        const best = data?.features?.[0];
+        if (!best) {
+          if (!locationAddress) {
             setCoordinatesError(true);
             toast.error('We couldn’t find that address. Please try another.');
-            return;
           }
-      
-          const parts = parseMapboxFeature(best);
-          const coords = parts.geometry?.coordinates;
-          if (!coords) {
-            setCoordinatesError(true);
-            toast.error('No coordinates found for that address.');
-            return;
-          }
-      
-          setFeature({
-            type: 'Feature',
-            geometry: parts.geometry,
-            properties: {
-              full_address: parts.fullAddress,
-              line1: parts.line1,
-              city: parts.city,
-              region: parts.region,
-              postcode: parts.postcode,
-              country: parts.country,
-              countryCode: parts.countryCode,
-            },
-          });
-      
-          setLocationCoordinates(coords);
-          setCoordinatesError(false);
-          setLocationAddress(parts.fullAddress);                  // <-- save Mapbox’s formatted address
-          handleInputChange?.('address', parts.fullAddress);      // <-- parent gets the formatted address
-          setExpandForm(false);
-        } catch (err) {
-          console.error(err);
+          return;
+        }
+  
+        const parts = parseMapboxFeature(best);
+        const coords = parts.geometry?.coordinates;
+        if (!Array.isArray(coords) || !Number.isFinite(coords[0]) || !Number.isFinite(coords[1])) {
+          setCoordinatesError(true);
+          toast.error('No coordinates found for that address.');
+          return;
+        }
+  
+        applyPartsToState(parts);
+        setExpandForm(false);
+      } catch (err) {
+        console.error(err);
+        if (!locationAddress) {
           setCoordinatesError(true);
           toast.error('Error fetching coordinates for that address. Please try again.');
         }
-    }, [mapboxToken, setFeature, setLocationAddress, setLocationCoordinates, setCoordinatesError, handleInputChange, setExpandForm]);
-
-    const handleBlur = useCallback((e) => {
-        setTimeout(() => {
-        if (!locationAddress && typedAddress.trim()) {
-            geocodeAndSave(typedAddress);
-        }
-        }, 150);
-    }, [geocodeAndSave, typedAddress, locationAddress]);
-
-    const handleKeyDown = useCallback((e) => {
-        if (e.key === 'Enter') {
-        e.preventDefault();
+      }
+    }, [applyPartsToState, locationAddress, mapboxToken, setCoordinatesError, setExpandForm]);
+  
+    const handleBlur = useCallback(() => {
+      if (justSelectedRef.current) return; // user just picked a suggestion
+      if (!locationAddress && typedAddress.trim()) {
         geocodeAndSave(typedAddress);
-        }
-    }, [geocodeAndSave, typedAddress]);
-
-    const handleAddressSubmission = (e) => {
+      }
+    }, [geocodeAndSave, typedAddress, locationAddress]);
+  
+    const handleKeyDown = useCallback((e) => {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const address1 = formData.get('address1');
-        const address2 = formData.get('address2');
-        const city = formData.get('city');
-        const country = formData.get('country');
-        const postcode = formData.get('postcode');
-        const enteredAddress = `${address1}${address2 ? `, ${address2}` : ''}, ${city}, ${postcode}, ${country}`;
-        geocodeAndSave(enteredAddress);
-        handleInputChange('address', enteredAddress);
-        setExpandForm(false);
+        if (!hasChosenSuggestion) {
+          geocodeAndSave(typedAddress);
+        }
+      }
+    }, [geocodeAndSave, hasChosenSuggestion, typedAddress]);
+  
+    const handleAddressSubmission = (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const address1 = formData.get('address1');
+      const address2 = formData.get('address2');
+      const city = formData.get('city');
+      const country = formData.get('country');
+      const postcode = formData.get('postcode');
+      const enteredAddress = `${address1}${address2 ? `, ${address2}` : ''}, ${city}, ${postcode}, ${country}`;
+      geocodeAndSave(enteredAddress);
+      handleInputChange('address', enteredAddress);
+      setExpandForm(false);
     };
 
     return (
@@ -188,7 +223,6 @@ export const AddressInputAutofill = ({ expandForm, setExpandForm, setFeature, se
                         </div>
                         </AddressAutofill>
                     )}
-                    {/* Save button explicitly geocodes what’s typed */}
                     {!locationAddress && (
                         <button
                         className="btn primary"

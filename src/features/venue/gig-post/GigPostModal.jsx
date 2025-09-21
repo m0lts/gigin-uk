@@ -121,6 +121,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
         setEditGigData(null)
     };
 
+
     useEffect(() => {
         refreshTemplates();
         refreshGigs();
@@ -513,7 +514,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             !!formData.repeatData &&
             formData.repeatData.repeat &&
             formData.repeatData.repeat !== "no";
-          const MAX_OCCURRENCES = 10;      
+      
+          const MAX_OCCURRENCES = 10;
           const startDate = new Date(formData.date);
           const repeatType = formData.repeatData?.repeat;
           const endAfterRaw = formData.repeatData?.endAfter;
@@ -523,6 +525,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
           const endDate = formData.repeatData?.endDate
             ? new Date(formData.repeatData.endDate)
             : null;
+      
           const addByRepeat = (date, index) => {
             const d = new Date(date);
             switch (repeatType) {
@@ -542,11 +545,11 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 return d;
             }
           };
+      
           const buildOccurrences = () => {
             if (!repeatEnabled) return [startDate];
             const occ = [];
-            const maxByEnd =
-              endAfter || (endDate ? MAX_OCCURRENCES : MAX_OCCURRENCES);
+            const maxByEnd = endAfter || (endDate ? MAX_OCCURRENCES : MAX_OCCURRENCES);
             for (let i = 0; i < maxByEnd; i++) {
               const next = addByRepeat(startDate, i);
               if (endDate && next > endDate) break;
@@ -554,45 +557,58 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             }
             return occ;
           };
+      
           const occurrences = buildOccurrences();
           if (!occurrences.length) {
             throw new Error("No occurrences computed for the chosen repeat settings.");
           }
+      
+          // 🔒 Preserve existing applicants on edit; always ensure array is present
+          const existingApplicants = Array.isArray(formData.applicants) ? formData.applicants : [];
+          const applicantsForEdit = { applicants: existingApplicants }; // edit must keep applicants
+          const applicantsForNew = { applicants: [] }; // new gigs have empty array
+      
           const allGigsToPost = [];
           let firstGigDoc = null;
+      
           for (const occDate of occurrences) {
             if (extraSlots.length > 0) {
               const allSlots = [
                 { startTime: formData.startTime, duration: formData.duration },
                 ...extraSlots
               ];
-
+      
               let budgetValues = [null];
               if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
-                  const budgets = (formData.slotBudgets || []).slice(0, allSlots.length);
-                  if (budgets.length !== allSlots.length || budgets.some(b => !b || !/\d/.test(b))) {
-                    setLoading(false);
-                    toast.error('Please enter a budget for each slot.');
-                    return;
-                  }
-                  budgetValues = budgets.map(b => parseInt(String(b).replace(/[^\d]/g, ''), 10) || 0);
+                const budgets = (formData.slotBudgets || []).slice(0, allSlots.length);
+                if (budgets.length !== allSlots.length || budgets.some(b => !b || !/\d/.test(b))) {
+                  setLoading(false);
+                  toast.error('Please enter a budget for each slot.');
+                  return;
+                }
+                budgetValues = budgets.map(b => parseInt(String(b).replace(/[^\d]/g, ''), 10) || 0);
               }
+      
+              // Build base safely; we’ll set applicants explicitly below
               const {
                 gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
                 repeatData: _discardRepeatData,
-                applicants: _discardApplicants,
                 templateId: _discardTemplateId,
                 createdAt: _discardCreatedAt,
                 gigId: _discardGigId,
+                applicants: _discardApplicants, // ⬅️ we explicitly drop applicants from base
                 ...base
               } = formData;
+      
               const groupIds = Array.from({ length: allSlots.length }, () => uuidv4());
+      
               for (let i = 0; i < allSlots.length; i++) {
                 const slot = allSlots[i];
                 const slotGigId = groupIds[i];
                 const slotBudgetValue = budgetValues[i];
                 const slotBudgetText = formatPounds(slotBudgetValue);
+      
                 const slotGig = {
                   ...base,
                   gigId: slotGigId,
@@ -607,28 +623,38 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   ...getGeoField(formData.coordinates),
                   budgetValue: slotBudgetValue === undefined ? '£' : slotBudgetValue,
                   gigSlots: groupIds.filter(id => id !== slotGigId),
-                  applicants: [],
                   status: 'open',
+                  // ✅ Applicants rule: keep on edit, otherwise empty array (must exist)
+                  ...(editGigData ? applicantsForEdit : applicantsForNew),
                 };
+      
                 allGigsToPost.push(slotGig);
                 if (!firstGigDoc) firstGigDoc = slotGig;
               }
             } else {
-              const occurrenceGigId = editGigData ? formData.gigId : formData.privateApplications ? formData.gigId : uuidv4();
+              const occurrenceGigId = editGigData
+                ? formData.gigId
+                : formData.privateApplications
+                  ? formData.gigId
+                  : uuidv4();
+      
+              // Build base safely; we’ll set applicants explicitly below
               const {
                 gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
                 repeatData: _discardRepeatData,
-                applicants: _discardApplicants,
                 templateId: _discardTemplateId,
                 createdAt: _discardCreatedAt,
                 gigId: _discardGigId,
+                applicants: _discardApplicants, // ⬅️ drop from base
                 ...base
               } = formData;
+      
               const privateLink =
                 base.privateApplications
                   ? `https://www.giginmusic.com/gig/${formData.gigId}?token=${base.privateApplicationToken ?? uuidv4()}`
                   : null;
+      
               const singleGig = {
                 ...base,
                 gigId: occurrenceGigId,
@@ -639,81 +665,92 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 ...getGeoField(base.coordinates),
                 budgetValue: getBudgetValue(base.budget),
                 privateApplicationsLink: privateLink,
-                applicants: [],
                 status: 'open',
+                ...(editGigData ? applicantsForEdit : applicantsForNew),
               };
-          
+      
               allGigsToPost.push(singleGig);
               if (!firstGigDoc) firstGigDoc = singleGig;
             }
-            }
-            await postMultipleGigs(formData.venueId, allGigsToPost);
-            const newGigIds = allGigsToPost.map(g => g.gigId);
-            setVenueProfiles(prev => {
-                if (!Array.isArray(prev)) return prev;
-                return prev.map(vp => {
-                    const vpId = vp?.id ?? vp?.venueId;
-                    if (vpId !== formData.venueId) return vp;
-                    const existing = Array.isArray(vp.gigs) ? vp.gigs : [];
-                    const gigs = Array.from(new Set([...existing, ...newGigIds]));
-                    return { ...vp, gigs };
-                });
+          }
+      
+          await postMultipleGigs(formData.venueId, allGigsToPost);
+      
+          const newGigIds = allGigsToPost.map(g => g.gigId);
+          setVenueProfiles(prev => {
+            if (!Array.isArray(prev)) return prev;
+            return prev.map(vp => {
+              const vpId = vp?.id ?? vp?.venueId;
+              if (vpId !== formData.venueId) return vp;
+              const existing = Array.isArray(vp.gigs) ? vp.gigs : [];
+              const gigs = Array.from(new Set([...existing, ...newGigIds]));
+              return { ...vp, gigs };
             });
-            if (buildingForMusician && firstGigDoc) {
-                const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
-                const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
-                const conversationId = await getOrCreateConversation(
-                  musicianProfile,
-                  firstGigDoc,
-                  venueToSend,
-                  "invitation"
-                );
-                await inviteToGig(firstGigDoc.gigId, musicianProfile);
-                const newGigApplicationEntry = {
-                  gigId: firstGigDoc.gigId,
-                  profileId: musicianProfile.id,
-                  name: musicianProfile.name,
-                };
-                const updatedGigApplicationsArray = musicianProfile.gigApplications
-                  ? [...musicianProfile.gigApplications, newGigApplicationEntry]
-                  : [newGigApplicationEntry];
-                await updateMusicianProfile(musicianProfile.id, {
-                  gigApplications: updatedGigApplicationsArray,
-                });
-                if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
-                    await sendGigInvitationMessage(conversationId, {
-                        senderId: user.uid,
-                        text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')} for ${firstGigDoc.budget}.
-                          ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
-                      });
-                } else {
-                    await sendGigInvitationMessage(conversationId, {
-                        senderId: user.uid,
-                        text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')}.
-                          ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
-                      });
-                }
-
-                if (requestId) {
-                    await removeVenueRequest(requestId);
-                    setRequests(prev => 
-                        prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
-                    );
-                    setRequestId(null);
-                }
-                setBuildingForMusician(false);
-                setBuildingForMusicianData(false);
+          });
+      
+          if (buildingForMusician && firstGigDoc) {
+            const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
+            const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
+      
+            const conversationId = await getOrCreateConversation(
+              musicianProfile,
+              firstGigDoc,
+              venueToSend,
+              "invitation"
+            );
+      
+            await inviteToGig(firstGigDoc.gigId, musicianProfile);
+      
+            const newGigApplicationEntry = {
+              gigId: firstGigDoc.gigId,
+              profileId: musicianProfile.id,
+              name: musicianProfile.name,
+            };
+      
+            const updatedGigApplicationsArray = musicianProfile.gigApplications
+              ? [...musicianProfile.gigApplications, newGigApplicationEntry]
+              : [newGigApplicationEntry];
+      
+            await updateMusicianProfile(musicianProfile.id, {
+              gigApplications: updatedGigApplicationsArray,
+            });
+      
+            if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
+              await sendGigInvitationMessage(conversationId, {
+                senderId: user.uid,
+                text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')} for ${firstGigDoc.budget}.
+                  ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
+              });
+            } else {
+              await sendGigInvitationMessage(conversationId, {
+                senderId: user.uid,
+                text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')}.
+                  ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
+              });
             }
-            resetFormData();
-            toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`)
-            setGigPostModal(false);
-            setLoading(false);
+      
+            if (requestId) {
+              await removeVenueRequest(requestId);
+              setRequests(prev =>
+                prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
+              );
+              setRequestId(null);
+            }
+      
+            setBuildingForMusician(false);
+            setBuildingForMusicianData(false);
+          }
+      
+          resetFormData();
+          toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
+          setGigPostModal(false);
+          setLoading(false);
         } catch (error) {
           setLoading(false);
-          toast.error('Error posting gig. Please try again.')
+          toast.error('Error posting gig. Please try again.');
           console.error('Failed to post gig:', error);
         }
-    };
+      };
 
     return (
             <div className='modal gig-post' onClick={handleModalClick}>

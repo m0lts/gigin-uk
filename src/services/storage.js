@@ -4,7 +4,8 @@ import { deleteObject,
     ref,
     uploadBytes,
     getDownloadURL,
-    uploadBytesResumable
+    uploadBytesResumable,
+    getStorage
 } from 'firebase/storage';
 
 /*** CREATE OPERATIONS ***/
@@ -222,3 +223,65 @@ export const deleteFileFromStorage = async (fileUrl) => {
     throw error;
   }
 };
+
+
+
+/**
+ * Map tutorial titles to file paths in Storage (stable, no tokens here).
+ * Change only paths if you rename/move files.
+ */
+const TUTORIAL_PATHS = {
+  musician: {
+    'Finding Gigs': 'tutorials/musician/finding-gigs.mp4',
+    'Dashboard': 'tutorials/musician/dashboard.mp4',
+    'Finances': 'tutorials/musician/finances.mp4',
+  },
+  venue: {
+    'Creating Gigs': 'tutorials/venue/creating-gigs.mp4',
+    'Dashboard': 'tutorials/venue/dashboard.mp4',
+    'Paying for Gigs': 'tutorials/venue/paying-for-gigs.mp4',
+  },
+};
+
+// Simple in-memory cache to avoid re-fetching URLs during the session
+const pathUrlCache = new Map();
+/** @type {Record<'musician'|'venue', Record<string,string>>} */
+const roleCache = {};
+
+/**
+ * Get a map of { title: url } for the given role by resolving getDownloadURL() in parallel.
+ * @param {'musician'|'venue'} role
+ * @param {{ storage?: import('firebase/storage').FirebaseStorage }} [opts]
+ * @returns {Promise<Record<string, string>>}
+ */
+export async function fetchTutorialVideos(role, opts = {}) {
+  if (!TUTORIAL_PATHS[role]) throw new Error(`Unknown role: ${role}`);
+  if (roleCache[role]) return roleCache[role];
+
+  const storage = opts.storage ?? getStorage();
+  const entries = Object.entries(TUTORIAL_PATHS[role]);
+
+  const resolved = await Promise.all(
+    entries.map(async ([title, path]) => {
+      if (pathUrlCache.has(path)) {
+        return [title, pathUrlCache.get(path)];
+      }
+      const url = await getDownloadURL(ref(storage, path));
+      pathUrlCache.set(path, url);
+      return [title, url];
+    })
+  );
+
+  const map = Object.fromEntries(resolved);
+  roleCache[role] = map;
+  return map;
+}
+
+/**
+ * Utility: return ordered list of tutorial titles for a role.
+ * @param {'musician'|'venue'} role
+ * @returns {string[]}
+ */
+export function getTutorialTitles(role) {
+  return Object.keys(TUTORIAL_PATHS[role] ?? {});
+}

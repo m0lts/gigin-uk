@@ -491,7 +491,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                         </button>
                                                         {(gigStatus.text === 'Confirmed' && gig.startDateTime.toDate() > now) ? (
                                                             <button onClick={() => { closeOptionsMenu(); setUserCancelling(true); setGigForHandbook(gig); setShowGigHandbook(true); setFromOptionsMenu(true) }} className='danger'>Cancel Gig <CancelIcon /></button>
-                                                        ) : (
+                                                        ) : gigStatus.text !== 'Withdrawn' && (
                                                             <button onClick={() => { closeOptionsMenu(); handleWithdrawApplication(gig.gigId, appliedProfile) }} className='danger'>Withdraw Application <CancelIcon /></button>
                                                         )}
                                                     </div>

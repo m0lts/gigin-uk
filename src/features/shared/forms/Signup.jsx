@@ -1,20 +1,40 @@
 // Dependencies
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
+import { toast } from 'sonner';
+import { getPhoneExistsBoolean } from '@services/functions';
 // Components
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
-import { SeeIcon, QuestionCircleIcon, ErrorIcon } from '@features/shared/ui/extras/Icons';
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
+import { GoogleIcon, SeeIcon, QuestionCircleIcon } from '@icons';
+import { LoadingSpinner } from '../ui/loading/Loading';
+import { PhoneField, isValidE164 } from './PhoneField';
 // Styles
 import '@styles/forms/forms.styles.css';
-import { toast } from 'sonner';
-import { GoogleIcon } from '../ui/extras/Icons';
-import { PhoneField, isValidE164 } from './PhoneField';
-import { phoneExists } from '../../../services/users';
-import { getPhoneExistsBoolean } from '../../../services/functions';
-import { LoadingSpinner } from '../ui/loading/Loading';
 
+/**
+ * SignupForm - a React component for signing up to Gigin.
+ *
+ * This component expects the following props:
+ * - credentials: an object containing the user's name, email, phone number, and password.
+ * - setCredentials: a function to update the credentials object.
+ * - error: an object containing an error status and message.
+ * - setError: a function to update the error object.
+ * - clearCredentials: a function to clear the credentials object.
+ * - clearError: a function to clear the error object.
+ * - setAuthType: a function to update the auth type (either 'signup' or 'login').
+ * - setAuthModal: a function to update the auth modal state.
+ * - loading: a boolean indicating whether the component is loading or not.
+ * - setLoading: a function to update the loading state.
+ * - authClosable: a boolean indicating whether the auth modal can be closed or not.
+ * - setAuthClosable: a function to update the authClosable state.
+ * - noProfileModal: a boolean indicating whether the no profile modal should be shown or not.
+ * - setNoProfileModal: a function to update the noProfileModal state.
+ *
+ * This component renders a form for signing up to Gigin, with fields for name, email, phone number, password, and terms and conditions acceptance.
+ * It also renders a button for signing up with Google, and a link to the terms and conditions page.
+ * If the user has already signed up, it renders a button to login instead.
+ */
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
   const { signup, signupWithGoogle } = useAuth();
@@ -40,7 +60,6 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
   };
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const validatePassword = (password) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(password);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -53,11 +72,6 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
 
     if (!isValidE164(credentials.phoneNumber)) {
       setError({ status: true, input: 'phoneNumber', message: '*Please enter a valid phone number' });
-      return;
-    }
-
-    if (!validatePassword(credentials.password)) {
-      setShowPasswordInfo(true);
       return;
     }
 
@@ -85,10 +99,30 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
         setAuthClosable(true);
       }
     } catch (err) {
-      console.log(err)
       switch (err.error.code) {
         case 'auth/email-already-in-use':
           setError({ status: true, input: 'email', message: '*Email already in use.' });
+          break;
+        case 'auth/invalid-email':
+          setError({ status: true, input: 'email', message: '*Invalid email address.' });
+          break;
+        case 'auth/weak-password':
+          setError({ status: true, input: 'password', message: '*Password should be at least 6 characters.' });
+          break;
+        case 'auth/user-disabled':
+          setError({ status: true, input: '', message: '*This account has been disabled.' });
+          break;
+        case 'auth/user-not-found':
+          setError({ status: true, input: 'email', message: '*User not found.' });
+          break;
+        case 'auth/too-many-requests':
+          setError({ status: true, input: '', message: '*Too many requests. Please try again later.' });
+          break;
+        case 'auth/operation-not-allowed':
+          setError({ status: true, input: '', message: '*Operation not allowed.' });
+          break;
+        case 'auth/password-does-not-meet-requirements':
+          setShowPasswordInfo(true);
           break;
         default:
           setError({ status: true, input: '', message: err.message });
@@ -225,7 +259,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 </button>
               </div>
             {showPasswordInfo && <p className='password-info'>
-              Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character.
+              Password must be at least 6 characters long, include an uppercase character, a lowercase character, a number, and a special character.
             </p>}
           </div>
           {error.status && (

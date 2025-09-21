@@ -41,7 +41,6 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
   };
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const validatePassword = (password) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(password);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -54,11 +53,6 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
 
     if (!isValidE164(credentials.phoneNumber)) {
       setError({ status: true, input: 'phoneNumber', message: '*Please enter a valid phone number' });
-      return;
-    }
-
-    if (!validatePassword(credentials.password)) {
-      setShowPasswordInfo(true);
       return;
     }
 
@@ -81,10 +75,30 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
         navigate('/find-a-gig')
       }
     } catch (err) {
-      console.log(err)
       switch (err.error.code) {
         case 'auth/email-already-in-use':
           setError({ status: true, input: 'email', message: '*Email already in use.' });
+          break;
+        case 'auth/invalid-email':
+          setError({ status: true, input: 'email', message: '*Invalid email address.' });
+          break;
+        case 'auth/weak-password':
+          setError({ status: true, input: 'password', message: '*Password should be at least 6 characters.' });
+          break;
+        case 'auth/user-disabled':
+          setError({ status: true, input: '', message: '*This account has been disabled.' });
+          break;
+        case 'auth/user-not-found':
+          setError({ status: true, input: 'email', message: '*User not found.' });
+          break;
+        case 'auth/too-many-requests':
+          setError({ status: true, input: '', message: '*Too many requests. Please try again later.' });
+          break;
+        case 'auth/operation-not-allowed':
+          setError({ status: true, input: '', message: '*Operation not allowed.' });
+          break;
+        case 'auth/password-does-not-meet-requirements':
+          setShowPasswordInfo(true);
           break;
         default:
           setError({ status: true, input: '', message: err.message });
