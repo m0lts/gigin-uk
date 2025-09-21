@@ -49,95 +49,98 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
         return shouldSwap;
     }, [musicianProfile, bandProfiles]);
 
-const toMs = (dt) => {
-    if (!dt) return NaN;
-    if (typeof dt?.toDate === 'function') return dt.toDate().getTime();
-    const t = new Date(dt).getTime();
-    return Number.isFinite(t) ? t : NaN;
-  };
+    const toMs = (dt) => {
+        if (!dt) return NaN;
+        if (typeof dt?.toDate === 'function') return dt.toDate().getTime();
+        const t = new Date(dt).getTime();
+        return Number.isFinite(t) ? t : NaN;
+    };
   
-  useEffect(() => {
-    if (!gigs || !gigs.length) return;
-    const primaryProfile = (() => {
-      if (!musicianProfile) return null;
-      if (isOnlyNameFilled) {
-        return Array.isArray(bandProfiles) && bandProfiles.length
-          ? bandProfiles[0]
-          : musicianProfile;
-      }
-      return musicianProfile;
-    })();
-    if (!primaryProfile) return;
-    const userProfileIds = new Set([
-      musicianProfile?.id ?? musicianProfile?.musicianId,
-      ...(Array.isArray(bandProfiles) ? bandProfiles.map(b => b?.id) : []),
-    ].filter(Boolean));
-    const profileNameMap = {};
-    if (musicianProfile?.id) profileNameMap[musicianProfile.id] = musicianProfile.name;
-    bandProfiles?.forEach(b => { if (b?.id) profileNameMap[b.id] = b.name; });
-    const allProfiles = [
-    ...(musicianProfile ? [musicianProfile] : []),
-    ...(Array.isArray(bandProfiles) ? bandProfiles : []),
-    ].filter(Boolean);
-    
-    const now = Date.now();
-    
-    // find earliest future confirmed gig across ALL profiles
-    const nextConfirmed = allProfiles
-    .flatMap((p) => {
-        const pid = p?.id ?? p?.musicianId;
-        const pname = p?.name ?? null;
-        const confirmed = Array.isArray(p?.confirmedGigs) ? p?.confirmedGigs : [];
-    
-        return gigs
-        .filter((g) => confirmed.includes(g?.gigId))
-        .map((g) => {
-            const t = toMs(g?.startDateTime);
-            return Number.isFinite(t) && t > now
-            ? { gig: g, t, profileId: pid, profileName: pname }
-            : null;
+    useEffect(() => {
+        if (!gigs || !gigs.length) return;
+        const primaryProfile = (() => {
+        if (!musicianProfile) return null;
+        if (isOnlyNameFilled) {
+            return Array.isArray(bandProfiles) && bandProfiles.length
+            ? bandProfiles[0]
+            : musicianProfile;
+        }
+        return musicianProfile;
+        })();
+        if (!primaryProfile) return;
+        const userProfileIds = new Set([
+        musicianProfile?.id ?? musicianProfile?.musicianId,
+        ...(Array.isArray(bandProfiles) ? bandProfiles.map(b => b?.id) : []),
+        ].filter(Boolean));
+        const profileNameMap = {};
+        if (musicianProfile?.id) profileNameMap[musicianProfile.id] = musicianProfile.name;
+        bandProfiles?.forEach(b => { if (b?.id) profileNameMap[b.id] = b.name; });
+        const allProfiles = [
+        ...(musicianProfile ? [musicianProfile] : []),
+        ...(Array.isArray(bandProfiles) ? bandProfiles : []),
+        ].filter(Boolean);
+        
+        const now = Date.now();
+
+        // console.log('all profiles', allProfiles);
+        
+        const nextConfirmed = allProfiles
+        .flatMap((p) => {
+            const pid = p?.id ?? p?.musicianId;
+            const pname = p?.name ?? null;
+            const confirmed = Array.isArray(p?.confirmedGigs) ? p?.confirmedGigs : [];
+        
+            return gigs
+            .filter((g) => confirmed.includes(g?.gigId))
+            .map((g) => {
+                const t = toMs(g?.startDateTime);
+                return Number.isFinite(t) && t > now
+                ? { gig: g, t, profileId: pid, profileName: pname }
+                : null;
+            })
+            .filter(Boolean);
+        })
+        .sort((a, b) => a.t - b.t)[0] || null;
+        
+        setNextGig(
+        nextConfirmed
+            ? {
+                ...nextConfirmed?.gig,
+                _profileId: nextConfirmed?.profileId,
+                _profileName: nextConfirmed?.profileName,
+            }
+            : null
+        );
+
+        const awaiting = gigs
+        .map(gig => {
+            const applicants = Array.isArray(gig.applicants) ? gig.applicants : []
+            const matchedApplicant = applicants.find(a =>
+                userProfileIds.has(a?.id) &&
+                a?.invited === true &&
+                (a?.status === 'pending' || a?.status === 'awaiting your response')
+            );
+            if (!matchedApplicant) return null;
+            const t = toMs(gig.startDateTime);
+            if (!Number.isFinite(t) || t <= now) return null;
+            const invitedProfileId = matchedApplicant.id;
+            const invitedProfileName = profileNameMap[invitedProfileId] ?? 'Your Profile';
+            return {
+                ...gig,
+                _invitedApplicant: matchedApplicant,
+                _invitedProfileId: invitedProfileId,
+                _invitedProfileName: invitedProfileName,
+            };
         })
         .filter(Boolean);
-    })
-    .sort((a, b) => a.t - b.t)[0] || null;
-    
-    setNextGig(
-    nextConfirmed
-        ? {
-            ...nextConfirmed?.gig,
-            _profileId: nextConfirmed?.profileId,
-            _profileName: nextConfirmed?.profileName,
-        }
-        : null
-    );
-
-    const awaiting = gigs
-      .map(gig => {
-        const applicants = Array.isArray(gig.applicants) ? gig.applicants : []
-        const matchedApplicant = applicants.find(a =>
-            userProfileIds.has(a?.id) &&
-            a?.invited === true &&
-            (a?.status === 'pending' || a?.status === 'awaiting your response')
-          );
-        if (!matchedApplicant) return null;
-        const t = toMs(gig.startDateTime);
-        if (!Number.isFinite(t) || t <= now) return null;
-        const invitedProfileId = matchedApplicant.id;
-        const invitedProfileName = profileNameMap[invitedProfileId] ?? 'Your Profile';
-        return {
-            ...gig,
-            _invitedApplicant: matchedApplicant,
-            _invitedProfileId: invitedProfileId,
-            _invitedProfileName: invitedProfileName,
-          };
-      })
-      .filter(Boolean);
-    setAwaitingResponse(awaiting);
-  }, [gigs, musicianProfile, bandProfiles, isOnlyNameFilled]);
+        setAwaitingResponse(awaiting);
+    }, [gigs, musicianProfile, bandProfiles, isOnlyNameFilled]);
 
     const formatName = (name) => {
         return name.split(' ')[0];
     };
+
+    // console.log(nextGig)
 
     return (
         <>

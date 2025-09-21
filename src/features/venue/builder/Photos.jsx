@@ -144,6 +144,7 @@ const DraggableImage = ({
   };
 
 export const Photos = ({ formData, handleInputChange, stepError, setStepError }) => {
+  console.log(formData)
     const navigate = useNavigate();
     const [images, setImages] = useState(formData.photos || []);
     const [primaryImage, setPrimaryImage] = useState(
@@ -154,11 +155,21 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
     const [otherImages, setOtherImages] = useState(images.slice(1));
     const [isRepositioning, setIsRepositioning] = useState(false);
 
-    const updatePrimaryOffset = (newOffset) => {
-        setPrimaryImage((prev) => ({
-            ...prev,
-            offsetY: newOffset,
-        }));
+    const updatePrimaryOffset = (newOffset /* -50..0 from your drag */) => {
+      setPrimaryImage((prev) => ({ ...prev, offsetY: newOffset }));
+      // Convert editor's range [-50..0] to "percent from top" [0..50].
+      // 50 + (-50..0) => [0..50]. If you ever extend drag below center,
+      // you can allow positive newOffset up to +50 to reach [0..100].
+      const percentFromTop = Math.max(0, Math.min(100, 50 + Number(newOffset || 0)));
+      handleInputChange?.('primaryImageOffsetY', percentFromTop);
+    };
+
+    const toEditorOffset = (percentFromTop) => {
+      const n = parseFloat(percentFromTop);
+      if (!Number.isFinite(n)) return 0;
+      // Stored 0..100 (0 = top, 50 = center, 100 = bottom)
+      // Editor wants -50..+50 relative to center
+      return Math.max(-50, Math.min(50, n - 50));
     };
 
     useEffect(() => {
@@ -168,23 +179,27 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
         );
       }, [primaryImage, otherImages]);
 
-      useEffect(() => {
-        if (images.length > 0) {
-          const wrappedImages = images.map((img) =>
-            typeof img === 'object' && 'file' in img ? img : { file: img, offsetY: 0 }
-          );
-          // Clamp to MAX_IMAGES if something upstream added too many
-          const clamped = wrappedImages.slice(0, MAX_IMAGES);
-          if (wrappedImages.length > MAX_IMAGES) {
-            setStepError?.(`You can upload up to ${MAX_IMAGES} images.`);
-          }
-          setPrimaryImage(clamped[0] || null);
-          setOtherImages(clamped.slice(1));
-        } else {
-          setPrimaryImage(null);
-          setOtherImages([]);
+    useEffect(() => {
+      if (images.length > 0) {
+        const wrappedImages = images.map((img, i) => {
+          // If it's already an object with offsetY, keep it as-is
+          if (typeof img === 'object' && 'file' in img) return img;
+          // Otherwise construct an object and PRESERVE the DB offset on the first image
+          const offsetY = i === 0 ? toEditorOffset(formData.primaryImageOffsetY) : 0;
+          return { file: img, offsetY };
+        });
+        // Clamp to MAX_IMAGES if something upstream added too many
+        const clamped = wrappedImages.slice(0, MAX_IMAGES);
+        if (wrappedImages.length > MAX_IMAGES) {
+          setStepError?.(`You can upload up to ${MAX_IMAGES} images.`);
         }
-      }, [images]);
+        setPrimaryImage(clamped[0] || null);
+        setOtherImages(clamped.slice(1));
+      } else {
+        setPrimaryImage(null);
+        setOtherImages([]);
+      }
+    }, [images, formData.primaryImageOffsetY, setStepError]);
 
       const handleFileChange = (event) => {
         const currentCount = images.length;
@@ -225,8 +240,8 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
             setStepError('Please upload some images of your venue.');
             return;
         }
-        if (images.length < 3) {
-            setStepError('You must upload a minimum of three images.');
+        if (images.length < 1) {
+            setStepError('You must upload a minimum of one image.');
             return;
         };
         navigate('/venues/add-venue/additional-details');
@@ -285,7 +300,7 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                           <CameraIcon />
                           <div className="text">
                             <h4>{images.length >= MAX_IMAGES ? `Limit reached (${MAX_IMAGES})` : 'Click here to upload images, or drag and drop them here.'}</h4>
-                            <p>Add at least 3 images.</p>
+                            <p>Add at least 1 image.</p>
                           </div>
                         </label>
                         </div>
@@ -313,7 +328,18 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                                                 totalImages={images.length}
                                                 isPrimary={true}
                                                 isRepositioning={isRepositioning}
-                                                setIsRepositioning={setIsRepositioning}
+                                                setIsRepositioning={(updater) => {
+                                                  const next =
+                                                    typeof updater === 'function' ? updater(isRepositioning) : updater;
+                                                  if (isRepositioning && !next && primaryImage) {
+                                                    const percentFromTop = Math.max(
+                                                      0,
+                                                      Math.min(100, 50 + Number(primaryImage.offsetY || 0))
+                                                    );
+                                                    handleInputChange?.('primaryImageOffsetY', percentFromTop);
+                                                  }
+                                                  setIsRepositioning(next);
+                                                }}
                                                 updatePrimaryOffset={updatePrimaryOffset}
                                                 venueName={formData?.name}
                                             />

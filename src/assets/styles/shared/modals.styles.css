@@ -379,7 +379,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     margin-bottom: 1rem;
-    padding: 0 0.1rem;
+    padding: 0.1rem;
 }
 
 .modal.invite-musician .gig-selection .card {

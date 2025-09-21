@@ -535,6 +535,12 @@ export const acceptGigOffer = async (gigData, musicianProfileId, nonPayableGig =
       paid: nonPayableGig,
       status: (nonPayableGig && gigData.kind === 'Ticketed Gig') ? 'closed' : 'open',
     });
+    const musicianRef = doc(firestore, 'musicianProfiles', musicianProfileId);
+    if (nonPayableGig) {
+      await updateDoc(musicianRef, {
+        confirmedGigs: arrayUnion(gigData.gigId),
+      })
+    }
     return { updatedApplicants, agreedFee };
 };
 

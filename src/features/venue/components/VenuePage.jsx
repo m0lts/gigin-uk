@@ -1,38 +1,25 @@
 import { useEffect, useState, useRef } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import '@styles/host/venue-page.styles.css';
 import { 
-    BackgroundMusicIcon,
     ClubIcon,
     FacebookIcon,
     GuitarsIcon,
-    HouseIconLight,
     InstagramIcon,
-    InviteIcon,
     MicrophoneIcon,
-    MicrophoneLinesIcon,
-    PeopleGroupIcon,
     SpeakersIcon,
-    TicketIcon,
-    TwitterIcon,
-    WeddingIcon } from '@features/shared/ui/extras/Icons';
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
+    TwitterIcon } from '@features/shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/venues';
-import { getCityFromAddress } from '@services/utils/misc';
 import { getGigsByVenueId } from '../../../services/gigs';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { useMapbox } from '@hooks/useMapbox';
-import { formatDate } from '@services/utils/dates';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { openInNewTab } from '@services/utils/misc';
-import { createVenueRequest, getMusicianProfileByMusicianId, getMusicianProfilesByIds } from '../../../services/musicians';
+import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/musicians';
 import { toast } from 'sonner';
-import { getOrCreateConversation } from '../../../services/conversations';
-import { AmpIcon, CashIcon, LinkIcon, MicrophoneIconSolid, MonitorIcon, NewTabIcon, OptionsIcon, PianoIcon, PlugIcon, QuestionCircleIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
@@ -231,6 +218,24 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         }
     }
 
+    const rawOff = venueData?.primaryImageOffsetY;
+    let percentFromTop;
+    if (rawOff == null) {
+    percentFromTop = 50; // sensible default: center
+    } else {
+    const n = parseFloat(rawOff);
+    if (Number.isFinite(n)) {
+        // Legacy negative/[-50..0]: map to [0..50] via 50 + n
+        percentFromTop = n <= 0 ? Math.max(0, Math.min(100, 50 + n))
+                                : Math.max(0, Math.min(100, n));
+    } else {
+        percentFromTop = 50;
+    }
+    }
+
+    console.log(percentFromTop)
+
+
     return (
         <div className='venue-page'>
             {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
@@ -264,9 +269,10 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                 alt={venueData?.name}
                                 className='background-image'
                                 style={{
-                                    transform: `translateY(${venueData?.primaryImageOffsetY || 0}px)`,
-                                    transition: 'transform 0.3s ease-out',
-                                }}
+                                       // 0% = top, 50% = center, 100% = bottom
+                                       objectPosition: `50% ${50 - percentFromTop}%`,
+                                       transition: 'object-position 0.3s ease-out',
+                                      }}
                             />
                             <div className="primary-information">
                                 {venueData?.verified && (
