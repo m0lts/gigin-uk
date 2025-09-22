@@ -21,6 +21,8 @@ import { uploadProfilePicture } from '../../../services/storage';
 import '@styles/musician/no-profile.styles.css'
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useNavigate } from 'react-router-dom';
+import { getUserById } from '../../../services/users';
+import { getMusicianProfileByMusicianId } from '../../../services/musicians';
 
 // Helpers
 const slideVariants = {
@@ -166,73 +168,123 @@ export const NoProfileModal = ({
 
     const handleSaveBand = async () => {
         if (!bandName.trim()) {
-            toast.error('Please enter a display name for your band.');
-            return;
+          toast.error('Please enter a display name for your band.');
+          return;
         }
-        if (!user?.uid || !musicianProfile?.id && !musicianProfile?.musicianId) {
-            toast.error('Missing user or musician profile.');
-            return;
+      
+        // 1) Validate we have an authenticated user
+        const uid = user?.uid;
+        if (!uid) {
+          toast.error('You must be signed in to create a band.');
+          return;
         }
-        setLoadingMessage('Creating your band…');
-        setStage(Stage.LOADING);
+      
+        // 2) Resolve a musicianId for the *creator* (venue manager / musician)
+        //    Prefer the prop if it’s complete; otherwise refresh from DB.
+        const resolveProfileId = (mp) =>
+          mp?.musicianId || mp?.id || null;
+      
+        let creatorUser = user;
+        let creatorMusicianProfile = musicianProfile;
+        let creatorMusicianId = resolveProfileId(creatorMusicianProfile);
+      
         try {
-            const pictureFile = bandImageFile;
-            let pictureUrl = '';
-            if (pictureFile) {
-                pictureUrl = await uploadFileToStorage(
-                    pictureFile,
-                    `bands/${bandId}/profileImg/${pictureFile.name}`
-                );
+          // Refresh user if we’re missing musician id, or if the user doc often lags
+          if (!creatorMusicianId) {
+            creatorUser = await getUserById(uid);
+            if (!creatorUser) {
+              toast.error('Failed to create band. Please try again.');
+              return;
             }
-            const bandPassword = generateBandPassword();
-            const updatedFormData = {
-                bandId,
-                name: bandName.trim(),
-                picture: pictureUrl || '',
-                email: user?.email || '',
-                joinPassword: bandPassword,
-                onboarded: true,
-                admin: {
-                    userId: user?.uid,
-                    musicianId: musicianProfile.id || musicianProfile.musicianId,
-                },
-                members: [
-                    {
-                        id: musicianProfile.id || musicianProfile.musicianId,
-                        img: musicianProfile?.picture || '',
-                        name: musicianProfile.name || '',
-                    }
-                ]
-            };
-            await createBandProfile(bandId, updatedFormData, user.uid, musicianProfile);
-            await updateUserDocument(user.uid, { bands: arrayUnion(bandId) });
-            await updateMusicianProfile(musicianProfile.id || musicianProfile.musicianId, {
-                bands: arrayUnion(bandId),
-                onboarded: true,
-            })
-            const keywords = generateSearchKeywords(bandName.trim());
-            const musicianProfileData = {
-                musicianId: bandId,
-                name: bandName.trim(),
-                picture: pictureUrl || '',
-                email: user?.email || '',
-                musicianType: 'Band',
-                bandProfile: true,
-                searchKeywords: keywords,
-                createdAt: Timestamp.now(),
-                onboarded:true,
-            };
-            await createMusicianProfile(bandId, musicianProfileData, user.uid);
-            toast.success('Band created!');
-            window.location.reload();
-            onClose?.();
+            // user.musicianProfile can be: object/id/array/string depending on your app — handle defensively
+            const rawMp =
+              creatorUser.musicianProfile?.musicianId ||
+              creatorUser.musicianProfile?.id ||
+              (Array.isArray(creatorUser.musicianProfile) ? creatorUser.musicianProfile[0] : null) ||
+              (typeof creatorUser.musicianProfile === 'string' ? creatorUser.musicianProfile : null);
+      
+            if (!rawMp) {
+              toast.error('Your musician profile could not be found.');
+              return;
+            }
+            creatorMusicianProfile = await getMusicianProfileByMusicianId(rawMp);
+            creatorMusicianId = resolveProfileId(creatorMusicianProfile);
+            if (!creatorMusicianProfile || !creatorMusicianId) {
+              toast.error('Failed to load your musician profile. Please try again.');
+              return;
+            }
+          }
+      
+          setLoadingMessage('Creating your band…');
+          setStage(Stage.LOADING);
+      
+          // 3) Optional image upload
+          let pictureUrl = '';
+          if (bandImageFile) {
+            pictureUrl = await uploadFileToStorage(
+              bandImageFile,
+              `bands/${bandId}/profileImg/${bandImageFile.name}`
+            );
+          }
+      
+          // 4) Build band (admin) doc payload
+          const bandPassword = generateBandPassword();
+          const bandAdminData = {
+            bandId,
+            name: bandName.trim(),
+            picture: pictureUrl || '',
+            email: creatorUser?.email || '',
+            joinPassword: bandPassword,
+            onboarded: true,
+            admin: {
+              userId: uid,
+              musicianId: creatorMusicianId,
+            },
+            members: [
+              {
+                id: creatorMusicianId,
+                img: creatorMusicianProfile?.picture || '',
+                name: creatorMusicianProfile?.name || '',
+              },
+            ],
+          };
+      
+          // 5) Create band admin profile (bands collection)
+          await createBandProfile(bandId, bandAdminData, uid, creatorMusicianProfile);
+      
+          // 6) Link band to user + creator’s musician profile
+          await Promise.all([
+            updateUserDocument(uid, { bands: arrayUnion(bandId) }),
+            updateMusicianProfile(creatorMusicianId, {
+              bands: arrayUnion(bandId),
+              onboarded: true,
+            }),
+          ]);
+      
+          // 7) Create the band's *musician* profile (musicianProfiles collection)
+          const keywords = generateSearchKeywords(bandName.trim());
+          const bandMusicianProfileData = {
+            musicianId: bandId,              // band uses its bandId as musicianId
+            name: bandName.trim(),
+            picture: pictureUrl || '',
+            email: creatorUser?.email || '',
+            musicianType: 'Band',
+            bandProfile: true,
+            searchKeywords: keywords,
+            createdAt: Timestamp.now(),
+            onboarded: true,
+          };
+          await createMusicianProfile(bandId, bandMusicianProfileData, uid);
+      
+          toast.success('Band created!');
+          onClose?.();
+          window.location.reload();
         } catch (e) {
-            console.error('Error creating band:', e);
-            toast.error('Error creating band. Please try again.');
-            setStage(Stage.BAND);
+          console.error('Error creating band:', e);
+          toast.error('Error creating band. Please try again.');
+          setStage(Stage.BAND);
         }
-    };
-
+      };
     // --- File inputs ---
     const onFileChange = (setterFile, setterPreview) => (e) => {
         const file = e.target.files?.[0];
@@ -256,17 +308,17 @@ export const NoProfileModal = ({
             <AnimatePresence mode="wait" custom={direction}>
                 {stage === Stage.SELECT && (
                     <motion.div
-                    key="select"
-                    custom={direction}
-                    variants={{
-                        enter: (dir) => (dir === 1 ? slideVariants.initialRight : slideVariants.initialLeft),
-                        center: slideVariants.center,
-                        exit: (dir) => (dir === 1 ? slideVariants.exitLeft : slideVariants.exitRight),
-                    }}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
+                        key="select"
+                        custom={direction}
+                        variants={{
+                            enter: (dir) => (dir === 1 ? slideVariants.initialRight : slideVariants.initialLeft),
+                            center: slideVariants.center,
+                            exit: (dir) => (dir === 1 ? slideVariants.exitLeft : slideVariants.exitRight),
+                        }}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
                     >
                     <div className="modal-header">
                         <GuitarsIcon />
