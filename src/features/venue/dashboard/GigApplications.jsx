@@ -162,7 +162,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         try {
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
-            const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig";
+            const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig" || gigInfo.budget === '£' || gigInfo.budget === '£0';
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
                 const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianId);
@@ -667,7 +667,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && (
+                                                    {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && gigInfo.budget !== '£' && gigInfo.budget !== '£0' && (
                                                         loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
                                                             <LoadingSpinner />
                                                         ) : (

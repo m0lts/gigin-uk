@@ -95,7 +95,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
-            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
                 const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianProfileId);

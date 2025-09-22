@@ -98,7 +98,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
-            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
                 const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianProfileId);
@@ -129,7 +129,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 isNegotiated: false,
                 nonPayableGig
             });
-            if (gigData.kind === "Ticketed Gig") {
+            if (gigData.kind === "Ticketed Gig" || (gigData.kind === 'Live Music' && (gigData.budget === '£' || gigData.budget === '£0'))) {
                 await notifyOtherApplicantsGigConfirmed(gigData, musicianProfileId);
             }
         } catch (error) {
@@ -638,7 +638,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 </>
                             ) : message.type === 'announcement' ? (
                                 <>
-                                {message.status === 'awaiting payment' && userRole === 'venue' ? (
+                                {message.status === 'awaiting payment' && userRole === 'venue' && gigData.budget !== '£' && gigData.budget !== '£0' ? (
                                     <>
                                         <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>

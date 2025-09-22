@@ -392,7 +392,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           if (!valid || userAppliedToGig) return;
           setApplyingToGig(true);
           try {
-            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig';
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' || gigData.budget === '£' || gigData.budget === '£0';
             const updatedApplicants = await applyToGig(gigId, musicianProfile);
             setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
             if (musicianProfile.bandProfile) {
@@ -576,7 +576,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
-            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig";
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianId, nonPayableGig);
             setGigData((prevgigData) => ({
                 ...prevgigData,
@@ -969,8 +969,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </h2>
                                             ) : (
                                                 <>
-                                                    <h1>{gigData.budget}</h1>
-                                                    <p>gig fee</p>
+                                                    <h1>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h1>
+                                                    {gigData.budget !== '£' && gigData.budget !== '£0' && (
+                                                        <p>gig fee</p>
+                                                    )}
                                                 </>
                                             )}
                                         </div>

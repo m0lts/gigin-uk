@@ -172,15 +172,11 @@ export const NoProfileModal = ({
           return;
         }
       
-        // 1) Validate we have an authenticated user
         const uid = user?.uid;
         if (!uid) {
           toast.error('You must be signed in to create a band.');
           return;
         }
-      
-        // 2) Resolve a musicianId for the *creator* (venue manager / musician)
-        //    Prefer the prop if it’s complete; otherwise refresh from DB.
         const resolveProfileId = (mp) =>
           mp?.musicianId || mp?.id || null;
       
