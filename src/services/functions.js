@@ -257,3 +257,16 @@ export const getEmailAddress = async (email) => {
   // res.data = { found: boolean, user: object|null }
   return res.data?.user || null;
 };
+
+/**
+ * Accepts a venue invite for the current authenticated user.
+ * Creates member doc with default permissions and deletes the invite.
+ *
+ * @param {string} inviteId
+ * @returns {Promise<{ ok: boolean, venueId?: string, message?: string }>}
+ */
+export async function acceptVenueInvite(inviteId) {
+  const fn = httpsCallable(functions, "acceptVenueInvite");
+  const res = await fn({ inviteId });
+  return res.data;
+}

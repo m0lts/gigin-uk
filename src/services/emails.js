@@ -1292,6 +1292,133 @@ export const sendBandInviteEmail = async ({ to, band, link, baseUrl }) => {
 };
 
 /**
+ * Sends a styled invitation email to join a venue on Gigin.
+ *
+ * Uses the Firebase "Trigger Email" extension by writing a document to the `mail` collection.
+ * Text content matches the original front-end implementation, wrapped in the standardized HTML shell.
+ *
+ * @async
+ * @function sendVenueInviteEmail
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address.
+ * @param {Object} params.band - Venue object (must include `name`).
+ * @param {string} params.link - Absolute URL to accept/join the venue.
+ * @param {string} [params.baseUrl] - Optional absolute origin (e.g. "https://app.gigin.com") for fallbacks/logos if needed.
+ * @returns {Promise<void>}
+ *
+ * @example
+ * await sendVenueInviteEmail({
+ *   to: 'staff@example.com',
+ *   venue: { name: 'The White Lion' },
+ *   link: 'https://app.gigin.com/venues/join-venue?invite=abc123'
+ * });
+ */
+export const sendVenueInviteEmail = async ({ to, venue, link, baseUrl }) => {
+  const subject = `You're invited to join ${venue.name} on Gigin`;
+  const text = `You've been invited to join ${venue.name} on Gigin. Click the link below to join:\n\n${link}`;
+
+  // === Styled email shell (same as your other templates) ===
+  const baseStyles = {
+    bodyBg: "#f9f9f9",
+    cardBg: "#ffffff",
+    text: "#333333",
+    muted: "#6b7280",
+    accent: "#111827",
+    border: "#e5e7eb",
+    btnBg: "#111827",
+    btnText: "#ffffff",
+    gnOrange: "#FF6C4B",
+    gnOffsetOrange: "#fff1ee",
+  };
+
+  // Icon placeholder (drop your own path if you want an icon)
+  const iconPath = 'M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4L236.8 313.6c11.4 8.5 27 8.5 38.4 0L492.8 150.4c12.1-9.1 19.2-23.3 19.2-38.4c0-26.5-21.5-48-48-48L48 64zM0 176L0 384c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-208L294.4 339.2c-22.8 17.1-54 17.1-76.8 0L0 176z';
+  const iconSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
+         width="28" height="28" role="img" aria-label="Icon"
+         style="display:block;">
+      <path d="${iconPath}" fill="#111827"></path>
+    </svg>
+  `;
+
+  // Use your existing hosted logo/CDN (replace if you’ve moved to Vercel Hosting)
+  const logoUrl = "https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/gigin.png?alt=media&token=efd9ba79-f580-454c-98f6-b4a391e0d636";
+
+  const htmlBase = (title, inner) => `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="background:${baseStyles.bodyBg};padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;background:${baseStyles.cardBg};border:1px solid ${baseStyles.border};border-radius:16px;">
+            <tr>
+              <td style="padding:28px 28px 0 28px;" align="center">
+                <img src="${logoUrl}" width="120" height="36" alt="gigin."
+                     style="display:block;border:0;max-width:100%;height:auto;">
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 28px 0 28px;" align="center">
+                <div style="font-size:28px;line-height:1.2;color:${baseStyles.accent}">${iconSvg}</div>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 28px 0 28px;" align="center">
+                <h1 style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:20px;line-height:28px;color:${baseStyles.accent};font-weight:700;">
+                  ${title}
+                </h1>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:16px 28px 0 28px;">
+                ${inner}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:20px 28px 28px 28px;" align="center">
+                <a href="${link}"
+                   style="display:inline-block;background:${baseStyles.btnBg};color:${baseStyles.btnText};text-decoration:none;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;padding:12px 18px;border-radius:10px;">
+                  Join Venue
+                </a>
+                <div style="font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:${baseStyles.muted};margin-top:10px;word-break:break-all;">
+                  Or paste this into your browser: ${link}
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div style="max-width:600px;margin-top:16px;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:${baseStyles.muted};">
+            You’re receiving this because someone invited you to join a venue on Gigin.
+          </div>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  // === Inner content (wording unchanged) ===
+  const inner = `
+    <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+      You've been invited to join <strong>${venue.name}</strong> on Gigin.
+    </p>
+    <p style="margin:0 0 16px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+      <a href="${link}" style="color:#111827;text-decoration:underline;">Click here to join the venue</a>
+    </p>
+  `;
+
+  const html = htmlBase(`You're invited to join ${venue.name} on Gigin`, inner);
+
+  // Queue the email for the Trigger Email extension
+  const mailRef = collection(firestore, 'mail');
+  await addDoc(mailRef, {
+    to,
+    message: { subject, text, html },
+  });
+};
+
+
+/**
  * Sends a styled testimonial request email.
  *
  * Uses the Firebase "Trigger Email" extension by writing a document to the `mail` collection.

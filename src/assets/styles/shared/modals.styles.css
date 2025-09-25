@@ -631,3 +631,23 @@
 .modal.account-page .two-buttons {
     margin-top: 2rem;
 }
+
+
+/* ADD STAFF MODAL */
+
+.modal.add-staff .modal-content {
+    max-width: 500px;
+    transition: height 200ms linear;
+}
+
+.modal.add-staff .modal-content .modal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:1rem;
+}
+
+.modal.add-staff .modal-content .modal-body .input {
+    width: 50%;
+    text-align: center;
+}

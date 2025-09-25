@@ -250,10 +250,14 @@ const resetPassword = async (rawEmail) => {
 };
 
 
-  const logout = async () => {
+  const logout = async (redirect = null) => {
     try {
       await signOut(auth);
-      navigate('/')
+      if (redirect) {
+        navigate(redirect, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (error) {
       console.error('Logout failed', error);
     }

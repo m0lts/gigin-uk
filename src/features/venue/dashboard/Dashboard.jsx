@@ -23,6 +23,7 @@ import { getUnreviewedPastGigs } from '../../../services/utils/filtering';
 import { MessagePage } from './messages/MessagePage';
 import { listenToUserConversations } from '@services/conversations';
 import Portal from '../../shared/components/Portal';
+import { VenuePage } from './VenuePage';
 
 export const VenueDashboard = ({ user }) => {
     const {
@@ -55,7 +56,7 @@ export const VenueDashboard = ({ user }) => {
     const [buildingForMusicianData, setBuildingForMusicianData] = useState(false);
     const [requestId, setRequestId] = useState(null);
     const location = useLocation();
-    const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname), [location.pathname]);
+    const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'venue', venueProfiles), [location.pathname]);
   
     useEffect(() => {
       if (location.state?.newUser && user?.venueProfiles?.length === 1) {
@@ -132,6 +133,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} />} />
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
+                        <Route path='my-venues/:venueId' element={<VenuePage user={user}  />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />

@@ -42,7 +42,27 @@ export const createVenueProfile = async (venueId, data, userId) => {
       console.error('Error creating venue profile:', error);
       throw error;
     }
-  };
+};
+
+/**
+ * Creates a new venue invite in the global venueInvites collection
+ * @param {string} venueId
+ * @param {string} invitedBy - userId
+ * @param {string} invitedEmail - optional
+ * @returns {Promise<string>} inviteId
+ */
+export const createVenueInvite = async (venueId, invitedBy, invitedEmail = '') => {
+  const expiresAt = Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const docRef = await addDoc(collection(firestore, 'venueInvites'), {
+    venueId,
+    invitedBy,
+    invitedEmail,
+    status: 'pending',
+    createdAt: Timestamp.now(),
+    expiresAt,
+  });
+  return docRef.id;
+};
 
 /*** READ OPERATIONS ***/
 
@@ -206,6 +226,38 @@ export const getTemplatesByVenueIds = async (venueIds) => {
   const q = query(templatesCol, where('venueId', 'in', venueIds));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+/**
+ * Fetches a venue invite document by its inviteId.
+ *
+ * @async
+ * @param {string} inviteId - The unique ID of the invite (document ID in `venueInvites` collection).
+ * @returns {Promise<Object|null>} The invite document data with `id` included,
+ *   or null if the invite does not exist.
+ *
+ * @example
+ * const invite = await getVenueInviteById('abc-123');
+ * if (invite) {
+ *   console.log(invite.venueId, invite.expiresAt.toDate());
+ * }
+ */
+export const getVenueInviteById = async (inviteId) => {
+  if (!inviteId) return null;
+  try {
+    const ref = doc(firestore, 'venueInvites', inviteId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      return null;
+    }
+    return {
+      id: snap.id,
+      ...snap.data(),
+    };
+  } catch (error) {
+    console.error('Error fetching venue invite:', error);
+    throw error;
+  }
 };
 
 /*** UPDATE OPERATIONS ***/

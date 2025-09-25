@@ -233,9 +233,6 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     }
     }
 
-    console.log(percentFromTop)
-
-
     return (
         <div className='venue-page'>
             {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (

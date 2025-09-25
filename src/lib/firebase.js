@@ -4,6 +4,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -22,13 +23,25 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// App Check (browser only)
+if (typeof window !== 'undefined') {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
+
+// Core SDKs
 const firestore = getFirestore(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
-const storage = getStorage(app)
-const functions = getFunctions(app, 'europe-west3');
-// if (window.location.hostname === 'localhost') {
-//   connectFunctionsEmulator(functions, '127.0.0.1', 5001);
-// }
+const storage = getStorage(app);
 
-export { firestore, auth, storage, functions, googleProvider };
+// Functions MUST use the same region you deployed to.
+const functions = getFunctions(app, 'europe-west3');
+
+// Emulator (optional)
+// if (import.meta.env.DEV) connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+
+export { app, firestore, auth, storage, functions, googleProvider };
