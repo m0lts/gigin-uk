@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { 
@@ -33,10 +33,14 @@ import Portal from '../../shared/components/Portal';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { notifyOtherApplicantsGigConfirmed } from '../../../services/conversations';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
-import { cancelGigAndRefund } from '../../../services/functions';
+import { cancelGigAndRefund, markApplicantsViewed } from '../../../services/functions';
 import { postCancellationMessage } from '../../../services/messages';
 import { updateMusicianCancelledGig } from '../../../services/musicians';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { hasVenuePerm } from '../../../services/utils/permissions';
+import { getLocalGigDateTime } from '../../../services/utils/filtering';
+import { toJsDate } from '../../../services/utils/dates';
+import { handleCloseGig, handleOpenGig } from '../../../services/functions';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const VideoModal = ({ video, onClose }) => {
@@ -53,7 +57,7 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
+export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues }) => {
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -98,65 +102,86 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         setGigInfo(activeGig);
     }, [gigId, gigs]);
 
-    const getLocalGigDateTime = (gig) => {
-        const dateObj = gig.date.toDate();
-        const [hours, minutes] = gig.startTime.split(':').map(Number);
-        dateObj.setHours(hours);
-        dateObj.setMinutes(minutes);
-        dateObj.setSeconds(0);
-        dateObj.setMilliseconds(0);
-        return dateObj;
-      };
+    const markedRef = useRef(new Set()); // gigIds we’ve already marked this session
 
     useEffect(() => {
-        if (!gigInfo) return;
-        const updateApplicantsViewed = async () => {
-            try {
-                const updatedApplicants = gigInfo.applicants.map(applicant => ({
-                    ...applicant,
-                    viewed: true
-                }));
-                await updateGigApplicants(gigInfo.gigId, updatedApplicants)
-            } catch (error) {
-                console.error("Error updating applicants 'viewed' field:", error);
-            }
-        };
-        const fetchMusicianProfiles = async () => {
-            const profiles = await Promise.all(gigInfo.applicants.map(async (applicant) => {
-                const musicianData = await getMusicianProfileByMusicianId(applicant.id)
-                return { 
-                    ...musicianData, 
-                    id: applicant.id, 
-                    status: applicant.status, 
-                    proposedFee: applicant.fee,
-                    viewed: true,
-                };
-            }));
-            
-            setMusicianProfiles(profiles.filter(profile => profile !== null));
-            setLoading(false);
-        };
-        updateApplicantsViewed();
-        fetchMusicianProfiles();
+      if (!gigInfo) return;
+    
+      // Only mark if there are unviewed applicants
+      const hasUnviewed = Array.isArray(gigInfo.applicants) &&
+        gigInfo.applicants.some(a => a?.viewed !== true);
+    
+      // Don’t call again for the same gig this session
+      if (!hasUnviewed || markedRef.current.has(gigInfo.gigId)) {
+        // still run musician profiles fetch
+        fetchProfiles();
+        return;
+      }
+    
+      (async () => {
+        try {
+          await markApplicantsViewed(gigInfo.venueId, gigInfo.gigId);
+          markedRef.current.add(gigInfo.gigId);
+        } catch (err) {
+          console.error("Error marking applicants viewed:", err);
+        } finally {
+          fetchProfiles();
+        }
+      })();
+    
+      async function fetchProfiles() {
+        try {
+          const profiles = await Promise.all(
+            (gigInfo.applicants || []).map(async (app) => {
+              const m = await getMusicianProfileByMusicianId(app.id);
+              return m ? {
+                ...m,
+                id: app.id,
+                status: app.status,
+                proposedFee: app.fee,
+                viewed: true,
+              } : null;
+            })
+          );
+          setMusicianProfiles(profiles.filter(Boolean));
+          setLoading(false);
+        } catch (e) {
+          console.error("Error fetching musician profiles:", e);
+        }
+      }
     }, [gigInfo]);
 
     const formatDate = (timestamp) => {
-        const date = timestamp.toDate();
+        if (!timestamp) return "—";
+        let date;
+        if (typeof timestamp.toDate === "function") {
+          date = timestamp.toDate();
+        }
+        else if (timestamp instanceof Date) {
+          date = timestamp;
+        }
+        else if (typeof timestamp === "string") {
+          date = new Date(timestamp);
+        }
+        else if (typeof timestamp === "object" && "seconds" in timestamp) {
+          date = new Date(timestamp.seconds * 1000);
+        } else {
+          return "Invalid date";
+        }
         const day = date.getDate();
-        const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
-        const month = date.toLocaleDateString('en-GB', { month: 'long' });
-        const getOrdinalSuffix = (day) => {
-            if (day > 3 && day < 21) return 'th';
-            switch (day % 10) {
-                case 1: return 'st';
-                case 2: return 'nd';
-                case 3: return 'rd';
-                default: return 'th';
-            }
+        const weekday = date.toLocaleDateString("en-GB", { weekday: "long" });
+        const month = date.toLocaleDateString("en-GB", { month: "long" });
+        const getOrdinalSuffix = (d) => {
+          if (d > 3 && d < 21) return "th";
+          switch (d % 10) {
+            case 1: return "st";
+            case 2: return "nd";
+            case 3: return "rd";
+            default: return "th";
+          }
         };
         return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
-    };
-
+      };
     const handleAccept = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
         event.stopPropagation();    
         try {
@@ -318,21 +343,24 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
 
     const formatDisputeDate = (timestamp) => {
         if (!timestamp || !timestamp.toDate) return '24 hours after the gig started';
-    
         const date = timestamp.toDate();
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are 0-indexed
         const year = date.getFullYear().toString().slice(-2); // Last two digits of the year
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
-    
         return `${hours}:${minutes} ${day}/${month}/${year}`;
     };
 
     const openGigPostModal = (gig) => {
+        const startDT = toJsDate(gig.startDateTime) ?? toJsDate(gig.date);
+        const dateOnly = startDT
+            ? new Date(startDT.getFullYear(), startDT.getMonth(), startDT.getDate())
+            : null;
+
         const convertedGig = {
             ...gig,
-            date: gig.date ? gig.date.toDate() : null,
+            date: dateOnly,
         };
         setEditGigData(convertedGig);
         setGigPostModal(true);
@@ -353,11 +381,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         }
     };
 
-    const handleCloseGig = async () => {
+    const handleCloseGigLocal = async () => {
         try {
-            await updateGigDocument(gigId, {
-                status: 'closed',
-            });
+            await handleCloseGig(gigId);
             navigate('/venues/dashboard/gigs');
             toast.success(`Gig Closed`);
         } catch (error) {
@@ -368,9 +394,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
 
     const handleReopenGig = async () => {
         try {
-            await updateGigDocument(gigId, {
-                status: 'open',
-            });
+            await handleOpenGig(gigId);
             navigate('/venues/dashboard/gigs');
             toast.success(`Gig Opened`);
         } catch (error) {
@@ -487,31 +511,29 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                     <div className='action-buttons'>
                         {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
                             ['accepted', 'confirmed', 'paid'].includes(applicant.status)
-                        ) && (
+                        ) && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
                             <button className='btn tertiary' onClick={() => openGigPostModal(gigInfo)}>
                                 Edit Gig Details
                             </button>
                         )}
                         {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
                             ['accepted', 'confirmed', 'paid'].includes(applicant.status)
-                        ) ? (
+                        ) && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') ? (
                             <>
                                 {gigInfo.status === 'closed' ? (
-                                <button className="btn tertiary" onClick={handleReopenGig}>
-                                    Open To Applications
-                                </button>
-
+                                    <button className="btn tertiary" onClick={handleReopenGig}>
+                                        Open To Applications
+                                    </button>
                                 ) : (
-                                <button className="btn tertiary" onClick={handleCloseGig}>
-                                    Close From Applications
-                                </button>
-
+                                    <button className="btn tertiary" onClick={handleCloseGigLocal}>
+                                        Close From Applications
+                                    </button>
                                 )}
                                 <button className='btn danger' onClick={() => setShowDeleteConfirmationModal(true)}>
                                     Delete Gig
                                 </button>
                             </>
-                        ) : (
+                        ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
                             <>
                                 <button className='btn danger' onClick={() => setShowCancelConfirmationModal(true)}>
                                     Cancel Gig
@@ -762,12 +784,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                         </table>
                     ) : gigInfo.status === 'closed' ? (
                         <div className='no-applications'>
-                            <h4>You have closed this gig.</h4>
-                            <button className='btn primary' onClick={handleReopenGig}>
-                                Reopen Gig to Applications
-                            </button>
+                            <h4>This Gig has been closed.</h4>
+                            {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                <button className='btn primary' onClick={handleReopenGig}>
+                                    Reopen Gig to Applications
+                                </button>
+                            )}
                         </div>
-                    ) : (
+                    ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite') && (
                         <div className='no-applications'>
                             <h4>No musicians have applied to this gig yet.</h4>
                             <button className='btn primary' onClick={() => navigate('/venues/dashboard/musicians/find')}>

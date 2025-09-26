@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, setLogLevel } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
@@ -40,6 +40,8 @@ const storage = getStorage(app);
 
 // Functions MUST use the same region you deployed to.
 const functions = getFunctions(app, 'europe-west3');
+
+// setLogLevel("debug");
 
 // Emulator (optional)
 // if (import.meta.env.DEV) connectFunctionsEmulator(functions, '127.0.0.1', 5001);

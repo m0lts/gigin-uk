@@ -23,6 +23,10 @@ import { getOrCreateConversation } from '../../../services/conversations';
 import { postCancellationMessage } from '../../../services/messages';
 import { getGigById, logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
 import { getMusicianProfileByMusicianId, updateMusicianCancelledGig } from '../../../services/musicians';
+import { toJsDate } from '../../../services/utils/dates';
+import { getLocalGigDateTime } from '../../../services/utils/filtering';
+import { hasVenuePerm } from '../../../services/utils/permissions';
+import { handleCloseGig, handleOpenGig } from '../../../services/functions';
 
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user }) => {
@@ -93,32 +97,25 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
   
     const normalizedGigs = useMemo(() => {
       return gigs.map(gig => {
-        const dateObj = gig.date.toDate();
-        const [hours, minutes] = gig.startTime.split(':').map(Number);
-        dateObj.setHours(hours);
-        dateObj.setMinutes(minutes);
-        dateObj.setSeconds(0);
-        dateObj.setMilliseconds(0);
-        const gigDateTime = new Date(dateObj);
+        const dt = getLocalGigDateTime(gig); // <- the only way we derive time now
+        const isoDate = dt ? dt.toISOString().split('T')[0] : null;
     
-        const isoDate = gigDateTime.toISOString().split('T')[0];
+        const confirmedApplicant = gig.applicants?.some(a => a.status === 'confirmed');
+        const acceptedApplicant = gig.applicants?.some(a => a.status === 'accepted');
     
-        const confirmedApplicant = gig.applicants?.some(app => app.status === 'confirmed');
-        const acceptedApplicant = gig.applicants?.some(app => app.status === 'accepted');
         let status = 'past';
-    
-        if (gigDateTime > now) {
+        if (dt && dt > now) {
           if (confirmedApplicant) status = 'confirmed';
-          else if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) status = 'awaiting payment'
+          else if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) status = 'awaiting payment';
           else if (gig.status === 'open') status = 'upcoming';
           else status = 'closed';
         }
     
         return {
           ...gig,
-          dateObj: gigDateTime,
+          dateObj: dt,
           dateIso: isoDate,
-          dateTime: gigDateTime,
+          dateTime: dt,
           status,
         };
       });
@@ -548,7 +545,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       closed: <ErrorIcon />,
                       past: <PreviousIcon />,
                     }[gig.status];
-    
                     return (
                       <React.Fragment key={gig.gigId}>
                         {isFirstPreviousGig && (
@@ -579,7 +575,11 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               <td></td>
                           )} */}
                           <td>{gig.gigName}</td>
-                          <td>{gig.startTime} - {gig.dateObj.toLocaleDateString('en-GB')}</td>
+                          <td>
+                            {gig.dateObj
+                              ? `${gig.dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} - ${gig.dateObj.toLocaleDateString('en-GB')}`
+                              : '—'}
+                          </td>
                           <td className='truncate'>{gig.venue.venueName}</td>
                           {windowWidth > 880 && (
                             <td className='centre'>
@@ -631,12 +631,21 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               {openOptionsGigId === gig.gigId && (
                                   <div className="options-dropdown">
                                   <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <GigIcon /></button>
-                                  {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && (
-                                      <button onClick={() => { closeOptionsMenu(); openGigPostModal(gig); console.log(gig) }}>Edit <EditIcon /></button>
+                                  {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
+                                      <button onClick={() => { 
+                                        if (!hasVenuePerm(venues, gig.venueId, 'gigs.create')) {
+                                          toast.error('You do not have permission to duplicate this gig.');
+                                        };
+                                        closeOptionsMenu();
+                                        openGigPostModal(gig);
+                                    }}>Edit <EditIcon /></button>
                                   )}
-                                  {gig.dateTime > now && (
+                                  {gig.dateTime > now && hasVenuePerm(venues, gig.venueId, 'gigs.create')&& (
                                       <button 
                                           onClick={() => {
+                                              if (!hasVenuePerm(venues, gig.venueId, 'gigs.create')) {
+                                                toast.error('You do not have permission to duplicate this gig.');
+                                              }
                                               closeOptionsMenu();
                                               setSelectedGigs([gig.gigId]);
                                               setConfirmType('duplicate');
@@ -648,13 +657,20 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           <DuplicateGigIcon />
                                       </button>
                                   )}
-                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && gig.kind !== 'Open Mic') ? (
+                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && gig.kind !== 'Open Mic') && hasVenuePerm(venues, gig.venueId, 'gigs.update') ? (
                                       <button
                                       onClick={async () => {
+                                          if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                            toast.error('You do not have permission to edit this gig.');
+                                          }
                                           closeOptionsMenu();
                                           const newStatus = (gig.status === 'open' || gig.status === 'upcoming') ? 'closed' : 'open';
                                           try {
-                                              await updateGigDocument(gig.gigId, { status: newStatus });
+                                            if (newStatus === 'closed') {
+                                              await handleCloseGig(gig.gigId);
+                                            } else {
+                                              await handleOpenGig(gig.gigId);
+                                            }
                                               toast.success(`Gig ${(newStatus === 'open' || newStatus === 'upcoming') ? 'Opened for Applications' : 'Closed from Applications'}`);
                                           } catch (error) {
                                               console.error('Error updating status:', error);
@@ -669,9 +685,12 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                               <TickIcon />
                                           )}
                                       </button>
-                                  ) : (gig.dateTime > now && gig.status !== 'confirmed' && gig.kind === 'Open Mic') && (
+                                  ) : (gig.dateTime > now && gig.status !== 'confirmed' && gig.kind === 'Open Mic') && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
                                     <button
                                       onClick={async () => {
+                                          if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                            toast.error('You do not have permission to edit this gig.');
+                                          }
                                           closeOptionsMenu();
                                           const newStatus = gig.openMicApplications ? false : true;
                                           try {
@@ -691,17 +710,34 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           )}
                                       </button>
                                   )}
-                                  <button onClick={() => { closeOptionsMenu(); handleCloneAsTemplate(gig); }}>
-                                      Make Gig a Template <TemplateIcon />
-                                  </button>
-                                  {gig.privateApplications && (
-                                    <button onClick={() => { closeOptionsMenu(); copyToClipboard(gig.privateApplicationsLink); }}>
+                                  {hasVenuePerm(venues, gig.venueId, 'gigs.create') && (
+                                    <button onClick={() => {
+                                      if (!hasVenuePerm(venues, gig.venueId, 'gigs.create')) {
+                                        toast.error('You do not have permission to perform this action.');
+                                      };
+                                      closeOptionsMenu();
+                                      handleCloneAsTemplate(gig);
+                                    }}>
+                                        Make Gig a Template <TemplateIcon />
+                                    </button>
+                                  )}
+                                  {gig.privateApplications && hasVenuePerm(venues, gig.venueId, 'gigs.invite') && (
+                                    <button onClick={() => {
+                                      if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
+                                        toast.error('You do not have permission to perform this action.');
+                                      };
+                                      closeOptionsMenu();
+                                      copyToClipboard(gig.privateApplicationsLink);
+                                      }}>
                                         Copy Private Link <LinkIcon />
                                     </button>
                                   )}
-                                  {gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' ? (
+                                  {gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && hasVenuePerm(venues, gig.venueId, 'gigs.update') ? (
                                       <button 
                                           onClick={() => {
+                                              if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                                toast.error('You do not have permission to delete this gig.');
+                                              }
                                               closeOptionsMenu();
                                               setSelectedGigs([gig.gigId]);
                                               setConfirmType('delete');
@@ -711,9 +747,12 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                               Delete
                                               <DeleteGigIcon />
                                       </button>
-                                  ) : gig.dateTime > now && gig.status === 'confirmed' && (
+                                  ) : gig.dateTime > now && gig.status === 'confirmed' && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
                                         <button 
                                           onClick={() => {
+                                              if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                                toast.error('You do not have permission to delete this gig.');
+                                              }
                                               closeOptionsMenu();
                                               setSelectedGigs([gig.gigId]);
                                               setConfirmType('cancel');

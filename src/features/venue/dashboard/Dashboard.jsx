@@ -95,6 +95,8 @@ export const VenueDashboard = ({ user }) => {
         return unsubscribe;
       }, [user]);
 
+      console.log("rendered", new Date().toLocaleString());
+
     return (
         <>  
             {loading && <LoadingScreen />}
@@ -130,10 +132,10 @@ export const VenueDashboard = ({ user }) => {
                     <Routes>
                         {/* <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} /> */}
                         <Route index path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} user={user} />} />
-                        <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} />} />
+                        <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} venues={venueProfiles} />} />
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
-                        <Route path='my-venues/:venueId' element={<VenuePage user={user}  />} />
+                        <Route path='my-venues/:venueId' element={<VenuePage user={user} venues={venueProfiles} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />

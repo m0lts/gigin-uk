@@ -1,14 +1,32 @@
 import { Timestamp } from 'firebase/firestore';
 
-export const getLocalGigDateTime = (gig) => {
-  const dateObj = gig.date.toDate(); // Firestore Timestamp
-  const [hours, minutes] = gig.startTime.split(':').map(Number);
-  dateObj.setHours(hours);
-  dateObj.setMinutes(minutes);
-  dateObj.setSeconds(0);
-  dateObj.setMilliseconds(0);
-  return dateObj;
-};
+/**
+ * Get the gig's start date/time as a JS Date in the user's local timezone.
+ *
+ * @param {Object} gig - Gig object containing a Firestore Timestamp at `startDateTime`.
+ * @returns {Date|null} - JS Date object or null if missing.
+ */
+export function getLocalGigDateTime(gig) {
+  const v = gig?.startDateTime;
+  if (!v) return null;
+
+  // Firestore Timestamp
+  if (typeof v?.toDate === "function") return v.toDate();
+
+  // Serialized Timestamp-like object
+  if (Number.isFinite(v?.seconds)) return new Date(v.seconds * 1000);
+
+  // ISO string
+  if (typeof v === "string") {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Epoch millis
+  if (typeof v === "number") return new Date(v);
+
+  return null;
+}
 
 /**
  * Filters a list of gigs to only include gigs with a future date.

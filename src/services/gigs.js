@@ -30,31 +30,6 @@ import {
 /*** CREATE OPERATIONS ***/
 
 /**
- * Posts multiple gigs to Firestore and updates the venue's profile with their IDs.
- *
- * @param {string} venueId - The ID of the venue posting the gigs.
- * @param {Array<Object>} gigDocuments - An array of gig objects, each containing a `gigId` field.
- * @returns {Promise<void>}
- */
-
-export const postMultipleGigs = async (venueId, gigDocuments) => {
-  if (!venueId) throw new Error('venueId is required');
-  if (!Array.isArray(gigDocuments) || gigDocuments.length === 0) return;
-  const batch = writeBatch(firestore);
-  const gigIds = [];
-  for (const gig of gigDocuments) {
-    if (!gig?.gigId) throw new Error('Each gig must have a gigId');
-    const gigRef = doc(firestore, 'gigs', gig.gigId);
-    batch.set(gigRef, gig, { merge: false });
-    gigIds.push(gig.gigId);
-  }
-  const uniqueGigIds = [...new Set(gigIds)];
-  const venueRef = doc(firestore, 'venueProfiles', venueId);
-  batch.set(venueRef, { gigs: arrayUnion(...uniqueGigIds) }, { merge: true });
-  await batch.commit();
-};
-
-/**
  * Saves a gig template and updates the associated venue's template list.
  *
  * @param {Object} formData - The gig template form data.

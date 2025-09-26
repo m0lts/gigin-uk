@@ -59,3 +59,10 @@ export function sanitizePermissions(input) {
     out["gigs.read"] = true;
     return out;
 }
+
+export const hasVenuePerm = (venueProfiles, venueId, key) => {
+    const vp = venueProfiles?.find(v => (v.id ?? v.venueId) === venueId);
+    const role = vp?.myMembership?.role;
+    if (role === "owner") return true;
+    return !!vp?.myMembership?.permissions?.[key];
+};

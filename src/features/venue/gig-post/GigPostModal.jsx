@@ -14,7 +14,6 @@ import { GigExtraDetails } from './ExtraDetails';
 import { GigTemplates } from './Templates';
 import { formatISO, addDays, addWeeks, addMonths } from 'date-fns';
 import { GigName } from './Name';
-import { postMultipleGigs } from '@services/gigs';
 import { toast } from 'sonner';
 import { OpenMicGig } from './OpenMic';
 import { TicketedGig } from './TicketedGig';
@@ -28,6 +27,9 @@ import { formatDate } from '../../../services/utils/dates';
 import { inviteToGig } from '../../../services/gigs';
 import Portal from '../../shared/components/Portal';
 import { removeVenueRequest } from '../../../services/venues';
+import { hasVenuePerm } from '../../../services/utils/permissions';
+import { friendlyError } from '../../../services/utils/errors';
+import { postMultipleGigs } from '../../../services/functions';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -510,6 +512,14 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     const handlePostGig = async () => {
         setLoading(true);
         try {
+          const venueId = formData?.venueId;
+          if (!venueId) throw new Error("Missing venueId");
+          const permNeeded = editGigData ? "gigs.update" : "gigs.create";
+          if (!hasVenuePerm(venueProfiles, venueId, permNeeded)) {
+            setLoading(false);
+            toast.error("You don’t have permission to perform this action.");
+            return;
+          }
           const repeatEnabled =
             !!formData.repeatData &&
             formData.repeatData.repeat &&
@@ -624,6 +634,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   budgetValue: slotBudgetValue === undefined ? '£' : slotBudgetValue,
                   gigSlots: groupIds.filter(id => id !== slotGigId),
                   status: 'open',
+                  venueId: formData.venueId,
                   // ✅ Applicants rule: keep on edit, otherwise empty array (must exist)
                   ...(editGigData ? applicantsForEdit : applicantsForNew),
                 };
@@ -666,6 +677,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 budgetValue: getBudgetValue(base.budget),
                 privateApplicationsLink: privateLink,
                 status: 'open',
+                venueId: formData.venueId,
                 ...(editGigData ? applicantsForEdit : applicantsForNew),
               };
       
@@ -674,9 +686,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             }
           }
       
-          await postMultipleGigs(formData.venueId, allGigsToPost);
-      
-          const newGigIds = allGigsToPost.map(g => g.gigId);
+          const newGigIds = await postMultipleGigs(formData.venueId, allGigsToPost);
+
+          // update local state as you already do:
           setVenueProfiles(prev => {
             if (!Array.isArray(prev)) return prev;
             return prev.map(vp => {
@@ -689,6 +701,11 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
           });
       
           if (buildingForMusician && firstGigDoc) {
+
+            if (!hasVenuePerm(venueProfiles, venueId, "gigs.invite")) {
+              throw new Error("Missing permission: gigs.invite");
+            }
+
             const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
             const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
       
@@ -740,14 +757,14 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             setBuildingForMusician(false);
             setBuildingForMusicianData(false);
           }
-      
+          await refreshGigs();
           resetFormData();
           toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
           setGigPostModal(false);
           setLoading(false);
         } catch (error) {
           setLoading(false);
-          toast.error('Error posting gig. Please try again.');
+          toast.error(friendlyError(error));
           console.error('Failed to post gig:', error);
         }
       };

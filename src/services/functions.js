@@ -284,3 +284,37 @@ export async function removeVenueMember(venueId, memberUid) {
   const { data } = await fn({ venueId, memberUid });
   return !!data?.ok;
 }
+
+/**
+ * Posts multiple gigs via Cloud Function (server-side permission + sanitization).
+ * @param {string} venueId
+ * @param {Array<Object>} gigDocuments
+ * @returns {Promise<string[]>} created gig IDs
+ */
+export async function postMultipleGigs(venueId, gigDocuments) {
+  const fn = httpsCallable(functions, "postMultipleGigs");
+  const { data } = await fn({ venueId, gigDocuments });
+  return data?.gigIds || [];
+}
+
+/**
+ * Mark applicants viewed for a gig (server-side guarded).
+ * @param {string} venueId
+ * @param {string} gigId
+ * @param {string[]=} applicantIds - optional; if omitted, marks ALL current applicants
+ * @returns {Promise<void>}
+ */
+export async function markApplicantsViewed(venueId, gigId, applicantIds) {
+  const fn = httpsCallable(functions, "markApplicantsViewed");
+  await fn({ venueId, gigId, applicantIds });
+}
+
+const updateGigDocument = httpsCallable(functions, "updateGigDocument");
+
+export const handleCloseGig = async (gigId) => {
+  await updateGigDocument({ gigId, updates: { status: "closed" } });
+};
+
+export const handleOpenGig = async (gigId) => {
+  await updateGigDocument({ gigId, updates: { status: "open" } });
+};

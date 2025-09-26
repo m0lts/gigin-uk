@@ -15,6 +15,12 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
 
     const navigate = useNavigate();
 
+    const canCreateForVenue = (venue) => {
+        const role = venue?.myMembership?.role || "member";
+        const perms = venue?.myMembership?.permissions || {};
+        return role === "owner" || perms["gigs.create"] === true;
+    };
+
     const handleLocationSelect = (venue) => {
         handleInputChange({
             venueId: venue.venueId,
@@ -75,12 +81,36 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
             </div>
             <div className='body location'>
                 <div className='selections'>
-                    {venueProfiles.map((venue, index) => (
-                        <div className={`card ${formData.venueId === venue.venueId && 'selected'}`} key={index} onClick={() => handleLocationSelect(venue)}>
-                            { getIcon(venue.type, venue.establishment, formData.venueId === venue.venueId) }
-                            <h4 className='text'>{venue.name}</h4>
-                        </div>
-                    ))}
+                {venueProfiles.map((venue, index) => {
+                    const selected = formData.venueId === venue.venueId;
+                    const disabled = !canCreateForVenue(venue);
+
+                    const onSelect = () => {
+                    if (disabled) return; // no-op if user lacks permission
+                    handleLocationSelect(venue);
+                    };
+
+                    return (
+                    <div
+                        key={index}
+                        className={`card ${selected ? "selected" : ""} ${disabled ? "disabled" : ""}`}
+                        onClick={onSelect}
+                        aria-disabled={disabled}
+                        title={disabled ? "You don’t have permission to post gigs for this venue." : ""}
+                        role="button"
+                        tabIndex={disabled ? -1 : 0}
+                        onKeyDown={(e) => {
+                        if (!disabled && (e.key === "Enter" || e.key === " ")) onSelect();
+                        }}
+                    >
+                        {getIcon(venue.type, venue.establishment, selected)}
+                        <h4 className='text'>{venue.name}</h4>
+                        {disabled && (
+                        <small className="card-note">You don’t have permission to post gigs for this venue.</small>
+                        )}
+                    </div>
+                    );
+                })}
                 </div>
                 {error && (
                     <div className="error-cont">

@@ -14,44 +14,62 @@ const getOrdinalSuffix = (day) => {
 };
 
 /**
- * Formats a Firestore Timestamp or JavaScript Date into various readable formats
- * @param {Timestamp | Date} input - Firestore Timestamp or JS Date
- * @param {'long' | 'short' | 'withTime'} format - Desired format
- * @returns {string} Formatted date string
+ * Formats a date-like value into various readable formats.
+ * Accepts:
+ *  - Firestore Timestamp (has .toDate())
+ *  - { seconds, nanoseconds } object
+ *  - ISO string
+ *  - JS Date
+ *
+ * @param {any} input
+ * @param {'long' | 'short' | 'withTime'} format
+ * @returns {string}
  */
 export const formatDate = (input, format = 'long') => {
-  let date;
-
-  // Handle Firestore Timestamp or JS Date
-  if (input && typeof input.toDate === 'function') {
-      date = input.toDate(); // Firestore Timestamp
-  } else if (input instanceof Date) {
-      date = input; // JS Date
-  } else {
-      return 'Invalid date';
-  }
-
-  const day = date.getDate();
-  const dayPadded = String(day).padStart(2, '0');
-  const month = date.getMonth() + 1;
-  const monthPadded = String(month).padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-
-  const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
-  const monthName = date.toLocaleDateString('en-GB', { month: 'long' });
-
-  switch (format) {
+    if (!input) return '—';
+  
+    let date = null;
+  
+    // Firestore Timestamp
+    if (input && typeof input.toDate === 'function') {
+      date = input.toDate();
+    }
+    // Timestamp-like object from CF/REST
+    else if (typeof input === 'object' && input !== null && typeof input.seconds === 'number') {
+      date = new Date(input.seconds * 1000);
+    }
+    // ISO string or anything Date can parse
+    else if (typeof input === 'string' || typeof input === 'number') {
+      const d = new Date(input);
+      if (!isNaN(d.getTime())) date = d;
+    }
+    // JS Date
+    else if (input instanceof Date) {
+      date = input;
+    }
+  
+    if (!date) return 'Invalid date';
+  
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const day = date.getDate();
+    const dayPadded = pad2(day);
+    const monthPadded = pad2(date.getMonth() + 1);
+    const year = date.getFullYear();
+    const hours = pad2(date.getHours());
+    const minutes = pad2(date.getMinutes());
+    const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
+    const monthName = date.toLocaleDateString('en-GB', { month: 'long' });
+  
+    switch (format) {
       case 'short':
-          return `${dayPadded}/${monthPadded}/${year}`;
+        return `${dayPadded}/${monthPadded}/${year}`;
       case 'withTime':
-          return `${dayPadded}/${monthPadded}/${year} - ${hours}:${minutes}`;
+        return `${dayPadded}/${monthPadded}/${year} - ${hours}:${minutes}`;
       case 'long':
       default:
-          return `${weekday} ${day}${getOrdinalSuffix(day)} ${monthName}`;
-  }
-};
+        return `${weekday} ${day}${getOrdinalSuffix(day)} ${monthName}`;
+    }
+  };
 
 /**
  * Formats a timestamp into a readable weekday + date string
@@ -91,3 +109,11 @@ export const formatFeeDate = (timestamp) => {
 
   return `${day}/${month}/${year} - ${hours}:${minutes}`;
 };
+
+export function toJsDate(v) {
+    if (!v) return null;
+    if (typeof v.toDate === 'function') return v.toDate(); // Firestore Timestamp
+    if (v instanceof Date) return new Date(v);
+    const d = new Date(v); // ISO or millis
+    return Number.isNaN(d.getTime()) ? null : d;
+  }

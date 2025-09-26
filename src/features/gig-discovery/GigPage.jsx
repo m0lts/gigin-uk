@@ -46,6 +46,7 @@ import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
 import { notifyOtherApplicantsGigConfirmed } from '../../services/conversations';
+import { getLocalGigDateTime } from '../../services/utils/filtering';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId } = useParams();
@@ -88,18 +89,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           setWidth('95%');
         }
     });
-
-    const getLocalGigDateTime = (gig) => {
-        if (gig) {
-            const dateObj = gig.date.toDate();
-            const [hours, minutes] = gig.startTime.split(':').map(Number);
-            dateObj.setHours(hours);
-            dateObj.setMinutes(minutes);
-            dateObj.setSeconds(0);
-            dateObj.setMilliseconds(0);
-            return dateObj;
-        }
-      };
 
     useMapbox({
         containerRef: mapContainerRef,
@@ -409,15 +398,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
                 text: musicianProfile.bandProfile
-                ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`
-                : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`,                profileId: musicianProfile.musicianId,
+                ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.startDateTime)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`
+                : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.startDateTime)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`,                profileId: musicianProfile.musicianId,
                 profileType: musicianProfile.bandProfile ? 'band' : 'musician',
             });
             await sendGigApplicationEmail({
                 to: venueProfile.email,
                 musicianName: musicianProfile.name,
                 venueName: gigData.venue.venueName,
-                date: formatDate(gigData.date),
+                date: formatDate(gigData.startDateTime),
                 budget: gigData.budget,
                 profileType: musicianProfile.bandProfile ? 'band' : 'musician',
                 nonPayableGig,
@@ -526,7 +515,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     senderId: user.uid,
                     oldFee: gigData.budget,
                     newFee: newOffer,
-                    text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${venueName}`,
+                    text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.startDateTime)} at ${venueName}`,
                     profileId: musicianProfile.musicianId,
                     profileType
                 });
@@ -536,7 +525,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     venueName,
                     oldFee: gigData.budget,
                     newFee: newOffer,
-                    date: formatDate(gigData.date),
+                    date: formatDate(gigData.startDateTime),
                     profileType
                 });
             }
@@ -927,29 +916,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         </div>
                                     </div>
                                 )}
-                                {/* {similarGigs.length > 0 && (
-                                    <div className='similar-gigs'>
-                                        <h4 className='subtitle'>More Gigs</h4>
-                                        <div className='similar-gigs-list'>
-                                            {similarGigs.map(gig => (
-                                                <div key={gig.id} className='similar-gig-item' onClick={() => openGig(gig.id)}>
-                                                    <div className='similar-gig-item-venue'>
-                                                        <figure className='similar-gig-img'>
-                                                            <img src={gig.venue.photo} alt={gig.venue.venueName} />
-                                                        </figure>
-                                                        <div className='similar-gig-info'>
-                                                            <h4>{gig.venue.venueName}</h4>
-                                                            <p>{formatDate(gig.date)}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className='similar-gig-budget'>
-                                                        <h3>{gig.budget}</h3>
-                                                    </div>
-                                                </div>                                            
-                                            ))}
-                                        </div>
-                                    </div>
-                                )} */}
                             </div>
                             <div className="sticky-right">
                                 <div className='action-box'>
@@ -982,7 +948,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                     </div>
                                     <div className='action-box-date-and-time'>
                                         <div className='action-box-date'>
-                                            <h3>{formatDate(gigData.date)}, {gigData.startTime}</h3>
+                                            <h3>{formatDate(gigData.startDateTime, 'withTime')}</h3>
                                         </div>
                                     </div>
                                     {/* {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig' && !venueVisiting) && (

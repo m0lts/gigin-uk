@@ -29,8 +29,9 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { AddStaffModal } from '../components/AddStaffModal';
 import { StaffPermissionsModal } from '../components/StaffPermissionsModal';
 import { fetchVenueMembersWithUsers } from '../../../services/venueMembers';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 
-export const VenuePage = ({ user }) => {
+export const VenuePage = ({ user, venues }) => {
     const navigate = useNavigate();
     const { venueId } = useParams();
     const [venueData, setVenueData] = useState(null);
@@ -322,19 +323,23 @@ export const VenuePage = ({ user }) => {
                                     <NewTabIcon />
                                 </button>
                             </li>
-                            <li className="settings-item">
-                                <button className="btn secondary" onClick={() => handleEditVenue(venueData)}>
-                                    Edit Venue Profile
-                                    <EditIcon />
-                                </button>
-                            </li>
-                            <li className="settings-item">
-                                <button className="btn secondary" onClick={() => setShowAddStaffModal(true)}>
-                                    Add Staff to Venue
-                                    <AddMember />
-                                </button>
-                            </li>
-                            {venueData.members.length > 1 && (
+                            {hasVenuePerm(venues, venueId, 'venue.update') && (
+                                <li className="settings-item">
+                                    <button className="btn secondary" onClick={() => handleEditVenue(venueData)}>
+                                        Edit Venue Profile
+                                        <EditIcon />
+                                    </button>
+                                </li>
+                            )}
+                            {hasVenuePerm(venues, venueId, 'members.invite') && (
+                                <li className="settings-item">
+                                    <button className="btn secondary" onClick={() => setShowAddStaffModal(true)}>
+                                        Add Staff to Venue
+                                        <AddMember />
+                                    </button>
+                                </li>
+                            )}
+                            {venueData.members.length > 1 && hasVenuePerm(venues, venueId, 'members.update') && (
                                 <li className="settings-item">
                                     <button className="btn secondary" onClick={() => setShowPermissionsModal(true)}>
                                         Manage Staff Members
@@ -342,12 +347,14 @@ export const VenuePage = ({ user }) => {
                                     </button>
                                 </li>
                             )}
-                            <li className="settings-item">
-                                <button className="btn danger" onClick={() => handleDeleteVenue(venueData)}>
-                                    Delete Venue
-                                    <DeleteGigIcon />
-                                </button>
-                            </li>
+                            {hasVenuePerm(venues, venueId, 'owner') && (
+                                <li className="settings-item">
+                                    <button className="btn danger" onClick={() => handleDeleteVenue(venueData)}>
+                                        Delete Venue
+                                        <DeleteGigIcon />
+                                    </button>
+                                </li>
+                            )}
                         </ul>
                     </div>
                 </div>
