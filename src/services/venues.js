@@ -15,54 +15,99 @@ import {
   setDoc,
   runTransaction,
   GeoPoint,
-  writeBatch
+  writeBatch,
+  serverTimestamp
 } from 'firebase/firestore';
 import { updateVenueGigsAccountName } from './gigs';
 import { rewriteVenueConversationsAndMessages } from './conversations';
 import { distanceBetween } from 'geofire-common';
+import { PERM_DEFAULTS, PERM_KEYS, isValidPermKey, sanitizePermissions } from './utils/permissions';
+import { v4 as uuid } from "uuid";
 
 /*** CREATE OPERATIONS ***/
 
 /**
- * Creates or updates a venue profile in Firestore.
+ * Creates or updates a venue profile in Firestore and
+ * ensures the creator is added as a member with full permissions.
+ *
+ * - Writes the venue doc (merge).
+ * - If the creator is not already a member, creates
+ *   `venueProfiles/{venueId}/members/{userId}` with all permissions = true.
+ *
+ * NOTE: We do **not** modify the user doc here. You already call
+ * `updateUserDocument(..., { venueProfiles: arrayUnion(venueId) })` outside.
  *
  * @param {string} venueId - The Firestore document ID to use for the venue profile.
  * @param {Object} data - The profile data to set.
- * @param {string} userId - The user ID to associate with this profile.
+ * @param {string} userId - The user ID creating this profile.
  * @returns {Promise<void>}
  */
 export const createVenueProfile = async (venueId, data, userId) => {
-    try {
-      const ref = doc(firestore, 'venueProfiles', venueId);
-      await setDoc(ref, {
+  try {
+    const venueRef = doc(firestore, "venueProfiles", venueId);
+    const memberRef = doc(firestore, "venueProfiles", venueId, "members", userId);
+
+    await setDoc(
+      venueRef,
+      {
         ...data,
         userId,
-      }, { merge: true });
-    } catch (error) {
-      console.error('Error creating venue profile:', error);
-      throw error;
+      },
+      { merge: true }
+    );
+
+    const snap = await getDoc(memberRef);
+    if (!snap.exists()) {
+      const allTruePermissions = Object.fromEntries(
+        Object.keys(PERM_DEFAULTS).map((k) => [k, true])
+      );
+      await setDoc(
+        memberRef,
+        {
+          status: "active",
+          permissions: {
+            ...allTruePermissions,
+            "gigs.read": true,
+          },
+          addedBy: userId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          role: "owner",
+        },
+        { merge: false }
+      );
     }
+  } catch (error) {
+    console.error("Error creating venue profile:", error);
+    throw error;
+  }
 };
 
+
 /**
- * Creates a new venue invite in the global venueInvites collection
+ * Create a venue invite with optional initial permissions.
  * @param {string} venueId
- * @param {string} invitedBy - userId
- * @param {string} invitedEmail - optional
+ * @param {string} invitedByUid
+ * @param {string} email
+ * @param {Record<string, boolean>} permsSparse - sparse map of true keys
  * @returns {Promise<string>} inviteId
  */
-export const createVenueInvite = async (venueId, invitedBy, invitedEmail = '') => {
-  const expiresAt = Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  const docRef = await addDoc(collection(firestore, 'venueInvites'), {
+export async function createVenueInvite(venueId, invitedByUid, email, permissionsInput = PERM_DEFAULTS) {
+  const inviteId = uuid();
+  const permissions = sanitizePermissions(permissionsInput);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await setDoc(doc(firestore, "venueInvites", inviteId), {
     venueId,
-    invitedBy,
-    invitedEmail,
-    status: 'pending',
-    createdAt: Timestamp.now(),
+    invitedBy: invitedByUid,
+    email: email?.trim().toLowerCase() || null,
+    permissions,
+    createdAt: serverTimestamp(),
     expiresAt,
+    status: "pending",
   });
-  return docRef.id;
-};
+
+  return inviteId;
+}
 
 /*** READ OPERATIONS ***/
 
@@ -259,6 +304,49 @@ export const getVenueInviteById = async (inviteId) => {
     throw error;
   }
 };
+
+
+/**
+ * Fetches the current user's membership document for a given venue profile.
+ *
+ * Use this when you already have the venue profile data (to avoid
+ * duplicate Firestore reads) but still need the logged-in user’s
+ * membership details (permissions, status, etc.).
+ *
+ * @async
+ * @function fetchMyVenueMembership
+ * @param {Object} venue - The venue profile object that has already been fetched.
+ * @param {string} uid - The UID of the current authenticated user.
+ * @returns {Promise<Object>} A copy of the venue object with `myMembership` added:
+ *   {
+ *     ...venue,                 // all existing venue fields passed in
+ *     myMembership: {           // current user's membership doc (if exists)
+ *       id: string,
+ *       status: string,
+ *       permissions: Object,
+ *       createdAt: Timestamp,
+ *       updatedAt: Timestamp,
+ *       ...etc
+ *     } | null
+ *   }
+ *
+ * @example
+ * const venueProfilesWithMembership = await Promise.all(
+ *   completeVenues.map((venue) => fetchMyVenueMembership(venue, currentUser.uid))
+ * );
+ */
+export async function fetchMyVenueMembership(venue, uid) {
+  if (!venue?.venueId) return null;
+
+  const myMemberRef = doc(firestore, "venueProfiles", venue.venueId, "members", uid);
+  const myMemberSnap = await getDoc(myMemberRef);
+
+  const myMembership = myMemberSnap.exists()
+    ? { id: myMemberSnap.id, ...myMemberSnap.data() }
+    : null;
+
+  return { ...venue, myMembership };
+}
 
 /*** UPDATE OPERATIONS ***/
 

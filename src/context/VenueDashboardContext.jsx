@@ -3,7 +3,7 @@ import { getGigsByVenueIds } from '@services/gigs';
 import { getTemplatesByVenueIds } from '@services/venues';
 import { fetchStripeCustomerData } from '@services/payments';
 import { subscribeToUpcomingOrRecentGigs } from '@services/gigs';
-import { getVenueRequestsByVenueIds } from '../services/venues';
+import { fetchMyVenueMembership, getVenueRequestsByVenueIds } from '../services/venues';
 
 const VenueDashboardContext = createContext();
 
@@ -38,12 +38,16 @@ export const VenueDashboardProvider = ({ user, children }) => {
     setLoading(true);
     try {
       const { completeVenues, venueIds } = extractVenueInfo(user);
-      setVenueProfiles(completeVenues);
+      const venueProfilesWithMembership = await Promise.all(
+        completeVenues.map((venue) => fetchMyVenueMembership(venue, user.uid))
+      );
+      const safeVenues = venueProfilesWithMembership.filter(Boolean);
+      setVenueProfiles(safeVenues);
       const [gigsRes, templatesRes, requestsRes, stripeRes] = await Promise.all([
         getGigsByVenueIds(venueIds),
         getTemplatesByVenueIds(venueIds),
         getVenueRequestsByVenueIds(venueIds),
-        fetchStripeCustomerData()
+        fetchStripeCustomerData(),
       ]);
       applyGigs(gigsRes);
       setTemplates(templatesRes);

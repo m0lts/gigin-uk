@@ -651,3 +651,73 @@
     width: 50%;
     text-align: center;
 }
+
+.modal.add-staff .modal-content .modal-body .permissions-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:2px;
+}
+
+.modal.add-staff .modal-content .modal-body .permissions-list .permission {
+    display: flex;
+    align-items: center;
+    gap:5px;
+    padding:5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+
+/* STAFF PERMISSIONS MODAL */
+.modal.staff-permissions .modal-content {
+    max-width: 500px;
+    transition: height 200ms linear;
+}
+
+.modal.staff-permissions .modal-body .member-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+}
+
+.modal.staff-permissions .modal-body .member-list .member-list-item {
+    border: 1px solid var(--gn-grey-350);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap:5px;
+    padding:10px;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+
+.modal.staff-permissions .modal-content .modal-body .permissions-list {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap:2px;
+    margin: 1rem 0;
+}
+
+.modal.staff-permissions .modal-content .modal-body .permissions-list .permission {
+    display: flex;
+    align-items: center;
+    gap:5px;
+    padding:5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+
+.modal.staff-permissions .modal-content .back.btn {
+    color: var(--gn-grey-700);
+}
+
+.modal.staff-permissions .modal-content .back.btn .icon {
+    font-size: 1rem;
+    margin-right: 5px;
+}

@@ -270,3 +270,17 @@ export async function acceptVenueInvite(inviteId) {
   const res = await fn({ inviteId });
   return res.data;
 }
+
+// Update permissions
+export async function updateVenueMemberPermissions(venueId, memberUid, newPerms) {
+  const fn = httpsCallable(functions, "updateVenueMemberPermissions");
+  const { data } = await fn({ venueId, memberUid, permissions: newPerms });
+  return !!data?.ok;
+}
+
+// Remove member
+export async function removeVenueMember(venueId, memberUid) {
+  const fn = httpsCallable(functions, "removeVenueMember");
+  const { data } = await fn({ venueId, memberUid });
+  return !!data?.ok;
+}

@@ -2,7 +2,7 @@
 import { callable } from "../../../lib/callable.js";
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { REGION_PRIMARY } from "../../../config/regions.js";
-import { defaultVenueMemberPerms } from "../../../lib/utils/permissions.js";
+import { PERM_DEFAULTS, sanitizePermissions } from "../../../lib/utils/permissions.js";
 
 /**
  * Callable: accept a venue invite and add the caller as a venue member.
@@ -61,14 +61,18 @@ export const acceptVenueInvite = callable(
       return { ok: true, message: "ALREADY_MEMBER", venueId };
     }
 
-    const perms = defaultVenueMemberPerms();
+    const invitedPerms = (invite && typeof invite.permissions === "object")
+      ? invite.permissions
+      : PERM_DEFAULTS;
+
+    const permissions = sanitizePermissions(invitedPerms);
 
     const batch = db.batch();
     batch.set(
       memberRef,
       {
         status: "active",
-        perms,
+        permissions,
         addedBy: invite.invitedBy || null,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -77,7 +81,7 @@ export const acceptVenueInvite = callable(
     );
 
     const userRef = db.doc(`users/${uid}`);
-    batch.set(userRef, {
+    batch.update(userRef, {
       venueProfiles: FieldValue.arrayUnion(venueId),
     });
 

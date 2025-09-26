@@ -83,16 +83,19 @@ export const JoinVenuePage = ({ user, setAuthModal, setAuthType }) => {
 
   const handleJoinVenue = async () => {
     try {
+      setState(s => ({ ...s, loading: true }));
       const result = await acceptVenueInvite(inviteId);
       if (result?.ok) {
         toast.success(`Joined ${state.venue?.name}`);
-        navigate(`/venues/dashboard/my-venues`, { replace: true });
+        navigate(`/`, { replace: true });
       } else {
         toast.error(result?.message || "Failed to join venue");
       }
     } catch (err) {
       console.error(err);
       toast.error("Could not accept invite");
+    } finally {
+      setState(s => ({ ...s, loading: false }));
     }
   };
 
@@ -100,7 +103,6 @@ export const JoinVenuePage = ({ user, setAuthModal, setAuthType }) => {
     return (
       <div className="join-venue-container">
         <LoadingSpinner />
-        <h2>Checking your invite…</h2>
       </div>
     );
   }

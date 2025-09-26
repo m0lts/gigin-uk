@@ -27,6 +27,8 @@ import { deleteFolderFromStorage } from '../../../services/storage';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { AddStaffModal } from '../components/AddStaffModal';
+import { StaffPermissionsModal } from '../components/StaffPermissionsModal';
+import { fetchVenueMembersWithUsers } from '../../../services/venueMembers';
 
 export const VenuePage = ({ user }) => {
     const navigate = useNavigate();
@@ -40,6 +42,7 @@ export const VenuePage = ({ user }) => {
     const [venueToDelete, setVenueToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
     const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+    const [showPermissionsModal, setShowPermissionsModal] = useState(false);
 
     useEffect(() => {
         if (!user) navigate('/');
@@ -50,8 +53,16 @@ export const VenuePage = ({ user }) => {
         const fetchVenue = async () => {
             setLoading(true);
             try {
-              const profile = await getVenueProfileById(venueId);
-              setVenueData(profile);        
+                const [profile, members] = await Promise.all([
+                    getVenueProfileById(venueId),
+                    fetchVenueMembersWithUsers(venueId),
+                  ]);
+            
+                  // Combine into one object
+                  setVenueData({
+                    ...profile,
+                    members, // attach members as an array
+                  });
             } catch (error) {
               console.error('Error loading venue profile:', error);
             } finally {
@@ -323,12 +334,14 @@ export const VenuePage = ({ user }) => {
                                     <AddMember />
                                 </button>
                             </li>
-                            <li className="settings-item">
-                                <button className="btn secondary" onClick={() => navigate('/venues/dashboard/reviews')}>
-                                    Manage Staff Members
-                                    <SettingsIcon />
-                                </button>
-                            </li>
+                            {venueData.members.length > 1 && (
+                                <li className="settings-item">
+                                    <button className="btn secondary" onClick={() => setShowPermissionsModal(true)}>
+                                        Manage Staff Members
+                                        <SettingsIcon />
+                                    </button>
+                                </li>
+                            )}
                             <li className="settings-item">
                                 <button className="btn danger" onClick={() => handleDeleteVenue(venueData)}>
                                     Delete Venue
@@ -350,6 +363,12 @@ export const VenuePage = ({ user }) => {
             {showAddStaffModal && (
                 <Portal>
                     <AddStaffModal user={user} venue={venueData} onClose={() => setShowAddStaffModal(false)} />
+                </Portal>
+            )}
+
+            {showPermissionsModal && (
+                <Portal>
+                    <StaffPermissionsModal user={user} venue={venueData} onClose={() => setShowPermissionsModal(false)} />
                 </Portal>
             )}
 

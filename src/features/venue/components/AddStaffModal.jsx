@@ -4,14 +4,19 @@ import { sendVenueInviteEmail } from "../../../services/emails";
 import { toast } from "sonner";
 import { LoadingSpinner } from "../../shared/ui/loading/Loading";
 import { AddMember } from "../../shared/ui/extras/Icons";
+import { PERMS_DISPLAY, PERM_DEFAULTS, PERM_KEYS } from "../../../services/utils/permissions";
 
 export const AddStaffModal = ({user, venue, onClose}) => {
 
     const [emailToInvite, setEmailToInvite] = useState('');
     const [loading, setLoading] = useState(false);
+    const [permissions, setPermissions] = useState(PERM_DEFAULTS);
+    const [showPermissions, setShowPermissions] = useState(false);
+
+    const togglePerm = (key) => setPermissions((p) => ({ ...p, [key]: !p[key] }));
 
     const generateInviteLink = async () => {
-        const inviteId = await createVenueInvite(venue.id, user.uid);
+        const inviteId = await createVenueInvite(venue.id, user.uid, emailToInvite, permissions);
         return `${window.location.origin}/join-venue?invite=${inviteId}`;
     };
 
@@ -60,6 +65,32 @@ export const AddStaffModal = ({user, venue, onClose}) => {
                                 onChange={(e) => setEmailToInvite(e.target.value)}
                                 className="input"
                             />
+
+                            <button className="btn text" onClick={() => setShowPermissions(!showPermissions)}>
+                                {showPermissions ? 'Hide Permissions' : 'Edit Member Permissions'}
+                            </button>
+
+                            {showPermissions && (
+                                <div className="permissions-list">
+                                    <label className="permission">
+                                        <input type="checkbox" checked readOnly disabled />
+                                        View gigs
+                                    </label>
+    
+                                    {/* Selectable perms */}
+                                    {Object.keys(PERMS_DISPLAY).map((key) => (
+                                        <label key={key} className="permission">
+                                            <input
+                                            type="checkbox"
+                                            checked={!!permissions[key]}
+                                            onChange={() => togglePerm(key)}
+                                            />
+                                            {PERMS_DISPLAY[key]}
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                            
                             <button className="btn primary email" onClick={handleSendEmailInvite}>
                                 Send Invite
                             </button>
