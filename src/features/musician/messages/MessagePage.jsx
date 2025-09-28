@@ -20,6 +20,7 @@ import { openInNewTab } from '@services/utils/misc';
 import { formatDate } from '@services/utils/dates';
 import { ArchiveIcon, InboxIcon, SaveIcon, SendMessageIcon } from '@features/shared/ui/extras/Icons';
 import { updateConversationDocument } from '@services/conversations';
+import { ConversationItem } from './ConversationItem';
 
 export const MessagePage = () => {
 
@@ -54,15 +55,10 @@ export const MessagePage = () => {
     }, [user]);
 
     const activeConversation = useMemo(() => {
-        if (showArchived) {
-            if (!paramsConversationId || archivedConversations.length === 0) return null;
-            return archivedConversations.find(c => c.id === paramsConversationId) || null;
-        }
-        if (!showArchived) {
-            if (!paramsConversationId || conversations.length === 0) return null;
-            return conversations.find(c => c.id === paramsConversationId) || null;
-        }
-    }, [conversations, paramsConversationId]);
+        const list = showArchived ? archivedConversations : conversations;
+        if (!paramsConversationId || list.length === 0) return null;
+        return list.find(c => c.id === paramsConversationId) || null;
+      }, [showArchived, archivedConversations, conversations, paramsConversationId]);
 
     useEffect(() => {
         if (!user || !activeConversation) return;
@@ -74,17 +70,18 @@ export const MessagePage = () => {
           );
         }
     }, [activeConversation, user]);
-    
+
     useEffect(() => {
-        if (!paramsConversationId && conversations.length > 0) {
-          navigate(`/messages?conversationId=${conversations[0].id}`);
+        const list = showArchived ? archivedConversations : conversations;
+        if (!paramsConversationId && list.length > 0) {
+          navigate(`/messages?conversationId=${list[0].id}`);
         }
-    }, [paramsConversationId, conversations, navigate]);
+      }, [showArchived, archivedConversations, conversations, paramsConversationId, navigate]);
+    
 
     const handleSelectConversation = async (conversationId, musicianId, gigId) => {
         navigate(`/messages?conversationId=${conversationId}`);
         await updateConversationLastViewed(conversationId, user.uid);
-        await markGigApplicantAsViewed(gigId, musicianId);
     };
 
     const handleArchiveConversation = async (conversation, shouldArchive) => {
@@ -113,97 +110,23 @@ export const MessagePage = () => {
                         </button>
                     </div>
                     <ul className='conversations-list'>
-                        {conversations.length > 0 || archivedConversations.length > 0 ? (
+                        {(showArchived ? archivedConversations : conversations).length > 0 ? (
                             (showArchived ? archivedConversations : conversations).map(conversation => {
-                                const isBandConversation = conversation.bandConversation;
+                            const isActive = !!(activeConversation && conversation.id === activeConversation.id);
 
-                                const bandAccount = isBandConversation
-                                    ? conversation.accountNames.find(account => account.role === 'band')
-                                    : null;
-
-                                const musicianAccount = conversation.accountNames.find(account => account.role === 'musician');
-
-                                const yourParticipantIds = conversation.accountNames
-                                    .filter(account => account.accountId === user.uid)
-                                    .map(account => account.participantId);
-
-                                const otherParticipant = conversation.accountNames.find(
-                                    account => !yourParticipantIds.includes(account.participantId) &&
-                                            (account.role === 'venue' || account.role === 'band' || account.role === 'musician')
-                                );
-
-                                const musicianId = isBandConversation
-                                    ? bandAccount?.participantId
-                                    : musicianAccount?.participantId;
-
-                                const hasUnreadMessages =
-                                    conversation.lastMessageTimestamp?.seconds > (conversation.lastViewed?.[user.uid]?.seconds || 0) &&
-                                    conversation?.lastMessageSenderId !== user.uid &&
-                                    !location.pathname.includes(conversation.id);
-                                
-                                return (
-                                    <li className={`conversation ${(activeConversation && conversation.id === activeConversation.id) ? 'active' : ''}`} key={conversation.id} onClick={() => handleSelectConversation(conversation.id, musicianId, conversation.gigId)}>
-                                        <div className='conversation-icon'>
-                                            {otherParticipant?.role === 'venue' ? (
-                                                    otherParticipant.venueImg ? (
-                                                        <img className='participant-img' src={otherParticipant.venueImg} alt='Venue' />
-                                                    ) : (
-                                                        <HouseIconLight />
-                                                    )
-                                            ) : (
-                                                    otherParticipant?.musicianImg ? (
-                                                        <img className='participant-img' src={otherParticipant.musicianImg} alt='Venue' />
-                                                    ) : (
-                                                        <MicrophoneIcon />
-                                                    )
-                                            )}
-                                        </div>
-                                        <div className='conversation-text'>
-                                            <div className='conversation-title'>
-                                                <div className='conversation-title-text'>
-                                                    <h3>{otherParticipant?.role === 'venue' ? otherParticipant?.accountName : 'Venue'}</h3>
-                                                    <h4>{otherParticipant.venueName}</h4>
-                                                </div>
-                                                {showArchived ? (
-                                                    <button
-                                                    className='btn text'
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleArchiveConversation(conversation, false); // Restore to inbox
-                                                    }}
-                                                    >
-                                                    <InboxIcon />
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                    className='btn text'
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleArchiveConversation(conversation, true); // Archive
-                                                    }}
-                                                    >
-                                                    <ArchiveIcon />
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className='conversation-details'>
-                                                <p className='last-message-preview'>
-                                                    {conversation.lastMessage}
-                                                </p>
-                                                <h6 className='conversation-date'>
-                                                    {new Date(conversation?.lastMessageTimestamp?.seconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                                                </h6>
-                                            </div>
-                                        </div>
-                                        {hasUnreadMessages && (
-                                            <div className='notification-dot'>
-                                                <span className="dot"></span>
-                                            </div>
-                                        )}
-                                    </li>
-                                );
+                            return (
+                                <ConversationItem
+                                    key={conversation.id}
+                                    conversation={conversation}
+                                    user={user}
+                                    isActive={isActive}
+                                    onClick={handleSelectConversation}
+                                    showArchived={showArchived}
+                                    handleArchiveConversation={handleArchiveConversation}
+                                />
+                            );
                             })
-                        ) :  (
+                        ) : (
                             <h4>You have no messages.</h4>
                         )}
                     </ul>
@@ -213,16 +136,14 @@ export const MessagePage = () => {
                         <>
                             <div className='top-banner'>
                                 <h3>
-                                    {activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}
+                                    {activeConversation.venueName ??
+                                    activeConversation.accountNames.find(a => a.role === 'venue')?.accountName ??
+                                    'Venue'}
                                 </h3>
                                 <div className='buttons' style={{ display: 'flex', alignItems: 'center', gap:5}}>
-                                    {(activeConversation.accountNames.find(account => account.accountId === user.uid)?.role === 'venue') && (
-                                        <>
-                                            <button className='btn primary' onClick={(e) => openInNewTab(`/${activeConversation.accountNames.find(account => account.role === 'musician' || account.role === 'band')?.participantId}/null`, e)}>
-                                                Musician Profile
-                                            </button>
-                                        </>
-                                    )}
+                                    <button className='btn primary' onClick={(e) => openInNewTab(`/venues/${activeConversation.accountNames.find(account => account.role === 'venue')?.participantId}`, e)}>
+                                        Venue Profile
+                                    </button>
                                     {windowWidth < 1000 && (
                                         <button
                                             className='btn secondary'
@@ -300,5 +221,4 @@ export const MessagePage = () => {
             </div>
         )
     }
-
 }

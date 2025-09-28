@@ -29,7 +29,7 @@ import { hasVenuePerm } from '../../../services/utils/permissions';
 import { handleCloseGig, handleOpenGig } from '../../../services/functions';
 
 
-export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user }) => {
+export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user, refreshGigs }) => {
     const location = useLocation();
     const navigate = useNavigate();
   
@@ -172,6 +172,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           toast.success('Gig Deleted.');
           setConfirmModal(false);
           setSelectedGigs([]);
+          refreshGigs();
         } catch (error) {
           console.error('Failed to delete selected gig:', error);
           toast.error('Failed to delete selected gig. Please try again.');

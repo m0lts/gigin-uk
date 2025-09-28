@@ -20,6 +20,20 @@ import {
 import { formatDate } from './utils/dates';
 import { getBandMembers } from './bands';
 
+/*** HELPERS ***/
+async function fetchActiveVenueMemberUsers(venueId) {
+  const qMembers = query(
+    collection(firestore, "venueProfiles", venueId, "members"),
+    where("status", "==", "active")
+  );
+  const memSnap = await getDocs(qMembers);
+  if (memSnap.empty) return [];
+
+  const userDocPromises = memSnap.docs.map((m) => getDoc(doc(firestore, "users", m.id)));
+  const userDocs = await Promise.all(userDocPromises);
+  return userDocs.filter((d) => d.exists()); // array of DocumentSnapshot
+}
+
 /*** CREATE OPERATIONS ***/
 
 /**
@@ -49,19 +63,36 @@ export const getOrCreateConversation = async (musicianProfile, gigData, venuePro
 
   // Step 2: Build participants + accountNames
   let participants = [gigData.venueId];
-  let accountNames = [
-    {
-      participantId: gigData.venueId,
-      accountName: venueProfile.accountName,
-      accountId: venueProfile.user ? venueProfile.user : venueProfile.userId,
-      role: 'venue',
-      venueName: gigData.venue.venueName,
-      venueImg: venueProfile.photos?.[0] || null,
+  let accountNames = [];
+
+  // 2a) If the venue has multiple members, add each active member (as venue staff) to accountNames
+  try {
+    const activeUsers = await fetchActiveVenueMemberUsers(gigData.venueId);
+    const existingIds = new Set(
+      accountNames
+        .map((a) => a.accountId)
+        .filter(Boolean)
+    );
+    for (const snap of activeUsers) {
+      const uid = snap.id;
+      if (existingIds.has(uid)) continue;
+      const u = snap.data() || {};
+      accountNames.push({
+        participantId: gigData.venueId,
+        accountName: u.name,
+        accountId: uid,
+        role: "venue",
+        accountImg: u.picture || null,
+      });
+      existingIds.add(uid);
     }
-  ];
+  } catch (e) {
+    // Non-fatal—if members fetch fails, we still create the conversation
+    console.warn("Failed to append venue members to accountNames:", e);
+  }
 
   if (isBand) {
-    const bandMembers = await getBandMembers(bandId); // must return full profile including userId and role
+    const bandMembers = await getBandMembers(bandId);
     const memberIds = bandMembers.map((m) => m.musicianProfileId);
     participants.push(...memberIds, bandId);
 
@@ -108,6 +139,8 @@ export const getOrCreateConversation = async (musicianProfile, gigData, venuePro
   // Step 4: Save to Firestore
   const conversationPayload = {
     participants,
+    venueImg: venueProfile.photos?.[0] || null,
+    venueName: gigData.venue.venueName,
     accountNames,
     gigDate: gigData.date,
     gigId: gigData.gigId,

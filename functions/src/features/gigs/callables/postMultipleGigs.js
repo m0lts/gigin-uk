@@ -3,6 +3,7 @@ import { callable } from "../../../lib/callable.js";
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { REGION_PRIMARY } from "../../../config/regions.js";
 import { requirePerm } from "../../../lib/authz.js"; // 
+import { toAdminGeoPoint, toAdminTimestamp, buildStartDateTime } from "../../../lib/utils/typing.js";
 
 const ALLOWED_FIELDS = new Set([
   // venue-bound fields you allow clients to propose
@@ -39,31 +40,60 @@ const ALLOWED_FIELDS = new Set([
 ]);
 
 function sanitizeGig(base, { venueId }) {
-    const out = {};
-    for (const k of Object.keys(base || {})) {
-      if (ALLOWED_FIELDS.has(k)) out[k] = base[k];
-    }
-  
-    // Force/override sensitive fields
-    out.venueId = venueId;
-    out.createdAt = base?.createdAt || Timestamp.now(); // keep original if edit, else now
-    out.status = typeof out.status === "string" ? out.status : "open";
-    out.complete = out.complete === true;
-  
-    // Applicants: preserve on edit, else empty
-    if (Array.isArray(base?.applicants)) {
-      out.applicants = base.applicants;
-    } else {
-      out.applicants = [];
-    }
-  
-    // Defensive: must have gigId
-    if (!out.gigId || typeof out.gigId !== "string") {
-      throw new Error("INVALID_GIG: missing gigId");
-    }
-  
-    return out;
+  const out = {};
+
+  // Copy only allowed keys
+  for (const k of Object.keys(base || {})) {
+    if (ALLOWED_FIELDS.has(k)) out[k] = base[k];
   }
+
+  // Force & normalize sensitive/system fields
+  out.venueId = venueId;
+  out.status = typeof out.status === "string" ? out.status : "open";
+  out.complete = out.complete === true;
+
+  // ⏱ createdAt: keep if valid TS; else server time
+  const createdAtTs = toAdminTimestamp(base?.createdAt);
+  out.createdAt = createdAtTs || FieldValue.serverTimestamp();
+
+  // ⏱ startDateTime: prefer provided TS; else build from (date, startTime)
+  const sdtFromClient = toAdminTimestamp(base?.startDateTime);
+  const sdtFromParts = buildStartDateTime(base?.date, base?.startTime);
+  out.startDateTime = sdtFromClient || sdtFromParts;
+  if (!out.startDateTime) {
+    throw new Error("INVALID_GIG: missing startDateTime");
+  }
+
+  // Optional: normalize `date` to an Admin Timestamp (you keep it for legacy/UI)
+  const dateTs = toAdminTimestamp(base?.date);
+  if (dateTs) out.date = dateTs;
+
+  // 📍 geopoint (accepts various shapes): prefer `geopoint`, else `coordinates`
+  const geo = toAdminGeoPoint(base?.geopoint) || toAdminGeoPoint(base?.coordinates);
+  if (geo) out.geopoint = geo;
+
+  // 💷 budgetValue normalization (number or null)
+  if (out.budgetValue !== null && out.budgetValue !== undefined) {
+    const n = Number(out.budgetValue);
+    out.budgetValue = Number.isFinite(n) ? n : null;
+  } else {
+    out.budgetValue = null;
+  }
+
+  // 👥 applicants: preserve on edit (if array), else ensure empty array
+  if (Array.isArray(base?.applicants)) {
+    out.applicants = base.applicants;
+  } else {
+    out.applicants = [];
+  }
+
+  // Defensive: gigId must exist
+  if (!out.gigId || typeof out.gigId !== "string") {
+    throw new Error("INVALID_GIG: missing gigId");
+  }
+
+  return out;
+}
 
 export const postMultipleGigs = callable(
   { region: REGION_PRIMARY, timeoutSeconds: 60, authRequired: true },

@@ -22,6 +22,34 @@ import { updateConversationDocument } from '@services/conversations';
 import { DeleteGigIcon, DeleteIcon, ErrorIcon, OptionsIcon } from '../../../shared/ui/extras/Icons';
 import Portal from '../../../shared/components/Portal';
 
+// Given a conversation doc, return the venueId (participantId of a venue entry).
+function getVenueIdFromConversation(conv) {
+    const v = (conv?.accountNames || []).find(a => a?.role === 'venue');
+    return v?.participantId || null; // participantId for venue entries is the venueId
+  }
+  
+  // Return the non-venue “other party” (musician or band) account object
+  function getOtherPartyAccount(conv) {
+    if (!conv?.accountNames) return null;
+    return (
+      conv.accountNames.find(a => a?.role === 'band') ||
+      conv.accountNames.find(a => a?.role === 'musician') ||
+      null
+    );
+  }
+  
+  // Return musicianProfileId to use in markGigApplicantAsViewed / message thread
+  function getMusicianProfileId(conv) {
+    const other = getOtherPartyAccount(conv);
+    return other?.participantId || null; // band: bandId, musician: musicianProfileId
+  }
+  
+  // Defensive “last message from me?” check (works even if senderId missing)
+  function lastMessageFromMe(conv, myUid) {
+    const sender = conv?.lastMessageSenderId;
+    return sender && sender === myUid;
+  }
+
 export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles }) => {
     const navigate = useNavigate();
     const [gigData, setGigData] = useState();
@@ -40,18 +68,18 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     });
 
     const conversationsToDisplay = useMemo(() => {
-        return conversations
-          .filter(conv => {
-            const isArchivedMatch = showArchived
-                ? conv.archived?.[user?.uid] === true
-                : conv.archived?.[user?.uid] !== true;
-            const isVenueMatch = selectedVenueId === 'all' || (
-                conv.accountNames.find(p => p.role === 'venue')?.participantId === selectedVenueId
-              );
+        return conversations.filter(conv => {
+          const isArchivedMatch = showArchived
+            ? conv.archived?.[user?.uid] === true
+            : conv.archived?.[user?.uid] !== true;
       
-            return isArchivedMatch && isVenueMatch;
-          })
-    }, [conversations, showArchived, selectedVenueId]);
+          const convVenueId = getVenueIdFromConversation(conv);
+          const isVenueMatch =
+            selectedVenueId === 'all' ? true : convVenueId === selectedVenueId;
+      
+          return isArchivedMatch && isVenueMatch;
+        });
+      }, [conversations, showArchived, selectedVenueId, user?.uid]);
 
     const activeConversation = useMemo(() => {
         if (!paramsConversationId || conversationsToDisplay.length === 0) return null;
@@ -62,18 +90,18 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
         if (!user || conversationsToDisplay.length === 0) return;
       
         if (activeConversation) {
-          const lastViewed = activeConversation.lastViewed?.[user.uid]?.seconds || 0;
-          const lastMessageTime = activeConversation.lastMessageTimestamp?.seconds || 0;
+          const lastViewedSec = activeConversation.lastViewed?.[user.uid]?.seconds || 0;
+          const lastMessageSec = activeConversation.lastMessageTimestamp?.seconds || 0;
       
-          if (lastMessageTime > lastViewed && activeConversation.lastMessageSenderId !== user.uid) {
-            updateConversationLastViewed(activeConversation.id, user.uid).catch(err =>
-              console.error('Error updating last viewed timestamp:', err)
-            );
+          const unseen = lastMessageSec > lastViewedSec && !lastMessageFromMe(activeConversation, user.uid);
+          if (unseen) {
+            updateConversationLastViewed(activeConversation.id, user.uid)
+              .catch(err => console.error('Error updating last viewed timestamp:', err));
           }
         } else if (!paramsConversationId && conversationsToDisplay[0]) {
           navigate(`/venues/dashboard/messages?conversationId=${conversationsToDisplay[0].id}`);
         }
-    }, [activeConversation, conversationsToDisplay, paramsConversationId, user, navigate]);
+      }, [activeConversation, conversationsToDisplay, paramsConversationId, user, navigate]);
 
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -93,12 +121,20 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
           setGigData(found);
           return;
         }
-      }, [activeConversation, venueGigs]);
+    }, [activeConversation, venueGigs]);
 
-    const handleSelectConversation = async (conversationId, musicianId, gigId) => {
+    const handleSelectConversation = async (conversationId) => {
         navigate(`/venues/dashboard/messages?conversationId=${conversationId}`);
-        await updateConversationLastViewed(conversationId, user.uid);
-        await markGigApplicantAsViewed(gigId, musicianId);
+        const conv = conversations.find(c => c.id === conversationId);
+        const musicianId = conv ? getMusicianProfileId(conv) : null;
+        try {
+            await updateConversationLastViewed(conversationId, user.uid);
+            if (musicianId && conv?.gigId) {
+            await markGigApplicantAsViewed(conv.gigId, musicianId);
+            }
+        } catch (e) {
+            console.error('Failed to select conversation:', e);
+        }
     };
 
     const handleArchiveConversation = async (conversation, shouldArchive) => {
@@ -163,10 +199,14 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                             {activeConversation && (
                                 <>
                                     <div className='top-banner'>
-                                        <h3 onClick={(e) => {
-                                                    openInNewTab(`/${activeConversation.accountNames.find(account => account.role === 'musician' || account.role === 'band')?.participantId}/null`, e);
-                                                }}>
-                                            {activeConversation.accountNames.find(account => account.accountId !== user.uid)?.accountName}
+                                        <h3
+                                            onClick={(e) => {
+                                                const other = getOtherPartyAccount(activeConversation);
+                                                if (!other) return;
+                                                openInNewTab(`/${other.participantId}/${activeConversation.gigId || 'null'}`, e);
+                                            }}
+                                            >
+                                            {getOtherPartyAccount(activeConversation)?.accountName || 'Conversation'}
                                             <NewTabIcon />
                                         </h3>
                                         <div className='buttons' style={{ display: 'flex', alignItems: 'center', gap:5}}>
@@ -191,21 +231,12 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                         </div>
                                     </div>
                                     {(() => {
-                                        const isBand = activeConversation.bandConversation;
-                                        const bandAccount = isBand
-                                        ? activeConversation.accountNames.find(account => account.role === 'band')
-                                        : null;
-                                        const musicianAccount = activeConversation.accountNames.find(account => account.role === 'musician');
                                         return (
-                                            <MessageThread 
+                                            <MessageThread
                                                 activeConversation={activeConversation}
                                                 conversationId={activeConversation.id}
                                                 user={user}
-                                                musicianProfileId={
-                                                    isBand
-                                                    ? bandAccount?.participantId
-                                                    : musicianAccount?.participantId
-                                                }
+                                                musicianProfileId={getMusicianProfileId(activeConversation)}
                                                 gigId={activeConversation.gigId}
                                                 gigData={gigData}
                                                 setGigData={setGigData}

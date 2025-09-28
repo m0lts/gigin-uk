@@ -3,6 +3,7 @@ import { callable } from "../../../lib/callable.js";
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { REGION_PRIMARY } from "../../../config/regions.js";
 import { PERM_DEFAULTS, sanitizePermissions } from "../../../lib/utils/permissions.js";
+import { addUserToVenueConversations } from "../../conversations/callables/addUserToVenueConversations.js";
 
 /**
  * Callable: accept a venue invite and add the caller as a venue member.
@@ -58,6 +59,7 @@ export const acceptVenueInvite = callable(
     const memberSnap = await memberRef.get();
     if (memberSnap.exists && memberSnap.get("status") === "active") {
       await inviteRef.delete();
+      await addUserToVenueConversations(venueId, uid);
       return { ok: true, message: "ALREADY_MEMBER", venueId };
     }
 
@@ -97,6 +99,13 @@ export const acceptVenueInvite = callable(
     });
 
     await batch.commit();
+
+    try {
+      await addUserToVenueConversations(venueId, uid);
+    } catch (e) {
+      console.error("addUserToVenueConversations failed:", e);
+    }
+
     return { ok: true, venueId };
   }
 );

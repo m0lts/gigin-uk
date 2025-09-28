@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
@@ -21,9 +21,10 @@ import { getUserByEmail, updateUserDocument } from '../../services/users';
 import { removeVenueIdFromUser, transferVenueOwnership, updateVenueProfileAccountNames } from '../../services/venues';
 import { toast } from 'sonner';
 import Portal from '../shared/components/Portal';
-import { DeleteGigIcon, InviteIconSolid, LogOutIcon, PasswordIcon, UserIcon } from '../shared/ui/extras/Icons';
+import { CameraIcon, DeleteGigIcon, InviteIconSolid, LogOutIcon, PasswordIcon, UserIcon } from '../shared/ui/extras/Icons';
 import { LoadingModal } from '../shared/ui/loading/LoadingModal';
 import { firestore } from '@lib/firebase';
+import { uploadFileToStorage } from '../../services/storage';
 
 export const Account = () => {
     const { user,  } = useAuth();
@@ -308,6 +309,95 @@ export const Account = () => {
         }
     };
 
+    const [preview, setPreview] = useState(user?.picture || user?.photoURL || '');
+    const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState('');
+    const currentObjectUrlRef = useRef(null); // track local object URLs to revoke later
+    const lastSelectedFileRef = useRef(null);  // track last file to avoid double-upload
+  
+    // keep preview in sync if user doc updates elsewhere
+    useEffect(() => {
+      if (user?.picture || user?.photoURL) {
+        setPreview(user.picture || user.photoURL);
+      }
+    }, [user?.picture, user?.photoURL]);
+  
+    // utility: clean up an existing object URL
+    const revokePreviewUrl = () => {
+      if (currentObjectUrlRef.current) {
+        URL.revokeObjectURL(currentObjectUrlRef.current);
+        currentObjectUrlRef.current = null;
+      }
+    };
+  
+    // validate before upload
+    const validateImage = (file) => {
+      if (!file) return 'No file selected.';
+      if (!file.type.startsWith('image/')) return 'Please choose an image file.';
+      const MAX_MB = 8;
+      if (file.size > MAX_MB * 1024 * 1024) return `Image must be smaller than ${MAX_MB}MB.`;
+      return null;
+    };
+  
+    // upload + save + swap preview to CDN URL
+    const uploadAndSave = async (file) => {
+      try {
+        setUploading(true);
+        setError('');
+  
+        // Choose a path. If you prefer the bands path, replace the next line with:
+        // const path = `bands/${formData.bandId}/profileImg/${file.name}`;
+        const path = `users/${user.uid}/profile/${file.name}`;
+  
+        const pictureUrl = await uploadFileToStorage(file, path);
+  
+        // persist on the user document
+        await updateUserDocument(user.uid, {
+          picture: pictureUrl,
+          photoURL: pictureUrl,     // optional: keep both updated
+          lastUpdatedAt: Date.now() // optional: useful for cache-busting
+        });
+  
+        // swap preview to the final hosted URL (and revoke any temp object URL)
+        revokePreviewUrl();
+        setPreview(pictureUrl);
+  
+        // toast.success('Profile photo updated.'); // uncomment if you use toast
+      } catch (e) {
+        console.error('Profile photo upload failed:', e);
+        setError('Failed to upload your image. Please try again.');
+        // toast.error('Failed to upload your image.');
+      } finally {
+        setUploading(false);
+      }
+    };
+  
+    const handleFileChange = (e) => {
+      const file = e.target.files?.[0];
+      const validation = validateImage(file);
+      if (validation) {
+        setError(validation);
+        return;
+      }
+      setError('');
+  
+      // Avoid re-uploading the identical File object
+      if (file === lastSelectedFileRef.current) return;
+      lastSelectedFileRef.current = file;
+  
+      // show local preview immediately
+      revokePreviewUrl();
+      const localUrl = URL.createObjectURL(file);
+      currentObjectUrlRef.current = localUrl;
+      setPreview(localUrl);
+  
+      // kick off upload
+      uploadAndSave(file);
+    };
+  
+    // cleanup on unmount
+    useEffect(() => revokePreviewUrl, []);
+
     if (!user) {
         return <LoadingScreen />;
     } else {
@@ -319,6 +409,32 @@ export const Account = () => {
 
                 <div className='account-settings'>
                     <h2>Account Settings</h2>
+                    <div className="img-settings">
+                        <h3>Profile Picture:</h3>
+
+                        <div className="image-container data-highlight">
+                            <div
+                                className={`image-preview ${!preview ? 'placeholder' : ''}`}
+                                style={{ backgroundImage: preview ? `url(${preview})` : undefined }}
+                                aria-busy={uploading}
+                            >
+                            {!preview && <CameraIcon />}
+                            </div>
+                            <label className="upload-btn btn secondary">
+                                {uploading ? 'Uploading…' : 'Choose Photo'}
+                                <input
+                                    className="input photo"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    disabled={uploading}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
+                        </div>
+
+                        {error && <p className="error-text">{error}</p>}
+                    </div>
                     <div className='name-settings'>
                         <h3>Name:</h3>
                         <div className='data-highlight'>

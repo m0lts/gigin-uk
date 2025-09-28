@@ -17,7 +17,7 @@ import { fetchSavedCards, confirmGigPayment } from '@services/functions';
 import { CalendarIconSolid } from '../../../shared/ui/extras/Icons';
 import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
 import { toast } from 'sonner';
-import { formatDate } from '../../../../services/utils/dates';
+import { formatDate, toJsDate } from '../../../../services/utils/dates';
 import Portal from '../../../shared/components/Portal';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { loadStripe } from '@stripe/stripe-js';
@@ -54,23 +54,28 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         scrollToBottom();
     }, [messages]);
 
+    const resolveGroupByUid = (conversation, uid) => {
+        const entry = (conversation.accountNames || []).find(acc => acc.accountId === uid);
+        if (!entry) return null;
+        const r = (entry.role || '').toLowerCase();
+        if (r === 'venue') return 'venue';
+        if (r === 'musician' || r === 'band' || r === 'band leader' || r === 'band member') return 'band';
+        return null;
+    };
+
     useEffect(() => {
-        if (activeConversation) {
-            const userEntry = activeConversation.accountNames.find(account => account.accountId === user.uid);
-            if (userEntry?.role === 'venue') {
-                setUserRole('venue');
-            } else if (userEntry?.role === 'band') {
-                setUserRole('band');
-            } else {
-                setUserRole('musician');
-            }
-        }
-    }, [activeConversation])
+        if (!activeConversation) return;
+        const group = resolveGroupByUid(activeConversation, user.uid);
+        setUserRole(group === 'venue' ? 'venue' : group === 'band' ? 'band' : 'musician');
+    }, [activeConversation, user?.uid]);
 
     useEffect(() => {
         if (!conversationId) return;
         const unsubscribe = listenToMessages(conversationId, setMessages);
-        return () => unsubscribe();
+        return () => {
+          unsubscribe?.();
+          setMessages([]); // clear when switching threads
+        };
       }, [conversationId]);
 
     const handleSendMessage = async (e) => {
@@ -87,6 +92,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     };
 
+    const now = new Date();
+
+    const ensureFuture = () => {
+        const d = toJsDate(gigData?.startDateTime);
+        if (!d) return false;
+        return d > now;
+    };
+
 
     const handleCounterOffer = (e) => {
         const value = e.target.value.replace(/[^0-9]/g, '');
@@ -97,7 +110,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
@@ -141,7 +154,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();    
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId);
             setGigData(prev => ({
               ...prev,
@@ -169,7 +182,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData(prev => ({
                 ...prev,
@@ -202,7 +215,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData((prevGigData) => ({
                 ...prevGigData,
@@ -231,7 +244,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSendCounterOffer = async (newFee, messageId) => {
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const value = (newFee || '').trim();
             const numericPart = value.replace(/£|\s/g, '');
             const num = Number(numericPart);
@@ -268,7 +281,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
 
     const handleCompletePayment = async () => {
-        if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+        if (!ensureFuture()) return toast.error('Gig is in the past.');
         setLoadingPaymentDetails(true);
         await fetchSavedCardsAndModal();
         setPaymentIntentId(null);
@@ -347,16 +360,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
           console.error('Error updating message in Firestore:', error);
         }
     };
-
-    const toDate = (val) => {
-        if (!val) return null;
-        if (val.toDate) return val.toDate();
-        if (val instanceof Date) return val;
-        const d = new Date(val);
-        return isNaN(d.getTime()) ? null : d;
-      };
       
-    const start = toDate(gigData?.startDateTime);
+    const start = toJsDate(gigData?.startDateTime);
     const durationMs = Number(gigData?.duration || 0) * 60_000;
     const end = start ? new Date(start.getTime() + durationMs) : null;
 
@@ -382,135 +387,100 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
       );
     }
 
+    const resolveAccount = (conversation, senderId) => {
+        if (!conversation || !Array.isArray(conversation.accountNames)) return null;
+        return conversation.accountNames.find(acc => acc.accountId === senderId);
+    };
+
+    const isSystemMessage = (m) => {
+        if (m?.system === true) return true;
+        if (m?.type === 'announcement' || m?.type === 'review') return true;
+        const sysStatuses = new Set(['gig deleted', 'gig booked', 'dispute', 'cancellation', 'payment failed', 'awaiting payment', 'gig confirmed']);
+        if (m?.status && sysStatuses.has(m.status)) return true;
+        return false;
+      };
+
     return (
         <>
         <div className='messages'>
             {messages.length > 0 && (
                 messages.map((message) => {
-                    const getGroupOfParticipant = (participantId) => {
-                        const entry = activeConversation.accountNames.find(acc => acc.accountId === participantId);
-                      
-                        if (!entry) return null;
-                      
-                        const role = entry.role;
-                      
-                        if (
-                          role === 'Band Leader' ||
-                          role === 'Band Member' ||
-                          role === 'band' ||
-                          role === 'musician'
-                        ) {
-                          return 'band';
-                        }
-                      
-                        if (role === 'venue') {
-                          return 'venue';
-                        }
-                      
-                        return null;
-                      };
-            
-                const currentParticipantId = user.uid;
-                const userGroup = getGroupOfParticipant(currentParticipantId);
-            
-                const senderGroup = getGroupOfParticipant(message.senderId);
-                const isSameGroup = senderGroup === userGroup;
+                    const senderAccount = resolveAccount(activeConversation, message.senderId);
+                    const senderName = senderAccount?.accountName || 'Unknown';
+                    const senderImg = senderAccount?.accountImg || senderAccount?.musicianImg || senderAccount?.venueImg || null;
 
-                return (
-                    <div className='message-container' key={message.id}>
-                        <div className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >
-                            {(message.type === 'application' || message.type === 'invitation') && isSameGroup ? (
-                                <>
-                                    <div>
-                                        {message.type === 'application' ? (
+                    const userGroup = resolveGroupByUid(activeConversation, user.uid);
+                    const senderGroup = resolveGroupByUid(activeConversation, message.senderId);
+                    const isSameGroup = senderGroup && userGroup && senderGroup === userGroup;
+
+                    const isSelf = message.senderId === user.uid;
+                    const system = isSystemMessage(message);
+                    const ts = toJsDate(message.timestamp);
+
+                    return (
+                        <div className='message-container' key={message.id}>
+                            {!isSelf && !system && (
+                                <div className="message-sender">
+                                    {senderImg ? (
+                                        <img src={senderImg} alt={senderName} className="sender-avatar" />
+                                    ) : (
+                                        <div className="sender-placeholder">{senderName[0]}</div>
+                                    )}
+                                    <span className="sender-name">{senderName}</span>
+                                </div>
+                            )}
+                            <div
+                                className={[
+                                'message',
+                                message.senderId === user.uid ? 'sent' : 'received',
+                                message.type === 'negotiation' ? 'negotiation' : '',
+                                message.type === 'application' ? 'application' : '',
+                                (message.type === 'announcement' || message.type === 'review') ? 'announcement' : ''
+                                ].join(' ')}
+                            >
+                                {(message.type === 'application' || message.type === 'invitation') && isSameGroup ? (
+                                    <>
+                                        <div>
+                                            {message.type === 'application' ? (
+                                                <div className='accepted-group'>
+                                                    <h4>Gig application sent.</h4>
+                                                    {userRole !== 'venue' && activeConversation.bandConversation ? (
+                                                        <button className='btn primary' onClick={() => navigate(`/dashboard/bands/${activeConversation.accountNames.find(account => account.role === 'band')}`)}>
+                                                            Check Band Profile
+                                                        </button>
+                                                    ) : userRole === 'musician' && (
+                                                        <button className='btn primary' onClick={() => navigate('/dashboard/profile')}>
+                                                            Check my Profile
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                            ) : (
+                                                <>
+                                                    <h4>Gig invitation sent.</h4>
+                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                </>
+                                            )}
+                                        </div>
+                                        {message.status === 'accepted' ? (
                                             <div className='accepted-group'>
-                                                <h4>Gig application sent.</h4>
-                                                {userRole !== 'venue' && activeConversation.bandConversation ? (
-                                                    <button className='btn primary' onClick={() => navigate(`/dashboard/bands/${activeConversation.accountNames.find(account => account.role === 'band')}`)}>
-                                                        Check Band Profile
-                                                    </button>
-                                                ) : userRole === 'musician' && (
-                                                    <button className='btn primary' onClick={() => navigate('/dashboard/profile')}>
-                                                        Check my Profile
-                                                    </button>
-                                                )}
-                                            </div>
-
-                                        ) : (
-                                            <>
-                                                <h4>Gig invitation sent.</h4>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            </>
-                                        )}
-                                    </div>
-                                    {message.status === 'accepted' ? (
-                                        <div className='accepted-group'>
-                                            <div className='status-box'>
-                                                <div className='status confirmed'>
-                                                    <TickIcon />
-                                                    Accepted
+                                                <div className='status-box'>
+                                                    <div className='status confirmed'>
+                                                        <TickIcon />
+                                                        Accepted
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ) : (message.status === 'declined' || message.status === 'countered') ? (
-                                        <>
-                                        <div className='status-box'>
-                                            <div className='status rejected'>
-                                                <RejectedIcon />
-                                                Declined
+                                        ) : (message.status === 'declined' || message.status === 'countered') ? (
+                                            <>
+                                            <div className='status-box'>
+                                                <div className='status rejected'>
+                                                    <RejectedIcon />
+                                                    Declined
+                                                </div>
                                             </div>
-                                        </div>
-                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
-                                            <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
-                                            <h4>Send Counter Offer:</h4>
-                                            <div className='input-group'>
-                                                <input
-                                                    type='text'
-                                                    className='input'
-                                                    value={newCounterOffer}
-                                                    onChange={(e) => handleCounterOffer(e)}
-                                                    placeholder='£'
-                                                />
-                                                <button
-                                                    className='btn primary'
-                                                    onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
-                                                >
-                                                    Send
-                                                </button>
-                                            </div>
-                                        </div>
-                                        )}
-                                        </>
-                                    ) : message.status === 'withdrawn' && (
-                                        <div className='status-box'>
-                                        <div className='status rejected'>
-                                            <RejectedIcon />
-                                            Musician Withdrew Application
-                                        </div>
-                                    </div>
-                                )}
-                                </>
-                            ) 
-                            : (message.type === 'application' || message.type === 'invitation') && !isSameGroup ? (
-                                <>
-                                    <h4>{message.text}</h4>
-                                    {message.status === 'accepted' ? (
-                                        <div className='status-box'>
-                                            <div className='status confirmed'>
-                                                <TickIcon />
-                                                Accepted
-                                            </div>
-                                        </div>
-                                    ) : (message.status === 'declined' || message.status === 'countered' || message.status === 'apps-closed') ? (
-                                        <>
-                                        <div className='status-box'>
-                                            <div className='status rejected'>
-                                                <RejectedIcon />
-                                                Declined
-                                            </div>
-                                        </div>
-                                        {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
-                                            <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
+                                            {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
+                                                <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                 <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>
                                                     <input
@@ -528,18 +498,9 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     </button>
                                                 </div>
                                             </div>
-                                        )}
-                                        </>
-                                    ) : message.status !== 'countered' && message.status !== 'apps-closed' && message.status !== 'withdrawn' ? (
-                                        <div className='two-buttons'>
-                                            <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
-                                                Accept
-                                            </button>
-                                            <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
-                                                Decline
-                                            </button>
-                                        </div>
-                                    ) : message.status === 'withdrawn' && (
+                                            )}
+                                            </>
+                                        ) : message.status === 'withdrawn' && (
                                             <div className='status-box'>
                                             <div className='status rejected'>
                                                 <RejectedIcon />
@@ -547,49 +508,20 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                         </div>
                                     )}
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                </>
-                            ) : 
-                            message.type === 'negotiation' && isSameGroup ? (
-                                <>
-                                    <div className='fees'>
-                                        <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
-                                        <h4>{message.newFee}</h4>
-                                    </div>
-                                    {message.status === 'accepted' ? (
-                                        <div className='status-box'>
-                                            <div className='status confirmed'>
-                                                <TickIcon />
-                                                Accepted
-                                            </div>
-                                        </div>
-                                    ) : message.status === 'declined' && (
-                                        <>
+                                    </>
+                                ) 
+                                : (message.type === 'application' || message.type === 'invitation') && !isSameGroup ? (
+                                    <>
+                                        <h4>{message.text}</h4>
+                                        {message.status === 'accepted' ? (
                                             <div className='status-box'>
-                                                <div className='status rejected'>
-                                                    <RejectedIcon />
-                                                    Declined
+                                                <div className='status confirmed'>
+                                                    <TickIcon />
+                                                    Accepted
                                                 </div>
                                             </div>
-                                        </>
-                                    )}
-                                </>
-                            ) : message.type === 'negotiation' && !isSameGroup ? (
-                                <>
-                                    <h4>{message.text}</h4>
-                                    <div className='fees'>
-                                        <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
-                                        <h4>{message.newFee}</h4>
-                                    </div>
-                                    {message.status === 'accepted' ? (
-                                        <div className='status-box'>
-                                            <div className='status confirmed'>
-                                                <TickIcon />
-                                                Accepted
-                                            </div>
-                                        </div>
-                                    ) : (message.status === 'declined' || message.status === 'countered' || message.status === 'apps-closed') ? (
-                                        <>
+                                        ) : (message.status === 'declined' || message.status === 'countered' || message.status === 'apps-closed') ? (
+                                            <>
                                             <div className='status-box'>
                                                 <div className='status rejected'>
                                                     <RejectedIcon />
@@ -598,201 +530,288 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                             {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
-                                                   <h4>Send Counter Offer:</h4>
-                                                <div className='input-group'>
-                                                    <input
-                                                        type='text'
-                                                        className='input'
-                                                        value={newCounterOffer}
-                                                        onChange={(e) => handleCounterOffer(e)}
-                                                        placeholder='£'
-                                                    />
-                                                    <button
-                                                        className='btn primary'
-                                                        onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
-                                                    >
-                                                        Send
-                                                    </button>
-                                                </div>
+                                                    <h4>Send Counter Offer:</h4>
+                                                    <div className='input-group'>
+                                                        <input
+                                                            type='text'
+                                                            className='input'
+                                                            value={newCounterOffer}
+                                                            onChange={(e) => handleCounterOffer(e)}
+                                                            placeholder='£'
+                                                        />
+                                                        <button
+                                                            className='btn primary'
+                                                            onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
+                                                        >
+                                                            Send
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
-                                        </>
-                                    ) : message.status !== 'withdrawn' ? (
-                                        <div className='two-buttons'>
-                                            <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
-                                                Accept
-                                            </button>
-                                            <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
-                                                Decline
-                                            </button>
-                                        </div>
-                                    ) : message.status === 'withdrawn' && (
-                                        <div className='status-box'>
-                                        <div className='status rejected'>
-                                            <RejectedIcon />
-                                            Musician Withdrew Application
-                                        </div>
-                                    </div>
-                                )}
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                </>
-                            ) : message.type === 'announcement' ? (
-                                <>
-                                {message.status === 'awaiting payment' && userRole === 'venue' && gigData.budget !== '£' && gigData.budget !== '£0' ? (
+                                            </>
+                                        ) : message.status !== 'countered' && message.status !== 'apps-closed' && message.status !== 'withdrawn' ? (
+                                            <div className='two-buttons'>
+                                                <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
+                                                    Accept
+                                                </button>
+                                                <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
+                                                    Decline
+                                                </button>
+                                            </div>
+                                        ) : message.status === 'withdrawn' && (
+                                                <div className='status-box'>
+                                                <div className='status rejected'>
+                                                    <RejectedIcon />
+                                                    Musician Withdrew Application
+                                                </div>
+                                            </div>
+                                        )}
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                    </>
+                                ) : 
+                                message.type === 'negotiation' && isSameGroup ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
-                                        {loadingPaymentDetails || gigData?.status === 'payment processing' ? (
-                                            <LoadingSpinner width={20} height={20} marginTop={16} />
-                                        ) : (
-                                            <button className='btn primary complete-payment' onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
-                                                Complete Payment
-                                            </button>
+                                        <div className='fees'>
+                                            <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
+                                            <h4>{message.newFee}</h4>
+                                        </div>
+                                        {message.status === 'accepted' ? (
+                                            <div className='status-box'>
+                                                <div className='status confirmed'>
+                                                    <TickIcon />
+                                                    Accepted
+                                                </div>
+                                            </div>
+                                        ) : message.status === 'declined' && (
+                                            <>
+                                                <div className='status-box'>
+                                                    <div className='status rejected'>
+                                                        <RejectedIcon />
+                                                        Declined
+                                                    </div>
+                                                </div>
+                                            </>
                                         )}
                                     </>
-                                ) : message.status === 'awaiting payment' && (userRole === 'musician' || userRole === 'band') ? (
+                                ) : message.type === 'negotiation' && !isSameGroup ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
-                                    </>
-                                ) : message.status === 'gig confirmed' ? (
-                                    (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
-                                        <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>{message.text}</h4>
-                                            {gigData && message.text === "The venue has accepted the musician's application." && (
-                                                <AddToCalendarButton
-                                                    event={{
-                                                        title: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} at ${gigData?.venue?.venueName}`,
-                                                        start: start,
-                                                        end: end,
-                                                        description: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} confirmed.`,
-                                                        location: gigData?.venue?.address,
-                                                    }}
-                                                />
-                                            )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
-                                            {gigData && (
-                                                <AddToCalendarButton
-                                                    event={{
-                                                        title: `Gig at ${gigData?.venue?.venueName}`,
-                                                        start: start,
-                                                        end: end,
-                                                        description: `Gig confirmed with fee: ${gigData?.agreedFee}`,
-                                                        location: gigData?.venue?.address,
-                                                    }}
-                                                />
-                                            )}
-                                        </>
-                                    )
-                                ) : message.status === 'payment failed' && userRole === 'venue' ? (
-                                    <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
                                         <h4>{message.text}</h4>
-                                    </>
-                                ) : message.status === 'payment failed' && (userRole === 'musician' || userRole === 'band') ? (
-                                    <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>The gig will be confirmed when the venue has paid the gig fee.</h4>
-                                    </>
-                                ) : message.status === 'cancellation' && message?.cancellingParty !== userRole ? (
-                                    <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text}</h4>
-                                    </>
-                                ) : message.status === 'cancellation' && message?.cancellingParty === userRole ? (
-                                    gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic' ? (
-                                        <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>You cancelled the gig. The gig fee has been refunded to {message?.cancellingParty === 'venue' ? 'your card. Please allow 3-10 days for the refund to be processed' : 'the venue'}.</h4>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                            <h4>You cancelled the gig.</h4>
-                                        </>
-                                    )
-                                ) : message.status === 'dispute' ? (
-                                    <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text}</h4>
-                                    </>
-                                ) : message.status === 'gig deleted' ? (
-                                    <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text}</h4>
-                                    </>
-                                ) : message.status === 'gig booked' && (
-                                    <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                        <h4>{message.text}</h4>
-                                    </>
-                                )}
-                                </>
-                            ) : message.type === 'review' ? (
-                                <>
-                                    {(userRole === 'musician' || userRole === 'band') ? (
-                                        !gigData.musicianHasReviewed ? (
+                                        <div className='fees'>
+                                            <h4 style={{ textDecoration: 'line-through' }}>{message.oldFee}</h4>
+                                            <h4>{message.newFee}</h4>
+                                        </div>
+                                        {message.status === 'accepted' ? (
+                                            <div className='status-box'>
+                                                <div className='status confirmed'>
+                                                    <TickIcon />
+                                                    Accepted
+                                                </div>
+                                            </div>
+                                        ) : (message.status === 'declined' || message.status === 'countered' || message.status === 'apps-closed') ? (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                                <h4>How was your experience? Click the button below to review the venue.</h4>
-                                                <button
-                                                    className='btn primary'
-                                                    onClick={() => setShowReviewModal(true)}
-                                                >
-                                                    {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
-                                                        ? 'Leave a Review'
-                                                        : 'Leave a Review'}
+                                                <div className='status-box'>
+                                                    <div className='status rejected'>
+                                                        <RejectedIcon />
+                                                        Declined
+                                                    </div>
+                                                </div>
+                                                {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
+                                                    <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
+                                                    <h4>Send Counter Offer:</h4>
+                                                    <div className='input-group'>
+                                                        <input
+                                                            type='text'
+                                                            className='input'
+                                                            value={newCounterOffer}
+                                                            onChange={(e) => handleCounterOffer(e)}
+                                                            placeholder='£'
+                                                        />
+                                                        <button
+                                                            className='btn primary'
+                                                            onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
+                                                        >
+                                                            Send
+                                                        </button>
+                                                    </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : message.status !== 'withdrawn' ? (
+                                            <div className='two-buttons'>
+                                                <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
+                                                    Accept
                                                 </button>
+                                                <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
+                                                    Decline
+                                                </button>
+                                            </div>
+                                        ) : message.status === 'withdrawn' && (
+                                            <div className='status-box'>
+                                            <div className='status rejected'>
+                                                <RejectedIcon />
+                                                Musician Withdrew Application
+                                            </div>
+                                        </div>
+                                    )}
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                    </>
+                                ) : message.type === 'announcement' ? (
+                                    <>
+                                    {message.status === 'awaiting payment' && userRole === 'venue' && gigData.budget !== '£' && gigData.budget !== '£0' ? (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
+                                            {loadingPaymentDetails || gigData?.status === 'payment processing' ? (
+                                                <LoadingSpinner width={20} height={20} marginTop={16} />
+                                            ) : (
+                                                <button className='btn primary complete-payment' onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
+                                                    Complete Payment
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : message.status === 'awaiting payment' && (userRole === 'musician' || userRole === 'band') ? (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
+                                        </>
+                                    ) : message.status === 'gig confirmed' ? (
+                                        (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
+                                            <>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                <h4>{message.text}</h4>
+                                                {gigData && message.text === "The venue has accepted the musician's application." && (
+                                                    <AddToCalendarButton
+                                                        event={{
+                                                            title: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} at ${gigData?.venue?.venueName}`,
+                                                            start: start,
+                                                            end: end,
+                                                            description: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} confirmed.`,
+                                                            location: gigData?.venue?.address,
+                                                        }}
+                                                    />
+                                                )}
                                             </>
                                         ) : (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                                <h4>Thank you for submitting your review.</h4>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
+                                                {gigData && (
+                                                    <AddToCalendarButton
+                                                        event={{
+                                                            title: `Gig at ${gigData?.venue?.venueName}`,
+                                                            start: start,
+                                                            end: end,
+                                                            description: `Gig confirmed with fee: ${gigData?.agreedFee}`,
+                                                            location: gigData?.venue?.address,
+                                                        }}
+                                                    />
+                                                )}
                                             </>
                                         )
-                                    ) : (
-                                        !gigData.venueHasReviewed && !gigData.disputeLogged ? (
+                                    ) : message.status === 'payment failed' && userRole === 'venue' ? (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <h4>{message.text}</h4>
+                                        </>
+                                    ) : message.status === 'payment failed' && (userRole === 'musician' || userRole === 'band') ? (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <h4>The gig will be confirmed when the venue has paid the gig fee.</h4>
+                                        </>
+                                    ) : message.status === 'cancellation' && message?.cancellingParty !== userRole ? (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <h4>{message.text}</h4>
+                                        </>
+                                    ) : message.status === 'cancellation' && message?.cancellingParty === userRole ? (
+                                        gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic' ? (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                                <h4>How was your experience? Click the button below to review the musician{gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date() ? ' or if you want to report an issue with the gig and request a refund.' : '.'}</h4>
-                                                <button
-                                                    className='btn primary'
-                                                    onClick={() => setShowReviewModal(true)}
-                                                >
-                                                    {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
-                                                        ? 'Leave a Review / Report Issue'
-                                                        : 'Leave a Review'}
-                                                </button>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                <h4>You cancelled the gig. The gig fee has been refunded to {message?.cancellingParty === 'venue' ? 'your card. Please allow 3-10 days for the refund to be processed' : 'the venue'}.</h4>
                                             </>
-                                        ) : gigData.venueHasReviewed && !gigData.disputeLogged ? (
+                                        ) : (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                                <h4>Thank you for submitting your review.</h4>
-                                            </>
-                                        ) : !gigData.venueHasReviewed && gigData.disputeLogged && (
-                                            <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                                <h4>We have received your report.</h4>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                <h4>You cancelled the gig.</h4>
                                             </>
                                         )
+                                    ) : message.status === 'dispute' ? (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <h4>{message.text}</h4>
+                                        </>
+                                    ) : message.status === 'gig deleted' ? (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <h4>{message.text}</h4>
+                                        </>
+                                    ) : message.status === 'gig booked' && (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <h4>{message.text}</h4>
+                                        </>
                                     )}
-                                </>
-                            ) : (
-                                <>
-                                    <h4>{message.text}</h4>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
-                                </>
-                            )}
+                                    </>
+                                ) : message.type === 'review' ? (
+                                    <>
+                                        {(userRole === 'musician' || userRole === 'band') ? (
+                                            !gigData.musicianHasReviewed ? (
+                                                <>
+                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                    <h4>How was your experience? Click the button below to review the venue.</h4>
+                                                    <button
+                                                        className='btn primary'
+                                                        onClick={() => setShowReviewModal(true)}
+                                                    >
+                                                        {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
+                                                            ? 'Leave a Review'
+                                                            : 'Leave a Review'}
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                    <h4>Thank you for submitting your review.</h4>
+                                                </>
+                                            )
+                                        ) : (
+                                            !gigData.venueHasReviewed && !gigData.disputeLogged ? (
+                                                <>
+                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                    <h4>How was your experience? Click the button below to review the musician{gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date() ? ' or if you want to report an issue with the gig and request a refund.' : '.'}</h4>
+                                                    <button
+                                                        className='btn primary'
+                                                        onClick={() => setShowReviewModal(true)}
+                                                    >
+                                                        {gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date()
+                                                            ? 'Leave a Review / Report Issue'
+                                                            : 'Leave a Review'}
+                                                    </button>
+                                                </>
+                                            ) : gigData.venueHasReviewed && !gigData.disputeLogged ? (
+                                                <>
+                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                    <h4>Thank you for submitting your review.</h4>
+                                                </>
+                                            ) : !gigData.venueHasReviewed && gigData.disputeLogged && (
+                                                <>
+                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                    <h4>We have received your report.</h4>
+                                                </>
+                                            )
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <h4>{message.text}</h4>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                    </>
+                                )}
+                            </div>
+                            <div ref={messagesEndRef} />
                         </div>
-                        <div ref={messagesEndRef} />
-                    </div>
-                )})
-            )}
+                    )})
+                )}
             </div>
             <form className='message-input' onSubmit={handleSendMessage}>
                 <input

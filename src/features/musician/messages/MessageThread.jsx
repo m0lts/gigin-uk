@@ -5,7 +5,6 @@ import {
     SendMessageIcon,
     TickIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/musician/messages.styles.css';
-import { PaymentModal } from '@features/venue/components/PaymentModal'
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useNavigate } from 'react-router-dom';
 import { sendMessage, listenToMessages, sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/messages';
@@ -13,16 +12,13 @@ import { acceptGigOffer, declineGigApplication, updateGigWithCounterOffer } from
 import { getVenueProfileById } from '@services/venues';
 import { getMusicianProfileByMusicianId } from '@services/musicians';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/emails';
-import { fetchSavedCards, confirmGigPayment } from '@services/functions';
 import { toast } from 'sonner';
-import { loadStripe } from '@stripe/stripe-js';
-import { formatDate } from '../../../services/utils/dates';
+import { formatDate, toJsDate } from '../../../services/utils/dates';
 import Portal from '../../shared/components/Portal';
 import AddToCalendarButton from '../../shared/components/AddToCalendarButton';
 import { notifyOtherApplicantsGigConfirmed } from '../../../services/conversations';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { acceptGigOfferOM } from '../../../services/gigs';
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
@@ -31,11 +27,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const [userRole, setUserRole] = useState('');
     const [allowCounterOffer, setAllowCounterOffer] = useState(false);
     const [newCounterOffer, setNewCounterOffer] = useState('');
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [savedCards, setSavedCards] = useState([]);
     const [loadingPaymentDetails, setLoadingPaymentDetails] = useState(false);
-    const [paymentSuccess, setPaymentSuccess] = useState(false);
-    const [makingPayment, setMakingPayment] = useState(false);
     const [paymentMessageId, setPaymentMessageId] = useState();
     const [showReviewModal, setShowReviewModal] = useState(false);
     const navigate = useNavigate();
@@ -263,72 +255,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         }
     };
 
-    const handleCompletePayment = async () => {
-        if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
-        setLoadingPaymentDetails(true);
-        await fetchSavedCardsAndModal();
-    };
-
-    const fetchSavedCardsAndModal = async () => {
-        try {
-            const cards = await fetchSavedCards();
-            setSavedCards(cards);
-            setShowPaymentModal(true);
-        } catch (error) {
-            console.error('Error fetching saved cards:', error);
-            alert('Unable to fetch saved cards.');
-        } finally {
-            setLoadingPaymentDetails(false);
-        }
-    };
-
-    const handleSelectCard = async (cardId) => {
-        setMakingPayment(true);
-        try {
-            const result = await confirmGigPayment({ cardId, gigData, musicianProfileId });
-            if (result.success && result.paymentIntent) {
-                setPaymentSuccess(true);
-                setGigData(prev => ({
-                    ...prev,
-                    applicants: prev.applicants.map(applicant =>
-                        applicant.id === musicianProfileId
-                            ? { ...applicant, status: 'payment processing' }
-                            : applicant
-                    )
-                }));
-                toast.info("Processing your payment...");
-            } else if (result.requiresAction && result.clientSecret) {
-                const stripe = await stripePromise;
-                const { error, paymentIntent } = await stripe.confirmCardPayment(result.clientSecret, { payment_method: result.paymentMethodId || cardId });
-                if (error) {
-                  setPaymentSuccess(false);
-                  toast.error(error.message || 'Authentication failed. Please try another card.');
-                  return;
-                }
-                setPaymentSuccess(true);
-                setGigData(prev => ({
-                    ...prev,
-                    applicants: prev.applicants.map(applicant =>
-                        applicant.id === musicianProfileId
-                            ? { ...applicant, status: 'payment processing' }
-                            : applicant
-                    )
-                }));
-                toast.info('Payment authenticated. Finalizing…');
-                return;
-            } else {
-                setPaymentSuccess(false);
-                toast.error(result.error || 'Payment failed. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error completing payment:', error);
-            setPaymentSuccess(false);
-            toast.error('Payment failed. Please try again.');
-        } finally {
-            setMakingPayment(false);
-        }
-    };
-
     const handleMessageReviewed = async () => {
         try {
           const reviewedMessageId = await updateReviewMessageStatus(conversationId, messages, user.uid);
@@ -357,15 +283,25 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         });
     };
 
-    const toDate = (val) => {
-        if (!val) return null;
-        if (val.toDate) return val.toDate();            // Firestore Timestamp
-        if (val instanceof Date) return val;
-        const d = new Date(val);                         // ISO/string/number
-        return isNaN(d.getTime()) ? null : d;
-      };
+    const resolveAccount = (conversation, uid) => {
+        if (!conversation || !uid) return null;
+        return (
+          conversation.accountNames?.find((a) => a.accountId === uid) || null
+        );
+    };
+    
+    const resolveGroupByUid = (conversation, uid) => {
+        const acc = resolveAccount(conversation, uid);
+        const role = acc?.role;
+        if (!role) return null;
+        if (role === 'venue') return 'venue';
+        if (role === 'band' || role === 'Band Leader' || role === 'Band Member' || role === 'musician') {
+          return 'band';
+        }
+        return null;
+    };
 
-    const start = toDate(gigData?.startDateTime);
+    const start = toJsDate(gigData?.startDateTime);
     const durationMs = Number(gigData?.duration || 0) * 60_000;
     const end = start ? new Date(start.getTime() + durationMs) : null;
 
@@ -390,42 +326,46 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         </div>
       );
     }
+
+    const isSystemMessage = (msg) => {
+        // Treat pure announcements and review prompts as system
+        return msg?.type === 'announcement' || msg?.type === 'review';
+      };
+    
     
     return (
         <>
         <div className='messages'>
             {messages.length > 0 && (
                 messages.map((message) => {
-                    const getGroupOfParticipant = (participantId) => {
-                        const entry = activeConversation.accountNames.find(acc => acc.accountId === participantId);
-                      
-                        if (!entry) return null;
-                      
-                        const role = entry.role;
-                      
-                        if (
-                          role === 'Band Leader' ||
-                          role === 'Band Member' ||
-                          role === 'band' ||
-                          role === 'musician'
-                        ) {
-                          return 'band';
-                        }
-                      
-                        if (role === 'venue') {
-                          return 'venue';
-                        }
-                      
-                        return null;
-                      };
-            
-                const currentParticipantId = user.uid;
-                const userGroup = getGroupOfParticipant(currentParticipantId);
-            
-                const senderGroup = getGroupOfParticipant(message.senderId);
-                const isSameGroup = senderGroup === userGroup;
+                    const senderAccount = resolveAccount(activeConversation, message.senderId);
+                    const senderName = senderAccount?.accountName || 'Unknown';
+                    const senderImg =
+                      senderAccount?.accountImg ||
+                      senderAccount?.musicianImg ||
+                      senderAccount?.venueImg ||
+                      null;
+          
+                    const userGroup = resolveGroupByUid(activeConversation, user.uid);
+                    const senderGroup = resolveGroupByUid(activeConversation, message.senderId);
+                    const isSameGroup = senderGroup && userGroup && senderGroup === userGroup;
+          
+                    const isSelf = message.senderId === user.uid;
+                    const system = isSystemMessage(message);
+                    const ts = toJsDate(message.timestamp);
+
                 return (
                     <div className='message-container' key={message.id}>
+                        {!isSelf && !system && (
+                            <div className="message-sender">
+                            {senderImg ? (
+                                <img src={senderImg} alt={senderName} className="sender-avatar" />
+                            ) : (
+                                <div className="sender-placeholder">{(senderName?.[0] || '•').toUpperCase()}</div>
+                            )}
+                            <span className="sender-name">{senderName}</span>
+                            </div>
+                        )}
                         <div className={`message ${message.senderId === user.uid ? 'sent' : 'received'} ${message.type === 'negotiation' ? 'negotiation' : ''} ${message.type === 'application' ? 'application' : ''} ${message.type === 'announcement' || message.type === 'review' ? 'announcement' : ''}`} >
                             {(message.type === 'application' || message.type === 'invitation') && isSameGroup ? (
                                 <>
@@ -496,7 +436,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                         </div>
                                     )}
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                 </>
                             ) 
                             : (message.type === 'application' || message.type === 'invitation') && !isSameGroup ? (
@@ -555,7 +495,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                         </div>
                                     )}
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                 </>
                             ) : 
                             message.type === 'negotiation' && isSameGroup ? (
@@ -649,13 +589,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                         </div>
                                     )}
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                 </>
                             ) : message.type === 'announcement' ? (
                                 <>
                                 {(gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text}</h4>
                                         {gigData && message.text !== "This gig has been confirmed with another musician. Applications are now closed." && (
                                             <AddToCalendarButton
@@ -671,7 +611,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     </>
                                 ) : message.status === 'awaiting payment' && userRole === 'venue' ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
                                         {loadingPaymentDetails || gigData?.status === 'payment processing' ? (
                                             <LoadingSpinner />
@@ -683,13 +623,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     </>
                                 ) : message.status === 'awaiting payment' && (userRole === 'musician' || userRole === 'band') ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
                                     </>
                                 ) : message.status === 'gig confirmed' ? (
                                     (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                         <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                             <h4>Your application has been accepted by the venue. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
                                             {gigData && (
                                                 <AddToCalendarButton
@@ -705,7 +645,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         </>
                                     ) : (
                                         <>
-                                            <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                             <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 48 hours after the gig has been performed.' : userRole !== 'venue' && activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
                                             {gigData && (
                                                 <AddToCalendarButton
@@ -722,37 +662,37 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     )
                                 ) : message.status === 'payment failed' && userRole === 'venue' ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text}</h4>
                                     </>
                                 ) : message.status === 'payment failed' && (userRole === 'musician' || userRole === 'band') ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>The gig will be confirmed when the venue has paid the gig fee.</h4>
                                     </>
                                 ) : message.status === 'cancellation' && message?.cancellingParty === 'venue' ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text}</h4>
                                     </>
                                 ) : message.status === 'cancellation' && (userRole === 'musician' || userRole === 'band') ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>You cancelled the gig. The gig fee has been refunded to the venue.</h4>
                                     </>
                                 ) : message.status === 'dispute' ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text}</h4>
                                     </>
                                 ) : message.status === 'gig deleted' ? (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text}</h4>
                                     </>
                                 ) : message.status === 'gig booked' && (
                                     <>
-                                        <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text}</h4>
                                     </>
                                 )}
@@ -762,7 +702,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     {(userRole === 'musician' || userRole === 'band') ? (
                                         !gigData?.musicianHasReviewed ? (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                                 <h4>How was your experience? Click the button below to review the venue.</h4>
                                                 <button
                                                     className='btn primary'
@@ -775,14 +715,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </>
                                         ) : (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                                 <h4>Thank you for submitting your review.</h4>
                                             </>
                                         )
                                     ) : (
                                         !gigData?.venueHasReviewed && !gigData?.disputeLogged ? (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                                 <h4>How was your experience? Click the button below to review the musician{gigData.disputeClearingTime && new Date(gigData.disputeClearingTime.toDate()) > new Date() ? ' or if you want to report an issue with the gig and request a refund.' : '.'}</h4>
                                                 <button
                                                     className='btn primary'
@@ -795,12 +735,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </>
                                         ) : gigData?.venueHasReviewed && !gigData?.disputeLogged ? (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                                 <h4>Thank you for submitting your review.</h4>
                                             </>
                                         ) : !gigData?.venueHasReviewed && gigData?.disputeLogged && (
                                             <>
-                                                <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                                 <h4>We have received your report.</h4>
                                             </>
                                         )
@@ -809,7 +749,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                             ) : (
                                 <>
                                     <h4>{message.text}</h4>
-                                    <h6>{new Date(message.timestamp.seconds * 1000).toLocaleString()}</h6>
+                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                 </>
                             )}
                         </div>
@@ -829,21 +769,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 />
                 <button type='submit' className='btn primary'><SendMessageIcon /></button>
             </form>
-            {showPaymentModal && (
-                <Portal>
-                    <PaymentModal 
-                        savedCards={savedCards}
-                        onSelectCard={handleSelectCard}
-                        onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false)}}
-                        gigData={gigData}
-                        setMakingPayment={setMakingPayment}
-                        makingPayment={makingPayment}
-                        setPaymentSuccess={setPaymentSuccess}
-                        paymentSuccess={paymentSuccess}
-                        setSavedCards={setSavedCards}
-                    />
-                </Portal>
-            )}
             {showReviewModal && (
                 <Portal>
                     <ReviewModal

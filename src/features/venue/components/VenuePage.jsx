@@ -25,6 +25,7 @@ import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
+import { toJsDate } from '../../../services/utils/dates';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
@@ -49,43 +50,36 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     useEffect(() => {
         if (!venueId) return;
         const fetchVenueAndGigs = async () => {
-            setLoading(true);
-            try {
-              const profile = await getVenueProfileById(venueId);
-              setVenueData(profile);
-        
-              const gigs = await getGigsByVenueId(venueId);
-              const now = new Date();
-        
-              const futureGigs = gigs
-                .filter(gig => {
-                  const startDateTime = gig.startDateTime?.toDate?.() ?? gig.startDateTime;
-                  const openGigs = gig.status !== 'closed';
-                  return (startDateTime > now) && openGigs;
-                })
-                .sort((a, b) => {
-                  const aDate = a.startDateTime?.toDate?.() ?? a.startDateTime;
-                  const bDate = b.startDateTime?.toDate?.() ?? b.startDateTime;
-                  return aDate - bDate;
-                });
-
-                
-                setVenueGigs(futureGigs);
-                const filterConfirmedGigs = futureGigs
-                .filter(gig => {
-                    const confirmedApplicant = gig.applicants.some(g => g.status === 'confirmed');
-                    return confirmedApplicant;
-                })
-              setConfirmedGigs(filterConfirmedGigs)
-        
-            } catch (error) {
-              console.error('Error loading venue profile or gigs:', error);
-            } finally {
-              setLoading(false);
-            }
-          };
+          setLoading(true);
+          try {
+            const profile = await getVenueProfileById(venueId);
+            setVenueData(profile);
+            const gigs = await getGigsByVenueId(venueId);
+            const now = new Date();
+            const normalized = gigs.map(g => {
+              const dt = toJsDate(g.startDateTime);
+              return {
+                ...g,
+                startDateTimeDate: dt,
+                startDateTimeMs: dt ? dt.getTime() : Number.NaN,
+              };
+            });
+            const futureGigs = normalized
+              .filter(gig => gig.startDateTimeDate && gig.startDateTimeDate > now && gig.status !== 'closed')
+              .sort((a, b) => a.startDateTimeMs - b.startDateTimeMs);
+            setVenueGigs(futureGigs);
+            const confirmed = futureGigs.filter(gig =>
+              Array.isArray(gig.applicants) && gig.applicants.some(a => a.status === 'confirmed')
+            );
+            setConfirmedGigs(confirmed);
+          } catch (error) {
+            console.error('Error loading venue profile or gigs:', error);
+          } finally {
+            setLoading(false);
+          }
+        };
         fetchVenueAndGigs();
-    }, [venueId]);
+      }, [venueId]);
 
     useEffect(() => {
         if (!venueViewing) return;
