@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { subscribeToMusicianProfile, getMusicianProfilesByIds } from '@services/musicians';
+import { subscribeToMusicianProfile, getMusicianProfilesByIds } from '@services/client-side/musicians';
 import { getGigsByIds } from '@services/gigs';
 import { getBandMembers } from '@services/bands';
 import { getBandDataOnly, getBandsByMusicianId } from '../services/bands';
-import { getMusicianProfileByMusicianId } from '../services/musicians';
+import { getMusicianProfileByMusicianId } from '../services/client-side/musicians';
 
 const MusicianDashboardContext = createContext();
 

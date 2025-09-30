@@ -9,10 +9,9 @@ import { Timestamp, arrayUnion } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
 // Your service functions (assumed to exist as per your spec)
-import { updateMusicianProfile } from '@services/musicians';
+import { updateMusicianProfile } from '@services/client-side/musicians';
 import { createBandProfile } from '@services/bands';
-import { createMusicianProfile } from '@services/musicians';
-import { updateUserDocument } from '@services/users';
+import { createMusicianProfile } from '@services/client-side/musicians';
 import { uploadFileToStorage } from '@services/storage';
 import { generateBandPassword } from '@services/utils/validation';
 import { toast } from 'sonner';
@@ -21,8 +20,9 @@ import { uploadProfilePicture } from '../../../services/storage';
 import '@styles/musician/no-profile.styles.css'
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useNavigate } from 'react-router-dom';
-import { getUserById } from '../../../services/users';
-import { getMusicianProfileByMusicianId } from '../../../services/musicians';
+import { getUserById } from '../../../services/client-side/users';
+import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
+import { updateUserArrayField } from '../../../services/function-calls/users';
 
 // Helpers
 const slideVariants = {
@@ -250,7 +250,7 @@ export const NoProfileModal = ({
       
           // 6) Link band to user + creator’s musician profile
           await Promise.all([
-            updateUserDocument(uid, { bands: arrayUnion(bandId) }),
+            updateUserArrayField('bands', 'add', bandId),
             updateMusicianProfile(creatorMusicianId, {
               bands: arrayUnion(bandId),
               onboarded: true,
@@ -344,9 +344,7 @@ export const NoProfileModal = ({
                                           createdAt: Timestamp.now(),
                                         };
                                         await createMusicianProfile(id, payload, user.uid);
-                                        await updateUserDocument(user.uid, {
-                                            musicianProfile: arrayUnion(id)
-                                        })
+                                        await updateUserArrayField('musicianProfile', 'add', id);
                                         handleSelect('musician')
                                     } catch (error) {
                                         console.error(error)
@@ -376,9 +374,7 @@ export const NoProfileModal = ({
                                           createdAt: Timestamp.now(),
                                         };
                                         await createMusicianProfile(id, payload, user.uid);
-                                        await updateUserDocument(user.uid, {
-                                            musicianProfile: arrayUnion(id)
-                                        })
+                                        await updateUserArrayField('musicianProfile', 'add', id);
                                         handleSelect('band')
                                     } catch (error) {
                                         console.error(error)

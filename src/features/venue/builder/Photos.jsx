@@ -144,7 +144,6 @@ const DraggableImage = ({
   };
 
 export const Photos = ({ formData, handleInputChange, stepError, setStepError }) => {
-  console.log(formData)
     const navigate = useNavigate();
     const [images, setImages] = useState(formData.photos || []);
     const [primaryImage, setPrimaryImage] = useState(

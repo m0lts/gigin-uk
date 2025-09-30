@@ -16,26 +16,26 @@ import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { declineGigApplication, deleteGig, updateGigApplicants } from '@services/gigs';
-import { getMusicianProfileByMusicianId, removeGigFromMusician } from '@services/musicians';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { deleteConversationsByGigId, getConversationsByParticipantAndGigId, getOrCreateConversation } from '@services/conversations';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, getMostRecentMessage } from '@services/messages';
-import { removeGigFromVenue } from '@services/venues';
+import { removeGigFromVenue } from '@services/client-side/venues';
 import { confirmGigPayment, fetchSavedCards } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
 import { acceptGigOffer, acceptGigOfferOM, deleteGigAndInformation, logGigCancellation, revertGigAfterCancellationVenue, updateGigDocument } from '../../../services/gigs';
 import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
-import { getVenueProfileById } from '../../../services/venues';
+import { getVenueProfileById } from '../../../services/client-side/venues';
 import { loadStripe } from '@stripe/stripe-js';
-import { sendGigAcceptedEmail, sendGigDeclinedEmail } from '../../../services/emails';
+import { sendGigAcceptedEmail, sendGigDeclinedEmail } from '../../../services/client-side/emails';
 import Portal from '../../shared/components/Portal';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { notifyOtherApplicantsGigConfirmed } from '../../../services/conversations';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { cancelGigAndRefund, markApplicantsViewed } from '../../../services/functions';
 import { postCancellationMessage } from '../../../services/messages';
-import { updateMusicianCancelledGig } from '../../../services/musicians';
+import { updateMusicianCancelledGig } from '../../../services/client-side/musicians';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
@@ -57,7 +57,7 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues }) => {
+export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe }) => {
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -291,7 +291,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues 
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true);
         try {
-            const result = await confirmGigPayment({ cardId, gigData: gigInfo, musicianProfileId });
+            const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
+            const result = await confirmGigPayment({ cardId, gigData: gigInfo, musicianProfileId, customerId });
             if (result.success && result.paymentIntent) {
                 const piId = result?.paymentIntent?.id;
                 if (piId) setWatchPaymentIntentId(piId);
@@ -338,6 +339,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues 
             toast.error('An error occurred while processing the payment. Please try again.');
         } finally {
             setMakingPayment(false);
+            refreshStripe();
         }
     };
 

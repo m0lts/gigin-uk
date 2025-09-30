@@ -18,13 +18,13 @@ export const fetchSavedCards = async () => {
  * @param {Object} options.gigData - The full gig object.
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
-export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId }) => {
+export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId, customerId }) => {
   try {
     if (!gigData?.agreedFee) throw new Error('Missing agreed fee');
     let amount = typeof gigData.agreedFee === 'string'
       ? parseFloat(gigData.agreedFee.replace('£', ''))
       : gigData.agreedFee;
-    const amountToCharge = Math.round(amount * 1.05 * 100);
+    const amountToCharge = Math.round(amount * 1.00 * 100);
     const gigDate = gigData.startDateTime.toDate();
     const confirmPayment = httpsCallable(functions, 'confirmPayment');
     const response = await confirmPayment({
@@ -33,6 +33,7 @@ export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId }) 
       gigData,
       gigDate,
       musicianProfileId,
+      customerId,
     });
     return response.data;
   } catch (error) {
@@ -48,7 +49,7 @@ export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId }) 
  * @param {Object} options.gigData - The full gig object.
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
-export const confirmPaymentIntent = async ({ amountToCharge, gigData, musicianProfileId }) => {
+export const confirmPaymentIntent = async ({ amountToCharge, gigData, musicianProfileId, customerId }) => {
   try {
     if (!amountToCharge) throw new Error('Missing agreed fee');
     const gigDate = gigData.startDateTime.toDate();
@@ -58,6 +59,7 @@ export const confirmPaymentIntent = async ({ amountToCharge, gigData, musicianPr
       gigData,
       gigDate,
       musicianProfileId,
+      customerId,
     });
     return response;
   } catch (error) {
@@ -138,9 +140,9 @@ export const createStripePaymentMethod = async (stripe, cardElement, name, addre
  * @param {string} paymentMethodId - Stripe payment method ID
  * @returns {Promise<boolean>} - Returns true if successful
  */
-export const saveStripePaymentMethod = async (paymentMethodId) => {
+export const saveStripePaymentMethod = async (paymentMethodId, selectedCustomerId) => {
     const savePaymentMethod = httpsCallable(functions, 'savePaymentMethod');
-    const response = await savePaymentMethod({ paymentMethodId });
+    const response = await savePaymentMethod({ paymentMethodId, customerId: selectedCustomerId });
     return response;
 };
 
@@ -149,9 +151,9 @@ export const saveStripePaymentMethod = async (paymentMethodId) => {
  * @param {string} cardId
  * @returns {Promise<Object>}
  */
-export const deleteSavedCard = async (cardId) => {
+export const deleteSavedCard = async (cardId, customerId) => {
   const deleteCard = httpsCallable(functions, 'deleteCard');
-  const response = await deleteCard({ cardId });
+  const response = await deleteCard({ cardId, customerId });
   return response.data;
 };
 
@@ -160,9 +162,9 @@ export const deleteSavedCard = async (cardId) => {
  * @param {string} cardId
  * @returns {Promise<Object>}
  */
-export const changeDefaultCard = async (cardId) => {
+export const changeDefaultCard = async (cardId, customerId) => {
   const defaultCard = httpsCallable(functions, 'setDefaultPaymentMethod');
-  const response = await defaultCard({ paymentMethodId: cardId });
+  const response = await defaultCard({ paymentMethodId: cardId, customerId });
   return response.data;
 };
 
@@ -170,12 +172,11 @@ export const changeDefaultCard = async (cardId) => {
  * Get Stripe customer info, receipts, and saved payment methods.
  * @returns {Promise<{ customer: Object, receipts: Object[], paymentMethods: Object[] }>}
  */
-export const fetchCustomerData = async () => {
+export const fetchCustomerData = async (customerId) => {
   const getCustomerData = httpsCallable(functions, 'getCustomerData');
-  const response = await getCustomerData();
+  const response = await getCustomerData(customerId ? { customerId } : {});
   return response.data;
 };
-
 /**
  * Initiates payout for a musician.
  * @param {string} musicianId

@@ -95,8 +95,8 @@ export const duplicateGig = async (gigId) => {
       ...originalData,
       gigId: newGigId,
       applicants: [],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
       status: 'open',
     };
 
@@ -706,7 +706,7 @@ export const revertGigAfterCancellation = async (gigData, musicianId, cancellati
     batch.set(announcementRef, {
       senderId: "system",
       text: reopenText,
-      timestamp: serverTimestamp(),
+      timestamp: Timestamp.now(),
       type: "announcement",
       status: "reopened",
     });
@@ -714,7 +714,7 @@ export const revertGigAfterCancellation = async (gigData, musicianId, cancellati
     // Reopen conversation meta
     batch.update(convDoc.ref, {
       lastMessage: reopenText,
-      lastMessageTimestamp: serverTimestamp(),
+      lastMessageTimestamp: Timestamp.now(),
       lastMessageSenderId: "system",
       status: "open",
     });

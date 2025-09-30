@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Timestamp } from 'firebase/firestore';
-// import { getVenueProfileById } from '@/services/venues'; // <-- adjust to your path
-import { getVenueProfileById } from '@services/venues'; // example path
-import { getVenueInviteById } from '../../../services/venues';
+// import { getVenueProfileById } from '@/services/client-side/venues'; // <-- adjust to your path
+import { getVenueProfileById } from '@services/client-side/venues'; // example path
+import { getVenueInviteById } from '../../../services/client-side/venues';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { TextLogoLink } from '../../shared/ui/logos/Logos';
 import '@styles/host/join-venue.styles.css';
 import { useAuth } from '../../../hooks/useAuth';
-import { getUserById } from '../../../services/users';
 import { acceptVenueInvite } from '../../../services/functions';
 import { toast } from 'sonner';
 
@@ -66,9 +65,8 @@ export const JoinVenuePage = ({ user, setAuthModal, setAuthType }) => {
                 percentFromTop = 50;
             }
         }
-        const inviter = await getUserById(invite.invitedBy);
         if (!cancelled) {
-          setState({ loading: false, notFound: false, expired: false, venue: venue, percentFromTop: percentFromTop, inviter: inviter });
+          setState({ loading: false, notFound: false, expired: false, venue: venue, percentFromTop: percentFromTop, inviter: invite.invitedByName });
         }
       } catch (err) {
         console.error('Failed to load invite:', err);
@@ -164,7 +162,7 @@ export const JoinVenuePage = ({ user, setAuthModal, setAuthType }) => {
             </div>
         </div>
         <h3>
-            You’ve been invited by {state.inviter.name} to join {state.venue.name}.
+            You’ve been invited by {state.inviter} to join {state.venue.name}.
         </h3>
         <div className="join-venue-options">
             {user ? (

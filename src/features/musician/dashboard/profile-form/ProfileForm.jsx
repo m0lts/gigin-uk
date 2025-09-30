@@ -2,17 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import '@styles/musician/musician-profile.styles.css'
 import { BackgroundMusicIcon, CameraIcon, DownChevronIcon, EditIcon, ErrorIcon, FacebookIcon, InstagramIcon, MediaIcon, MicrophoneIconSolid, MicrophoneLinesIcon, MoreInformationIcon, Mp3Icon, Mp4Icon, MusicianIconSolid, PeopleGroupIconSolid, ProfileIconSolid, SocialMediaIcon, SoundcloudIcon, SpotifyIcon, StarIcon, TickIcon, TwitterIcon, UpChevronIcon, VideoIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
 import { v4 as uuidv4 } from 'uuid';
-import { updateUserDocument } from '@services/users';
-import { createMusicianProfile } from '@services/musicians';
+import { createMusicianProfile } from '@services/client-side/musicians';
 import { uploadProfilePicture, uploadTracks, uploadVideosWithThumbnails } from '@services/storage';
 import { useMusicianDashboard } from '../../../../context/MusicianDashboardContext';
 import { arrayUnion } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { deleteFileFromStorage, uploadFileToStorage, uploadFileWithProgress } from '../../../../services/storage';
-import { sendTestimonialRequestEmail } from '../../../../services/emails';
+import { sendTestimonialRequestEmail } from '../../../../services/client-side/emails';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../../shared/ui/loading/LoadingModal';
 import { updateBandMemberImg } from '../../../../services/bands';
+import { updateUserArrayField } from '../../../../services/function-calls/users';
 
 
 const VideoModal = ({ video, onClose }) => {
@@ -668,9 +668,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
             picture: pictureUrl || null, // keep the URL or newly uploaded URL; null if none
             };
             await createMusicianProfile(formData.musicianId, updatedFormData, user.uid);
-            await updateUserDocument(user.uid, {
-                musicianProfile: arrayUnion(formData.musicianId),
-            });
+            await updateUserArrayField('musicianProfile', 'add', formData.musicianId);
             if (band) {
                 await refreshSingleBand(formData.musicianId);
                 setUploadingProfile(false);

@@ -13,8 +13,8 @@ import { openInNewTab } from '../../../services/utils/misc';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, ExclamationIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SaveIcon, SavedIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
 import { getOrCreateConversation } from '../../../services/conversations';
-import { getVenueProfileById } from '../../../services/venues';
-import { getMusicianProfileByMusicianId, markInviteAsViewed, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateMusicianCancelledGig, withdrawMusicianApplication } from '../../../services/musicians';
+import { getVenueProfileById } from '../../../services/client-side/venues';
+import { getMusicianProfileByMusicianId, markInviteAsViewed, withdrawMusicianApplication } from '../../../services/client-side/musicians';
 import { revertGigApplication } from '../../../services/gigs';
 import { toast } from 'sonner';
 
@@ -227,62 +227,11 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
           }
     }
 
-    // const handleCancelGigApplication = async (musicianId, gigData) => {
-    //     try {
-    //       await updateMusicianCancelledGig(musicianId, gigData.gigId);
-    //       await revertGigApplication(gigData, musicianId);
-      
-    //       setGigs(prev => prev.filter(g => g.gigId !== gigData.gigId));
-    //       setGigApplications(prev => prev.filter(app => app.gigId !== gigData.gigId));
-      
-    //       toast.success('Gig application removed.');
-    //     } catch (error) {
-    //       console.error(error);
-    //       toast.error('Failed to cancel application. Please try again.');
-    //     }
-    // };
-
-    const handleUnSaveGig = async (gig) => {
-        const profileIds = allProfiles.map(p => p.musicianId);
-        setSavedGigs(prev => prev.filter(saved => saved.gigId !== gig.gigId));
-        try {
-          await unSaveGigFromMusicianProfile(gig.gigId, profileIds);
-          toast.success('Gig Unsaved');
-        } catch (error) {
-          console.error(error);
-          setSavedGigs(prev => {
-            const exists = prev.some(saved => saved.gigId === gig.gigId);
-            return exists ? prev : [...prev, gig];
-          });
-          toast.error('Failed to unsave gig. Please try again.');
-        }
-      };
-      
-      const handleSaveGig = async (gig) => {
-        const profileIds = allProfiles.map(p => p.musicianId);
-        setSavedGigs(prev => {
-          const exists = prev.some(saved => saved.gigId === gig.gigId);
-          return exists ? prev : [...prev, gig];
-        });
-        try {
-          await saveGigToMusicianProfile(gig.gigId, profileIds);
-          toast.success('Gig Saved');
-        } catch (error) {
-          console.error(error);
-          setSavedGigs(prev => prev.filter(saved => saved.gigId !== gig.gigId));
-          toast.error('Failed to save gig. Please try again.');
-        }
-      };
-
     return (
         <>
             <div className='head gigs'>
                 <div className='title-container'>
                     <h1 className='title'>Gigs</h1>
-                    {/* <h1 className='title'>{showSavedGigs ? 'Saved Gigs' : 'Gig Applications'}</h1>
-                    <button className="btn primary" onClick={() => setShowSavedGigs(!showSavedGigs)}>
-                        {!showSavedGigs ? 'Saved Gigs' : 'Gig Applications'}
-                    </button> */}
                 </div>
                 <div className='filters'>
                     <div className="status-buttons">

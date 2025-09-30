@@ -41,6 +41,7 @@ export const createGigPaymentIntent = callable(
       musicianProfileId,
       paymentMessageId,
       gigDate,
+      customerId: requestedCustomerId,
     } = request.data || {};
     if (!Number.isInteger(amountToCharge) || amountToCharge <= 0) {
       throw new Error("Missing or invalid amountToCharge (positive integer, minor units).");
@@ -48,7 +49,8 @@ export const createGigPaymentIntent = callable(
     if (!gigData?.gigId) throw new Error("Missing inputs: gigData.gigId is required.");
     const userId = auth.uid;
     const userSnap = await db.collection("users").doc(userId).get();
-    const customerId = userSnap.data()?.stripeCustomerId;
+    const userCustomerId = userSnap.data()?.stripeCustomerId || null;
+    const customerId = requestedCustomerId || userCustomerId;
     if (!customerId) throw new Error("Stripe customer ID not found.");
     const applicantId = musicianProfileId || null;
     let applicantType = "musician";
@@ -92,6 +94,8 @@ export const createGigPaymentIntent = callable(
         applicantType,
         recipientMusicianId: recipientMusicianId,
         paymentMessageId: paymentMessageId,
+        paymentMadeById: userId,
+        paymentMadeByName: userSnap.data()?.name,
       },
     });
     await db.collection("payments").doc(pi.id).set(
@@ -100,7 +104,9 @@ export const createGigPaymentIntent = callable(
         applicantId: applicantId || null,
         recipientMusicianId: recipientMusicianId || null,
         venueId: gigData.venueId || null,
+        payerCustomerId: customerId, 
         status: "requires_confirmation",
+        payerUid: userId,
         createdAt: FieldValue.serverTimestamp(),
         lastCheckedAt: FieldValue.serverTimestamp(),
       },

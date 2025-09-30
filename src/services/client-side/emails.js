@@ -13,8 +13,8 @@ import {
   Timestamp,
   orderBy
 } from 'firebase/firestore';
-import { NextGigIcon } from '../features/shared/ui/extras/Icons';
-import { TextLogo } from '../features/shared/ui/logos/Logos';
+import { NextGigIcon } from '../../features/shared/ui/extras/Icons';
+import { TextLogo } from '../../features/shared/ui/logos/Logos';
 
 /**
  * Sends an email using the Firestore 'mail' collection.

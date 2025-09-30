@@ -3,22 +3,21 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { StarEmptyIcon, StarIcon } from '@features/shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import '@styles/shared/review-modal.styles.css';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '@services/musicians';
-import { getVenueProfileById } from '@services/venues';
-import { logDispute } from '@services/reviews';
+import { getMusicianProfileByMusicianId, findPendingFeeByGigId } from '@services/client-side/musicians';
+import { getVenueProfileById } from '@services/client-side/venues';
 import { updateGigDocument } from '@services/gigs';
 import { sendDisputeMessage } from '@services/messages';
-import { sendEmail } from '@services/emails';
+import { sendEmail } from '@services/client-side/emails';
 import { cancelTask } from '@services/functions';
-import { submitReview } from '../../../services/reviews';
 import { toast } from 'sonner';
-import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/payments';
-import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/emails';
+import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/client-side/emails';
 import Portal from './Portal';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { LoadingModal } from '../ui/loading/LoadingModal';
 import { ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';
+import { logDispute, submitReview } from '../../../services/function-calls/reviews';
+import { markPendingFeeInDispute } from '../../../services/function-calls/musicians';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);
@@ -84,7 +83,10 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                 });
                 const match = await findPendingFeeByGigId(musicianProfile.musicianId, gigData.gigId);
                 if (match) {
-                    await markPendingFeeInDispute(musicianProfile.musicianId, match.docId, {
+                    await markPendingFeeInDispute({
+                        musicianId: musicianProfile.musicianId,
+                        docId: match.docId,
+                        gigId: gigData.gigId,
                         disputeReason,
                         disputeDetails: disputeText || null,
                     });

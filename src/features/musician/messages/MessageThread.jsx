@@ -9,9 +9,9 @@ import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useNavigate } from 'react-router-dom';
 import { sendMessage, listenToMessages, sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/messages';
 import { acceptGigOffer, declineGigApplication, updateGigWithCounterOffer } from '@services/gigs';
-import { getVenueProfileById } from '@services/venues';
-import { getMusicianProfileByMusicianId } from '@services/musicians';
-import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/emails';
+import { getVenueProfileById } from '@services/client-side/venues';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/client-side/emails';
 import { toast } from 'sonner';
 import { formatDate, toJsDate } from '../../../services/utils/dates';
 import Portal from '../../shared/components/Portal';
@@ -82,11 +82,18 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         setNewCounterOffer(`£${value}`)
     }
 
+    const ensureFuture = () => {
+        const now = new Date();
+        const d = toJsDate(gigData?.startDateTime);
+        if (!d) return false;
+        return d > now;
+    };
+
     const handleAcceptGig = async (event, messageId) => {
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
@@ -130,7 +137,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();    
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId);
             setGigData(prev => ({
               ...prev,
@@ -159,7 +166,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData(prev => ({
                 ...prev,
@@ -192,7 +199,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         event.stopPropagation();
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData((prevGigData) => ({
                 ...prevGigData,
@@ -221,7 +228,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSendCounterOffer = async (newFee, messageId) => {
         try {
             if (!gigData) return console.error('Gig data is missing');
-            if (gigData.startDateTime.toDate() < new Date()) return toast.error('Gig is in the past.');
+            if (!ensureFuture()) return toast.error('Gig is in the past.');
             const value = (newFee || '').trim();
             const numericPart = value.replace(/£|\s/g, '');
             const num = Number(numericPart);
@@ -596,7 +603,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 {(gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                     <>
                                         <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                        <h4>{message.text}</h4>
+                                        <h4>{message.text} The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
                                         {gigData && message.text !== "This gig has been confirmed with another musician. Applications are now closed." && (
                                             <AddToCalendarButton
                                                 event={{
@@ -609,28 +616,16 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             />
                                         )}
                                     </>
-                                ) : message.status === 'awaiting payment' && userRole === 'venue' ? (
-                                    <>
-                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                        <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
-                                        {loadingPaymentDetails || gigData?.status === 'payment processing' ? (
-                                            <LoadingSpinner />
-                                        ) : (
-                                            <button className='btn primary complete-payment' onClick={() => {handleCompletePayment(); setPaymentMessageId(message.id)}}>
-                                                Complete Payment
-                                            </button>
-                                        )}
-                                    </>
                                 ) : message.status === 'awaiting payment' && (userRole === 'musician' || userRole === 'band') ? (
                                     <>
                                         <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
                                     </>
                                 ) : message.status === 'gig confirmed' ? (
-                                    (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
+                                    (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig' || gigData?.budget === '£' || gigData?.budget === '£0') ? (
                                         <>
                                             <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                            <h4>Your application has been accepted by the venue. The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
+                                            <h4>{message.text} The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
                                             {gigData && (
                                                 <AddToCalendarButton
                                                     event={{
@@ -660,11 +655,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             )}
                                         </>
                                     )
-                                ) : message.status === 'payment failed' && userRole === 'venue' ? (
-                                    <>
-                                        <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                        <h4>{message.text}</h4>
-                                    </>
                                 ) : message.status === 'payment failed' && (userRole === 'musician' || userRole === 'band') ? (
                                     <>
                                         <h6>{ts ? ts.toLocaleString() : ''}</h6>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CardForm } from '@features/shared/components/CardDetails'
 import { 
   InvoiceIcon,
@@ -8,16 +8,6 @@ import {
 import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
-import { Bar } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-} from 'chart.js';
 import { deleteSavedCard } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
@@ -25,10 +15,8 @@ import { CardIcon, CoinsIconSolid, DeleteGigIcon, HouseIconSolid, PeopleRoofIcon
 import { toast } from 'sonner';
 import { changeDefaultCard } from '../../../services/functions';
 import { useAuth } from '@hooks/useAuth';
-import { updateUserDocument } from '../../../services/users';
+import { updateUserDocument } from '../../../services/client-side/users';
 import Portal from '../../shared/components/Portal';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 
 export const Finances = ({ savedCards, receipts, customerDetails, setStripe, venues }) => {
@@ -49,6 +37,17 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
     setWindowWidth(width);
   });
 
+  const customerLabelMap = useMemo(() => {
+    const map = {};
+    if (customerDetails?.id) map[customerDetails.id] = ': Personal Account';
+    (venues || []).forEach(v => {
+      if (v?.stripeCustomerId) {
+        map[v.stripeCustomerId] = `: ${v.name || v.displayName || v.venueId || v.id}`;
+      }
+    });
+    return map;
+  }, [customerDetails?.id, venues]);
+
 
   const totalExpenditure = receipts.reduce((total, receipt) => total + receipt.amount / 100, 0);
 
@@ -67,9 +66,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       nextCards.sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
       return { ...prev, savedCards: nextCards };
     });
-  
-    // Clear the flag/object once consumed (optional)
-    // setNewCardSaved(null);
+
   }, [newCardSaved, setStripe]);
 
   useEffect(() => {
@@ -114,7 +111,8 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       }
       toast.info('Deleting card...')
       setOpenMenuId(null);
-      const result = await deleteSavedCard(cardId);
+      const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
+      const result = await deleteSavedCard(cardId, customerId);
       if (result.success) {
         toast.success("Card deleted.");
         setStripe((prev) => ({
@@ -133,13 +131,16 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
     try {
       toast.info('Changing default payment method...')
       setOpenMenuId(null);
-      await changeDefaultCard(cardId);
+      const targetCard = savedCards.find(c => c.id === cardId);
+      const customerId = targetCard?.customer || null;
+      await changeDefaultCard(cardId, customerId);
       setStripe((prev) => ({
         ...prev,
-        savedCards: prev.savedCards.map((c) => ({
-          ...c,
-          default: c.id === cardId,
-        })),
+        savedCards: prev.savedCards.map((c) => (
+          c.customer === customerId
+          ? { ...c, default: c.id === cardId }
+          : c
+        )),
       }));
       toast.success("Card set as default.");
     } catch (err) {
@@ -147,6 +148,23 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       console.error(err);
     }
   };
+
+  const getReceiptCardLast4 = (receipt, savedCards = []) => {
+    const fromCharge = receipt?.payment_method_details?.card?.last4;
+    if (fromCharge) return fromCharge;
+    const pmId = receipt?.payment_method;
+    const pm = savedCards.find(c => c?.id === pmId);
+    return pm?.card?.last4 || '----';
+  };
+
+  const getReceiptCardBrand = (receipt, savedCards = []) => {
+    const fromCharge = receipt?.payment_method_details?.card?.brand;
+    if (fromCharge) return fromCharge;
+    const pmId = receipt?.payment_method;
+    const pm = savedCards.find(c => c?.id === pmId);
+    return pm?.card?.brand || 'card';
+  };
+
 
   return (
     <>
@@ -228,7 +246,9 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
               </div>
 
               {card.default && (
-                <span className="card-default">Default</span>
+                <span className="card-default">
+                  Default for{customerLabelMap[card.customer] || 'Selected Account'}
+                </span>
               )}
             </li>
           ))}
@@ -247,6 +267,8 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
               </th>
               <th>Amount</th>
               <th>Venue</th>
+              <th>Payment Made By</th>
+              <th>Payment Method</th>
               <th className='centre'>Status</th>
             </tr>
           </thead>
@@ -258,6 +280,10 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
                     <td>{formatReceiptDate(receipt.created)}</td>
                     <td>£{formatReceiptCharge(receipt.amount)}</td>
                     <td>{receipt.metadata.venueName}</td>
+                    <td>{receipt.metadata.paymentMadeByName}</td>
+                    <td>
+                      {getReceiptCardBrand(receipt, savedCards).toUpperCase()} **** {getReceiptCardLast4(receipt, savedCards)}
+                    </td>
                     <td className={`status-box ${receipt.status}`}>
                       <div className={`status ${receipt.status}`}>
                         {receipt.status}
@@ -280,25 +306,40 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
         </table>
       </div>
   </div>
-    {addCardModal && (
-      <Portal>
-        <div className='modal' onClick={() => setAddCardModal(false)}>
-          <div className='modal-content scrollable'onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <CardIcon />
-              <h2>Add New Payment Method</h2>
-              <p>Save a card to your account to make future gig payments quicker.</p>
-            </div>
-            <div className="modal-body">
-              <CardForm activityType={'adding card'} setSaveCardModal={setAddCardModal} setNewCardSaved={setNewCardSaved} />
-            </div>
-            <button className='btn tertiary close' onClick={() => setAddCardModal(false)}>
-              Close
-            </button>
+  {addCardModal && (
+    <Portal>
+      <div className='modal' onClick={() => setAddCardModal(false)}>
+        <div className='modal-content scrollable' onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <CardIcon />
+            <h2>Add New Payment Method</h2>
+            <p>Save a card to your account or a venue so staff can use it.</p>
           </div>
+          <div className="modal-body">
+            <CardForm
+              activityType="adding card"
+              setSaveCardModal={setAddCardModal}
+              setNewCardSaved={setNewCardSaved}
+              destinationChoices={[
+                ...(customerDetails?.id
+                  ? [{ label: 'My Account', id: customerDetails.id }]
+                  : []),
+                ...((venues || [])
+                  .filter(v => v.stripeCustomerId)
+                  .map(v => ({
+                    label: `Venue: ${v.name || v.displayName || v.id}`,
+                    id: v.stripeCustomerId,
+                  })))
+              ]}
+            />
+          </div>
+          <button className='btn tertiary close' onClick={() => setAddCardModal(false)}>
+            Close
+          </button>
         </div>
-      </Portal>
-    )}
+      </div>
+    </Portal>
+  )}
     {showFirstTimeModal && (
       <Portal>
         <div className='modal' onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>

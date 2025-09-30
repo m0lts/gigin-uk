@@ -8,7 +8,7 @@ import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import Portal from '@features/shared/components/Portal'
-import { sendBandInviteEmail } from '../../../services/emails';
+import { sendBandInviteEmail } from '../../../services/client-side/emails';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, viewing = false, bandAdmin }) => {

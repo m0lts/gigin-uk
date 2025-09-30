@@ -10,7 +10,7 @@ import {
     MicrophoneIcon,
     SpeakersIcon,
     TwitterIcon } from '@features/shared/ui/extras/Icons';
-import { getVenueProfileById } from '@services/venues';
+import { getVenueProfileById } from '@services/client-side/venues';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { toast } from 'sonner';
 import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, VerifiedIcon } from '@icons';
@@ -19,17 +19,19 @@ import { ensureProtocol } from '@services/utils/misc';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { AddMember, DeleteGigIcon, EditIcon, LeftArrowIcon, SettingsIcon, ShareIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '../../../services/utils/misc';
-import { deleteTemplatesByVenueId, deleteVenueProfile, removeVenueIdFromUser } from '../../../services/venues';
+import { deleteTemplatesByVenueId, deleteVenueProfile } from '../../../services/client-side/venues';
 import { deleteGig, getGigsByVenueId } from '../../../services/gigs';
-import { deleteReview, getReviewsByVenueId } from '../../../services/reviews';
+import { getReviewsByVenueId } from '../../../services/client-side/reviews';
 import { deleteConversation, getConversationsByParticipantId } from '../../../services/conversations';
 import { deleteFolderFromStorage } from '../../../services/storage';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { AddStaffModal } from '../components/AddStaffModal';
 import { StaffPermissionsModal } from '../components/StaffPermissionsModal';
-import { fetchVenueMembersWithUsers } from '../../../services/venueMembers';
 import { hasVenuePerm } from '../../../services/utils/permissions';
+import { updateUserArrayField } from '../../../services/function-calls/users';
+import { fetchVenueMembersWithUsers } from '../../../services/function-calls/venues';
+import { deleteReview } from '../../../services/function-calls/reviews';
 
 export const VenuePage = ({ user, venues }) => {
     const navigate = useNavigate();
@@ -122,7 +124,7 @@ export const VenuePage = ({ user, venues }) => {
             setDeleting(true);
             setShowDeleteModal(false);
             await deleteVenueProfile(venueId);
-            await removeVenueIdFromUser(user.uid, venueId);
+            await updateUserArrayField('venueProfiles', 'remove', venueId);
             const gigs = await getGigsByVenueId(venueId);
             for (const { id } of gigs) {
                 await deleteGig(id);

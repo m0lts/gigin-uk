@@ -23,7 +23,6 @@ import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth';
 import { useState, useEffect } from 'react'
 import { listenToUserConversations } from '@services/conversations';
-import { submitUserFeedback } from '@services/reports';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';
 import { NoProfileModal } from './NoProfileModal';

@@ -32,7 +32,7 @@ import { auth } from "@lib/firebase";
 import { NoProfileModal } from './features/musician/components/NoProfileModal';
 import { VenueFinder } from './features/venue-discovery/VenueFinder';
 import Portal from './features/shared/components/Portal';
-import { logClientError } from './services/errors';
+import { logClientError } from './services/client-side/errors';
 import { TermsAndConditions } from './features/legals/TermsAndConditions';
 import { PrivacyPolicy } from './features/legals/PrivacyPolicy';
 import { JoinVenuePage } from './features/venue/components/JoinVenue';

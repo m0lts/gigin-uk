@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { submitUserFeedback } from '../../../services/reports';
+import { submitUserFeedback } from '@services/client-side/reports';
 
 export const FeedbackSection = ({ user }) => {
     const [feedback, setFeedback] = useState({

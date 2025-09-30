@@ -50,7 +50,7 @@ function getVenueIdFromConversation(conv) {
     return sender && sender === myUid;
   }
 
-export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles }) => {
+export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles, customerDetails }) => {
     const navigate = useNavigate();
     const [gigData, setGigData] = useState();
     const location = useLocation();
@@ -240,6 +240,8 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                 gigId={activeConversation.gigId}
                                                 gigData={gigData}
                                                 setGigData={setGigData}
+                                                venues={venueProfiles}
+                                                customerDetails={customerDetails}
                                             />
                                         );
                                     })()}

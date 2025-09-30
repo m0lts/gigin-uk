@@ -11,7 +11,6 @@ import '@styles/forms/forms.styles.css';
 import { toast } from 'sonner';
 import { GoogleIcon } from '../shared/ui/extras/Icons';
 import { PhoneField, isValidE164 } from '../shared/forms/PhoneField';
-import { phoneExists } from '@services/users';
 import { getPhoneExistsBoolean } from '@services/functions';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 

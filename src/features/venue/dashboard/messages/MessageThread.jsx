@@ -10,9 +10,9 @@ import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { sendMessage, listenToMessages, sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/messages';
 import { acceptGigOffer, declineGigApplication, updateGigWithCounterOffer } from '@services/gigs';
-import { getVenueProfileById } from '@services/venues';
-import { getMusicianProfileByMusicianId } from '@services/musicians';
-import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/emails';
+import { getVenueProfileById } from '@services/client-side/venues';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/client-side/emails';
 import { fetchSavedCards, confirmGigPayment } from '@services/functions';
 import { CalendarIconSolid } from '../../../shared/ui/extras/Icons';
 import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
@@ -26,7 +26,7 @@ import { acceptGigOfferOM } from '../../../../services/gigs';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
-export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
+export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData, venues, customerDetails, refreshStripe }) => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [userRole, setUserRole] = useState('');
@@ -303,7 +303,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleSelectCard = async (cardId) => {
         setMakingPayment(true);
         try {
-            const result = await confirmGigPayment({ cardId, gigData, musicianProfileId });
+            const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
+            const result = await confirmGigPayment({ cardId, gigData, musicianProfileId, customerId });
             if (result.success && result.paymentIntent) {
                 setPaymentSuccess(true);
                 setGigData(prev => ({
@@ -344,6 +345,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             toast.error('Payment failed. Please try again.');
         } finally {
             setMakingPayment(false);
+            refreshStripe();
         }
     };
 
@@ -657,7 +659,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     </>
                                 ) : message.type === 'announcement' ? (
                                     <>
-                                    {message.status === 'awaiting payment' && userRole === 'venue' && gigData.budget !== '£' && gigData.budget !== '£0' ? (
+                                    {message.status === 'awaiting payment' && userRole === 'venue' && gigData?.budget !== '£' && gigData?.budget !== '£0' ? (
                                         <>
                                             <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                             <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
@@ -678,8 +680,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
                                             <>
                                                 <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                                <h4>{message.text}</h4>
-                                                {gigData && message.text === "The venue has accepted the musician's application." && (
+                                                <h4>{message.text} The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
+                                                {gigData && (
                                                     <AddToCalendarButton
                                                         event={{
                                                             title: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} at ${gigData?.venue?.venueName}`,
@@ -694,7 +696,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         ) : (
                                             <>
                                                 <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                                <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 24 hours after the gig has been performed.' : userRole !== 'venue' && !activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
+                                                <h4>{message.text} The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
                                                 {gigData && (
                                                     <AddToCalendarButton
                                                         event={{
@@ -840,6 +842,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                         setPaymentIntentId={setPaymentIntentId}
                         setGigData={setGigData}
                         musicianProfileId={musicianProfileId}
+                        venues={venues}
+                        customerDetails={customerDetails}
                     />
                 </Portal>
             )}

@@ -7,7 +7,7 @@ import {
   ConnectAccountManagement,
 } from '@stripe/react-connect-js';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/musicians';
+import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { payoutToBankAccount, transferStripeFunds } from '@services/functions';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
@@ -16,12 +16,10 @@ import { toast } from 'sonner';
 import { BankAccountIcon, CoinsIconSolid, CopyIcon, DeleteGigIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, MoreInformationIcon, PaymentSystemIcon, PieChartIcon, StripeIcon, SuccessIcon, TickIcon, WarningIcon } from '../../shared/ui/extras/Icons';
 import { deleteStripeConnectAccount } from '../../../services/functions';
 import { getConnectAccountStatus } from '../../../services/functions';
-import { getMusicianFees } from '../../../services/musicians';
-import { updateUserDocument } from '../../../services/users';
+import { getMusicianFees } from '../../../services/client-side/musicians';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
-import { clearMusicianBalance } from '../../../services/payments';
 
 function CountdownTimer({ targetDate }) {
     const [label, setLabel] = React.useState("");

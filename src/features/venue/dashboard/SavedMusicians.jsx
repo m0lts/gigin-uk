@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
 import { firestore } from '@lib/firebase';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getMusicianProfilesByIds } from '@services/musicians';
+import { getMusicianProfilesByIds } from '@services/client-side/musicians';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
 import { ErrorIcon, NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
-import { removeMusicianFromUser } from '../../../services/venues';
+import { updateUserArrayField } from '../../../services/function-calls/users';
 
 const VideoModal = ({ video, onClose }) => {
     return (
@@ -73,7 +73,7 @@ export const SavedMusicians = ({ user }) => {
     const handleMusicianUnsave = async (musician) => {
         if (!user?.uid || !musician?.id) return;
         try {
-          await removeMusicianFromUser(user.uid, musician.id);
+          await updateUserArrayField('savedMusicians', 'remove', musician.id);
           toast.success(`Removed ${musician.name} from your saved musicians`);
         } catch (error) {
           console.error('Error unsaving musician:', error);

@@ -13,7 +13,7 @@ import {
     HouseIconLight,
     MicrophoneLinesIcon } from '@features/shared/ui/extras/Icons';
 import { getGigById } from '@services/gigs';
-import { getVenueProfileById } from '@services/venues';
+import { getVenueProfileById } from '@services/client-side/venues';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';

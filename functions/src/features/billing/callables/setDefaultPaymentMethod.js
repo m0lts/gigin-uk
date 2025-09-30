@@ -37,7 +37,7 @@ export const setDefaultPaymentMethod = callable(
     timeoutSeconds: 60,
   },
   async (request) => {
-    const { paymentMethodId } = request.data || {};
+    const { paymentMethodId, customerId: requestedCustomerId } = request.data || {};
     const userId = request.auth.uid;
     if (!paymentMethodId) {
       throw new Error("INVALID_ARGUMENT: paymentMethodId is required");
@@ -50,10 +50,9 @@ export const setDefaultPaymentMethod = callable(
         throw new Error("User document not found.");
       }
       const { stripeCustomerId } = userSnap.data() || {};
-      if (!stripeCustomerId) {
-        throw new Error("Stripe customer ID not found for this user.");
-      }
-      const updatedCustomer = await stripe.customers.update(stripeCustomerId, {
+      const targetCustomerId = requestedCustomerId || stripeCustomerId;
+      if (!targetCustomerId) throw new Error("Stripe customer ID not found for this user.");
+      const updatedCustomer = await stripe.customers.update(targetCustomerId, {
         invoice_settings: { default_payment_method: paymentMethodId },
       });
       return { success: true, updatedCustomer };

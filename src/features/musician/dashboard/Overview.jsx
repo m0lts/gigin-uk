@@ -8,12 +8,7 @@ import {
     PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { AllGigsIcon, CoinsIconSolid, ExclamationIcon, LocationPinIcon, MapIcon, NextGigIcon, NoImageIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
-import { getVenueProfileById } from '../../../services/venues';
-import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
-import { FeedbackSection } from '../../venue/dashboard/FeedbackSection';
-import { toast } from 'sonner';
-import { submitReview } from '../../../services/reviews';
+import { MapIcon, NextGigIcon, NoImageIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { formatDate } from '../../../services/utils/dates';
 
 export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToReview, setGigsToReview, bandProfiles, unseenInvites }) => {

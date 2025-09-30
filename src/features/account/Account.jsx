@@ -7,24 +7,26 @@ import { updateEmail, updatePassword, deleteUser, reauthenticateWithCredential, 
 import { auth } from '@lib/firebase';
 import '@styles/shared/account-page.styles.css';
 import { removeGigApplicant } from '@services/gigs';
-import { getVenueProfilesByUserId } from '@services/venues';
-import { getMusicianProfileByUserId } from '@services/musicians';
+import { getVenueProfilesByUserId } from '@services/client-side/venues';
+import { getMusicianProfileByUserId } from '@services/client-side/musicians';
 import { deleteGig, getGigsByVenueId, getGigsByVenueIds } from '@services/gigs';
-import { deleteReview, getReviewsByMusicianId, getReviewsByVenueId, getReviewsByVenueIds } from '@services/reviews';
+import { getReviewsByMusicianId, getReviewsByVenueId, getReviewsByVenueIds } from '@services/client-side/reviews';
 import { deleteConversation, getConversationsByParticipantId, getConversationsByParticipants } from '@services/conversations';
-import { deleteMusicianProfileInUserDocument, deleteUserDocument, getUserById } from '@services/users';
-import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services/musicians';
+import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { deleteFolderFromStorage } from '@services/storage';
-import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/venues';
+import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/client-side/venues';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { getUserByEmail, updateUserDocument } from '../../services/users';
-import { removeVenueIdFromUser, transferVenueOwnership, updateVenueProfileAccountNames } from '../../services/venues';
+import { updateUserDocument } from '../../services/client-side/users';
+import { updateVenueProfileAccountNames } from '../../services/client-side/venues';
 import { toast } from 'sonner';
 import Portal from '../shared/components/Portal';
 import { CameraIcon, DeleteGigIcon, InviteIconSolid, LogOutIcon, PasswordIcon, UserIcon } from '../shared/ui/extras/Icons';
 import { LoadingModal } from '../shared/ui/loading/LoadingModal';
 import { firestore } from '@lib/firebase';
 import { uploadFileToStorage } from '../../services/storage';
+import { clearUserArrayField, deleteUserDocument, updateUserArrayField } from '../../services/function-calls/users';
+import { transferVenueOwnership } from '../../services/function-calls/venues';
+import { deleteReview } from '../../services/function-calls/reviews';
 
 export const Account = () => {
     const { user,  } = useAuth();
@@ -214,7 +216,7 @@ export const Account = () => {
             if (musicianId) {
                 await deleteFolderFromStorage(`musicians/${musicianId}`);
             }
-            await deleteUserDocument(userId);
+            await deleteUserDocument();
             await deleteUser(auth.currentUser);
             toast.success('Account and all associated data deleted successfully.');
             navigate('/');
@@ -261,7 +263,7 @@ export const Account = () => {
                     await deleteConversation(id);
                 }
                 await deleteFolderFromStorage(`musicians/${musicianId}`);
-                await deleteMusicianProfileInUserDocument(auth.currentUser.uid);
+                await clearUserArrayField('musicianProfile');
                 toast.success('Musician profile deleted successfully.');
                 setShowEventLoadingModal(false);
             } else {
@@ -295,7 +297,7 @@ export const Account = () => {
                 }
                 await deleteTemplatesByVenueId(venueId);
                 await deleteFolderFromStorage(`venues/${venueId}`);
-                await removeVenueIdFromUser(auth.currentUser.uid, venueId);
+                await updateUserArrayField('venueProfiles', 'remove', venueId);
                 toast.success('Venue profile deleted successfully.');
                 setShowEventLoadingModal(false);
             } else {
@@ -354,7 +356,6 @@ export const Account = () => {
         // persist on the user document
         await updateUserDocument(user.uid, {
           picture: pictureUrl,
-          photoURL: pictureUrl,     // optional: keep both updated
           lastUpdatedAt: Date.now() // optional: useful for cache-busting
         });
   
@@ -700,8 +701,8 @@ export const Account = () => {
                                                 type='password'
                                                 className='input'
                                                 placeholder='Enter Your Password to Confirm'
-                                                value={confirmPassword}
-                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                                value={currentPassword}
+                                                onChange={(e) => setCurrentPassword(e.target.value)}
                                             />
                                         </div>
                                         <div className="two-buttons">
@@ -774,23 +775,7 @@ export const Account = () => {
                                                 if (!ok) return;
                                                 setTransferLoading(true);
                                                 try {
-                                                    const target = await getUserByEmail(recipientEmail);
-                                                    if (!target) {
-                                                        toast.error('No Gigin account found for that email.');
-                                                        setTransferLoading(false);
-                                                        return;
-                                                    }
-                                                    if (target.id === user.uid) {
-                                                        toast.error('You already own this venue profile.')
-                                                        setTransferLoading(false);
-                                                        return;
-                                                    }
-                                                    toast.info('Transferring venue ownership...')
-                                                    await transferVenueOwnership({
-                                                        venueId: venueToTransfer.id,
-                                                        fromUserId: user.uid,
-                                                        toUserId: target.id,
-                                                    });
+                                                    await transferVenueOwnership(venueToTransfer, recipientEmail);
                                                     setVenueList(prev => prev.filter(v => v.id !== venueToTransfer.id));
                                                     toast.success('Venue ownership transferred successfully.');
                                                     setShowTransferModal(false);

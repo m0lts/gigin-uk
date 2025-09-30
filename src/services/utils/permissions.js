@@ -66,3 +66,22 @@ export const hasVenuePerm = (venueProfiles, venueId, key) => {
     if (role === "owner") return true;
     return !!vp?.myMembership?.permissions?.[key];
 };
+
+/**
+ * Ensure the permissions object always has the full PERM_DEFAULTS shape.
+ * @param {Object|undefined} incoming
+ * @returns {Object} full map of booleans
+ */
+export function normalizePermissions(incoming) {
+    const base = { ...PERM_DEFAULTS };
+    if (incoming && typeof incoming === "object") {
+      for (const k of PERM_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(incoming, k)) {
+          base[k] = !!incoming[k];
+        }
+      }
+      // Always enforce view gigs = true
+      base["gigs.read"] = true;
+    }
+    return base;
+}

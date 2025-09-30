@@ -1,5 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
-
 /**
  * Get the gig's start date/time as a JS Date in the user's local timezone.
  *

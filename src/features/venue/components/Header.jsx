@@ -20,7 +20,6 @@ import {
     RightChevronIcon,
     TelescopeIcon } from '@features/shared/ui/extras/Icons';
 import { listenToUserConversations } from '@services/conversations';
-import { submitUserFeedback } from '@services/reports';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { HouseIconSolid, VenueIconSolid } from '../../shared/ui/extras/Icons';
 

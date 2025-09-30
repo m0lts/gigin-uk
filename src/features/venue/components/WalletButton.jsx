@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-export const WalletButton = ({ amountToCharge, gigData, onSucceeded, musicianProfileId }) => {
+export const WalletButton = ({ amountToCharge, gigData, onSucceeded, musicianProfileId, customerId }) => {
   const stripe = useStripe();
   const elements = useElements();
   const location = useLocation();
@@ -15,7 +15,7 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded, musicianPro
       if (!correctId) {
 
       }
-      const { data } = await confirmPaymentIntent({ amountToCharge, gigData, musicianProfileId });
+      const { data } = await confirmPaymentIntent({ amountToCharge, gigData, musicianProfileId, customerId });
       const clientSecret = data?.clientSecret;
       if (!clientSecret) throw new Error('No client secret returned');
       const returnUrl = `${window.location.origin}${location.pathname}${location.search}${location.hash}`;

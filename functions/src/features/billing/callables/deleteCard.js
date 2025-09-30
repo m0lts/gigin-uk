@@ -31,7 +31,7 @@ export const deleteCard = callable(
   },
   async (request) => {
       const {auth} = request;
-      const {cardId} = request.data;
+      const {cardId, customerId: requestedCustomerId} = request.data || {};
       if (!auth) {
         throw new Error(
             "unauthenticated", "User must be authenticated.",
@@ -42,15 +42,10 @@ export const deleteCard = callable(
             "invalid-argument", "Card ID is required.",
         );
       }
-      const userId = auth.uid;
-      const userDoc =
-  await admin.firestore().collection("users").doc(userId).get();
-      const customerId = userDoc.data().stripeCustomerId;
-      if (!customerId) {
-        throw new Error(
-            "not-found", "Stripe customer ID not found.",
-        );
-      }
+      const userDoc = await admin.firestore().collection("users").doc(auth.uid).get();
+      const userCustomerId = userDoc.data()?.stripeCustomerId || null;
+      const customerId = requestedCustomerId || userCustomerId;
+      if (!customerId) throw new Error("not-found", "Stripe customer ID not found.");
       try {
         const stripe = makeStripe();
         await stripe.paymentMethods.detach(cardId);

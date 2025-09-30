@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { submitUserFeedback } from '../../../services/reports';
+import { submitUserFeedback } from '@services/client-side/reports';
 import { toast } from 'sonner';
 
 export const FeedbackBox = ({ user, setShowWelcomeModal, setRevisitingModal }) => {

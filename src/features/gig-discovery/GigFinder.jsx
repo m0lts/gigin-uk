@@ -95,7 +95,6 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
               filters,
             });
             if (!cancelled) {
-              console.log('Fetched gigs:', newGigs);
               setGigs(newGigs);
               setLastDoc(lastVisible);
               setHasMore(newGigs.length === 50);

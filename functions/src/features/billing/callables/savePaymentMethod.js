@@ -39,7 +39,7 @@ export const savePaymentMethod = callable(
     maxInstances: 2,
   },
   async (request) => {
-    const { paymentMethodId } = request.data || {};
+    const { paymentMethodId, customerId: requestedCustomerId } = request.data || {};
     const userId = request.auth.uid;
     if (!paymentMethodId) {
       throw new Error("INVALID_ARGUMENT: paymentMethodId is required");
@@ -47,15 +47,33 @@ export const savePaymentMethod = callable(
     try {
       const stripe = makeStripe();
       const userDoc = await db.collection("users").doc(userId).get();
-      const customerId = userDoc.data()?.stripeCustomerId;
-      if (!customerId) {
+      if (!userDoc.exists) throw new Error("User doc not found.");
+      const userData = userDoc.data() || {};
+      const userCustomerId = userData.stripeCustomerId || null;
+      let targetCustomerId = userCustomerId;
+      if (requestedCustomerId) {
+        if (requestedCustomerId === userCustomerId) {
+          targetCustomerId = requestedCustomerId;
+        } else {
+          const venueQuery = await db
+            .collection("venueProfiles")
+            .where("stripeCustomerId", "==", requestedCustomerId)
+            .limit(1)
+            .get();
+          if (venueQuery.empty) {
+            throw new Error("UNAUTHORIZED: customerId not found or not linked to a venue.");
+          }
+          targetCustomerId = requestedCustomerId;
+        }
+      }
+      if (!targetCustomerId) {
         throw new Error("Stripe customer ID not found for this user.");
       }
       const paymentMethodUpdate = await stripe.paymentMethods.attach(
         paymentMethodId,
-        { customer: customerId }
+        { customer: targetCustomerId }
       );
-      const customerUpdate = await stripe.customers.update(customerId, {
+      const customerUpdate = await stripe.customers.update(targetCustomerId, {
         invoice_settings: { default_payment_method: paymentMethodId },
       });
       return { success: true, paymentMethodUpdate, customerUpdate };

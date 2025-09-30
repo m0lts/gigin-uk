@@ -13,11 +13,11 @@ import {
     TwitterIcon } from '@features/shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { getVenueProfileById } from '@services/venues';
+import { getVenueProfileById } from '@services/client-side/venues';
 import { getGigsByVenueId } from '../../../services/gigs';
 import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/musicians';
+import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
 import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';

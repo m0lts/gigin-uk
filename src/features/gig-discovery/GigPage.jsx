@@ -19,29 +19,28 @@ import {
     TwitterIcon,
     WeddingIcon } from '@features/shared/ui/extras/Icons';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { getVenueProfileById } from '@services/venues';
-import { updateMusicianGigApplications } from '@services/musicians';
+import { getVenueProfileById } from '@services/client-side/venues';
+import { updateMusicianGigApplications } from '@services/client-side/musicians';
 import { applyToGig, negotiateGigFee } from '@services/gigs';
 import { getOrCreateConversation } from '@services/conversations';
 import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/messages';
-import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/emails';
+import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
 import { validateMusicianUser } from '@services/utils/validation';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
-import { getMusicianProfilesByIds, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/musicians';
+import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/client-side/musicians';
 import { getBandMembers } from '../../services/bands';
 import { acceptGigOffer, getGigById, getGigsByIds } from '../../services/gigs';
 import { getMostRecentMessage, sendCounterOfferMessage, sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../services/messages';
 import { toast } from 'sonner';
-import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/emails';
+import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
 import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
 import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
 import { NoProfileModal } from '../musician/components/NoProfileModal';
-import { getUserById } from '../../services/users';
 import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
@@ -115,11 +114,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             const gig = await getGigById(gigId);
             if (!gig || cancelled) return;
             let enrichedGig = gig;
-            if (gig?.venue?.userId) {
-                const userDoc = await getUserById(gig.venue.userId);
-                if (cancelled) return;
-                enrichedGig = { ...gig, user: userDoc };
-            }
             if (Array.isArray(enrichedGig?.gigSlots)) {
                 const ids = enrichedGig.gigSlots;
                 const otherGigs = await getGigsByIds(ids);
@@ -598,30 +592,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
     };
 
-    const handleUnSaveGig = async () => {
-        try {
-          const profileIds = validProfiles.map(prof => prof.musicianId);
-          await unSaveGigFromMusicianProfile(gigData.gigId, profileIds);
-          setGigSaved(false);
-          toast.success('Gig Unsaved');
-        } catch (error) {
-          console.error(error);
-          toast.error('Failed to unsave gig. Please try again.');
-        }
-      };
-      
-      const handleSaveGig = async () => {
-        try {
-          const profileIds = validProfiles.map(prof => prof.musicianId);
-          await saveGigToMusicianProfile(gigData.gigId, profileIds);
-          setGigSaved(true);
-          toast.success('Gig Saved');
-        } catch (error) {
-          console.error(error);
-          toast.error('Failed to save gig. Please try again.');
-        }
-    };
-
     const formatSlotName = (name = '') => {
         const match = name.match(/\(([^)]+)\)/);
         return match ? match[1] : '';
@@ -692,20 +662,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                             <div className='title'>
                                 <h1>{gigData.gigName}</h1>
                             </div>
-                            {/* <div className='options'>
-                                <button className='btn tertiary'>
-                                    <ShareIcon />
-                                </button>
-                                {gigSaved ? (
-                                    <button className='btn tertiary' onClick={() => handleUnSaveGig()}>
-                                        <SavedIcon />
-                                    </button>
-                                ) : (
-                                    <button className='btn tertiary' onClick={() => handleSaveGig()}>
-                                        <SaveIcon />
-                                    </button>
-                                )}
-                            </div> */}
                         </div>
                         <div className='images-and-location'>
                             <div className='main-image'>
@@ -738,16 +694,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 </div>
                                 <div className="gig-host">
                                     <h5>Gig Posted By: {gigData.accountName}</h5>
-                                    {gigData?.user?.createdAt ? (
-                                        <p>
-                                            Joined in {new Date(gigData.user.createdAt).toLocaleDateString(undefined, {
-                                                year: 'numeric',
-                                                month: 'long'
-                                            })}
-                                        </p>
-                                    ) : (
-                                        <p>A trusted Gigin member</p>
-                                    )}
+                                    <p>A trusted Gigin member</p>
                                 </div>
                                 <div className='details'>
                                     <div className="detail">

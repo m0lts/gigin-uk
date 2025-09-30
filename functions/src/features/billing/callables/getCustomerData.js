@@ -33,10 +33,31 @@ export const getCustomerData = callable(
       if (!auth) {
         throw new Error("User must be authenticated.");
       }
+      const requestedCustomerId = request.data?.customerId || null;
       const userId = auth.uid;
-      const userDoc =
-  await admin.firestore().collection("users").doc(userId).get();
-      const customerId = userDoc.data().stripeCustomerId;
+
+      const userDoc = await admin.firestore().collection("users").doc(userId).get();
+      if (!userDoc.exists) throw new Error("User doc not found.");
+      const userData = userDoc.data() || {};
+      const userCustomerId = userData.stripeCustomerId || null;
+
+      let customerId = userCustomerId;
+      if (requestedCustomerId) {
+        if (requestedCustomerId === userCustomerId) {
+          customerId = requestedCustomerId;
+        } else {
+          const venueQuery = await admin
+            .firestore()
+            .collection("venueProfiles")
+            .where("stripeCustomerId", "==", requestedCustomerId)
+            .limit(1)
+            .get();
+          if (venueQuery.empty) {
+            throw new Error("UNAUTHORIZED: customerId not found or not linked to a venue.");
+          }
+          customerId = requestedCustomerId;
+        }
+      }
       if (!customerId) {
         throw new Error("Stripe customer ID not found.");
       }

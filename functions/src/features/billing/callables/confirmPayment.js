@@ -49,6 +49,7 @@ export const confirmPayment = callable(
       gigDate,
       paymentMessageId,
       musicianProfileId,
+      customerId: requestedCustomerId,
     } = request.data || {};
     if (!paymentMethodId) throw new Error("Payment method ID is required.");
     if (!gigData?.gigId) throw new Error("Missing gig data.");
@@ -57,7 +58,8 @@ export const confirmPayment = callable(
     }
     const userId = auth.uid;
     const userSnap = await admin.firestore().collection("users").doc(userId).get();
-    const customerId = userSnap.data()?.stripeCustomerId;
+    const userCustomerId = userSnap.data()?.stripeCustomerId || null;
+    const customerId = requestedCustomerId || userCustomerId;
     if (!customerId) throw new Error("Stripe customer ID not found.");
     let applicantId;
     let recipientMusicianId;
@@ -100,6 +102,8 @@ export const confirmPayment = callable(
           applicantType,
           recipientMusicianId,
           paymentMessageId,
+          paymentMadeById: userId,
+          paymentMadeByName: userSnap.data()?.name,
         },
       });
       const gigRef = db.collection("gigs").doc(gigData.gigId);
@@ -126,6 +130,8 @@ export const confirmPayment = callable(
           applicantId,
           recipientMusicianId,
           venueId: gigData.venueId,
+          payerCustomerId: customerId,
+          payerUid: userId,
           status: "processing",
           createdAt: FieldValue.serverTimestamp(),
           lastCheckedAt: FieldValue.serverTimestamp(),
@@ -149,6 +155,8 @@ export const confirmPayment = callable(
             applicantId,
             recipientMusicianId,
             venueId: gigData.venueId,
+            payerCustomerId: customerId,
+            payerUid: userId,
             status: "requires_action",
             createdAt: FieldValue.serverTimestamp(),
             lastCheckedAt: FieldValue.serverTimestamp(),

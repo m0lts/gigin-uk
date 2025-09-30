@@ -1,4 +1,4 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { Timestamp, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@lib/firebase';
 
 // simple in-memory LRU-ish cache of recent error keys
@@ -50,7 +50,7 @@ export async function logClientError(payload) {
 
     await addDoc(collection(firestore, 'clientErrors'), {
       ...payload,
-      ts: serverTimestamp(),
+      ts: Timestamp.now(),
     });
   } catch (e) {
     console.error('Failed to log error', e, payload);

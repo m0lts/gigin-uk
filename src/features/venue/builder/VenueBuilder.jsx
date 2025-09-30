@@ -9,8 +9,7 @@ import { AdditionalDetails } from './AdditionalDetails';
 import '@styles/host/venue-builder.styles.css'
 import { UploadingProfile } from './UploadingProfile';
 import { arrayUnion, arrayRemove, GeoPoint, deleteField } from 'firebase/firestore';
-import { createVenueProfile, deleteVenueProfile } from '@services/venues';
-import { updateUserDocument } from '@services/users';
+import { createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { BuildingIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
 import { uploadImageArrayWithFallback } from '../../../services/storage';
@@ -20,7 +19,7 @@ import { Links } from './Links';
 import { geohashForLocation } from 'geofire-common';
 import Portal from '../../shared/components/Portal';
 import { useAuth } from '../../../hooks/useAuth';
-import { deleteVenueProfileInUserDocument } from '../../../services/users';
+import { clearUserArrayField, updateUserArrayField } from '../../../services/function-calls/users';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType }) => {
 
@@ -51,6 +50,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             twitter: '',
             instagram: '',
         },
+        primaryImageOffsetY: 0,
     });
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
@@ -93,7 +93,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 completed: venue.completed || false,
                 website: venue.website,
                 socialMedia: venue.socialMedia,
-                primaryImageOffsetY: venue.primaryImageOffsetY,
+                primaryImageOffsetY: venue.primaryImageOffsetY || 0,
             });
         }
     }, [venue])
@@ -149,31 +149,25 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             const updatedFormData = {
                 ...formData,
                 photos: imageUrls,
-                primaryImageOffsetY: formData.photos[0]?.offsetY,
+                primaryImageOffsetY: formData.photos[0]?.offsetY || formData.primaryImageOffsetY,
                 completed: true,
                 ...getGeoField(formData.coordinates),
             };
             await createVenueProfile(formData.venueId, updatedFormData, user.uid);
-            await updateUserDocument(user.uid, {
-                venueProfiles: arrayUnion(formData.venueId),
-            });
+            await updateUserArrayField('venueProfiles','add', formData.venueId);
             const progressIntervals = [11, 22, 33, 44, 55, 66, 77, 88, 100];
             progressIntervals.forEach((value, index) => {
                 setTimeout(() => setProgress(value), 1000 * (index + 1));
             });
             setUser(prev => {
                 if (!prev) return prev;
-              
                 const prevProfiles = Array.isArray(prev.venueProfiles) ? prev.venueProfiles : [];
-              
                 const newProfile = {
                   ...updatedFormData,
                   id: formData.venueId,
                   venueId: formData.venueId,
                 };
-              
                 const idx = prevProfiles.findIndex(p => (p?.id ?? p?.venueId) === formData.venueId);
-              
                 const nextProfiles =
                   idx >= 0
                     ? [
@@ -182,7 +176,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                         ...prevProfiles.slice(idx + 1),
                       ]
                     : [...prevProfiles, newProfile];
-              
                 return {
                   ...prev,
                   venueProfiles: nextProfiles,
@@ -193,7 +186,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 navigate('/venues/dashboard/gigs', { state: { newUser: true } });
                 setUploadingProfile(false)
             }, 11000);
-    
         } catch (error) {
             setUploadingProfile(false);
             if (error.message?.includes('storage') || error.message?.includes('image')) {
@@ -213,7 +205,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     const handleSaveAndExit = async () => {
         if (formData.name === '') {
             if (Array.isArray(user.venueProfiles) && user.venueProfiles.length < 1) {
-                await deleteVenueProfileInUserDocument(user.uid);
+                await clearUserArrayField('venueProfiles');
                 window.location.href = '/';
                 return;
             } else {
@@ -241,12 +233,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 const imageFiles = formData.photos;
                 const imageUrls = await uploadImageArrayWithFallback(imageFiles, `venues/${formData.venueId}`);
                 updatedFormData.photos = imageUrls;
-                updatedFormData.primaryImageOffsetY = formData.photos[0]?.offsetY;
+                updatedFormData.primaryImageOffsetY = formData.photos[0]?.offsetY || formData.primaryImageOffsetY;
             }
             await createVenueProfile(formData.venueId, updatedFormData, user.uid);
-            await updateUserDocument(user.uid, {
-                venueProfiles: arrayUnion(formData.venueId),
-            });
+            await updateUserArrayField('venueProfiles', 'add', formData.venueId);
             if (updatedFormData.completed || (user?.venueProfiles && user?.venueProfiles?.length > 1)) {
                 navigate('/venues/dashboard/gigs')
             } else {
@@ -273,11 +263,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     const handleDeleteSavedProfile = async () => {
         try {
           await deleteVenueProfile(savedProfile.venueId);
-          await updateUserDocument(user.uid, {
-            venueProfiles: arrayRemove(savedProfile.venueId),
-          });
+          await updateUserArrayField('venueProfiles', 'remove', savedProfile.venueId);
           if (Array.isArray(user.venueProfiles) && user.venueProfiles.length < 1) {
-            await deleteVenueProfileInUserDocument(user.uid);
+            await clearUserArrayField('venueProfiles');
           }
           setCompleteSavedProfileModal(false);
           setSavedProfile(undefined);

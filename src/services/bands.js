@@ -96,7 +96,7 @@ export const joinBandByPassword = async (bandId, musicianProfile) => {
         musicianProfileId: musicianProfile.musicianId,
         memberName: musicianProfile.name,
         memberImg: musicianProfile.picture || '',
-        joinedAt: serverTimestamp(),
+        joinedAt: Timestamp.now(),
         isAdmin: false,
         role: 'Band Member',
         memberUserId: musicianProfile.userId,
@@ -384,7 +384,7 @@ export const acceptBandInvite = async (inviteId, musicianProfile) => {
   await runTransaction(firestore, async (transaction) => {
     transaction.set(memberRef, {
       musicianProfileId: musicianProfile.musicianId,
-      joinedAt: serverTimestamp(),
+      joinedAt: Timestamp.now(),
       isAdmin: false,
       role: 'Band Member',
       memberName: musicianProfile.name,

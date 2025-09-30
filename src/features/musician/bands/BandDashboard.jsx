@@ -1,19 +1,12 @@
 import { useEffect, useState } from 'react';
 import { leaveBand } from '@services/bands';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
-import { getBandsByMusicianId } from '@services/bands';
 import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, NoImageIcon, StarIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { OverviewTab } from '../profile/OverviewTab';
-import { MusicTab } from '../profile/MusicTab';
-import { ReviewsTab } from '../profile/ReviewsTab';
-import { updateMusicianProfile } from '@services/musicians';
-import { BandMembersTab } from './BandMembersTab';
 import { toast } from 'sonner';
 import { deleteBand } from '../../../services/bands';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import { ProfileForm } from '../dashboard/profile-form/ProfileForm';
-import { LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { MusicianProfile } from '../components/MusicianProfile';
 import Portal from '../../shared/components/Portal';
 

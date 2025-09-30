@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CardForm } from '@features/shared/components/CardDetails'
 import '@assets/styles/host/payment-modal.styles.css'
 import { SuccessIcon, PlusIcon } from '@features/shared/ui/extras/Icons'
@@ -6,7 +6,7 @@ import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
 import { CardIcon, ClockIcon, LeftArrowIcon } from '../../shared/ui/extras/Icons';
-import { listenToPaymentStatus } from '../../../services/payments';
+import { listenToPaymentStatus } from '../../../services/client-side/payments';
 import { WalletButton } from './WalletButton';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
@@ -26,10 +26,25 @@ export const PaymentModal = ({
     paymentIntentId,
     setPaymentIntentId,
     setGigData,
-    musicianProfileId
+    musicianProfileId,
+    customerDetails,
+    venues,
   }) => {
     const [selectedCardId, setSelectedCardId] = useState(null);
     const [addingNewCard, setAddingNewCard] = useState(false);
+
+    const selectedCard = useMemo(
+      () => savedCards.find(c => c.id === selectedCardId) || null,
+      [savedCards, selectedCardId]
+    );
+
+    const venueCustomerId = useMemo(() => {
+      const v = (venues || []).find(v => v.venueId === gigData?.venueId);
+      return v?.stripeCustomerId || null;
+    }, [venues, gigData?.venueId]);
+    
+    const paymentCustomerId =
+      selectedCard?.customer || venueCustomerId || customerDetails?.id || null;
   
     useEffect(() => {
       if (!paymentIntentId) return;
@@ -55,15 +70,7 @@ export const PaymentModal = ({
       amex: AmexIcon,
       unknown: null
     };
-  
-    // useEffect(() => {
-    //   const defaultCard = savedCards.find(
-    //     (card) => card.card.id === card.customer?.default_source
-    //   );
-    //   if (defaultCard) {
-    //     setSelectedCardId(defaultCard.id);
-    //   }
-    // }, [savedCards]);
+
 
     useEffect(() => {
       if (selectedCardId) return;
@@ -123,19 +130,20 @@ export const PaymentModal = ({
                 <h2 className="title">Complete Gig Payment</h2>
                 <p>Pay the gig fee that you agreed with the musician. This fee is held by Gigin until 48 hours after the gig has been performed - giving you plenty of time to log a dispute, stopping the payment from being released to the musician until resolved.</p>
               </div>
-              {gigData?.agreedFee && (
+              {/* {gigData?.agreedFee && (
                     <div className='payment-details'>
                         <div className='payment-line'>
                             <h6>Total Payment Due:</h6>
                             <h1>{gigData.agreedFee}</h1>
                         </div>
                     </div>
-                )}
+                )} */}
               <div className="wallets">
               <WalletButton
                 amountToCharge={amountSubunits}
                 gigData={gigData}
                 musicianProfileId={musicianProfileId}
+                customerId={paymentCustomerId}
                 onSucceeded={(piId) => {
                   setPaymentIntentId?.(piId);
                   setPaymentSuccess(true);
@@ -177,7 +185,17 @@ export const PaymentModal = ({
                           Expires {card.card.exp_month}/{card.card.exp_year}
                         </h6>
                       </div>
+
                     </div>
+                    {card.ownerType === "user" ? (
+                      <div className="card-owner">
+                        <h6>Personal Card</h6>
+                      </div>
+                    ) : (
+                      <div className="card-owner">
+                        <h6>{card.venueName}'s Card</h6>
+                      </div>
+                    )}
                   </li>
                 ))}
                 <li
@@ -213,6 +231,17 @@ export const PaymentModal = ({
                 cardDetails={savedCards}
                 setAddingNewCard={setAddingNewCard}
                 handleCardSelection={handleCardSelection}
+                destinationChoices={[
+                  ...(customerDetails?.id
+                    ? [{ label: 'My Account', id: customerDetails.id }]
+                    : []),
+                  ...((venues || [])
+                    .filter(v => v.stripeCustomerId)
+                    .map(v => ({
+                      label: `Venue: ${v.name || v.displayName || v.id}`,
+                      id: v.stripeCustomerId,
+                    })))
+                ]}
               />
             </>
           )}

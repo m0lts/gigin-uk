@@ -1,31 +1,25 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { EditIcon, StarIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/musician/musician-profile.styles.css'
 import { OverviewTab } from '@features/musician/profile/OverviewTab';
-import { MusicTab } from '@features/musician/profile/MusicTab';
-import { ReviewsTab } from '@features/musician/profile/ReviewsTab';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { EmptyIcon, InviteIconSolid, NoImageIcon, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
 import { AboutTab } from '../profile/AboutTab';
 import { getGigsByIds, inviteToGig } from '../../../services/gigs';
-import Skeleton from 'react-loading-skeleton';
-import { openInNewTab } from '@services/utils/misc';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/musicians';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { sendGigInvitationMessage } from '../../../services/messages';
 import { toast } from 'sonner';
-import { updateUserDocument } from '../../../services/users';
 import { validateVenueUser } from '../../../services/utils/validation';
 import { filterInvitableGigsForMusician } from '../../../services/utils/filtering';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
-import { arrayRemove, arrayUnion } from 'firebase/firestore';
 import { formatDate } from '@services/utils/dates';
 import { BandMembersTab } from '../bands/BandMembersTab';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
+import { updateUserArrayField } from '../../../services/function-calls/users';
 
 
 const VideoModal = ({ video, onClose }) => {
@@ -189,10 +183,6 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
                 return <OverviewTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} videoToPlay={videoToPlay} setVideoToPlay={setVideoToPlay} bandAdmin={bandAdmin} setCurrentTrack={setCurrentTrack} />; 
             case 'tech-info':
                 return <AboutTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
-            // case 'tech-info':
-            //     return <ReviewsTab profile={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
-            // case 'members':
-            //   return bandProfile ? <BandMembersTab band={profile} bandMembers={bandMembers} setBandMembers={setBandMembers} musicianId={musicianId} bandAdmin={bandAdmin} /> : null;
             default:
                 return null;
         }        
@@ -271,9 +261,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         if (user && routeMusicianId) {
           setSavingMusician(true);
           try {
-            await updateUserDocument(user.uid, {
-              savedMusicians: arrayUnion(routeMusicianId),
-            });
+            await updateUserArrayField('savedMusicians', 'add', routeMusicianId);
             setMusicianSaved(true);
             toast.success('Musician Saved.');
           } catch (error) {
@@ -289,9 +277,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         if (user && routeMusicianId) {
           setSavingMusician(true);
           try {
-            await updateUserDocument(user.uid, {
-              savedMusicians: arrayRemove(routeMusicianId),
-            });
+            await updateUserArrayField('savedMusicians', 'remove', routeMusicianId);
             setMusicianSaved(false);
             toast.success('Musician Unsaved.');
           } catch (error) {

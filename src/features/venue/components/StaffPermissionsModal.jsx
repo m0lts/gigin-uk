@@ -1,14 +1,12 @@
 // src/features/venue/components/StaffPermissionsModal.jsx
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  fetchVenueMembersWithUsers,
-  normalizePermissions,
-} from "@services/venueMembers";
 import { PERMS_DISPLAY, PERM_DEFAULTS } from "@services/utils/permissions";
 import { LeftArrowIcon, RightChevronIcon, SettingsIcon } from "../../shared/ui/extras/Icons";
 import { LoadingSpinner } from "../../shared/ui/loading/Loading";
 import { removeVenueMember, updateVenueMemberPermissions } from "../../../services/functions";
+import { fetchVenueMembersWithUsers } from "../../../services/function-calls/venues";
+import { normalizePermissions } from "../../../services/utils/permissions";
 
 function formatWhen(ts) {
     if (!ts) return "—";

@@ -21,17 +21,18 @@ import { formatDate } from './utils/dates';
 import { getBandMembers } from './bands';
 
 /*** HELPERS ***/
-async function fetchActiveVenueMemberUsers(venueId) {
+async function fetchActiveVenueMembersSlim(venueId) {
   const qMembers = query(
     collection(firestore, "venueProfiles", venueId, "members"),
     where("status", "==", "active")
   );
   const memSnap = await getDocs(qMembers);
   if (memSnap.empty) return [];
-
-  const userDocPromises = memSnap.docs.map((m) => getDoc(doc(firestore, "users", m.id)));
-  const userDocs = await Promise.all(userDocPromises);
-  return userDocs.filter((d) => d.exists()); // array of DocumentSnapshot
+  // return a slim list with what you stored on the member doc
+  return memSnap.docs.map(d => ({
+    uid: d.id,
+    ...d.data(), // e.g. { displayName, picture, role, permissions, ... }
+  }));
 }
 
 /*** CREATE OPERATIONS ***/
@@ -67,22 +68,18 @@ export const getOrCreateConversation = async (musicianProfile, gigData, venuePro
 
   // 2a) If the venue has multiple members, add each active member (as venue staff) to accountNames
   try {
-    const activeUsers = await fetchActiveVenueMemberUsers(gigData.venueId);
-    const existingIds = new Set(
-      accountNames
-        .map((a) => a.accountId)
-        .filter(Boolean)
-    );
-    for (const snap of activeUsers) {
-      const uid = snap.id;
+    const activeMembers = await fetchActiveVenueMembersSlim(gigData.venueId);
+    const existingIds = new Set(accountNames.map(a => a.accountId).filter(Boolean));
+
+    for (const m of activeMembers) {
+      const uid = m.uid;
       if (existingIds.has(uid)) continue;
-      const u = snap.data() || {};
       accountNames.push({
-        participantId: gigData.venueId,
-        accountName: u.name,
-        accountId: uid,
+        participantId: gigData.venueId,   // they speak “as the venue”
+        accountName: m.displayName || m.name || venueProfile.accountName || "Venue Staff",
+        accountId: uid,                   // real userId used for auth checks
         role: "venue",
-        accountImg: u.picture || null,
+        accountImg: m.picture || null,
       });
       existingIds.add(uid);
     }
@@ -434,7 +431,7 @@ export const notifyOtherApplicantsGigConfirmed = async (gigData, acceptedMusicia
     batch.set(announceRef, {
       senderId: "system",
       text,
-      timestamp: serverTimestamp(),
+      timestamp: Timestamp.now(),
       type: "announcement",
       status: "gig confirmed",
     });
@@ -442,7 +439,7 @@ export const notifyOtherApplicantsGigConfirmed = async (gigData, acceptedMusicia
     // Close conversation
     batch.update(convDoc.ref, {
       lastMessage: text,
-      lastMessageTimestamp: serverTimestamp(),
+      lastMessageTimestamp: Timestamp.now(),
       lastMessageSenderId: "system",
       status: "closed",
     });

@@ -18,10 +18,8 @@ import {
   writeBatch,
   serverTimestamp
 } from 'firebase/firestore';
-import { updateVenueGigsAccountName } from './gigs';
-import { rewriteVenueConversationsAndMessages } from './conversations';
 import { distanceBetween } from 'geofire-common';
-import { PERM_DEFAULTS, PERM_KEYS, isValidPermKey, sanitizePermissions } from './utils/permissions';
+import { PERM_DEFAULTS, sanitizePermissions } from '../utils/permissions';
 import { v4 as uuid } from "uuid";
 
 /*** CREATE OPERATIONS ***/
@@ -46,16 +44,15 @@ export const createVenueProfile = async (venueId, data, userId) => {
   try {
     const venueRef = doc(firestore, "venueProfiles", venueId);
     const memberRef = doc(firestore, "venueProfiles", venueId, "members", userId);
-
     await setDoc(
       venueRef,
       {
         ...data,
         userId,
+        createdBy: userId,
       },
       { merge: true }
     );
-
     const snap = await getDoc(memberRef);
     if (!snap.exists()) {
       const allTruePermissions = Object.fromEntries(
@@ -70,8 +67,8 @@ export const createVenueProfile = async (venueId, data, userId) => {
             "gigs.read": true,
           },
           addedBy: userId,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
           role: "owner",
         },
         { merge: false }
@@ -92,16 +89,17 @@ export const createVenueProfile = async (venueId, data, userId) => {
  * @param {Record<string, boolean>} permsSparse - sparse map of true keys
  * @returns {Promise<string>} inviteId
  */
-export async function createVenueInvite(venueId, invitedByUid, email, permissionsInput = PERM_DEFAULTS) {
+export async function createVenueInvite(venueId, invitedByUid, email, permissionsInput = PERM_DEFAULTS, invitedByName) {
   const inviteId = uuid();
   const permissions = sanitizePermissions(permissionsInput);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   await setDoc(doc(firestore, "venueInvites", inviteId), {
     venueId,
     invitedBy: invitedByUid,
+    invitedByName,
     email: email?.trim().toLowerCase() || null,
     permissions,
-    createdAt: serverTimestamp(),
+    createdAt: Timestamp.now(),
     expiresAt,
     status: "pending",
   });
@@ -337,14 +335,11 @@ export const getVenueInviteById = async (inviteId) => {
  */
 export async function fetchMyVenueMembership(venue, uid) {
   if (!venue?.venueId) return null;
-
   const myMemberRef = doc(firestore, "venueProfiles", venue.venueId, "members", uid);
   const myMemberSnap = await getDoc(myMemberRef);
-
   const myMembership = myMemberSnap.exists()
     ? { id: myMemberSnap.id, ...myMemberSnap.data() }
     : null;
-
   return { ...venue, myMembership };
 }
 
@@ -361,45 +356,12 @@ export async function fetchMyVenueMembership(venue, uid) {
  */
 export const updateVenueProfileAccountNames = async (userId, venueProfileIds, newAccountName) => {
   if (!userId || !venueProfileIds?.length || !newAccountName) return;
-
   const batch = writeBatch(firestore);
-
   venueProfileIds.forEach((profile) => {
     const profileRef = doc(firestore, 'venueProfiles', profile.id);
     batch.update(profileRef, { accountName: newAccountName });
   });
-
   await batch.commit();
-};
-
-/**
- * Toggles a musician ID in the savedMusicians array of a user's document.
- *
- * @param {string} userId - Firestore document ID of the user.
- * @param {string} musicianId - ID of the musician to toggle.
- * @returns {Promise<'saved' | 'removed'>} - Returns action performed.
- */
-export const saveMusician = async (userId, musicianId) => {
-  const ref = doc(firestore, 'users', userId);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) return;
-
-  const saved = snap.data().savedMusicians || [];
-  let updated, action;
-
-  if (saved.includes(musicianId)) {
-    // Remove if already saved
-    updated = saved.filter(id => id !== musicianId);
-    action = 'removed';
-  } else {
-    // Add if not saved
-    updated = [...saved, musicianId];
-    action = 'saved';
-  }
-
-  await updateDoc(ref, { savedMusicians: updated });
-  return action;
 };
 
 /**
@@ -426,112 +388,6 @@ export const removeVenueRequest = async (requestId) => {
   });
 };
 
-/**
- * Build the lightweight venue summary object stored in a user's venueProfiles array.
- * Adjust fields to match what your Account UI expects (id, name, address, photos...).
- * @param {string} venueId
- * @param {object} data - venue profile doc data
- * @returns {{id:string, name:string, address?:string, photos?:string[]}}
- */
-function makeVenueSummary(venueId, data) {
-  return {
-    id: venueId,
-    name: data.name || data.venueName || 'Untitled Venue',
-    address: data.address || '',
-    photos: Array.isArray(data.photos) ? data.photos : [],
-  };
-}
-
-/**
- * Transfer ownership of a venue profile (ID-only lists in users docs).
- *
- * Effects (atomically in a transaction):
- * - Updates venueProfiles/{venueId}: sets userId, accountName, email to new owner's data.
- * - Removes venueId from users/{fromUserId}.venueProfiles (array of strings).
- * - Adds venueId to users/{toUserId}.venueProfiles (array of strings, no duplicates).
- *
- * @param {Object} params
- * @param {string} params.venueId - Venue profile document ID being transferred.
- * @param {string} params.fromUserId - Current owner’s user document ID.
- * @param {string} params.toUserId - New owner’s user document ID.
- * @returns {Promise<{venueId:string, fromUserId:string, toUserId:string}>}
- * @throws {Error} If docs are missing, ownership invalid, or the transaction fails.
- */
-export async function transferVenueOwnership({ venueId, fromUserId, toUserId }) {
-  if (!venueId || !fromUserId || !toUserId) {
-    throw new Error('venueId, fromUserId, and toUserId are required');
-  }
-  if (fromUserId === toUserId) {
-    throw new Error('Source and destination users are the same');
-  }
-
-  const venueRef = doc(firestore, 'venueProfiles', venueId);
-  const fromUserRef = doc(firestore, 'users', fromUserId);
-  const toUserRef = doc(firestore, 'users', toUserId);
-
-  await runTransaction(firestore, async (tx) => {
-    const venueSnap = await tx.get(venueRef);
-    const fromUserSnap = await tx.get(fromUserRef);
-    const toUserSnap = await tx.get(toUserRef);
-
-    if (!venueSnap.exists()) throw new Error(`Venue ${venueId} not found`);
-    if (!fromUserSnap.exists()) throw new Error(`From user ${fromUserId} not found`);
-    if (!toUserSnap.exists()) throw new Error(`To user ${toUserId} not found`);
-
-    const venue = venueSnap.data() || {};
-    const fromUser = fromUserSnap.data() || {};
-    const toUser = toUserSnap.data() || {};
-
-    // Validate current ownership
-    if (venue.userId !== fromUserId) {
-      throw new Error('Current user does not own this venue');
-    }
-
-    // Users store venue IDs (strings), not objects
-    const fromList = Array.isArray(fromUser.venueProfiles) ? fromUser.venueProfiles : [];
-    const toList = Array.isArray(toUser.venueProfiles) ? toUser.venueProfiles : [];
-
-    // Remove from source (if present)
-    const nextFromList = fromList.filter((id) => id !== venueId);
-
-    // Add to destination (no duplicates)
-    const alreadyThere = toList.includes(venueId);
-    const nextToList = alreadyThere ? toList : [...toList, venueId];
-
-    // Update venue doc to reflect new owner (and surface owner’s display fields)
-    const newAccountName = toUser.name ?? venue.accountName ?? '';
-    const newEmail = toUser.email ?? venue.email ?? '';
-
-    tx.update(venueRef, {
-      userId: toUserId,
-      accountName: newAccountName,
-      email: newEmail,
-    });
-
-    // Update user docs
-    tx.update(fromUserRef, { venueProfiles: nextFromList });
-    tx.update(toUserRef, { venueProfiles: nextToList });
-  });
-
-  const toUserSnap = await getDoc(doc(firestore, 'users', toUserId));
-  const toUser = toUserSnap.data() || {};
-  const newAccountName = toUser.name || '';
-  const newId = toUserSnap.id;
-
-  // 3) Update gigs' denormalized accountName
-  await updateVenueGigsAccountName(venueId, newAccountName, newId);
-
-  // 4) Rewrite conversations & messages
-  await rewriteVenueConversationsAndMessages({
-    venueId,
-    fromUserId,
-    toUserId,
-    newAccountName,
-  });
-
-  return { venueId, fromUserId, toUserId, newAccountName };
-}
-
 /*** DELETE OPERATIONS ***/
 
 /**
@@ -546,30 +402,6 @@ export const deleteVenueProfile = async (venueId) => {
       await deleteDoc(venueRef);
     } catch (error) {
       console.error('Error deleting venue profile:', error);
-      throw error;
-    }
-  };
-
-/**
- * Removes a venueId from the venueProfiles array in a user document.
- *
- * @param {string} userId - Firestore document ID of the user.
- * @param {string} venueIdToRemove - The venueId to remove from the user's venueProfiles.
- * @returns {Promise<void>}
- */
-export const removeVenueIdFromUser = async (userId, venueIdToRemove) => {
-    try {
-      const userRef = doc(firestore, 'users', userId);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        const updatedVenueProfiles = (userData.venueProfiles || []).filter(id => id !== venueIdToRemove);
-        await updateDoc(userRef, { venueProfiles: updatedVenueProfiles });
-      } else {
-        console.warn(`User document not found for ID: ${userId}`);
-      }
-    } catch (error) {
-      console.error('Error removing venueId from user document:', error);
       throw error;
     }
 };
@@ -597,34 +429,18 @@ export const removeGigFromVenue = async (venueId, gigId) => {
  * @returns {Promise<void>}
  */
 export const deleteTemplatesByVenueId = async (venueId) => {
-    try {
-      const templatesQuery = query(
-        collection(firestore, 'templates'),
-        where('venueId', '==', venueId)
-      );
-      const templatesSnapshot = await getDocs(templatesQuery);
-  
-      const deletionPromises = templatesSnapshot.docs.map((doc) => deleteDoc(doc.ref));
-      await Promise.all(deletionPromises);
-    } catch (error) {
-      console.error('Error deleting templates for venue:', error);
-      throw error;
-    }
-  };
+  try {
+    const templatesQuery = query(
+      collection(firestore, 'templates'),
+      where('venueId', '==', venueId)
+    );
+    const templatesSnapshot = await getDocs(templatesQuery);
 
-/**
- * Removes a musician ID from the savedMusicians array in a user's document.
- *
- * @param {string} userId - Firestore document ID of the user.
- * @param {string} musicianId - ID of the musician to remove.
- * @returns {Promise<void>}
- */
-export const removeMusicianFromUser = async (userId, musicianId) => {
-  const ref = doc(firestore, 'users', userId);
-  const snap = await getDoc(ref);
-  if (snap.exists()) {
-    const updated = (snap.data().savedMusicians || []).filter(id => id !== musicianId);
-    await updateDoc(ref, { savedMusicians: updated });
+    const deletionPromises = templatesSnapshot.docs.map((doc) => deleteDoc(doc.ref));
+    await Promise.all(deletionPromises);
+  } catch (error) {
+    console.error('Error deleting templates for venue:', error);
+    throw error;
   }
 };
 

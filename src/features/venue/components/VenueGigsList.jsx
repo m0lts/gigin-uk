@@ -16,7 +16,7 @@ import {
     TwitterIcon,
     WeddingIcon } from '@features/shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
-import { createVenueRequest, getMusicianProfileByMusicianId } from "../../../services/musicians";
+import { createVenueRequest, getMusicianProfileByMusicianId } from "../../../services/client-side/musicians";
 import { toast } from "sonner";
 
 export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null, venueId }) => {

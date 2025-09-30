@@ -3,7 +3,7 @@ import { EditIcon, PlayIcon, PlusIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useLocation } from 'react-router-dom';
 import { arrayUnion } from 'firebase/firestore';
-import { updateMusicianProfile } from '@services/musicians';
+import { updateMusicianProfile } from '@services/client-side/musicians';
 import { generateVideoThumbnail, uploadTracks, uploadVideosWithThumbnails } from '@services/storage';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 

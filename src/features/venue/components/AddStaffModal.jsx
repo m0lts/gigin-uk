@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { createVenueInvite } from "../../../services/venues";
-import { sendVenueInviteEmail } from "../../../services/emails";
+import { createVenueInvite } from "../../../services/client-side/venues";
+import { sendVenueInviteEmail } from "../../../services/client-side/emails";
 import { toast } from "sonner";
 import { LoadingSpinner } from "../../shared/ui/loading/Loading";
 import { AddMember } from "../../shared/ui/extras/Icons";
@@ -16,7 +16,7 @@ export const AddStaffModal = ({user, venue, onClose}) => {
     const togglePerm = (key) => setPermissions((p) => ({ ...p, [key]: !p[key] }));
 
     const generateInviteLink = async () => {
-        const inviteId = await createVenueInvite(venue.id, user.uid, emailToInvite, permissions);
+        const inviteId = await createVenueInvite(venue.id, user.uid, emailToInvite, permissions, user.name);
         return `${window.location.origin}/join-venue?invite=${inviteId}`;
     };
 

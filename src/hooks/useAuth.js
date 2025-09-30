@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, fetchSignInMethodsForEmail, deleteUser, sendEmailVerification } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion, query, collection, getDocs, where, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion, query, collection, getDocs, where, limit, serverTimestamp } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { createMusicianProfile } from '../services/musicians';
+import { createMusicianProfile } from '../services/client-side/musicians';
 import { getEmailAddress } from '../services/functions';
 
 export const useAuth = () => {
@@ -21,37 +21,28 @@ export const useAuth = () => {
 
   useEffect(() => {
     setLoading(true);
-
     authUnsubRef.current = onAuthStateChanged(auth, async (firebaseUser) => {
-      // clean existing listeners when auth user changes
       if (userUnsubRef.current) { userUnsubRef.current(); userUnsubRef.current = null; }
       if (musicianUnsubRef.current) { musicianUnsubRef.current(); musicianUnsubRef.current = null; }
       currentMusicianIdRef.current = null;
-
       if (!firebaseUser) {
         setUser(null);
         setLoading(false);
         return;
       }
-
       const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-
-      // subscribe to users/{uid}
       userUnsubRef.current = onSnapshot(userDocRef, async (userSnap) => {
         if (!userSnap.exists()) {
           setUser({ uid: firebaseUser.uid, email: firebaseUser.email }); // bare minimum
           setLoading(false);
           return;
         }
-
         const rawUser = userSnap.data() || {};
         const userData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           ...rawUser,
         };
-
-        // —— venue profiles (one-off fetch; subscribe if you need live updates) ——
         if (Array.isArray(rawUser.venueProfiles) && rawUser.venueProfiles.length) {
           const venueProfiles = await Promise.all(
             rawUser.venueProfiles.map(async (venueId) => {
@@ -62,33 +53,27 @@ export const useAuth = () => {
           );
           userData.venueProfiles = venueProfiles.filter(Boolean);
         }
-
-        // —— musician profile: subscribe live ——
         const musicianId =
           Array.isArray(rawUser.musicianProfile) && rawUser.musicianProfile.length
             ? rawUser.musicianProfile[0]
             : null;
-
-        // (re)wire musician subscription if id changed
         if (musicianId !== currentMusicianIdRef.current) {
-          // clean old sub
           if (musicianUnsubRef.current) {
             musicianUnsubRef.current();
             musicianUnsubRef.current = null;
           }
           currentMusicianIdRef.current = musicianId;
-
           if (musicianId) {
             const musicianRef = doc(firestore, 'musicianProfiles', musicianId);
             musicianUnsubRef.current = onSnapshot(musicianRef, (musSnap) => {
               const musicianData = musSnap.exists() ? { id: musicianId, ...musSnap.data() } : null;
               setUser((prev) => {
-                const base = prev ?? userData;           // first tick fallback
+                const base = prev ?? userData;
                 const next = { ...base };
                 if (musicianData) {
-                  next.musicianProfile = musicianData;   // add only when present
+                  next.musicianProfile = musicianData;
                 } else {
-                  delete next.musicianProfile;           // ensure key is removed, not undefined
+                  delete next.musicianProfile;
                 }
                 return next;
               });
@@ -99,15 +84,13 @@ export const useAuth = () => {
           } else {
             setUser((prev) => {
               const merged = { ...(prev || {}), ...userData };
-              const { musicianProfile, ...rest } = merged; // strip the key entirely
+              const { musicianProfile, ...rest } = merged;
               return rest;
             });
             setLoading(false);
           }
         } else {
-          // musician id unchanged; just update non-musician fields
           setUser((prev) => ({
-            // keep any existing musicianProfile from the musician listener
             ...(prev || {}),
             ...userData,
           }));
@@ -126,17 +109,6 @@ export const useAuth = () => {
     };
   }, []);
   
-  const checkCredentials = async (credentials) => {
-    try {
-      const userDoc = await getDoc(doc(firestore, 'users', credentials.email));
-      if (userDoc.exists()) {
-        throw { message: '* Email or phone number already in use.', status: 400 };
-      }
-      return null;
-    } catch (error) {
-      throw { error }
-    }
-  };
 
   const login = async (credentials) => {
     try {
@@ -186,7 +158,7 @@ export const useAuth = () => {
           email: credentials.email,
           phoneNumber: credentials.phoneNumber,
           marketingConsent: marketingConsent,
-          createdAt: Date.now(),
+          createdAt: Timestamp.now(),
           firstTimeInFinances: true,
           musicianProfile: [
             musicianId
@@ -198,7 +170,7 @@ export const useAuth = () => {
           email: credentials.email,
           phoneNumber: credentials.phoneNumber,
           marketingConsent: marketingConsent,
-          createdAt: Date.now(),
+          createdAt: Timestamp.now(),
           firstTimeInFinances: true,
         });
       }
@@ -343,7 +315,7 @@ const resetPassword = async (rawEmail) => {
             name: user.displayName || '',
             email: user.email || '',
             marketingConsent,
-            createdAt: Date.now(),
+            createdAt: Timestamp.now(),
             emailVerified: true,
             firstTimeInFinances: true,
             musicianProfile: arrayUnion(musicianId),
@@ -354,7 +326,7 @@ const resetPassword = async (rawEmail) => {
             name: user.displayName || '',
             email: user.email || '',
             marketingConsent,
-            createdAt: Date.now(),
+            createdAt: Timestamp.now(),
             emailVerified: true,
             firstTimeInFinances: true,
             googleAccount: true,
@@ -391,7 +363,6 @@ const resetPassword = async (rawEmail) => {
     user,
     setUser,
     loading,
-    checkCredentials,
     login,
     signup,
     logout,

@@ -20,16 +20,17 @@ import { TicketedGig } from './TicketedGig';
 import { GeoPoint, Timestamp } from 'firebase/firestore';
 import { geohashForLocation } from 'geofire-common';
 import { validateGigTimings } from '../../../services/utils/validation';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/musicians';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
 import { getOrCreateConversation } from '../../../services/conversations';
 import { sendGigInvitationMessage } from '../../../services/messages';
 import { formatDate } from '../../../services/utils/dates';
 import { inviteToGig } from '../../../services/gigs';
 import Portal from '../../shared/components/Portal';
-import { removeVenueRequest } from '../../../services/venues';
+import { removeVenueRequest } from '../../../services/client-side/venues';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { friendlyError } from '../../../services/utils/errors';
 import { postMultipleGigs } from '../../../services/functions';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -772,56 +773,57 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     return (
             <div className='modal gig-post' onClick={handleModalClick}>
                 <div className='modal-content'>
-                    {/* {(stage !== 1 && stage !== 10 && stage !== 0) ? (
-                        <button className='btn tertiary close-modal' onClick={handleSaveAndExit}>
-                            {saving ? 'Saving...' : 'Save and Exit'}
-                        </button>
-                    ) : (stage === 1 || stage === 0) && ( */}
-                    <button className='btn tertiary close-modal' onClick={() => {setGigPostModal(false); resetFormData()}}>
-                        Cancel
-                    </button>
+                    {!loading && (
+                      <button className='btn tertiary close-modal' onClick={() => {setGigPostModal(false); resetFormData()}}>
+                          Cancel
+                      </button>
+                    )}
                     <div className='stage'>
                         {loading ? (
                             <div className='head'>
-                                <h1 className='title'>Posting Gig...</h1>
+                                <LoadingSpinner />
                             </div>
                         ) : (
                             renderStageContent()
                         )}
                     </div>
-                    <div className='progress-bar-container'>
-                        <div className='progress-bar' style={{ width: `${getProgressPercentage()}%` }}></div>
-                    </div>
-                    <div
-                        className={`control-buttons ${
-                            (stage === 0 || stage === 1) && incompleteGigs.length === 0 && templates.length === 0
-                            ? 'single'
-                            : ''
-                        }`}
-                    >
-                        {(stage === 0 || stage === 1) ? (
-                            (incompleteGigs.length === 0 && templates.length === 0) ? (
-                                <button className='btn primary' onClick={nextStage}>Next</button>
-                            ) : (
+                    {!loading && (
+                      <>
+                        <div className='progress-bar-container'>
+                            <div className='progress-bar' style={{ width: `${getProgressPercentage()}%` }}></div>
+                        </div>
+                        <div
+                            className={`control-buttons ${
+                                (stage === 0 || stage === 1) && incompleteGigs.length === 0 && templates.length === 0
+                                ? 'single'
+                                : ''
+                            }`}
+                        >
+                            {(stage === 0 || stage === 1) ? (
+                                (incompleteGigs.length === 0 && templates.length === 0) ? (
+                                    <button className='btn primary' onClick={nextStage}>Next</button>
+                                ) : (
+                                    <>
+                                    <button className='btn secondary' onClick={prevStage}>Back</button>
+                                    <button className='btn primary' onClick={nextStage}>Next</button>
+                                    </>
+                                )
+                                ) : stage === 10 ? (
                                 <>
-                                <button className='btn secondary' onClick={prevStage}>Back</button>
-                                <button className='btn primary' onClick={nextStage}>Next</button>
+                                    <button className='btn secondary' onClick={prevStage}>Back</button>
+                                    <button className='btn primary' onClick={handlePostGig}>
+                                        Post Gig{formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}
+                                    </button>
                                 </>
-                            )
-                            ) : stage === 10 ? (
-                            <>
-                                <button className='btn secondary' onClick={prevStage}>Back</button>
-                                <button className='btn primary' onClick={handlePostGig}>
-                                    Post Gig{formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}
-                                </button>
-                            </>
-                            ) : (
-                            <>
-                                <button className='btn secondary' onClick={prevStage}>Back</button>
-                                <button className='btn primary' onClick={nextStage}>Next</button>
-                            </>
-                        )}
-                    </div>
+                                ) : (
+                                <>
+                                    <button className='btn secondary' onClick={prevStage}>Back</button>
+                                    <button className='btn primary' onClick={nextStage}>Next</button>
+                                </>
+                            )}
+                        </div>
+                      </>
+                    )}
                 </div>
             </div>
     )

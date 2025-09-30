@@ -6,3 +6,4 @@ export * from "./features/media/index.js";
 export * from "./features/venues/index.js";
 export * from "./features/users/index.js";
 export * from "./features/gigs/index.js";
+export * from "./features/reviews/index.js";

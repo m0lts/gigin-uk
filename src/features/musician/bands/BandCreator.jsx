@@ -6,15 +6,15 @@ import { ProgressBar } from '@features/musician/profile-creator/ProgressBar';
 import { useAuth } from '@hooks/useAuth';
 import { uploadFileToStorage } from '@services/storage';
 import { createBandProfile } from '@services/bands';
-import { updateUserDocument } from '@services/users';
-import { updateMusicianProfile } from '@services/musicians';
+import { updateMusicianProfile } from '@services/client-side/musicians';
 import { generateBandPassword } from '@services/utils/validation';
 import { Timestamp, arrayUnion } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
-import { createMusicianProfile } from '../../../services/musicians';
+import { createMusicianProfile } from '../../../services/client-side/musicians';
 import '@styles/musician/profile-creator.styles.css';
+import { updateUserArrayField } from '../../../services/function-calls/users';
 
 export const BandCreator = ({ musicianProfile, refreshData }) => {
     const { user } = useAuth();
@@ -94,9 +94,7 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
           ]
         };
         await createBandProfile(formData.bandId, updatedFormData, user.uid, musicianProfile);
-        await updateUserDocument(user.uid, {
-          bands: arrayUnion(formData.bandId)
-        })
+        await updateUserArrayField('bands', 'add', formData.bandId);
         await updateMusicianProfile(musicianProfile.id, {
           bands: arrayUnion(formData.bandId)
         })
