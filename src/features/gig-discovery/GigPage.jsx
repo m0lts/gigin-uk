@@ -21,9 +21,8 @@ import {
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { updateMusicianGigApplications } from '@services/client-side/musicians';
-import { applyToGig, negotiateGigFee } from '@services/gigs';
-import { getOrCreateConversation } from '@services/conversations';
-import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/messages';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/client-side/messages';
 import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
 import { validateMusicianUser } from '@services/utils/validation';
 import { useResizeEffect } from '@hooks/useResizeEffect';
@@ -31,9 +30,9 @@ import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/client-side/musicians';
-import { getBandMembers } from '../../services/bands';
-import { acceptGigOffer, getGigById, getGigsByIds } from '../../services/gigs';
-import { getMostRecentMessage, sendCounterOfferMessage, sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../services/messages';
+import { getBandMembers } from '../../services/client-side/bands';
+import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
+import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
 import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
@@ -44,8 +43,10 @@ import { NoProfileModal } from '../musician/components/NoProfileModal';
 import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
-import { notifyOtherApplicantsGigConfirmed } from '../../services/conversations';
+import { notifyOtherApplicantsGigConfirmed } from '../../services/function-calls/conversations';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
+import { acceptGigOffer, applyToGig, negotiateGigFee } from '../../services/function-calls/gigs';
+import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '../../services/function-calls/messages';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId } = useParams();

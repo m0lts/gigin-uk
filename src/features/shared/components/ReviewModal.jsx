@@ -5,19 +5,19 @@ import Skeleton from 'react-loading-skeleton';
 import '@styles/shared/review-modal.styles.css';
 import { getMusicianProfileByMusicianId, findPendingFeeByGigId } from '@services/client-side/musicians';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { updateGigDocument } from '@services/gigs';
-import { sendDisputeMessage } from '@services/messages';
+import { sendDisputeMessage } from '@services/function-calls/messages';
 import { sendEmail } from '@services/client-side/emails';
-import { cancelTask } from '@services/functions';
+import { cancelTask } from '@services/function-calls/tasks';
 import { toast } from 'sonner';
 import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/client-side/emails';
 import Portal from './Portal';
-import { getOrCreateConversation } from '../../../services/conversations';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { LoadingModal } from '../ui/loading/LoadingModal';
 import { ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';
 import { logDispute, submitReview } from '../../../services/function-calls/reviews';
 import { markPendingFeeInDispute } from '../../../services/function-calls/musicians';
+import { updateGigDocument } from '../../../services/function-calls/gigs';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
     const [loading, setLoading] = useState(!inheritedProfile);

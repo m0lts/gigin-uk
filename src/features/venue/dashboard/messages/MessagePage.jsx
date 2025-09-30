@@ -12,13 +12,15 @@ import { ConversationItem } from './ConversationItem';
 import { GigInformation } from './GigInformation';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
-    markGigApplicantAsViewed,
     updateConversationLastViewed,
-} from '@services/conversations';
+} from '@services/client-side/conversations';
+import { 
+    markGigApplicantAsViewed,
+} from '@services/function-calls/conversations';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { ArchiveIcon, InboxIcon } from '@features/shared/ui/extras/Icons';
-import { updateConversationDocument } from '@services/conversations';
+import { updateConversationDocument } from '@services/function-calls/conversations';
 import { DeleteGigIcon, DeleteIcon, ErrorIcon, OptionsIcon } from '../../../shared/ui/extras/Icons';
 import Portal from '../../../shared/components/Portal';
 

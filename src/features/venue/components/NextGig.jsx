@@ -6,20 +6,20 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useAuth } from '@hooks/useAuth';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
-import { getOrCreateConversation } from '@services/conversations';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { postCancellationMessage } from '@services/messages';
-import { cancelGigAndRefund } from '@services/functions';
+import { postCancellationMessage } from '@services/function-calls/messages';
+import { cancelGigAndRefund } from '@services/function-calls/tasks';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '@services/utils/misc';
 import { CloseIcon, ErrorIcon, ExitIcon, PeopleGroupIconSolid } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
-import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
 import { updateMusicianCancelledGig } from '../../../services/client-side/musicians';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
 
 
 export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {

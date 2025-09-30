@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { createBandInvite, getBandMembers } from '@services/bands';
 import { CopyIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { updateBandMemberSplits, updateBandMemberPermissions, removeBandMember, updateBandAdmin } from '@services/bands';
+import { updateBandMemberPermissions, removeBandMember, updateBandAdmin } from '@services/function-calls/bands';
 import { AddMember, KeyIcon, PasswordIcon, PeopleGroupIconSolid, PlusIconSolid, RemoveMemberIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
@@ -10,6 +9,7 @@ import { useMusicianDashboard } from '../../../context/MusicianDashboardContext'
 import Portal from '@features/shared/components/Portal'
 import { sendBandInviteEmail } from '../../../services/client-side/emails';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { createBandInvite } from '../../../services/function-calls/bands';
 
 export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, viewing = false, bandAdmin }) => {
 
@@ -84,42 +84,6 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             toast.error('Failed to send invite. Please try again.')
         }
     };
-    
-    // const handleConfirmSplits = async () => {
-    //     if (band.bandInfo.admin.musicianId !== musicianId) return;
-    //     const values = Object.values(splitEdits);
-    //     const total = values.reduce((acc, val) => acc + val, 0);
-    //     if (total !== 100) {
-    //         window.alert('Total split must equal 100%.');
-    //         return;
-    //     }
-    //     try {
-    //         setLoading(true);
-    //         await updateBandMemberSplits(band.id, splitEdits);
-    //         const updatedMembers = bandMembers.map(m => ({
-    //             ...m,
-    //             split: splitEdits[m.musicianProfileId] ?? m.split,
-    //         }));
-    //         setBandMembers(updatedMembers);
-    //         setIsEditingSplits(false);
-    //         setError('');
-    //         toast.success('Splits confirmed.')
-    //     } catch (err) {
-    //         console.error('Failed to update splits:', err);
-    //         setError('Something went wrong.');
-    //         toast.error('Error confirming splits. Please try again.')
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-
-    // const handleSplitChange = (musicianProfileId, value) => {
-    //     const percent = Math.max(0, Math.min(100, Number(value)));
-    //     setSplitEdits(prev => ({
-    //         ...prev,
-    //         [musicianProfileId]: percent,
-    //     }));
-    // };
 
 
     const handlePermissionChange = (musicianProfileId, memberUserId, field, value) => {

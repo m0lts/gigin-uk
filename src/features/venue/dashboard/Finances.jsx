@@ -8,12 +8,12 @@ import {
 import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
-import { deleteSavedCard } from '@services/functions';
+import { deleteSavedCard } from '@services/function-calls/payments';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { CardIcon, CoinsIconSolid, DeleteGigIcon, HouseIconSolid, PeopleRoofIconSolid, PieChartIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
-import { changeDefaultCard } from '../../../services/functions';
+import { changeDefaultCard } from '../../../services/function-calls/payments';
 import { useAuth } from '@hooks/useAuth';
 import { updateUserDocument } from '../../../services/client-side/users';
 import Portal from '../../shared/components/Portal';

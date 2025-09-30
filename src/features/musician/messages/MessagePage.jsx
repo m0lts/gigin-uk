@@ -12,14 +12,13 @@ import { GigInformation } from './GigInformation';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
     listenToUserConversations,
-    markGigApplicantAsViewed,
     updateConversationLastViewed,
-} from '@services/conversations';
+} from '@services/client-side/conversations';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatDate } from '@services/utils/dates';
 import { ArchiveIcon, InboxIcon, SaveIcon, SendMessageIcon } from '@features/shared/ui/extras/Icons';
-import { updateConversationDocument } from '@services/conversations';
+import { updateConversationDocument } from '@services/function-calls/conversations';
 import { ConversationItem } from './ConversationItem';
 
 export const MessagePage = () => {

@@ -8,12 +8,11 @@ import '@styles/musician/messages.styles.css';
 import { PaymentModal } from '@features/venue/components/PaymentModal'
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { sendMessage, listenToMessages, sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/messages';
-import { acceptGigOffer, declineGigApplication, updateGigWithCounterOffer } from '@services/gigs';
+import { listenToMessages } from '@services/client-side/messages';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/client-side/emails';
-import { fetchSavedCards, confirmGigPayment } from '@services/functions';
+import { fetchSavedCards, confirmGigPayment } from '@services/function-calls/payments';
 import { CalendarIconSolid } from '../../../shared/ui/extras/Icons';
 import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
 import { toast } from 'sonner';
@@ -21,8 +20,9 @@ import { formatDate, toJsDate } from '../../../../services/utils/dates';
 import Portal from '../../../shared/components/Portal';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { loadStripe } from '@stripe/stripe-js';
-import { notifyOtherApplicantsGigConfirmed } from '../../../../services/conversations';
-import { acceptGigOfferOM } from '../../../../services/gigs';
+import { notifyOtherApplicantsGigConfirmed } from '../../../../services/function-calls/conversations';
+import { acceptGigOffer, acceptGigOfferOM, declineGigApplication, updateGigWithCounterOffer  } from '../../../../services/function-calls/gigs';
+import { sendGigAcceptedMessage, sendMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '../../../../services/function-calls/messages';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 

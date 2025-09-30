@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { toast } from 'sonner';
-import { getPhoneExistsBoolean } from '@services/functions';
+import { getPhoneExistsBoolean } from '@services/function-calls/users';
 // Components
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 import { GoogleIcon, SeeIcon, QuestionCircleIcon } from '@icons';

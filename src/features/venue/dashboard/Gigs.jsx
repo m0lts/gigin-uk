@@ -10,7 +10,7 @@ import {
 CloseIcon } from '@features/shared/ui/extras/Icons';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
-import { deleteGigsBatch, duplicateGig, saveGigTemplate, updateGigDocument } from '@services/gigs';
+import { deleteGigsBatch } from '@services/client-side/gigs';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { openInNewTab } from '../../../services/utils/misc';
@@ -18,15 +18,14 @@ import { RequestCard } from '../components/RequestCard';
 import { getVenueProfileById, removeVenueRequest } from '../../../services/client-side/venues';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
-import { cancelGigAndRefund } from '../../../services/functions';
-import { getOrCreateConversation } from '../../../services/conversations';
-import { postCancellationMessage } from '../../../services/messages';
-import { getGigById, logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
+import { cancelGigAndRefund } from '@services/function-calls/tasks';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { postCancellationMessage } from '../../../services/function-calls/messages';
 import { getMusicianProfileByMusicianId, updateMusicianCancelledGig } from '../../../services/client-side/musicians';
 import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
-import { handleCloseGig, handleOpenGig } from '../../../services/functions';
+import { duplicateGig, handleCloseGig, handleOpenGig, logGigCancellation, saveGigTemplate, updateGigDocument, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
 
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user, refreshGigs }) => {

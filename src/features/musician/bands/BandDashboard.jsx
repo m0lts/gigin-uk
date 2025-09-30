@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { leaveBand } from '@services/bands';
+import { leaveBand } from '@services/function-calls/bands';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, NoImageIcon, StarIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { deleteBand } from '../../../services/bands';
+import { deleteBand } from '../../../services/function-calls/bands';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import { ProfileForm } from '../dashboard/profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';

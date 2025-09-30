@@ -11,7 +11,7 @@ import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
 import '@styles/shared/card-details.styles.css'
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading'
-import { createStripePaymentMethod, saveStripePaymentMethod } from '@services/functions';
+import { createStripePaymentMethod, saveStripePaymentMethod } from '@services/function-calls/payments';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../ui/loading/Loading';
 

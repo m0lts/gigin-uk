@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createMusicianProfile } from '../services/client-side/musicians';
-import { getEmailAddress } from '../services/functions';
+import { getEmailAddress } from '../services/function-calls/users';
 
 export const useAuth = () => {
 

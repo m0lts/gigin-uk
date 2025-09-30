@@ -21,15 +21,14 @@ import { GeoPoint, Timestamp } from 'firebase/firestore';
 import { geohashForLocation } from 'geofire-common';
 import { validateGigTimings } from '../../../services/utils/validation';
 import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
-import { getOrCreateConversation } from '../../../services/conversations';
-import { sendGigInvitationMessage } from '../../../services/messages';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { sendGigInvitationMessage } from '../../../services/client-side/messages';
 import { formatDate } from '../../../services/utils/dates';
-import { inviteToGig } from '../../../services/gigs';
 import Portal from '../../shared/components/Portal';
 import { removeVenueRequest } from '../../../services/client-side/venues';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { friendlyError } from '../../../services/utils/errors';
-import { postMultipleGigs } from '../../../services/functions';
+import { inviteToGig, postMultipleGigs } from '../../../services/function-calls/gigs';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
   
 function formatPounds(amount) {

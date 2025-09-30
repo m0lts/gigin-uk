@@ -4,7 +4,7 @@ import { GuitarsIcon, LogOutIcon, TelescopeIcon, UserIcon, VenueBuilderIcon } fr
 import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth'
 import { useState, useEffect } from 'react'
-import { listenToUserConversations } from '@services/conversations';
+import { listenToUserConversations } from '@services/client-side/conversations';
 import { ProfileCreator } from '../../musician/profile-creator/ProfileCreator';
 import { ExitIcon, MapIcon } from '../ui/extras/Icons';
 import { NoProfileModal } from '../../musician/components/NoProfileModal';

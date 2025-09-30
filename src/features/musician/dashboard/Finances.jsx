@@ -8,14 +8,14 @@ import {
 } from '@stripe/react-connect-js';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
-import { payoutToBankAccount, transferStripeFunds } from '@services/functions';
+import { payoutToBankAccount, transferStripeFunds } from '@services/function-calls/payments';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatFeeDate } from '@services/utils/dates';
 import { toast } from 'sonner';
 import { BankAccountIcon, CoinsIconSolid, CopyIcon, DeleteGigIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, MoreInformationIcon, PaymentSystemIcon, PieChartIcon, StripeIcon, SuccessIcon, TickIcon, WarningIcon } from '../../shared/ui/extras/Icons';
-import { deleteStripeConnectAccount } from '../../../services/functions';
-import { getConnectAccountStatus } from '../../../services/functions';
+import { deleteStripeConnectAccount } from '../../../services/function-calls/payments';
+import { getConnectAccountStatus } from '../../../services/function-calls/payments';
 import { getMusicianFees } from '../../../services/client-side/musicians';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';

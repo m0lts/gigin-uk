@@ -11,7 +11,7 @@ import { deleteFileFromStorage, uploadFileToStorage, uploadFileWithProgress } fr
 import { sendTestimonialRequestEmail } from '../../../../services/client-side/emails';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../../shared/ui/loading/LoadingModal';
-import { updateBandMemberImg } from '../../../../services/bands';
+import { updateBandMemberImg } from '../../../../services/function-calls/bands';
 import { updateUserArrayField } from '../../../../services/function-calls/users';
 
 

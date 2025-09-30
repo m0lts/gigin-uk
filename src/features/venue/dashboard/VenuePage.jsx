@@ -20,9 +20,9 @@ import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { AddMember, DeleteGigIcon, EditIcon, LeftArrowIcon, SettingsIcon, ShareIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '../../../services/utils/misc';
 import { deleteTemplatesByVenueId, deleteVenueProfile } from '../../../services/client-side/venues';
-import { deleteGig, getGigsByVenueId } from '../../../services/gigs';
+import { deleteGigsBatch, getGigsByVenueId } from '../../../services/client-side/gigs';
 import { getReviewsByVenueId } from '../../../services/client-side/reviews';
-import { deleteConversation, getConversationsByParticipantId } from '../../../services/conversations';
+import { getConversationsByParticipantId } from '../../../services/client-side/conversations';
 import { deleteFolderFromStorage } from '../../../services/storage';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
@@ -32,6 +32,7 @@ import { hasVenuePerm } from '../../../services/utils/permissions';
 import { updateUserArrayField } from '../../../services/function-calls/users';
 import { fetchVenueMembersWithUsers } from '../../../services/function-calls/venues';
 import { deleteReview } from '../../../services/function-calls/reviews';
+import { deleteConversation } from '../../../services/function-calls/conversations';
 
 export const VenuePage = ({ user, venues }) => {
     const navigate = useNavigate();
@@ -126,9 +127,8 @@ export const VenuePage = ({ user, venues }) => {
             await deleteVenueProfile(venueId);
             await updateUserArrayField('venueProfiles', 'remove', venueId);
             const gigs = await getGigsByVenueId(venueId);
-            for (const { id } of gigs) {
-                await deleteGig(id);
-            }
+            const gigIds = gigs.map(gig => gig.id);
+            await deleteGigsBatch(gigIds);
             const reviews = await getReviewsByVenueId(venueId);
             for (const { id } of reviews) {
                 await deleteReview(id);

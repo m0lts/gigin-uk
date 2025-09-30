@@ -6,12 +6,12 @@ import { EditIcon } from '@features/shared/ui/extras/Icons';
 import { updateEmail, updatePassword, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '@lib/firebase';
 import '@styles/shared/account-page.styles.css';
-import { removeGigApplicant } from '@services/gigs';
+import { removeGigApplicant } from '@services/function-calls/gigs';
 import { getVenueProfilesByUserId } from '@services/client-side/venues';
 import { getMusicianProfileByUserId } from '@services/client-side/musicians';
-import { deleteGig, getGigsByVenueId, getGigsByVenueIds } from '@services/gigs';
+import { getGigsByVenueId, getGigsByVenueIds } from '@services/client-side/gigs';
 import { getReviewsByMusicianId, getReviewsByVenueId, getReviewsByVenueIds } from '@services/client-side/reviews';
-import { deleteConversation, getConversationsByParticipantId, getConversationsByParticipants } from '@services/conversations';
+import { getConversationsByParticipantId, getConversationsByParticipants } from '@services/client-side/conversations';
 import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { deleteFolderFromStorage } from '@services/storage';
 import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/client-side/venues';
@@ -27,6 +27,8 @@ import { uploadFileToStorage } from '../../services/storage';
 import { clearUserArrayField, deleteUserDocument, updateUserArrayField } from '../../services/function-calls/users';
 import { transferVenueOwnership } from '../../services/function-calls/venues';
 import { deleteReview } from '../../services/function-calls/reviews';
+import { deleteGigsBatch } from '../../services/client-side/gigs';
+import { deleteConversation } from '../../services/function-calls/conversations';
 
 export const Account = () => {
     const { user,  } = useAuth();
@@ -187,9 +189,7 @@ export const Account = () => {
             const musicianId = musicianProfile?.id;
             await deleteMusicianProfile(musicianId);
             const venueGigs = await getGigsByVenueIds(venueIds);
-            for (const { id } of venueGigs) {
-                await deleteGig(id);
-            }
+            await deleteGigsBatch(venueGigs.map(gig => gig.id));
             const venueReviews = await getReviewsByVenueIds(venueIds);
             for (const { id } of venueReviews) {
                 await deleteReview(id);
@@ -284,9 +284,7 @@ export const Account = () => {
                 setShowEventLoadingModal(true);
                 await deleteVenueProfile(venueId);
                 const gigs = await getGigsByVenueId(venueId);
-                for (const { id } of gigs) {
-                    await deleteGig(id);
-                }
+                await deleteGigsBatch(gigs.map(gig => gig.id));
                 const reviews = await getReviewsByVenueId(venueId);
                 for (const { id } of reviews) {
                     await deleteReview(id);

@@ -5,7 +5,6 @@ import { ProfilePictureStage } from '@features/musician/profile-creator/ProfileP
 import { ProgressBar } from '@features/musician/profile-creator/ProgressBar';
 import { useAuth } from '@hooks/useAuth';
 import { uploadFileToStorage } from '@services/storage';
-import { createBandProfile } from '@services/bands';
 import { updateMusicianProfile } from '@services/client-side/musicians';
 import { generateBandPassword } from '@services/utils/validation';
 import { Timestamp, arrayUnion } from 'firebase/firestore';
@@ -15,6 +14,7 @@ import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loadin
 import { createMusicianProfile } from '../../../services/client-side/musicians';
 import '@styles/musician/profile-creator.styles.css';
 import { updateUserArrayField } from '../../../services/function-calls/users';
+import { createBandProfile } from '../../../services/function-calls/bands';
 
 export const BandCreator = ({ musicianProfile, refreshData }) => {
     const { user } = useAuth();

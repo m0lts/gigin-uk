@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { acceptBandInvite } from '@services/bands';
+import { acceptBandInvite } from '@services/function-calls/bands';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { joinBandByPassword, getBandByPassword } from '@services/bands';
+import { joinBandByPassword, getBandByPassword } from '@services/function-calls/bands';
 import { toast } from 'sonner';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';

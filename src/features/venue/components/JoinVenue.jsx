@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { TextLogoLink } from '../../shared/ui/logos/Logos';
 import '@styles/host/join-venue.styles.css';
 import { useAuth } from '../../../hooks/useAuth';
-import { acceptVenueInvite } from '../../../services/functions';
+import { acceptVenueInvite } from '../../../services/function-calls/venues';
 import { toast } from 'sonner';
 
 export const JoinVenuePage = ({ user, setAuthModal, setAuthType }) => {

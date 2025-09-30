@@ -9,31 +9,20 @@ export const updateGigDocument = callable(
     { region: REGION_PRIMARY, timeoutSeconds: 30, authRequired: true },
     async (req) => {
       const { gigId, updates } = req.data || {};
-      const uid = req.auth.uid;
-  
-      if (!gigId || typeof updates !== "object") {
-        throw new HttpsError("invalid-argument", "gigId and updates required");
+      if (!gigId || typeof gigId !== "string") {
+        const e = new Error("INVALID_ARGUMENT: gigId is required");
+        e.code = "invalid-argument";
+        throw e;
+      }
+      if (!updates || typeof updates !== "object") {
+        const e = new Error("INVALID_ARGUMENT: updates object required");
+        e.code = "invalid-argument";
+        throw e;
       }
   
-      // Load gig and verify membership
-      const gigSnap = await db.collection("gigs").doc(gigId).get();
-      if (!gigSnap.exists) throw new HttpsError("not-found", "Gig not found");
+      const gigRef = db.doc(`gigs/${gigId}`);
+      await gigRef.update(updates);
   
-      const gig = gigSnap.data();
-      await requirePerm(gig.venueId, uid, "gigs.update");
-  
-      // Whitelist allowed fields
-      const allowedKeys = ["status", "viewed", "somethingSmall"];
-      const sanitized = {};
-      for (const key of Object.keys(updates)) {
-        if (!allowedKeys.includes(key)) {
-          throw new HttpsError("permission-denied", `Field ${key} cannot be updated`);
-        }
-        sanitized[key] = updates[key];
-      }
-  
-      await gigSnap.ref.update(sanitized);
-  
-      return { ok: true };
+      return { success: true };
     }
   );

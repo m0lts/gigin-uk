@@ -1,5 +1,5 @@
 import { Elements, useStripe, useElements, PaymentRequestButtonElement, ExpressCheckoutElement } from "@stripe/react-stripe-js";
-import { confirmPaymentIntent } from "../../../services/functions";
+import { confirmPaymentIntent } from "../../../services/function-calls/payments";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";

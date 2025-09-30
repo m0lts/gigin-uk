@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Your service functions (assumed to exist as per your spec)
 import { updateMusicianProfile } from '@services/client-side/musicians';
-import { createBandProfile } from '@services/bands';
 import { createMusicianProfile } from '@services/client-side/musicians';
 import { uploadFileToStorage } from '@services/storage';
 import { generateBandPassword } from '@services/utils/validation';
@@ -23,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { getUserById } from '../../../services/client-side/users';
 import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
 import { updateUserArrayField } from '../../../services/function-calls/users';
+import { createBandProfile } from '../../../services/function-calls/bands';
 
 // Helpers
 const slideVariants = {

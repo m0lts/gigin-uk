@@ -12,7 +12,7 @@ import {
     TicketIcon,
     HouseIconLight,
     MicrophoneLinesIcon } from '@features/shared/ui/extras/Icons';
-import { getGigById } from '@services/gigs';
+import { getGigById } from '@services/client-side/gigs';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';

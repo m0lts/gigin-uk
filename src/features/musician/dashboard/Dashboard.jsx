@@ -13,7 +13,7 @@ import { BandCreator } from '../bands/BandCreator';
 import { JoinBand } from '../bands/JoinBand';
 import { BandDashboard } from '../bands/BandDashboard';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
-import { listenToUserConversations } from '../../../services/conversations';
+import { listenToUserConversations } from '../../../services/client-side/conversations';
 import { mergeAndSortConversations } from '@services/utils/filtering';
 import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 import { TopBar } from './TopBar';

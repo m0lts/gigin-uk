@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { getGigsByVenueIds } from '@services/gigs';
+import { getGigsByVenueIds } from '@services/client-side/gigs';
 import { getTemplatesByVenueIds } from '@services/client-side/venues';
-import { subscribeToUpcomingOrRecentGigs } from '@services/gigs';
+import { subscribeToUpcomingOrRecentGigs } from '@services/client-side/gigs';
 import { fetchMyVenueMembership, getVenueRequestsByVenueIds } from '../services/client-side/venues';
-import { fetchCustomerData } from '../services/functions';
+import { fetchCustomerData } from '../services/function-calls/payments';
 
 const VenueDashboardContext = createContext();
 

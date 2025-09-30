@@ -4,13 +4,13 @@ import { OverviewTab } from '@features/musician/profile/OverviewTab';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { EmptyIcon, InviteIconSolid, NoImageIcon, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
 import { AboutTab } from '../profile/AboutTab';
-import { getGigsByIds, inviteToGig } from '../../../services/gigs';
+import { getGigsByIds, } from '../../../services/client-side/gigs';
 import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { getOrCreateConversation } from '../../../services/conversations';
-import { sendGigInvitationMessage } from '../../../services/messages';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { sendGigInvitationMessage } from '../../../services/client-side/messages';
 import { toast } from 'sonner';
 import { validateVenueUser } from '../../../services/utils/validation';
 import { filterInvitableGigsForMusician } from '../../../services/utils/filtering';
@@ -20,6 +20,7 @@ import { BandMembersTab } from '../bands/BandMembersTab';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { updateUserArrayField } from '../../../services/function-calls/users';
+import { inviteToGig } from '../../../services/function-calls/gigs';
 
 
 const VideoModal = ({ video, onClose }) => {

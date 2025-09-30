@@ -11,7 +11,7 @@ import '@styles/forms/forms.styles.css';
 import { toast } from 'sonner';
 import { GoogleIcon } from '../shared/ui/extras/Icons';
 import { PhoneField, isValidE164 } from '../shared/forms/PhoneField';
-import { getPhoneExistsBoolean } from '@services/functions';
+import { getPhoneExistsBoolean } from '@services/function-calls/users';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {

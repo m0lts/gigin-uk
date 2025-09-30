@@ -14,7 +14,7 @@ import {
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { getGigsByVenueId } from '../../../services/gigs';
+import { getGigsByVenueId } from '../../../services/client-side/gigs';
 import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/client-side/musicians';

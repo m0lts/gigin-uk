@@ -21,7 +21,7 @@ import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 import { useVenueDashboard } from '@context/VenueDashboardContext';
 import { getUnreviewedPastGigs } from '../../../services/utils/filtering';
 import { MessagePage } from './messages/MessagePage';
-import { listenToUserConversations } from '@services/conversations';
+import { listenToUserConversations } from '@services/client-side/conversations';
 import Portal from '../../shared/components/Portal';
 import { VenuePage } from './VenuePage';
 

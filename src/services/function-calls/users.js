@@ -44,4 +44,30 @@ export const deleteUserDocument = async () => {
     return response;
 };
 
+/**
+ * Checks whether a phone number already exists on any user doc.
+ * @param {string} phoneNumber The phone number to check.
+ * @returns {Promise<boolean>} true if a user with that phone exists; otherwise false
+*/
+export const getPhoneExistsBoolean = async (phoneNumber) => {
+    const fn = httpsCallable(functions, 'getPhoneExistsBoolean');
+    const { data } = await fn({ phoneNumber });
+    return !!data; // expect boolean
+};
+
+
+/**
+ * Retrieves a user document from Firestore using the user's email address.
+ *
+ * @param {string} email The email address to search for.
+ * @returns {Promise<Object|null>} The user document if found, otherwise null.
+ */
+export const getEmailAddress = async (email) => {
+    const fn = httpsCallable(functions, "getUserEmail");
+    const res = await fn({ email });
+    // res.data = { found: boolean, user: object|null }
+    return res.data?.user || null;
+};
+  
+
 

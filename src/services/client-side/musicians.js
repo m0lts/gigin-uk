@@ -20,8 +20,9 @@ import {
   startAfter,
   arrayUnion
 } from 'firebase/firestore';
-import { getBandMembers } from '../bands';
-import { getMostRecentMessage } from '../messages';
+import { getBandMembers } from './bands';
+import { getMostRecentMessage } from './messages';
+import { updateGigDocument } from '../function-calls/gigs';
 
 /*** CREATE OPERATIONS ***/
 
@@ -362,7 +363,7 @@ export async function withdrawMusicianApplication(gigId, profile) {
   const updatedApplicants = applicants.map(a =>
     a?.id === applicantId ? { ...a, status: 'withdrawn' } : a
   );
-  await updateDoc(gigRef, { applicants: updatedApplicants });
+  await updateGigDocument(gigId, { applicants: updatedApplicants });
   const batch = writeBatch(firestore);
   const pruneApps = (apps = []) =>
     apps.filter(entry => !(entry?.gigId === gigId && entry?.profileId === applicantId));

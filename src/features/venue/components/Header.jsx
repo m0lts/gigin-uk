@@ -19,7 +19,7 @@ import {
     GuitarsIcon,
     RightChevronIcon,
     TelescopeIcon } from '@features/shared/ui/extras/Icons';
-import { listenToUserConversations } from '@services/conversations';
+import { listenToUserConversations } from '@services/client-side/conversations';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { HouseIconSolid, VenueIconSolid } from '../../shared/ui/extras/Icons';
 
