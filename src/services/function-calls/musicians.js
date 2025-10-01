@@ -3,7 +3,11 @@ import { functions } from '@lib/firebase';
 
 
 export async function markPendingFeeInDispute({ musicianId, docId, gigId, disputeReason, details }) {
-    const fn = httpsCallable(functions, "markPendingFeeInDispute");
-    const { data } = await fn({ musicianId, docId, gigId, disputeReason, details });
-    return data;
-}
+    try {
+      const fn = httpsCallable(functions, "markPendingFeeInDispute");
+      const { data } = await fn({ musicianId, docId, gigId, disputeReason, details });
+      return data;
+    } catch (error) {
+      console.error("[CloudFn Error] markPendingFeeInDispute:", error);
+    }
+  }

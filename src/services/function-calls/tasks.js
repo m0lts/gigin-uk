@@ -7,14 +7,13 @@ import { functions } from '@lib/firebase';
  * @returns {Promise<boolean>} - True if successful, false otherwise.
  */
 export const cancelTask = async (taskName) => {
-    try {
-      const cancelCloudTask = httpsCallable(functions, 'cancelCloudTask');
-      const result = await cancelCloudTask({ taskName });
-      return result.data?.success || false;
-    } catch (error) {
-      console.error('Failed to cancel task:', error);
-      return false;
-    }
+  try {
+    const cancelCloudTask = httpsCallable(functions, "cancelCloudTask");
+    const { data } = await cancelCloudTask({ taskName });
+    return data?.success || false;
+  } catch (error) {
+    console.error("[CloudFn Error] cancelTask:", error);
+  }
 };
 
 /**
@@ -25,15 +24,20 @@ export const cancelTask = async (taskName) => {
  * @returns {Promise<void>}
  */
 export const cancelGigAndRefund = async ({ taskNames, transactionId }) => {
-    const cancelCloudTask = httpsCallable(functions, 'cancelCloudTask');
-    const processRefund = httpsCallable(functions, 'processRefund');
+  try {
+    const cancelCloudTask = httpsCallable(functions, "cancelCloudTask");
+    const processRefund = httpsCallable(functions, "processRefund");
+
     for (const taskName of taskNames) {
       if (taskName) {
         await cancelCloudTask({ taskName });
       }
     }
+
     if (transactionId) {
       await processRefund({ paymentIntentId: transactionId });
     }
+  } catch (error) {
+    console.error("[CloudFn Error] cancelGigAndRefund:", error);
+  }
 };
-

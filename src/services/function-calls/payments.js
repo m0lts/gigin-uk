@@ -6,194 +6,206 @@ import { functions } from '@lib/firebase';
  * @returns {Promise<Object[]>}
  */
 export const fetchSavedCards = async () => {
-  const getSavedCards = httpsCallable(functions, 'getSavedCards');
-  const response = await getSavedCards();
-  return response.data.paymentMethods;
+  try {
+    const getSavedCards = httpsCallable(functions, "getSavedCards");
+    const { data } = await getSavedCards();
+    return data?.paymentMethods ?? [];
+  } catch (error) {
+    console.error("[CloudFn Error] fetchSavedCards:", error);
+  }
 };
 
 /**
  * Confirms payment for a gig using a saved card.
- * @param {Object} options
- * @param {string} options.cardId - The Stripe payment method ID.
- * @param {Object} options.gigData - The full gig object.
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
 export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId, customerId }) => {
-    try {
-      if (!gigData?.agreedFee) throw new Error('Missing agreed fee');
-      let amount = typeof gigData.agreedFee === 'string'
-        ? parseFloat(gigData.agreedFee.replace('£', ''))
+  try {
+    if (!gigData?.agreedFee) throw new Error("Missing agreed fee");
+    const amount =
+      typeof gigData.agreedFee === "string"
+        ? parseFloat(gigData.agreedFee.replace("£", ""))
         : gigData.agreedFee;
-      const amountToCharge = Math.round(amount * 1.00 * 100);
-      const gigDate = gigData.startDateTime.toDate();
-      const confirmPayment = httpsCallable(functions, 'confirmPayment');
-      const response = await confirmPayment({
-        paymentMethodId: cardId,
-        amountToCharge,
-        gigData,
-        gigDate,
-        musicianProfileId,
-        customerId,
-      });
-      return response.data;
-    } catch (error) {
-      console.error(error)
-      return error;
-    }
+    const amountToCharge = Math.round(amount * 1.0 * 100);
+    const gigDate = gigData.startDateTime.toDate();
+
+    const confirmPayment = httpsCallable(functions, "confirmPayment");
+    const { data } = await confirmPayment({
+      paymentMethodId: cardId,
+      amountToCharge,
+      gigData,
+      gigDate,
+      musicianProfileId,
+      customerId,
+    });
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] confirmGigPayment:", error);
+  }
 };
 
 /**
- * Confirms payment for a gig using a saved card.
- * @param {Object} options
- * @param {string} options.cardId - The Stripe payment method ID.
- * @param {Object} options.gigData - The full gig object.
- * @returns {Promise<{ success: boolean, error?: string }>}
+ * Creates a PaymentIntent for a gig.
+ * @returns {Promise<any>} underlying callable response.data
  */
 export const confirmPaymentIntent = async ({ amountToCharge, gigData, musicianProfileId, customerId }) => {
-    try {
-      if (!amountToCharge) throw new Error('Missing agreed fee');
-      const gigDate = gigData.startDateTime.toDate();
-      const confirmPayment = httpsCallable(functions, 'createGigPaymentIntent');
-      const response = await confirmPayment({
-        amountToCharge,
-        gigData,
-        gigDate,
-        musicianProfileId,
-        customerId,
-      });
-      return response;
-    } catch (error) {
-      console.error(error)
-      return error;
-    }
+  try {
+    if (!amountToCharge) throw new Error("Missing agreed fee");
+    const gigDate = gigData.startDateTime.toDate();
+
+    const createPI = httpsCallable(functions, "createGigPaymentIntent");
+    const { data } = await createPI({
+      amountToCharge,
+      gigData,
+      gigDate,
+      musicianProfileId,
+      customerId,
+    });
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] confirmPaymentIntent:", error);
+  }
 };
 
 /**
  * Triggers a payout to a musician's connected bank account.
- * @param {string} musicianId
- * @param {number} amount - Amount in decimal (not cents)
- * @returns {Promise<boolean>} - Returns true if successful
+ * @returns {Promise<boolean>}
  */
 export const payoutToBankAccount = async (musicianId, amount) => {
+  try {
     if (!musicianId || !amount || amount <= 0) {
-      throw new Error('Invalid payout parameters.');
+      throw new Error("Invalid payout parameters.");
     }
-  
-    const payoutFunction = httpsCallable(functions, 'payoutToBankAccount');
-    const response = await payoutFunction({
-      musicianId,
-      amount,
-    });
-  
-    return response.data.success || false;
+    const payoutFunction = httpsCallable(functions, "payoutToBankAccount");
+    const { data } = await payoutFunction({ musicianId, amount });
+    return data?.success || false;
+  } catch (error) {
+    console.error("[CloudFn Error] payoutToBankAccount:", error);
+  }
 };
 
 /**
  * Transfers funds to a Stripe connected account.
- * @param {string} connectedAccountId
- * @param {number} amountInCents
  * @returns {Promise<boolean>}
  */
 export const transferStripeFunds = async (connectedAccountId, amountInCents) => {
-    const transferFunds = httpsCallable(functions, 'transferFunds');
-    const result = await transferFunds({ connectedAccountId, amount: amountInCents });
-    return result.data.success || false;
+  try {
+    const transferFunds = httpsCallable(functions, "transferFunds");
+    const { data } = await transferFunds({ connectedAccountId, amount: amountInCents });
+    return data?.success || false;
+  } catch (error) {
+    console.error("[CloudFn Error] transferStripeFunds:", error);
+  }
 };
 
 /**
  * Creates a Stripe payment method using the card element and billing details.
- * @param {Stripe} stripe - Stripe instance
- * @param {CardNumberElement} cardElement - Card element from Stripe Elements
- * @param {string} name - Cardholder's name
- * @param {object} address - Billing address object
- * @returns {Promise<object>} - Returns a formatted payment method or throws
+ * (Client-side via Stripe.js; throws on error.)
  */
 export const createStripePaymentMethod = async (stripe, cardElement, name, address) => {
-    const { error, paymentMethod } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: cardElement,
-      billing_details: {
-        name,
-        address,
-      },
-    });
-  
-    if (error) throw error;
-  
-    return {
-      id: paymentMethod.id,
-      card: {
-        brand: paymentMethod.card.brand,
-        last4: paymentMethod.card.last4,
-        exp_month: paymentMethod.card.exp_month,
-        exp_year: paymentMethod.card.exp_year,
-      },
-      billing_details: {
-        name: paymentMethod.billing_details.name,
-        address: paymentMethod.billing_details.address,
-      },
-    };
+  const { error, paymentMethod } = await stripe.createPaymentMethod({
+    type: "card",
+    card: cardElement,
+    billing_details: { name, address },
+  });
+  if (error) {
+    console.error("[Stripe.js Error] createStripePaymentMethod:", error);
+  }
+  return {
+    id: paymentMethod.id,
+    card: {
+      brand: paymentMethod.card.brand,
+      last4: paymentMethod.card.last4,
+      exp_month: paymentMethod.card.exp_month,
+      exp_year: paymentMethod.card.exp_year,
+    },
+    billing_details: {
+      name: paymentMethod.billing_details.name,
+      address: paymentMethod.billing_details.address,
+    },
+  };
 };
 
 /**
- * Saves a Stripe payment method via Firebase Callable Function.
- * @param {string} paymentMethodId - Stripe payment method ID
- * @returns {Promise<boolean>} - Returns true if successful
+ * Saves a Stripe payment method via callable.
+ * @returns {Promise<any>} response.data
  */
-export const saveStripePaymentMethod = async (paymentMethodId, selectedCustomerId) => {
-    const savePaymentMethod = httpsCallable(functions, 'savePaymentMethod');
-    const response = await savePaymentMethod({ paymentMethodId, customerId: selectedCustomerId });
-    return response;
+export const saveStripePaymentMethod = async (paymentMethodId, customerId) => {
+  try {
+    const savePaymentMethod = httpsCallable(functions, "savePaymentMethod");
+    const { data } = await savePaymentMethod({ paymentMethodId, customerId });
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] saveStripePaymentMethod:", error);
+  }
 };
 
 /**
  * Delete a saved card by its ID.
- * @param {string} cardId
  * @returns {Promise<Object>}
  */
 export const deleteSavedCard = async (cardId, customerId) => {
-    const deleteCard = httpsCallable(functions, 'deleteCard');
-    const response = await deleteCard({ cardId, customerId });
-    return response.data;
+  try {
+    const deleteCard = httpsCallable(functions, "deleteCard");
+    const { data } = await deleteCard({ cardId, customerId });
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] deleteSavedCard:", error);
+  }
 };
-
 
 /**
  * Change default card by its ID.
- * @param {string} cardId
  * @returns {Promise<Object>}
  */
 export const changeDefaultCard = async (cardId, customerId) => {
-    const defaultCard = httpsCallable(functions, 'setDefaultPaymentMethod');
-    const response = await defaultCard({ paymentMethodId: cardId, customerId });
-    return response.data;
+  try {
+    const setDefault = httpsCallable(functions, "setDefaultPaymentMethod");
+    const { data } = await setDefault({ paymentMethodId: cardId, customerId });
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] changeDefaultCard:", error);
+  }
 };
 
 /**
  * Get Stripe customer info, receipts, and saved payment methods.
- * @returns {Promise<{ customer: Object, receipts: Object[], paymentMethods: Object[] }>}
+ * Optionally pass { customerId } to query a specific ID.
  */
 export const fetchCustomerData = async (customerId) => {
-    const getCustomerData = httpsCallable(functions, 'getCustomerData');
-    const response = await getCustomerData(customerId ? { customerId } : {});
-    return response.data;
+  try {
+    const getCustomerData = httpsCallable(functions, "getCustomerData");
+    const { data } = await getCustomerData(customerId ? { customerId } : {});
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] fetchCustomerData:", error);
+  }
 };
 
 /**
  * Delete a Stripe Connect account for a musicianId.
- * Will fail if the connected account has a positive available balance.
- * @param {string} musicianId
  * @returns {Promise<{success: boolean, message?: string}>}
  */
 export const deleteStripeConnectAccount = async (musicianId) => {
-    const fn = httpsCallable(functions, 'deleteStripeConnectedAccount');
-    const res = await fn({musicianId});
-    return res.data;
+  try {
+    const fn = httpsCallable(functions, "deleteStripeConnectedAccount");
+    const { data } = await fn({ musicianId });
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] deleteStripeConnectAccount:", error);
+  }
 };
 
-/** Get status for a Stripe Connect account. */
+/**
+ * Get status for a Stripe Connect account.
+ * @returns {Promise<any>}
+ */
 export const getConnectAccountStatus = async () => {
-    const fn = httpsCallable(functions, 'getConnectAccountStatus');
+  try {
+    const fn = httpsCallable(functions, "getConnectAccountStatus");
     const { data } = await fn();
     return data;
+  } catch (error) {
+    console.error("[CloudFn Error] getConnectAccountStatus:", error);
+  }
 };
