@@ -21,20 +21,24 @@ import { fetchCustomerData } from '@services/function-calls/payments';
 /*** READ OPERATIONS ***/
 
 export const fetchStripeCustomerData = async () => {
-  const { customer, receipts = [], paymentMethods = [], defaultPaymentMethodId, defaultSourceId } =
-    await fetchCustomerData();
-  const savedCards = paymentMethods.map(pm => ({
-    ...pm,
-    default: pm.id === defaultPaymentMethodId
-  }));
-  savedCards.sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
-  return {
-    customerDetails: customer,
-    savedCards,
-    receipts: receipts.filter(r => r?.metadata?.gigId),
-    defaultPaymentMethodId,
-    defaultSourceId
-  };
+  try {
+    const { customer, receipts = [], paymentMethods = [], defaultPaymentMethodId, defaultSourceId } =
+      await fetchCustomerData();
+    const savedCards = paymentMethods.map(pm => ({
+      ...pm,
+      default: pm.id === defaultPaymentMethodId
+    }));
+    savedCards.sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
+    return {
+      customerDetails: customer,
+      savedCards,
+      receipts: receipts.filter(r => r?.metadata?.gigId),
+      defaultPaymentMethodId,
+      defaultSourceId
+    };
+  } catch (error) {
+    console.error('[Firestore Error] fetchStripeCustomerData:', error);
+  }
 };
 
 /**
@@ -60,19 +64,23 @@ export const fetchStripeCustomerData = async () => {
  * unsubscribe();
  */
 export const listenToPaymentStatus = (paymentIntentId, callback) => {
-  if (!paymentIntentId) {
-    console.warn('listenToPaymentStatus called without a paymentIntentId');
-    return () => {};
-  }
-  const ref = doc(firestore, 'payments', paymentIntentId);
-  return onSnapshot(ref, (snap) => {
-    if (!snap.exists()) {
-      console.warn(`No payment document found for ${paymentIntentId}`);
-      return;
+  try {
+    if (!paymentIntentId) {
+      console.warn('listenToPaymentStatus called without a paymentIntentId');
+      return () => {};
     }
-    const data = snap.data();
-    callback(data.status, data);
-  }, (err) => {
-    console.error('Error listening to payment status:', err);
-  });
+    const ref = doc(firestore, 'payments', paymentIntentId);
+    return onSnapshot(ref, (snap) => {
+      if (!snap.exists()) {
+        console.warn(`No payment document found for ${paymentIntentId}`);
+        return;
+      }
+      const data = snap.data();
+      callback(data.status, data);
+    }, (err) => {
+      console.error('Error listening to payment status:', err);
+    });
+  } catch (error) {
+    console.error('[Firestore Error] listenToPaymentStatus:', error);
+  }
 };

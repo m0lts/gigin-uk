@@ -20,6 +20,7 @@ import {
  * @returns {Promise<void>}
  */
 export const submitTestimonial = async (musicianId, { title, message }) => {
+  try {
     if (!title.trim() || !message.trim()) {
       throw new Error('Both title and message are required.');
     }
@@ -32,6 +33,9 @@ export const submitTestimonial = async (musicianId, { title, message }) => {
         submittedAt: Timestamp.now()
       }
     });
+  } catch (error) {
+    console.error('[Firestore Error] submitTestimonial:', error);
+  }
 };
 
 /*** READ OPERATIONS ***/
@@ -43,9 +47,13 @@ export const submitTestimonial = async (musicianId, { title, message }) => {
  * @returns {Promise<Array<Object>>} An array of review documents (`{ id, ref, ...data }`).
  */
 export const getReviewsByVenueId = async (venueId) => {
+  try {
     const q = query(collection(firestore, 'reviews'), where('venueId', '==', venueId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ref: doc.ref, ...doc.data() }));
+  } catch (error) {
+    console.error('[Firestore Error] getReviewsByVenueId:', error);
+  }
 };
 
 /**
@@ -55,10 +63,14 @@ export const getReviewsByVenueId = async (venueId) => {
  * @returns {Promise<Array<Object>>} An array of review documents (`{ id, ref, ...data }`).
  */
 export const getReviewsByVenueIds = async (venueIds) => {
+  try {
     if (!venueIds.length) return [];
     const q = query(collection(firestore, 'reviews'), where('venueId', 'in', venueIds));
     const snap = await getDocs(q);
     return snap.docs.map(doc => ({ id: doc.id, ref: doc.ref, ...doc.data() }));
+  } catch (error) {
+    console.error('[Firestore Error] getReviewsByVenueIds:', error);
+  }
 };
 
 /**
@@ -68,7 +80,11 @@ export const getReviewsByVenueIds = async (venueIds) => {
  * @returns {Promise<Array<Object>>} An array of review documents (`{ id, ref, ...data }`).
  */
 export const getReviewsByMusicianId = async (musicianId) => {
+  try {
     const q = query(collection(firestore, 'reviews'), where('musicianId', '==', musicianId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('[Firestore Error] getReviewsByMusicianId:', error);
+  }
 };

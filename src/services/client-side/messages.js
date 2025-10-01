@@ -15,20 +15,14 @@ import {
   limit
 } from 'firebase/firestore';
 
+
 /*** CREATE OPERATIONS ***/
-
-
 
 /**
  * Sends a gig application message to a conversation thread.
- * 
- * @param {string} conversationId - The Firestore ID of the conversation.
- * @param {Object} options - Message details.
- * @param {string} options.senderId - UID of the sender.
- * @param {string} options.text - Message content.
- * @returns {Promise<void>}
  */
 export const sendGigApplicationMessage = async (conversationId, { senderId, text, profileId, profileType }) => {
+  try {
     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     await addDoc(messagesRef, {
       senderId,
@@ -39,75 +33,72 @@ export const sendGigApplicationMessage = async (conversationId, { senderId, text
       profileType: profileType || null,
       timestamp: Timestamp.now(),
     });
+  } catch (error) {
+    console.error('[Firestore Error] sendGigApplicationMessage:', error);
+  }
 };
 
 /**
  * Sends a negotiation message in an existing conversation thread.
- * 
- * @param {string} conversationId - The Firestore ID of the conversation.
- * @param {Object} options
- * @param {string} options.senderId - UID of the musician.
- * @param {string|number} options.oldFee - The originally listed fee.
- * @param {string|number} options.newFee - The newly proposed fee.
- * @param {string} options.text - The message content.
  */
 export const sendNegotiationMessage = async (conversationId, { senderId, oldFee, newFee, text }) => {
+  try {
     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     await addDoc(messagesRef, {
-        senderId,
-        text,
-        oldFee,
-        newFee,
-        type: 'negotiation',
-        status: 'pending',
-        timestamp: Timestamp.now(),
+      senderId,
+      text,
+      oldFee,
+      newFee,
+      type: 'negotiation',
+      status: 'pending',
+      timestamp: Timestamp.now(),
     });
+  } catch (error) {
+    console.error('[Firestore Error] sendNegotiationMessage:', error);
+  }
 };
 
 /**
- * Sends a gig application message to a conversation thread.
- * 
- * @param {string} conversationId - The Firestore ID of the conversation.
- * @param {Object} options - Message details.
- * @param {string} options.senderId - UID of the sender.
- * @param {string} options.text - Message content.
- * @returns {Promise<void>}
+ * Sends a gig invitation message to a conversation thread.
  */
 export const sendGigInvitationMessage = async (conversationId, { senderId, text }) => {
-  const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-  await addDoc(messagesRef, {
-    senderId,
-    text,
-    type: 'invitation',
-    status: 'pending',
-    timestamp: Timestamp.now(),
-  });
+  try {
+    const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+    await addDoc(messagesRef, {
+      senderId,
+      text,
+      type: 'invitation',
+      status: 'pending',
+      timestamp: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error('[Firestore Error] sendGigInvitationMessage:', error);
+  }
 };
-
 
 
 /*** READ OPERATIONS ***/
 
 /**
  * Subscribes to real-time message updates for a conversation.
- * @param {string} conversationId - ID of the conversation.
- * @param {function} onUpdate - Callback to receive the updated array of messages.
- * @returns {function} Unsubscribe function.
  */
 export const listenToMessages = (conversationId, onUpdate) => {
+  try {
     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
-    return onSnapshot(q, snapshot => {
+    const onErr = (e) => console.error('[Firestore Error] listenToMessages snapshot:', e);
+    return onSnapshot(q, (snapshot) => {
       const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       onUpdate(messages);
-    });
+    }, onErr);
+  } catch (error) {
+    console.error('[Firestore Error] listenToMessages init:', error);
+    return () => {};
+  }
 };
 
 /**
- * Fetches the most recent 'application' type message from a conversation.
- *
- * @param {string} conversationId - ID of the conversation to search in.
- * @returns {Promise<Object|null>} - The most recent application message or null if not found.
+ * Fetches the most recent message of a given type from a conversation.
  */
 export const getMostRecentMessage = async (conversationId, type) => {
   try {
@@ -121,15 +112,12 @@ export const getMostRecentMessage = async (conversationId, type) => {
     const snapshot = await getDocs(messageQuery);
 
     if (!snapshot.empty) {
-      const doc = snapshot.docs[0];
-      return { id: doc.id, ...doc.data() };
-    } else {
-      return null;
+      const docSnap = snapshot.docs[0];
+      return { id: docSnap.id, ...docSnap.data() };
     }
+    return null;
   } catch (error) {
-    console.error('Error fetching application message:', error);
-    throw error;
+    console.error('[Firestore Error] getMostRecentMessage:', error);
+    return null;
   }
 };
-
-

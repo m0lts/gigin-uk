@@ -14,9 +14,13 @@ import {
  * @returns {Promise<Object|null>} - An object containing the user document's ID, Firestore reference, and data; or `null` if the document doesn't exist.
  */
 export const getUserById = async (userId) => {
-  const userRef = doc(firestore, 'users', userId);
-  const snap = await getDoc(userRef);
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  try {
+    const userRef = doc(firestore, 'users', userId);
+    const snap = await getDoc(userRef);
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch (error) {
+    console.error('[Firestore Error] getUserById:', error);
+  }
 };
 
 /*** UPDATE OPERATIONS ***/
@@ -32,7 +36,7 @@ export const updateUserDocument = async (userId, data) => {
     const userRef = doc(firestore, 'users', userId);
     await updateDoc(userRef, data);
   } catch (error) {
-    console.error('Error updating user document:', error);
+    console.error('[Firestore Error] updateUserDocument:', error);
     throw error;
   }
 };

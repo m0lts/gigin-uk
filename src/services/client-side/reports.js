@@ -23,9 +23,13 @@ import {
  * @returns {Promise<void>}
  */
 export const submitUserFeedback = async (feedback) => {
+  try {
     const feedbackRef = collection(firestore, 'feedback');
     await addDoc(feedbackRef, {
       ...feedback,
       timestamp: Timestamp.now(),
     });
+  } catch (error) {
+    console.error('[Firestore Error] submitUserFeedback:', error);
+  }
   };
