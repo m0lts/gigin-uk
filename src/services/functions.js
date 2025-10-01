@@ -24,7 +24,7 @@ export const confirmGigPayment = async ({ cardId, gigData, musicianProfileId }) 
     let amount = typeof gigData.agreedFee === 'string'
       ? parseFloat(gigData.agreedFee.replace('£', ''))
       : gigData.agreedFee;
-    const amountToCharge = Math.round(amount * 1.05 * 100);
+    const amountToCharge = Math.round(amount * 1.00 * 100);
     const gigDate = gigData.startDateTime.toDate();
     const confirmPayment = httpsCallable(functions, 'confirmPayment');
     const response = await confirmPayment({
