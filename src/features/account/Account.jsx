@@ -205,8 +205,7 @@ export const Account = () => {
                     await removeGigApplicant(application.gigId, musicianProfile.musicianId);
                 }
             }
-            const participantIds = [...venueIds, musicianId].filter(Boolean);
-            const conversations = await getConversationsByParticipants(participantIds);
+            const conversations = await getConversationsByParticipantId(userId);
             for (const { id } of conversations) {
                 await deleteConversation(id);
             }
@@ -258,7 +257,7 @@ export const Account = () => {
                 for (const { id } of musicianReviews) {
                   await deleteReview(id);
                 }
-                const conversations = await getConversationsByParticipants(musicianId);
+                const conversations = await getConversationsByParticipantId(musicianProfile.userId);
                 for (const { id } of conversations) {
                     await deleteConversation(id);
                 }

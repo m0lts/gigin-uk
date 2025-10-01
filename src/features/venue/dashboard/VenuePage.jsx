@@ -133,15 +133,15 @@ export const VenuePage = ({ user, venues }) => {
             for (const { id } of reviews) {
                 await deleteReview(id);
             }
-            const conversations = await getConversationsByParticipantId(venueId);
+            const conversations = await getConversationsByParticipantId(venueToDelete.userId);
             for (const { id } of conversations) {
                 await deleteConversation(id);
             }
             await deleteTemplatesByVenueId(venueId);
             await deleteFolderFromStorage(`venues/${venueId}`);
             toast.success('Venue Deleted');
-            navigate('/venues/dashboard/my-venues', { replace: true });
-            window.location.reload();
+            // navigate('/venues/dashboard/my-venues', { replace: true });
+            // window.location.reload();
         } catch (error) {
             console.error('An error occurred while deleting the venue:', error);
             toast.error('Failed to delete venue. Please try again.')

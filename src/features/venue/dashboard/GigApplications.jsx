@@ -267,8 +267,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         }
     };
 
-    const sendToConversation = async (profileId) => {
-        const conversations = await getConversationsByParticipantAndGigId(gigInfo.gigId, profileId)
+    const sendToConversation = async (userId) => {
+        const conversations = await getConversationsByParticipantAndGigId(gigInfo.gigId, userId)
         const conversationId = conversations[0].id;
         navigate(`/venues/dashboard/messages?conversationId=${conversationId}`);
     }
@@ -758,7 +758,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                         </div>
                                                     )}
                                                     {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && (
-                                                        <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.id)}}>
+                                                        <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId)}}>
                                                             Negotiate Fee
                                                         </button>
                                                     )}

@@ -65,6 +65,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
         privateApplications: false,
         applicants: [],
         createdAt: new Date(),
+        createdBy: user.uid,
         accountName: user.name,
         status: 'open',
         numberOfApplicants: 0,
@@ -717,20 +718,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             );
       
             await inviteToGig(firstGigDoc.gigId, musicianProfile);
-      
-            const newGigApplicationEntry = {
-              gigId: firstGigDoc.gigId,
-              profileId: musicianProfile.id,
-              name: musicianProfile.name,
-            };
-      
-            const updatedGigApplicationsArray = musicianProfile.gigApplications
-              ? [...musicianProfile.gigApplications, newGigApplicationEntry]
-              : [newGigApplicationEntry];
-      
-            await updateMusicianProfile(musicianProfile.id, {
-              gigApplications: updatedGigApplicationsArray,
-            });
       
             if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
               await sendGigInvitationMessage(conversationId, {

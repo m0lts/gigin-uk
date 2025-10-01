@@ -216,17 +216,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         }
         try {
           await inviteToGig(gigData.gigId, profile);
-          const newGigApplicationEntry = {
-            gigId: gigData.gigId,
-            profileId: profile.musicianId,
-            name: profile.name,
-          };
-          const updatedGigApplicationsArray = profile.gigApplications
-            ? [...profile.gigApplications, newGigApplicationEntry]
-            : [newGigApplicationEntry];
-          await updateMusicianProfile(profile.musicianId, {
-            gigApplications: updatedGigApplicationsArray,
-          });
+
           const conversationId = await getOrCreateConversation(
             profile,
             gigData,

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { toJsDate } from '../../../services/utils/dates';
 
 export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetFormData, setExtraSlots }) => {
 
@@ -58,31 +59,12 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetForm
 
     const formatDate = (date) => {
         try {
-          let d;
-      
-          if (!date) return "Invalid date";
-      
-          // Firestore Timestamp with toDate()
-          if (typeof date.toDate === "function") {
-            d = date.toDate();
-          }
-          // Already a JS Date
-          else if (date instanceof Date) {
-            d = date;
-          }
-          // ISO/string/number timestamp
-          else {
-            d = new Date(date);
-          }
-      
-          if (isNaN(d.getTime())) return "Invalid date";
-      
+          const d = toJsDate(date);
           const day = String(d.getDate()).padStart(2, "0");
           const month = String(d.getMonth() + 1).padStart(2, "0");
           const year = d.getFullYear();
           const hours = String(d.getHours()).padStart(2, "0");
           const minutes = String(d.getMinutes()).padStart(2, "0");
-      
           return `${hours}:${minutes} - ${day}/${month}/${year}`;
         } catch (err) {
           console.error("Error formatting date:", err, date);

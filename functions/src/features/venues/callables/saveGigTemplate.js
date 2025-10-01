@@ -64,40 +64,21 @@ export const saveGigTemplate = callable(
     }
 
     // -------- Prepare templateId
-    const templateId = payload.templateId
-      ? String(payload.templateId)
-      : venueRef.collection("templates-meta").doc().id; // cheap way to mint an id
+    const templateId = payload.templateId;
 
     const templateRef = db.doc(`templates/${templateId}`);
 
-    // -------- Whitelist/sanitize incoming fields
-    const allowedKeys = new Set([
-      "name",
-      "description",
-      "kind",
-      "gigType",
-      "genre",
-      "fields",
-      "images",
-    ]);
-
-    const sanitized = {};
-    for (const [k, v] of Object.entries(payload)) {
-      if (allowedKeys.has(k)) sanitized[k] = v;
-    }
-
-    // Always enforce venue & metadata on server
-    sanitized.venueId = venueId;
-    sanitized.updatedAt = new Date();
-    sanitized.updatedBy = caller;
-
     // -------- Transaction: upsert template + add to venue.templates (unique)
     await db.runTransaction(async (tx) => {
-      const existingT = await tx.get(templateRef);
+      // READS FIRST
+      const [existingT, venueDoc] = await Promise.all([
+        tx.get(templateRef),
+        tx.get(venueRef),
+      ]);
+    
       const isCreate = !existingT.exists;
-
+    
       if (!isCreate) {
-        // If template exists, it must belong to the same venue — prevent hijack
         const existingVenueId = existingT.data()?.venueId;
         if (existingVenueId && existingVenueId !== venueId) {
           const e = new Error("FAILED_PRECONDITION: template belongs to a different venue");
@@ -105,23 +86,15 @@ export const saveGigTemplate = callable(
           throw e;
         }
       }
-
-      if (isCreate) {
-        // Set immutable metadata on first create
-        sanitized.createdAt = new Date();
-        sanitized.createdBy = caller;
-      }
-
-      // Merge write
-      tx.set(templateRef, sanitized, { merge: true });
-
-      // Add to venue.templates as a unique set
-      const currentVenue = (await tx.get(venueRef)).data() || {};
-      const currentList = Array.isArray(currentVenue.templates) ? currentVenue.templates : [];
-      if (!currentList.includes(templateId)) {
-        const nextList = currentList.concat(templateId);
-        tx.update(venueRef, { templates: nextList });
-      }
+    
+      // WRITES AFTER ALL READS
+      tx.set(templateRef, payload, { merge: true });
+    
+      // const currentList = Array.isArray(venueDoc.data()?.templates) ? venueDoc.data().templates : [];
+      // if (!currentList.includes(templateId)) {
+      //   const nextList = currentList.concat(templateId);
+      //   tx.update(venueRef, { templates: nextList });
+      // }
     });
 
     return { templateId };

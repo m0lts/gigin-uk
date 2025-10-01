@@ -168,7 +168,6 @@ export const subscribeToUpcomingOrRecentGigs = (venueIds, callback) => {
       const handleSnapshot = (snapshot) => {
         snapshot.docChanges().forEach((change) => {
           const gig = { gigId: change.doc.id, ...change.doc.data() };
-          console.log('gig', gig);
           if (change.type === 'removed') {
             allGigs.delete(change.doc.id);
           } else {
