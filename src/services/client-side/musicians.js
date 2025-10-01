@@ -249,6 +249,20 @@ export const updateMusicianCancelledGig = async (musicianId, gigId) => {
   }
 };
 
+export const markInviteAsViewed = async (gigId, applicantId) => {
+  try {
+    const gigRef = doc(firestore, 'gigs', gigId);
+    const gigSnap = await getDoc(gigRef);
+    const gigData = gigSnap.data();
+    const updatedApplicants = gigData.applicants.map(app =>
+      app.id === applicantId ? { ...app, viewed: true } : app
+      );  
+    await updateDoc(gigRef, { applicants: updatedApplicants });
+  } catch (error) {
+    console.error('[Firestore Error] markInviteAsViewed:', error)
+  }
+};
+
 /**
  * Find the pending fee doc for a gig under a musician profile.
  */
