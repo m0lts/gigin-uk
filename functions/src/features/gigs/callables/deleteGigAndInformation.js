@@ -84,7 +84,7 @@ export const deleteGigAndInformation = callable(
       const convsSnap = await db
         .collection("conversations")
         .where("gigId", "==", gigId)
-        .where("participants", "array_contains", applicantId)
+        .where("participants", "array-contains", applicantId)
         .get();
 
       for (const convDoc of convsSnap.docs) {

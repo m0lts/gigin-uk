@@ -16,7 +16,8 @@ import {
   runTransaction,
   GeoPoint,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
+  limit
 } from 'firebase/firestore';
 import { distanceBetween } from 'geofire-common';
 import { PERM_DEFAULTS, sanitizePermissions } from '../utils/permissions';
@@ -380,12 +381,23 @@ export const removeVenueRequest = async (requestId) => {
  * @returns {Promise<void>}
  */
 export const deleteVenueProfile = async (venueId) => {
-    try {
-      const venueRef = doc(firestore, 'venueProfiles', venueId);
-      await deleteDoc(venueRef);
-    } catch (error) {
-      console.error('[Firestore Error] deleteVenueProfile:', error);
+  try {
+    if (!venueId) return;
+
+    const venueRef = doc(firestore, 'venueProfiles', venueId);
+    const membersCol = collection(firestore, 'venueProfiles', venueId, 'members');
+    // Batch-delete members in pages to avoid 500-op limit
+    while (true) {
+      const page = await getDocs(query(membersCol, limit(500)));
+      if (page.empty) break;
+      const batch = writeBatch(firestore);
+      page.docs.forEach((snap) => batch.delete(snap.ref));
+      await batch.commit();
     }
+    await deleteDoc(venueRef);
+  } catch (error) {
+    console.error('[Firestore Error] deleteVenueProfile:', error);
+  }
 };
 
 /**
@@ -421,7 +433,6 @@ export const deleteTemplatesByVenueId = async (venueId) => {
       where('venueId', '==', venueId)
     );
     const templatesSnapshot = await getDocs(templatesQuery);
-
     const deletionPromises = templatesSnapshot.docs.map((doc) => deleteDoc(doc.ref));
     await Promise.all(deletionPromises);
   } catch (error) {

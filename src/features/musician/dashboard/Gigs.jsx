@@ -322,11 +322,9 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                     <table>
                         <thead>
                             <tr>
-                                {(musicianProfile.bands) && (
-                                    <th id="profile">
-                                        Profile
-                                    </th>
-                                )}
+                                <th id="profile">
+                                    Profile
+                                </th>
                                 <th id='date'>
                                     Time and Date
                                     <button className='sort btn text' onClick={toggleSortOrder}>

@@ -81,8 +81,7 @@ export const CardForm = ({
       if (activityType === 'adding card') {
         // 2) Save/attach PM to the selected Stripe Customer
         //    ⬇️ UPDATED: pass target customer id
-        const { data } = await saveStripePaymentMethod(pm.id, selectedCustomerId);
-
+        const data = await saveStripePaymentMethod(pm.id, selectedCustomerId);
         if (data.success) {
           const savedPm = data.paymentMethodUpdate || pm;
           const newDefaultId =

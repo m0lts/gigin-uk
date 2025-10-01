@@ -196,7 +196,7 @@ export const updateConversationLastViewed = async (conversationId, userId) => {
     const conversationRef = doc(firestore, 'conversations', conversationId);
     await updateDoc(conversationRef, {
       [`lastViewed.${userId}`]: Timestamp.now()
-    });
+    }, { merge: true });
   } catch (error) {
     console.error('[Firestore Error] updateConversationLastViewed:', error);
   }

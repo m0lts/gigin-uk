@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Icons (replace with your actual imports)
@@ -69,8 +69,12 @@ export const NoProfileModal = ({
     const [prevStage, setPrevStage] = useState(Stage.SELECT);
     const [loadingMessage, setLoadingMessage] = useState('Loading…');
 
+    const wasOpen = useRef(false);
+
+    console.log('musicianProfile', musicianProfile)
+
     useEffect(() => {
-        if (!isOpen) return;
+      if (isOpen && !wasOpen.current) {
         setStage(Stage.SELECT);
         setDirection(1);
         setSelectedUserType(null);
@@ -81,7 +85,10 @@ export const NoProfileModal = ({
         setBandName('');
         setBandImageFile(null);
         setBandImagePreview(null);
-    }, [isOpen, musicianProfile]);
+      }
+      wasOpen.current = isOpen;
+      setMusicianName(musicianProfile?.name || '');
+    }, [isOpen, musicianProfile?.name]);
 
     useEffect(() => {
         if (stage === Stage.BAND && !bandId) {
@@ -150,7 +157,6 @@ export const NoProfileModal = ({
         try {
             const payload = {
               onboarded: true,
-              searchKeywords: generateSearchKeywords(musicianName),
               updatedAt: Timestamp.now(),
             };
             await updateMusicianProfile(musicianId, payload);
@@ -459,7 +465,7 @@ export const NoProfileModal = ({
                     </div>
 
                     <div className="modal-actions">
-                        <button className="btn tertiary" onClick={handleSkipMusician} disabled={!musicianId}>
+                        <button className="btn tertiary" onClick={() => handleSkipMusician()} disabled={!musicianId}>
                             Skip
                         </button>
                         <div className="action-buttons">

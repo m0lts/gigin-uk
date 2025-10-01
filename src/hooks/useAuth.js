@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createMusicianProfile } from '../services/client-side/musicians';
-import { getEmailAddress } from '../services/function-calls/users';
+import { getEmailAddress, updateUserArrayField } from '../services/function-calls/users';
 
 export const useAuth = () => {
 
@@ -150,30 +150,14 @@ export const useAuth = () => {
     try {
       const redirect = sessionStorage.getItem('redirect');
       const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
-      if (redirect === 'create-musician-profile') {
-        const musicianId = uuidv4();
-        await createMusicianProfile(musicianId, {musicianId: musicianId, name: credentials.name, createdAt: Timestamp.now(), email: credentials.email, searchKeywords: generateSearchKeywords(credentials.name)}, userCredential.user.uid);
-        await setDoc(doc(firestore, 'users', userCredential.user.uid), {
-          name: credentials.name,
-          email: credentials.email,
-          phoneNumber: credentials.phoneNumber,
-          marketingConsent: marketingConsent,
-          createdAt: Timestamp.now(),
-          firstTimeInFinances: true,
-          musicianProfile: [
-            musicianId
-          ],
-        });
-      } else {
-        await setDoc(doc(firestore, 'users', userCredential.user.uid), {
-          name: credentials.name,
-          email: credentials.email,
-          phoneNumber: credentials.phoneNumber,
-          marketingConsent: marketingConsent,
-          createdAt: Timestamp.now(),
-          firstTimeInFinances: true,
-        });
-      }
+      await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+        name: credentials.name,
+        email: credentials.email,
+        phoneNumber: credentials.phoneNumber,
+        marketingConsent: marketingConsent,
+        createdAt: Timestamp.now(),
+        firstTimeInFinances: true,
+      });
       await sendEmailVerification(userCredential.user, actionCodeSettings);
       setUser({ uid: userCredential.user.uid, ...credentials, firstTimeInFinances: true });
       sessionStorage.setItem('newUser', true)
@@ -303,35 +287,18 @@ const resetPassword = async (rawEmail) => {
       const cred = await signInWithPopup(auth, googleProvider);
       const redirect = sessionStorage.getItem('redirect');
       const { user } = cred;
-      const musicianId = uuidv4();
-      if (redirect === 'create-musician-profile') {
-        createMusicianProfile(musicianId, {musicianId: musicianId, name: user.displayName, createdAt: Timestamp.now(), email: user.email, searchKeywords: generateSearchKeywords(user.displayName)}, user.uid);
-      }
       const ref = doc(firestore, 'users', user.uid);
       const snap = await getDoc(ref);
       if (!snap.exists()) {
-        if (redirect === 'create-musician-profile') {
-          await setDoc(ref, {
-            name: user.displayName || '',
-            email: user.email || '',
-            marketingConsent,
-            createdAt: Timestamp.now(),
-            emailVerified: true,
-            firstTimeInFinances: true,
-            musicianProfile: arrayUnion(musicianId),
-            googleAccount: true,
-          });
-        } else {
-          await setDoc(ref, {
-            name: user.displayName || '',
-            email: user.email || '',
-            marketingConsent,
-            createdAt: Timestamp.now(),
-            emailVerified: true,
-            firstTimeInFinances: true,
-            googleAccount: true,
-          });
-        }
+        await setDoc(ref, {
+          name: user.displayName || '',
+          email: user.email || '',
+          marketingConsent,
+          createdAt: Timestamp.now(),
+          emailVerified: true,
+          firstTimeInFinances: true,
+          googleAccount: true,
+        });
       }
       const userDoc = await getDoc(ref);
       const userDocData = userDoc.data() || {};

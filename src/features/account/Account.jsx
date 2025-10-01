@@ -106,42 +106,42 @@ export const Account = () => {
         }
     };
 
-    const handleEmailUpdate = async () => {
-        if (!newEmail) {
-            toast('Please enter a new email address.')
-            return;
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(newEmail)) {
-            toast('Please enter a valid email address.');
-            return;
-        }
-        setEventLoading(true);
-        try {
-            if (auth.currentUser) {
-                await updateEmail(auth.currentUser, newEmail);
-                const userId = auth.currentUser.uid;
-                const batch = firestore.batch();
-                const venueProfiles = await getVenueProfilesByUserId(userId);
-                venueProfiles.forEach(profile => {
-                    batch.update(profile.ref, { email: newEmail });
-                });
-                const musicianProfile = await getMusicianProfileByUserId(userId);
-                if (musicianProfile) {
-                    batch.update(musicianProfile.ref, { email: newEmail });
-                }
-                await batch.commit();
-                toast.success('Email updated successfully');
-                setShowEmailModal(false);
-                setNewEmail('');
-            }
-        } catch (error) {
-            console.error('Error updating email:', error);
-            toast.error('Failed to update email');
-        } finally {
-            setEventLoading(false);
-        }
-    };
+    // const handleEmailUpdate = async () => {
+    //     if (!newEmail) {
+    //         toast('Please enter a new email address.')
+    //         return;
+    //     }
+    //     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    //     if (!emailRegex.test(newEmail)) {
+    //         toast('Please enter a valid email address.');
+    //         return;
+    //     }
+    //     setEventLoading(true);
+    //     try {
+    //         if (auth.currentUser) {
+    //             await updateEmail(auth.currentUser, newEmail);
+    //             const userId = auth.currentUser.uid;
+    //             const batch = firestore.batch();
+    //             const venueProfiles = await getVenueProfilesByUserId(userId);
+    //             venueProfiles.forEach(profile => {
+    //                 batch.update(profile.ref, { email: newEmail });
+    //             });
+    //             const musicianProfile = await getMusicianProfileByUserId(userId);
+    //             if (musicianProfile) {
+    //                 batch.update(musicianProfile.ref, { email: newEmail });
+    //             }
+    //             await batch.commit();
+    //             toast.success('Email updated successfully');
+    //             setShowEmailModal(false);
+    //             setNewEmail('');
+    //         }
+    //     } catch (error) {
+    //         console.error('Error updating email:', error);
+    //         toast.error('Failed to update email');
+    //     } finally {
+    //         setEventLoading(false);
+    //     }
+    // };
 
     const handlePasswordUpdate = async () => {
         if (!newPassword || !confirmPassword) {
@@ -281,6 +281,7 @@ export const Account = () => {
         try {   
             if (window.confirm('Are you sure you want to delete this venue profile? This action cannot be undone.')) {
                 setShowEventLoadingModal(true);
+                await deleteTemplatesByVenueId(venueId);
                 await deleteVenueProfile(venueId);
                 const gigs = await getGigsByVenueId(venueId);
                 await deleteGigsBatch(gigs.map(gig => gig.id));
@@ -288,11 +289,10 @@ export const Account = () => {
                 for (const { id } of reviews) {
                     await deleteReview(id);
                 }
-                const conversations = await getConversationsByParticipantId(venueId);
+                const conversations = await getConversationsByParticipantId(user.uid);
                 for (const { id } of conversations) {
                     await deleteConversation(id);
                 }
-                await deleteTemplatesByVenueId(venueId);
                 await deleteFolderFromStorage(`venues/${venueId}`);
                 await updateUserArrayField('venueProfiles', 'remove', venueId);
                 toast.success('Venue profile deleted successfully.');
@@ -446,9 +446,9 @@ export const Account = () => {
                         <h3>Email Address:</h3>
                         <div className='data-highlight'>
                             <h4>{user.email}</h4>
-                            <button className='btn primary' onClick={() => setShowEmailModal(true)}>
+                            {/* <button className='btn primary' onClick={() => setShowEmailModal(true)}>
                                 Change Email Address
-                            </button>
+                            </button> */}
                         </div>
                     </div>
                     <div className='password-settings'>
@@ -505,12 +505,12 @@ export const Account = () => {
                                                 >
                                                 Transfer Ownership
                                                 </button>
-                                            <button
+                                            {/* <button
                                                 className='btn danger'
                                                 onClick={() => handleDeleteVenueProfile(venue.id)}
                                             >
                                                 Delete Profile
-                                            </button>
+                                            </button> */}
                                         </div>
                                     </li>
                                 ))}
@@ -541,12 +541,12 @@ export const Account = () => {
                                     >
                                         <EditIcon />
                                     </button>
-                                    <button
+                                    {/* <button
                                         className='btn danger'
                                         onClick={() => handleDeleteMusicianProfile(user.musicianProfile.musicianId)}
                                     >
                                         Delete Profile
-                                    </button>
+                                    </button> */}
                                 </div>
                             </div>
                         </>

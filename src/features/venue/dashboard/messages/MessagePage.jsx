@@ -94,11 +94,9 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
         if (activeConversation) {
           const lastViewedSec = activeConversation.lastViewed?.[user.uid]?.seconds || 0;
           const lastMessageSec = activeConversation.lastMessageTimestamp?.seconds || 0;
-      
           const unseen = lastMessageSec > lastViewedSec && !lastMessageFromMe(activeConversation, user.uid);
           if (unseen) {
             updateConversationLastViewed(activeConversation.id, user.uid)
-              .catch(err => console.error('Error updating last viewed timestamp:', err));
           }
         } else if (!paramsConversationId && conversationsToDisplay[0]) {
           navigate(`/venues/dashboard/messages?conversationId=${conversationsToDisplay[0].id}`);
@@ -132,7 +130,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
         try {
             await updateConversationLastViewed(conversationId, user.uid);
             if (musicianId && conv?.gigId) {
-            await markGigApplicantAsViewed(conv.gigId, musicianId);
+                await markGigApplicantAsViewed(conv.gigId, musicianId);
             }
         } catch (e) {
             console.error('Failed to select conversation:', e);

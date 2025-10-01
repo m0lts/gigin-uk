@@ -481,7 +481,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
+                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                 <h4>Send Counter Offer:</h4>
                                                 <div className='input-group'>
@@ -530,7 +530,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
+                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                     <h4>Send Counter Offer:</h4>
                                                     <div className='input-group'>
@@ -617,7 +617,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                         Declined
                                                     </div>
                                                 </div>
-                                                {message.status !== 'countered' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
+                                                {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
                                                     <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                     <h4>Send Counter Offer:</h4>
                                                     <div className='input-group'>
@@ -684,10 +684,10 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 {gigData && (
                                                     <AddToCalendarButton
                                                         event={{
-                                                            title: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} at ${gigData?.venue?.venueName}`,
+                                                            title: `${gigData?.kind === 'Open Mic' ? gigData?.kind : 'Gig'} at ${gigData?.venue?.venueName}`,
                                                             start: start,
                                                             end: end,
-                                                            description: `${gigData.kind === 'Open Mic' ? gigData.kind : 'Gig'} confirmed.`,
+                                                            description: `${gigData?.kind === 'Open Mic' ? gigData?.kind : 'Gig'} confirmed.`,
                                                             location: gigData?.venue?.address,
                                                         }}
                                                     />

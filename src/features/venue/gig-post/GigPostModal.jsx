@@ -38,7 +38,7 @@ function formatPounds(amount) {
 }
 
 export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests }) => {
-    const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
+    const [stage, setStage] = useState(incompleteGigs?.length > 0 || templates?.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
         venueId: '',
@@ -462,7 +462,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     };
 
     const getProgressPercentage = () => {
-        if (templates.length > 0 || incompleteGigs.length > 0) {
+        if (templates?.length > 0 || incompleteGigs?.length > 0) {
             if (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig') {
                 return ((stage) / 10) * 100;
             } else {
@@ -780,13 +780,13 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                         </div>
                         <div
                             className={`control-buttons ${
-                                (stage === 0 || stage === 1) && incompleteGigs.length === 0 && templates.length === 0
+                                (stage === 0 || stage === 1) && incompleteGigs?.length === 0 && templates?.length === 0
                                 ? 'single'
                                 : ''
                             }`}
                         >
                             {(stage === 0 || stage === 1) ? (
-                                (incompleteGigs.length === 0 && templates.length === 0) ? (
+                                (incompleteGigs?.length === 0 && templates?.length === 0) ? (
                                     <button className='btn primary' onClick={nextStage}>Next</button>
                                 ) : (
                                     <>

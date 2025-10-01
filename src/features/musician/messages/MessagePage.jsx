@@ -78,7 +78,7 @@ export const MessagePage = () => {
       }, [showArchived, archivedConversations, conversations, paramsConversationId, navigate]);
     
 
-    const handleSelectConversation = async (conversationId, musicianId, gigId) => {
+    const handleSelectConversation = async (conversationId) => {
         navigate(`/messages?conversationId=${conversationId}`);
         await updateConversationLastViewed(conversationId, user.uid);
     };
