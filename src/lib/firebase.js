@@ -25,10 +25,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 if (typeof window !== 'undefined') {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY),
-    isTokenAutoRefreshEnabled: true,
-  });
+  const key = import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY;
+  if (key) {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(key),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } else {
+    console.warn('App Check key missing; continuing without App Check.');
+  }
 }
 
 const firestore = getFirestore(app);
