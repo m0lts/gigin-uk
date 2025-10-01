@@ -155,52 +155,40 @@ export const subscribeToUpcomingOrRecentGigs = (venueIds, callback) => {
     console.warn('No venueIds provided to subscribeToUpcomingOrRecentGigs.');
     return () => {};
   }
-
   const now = new Date();
-  const pastCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000); // 48 hours ago
+  const pastCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
   const futureCutoff = Timestamp.fromDate(pastCutoff);
-
   const batchSize = 10;
   const allGigs = new Map();
   const unsubscribers = [];
-
   for (let i = 0; i < venueIds.length; i += batchSize) {
     const batch = venueIds.slice(i, i + batchSize);
-
     const gigsRef = collection(firestore, 'gigs');
-
-    // Query 1: future gigs
     const futureQuery = query(
       gigsRef,
       where('venueId', 'in', batch),
       where('date', '>=', futureCutoff)
     );
-
-    // Query 2: recent past gigs (within 48 hours)
     const pastQuery = query(
       gigsRef,
       where('venueId', 'in', batch),
       where('date', '<', futureCutoff)
     );
-
     const handleSnapshot = (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         const gig = { gigId: change.doc.id, ...change.doc.data() };
-
+        console.log('gig', gig);
         if (change.type === 'removed') {
           allGigs.delete(change.doc.id);
         } else {
           allGigs.set(change.doc.id, gig);
         }
       });
-
       callback(Array.from(allGigs.values()));
     };
-
     unsubscribers.push(onSnapshot(futureQuery, handleSnapshot));
     unsubscribers.push(onSnapshot(pastQuery, handleSnapshot));
   }
-
   return () => unsubscribers.forEach((unsub) => unsub());
 };
 

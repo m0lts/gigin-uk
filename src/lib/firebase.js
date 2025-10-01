@@ -41,7 +41,7 @@ const storage = getStorage(app);
 // Functions MUST use the same region you deployed to.
 const functions = getFunctions(app, 'europe-west3');
 
-setLogLevel("debug");
+// setLogLevel("debug");
 
 // Emulator (optional)
 // if (import.meta.env.DEV) connectFunctionsEmulator(functions, '127.0.0.1', 5001);
