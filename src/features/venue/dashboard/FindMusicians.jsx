@@ -6,6 +6,7 @@ import Skeleton from 'react-loading-skeleton';
 import { fetchMusiciansPaginated } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
 import { updateUserArrayField } from '../../../services/function-calls/users';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 const VideoModal = ({ video, onClose }) => {
     return (
@@ -34,6 +35,7 @@ export const FindMusicians = ({ user }) => {
     const selectedGenres = useMemo(() => rawGenres.split(',').filter(Boolean), [rawGenres]);
     const [lastDocId, setLastDocId] = useState(null);
     const [hasMore, setHasMore] = useState(true);
+    const [saving, setSaving] = useState(null);
     
     const fetchMusicians = useCallback(async (reset = false) => {
         if ((loading && !reset) || (!hasMore && !reset)) return;
@@ -102,23 +104,29 @@ export const FindMusicians = ({ user }) => {
 
     const handleMusicianSave = async (musician) => {
         if (!user?.uid || !musician?.id) return;
+        setSaving(musician?.id);
         try {
             await updateUserArrayField('savedMusicians', 'add', musician.id);
           toast.success(`Saved ${musician.name} to your list`);
         } catch (error) {
           console.error('Error toggling saved musician:', error);
           toast.error('Something went wrong. Please try again.');
+        } finally {
+          setSaving(null);
         }
       };
 
     const handleMusicianUnsave = async (musician) => {
         if (!user?.uid || !musician?.id) return;
+        setSaving(musician?.id);
         try {
           await updateUserArrayField('savedMusicians', 'remove', musician.id);
           toast.success(`Removed ${musician.name} from your saved musicians`);
         } catch (error) {
           console.error('Error unsaving musician:', error);
           toast.error('Failed to unsave musician. Please try again.');
+        } finally {
+          setSaving(null);
         }
     };
 
@@ -209,7 +217,11 @@ export const FindMusicians = ({ user }) => {
                                     <h2>{name}</h2>
                                 </div>
                                 <button className="btn icon" onClick={() => user?.savedMusicians?.includes(id) ? handleMusicianUnsave(musician) : handleMusicianSave(musician)}>
-                                    {user?.savedMusicians?.includes(id) ? <SavedIcon /> : <SaveIcon />}
+                                    {saving === id ? (
+                                        <LoadingSpinner marginBottom={0} width={15} height={15} />
+                                    ) : (
+                                        user?.savedMusicians?.includes(id) ? <SavedIcon /> : <SaveIcon />
+                                    )}
                                 </button>
                             </div>
 

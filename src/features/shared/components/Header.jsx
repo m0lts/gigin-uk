@@ -23,11 +23,8 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
     const handleLogout = async () => {
         try {
             await logout();
-            navigate();
         } catch (err) {
             console.error(err);
-        } finally {
-            window.location.reload();
         }
     }
 

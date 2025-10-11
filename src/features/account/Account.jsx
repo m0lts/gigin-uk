@@ -490,7 +490,7 @@ export const Account = () => {
                                             <button
                                                 className='btn tertiary'
                                                 onClick={() =>
-                                                    navigate('/venues/add-venue', { state: { venueProfile: venue } })
+                                                    navigate('/venues/add-venue', { state: { venue } })
                                                 }
                                             >
                                                 <EditIcon />

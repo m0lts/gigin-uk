@@ -70,10 +70,6 @@ import { ensureProtocol } from '../../../services/utils/misc';
             {!!musicianData?.videos?.length ? (
               <figure className="showcase-video">
                 <img src={musicianData.videos[0].thumbnail} alt={musicianData.videos[0].title} />
-                <div className="showcase-video-details">
-                  <h3>{musicianData.videos[0].title}</h3>
-                  <p>{musicianData.videos[0].date}</p>
-                </div>
                 <button
                   className="btn icon"
                   onClick={() => setVideoToPlay(musicianData.videos[0])}

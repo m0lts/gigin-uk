@@ -21,11 +21,12 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { cancelGigAndRefund } from '@services/function-calls/tasks';
 import { getOrCreateConversation } from '@services/function-calls/conversations';
 import { postCancellationMessage } from '../../../services/function-calls/messages';
-import { getMusicianProfileByMusicianId, updateMusicianCancelledGig } from '../../../services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
 import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { duplicateGig, handleCloseGig, handleOpenGig, logGigCancellation, saveGigTemplate, updateGigDocument, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
+import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
 
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user, refreshGigs }) => {
@@ -167,26 +168,27 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     const handleDeleteSelected = async () => {
         if (selectedGigs.length === 0) return;
         try {
+          setLoading(true);
           await deleteGigsBatch(selectedGigs);
           toast.success('Gig Deleted.');
           setConfirmModal(false);
           setSelectedGigs([]);
           refreshGigs();
+          setConfirmType(null);
+          setConfirmMessage(null);
         } catch (error) {
           console.error('Failed to delete selected gig:', error);
           toast.error('Failed to delete selected gig. Please try again.');
           setConfirmModal(false);
         } finally {
-          setTimeout(() => {
-            setConfirmType(null);
-            setConfirmMessage(null);
-          }, 2500);
+          setLoading(false);
         }
       };
       
       const handleDuplicateSelected = async () => {
         if (selectedGigs.length === 0) return;      
         try {
+          setLoading(true);
           const newGigIds = [];
           for (const gigId of selectedGigs) {
             const newId = await duplicateGig(gigId);
@@ -195,15 +197,14 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           toast.success('Gigs Duplicated');
           setConfirmModal(false);
           setSelectedGigs([]);
+          setConfirmType(null);
+          setConfirmMessage(null);
         } catch (error) {
           console.error('Failed to duplicate gigs:', error);
           toast.error('Failed to duplicate gigs. Please try again.');
           setConfirmModal(false);
         } finally {
-            setTimeout(() => {
-              setConfirmType(null);
-              setConfirmMessage(null);
-            }, 2500);
+          setLoading(false);
           }
       };
 
@@ -235,39 +236,39 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
             const isOpenMic = nextGig.kind === 'Open Mic';
             const isTicketed = nextGig.kind === 'Ticketed Gig';
             if (!isOpenMic && !isTicketed) {
-                const taskNames = [
-                    nextGig.clearPendingFeeTaskName,
-                    nextGig.automaticMessageTaskName,
-                ];
-                await cancelGigAndRefund({
-                    taskNames,
-                    transactionId: nextGig.paymentIntentId,
-                });
+              const taskNames = [
+                nextGig.clearPendingFeeTaskName,
+                nextGig.automaticMessageTaskName,
+              ];
+              await cancelGigAndRefund({
+                taskNames,
+                transactionId: nextGig.paymentIntentId,
+              });
             }
             const handleMusicianCancellation = async (musician) => {
-                const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
-                await postCancellationMessage(
-                  conversationId,
-                  user.uid,
-                  `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
-                    cancellationReason
-                  )}. We apologise for any inconvenience caused.`,
-                  'venue'
-                );
-                await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
-                await updateMusicianCancelledGig(musician.musicianId, gigId);
-                await logGigCancellation(gigId, musician.musicianId, cancellationReason);
-              };
-          
-              if (isOpenMic) {
-                const bandOrMusicianProfiles = await Promise.all(
-                  nextGig.applicants
-                    .filter(app => app.status === 'confirmed')
-                    .map(app => getMusicianProfileByMusicianId(app.id))
-                );
-                for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
-                  await handleMusicianCancellation(musician);
-                }
+              const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
+              await postCancellationMessage(
+                conversationId,
+                user.uid,
+                `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                  cancellationReason
+                )}. We apologise for any inconvenience caused.`,
+                'venue'
+              );
+              await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
+              await updateMusicianCancelledGig(musician.musicianId, gigId);
+              await logGigCancellation(gigId, musician.musicianId, cancellationReason);
+            };
+        
+            if (isOpenMic) {
+              const bandOrMusicianProfiles = await Promise.all(
+                nextGig.applicants
+                  .filter(app => app.status === 'confirmed')
+                  .map(app => getMusicianProfileByMusicianId(app.id))
+              );
+              for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
+                await handleMusicianCancellation(musician);
+              }
             } else {
               const confirmedApplicant = nextGig.applicants.find(app => app.status === 'confirmed');
               if (!confirmedApplicant) {
@@ -278,7 +279,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
               await handleMusicianCancellation(musicianProfile);
             }
             setLoading(false);
-            window.location.reload();
             toast.success('Gig cancellation successful.')
             setConfirmModal(false);
             setSelectedGigs([]);
@@ -841,9 +841,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                         </div>
                     </div>
                 </div>
-                  ) : (
-                    <LoadingModal title={confirmType === 'delete' ? 'Deleting Gig' : confirmType === 'cancel' ? 'Cancelling Gig' : 'Duplicating Gig'}/>
-                  )}
+                ) : (
+                  <LoadingModal />
+                )}
               </Portal>
             )}
         </div>

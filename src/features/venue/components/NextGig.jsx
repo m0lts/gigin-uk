@@ -16,10 +16,10 @@ import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '@services/utils/misc';
 import { CloseIcon, ErrorIcon, ExitIcon, PeopleGroupIconSolid } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
-import { updateMusicianCancelledGig } from '../../../services/client-side/musicians';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
+import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
 
 
 export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {

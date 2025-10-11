@@ -120,7 +120,7 @@ export const useAuth = () => {
       const redirect = sessionStorage.getItem('redirect');
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
-        return { redirect };
+        return;
       }
       if (redirect) {
         navigate(redirect);
@@ -209,11 +209,11 @@ const resetPassword = async (rawEmail) => {
   const logout = async (redirect = null) => {
     try {
       await signOut(auth);
-      if (redirect) {
-        navigate(redirect, { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+        if (redirect) {
+          navigate(redirect, { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
     } catch (error) {
       console.error('Logout failed', error);
     }
@@ -247,7 +247,7 @@ const resetPassword = async (rawEmail) => {
       const redirect = sessionStorage.getItem('redirect');
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
-        return { redirect };
+        return;
       }
       if (redirect) {
         navigate(redirect);

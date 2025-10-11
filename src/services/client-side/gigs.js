@@ -96,6 +96,15 @@ export const fetchNearbyGigs = async ({
 
     const filterByGenreManually = filters.genres?.length > 0;
 
+    const toMillis = (ts) => {
+      if (!ts) return Number.MAX_SAFE_INTEGER;
+      if (typeof ts.toMillis === "function") return ts.toMillis();
+      if (typeof ts.toDate === "function") return ts.toDate().getTime();
+      if (ts instanceof Date) return ts.getTime();
+      return Number(ts) || Number.MAX_SAFE_INTEGER;
+    };
+    
+
     const gigs = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(gig => {
@@ -117,7 +126,7 @@ export const fetchNearbyGigs = async ({
 
         return true;
       })
-      .sort((a, b) => a.startDateTime?.seconds - b.startDateTime?.seconds)
+      .sort((a, b) => toMillis(a.startDateTime) - toMillis(b.startDateTime))
       .slice(0, limitCount)
       .map(gig => ({
         ...gig,

@@ -10,4 +10,14 @@ export async function markPendingFeeInDispute({ musicianId, docId, gigId, disput
     } catch (error) {
       console.error("[CloudFn Error] markPendingFeeInDispute:", error);
     }
+}
+
+export async function updateMusicianCancelledGig(musicianId, gigId) {
+  try {
+    const fn = httpsCallable(functions, "cancelledGigMusicianProfileUpdate");
+    const { data } = await fn({musicianId, gigId});
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] updateMusicianCancelledGig:", error);
   }
+}

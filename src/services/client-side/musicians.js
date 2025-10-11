@@ -224,31 +224,6 @@ export const updateBandMembersGigApplications = async (band, gigId) => {
   }
 };
 
-/**
- * Removes the gig from the musician's profile data.
- */
-export const updateMusicianCancelledGig = async (musicianId, gigId) => {
-  try {
-    const musicianRef = doc(firestore, 'musicianProfiles', musicianId);
-    const snapshot = await getDoc(musicianRef);
-
-    if (!snapshot.exists()) {
-      console.error('[Firestore Error] updateMusicianCancelledGig: musician profile not found');
-      return;
-    }
-
-    const data = snapshot.data();
-    const updatedGigApplications = (data.gigApplications || []).filter(app => app.gigId !== gigId);
-
-    await updateDoc(musicianRef, {
-      gigApplications: updatedGigApplications,
-      confirmedGigs: arrayRemove(gigId),
-    });
-  } catch (error) {
-    console.error('[Firestore Error] updateMusicianCancelledGig:', error);
-  }
-};
-
 export const markInviteAsViewed = async (gigId, applicantId) => {
   try {
     const gigRef = doc(firestore, 'gigs', gigId);

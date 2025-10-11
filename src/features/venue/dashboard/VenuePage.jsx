@@ -19,10 +19,8 @@ import { ensureProtocol } from '@services/utils/misc';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { AddMember, DeleteGigIcon, EditIcon, LeftArrowIcon, SettingsIcon, ShareIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '../../../services/utils/misc';
-import { deleteTemplatesByVenueId, deleteVenueProfile } from '../../../services/client-side/venues';
 import { deleteGigsBatch, getGigsByVenueId } from '../../../services/client-side/gigs';
 import { getReviewsByVenueId } from '../../../services/client-side/reviews';
-import { getConversationsByParticipantId } from '../../../services/client-side/conversations';
 import { deleteFolderFromStorage } from '../../../services/storage';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
@@ -30,11 +28,10 @@ import { AddStaffModal } from '../components/AddStaffModal';
 import { StaffPermissionsModal } from '../components/StaffPermissionsModal';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { updateUserArrayField } from '../../../services/function-calls/users';
-import { fetchVenueMembersWithUsers } from '../../../services/function-calls/venues';
+import { confirmDeleteVenueData, fetchVenueMembersWithUsers } from '../../../services/function-calls/venues';
 import { deleteReview } from '../../../services/function-calls/reviews';
-import { deleteConversation } from '../../../services/function-calls/conversations';
 
-export const VenuePage = ({ user, venues }) => {
+export const VenuePage = ({ user, venues, setVenues }) => {
     const navigate = useNavigate();
     const { venueId } = useParams();
     const [venueData, setVenueData] = useState(null);
@@ -124,7 +121,6 @@ export const VenuePage = ({ user, venues }) => {
         try {
             setDeleting(true);
             setShowDeleteModal(false);
-            await deleteVenueProfile(venueId);
             await updateUserArrayField('venueProfiles', 'remove', venueId);
             const gigs = await getGigsByVenueId(venueId);
             const gigIds = gigs.map(gig => gig.id);
@@ -133,15 +129,11 @@ export const VenuePage = ({ user, venues }) => {
             for (const { id } of reviews) {
                 await deleteReview(id);
             }
-            const conversations = await getConversationsByParticipantId(venueToDelete.userId);
-            for (const { id } of conversations) {
-                await deleteConversation(id);
-            }
-            await deleteTemplatesByVenueId(venueId);
             await deleteFolderFromStorage(`venues/${venueId}`);
+            await confirmDeleteVenueData(venueId);
             toast.success('Venue Deleted');
-            // navigate('/venues/dashboard/my-venues', { replace: true });
-            // window.location.reload();
+            navigate('/venues/dashboard/my-venues', { replace: true });
+            setVenues(prevVenues => prevVenues.filter(venue => venue.venueId !== venueId));
         } catch (error) {
             console.error('An error occurred while deleting the venue:', error);
             toast.error('Failed to delete venue. Please try again.')

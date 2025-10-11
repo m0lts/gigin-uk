@@ -119,7 +119,7 @@ export const confirmPayment = callable(
         );
         tx.update(gigRef, {
           applicants: updatedApplicants,
-          paymentStatus: paymentIntent.status || "processing",
+          paymentStatus: "processing",
           paymentIntentId: paymentIntent.id,
           paid: false,
         });

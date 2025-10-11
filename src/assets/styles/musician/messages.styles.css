@@ -395,9 +395,21 @@
     text-align: center;
 }
 
-.message-page .message h6 {
-    display: block;
+.body.messages .message .msg-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.body.messages .message .msg-meta .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+
+.body.messages .message h6 {
     margin-top: 5px;
+    display: block;
     text-align: right;
 }
 

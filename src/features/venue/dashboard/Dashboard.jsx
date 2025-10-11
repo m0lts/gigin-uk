@@ -133,7 +133,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} venues={venueProfiles} refreshStripe={refreshStripe} />} />
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
-                        <Route path='my-venues/:venueId' element={<VenuePage user={user} venues={venueProfiles} />} />
+                        <Route path='my-venues/:venueId' element={<VenuePage user={user} venues={venueProfiles} setVenues={setVenueProfiles} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />

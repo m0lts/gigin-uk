@@ -58,4 +58,12 @@ export const transferVenueOwnership = async (venueToTransfer, recipientEmail) =>
     } catch (error) {
       console.error("[CloudFn Error] removeVenueMember:", error);
     }
-  }
+}
+
+/**
+ * Delete a venue and all associated data via Cloud Function.
+ */
+export async function confirmDeleteVenueData(venueId) {
+  const fn = httpsCallable(functions, "deleteVenueData");
+  return await fn({ venueId, confirm: true });
+}

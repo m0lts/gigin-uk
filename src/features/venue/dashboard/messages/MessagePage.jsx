@@ -23,6 +23,7 @@ import { ArchiveIcon, InboxIcon } from '@features/shared/ui/extras/Icons';
 import { updateConversationDocument } from '@services/function-calls/conversations';
 import { DeleteGigIcon, DeleteIcon, ErrorIcon, OptionsIcon } from '../../../shared/ui/extras/Icons';
 import Portal from '../../../shared/components/Portal';
+import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
 // Given a conversation doc, return the venueId (participantId of a venue entry).
 function getVenueIdFromConversation(conv) {
@@ -52,7 +53,7 @@ function getVenueIdFromConversation(conv) {
     return sender && sender === myUid;
   }
 
-export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles, customerDetails }) => {
+export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles, customerDetails, refreshStripe }) => {
     const navigate = useNavigate();
     const [gigData, setGigData] = useState();
     const location = useLocation();
@@ -63,6 +64,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     const [selectedVenueId, setSelectedVenueId] = useState('all');
     const [menuOpen, setMenuOpen] = useState(false);
     const [showGigModal, setShowGigModal] = useState(false);
+    const [archiving, setArchiving] = useState(false);
     const menuRef = useRef();
 
     useResizeEffect((width) => {
@@ -138,12 +140,15 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     };
 
     const handleArchiveConversation = async (conversation, shouldArchive) => {
+        setArchiving(true);
         try {
           await updateConversationDocument(conversation.id, {
             [`archived.${user.uid}`]: shouldArchive
           });
         } catch (err) {
           console.error("Failed to archive conversation:", err);
+        } finally {
+            setArchiving(false);
         }
       };
 
@@ -218,16 +223,43 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                     Gig Info
                                                 </button>
                                             )}
-                                            <button
-                                                className="btn tertiary"
-                                                style={{ display: 'flex', alignItems: 'center', gap:'0.5rem'}}
-                                                onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleArchiveConversation(activeConversation, !showArchived);
-                                                }}
-                                            >
-                                                Archive <ArchiveIcon /> 
-                                            </button>
+                                            
+                                            {showArchived ? (
+                                                <button
+                                                    className="btn tertiary"
+                                                    style={{ display: 'flex', alignItems: 'center', gap:'0.5rem'}}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleArchiveConversation(activeConversation, !showArchived);
+                                                        setShowArchived(!showArchived)
+                                                    }}
+                                                >
+                                                    {archiving ? (
+                                                        <LoadingSpinner width={15} height={15} />
+                                                    ) : (
+                                                        <>
+                                                            Unarchive <InboxIcon /> 
+                                                        </>
+                                                    )}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    className="btn tertiary"
+                                                    style={{ display: 'flex', alignItems: 'center', gap:'0.5rem'}}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleArchiveConversation(activeConversation, !showArchived);
+                                                    }}
+                                                >
+                                                    {archiving ? (
+                                                        <LoadingSpinner width={15} height={15} />
+                                                    ) : (
+                                                        <>
+                                                            Archive <ArchiveIcon /> 
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     {(() => {
@@ -242,6 +274,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                 setGigData={setGigData}
                                                 venues={venueProfiles}
                                                 customerDetails={customerDetails}
+                                                refreshStripe={refreshStripe}
                                             />
                                         );
                                     })()}

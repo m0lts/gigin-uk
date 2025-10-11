@@ -35,13 +35,13 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { cancelGigAndRefund } from '@services/function-calls/tasks';
 import { acceptGigOffer, acceptGigOfferOM, logGigCancellation, markApplicantsViewed } from '../../../services/function-calls/gigs';
 import { postCancellationMessage } from '../../../services/function-calls/messages';
-import { updateMusicianCancelledGig } from '../../../services/client-side/musicians';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { toJsDate } from '../../../services/utils/dates';
 import { handleCloseGig, handleOpenGig, declineGigApplication, revertGigAfterCancellationVenue, deleteGigAndInformation } from '../../../services/function-calls/gigs';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../../services/function-calls/messages';
+import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const VideoModal = ({ video, onClose }) => {
@@ -849,22 +849,19 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             {showDeleteConfirmationModal && (
                 <Portal>
                     {modalLoading ? (
-                        <LoadingModal title={'Deleting gig...'} />
+                        <LoadingModal />
                     ) : (
                         <div className='modal delete-gig' onClick={() => setShowDeleteConfirmationModal(false)}>
                             <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-                                <h3>Are you sure you want to delete this gig?</h3>
-                                <div className='two-buttons'>
-                                    <button className='btn danger' onClick={handleDeleteGig}>
-                                        Delete Gig
-                                    </button>
+                                <h3 style={{ textAlign: 'center' }}>Are you sure you want to delete this gig?</h3>
+                                <div className='two-buttons' style={{ marginTop: '1.5rem'}}>
                                     <button className='btn tertiary' onClick={() => setShowDeleteConfirmationModal(false)}>
                                         Cancel
                                     </button>
+                                    <button className='btn danger' onClick={handleDeleteGig}>
+                                        Delete Gig
+                                    </button>
                                 </div>
-                                <button className='btn tertiary close' onClick={() => setShowDeleteConfirmationModal(false)}>
-                                    Close
-                                </button>
                             </div>
                         </div>
                     )}
@@ -873,7 +870,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             {showCancelConfirmationModal && (
                 <Portal>
                     {modalLoading ? (
-                        <LoadingModal title={'Cancelling gig...'} />
+                        <LoadingModal />
                     ) : (
                         <div className='modal cancel-gig' onClick={() => setShowCancelConfirmationModal(false)}>
                             <div className='modal-content' onClick={(e) => e.stopPropagation()}>

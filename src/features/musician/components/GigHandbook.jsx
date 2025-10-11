@@ -14,9 +14,9 @@ import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '../../../services/utils/misc';
-import { updateMusicianCancelledGig } from '../../../services/client-side/musicians';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { logGigCancellation, revertGigAfterCancellation } from '../../../services/function-calls/gigs';
+import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
 
 
 export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation }) => {

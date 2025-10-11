@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { ErrorIcon, NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import { updateUserArrayField } from '../../../services/function-calls/users';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 const VideoModal = ({ video, onClose }) => {
     return (
@@ -30,6 +31,7 @@ export const SavedMusicians = ({ user }) => {
     const [savedMusicians, setSavedMusicians] = useState([]);
     const [noSavedMusicians, setNoSavedMusicians] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(null);
 
     useEffect(() => {
         const fetchSavedMusicians = async () => {
@@ -72,12 +74,17 @@ export const SavedMusicians = ({ user }) => {
 
     const handleMusicianUnsave = async (musician) => {
         if (!user?.uid || !musician?.id) return;
+        setSaving(musician.id);
         try {
           await updateUserArrayField('savedMusicians', 'remove', musician.id);
           toast.success(`Removed ${musician.name} from your saved musicians`);
         } catch (error) {
           console.error('Error unsaving musician:', error);
           toast.error('Failed to unsave musician. Please try again.');
+        } finally {
+            setTimeout(() => {
+                setSaving(null);
+            }, 1500);
         }
       };
 
@@ -160,7 +167,7 @@ export const SavedMusicians = ({ user }) => {
                                     {/* <p>{musicianType}</p> */}
                                 </div>
                                 <button className="btn icon" onClick={() => handleMusicianUnsave(musician)}>
-                                    <SavedIcon />
+                                    {saving === musician?.id ? <LoadingSpinner marginBottom={0} width={15} height={15} /> : <SavedIcon />}
                                 </button>
                             </div>
 

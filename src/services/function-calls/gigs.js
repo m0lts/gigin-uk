@@ -66,7 +66,8 @@ export async function postMultipleGigs(venueId, gigDocuments) {
   /**
    * Logs a gig cancellation via Cloud Function.
    */
-  export async function logGigCancellation(params) {
+  export async function logGigCancellation(gigId, musicianId, cancellationReason) {
+    const params = { gigId, musicianId, cancellationReason };
     try {
       const fn = httpsCallable(functions, "logGigCancellation");
       const { data } = await fn(params);

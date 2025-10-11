@@ -21,7 +21,7 @@ export const validateMusicianUser = ({
 }) => {
   if (!user) {
     setAuthModal?.(true);
-    setAuthType?.('signup');
+    setAuthType?.('login');
     sessionStorage.setItem('redirect', 'create-musician-profile');
     return { valid: false };
   }

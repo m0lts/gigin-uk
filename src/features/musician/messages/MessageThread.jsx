@@ -65,15 +65,39 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim()) return;
+        const text = (newMessage || '').trim();
+        if (!text) return;
+      
+        const tempId = `temp_${Date.now()}`;
+        const optimistic = {
+          id: tempId,
+          senderId: user.uid,
+          text,
+          timestamp: new Date(),
+          pending: true,
+        };
+      
+        setMessages(prev => [...prev, optimistic]);
+        setNewMessage('');
+      
         try {
-            await sendMessage(conversationId, {
-              senderId: user.uid,
-              text: newMessage,
-            });
-            setNewMessage('');
-        } catch (error) {
-        console.error('Error sending message:', error);
+          await sendMessage(conversationId, { senderId: user.uid, text });
+          setMessages(prev => prev.filter(m => m.id !== tempId));
+        } catch (err) {
+          console.error('Error sending message:', err);
+          setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: false, failed: true } : m));
+        }
+    };
+      
+    const retrySend = async (tempId) => {
+        const msg = messages.find(m => m.id === tempId);
+        if (!msg) return;
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: true, failed: false } : m));
+        try {
+          await sendMessage(conversationId, { senderId: user.uid, text: msg.text });
+          setMessages(prev => prev.filter(m => m.id !== tempId));
+        } catch (err) {
+          setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: false, failed: true } : m));
         }
     };
 
@@ -739,7 +763,20 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                             ) : (
                                 <>
                                     <h4>{message.text}</h4>
-                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                    {message.senderId === user.uid && (
+                                        <div className="msg-meta">
+                                            {message.pending && <h6>Sending…</h6>}
+                                            {message.failed && (
+                                                <>
+                                                    <h6>Failed to send</h6>
+                                                    <button className="btn secondary" onClick={() => retrySend(message.id)}>Retry</button>
+                                                </>
+                                            )}
+                                            {!message.pending && !message.failed && (
+                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            )}
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>

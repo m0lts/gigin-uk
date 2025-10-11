@@ -308,10 +308,10 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
     const MAX_PHOTOS = 10;
 
     const canAddVideo = (formData, videoUploads = []) =>
-    (formData?.videos?.length ?? 0) + videoUploads.length < MAX_VIDEOS;
+    (formData?.videos?.length ?? 0) < MAX_VIDEOS;
 
     const canAddTrack = (formData, trackUploads = []) =>
-    (formData?.tracks?.length ?? 0) + trackUploads.length < MAX_TRACKS;
+    (formData?.tracks?.length ?? 0) < MAX_TRACKS;
 
     const remainingPhotoSlots = (formData, photoUploads=[]) =>
         MAX_PHOTOS - (formData?.photos?.length ?? 0) - photoUploads.filter(u => !u.url).length;
