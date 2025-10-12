@@ -14,8 +14,9 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, ExclamationIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SaveIcon, SavedIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
 import { getOrCreateConversation } from '@services/function-calls/conversations';
 import { getVenueProfileById } from '../../../services/client-side/venues';
-import { getMusicianProfileByMusicianId, markInviteAsViewed, withdrawMusicianApplication } from '../../../services/client-side/musicians';
+import { getMusicianProfileByMusicianId, withdrawMusicianApplication } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
+import { markInviteAsViewed } from '../../../services/function-calls/musicians';
 
 
 export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandProfiles, setGigs, setGigApplications, savedGigs, setSavedGigs }) => {

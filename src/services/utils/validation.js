@@ -53,7 +53,7 @@ export function getMusicianEligibility(profile) {
     return { canApply: false, reasons: ['No musician profile found'] };
   }
   const reasons = [];
-  const hasName = typeof profile.name === 'string' && profile.name.trim().length >= 2;
+  const hasName = typeof profile.name === 'string' && profile.name.trim().length >= 0;
   const completedSignup = profile.onboarded;
   if (!hasName) reasons.push('Add a stage name');
   if (!completedSignup) reasons.push('Complete signup');

@@ -216,7 +216,6 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         }
         try {
           await inviteToGig(gigData.gigId, profile);
-
           const conversationId = await getOrCreateConversation(
             profile,
             gigData,

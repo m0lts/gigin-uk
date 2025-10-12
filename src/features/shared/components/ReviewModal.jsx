@@ -3,7 +3,7 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { StarEmptyIcon, StarIcon } from '@features/shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import '@styles/shared/review-modal.styles.css';
-import { getMusicianProfileByMusicianId, findPendingFeeByGigId } from '@services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { sendDisputeMessage } from '@services/function-calls/messages';
 import { sendEmail } from '@services/client-side/emails';
@@ -16,7 +16,7 @@ import { LoadingSpinner } from '../ui/loading/Loading';
 import { LoadingModal } from '../ui/loading/LoadingModal';
 import { ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';
 import { logDispute, submitReview } from '../../../services/function-calls/reviews';
-import { markPendingFeeInDispute } from '../../../services/function-calls/musicians';
+import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/function-calls/musicians';
 import { updateGigDocument } from '../../../services/function-calls/gigs';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
@@ -91,7 +91,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                         disputeDetails: disputeText || null,
                     });
                 } else {
-                console.warn('No pending fee doc found for this gig to mark as disputed.');
+                    console.warn('No pending fee doc found for this gig to mark as disputed.');
                 }
                 const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'dispute');
                 await sendDisputeMessage(conversationId, gigData.venue.venueName);
@@ -141,6 +141,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
 
     const handleSubmitReview = async () => {
         try {
+            setLoading(true);
             await submitReview({
                 reviewer,
                 musicianId: musicianProfile.musicianId,
@@ -162,6 +163,8 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
         } catch (error) {
             console.error('Error submitting review:', error);
             toast.error('An error occurred while submitting the review. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -288,7 +291,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                     />
                                 )}
                                 {disputeAllowed && !reviewingAfterDispute ? (
-                                    <div className='two-buttons'>
+                                    <div className='two-buttons' style={{ width: '100%'}}>
                                         <button className='btn danger' onClick={() => setShowDisputeForm(true)}>
                                             Report Issue
                                         </button>
@@ -303,7 +306,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 ) : (
                                     <button
                                         className='btn primary'
-                                        style={{ width: '100%'}}
+                                        style={{ width: '100%' }}
                                         onClick={handleSubmitReview}
                                         disabled={!rating}
                                     >

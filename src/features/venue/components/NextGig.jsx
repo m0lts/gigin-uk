@@ -122,7 +122,8 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 );
                 await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
                 await updateMusicianCancelledGig(musician.musicianId, gigId);
-                await logGigCancellation(gigId, musician.musicianId, cancellationReason);
+                const cancellingParty = 'venue';
+                await logGigCancellation(gigId, musician.musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
               };
           
               if (isOpenMic) {

@@ -43,6 +43,7 @@ export const ConversationItem = ({
       (conversation.lastViewed?.[user.uid]?.seconds || 0) &&
     conversation.lastMessageSenderId !== user.uid;
 
+
   return (
     <li
       className={`conversation ${isActive ? "active" : ""}`}
@@ -58,43 +59,47 @@ export const ConversationItem = ({
             )}
         </div>
         <div className="conversation-text">
-            <div className="conversation-title">
-                <h3 className="conversation-title-text">
-                    {conversation.venueName}
-                </h3>
-                {showArchived ? (
-                    <button
-                    className='btn text'
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleArchiveConversation(conversation, false); // Restore to inbox
-                    }}
-                    >
-                    <InboxIcon />
-                    </button>
-                ) : (
-                    <button
-                    className='btn text'
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleArchiveConversation(conversation, true); // Archive
-                    }}
-                    >
-                    <ArchiveIcon />
-                    </button>
-                )}
-            </div>
+          <div className="conversation-title">
+            <h3 className="conversation-title-text">
+                {conversation.venueName}
+            </h3>
+            {showArchived ? (
+                <button
+                className='btn text'
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleArchiveConversation(conversation, false); // Restore to inbox
+                }}
+                >
+                <InboxIcon />
+                </button>
+            ) : (
+                <button
+                className='btn text'
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleArchiveConversation(conversation, true); // Archive
+                }}
+                >
+                <ArchiveIcon />
+                </button>
+            )}
+          </div>
 
-            <div className="conversation-details">
-                <p className="last-message-preview">{conversation.lastMessage}</p>
-                <h6 className="conversation-date">
-                    {new Date(
-                        (conversation.lastMessageTimestamp?.seconds || 0) * 1000
-                        ).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </h6>
-            </div>
-            {hasUnreadMessages && <div className="notification-dot" />}
+          <div className="conversation-details">
+            <p className="last-message-preview">{conversation.lastMessage}</p>
+            <h6 className="conversation-date">
+              {new Date(
+                  (conversation.lastMessageTimestamp?.seconds || 0) * 1000
+                  ).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            </h6>
+          </div>
         </div>
+          {hasUnreadMessages && (
+            <div className="notification-dot">
+              <span className="dot"></span>
+            </div>
+          )}
     </li>
   );
 };

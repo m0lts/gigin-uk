@@ -21,3 +21,23 @@ export async function updateMusicianCancelledGig(musicianId, gigId) {
     console.error("[CloudFn Error] updateMusicianCancelledGig:", error);
   }
 }
+
+export async function markInviteAsViewed(gigId, applicantId) {
+  try {
+    const fn = httpsCallable(functions, "markInviteAsViewed");
+    const { data } = await fn({gigId, applicantId});
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] markInviteAsViewed:", error);
+  }
+}
+
+export async function findPendingFeeByGigId(musicianId, gigId) {
+  try {
+    const fn = httpsCallable(functions, "findPendingFeeByGigId");
+    const { data } = await fn({musicianId, gigId});
+    return data;
+  } catch (error) {
+    console.error("[CloudFn Error] findPendingFeeByGigId:", error);
+  }
+}

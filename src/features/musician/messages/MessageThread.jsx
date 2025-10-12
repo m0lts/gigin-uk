@@ -27,9 +27,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const [userRole, setUserRole] = useState('');
     const [allowCounterOffer, setAllowCounterOffer] = useState(false);
     const [newCounterOffer, setNewCounterOffer] = useState('');
-    const [loadingPaymentDetails, setLoadingPaymentDetails] = useState(false);
-    const [paymentMessageId, setPaymentMessageId] = useState();
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const [eventLoading, setEventLoading] = useState(false);
     const navigate = useNavigate();
 
     const messagesEndRef = useRef(null);
@@ -118,6 +117,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
+            setEventLoading(true);
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
@@ -154,6 +154,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             }
         } catch (error) {
             console.error('Error updating gig document:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
@@ -162,6 +164,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
+            setEventLoading(true);
             const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId);
             setGigData(prev => ({
               ...prev,
@@ -172,6 +175,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole);
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
+            console.log({
+                userRole,
+                musicianProfile: musicianProfileData,
+                venueProfile: venueData,
+                gigData,
+                agreedFee,
+                isNegotiated: true,
+                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+            })
             await sendGigAcceptedEmail({
                 userRole,
                 musicianProfile: musicianProfileData,
@@ -183,6 +195,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
               });
         } catch (error) {
             console.error('Error updating gig document:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
@@ -191,6 +205,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
+            setEventLoading(true);
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData(prev => ({
                 ...prev,
@@ -216,6 +231,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             setAllowCounterOffer(true);
         } catch (error) {
             console.error('Error updating gig document:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
@@ -224,6 +241,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
+            setEventLoading(true);
             const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
             setGigData((prevGigData) => ({
                 ...prevGigData,
@@ -246,6 +264,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
               });
         } catch (error) {
             console.error('Error updating gig document:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
@@ -253,6 +273,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
+            setEventLoading(true);
             const value = (newFee || '').trim();
             const numericPart = value.replace(/£|\s/g, '');
             const num = Number(numericPart);
@@ -283,6 +304,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             setAllowCounterOffer(false);
         } catch (error) {
             console.error('Error sending counter-offer:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
@@ -440,22 +463,29 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         </div>
                                         {message.status !== 'countered'  && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' &&  (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
-                                            <h4>Send Counter Offer:</h4>
-                                            <div className='input-group'>
-                                                <input
-                                                    type='text'
-                                                    className='input'
-                                                    value={newCounterOffer}
-                                                    onChange={(e) => handleCounterOffer(e)}
-                                                    placeholder='£'
-                                                />
-                                                <button
-                                                    className='btn primary'
-                                                    onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
-                                                >
-                                                    Send
-                                                </button>
-                                            </div>
+                                                {eventLoading ? (
+                                                    <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                                ) : (
+                                                    <>
+                                                        <h4>Send Counter Offer:</h4>
+                                                        <div className='input-group'>
+                                                            <input
+                                                                type='text'
+                                                                className='input'
+                                                                value={newCounterOffer}
+                                                                onChange={(e) => handleCounterOffer(e)}
+                                                                placeholder='£'
+                                                                disabled={eventLoading}
+                                                            />
+                                                                <button
+                                                                    className='btn primary'
+                                                                    onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
+                                                                >
+                                                                    Send
+                                                                </button>
+                                                        </div>
+                                                    </>
+                                                )}
                                         </div>
                                         )}
                                         </>
@@ -490,33 +520,46 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         </div>
                                         {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic')  && message?.status !== 'apps-closed' &&  (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
-                                                <h4>Send Counter Offer:</h4>
-                                                <div className='input-group'>
-                                                    <input
-                                                        type='text'
-                                                        className='input'
-                                                        value={newCounterOffer}
-                                                        onChange={(e) => handleCounterOffer(e)}
-                                                        placeholder='£'
-                                                    />
-                                                    <button
-                                                        className='btn primary'
-                                                        onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
-                                                    >
-                                                        Send
-                                                    </button>
-                                                </div>
+                                                {eventLoading ? (
+                                                    <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                                ) : (
+                                                    <>
+                                                        <h4>Send Counter Offer:</h4>
+                                                        <div className='input-group'>
+                                                            <input
+                                                                type='text'
+                                                                className='input'
+                                                                value={newCounterOffer}
+                                                                onChange={(e) => handleCounterOffer(e)}
+                                                                placeholder='£'
+                                                                disabled={eventLoading}
+                                                            />
+                                                            <button
+                                                                className='btn primary'
+                                                                onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
+                                                            >
+                                                                Send
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
                                         </>
                                     ) : message.status !== 'countered' && message.status !== 'apps-closed' ? (
                                         <div className='two-buttons'>
-                                            <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
-                                                Accept
-                                            </button>
-                                            <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
-                                                Decline
-                                            </button>
+                                            {eventLoading ? (
+                                                <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                            ) : (
+                                                <>
+                                                    <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
+                                                        Accept
+                                                    </button>
+                                                    <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
+                                                        Decline
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     ) : message.status === 'withdrawn' && (
                                         <div className='status-box'>
@@ -584,33 +627,46 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             </div>
                                             {message.status !== 'countered'  && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
-                                                   <h4>Send Counter Offer:</h4>
-                                                <div className='input-group'>
-                                                    <input
-                                                        type='text'
-                                                        className='input'
-                                                        value={newCounterOffer}
-                                                        onChange={(e) => handleCounterOffer(e)}
-                                                        placeholder='£'
-                                                    />
-                                                    <button
-                                                        className='btn primary'
-                                                        onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
-                                                    >
-                                                        Send
-                                                    </button>
-                                                </div>
+                                                        {eventLoading ? (
+                                                            <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                                        ) : (
+                                                            <>
+                                                                <h4>Send Counter Offer:</h4>
+                                                                <div className='input-group'>
+                                                                    <input
+                                                                        type='text'
+                                                                        className='input'
+                                                                        value={newCounterOffer}
+                                                                        onChange={(e) => handleCounterOffer(e)}
+                                                                        placeholder='£'
+                                                                        disabled={eventLoading}
+                                                                    />
+                                                                    <button
+                                                                        className='btn primary'
+                                                                        onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
+                                                                    >
+                                                                        Send
+                                                                    </button>
+                                                                </div>
+                                                            </>
+                                                        )}
                                                 </div>
                                             )}
                                         </>
                                     ) : message.status !== 'countered' && message.status !== "apps-closed" ? (
                                         <div className='two-buttons'>
-                                            <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
-                                                Accept
-                                            </button>
-                                            <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
-                                                Decline
-                                            </button>
+                                            {eventLoading ? (
+                                                <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                            ) : (
+                                                <>
+                                                    <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
+                                                        Accept
+                                                    </button>
+                                                    <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
+                                                        Decline
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     ) : message.status === 'withdrawn' && (
                                         <div className='status-box'>

@@ -796,18 +796,25 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 <div className='equipment'>
                                     <h4>Equipment Available at {gigData.venue.venueName}</h4>
                                     {venueProfile?.equipmentAvailable === 'yes' ? (
-                                        <div className="equipment-grid">
-                                            {venueProfile.equipment.map((e) => (
-                                                <span className="equipment-item" key={e}>
-                                                    {formatEquipmentIcon(e)}
-                                                    {e}
-                                                </span>
-                                            ))}
-                                        </div>
+                                        <>
+                                            <div className="equipment-grid">
+                                                {venueProfile.equipment.map((e) => (
+                                                    <span className="equipment-item" key={e}>
+                                                        {formatEquipmentIcon(e)}
+                                                        {e}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            {venueProfile?.equipmentInformation && (
+                                                <div className="equipment-notes" style={{ marginTop: '1rem' }}>
+                                                    <h6>EQUIPMENT INFORMATION</h6>
+                                                    <p>{venueProfile?.equipmentInformation}</p>
+                                                </div>
+                                            )}
+                                        </>
                                     ) : (
                                         <p>Unfortunately, the venue has no equipment for use.</p>
                                     )}
-
                                 </div>
                                 {venueProfile?.description && (
                                     <div className='description'>

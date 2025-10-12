@@ -39,7 +39,7 @@ export const postCancellationMessage = callable(
     });
 
     await convRef.update({
-      lastMessage: `Unfortunately, ${cancellingParty} has had to cancel.`,
+      lastMessage: `Unfortunately, the ${cancellingParty} has had to cancel.`,
       lastMessageTimestamp: ts,
       lastMessageSenderId: senderId,
     });

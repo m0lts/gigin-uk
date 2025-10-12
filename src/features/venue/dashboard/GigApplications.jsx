@@ -87,6 +87,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         reason: '',
         extraDetails: '',
       });
+    const [eventLoading, setEventLoading] = useState(false);
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
     const venueName = location.state?.gig?.venue?.venueName || '';
@@ -188,6 +189,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         try {
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
+            setEventLoading(true);
             const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig" || gigInfo.budget === '£' || gigInfo.budget === '£0';
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
@@ -232,6 +234,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         } catch (error) {
             toast.error('Error accepting gig application. Please try again.')
             console.error('Error updating gig document:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
@@ -240,6 +244,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         try {
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
+            setEventLoading(true);
             const updatedApplicants = await declineGigApplication(gigInfo, musicianId);
             setGigInfo((prevGigInfo) => ({
                 ...prevGigInfo,
@@ -264,6 +269,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         } catch (error) {
             toast.error('Error rejecting gig application. Please try again.')
             console.error('Error updating gig document:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
@@ -554,17 +561,15 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     <LoadingSpinner />
                 ) : (
                     <>
-                    {new Date(gigInfo.disputeClearingTime) > getLocalGigDateTime(gigInfo) &&
-                        Array.isArray(gigInfo?.applicants) && gigInfo?.applicants.some(applicant => applicant.status === 'confirmed' &&
-                        !gigInfo.disputeLogged) && (
+                    {gigInfo?.disputeClearingTime?.toDate() > getLocalGigDateTime(gigInfo) && Array.isArray(gigInfo?.applicants) && gigInfo?.applicants.some(applicant => applicant.status === 'confirmed' && !gigInfo.disputeLogged) && (
                         <div className='dispute-box'>
                             <h3>Not happy with how the gig went?</h3>
                             <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
-                            <button className='btn primary' onClick={() => {setShowReviewModal(true)}}>
+                            <button className='btn danger' onClick={() => {setShowReviewModal(true)}}>
                                 Dispute Gig
                             </button>
                         </div>
-                        )}
+                    )}
                         {musicianProfiles.length > 0 ? (
                         <table className='applications-table'>
                             <thead>
@@ -703,26 +708,38 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                     )}
                                                     {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && !gigAlreadyConfirmed && sender !== 'venue' && (
                                                         <>
-                                                            <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                                <TickIcon />
-                                                                Accept
-                                                            </button>
-                                                            <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                                <ErrorIcon />
-                                                                Decline
-                                                            </button>
+                                                            {eventLoading ? (
+                                                                <LoadingSpinner width={15} height={15} />
+                                                            ) : (
+                                                                <>
+                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                        <TickIcon />
+                                                                        Accept
+                                                                    </button>
+                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                        <ErrorIcon />
+                                                                        Decline
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </>
                                                     )}
                                                     {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && gigInfo.kind === 'Open Mic' && gigAlreadyConfirmed && sender !== 'venue' && (
                                                         <>
-                                                            <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                                <TickIcon />
-                                                                Accept
-                                                            </button>
-                                                            <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                                <ErrorIcon />
-                                                                Decline
-                                                            </button>
+                                                            {eventLoading ? (
+                                                                <LoadingSpinner width={15} height={15} />
+                                                            ) : (
+                                                                <>
+                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                        <TickIcon />
+                                                                        Accept
+                                                                    </button>
+                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                        <ErrorIcon />
+                                                                        Decline
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </>
                                                     )}
                                                     {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && applicant?.invited && !gigAlreadyConfirmed && (

@@ -112,9 +112,7 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
         }
         delete musicianProfileData.bandId;
         await createMusicianProfile(formData.bandId, musicianProfileData, user.uid);
-        refreshData();
-        navigate(`/dashboard/bands`);
-        toast.success('Band created!');
+        window.location.href = '/dashboard/bands';
       } catch (e) {
         console.error('Error submitting band:', e);
         toast.error('Error creating band. Please try again.')
@@ -147,7 +145,7 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
       <div className={`profile-creator band ${loading ? 'loading' : ''}`}>
         {loading ? (
           <div className="creating-band">
-            <LoadingSpinner width={40} height={40} />
+            <LoadingSpinner width={20} height={20} />
             <h2>Creating Band</h2>
             <p>Please wait...</p>
           </div>

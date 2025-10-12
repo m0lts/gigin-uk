@@ -445,6 +445,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                 <tbody>
                                 {feesToDisplay.length > 0 ? (
                                     feesToDisplay.map((fee, index) => {
+                                        console.log(fee)
                                         const now = new Date();
 
                                         const gigDateObj =
@@ -461,9 +462,9 @@ export const Finances = ({ user, musicianProfile }) => {
                                         // choose a status label or a component
                                         let statusNode;
                                         if (fee.status === "cleared") {
-                                        statusNode = "Withdrawable";
+                                            statusNode = "Withdrawable";
                                         } else if (fee.status === "in dispute") {
-                                        statusNode = "In Dispute";
+                                            statusNode = "In Dispute";
                                         } else if (fee.status === "pending") {
                                         if (isFutureGig) {
                                             statusNode = "Gig Not Performed";

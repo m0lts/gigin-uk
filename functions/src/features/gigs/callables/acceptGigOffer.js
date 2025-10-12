@@ -47,7 +47,7 @@ export const acceptGigOffer = callable(
       applicants: updatedApplicants,
       agreedFee: `${agreedFee}`,
       paid: !!nonPayableGig,
-      status: nonPayableGig && gigData?.kind === "Ticketed Gig" ? "closed" : "open",
+      status: nonPayableGig || gigData?.kind === "Ticketed Gig" ? "closed" : "open",
     });
 
     if (nonPayableGig) {

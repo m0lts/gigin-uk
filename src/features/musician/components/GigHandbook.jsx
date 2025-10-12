@@ -143,10 +143,10 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
             );
             await revertGigAfterCancellation(gigForHandbook, musicianId, cancellationReason);
             await updateMusicianCancelledGig(musicianId, gigId);
-            await logGigCancellation(gigId, musicianId, cancellationReason);
+            const cancellingParty = 'musician';
+            await logGigCancellation(gigId, musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
             setLoading(false);
             setShowGigHandbook(false);
-            window.location.reload();
         } catch (error) {
             console.error('Error canceling task:', error.message);
             setLoading(false);
@@ -166,8 +166,8 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                     {loading ? (
                         <>
                             <LoadingSpinner />
-                            <h3>Cancelling gig...</h3>
-                            <p>Please don't leave this window or close your browser.</p>
+                            <h3 style={{ textAlign: 'center', marginTop: '1rem' }}>Cancelling gig...</h3>
+                            <p style={{ textAlign: 'center' }}>Please don't leave this window or close your browser.</p>
                         </>
                     ) : !askCancellationReason ? (
                         <> 
