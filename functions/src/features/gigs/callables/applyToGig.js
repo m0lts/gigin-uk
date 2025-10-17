@@ -15,7 +15,15 @@ import { db } from "../../../lib/admin.js";
  *   { applicants: Array<Object> }  // updated applicants, or { applicants: null } if gig not found
  */
 export const applyToGig = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { 
+    authRequired: true,
+    enforceAppCheck: true,
+    concurrency: 80,
+    minInstances: 1,
+    maxInstances: 20,
+    memory: '256MiB',
+    cpu: 1,
+  },
   async (req) => {
     const { gigId, musicianProfile } = req.data || {};
 

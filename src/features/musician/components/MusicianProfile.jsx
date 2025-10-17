@@ -342,9 +342,6 @@ return (
                       {profile?.name}
                       <span className="orange-dot">.</span>
                     </h1>
-                    <h4 className="number-of-gigs">
-                      {profile?.gigsPerformed || 0} Gigs Performed
-                    </h4>
                     {user.venueProfiles && user.venueProfiles.length > 0 && (
                       <div className="action-buttons">
                         <button

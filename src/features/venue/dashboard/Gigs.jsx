@@ -97,20 +97,20 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
   
     const normalizedGigs = useMemo(() => {
       return gigs.map(gig => {
-        const dt = getLocalGigDateTime(gig); // <- the only way we derive time now
+        const dt = getLocalGigDateTime(gig);
         const isoDate = dt ? dt.toISOString().split('T')[0] : null;
-    
         const confirmedApplicant = gig.applicants?.some(a => a.status === 'confirmed');
         const acceptedApplicant = gig.applicants?.some(a => a.status === 'accepted');
-    
+        const inDispute = gig?.disputeLogged;
         let status = 'past';
         if (dt && dt > now) {
           if (confirmedApplicant) status = 'confirmed';
           else if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) status = 'awaiting payment';
           else if (gig.status === 'open') status = 'upcoming';
           else status = 'closed';
+        } else if (dt && dt < now) {
+          if (!!inDispute) status = 'in dispute';
         }
-    
         return {
           ...gig,
           dateObj: dt,
@@ -544,6 +544,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       'awaiting payment': <ExclamationIconSolid />,
                       confirmed: <TickIcon />,
                       closed: <ErrorIcon />,
+                      'in dispute': <ErrorIcon />,
                       past: <PreviousIcon />,
                     }[gig.status];
                     return (
@@ -597,8 +598,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               )}
                             </td>
                           )}
-                          <td className={`status-box ${gig.status === 'awaiting payment' ? 'closed' : gig.status}`}>
-                            <div className={`status ${gig.status === 'awaiting payment' ? 'closed' : gig.status}`}>
+                          <td className={`status-box ${gig.status === 'awaiting payment' || gig.status === 'in dispute' ? 'closed' : gig.status}`}>
+                            <div className={`status ${gig.status === 'awaiting payment' || gig.status === 'in dispute' ? 'closed' : gig.status}`}>
                               {StatusIcon} {gig.status}
                             </div>
                           </td>

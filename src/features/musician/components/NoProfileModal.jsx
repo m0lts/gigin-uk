@@ -127,7 +127,7 @@ export const NoProfileModal = ({
         try {
             let pictureUrl;
             if (musicianImageFile) {
-                await uploadProfilePicture(musicianImageFile, musicianId)
+                pictureUrl = await uploadProfilePicture(musicianImageFile, musicianId)
             }
             const payload = {
                 onboarded: true,

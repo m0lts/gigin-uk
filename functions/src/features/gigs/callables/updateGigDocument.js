@@ -6,7 +6,16 @@ import { requirePerm } from "../../../lib/authz.js";
 
 
 export const updateGigDocument = callable(
-    { region: REGION_PRIMARY, timeoutSeconds: 30, authRequired: true },
+  { 
+    region: REGION_PRIMARY,
+    authRequired: true,
+    enforceAppCheck: true,
+    concurrency: 80,
+    minInstances: 1,
+    maxInstances: 20,
+    memory: '256MiB',
+    cpu: 1,
+  },
     async (req) => {
       const { gigId, updates } = req.data || {};
       if (!gigId || typeof gigId !== "string") {

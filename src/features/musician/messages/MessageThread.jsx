@@ -175,15 +175,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole);
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
-            console.log({
-                userRole,
-                musicianProfile: musicianProfileData,
-                venueProfile: venueData,
-                gigData,
-                agreedFee,
-                isNegotiated: true,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
-            })
             await sendGigAcceptedEmail({
                 userRole,
                 musicianProfile: musicianProfileData,
@@ -384,7 +375,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const isSystemMessage = (msg) => {
         // Treat pure announcements and review prompts as system
         return msg?.type === 'announcement' || msg?.type === 'review';
-      };
+    };
     
     
     return (

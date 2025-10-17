@@ -210,7 +210,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       <div className='saved-cards'>
         <h2>My Cards</h2>
         <ul className="card-list">
-          <li className="styled-card add-card" onClick={() => setAddCardModal(true)}>
+          <li className="styled-card add-card" onClick={() => {setAddCardModal(true)}}>
             <div className="add-card-content">
               <PlusIcon />
               <h3>Add Card</h3>
@@ -284,11 +284,19 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
                     <td>
                       {getReceiptCardBrand(receipt, savedCards).toUpperCase()} **** {getReceiptCardLast4(receipt, savedCards)}
                     </td>
-                    <td className={`status-box ${receipt.status}`}>
-                      <div className={`status ${receipt.status}`}>
-                        {receipt.status}
-                      </div>
-                    </td>
+                    {receipt.refunded ? (
+                      <td className={`status-box declined`}>
+                        <div className={`status declined`}>
+                          Refunded
+                        </div>
+                      </td>
+                    ) : (
+                      <td className={`status-box ${receipt.status}`}>
+                        <div className={`status ${receipt.status}`}>
+                          {receipt.status}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })

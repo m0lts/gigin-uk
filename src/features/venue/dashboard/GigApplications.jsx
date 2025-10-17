@@ -58,7 +58,7 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe }) => {
+export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe, customerDetails }) => {
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -507,6 +507,33 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         return <LoadingScreen />;
     }
 
+    
+    
+    // console.log('gigDateTime', gigDateTime);
+    // console.log('now', now);
+
+    const hasConfirmed =
+    Array.isArray(gigInfo?.applicants) &&
+    gigInfo.applicants.some(a => a?.status === 'confirmed');
+
+    const gigDateTime = getLocalGigDateTime(gigInfo);
+    const clearing = gigInfo?.disputeClearingTime?.toDate?.();
+
+    const showDispute =
+        hasConfirmed &&
+        !!gigDateTime &&
+        !!clearing &&
+        clearing > gigDateTime && 
+        !gigInfo?.disputeLogged && 
+        gigDateTime < now &&
+        !gigInfo.venueHasReviewed;
+
+    const disputeLogged = 
+        hasConfirmed &&
+        !!gigDateTime &&
+        !!gigInfo?.disputeLogged &&
+        gigDateTime < now;
+
     return (
         <>
             <div className='head gig-applications'>
@@ -561,15 +588,21 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     <LoadingSpinner />
                 ) : (
                     <>
-                    {gigInfo?.disputeClearingTime?.toDate() > getLocalGigDateTime(gigInfo) && Array.isArray(gigInfo?.applicants) && gigInfo?.applicants.some(applicant => applicant.status === 'confirmed' && !gigInfo.disputeLogged) && (
-                        <div className='dispute-box'>
-                            <h3>Not happy with how the gig went?</h3>
-                            <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
-                            <button className='btn danger' onClick={() => {setShowReviewModal(true)}}>
-                                Dispute Gig
-                            </button>
-                        </div>
-                    )}
+                        {showDispute && (
+                            <div className='dispute-box'>
+                                <h3>Not happy with how the gig went?</h3>
+                                <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
+                                <button className='btn danger' onClick={() => {setShowReviewModal(true)}}>
+                                    Dispute Gig
+                                </button>
+                            </div>
+                        )}
+                        {disputeLogged && (
+                            <div className='dispute-box'>
+                                <h3>Dispute logged.</h3>
+                                <h4 style={{ marginBottom: 0 }}>Our team is looking into the dispute. We'll update you soon.</h4>
+                            </div>
+                        )}
                         {musicianProfiles.length > 0 ? (
                         <table className='applications-table'>
                             <thead>
@@ -668,7 +701,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                         <div className='status-box'>
                                                             <div className='status declined'>
                                                                 <ErrorIcon />
-                                                                Reported
+                                                                In Dispute
                                                             </div>
                                                         </div>
                                                     )}
@@ -837,6 +870,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                         paymentIntentId={watchPaymentIntentId}
                         setGigData={setGigInfo}
                         musicianProfileId={musicianProfileId}
+                        customerDetails={customerDetails}
+                        venues={venues}
                     />
                 </Portal>
             )}

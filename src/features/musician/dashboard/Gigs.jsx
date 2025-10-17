@@ -78,6 +78,9 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
         if (!applicant) {
             return { icon: <ExclamationIcon />, text: 'Not Applied' };
         }
+        if (gig.disputeLogged) {
+            return { icon: <ExclamationIcon />, text: 'Dispute Logged' };
+        }
         if (gigDate > now) {
             const status = applicant?.status; // safe because applicant exists
             if (status === 'confirmed') return { icon: <TickIcon />, text: 'Confirmed' };
@@ -95,8 +98,8 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
             }
             if (status === 'withdrawn') {
                 return { icon: <RejectedIcon />, text: 'Withdrawn' };
-              }
-          }
+            }
+        }
         return { icon: <PreviousIcon />, text: 'Past' };
 
     };
@@ -407,12 +410,12 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             </td>
                                             <td
                                                 className={`status-box ${
-                                                    gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' || gigStatus?.text.toLowerCase() === 'awaiting venue payment' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase() === 'withdrawn' ? 'declined' : gigStatus?.text.toLowerCase() 
+                                                    gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' || gigStatus?.text.toLowerCase() === 'awaiting venue payment' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase() === 'withdrawn' || gigStatus?.text.toLowerCase() === 'dispute logged' ? 'declined' : gigStatus?.text.toLowerCase() 
                                                 }`}
                                             >
                                                 <div
                                                     className={`status ${
-                                                        gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' || gigStatus?.text.toLowerCase() === 'awaiting venue payment' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase() === 'withdrawn' ? 'declined' : gigStatus?.text.toLowerCase()
+                                                        gigStatus?.text.toLowerCase() === 'waiting for payment confirmation' || gigStatus?.text.toLowerCase() === 'awaiting your response' || gigStatus?.text.toLowerCase() === 'awaiting venue response' || gigStatus?.text.toLowerCase() === 'awaiting venue payment' ? 'pending' : gigStatus?.text.toLowerCase() === 'not applied' ? 'past' : gigStatus?.text.toLowerCase() === 'withdrawn' || gigStatus?.text.toLowerCase() === 'dispute logged' ? 'declined' : gigStatus?.text.toLowerCase()
                                                     }`}
                                                 >
                                                     {gigStatus.icon} {gigStatus?.text}

@@ -445,7 +445,6 @@ export const Finances = ({ user, musicianProfile }) => {
                                 <tbody>
                                 {feesToDisplay.length > 0 ? (
                                     feesToDisplay.map((fee, index) => {
-                                        console.log(fee)
                                         const now = new Date();
 
                                         const gigDateObj =
@@ -462,17 +461,17 @@ export const Finances = ({ user, musicianProfile }) => {
                                         // choose a status label or a component
                                         let statusNode;
                                         if (fee.status === "cleared") {
-                                            statusNode = "Withdrawable";
+                                            statusNode = "Fee Released";
                                         } else if (fee.status === "in dispute") {
                                             statusNode = "In Dispute";
                                         } else if (fee.status === "pending") {
-                                        if (isFutureGig) {
-                                            statusNode = "Gig Not Performed";
-                                        } else if (inDisputeWind) {
-                                            statusNode = <CountdownTimer targetDate={clearingDate} />;
-                                        } else {
-                                            statusNode = "Pending";
-                                        }
+                                            if (isFutureGig) {
+                                                statusNode = "Gig Not Performed Yet";
+                                            } else if (inDisputeWind) {
+                                                statusNode = <CountdownTimer targetDate={clearingDate} />;
+                                            } else {
+                                                statusNode = "Pending";
+                                            }
                                         } else {
                                         statusNode = fee.status;
                                         }
@@ -489,7 +488,11 @@ export const Finances = ({ user, musicianProfile }) => {
                                             {windowWidth > 915 && <td>{formatFeeDate(fee.gigDate, "short")}</td>}
                                             <td>{fee.venueName}</td>
                                             <td>£{fee.amount.toFixed(2)}</td>
-                                            <td>{formatFeeDate(fee.disputeClearingTime)}</td>
+                                            {fee.disputeLogged ? (
+                                                <td>N/A: Dispute Logged</td>
+                                            ) : (
+                                                <td>{formatFeeDate(fee.disputeClearingTime)}</td>
+                                            )}
                                             <td className={`status-box ${statusClass}`}>
                                             <div className={`status ${statusClass}`}>{statusNode}</div>
                                             </td>

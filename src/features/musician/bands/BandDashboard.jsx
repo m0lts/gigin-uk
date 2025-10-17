@@ -104,9 +104,6 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
                     {bandProfile?.name}
                     <span className='orange-dot'>.</span>
                 </h1>
-                <h4 className="number-of-gigs">
-                    {bandProfile?.gigsPerformed || 0} Gigs Performed
-                </h4>
                 <div className="action-buttons">
                   {bandAdmin ? (
                     <>

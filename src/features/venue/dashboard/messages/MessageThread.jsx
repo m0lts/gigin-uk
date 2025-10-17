@@ -438,7 +438,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         const sysStatuses = new Set(['gig deleted', 'gig booked', 'dispute', 'cancellation', 'payment failed', 'awaiting payment', 'gig confirmed']);
         if (m?.status && sysStatuses.has(m.status)) return true;
         return false;
-      };
+    };
 
     return (
         <>

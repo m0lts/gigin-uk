@@ -83,11 +83,14 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                 });
                 const match = await findPendingFeeByGigId(musicianProfile.musicianId, gigData.gigId);
                 if (match) {
+                    console.log('reached this part')
                     await markPendingFeeInDispute({
                         musicianId: musicianProfile.musicianId,
                         docId: match.docId,
                         gigId: gigData.gigId,
-                        disputeReason,
+                        disputeLogged: true,
+                        status: 'in dispute',
+                        reason: disputeReason,
                         disputeDetails: disputeText || null,
                     });
                 } else {
@@ -110,14 +113,16 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     musicianProfile: musicianProfile,
                     gigData: gigData,
                 })
-                setLoading(false);
-                setShowDisputeForm(false);
                 setDisputeSubmitted(true);
+                onClose(false);
                 toast.success('Dispute submitted.')
             }
         } catch (error) {
             console.error('Error logging dispute:', error);
             toast.error('An error occurred while logging the dispute. Please try again.');
+        } finally {
+            setLoading(false);
+            setShowDisputeForm(false);
         }
     };
 
@@ -306,7 +311,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                 ) : (
                                     <button
                                         className='btn primary'
-                                        style={{ width: '100%' }}
+                                        style={{ width: '100%', margin: '0 auto' }}
                                         onClick={handleSubmitReview}
                                         disabled={!rating}
                                     >
@@ -347,6 +352,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                     className='btn primary'
                                     onClick={handleSubmitReview}
                                     disabled={!rating}
+                                    style={{ width: '100%', margin: '0 auto' }}
                                 >
                                     Submit Review
                                 </button>

@@ -202,7 +202,7 @@ export const getOrCreateConversation = callable(
         : type === "application"
         ? `${musicianProfile.name} applied to the gig on ${dateStr} at ${venueName}.`
         : type === "invitation"
-        ? `${venueProfile.accountName} has invited you to play at their gig on ${dateStr}.`
+        ? `${venueProfile.accountName} invited ${musicianProfile.name} to play at their gig on ${dateStr}.`
         : type === "dispute"
         ? `${venueProfile.accountName} has disputed the gig performed on ${dateStr}.`
         : "";

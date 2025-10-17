@@ -24,7 +24,15 @@ import { FieldValue } from "firebase-admin/firestore";
  *   { updatedApplicants: Array<Object>, agreedFee: string|number|null }
  */
 export const acceptGigOffer = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { 
+    authRequired: true,
+    enforceAppCheck: true,
+    concurrency: 80,
+    minInstances: 1,
+    maxInstances: 20,
+    memory: '256MiB',
+    cpu: 1,
+  },
   async (req) => {
     const { gigData, musicianProfileId, nonPayableGig = false } = req.data || {};
     const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];

@@ -5,8 +5,7 @@ export const OpenMicGig = ({ formData, handleInputChange, error }) => {
     return (
         <>
             <div className='head'>
-                <h1 className='title'>Open Mic Gigs</h1>
-                <p className='text'>We need some information on how you want to run your open mic night.</p>
+                <h1 className='title'>Open Mic Nights</h1>
             </div>
             <div className='body open-mic'>
                 <div className='input-group'>

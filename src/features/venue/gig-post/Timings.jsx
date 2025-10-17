@@ -121,7 +121,11 @@ export const GigTimings = ({
       <>
         <div className="head">
           <h1 className="title">Set Your Gig Timings</h1>
-          <p className="text">If you want more than one musician to play, add a gig slot. NB: Each 'slot' is posted as its own individual gig.</p>
+          {formData.kind === 'Open Mic' ? (
+            <p className="text">When does the Open Mic start?</p>
+          ) : (
+            <p className="text">If you want more than one musician to play, add a gig slot. NB: Each 'slot' is posted as its own individual gig.</p>
+          )}
         </div>
   
         <div className="body timings">
@@ -213,70 +217,3 @@ export const GigTimings = ({
       </>
     );
 };
-
-
-
-
-
-
-{/* <div className='timeline'>
-    <div className='subtitle'>
-        <h5 className='label'>Gig Timeline</h5>
-        {formData.startTime === '' && (
-            <p>Fill out your timings to see a rough timeline of the evening.</p>
-        )}
-    </div>
-    {formData.startTime !== '' && (
-        <>
-            <div className='timeline-event'>
-                <div className='timeline-time'>{startTimeMinusOneHour !== '00:00' ? formatTime(startTimeMinusOneHour) : '00:00'}</div>
-                <div className='timeline-line'></div>
-                <div className='timeline-content'>
-                    <div className='timeline-details'>
-                        <h4>Musicians Arrive</h4>
-                    </div>
-                </div>
-            </div>
-            <div className='timeline-event'>
-                <div className='timeline-time orange'>{formData.startTime ? formatTime(formData.startTime) : '00:00'}</div>
-                <div className='timeline-line'></div>
-                <div className='timeline-content'>
-                    <div className='timeline-details'>
-                        <h4>Performance Starts</h4>
-                    </div>
-                </div>
-            </div>
-        </>
-    )}
-    {(formData.startTime !== '' && formData.duration !== 0) && (
-        <>
-            {(formData.duration > 60 && formData.kind !== 'Open Mic') && (
-                <div className='timeline-event'>
-                    <div className='timeline-content'>
-                        <div className='timeline-context'>
-                            <p>* Musicians usually require a short break after an hour of performing.</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-            <div className='timeline-event'>
-                <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
-                <div className='timeline-line'></div>
-                <div className='timeline-content'>
-                    <div className='timeline-details'>
-                        <h4>Performance Ends</h4>
-                    </div>
-                </div>
-            </div>
-            <div className='timeline-event'>
-                <div className='timeline-time'>{endTime !== '00:00' ? formatTime(calculateTime(endTime, 30)) : '00:00'}</div>
-                <div className='timeline-line'></div>
-                <div className='timeline-content'>
-                    <div className='timeline-details'>
-                        <h4>Musicians Leave</h4>
-                    </div>
-                </div>
-            </div>
-        </>
-    )}
-</div> */}

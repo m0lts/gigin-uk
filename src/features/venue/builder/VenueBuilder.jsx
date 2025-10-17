@@ -183,7 +183,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 };
               });
             setTimeout(() => {
-                navigate('/venues/dashboard/gigs', { state: { newUser: true } });
+                navigate('/venues/dashboard/gigs', { state: { newUser: user?.venueProfiles?.length < 2 ? true : false} });
                 setUploadingProfile(false)
             }, 11000);
         } catch (error) {

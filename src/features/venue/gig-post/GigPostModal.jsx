@@ -261,11 +261,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             if (formData.kind === 'Open Mic') {
               if (formData.openMicApplications === null) {
                 setError("Please select whether you'd like the musicians to apply.");
-              } else if (formData.limitApplications === null) {
-                setError("Please select whether you'd like to limit the amount of musicians.");
-              } else if (formData.limitApplications && Number(formData.numberOfApplicants || 0) <= 0) {
-                setError("Please enter the maximum number of applicants.");
-              } else {
+              }
+               else {
                 setStage(prev => prev + 1);
               }
               return;

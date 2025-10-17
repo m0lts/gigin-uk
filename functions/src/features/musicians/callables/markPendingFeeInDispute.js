@@ -21,11 +21,13 @@ export const markPendingFeeInDispute = callable(
 
     // ---- Input validation
     if (!musicianId || typeof musicianId !== "string") {
+      console.error("[markPendingFeeInDispute] Missing or invalid musicianId");
       const e = new Error("INVALID_ARGUMENT: musicianId is required");
       e.code = "invalid-argument";
       throw e;
     }
     if (!docId && !gigId) {
+      console.error("[markPendingFeeInDispute] Missing docId or gigId");
       const e = new Error("INVALID_ARGUMENT: provide docId or gigId to locate the pending fee");
       e.code = "invalid-argument";
       throw e;
@@ -44,37 +46,34 @@ export const markPendingFeeInDispute = callable(
     const pendingCol = musicianRef.collection("pendingFees");
 
     const result = await db.runTransaction(async (tx) => {
-      // 1) Verify ownership
       const musicianSnap = await tx.get(musicianRef);
+      
       if (!musicianSnap.exists) {
+        console.error("[markPendingFeeInDispute] Musician profile not found");
         const e = new Error("NOT_FOUND: musician profile");
         e.code = "not-found";
         throw e;
       }
-      const ownerUid = musicianSnap.get("userId") || "";
-      if (ownerUid !== callerUid) {
-        const e = new Error("FORBIDDEN: only the musician profile owner may file disputes");
-        e.code = "permission-denied";
-        throw e;
-      }
 
-      // 2) Locate pending fee doc
       let pfRef = null;
       let pfSnap = null;
 
       if (docId) {
+        console.log("[markPendingFeeInDispute] Looking up pending fee by docId", docId);
         pfRef = pendingCol.doc(docId);
         pfSnap = await tx.get(pfRef);
         if (!pfSnap.exists) {
+          console.error("[markPendingFeeInDispute] Pending fee not found via docId");
           const e = new Error("NOT_FOUND: pending fee (docId not found)");
           e.code = "not-found";
           throw e;
         }
       } else {
-        // lookup by gigId
+        console.log("[markPendingFeeInDispute] Looking up pending fee by gigId", gigId);
         const q = pendingCol.where("gigId", "==", gigId).limit(1);
         const qSnap = await tx.get(q);
         if (qSnap.empty) {
+          console.error("[markPendingFeeInDispute] Pending fee not found via gigId");
           const e = new Error("NOT_FOUND: pending fee (gigId not found)");
           e.code = "not-found";
           throw e;
@@ -84,10 +83,14 @@ export const markPendingFeeInDispute = callable(
       }
 
       const before = pfSnap.data() || {};
-      const currentStatus = String(before.status || "").toLowerCase();
+      console.log("[markPendingFeeInDispute] Pending fee data", {
+        id: pfSnap.id,
+        currentStatus: before.status,
+      });
 
-      // Avoid double-dispute
+      const currentStatus = String(before.status || "").toLowerCase();
       if (currentStatus === "in dispute") {
+        console.warn("[markPendingFeeInDispute] Fee already marked in dispute");
         return {
           alreadyInDispute: true,
           pendingFeeId: pfSnap.id,
@@ -95,7 +98,8 @@ export const markPendingFeeInDispute = callable(
         };
       }
 
-      // 3) Update pending fee
+      console.log("[markPendingFeeInDispute] Updating pending fee to 'in dispute'");
+
       tx.update(pfRef, {
         disputeLogged: true,
         status: "in dispute",
@@ -104,8 +108,9 @@ export const markPendingFeeInDispute = callable(
         ...safeExtras,
       });
 
-      // 4) Audit log (server-only writable)
       const disputeRef = db.collection("disputes").doc();
+      console.log("[markPendingFeeInDispute] Creating dispute doc", disputeRef.id);
+
       tx.set(disputeRef, {
         type: "pendingFeeDispute",
         musicianId,
@@ -117,6 +122,11 @@ export const markPendingFeeInDispute = callable(
         createdAt: FieldValue.serverTimestamp(),
       });
 
+      console.log("[markPendingFeeInDispute] Dispute successfully created", {
+        pendingFeeId: pfSnap.id,
+        disputeDocId: disputeRef.id,
+      });
+
       return {
         alreadyInDispute: false,
         pendingFeeId: pfSnap.id,
@@ -124,6 +134,8 @@ export const markPendingFeeInDispute = callable(
         disputeDocId: disputeRef.id,
       };
     });
+
+    console.log("[markPendingFeeInDispute] Transaction complete", result);
 
     return {
       success: true,

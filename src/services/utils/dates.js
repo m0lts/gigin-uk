@@ -83,16 +83,18 @@ export const formatFeeDate = (timestamp) => {
       return 'Invalid date';
   }
 
+  const cleanTimestamp = toJsDate(timestamp);
+
   let date;
   try {
-      if (timestamp.toDate) {
-          date = timestamp.toDate();
-      } else if (timestamp instanceof Date) {
-          date = timestamp;
-      } else if (timestamp.seconds) {
-          date = new Date(timestamp.seconds * 1000);
+      if (cleanTimestamp.toDate) {
+          date = cleanTimestamp.toDate();
+      } else if (cleanTimestamp instanceof Date) {
+          date = cleanTimestamp;
+      } else if (cleanTimestamp.seconds) {
+          date = new Date(cleanTimestamp.seconds * 1000);
       } else {
-          date = new Date(timestamp);
+          date = new Date(cleanTimestamp);
       }
 
       if (isNaN(date.getTime())) throw new Error('Invalid date object');

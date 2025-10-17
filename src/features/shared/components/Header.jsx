@@ -56,7 +56,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                     Find a Gig
                                 </button>
                             </Link>
-                            <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(noProfileModalClosable)}}>
+                            <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(!noProfileModalClosable)}}>
                                 <GuitarsIcon />
                                 Create a Musician Profile
                             </button>

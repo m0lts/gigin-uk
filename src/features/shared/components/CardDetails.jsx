@@ -119,22 +119,22 @@ return (
         <div className='card-details-container'>
           <h4>Card Details:</h4>
 
-          {destinationChoices.length > 0 && (
-          <div className='field-container'>
-            <label htmlFor='save-destination' className='label'>Save card to</label>
-            <select
-              id='save-destination'
-              className='input'
-              value={selectedCustomerId || ''}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-              disabled={loading}
-            >
-              {destinationChoices.map(opt => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
+          {destinationChoices.length > 0 && activityType === 'adding card' && (
+            <div className='field-container'>
+              <label htmlFor='save-destination' className='label'>Save card to</label>
+              <select
+                id='save-destination'
+                className='input'
+                value={selectedCustomerId || ''}
+                onChange={(e) => setSelectedCustomerId(e.target.value)}
+                disabled={loading}
+              >
+                {destinationChoices.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className='field-container'>
             <label htmlFor='cardholder-name' className="label">Name on Card</label>
@@ -313,18 +313,37 @@ return (
             </div>
           </div>
           {activityType === 'making payment' && (
-          <div className='field-container save-card'>
-              <label htmlFor='save-card' className="label">
-                  <input
-                      id='save-card'
-                      type='checkbox'
-                      checked={saveCard}
-                      onChange={() => setSaveCard(!saveCard)}
-                      disabled={loading}
-                  />
-                  Save this card for future payments
-              </label>
-          </div>)}
+            <>
+              <div className='field-container save-card'>
+                  <label htmlFor='save-card' className="label">
+                      <input
+                          id='save-card'
+                          type='checkbox'
+                          checked={saveCard}
+                          onChange={() => setSaveCard(!saveCard)}
+                          disabled={loading}
+                      />
+                      Save this card for future payments
+                  </label>
+              </div>
+              {saveCard && (
+                <div className='field-container'>
+                  <label htmlFor='save-destination' className='label'>Where would you like to save this card?</label>
+                  <select
+                    id='save-destination'
+                    className='input'
+                    value={selectedCustomerId || ''}
+                    onChange={(e) => setSelectedCustomerId(e.target.value)}
+                    disabled={loading}
+                  >
+                    {destinationChoices.map(opt => (
+                      <option key={opt.id} value={opt.id}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
           {loading ? (
             <div className="loading-card-details">
               <LoadingSpinner width={20} height={20} />

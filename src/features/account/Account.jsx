@@ -461,10 +461,15 @@ export const Account = () => {
                         </div>
                     </div>
                     <div className='delete-settings'>
-                        <h3>Delete Account:</h3>
+                        <h3>Account Deletion:</h3>
                         <div className='data-highlight'>
-                            <h4>Once you delete your account, all associated data will be lost.</h4>
-                            <button className='btn danger' onClick={() => setShowDeleteModal(true)}>Delete Account</button>
+                            <h4>Please get in touch with us if you'd like to delete your account.</h4>
+                            <button
+                                className='btn danger'
+                                onClick={() => window.location.href = 'mailto:hq.gigin@gmail.com?subject=Account%20Deletion%20Request'}
+                            >
+                                Contact Us
+                            </button>
                         </div>
                     </div>
                 </div>
