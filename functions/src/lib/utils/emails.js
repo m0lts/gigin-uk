@@ -1,6 +1,14 @@
 /* eslint-disable */
-
-import { toJsDate } from "./dates";
+function toJsDate(v) {
+  if (!v) return null;
+  if (typeof v.toDate === 'function') return v.toDate(); // Firestore Timestamp
+  if (v instanceof Date) return new Date(v);
+  if (typeof v === 'object' && typeof v.seconds === 'number') {
+    return new Date(v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6));
+  }
+  const d = new Date(v); // ISO string or millis number
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 /**
  * Returns a styled gig fee released email to both the musician and the venue.

@@ -401,6 +401,11 @@
 
 .modal.invite-musician .gig-selection .card .text {
     font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+.modal.invite-musician .gig-selection .card .details-text {
+    margin-right: 1rem;
 }
 
 .modal.invite-musician .gig-selection .card .sub-text {
@@ -414,6 +419,11 @@
 .modal.invite-musician .gig-selection .card.selected {
     border-color: var(--gn-off-black);
     outline: 1px solid var(--gn-off-black);
+}
+
+.modal.invite-musician .gig-selection .card.disabled {
+    opacity: 0.5;
+    pointer-events: none;
 }
 
 

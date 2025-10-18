@@ -107,6 +107,10 @@ export const VenuePage = ({ user, venues, setVenues }) => {
     };
 
     const handleEditVenue = (venue) => {
+        if (!hasVenuePerm(venues, venueId, 'venue.update')) {
+            toast.error('You do not have permission to edit this venue.');
+            return;
+        };
         navigate('/venues/add-venue', { state: { venue } });
     };
 
@@ -333,7 +337,7 @@ export const VenuePage = ({ user, venues, setVenues }) => {
                                     </button>
                                 </li>
                             )}
-                            {venueData.members.length > 1 && hasVenuePerm(venues, venueId, 'members.update') && (
+                            {venueData?.members?.length > 1 && hasVenuePerm(venues, venueId, 'members.update') && (
                                 <li className="settings-item">
                                     <button className="btn secondary" onClick={() => setShowPermissionsModal(true)}>
                                         Manage Staff Members

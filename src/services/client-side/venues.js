@@ -26,42 +26,86 @@ import { v4 as uuid } from "uuid";
 /*** CREATE OPERATIONS ***/
 
 /**
- * Creates or updates a venue profile in Firestore and ensures the creator is a member.
+ * Creates or updates a venue profile in Firestore.
+ * - Initial setup phase = doc doesn't exist OR exists with completed === false.
+ *   * Only the creator can run this phase.
+ *   * Writes/merges fields, sets createdBy if missing.
+ *   * Ensures a single owner member exists (does not recreate).
+ * - After completion (completed === true): requires owner or venue.update permission.
  */
 export const createVenueProfile = async (venueId, data, userId) => {
   try {
-    const venueRef = doc(firestore, "venueProfiles", venueId);
+    const venueRef  = doc(firestore, "venueProfiles", venueId);
     const memberRef = doc(firestore, "venueProfiles", venueId, "members", userId);
 
-    await setDoc(
-      venueRef,
-      { ...data, userId, createdBy: userId },
-      { merge: true }
-    );
+    const venueSnap = await getDoc(venueRef);
+    const exists    = venueSnap.exists();
+    const venueData = exists ? (venueSnap.data() || {}) : {};
+    const isInitialSetup = !exists || venueData.completed === false;
 
-    const snap = await getDoc(memberRef);
-    if (!snap.exists()) {
-      const allTruePermissions = Object.fromEntries(
-        Object.keys(PERM_DEFAULTS).map((k) => [k, true])
-      );
+    if (isInitialSetup) {
+      // Only the creator (or no createdBy yet) may perform initial setup
+      const isCreator = !venueData.createdBy || venueData.createdBy === userId;
+      if (!isCreator) {
+        throw new Error("PERMISSION_DENIED: Only the venue creator can finish initial setup.");
+      }
+
+      // Never overwrite createdBy on edits; set it if missing
+      const { createdBy, userId: incomingUserId, ...safe } = data || {};
       await setDoc(
-        memberRef,
+        venueRef,
         {
-          status: "active",
-          permissions: {
-            ...allTruePermissions,
-            "gigs.read": true,
-          },
-          addedBy: userId,
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now(),
-          role: "owner",
+          ...safe,
+          ...(venueData.createdBy ? {} : { createdBy: userId }),
+          ...(venueData.userId ? {} : { userId }), // keep if you still store userId
         },
-        { merge: false }
+        { merge: true }
       );
+
+      // Ensure a single owner member exists (do not recreate)
+      const memberSnap = await getDoc(memberRef);
+      if (!memberSnap.exists()) {
+        const ownerPermsAllTrue = Object.fromEntries(
+          Object.keys(PERM_DEFAULTS).map((k) => [k, true])
+        );
+        await setDoc(
+          memberRef,
+          {
+            status: "active",
+            role: "owner",
+            permissions: { ...ownerPermsAllTrue, "gigs.read": true },
+            addedBy: userId,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          },
+          { merge: false }
+        );
+      }
+
+      return true;
     }
+
+    // ---- Post-completion updates: need owner OR venue.update permission
+    const isOwner = venueData.createdBy === userId || venueData.userId === userId;
+
+    const myMemberSnap = await getDoc(memberRef);
+    const myMember = myMemberSnap.exists() ? myMemberSnap.data() : null;
+    const isActive = !!myMember && myMember.status === "active";
+    const canUpdate = !!myMember?.permissions?.["venue.update"];
+
+    if (!isOwner && !(isActive && canUpdate)) {
+      throw new Error("PERMISSION_DENIED: You do not have permission to update this venue.");
+    }
+
+    // Never overwrite createdBy/userId during normal edits
+    const { createdBy, userId: incomingUserId, ...safe } = data || {};
+    await setDoc(venueRef, { ...safe }, { merge: true });
+
+    // Do not create/modify owner membership here
+    return true;
   } catch (error) {
     console.error("[Firestore Error] createVenueProfile:", error);
+    throw error;
   }
 };
 

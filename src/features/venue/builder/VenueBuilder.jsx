@@ -20,6 +20,7 @@ import { geohashForLocation } from 'geofire-common';
 import Portal from '../../shared/components/Portal';
 import { useAuth } from '../../../hooks/useAuth';
 import { clearUserArrayField, updateUserArrayField } from '../../../services/function-calls/users';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType }) => {
 
@@ -144,6 +145,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         setUploadText(`Adding ${formData?.name} To The Gigin Map`);
         setUploadingProfile(true);
         try {
+            
             const imageFiles = formData.photos;
             const imageUrls = await uploadImageArrayWithFallback(imageFiles, `venues/${formData.venueId}`);
             const updatedFormData = {
@@ -153,7 +155,14 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 completed: true,
                 ...getGeoField(formData.coordinates),
             };
-            await createVenueProfile(formData.venueId, updatedFormData, user.uid);
+            try {
+                await createVenueProfile(formData.venueId, updatedFormData, user.uid);
+            } catch (error) {
+                console.log(error);
+                toast.error('Please check you have been given permission to edit this venue.');
+                navigate('/venues/dashboard/gigs');
+                return;
+            }
             await updateUserArrayField('venueProfiles','add', formData.venueId);
             const progressIntervals = [11, 22, 33, 44, 55, 66, 77, 88, 100];
             progressIntervals.forEach((value, index) => {
@@ -235,7 +244,14 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 updatedFormData.photos = imageUrls;
                 updatedFormData.primaryImageOffsetY = formData.photos[0]?.offsetY || formData.primaryImageOffsetY;
             }
-            await createVenueProfile(formData.venueId, updatedFormData, user.uid);
+            try {
+                await createVenueProfile(formData.venueId, updatedFormData, user.uid);
+            } catch (error) {
+                console.log(error);
+                toast.error('Please check you have been given permission to edit this venue.');
+                navigate('/venues/dashboard/gigs')
+                return;
+            }
             await updateUserArrayField('venueProfiles', 'add', formData.venueId);
             if (updatedFormData.completed || (user?.venueProfiles && user?.venueProfiles?.length > 1)) {
                 navigate('/venues/dashboard/gigs')

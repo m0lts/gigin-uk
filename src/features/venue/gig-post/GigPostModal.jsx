@@ -699,23 +699,31 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
           });
       
           if (buildingForMusician && firstGigDoc) {
-
             if (!hasVenuePerm(venueProfiles, venueId, "gigs.invite")) {
-              throw new Error("Missing permission: gigs.invite");
+              toast.error("You do not have permission to invite musicians to gigs at this venue.");
+              setBuildingForMusician(false);
+              setBuildingForMusicianData(false);
+              return;
             }
-
             const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
             const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
-      
+            const res = await inviteToGig(firstGigDoc.gigId, musicianProfile);
+            if (!res.ok) {
+              if (res.code === "permission-denied") {
+                toast.error("You don’t have permission to invite musicians for this venue.");
+              } else if (res.code === "failed-precondition") {
+                toast.error("This gig is missing required venue info.");
+              } else {
+                toast.error("Error inviting musician. Do you have permission to invite musicians to gigs at this venue?");
+              }
+              return;
+            }
             const conversationId = await getOrCreateConversation(
               musicianProfile,
               firstGigDoc,
               venueToSend,
               "invitation"
             );
-      
-            await inviteToGig(firstGigDoc.gigId, musicianProfile);
-      
             if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
               await sendGigInvitationMessage(conversationId, {
                 senderId: user.uid,
@@ -729,7 +737,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
               });
             }
-      
             if (requestId) {
               await removeVenueRequest(requestId);
               setRequests(prev =>
@@ -737,7 +744,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               );
               setRequestId(null);
             }
-      
             setBuildingForMusician(false);
             setBuildingForMusicianData(false);
           }

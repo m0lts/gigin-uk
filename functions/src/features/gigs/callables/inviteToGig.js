@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { callable } from "../../../lib/callable.js";
 import { db, FieldValue } from "../../../lib/admin.js";
+import { sanitizePermissions } from "../../../lib/utils/permissions.js";
 
 /**
  * inviteToGig (CF)
@@ -54,13 +55,18 @@ export const inviteToGig = callable(
     const venue = venueSnap.data() || {};
     const isOwner = venue.createdBy === caller || venue.userId === caller;
 
-    let isActiveMember = false;
-    if (!isOwner) {
+    let canInvite = isOwner;
+    if (!canInvite) {
       const memberSnap = await venueRef.collection('members').doc(caller).get();
-      isActiveMember = memberSnap.exists && memberSnap.data()?.status === 'active';
+      const memberData = memberSnap.exists ? memberSnap.data() : null;
+      const isActiveMember = !!memberData && memberData.status === 'active';
+      const perms = sanitizePermissions(memberData?.permissions);
+      const hasInvitePerm = !!perms['gigs.invite'];
+      canInvite = isActiveMember && hasInvitePerm;
     }
-    if (!isOwner && !isActiveMember) {
-      const e = new Error('PERMISSION_DENIED: only venue owner or active member can invite');
+    
+    if (!canInvite) {
+      const e = new Error('PERMISSION_DENIED: requires venue owner or active member with gigs.invite');
       // @ts-ignore
       e.code = 'permission-denied';
       throw e;

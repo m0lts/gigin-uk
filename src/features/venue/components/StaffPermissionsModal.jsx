@@ -7,16 +7,7 @@ import { LoadingSpinner } from "../../shared/ui/loading/Loading";
 import { removeVenueMember, updateVenueMemberPermissions } from "../../../services/function-calls/venues";
 import { fetchVenueMembersWithUsers } from "../../../services/function-calls/venues";
 import { normalizePermissions } from "../../../services/utils/permissions";
-
-function formatWhen(ts) {
-    if (!ts) return "—";
-    const d = typeof ts.toDate === "function" ? ts.toDate() : new Date(ts);
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  }
+import { formatDate } from "../../../services/utils/dates";
 
 export const StaffPermissionsModal = ({ user, venue, onClose }) => {
     const [stage, setStage] = useState("select");
@@ -167,7 +158,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
                         >
                           <div className="member-info">
                             <h3 className="name">{displayName}{m.uid === user?.uid ? " (You)" : ""}</h3>
-                            <p className="meta">Added: {formatWhen(addedAt)}</p>
+                            <p className="meta">Added: {formatDate(addedAt, 'withTime')}</p>
                           </div>
                           <RightChevronIcon />
                         </li>

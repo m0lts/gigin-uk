@@ -123,9 +123,12 @@ export async function postMultipleGigs(venueId, gigDocuments) {
     try {
       const fn = httpsCallable(functions, "inviteToGig");
       const { data } = await fn({ gigId, musicianProfile });
-      return data?.applicants ?? null;
+      return { ok: true, applicants: data?.applicants ?? null };
     } catch (error) {
-      console.error("[CloudFn Error] inviteToGig:", error);
+      const code = error?.code || "unknown";
+      const message = error?.message || "Callable failed";
+      console.error("[CloudFn Error] inviteToGig:", code, message);
+      return { ok: false, code, message };
     }
   }
   
