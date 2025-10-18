@@ -7,75 +7,80 @@ export const GigTimings = ({
     extraSlots,
     setExtraSlots,
   }) => {
-  
-    const handleStartTimeChange = (index, value) => {
-        if (index === 0) {
-          handleInputChange({ startTime: value });
-      
-          if (extraSlots.length > 0) {
-            const newStart = addMinutesToTime(value, formData.duration);
-            updateSlot(0, { startTime: newStart });
-          }
-        } else {
-          const prevSlot = index === 1
-            ? { startTime: formData.startTime, duration: formData.duration }
-            : extraSlots[index - 2];
-      
-          const minAllowed = addMinutesToTime(prevSlot.startTime, prevSlot.duration);
-      
-          if (value < minAllowed) {
-            updateSlot(index - 1, { startTime: minAllowed }); // Clamp
-            toast.error(`Start time cannot be before ${minAllowed}`);
-            return;
-          }
-      
-          updateSlot(index - 1, { startTime: value });
-      
-          // auto-fill next slot if it exists
-          if (extraSlots[index]) {
-            const newStart = addMinutesToTime(value, extraSlots[index - 1]?.duration || 30);
-            updateSlot(index, { startTime: newStart });
-          }
-        }
-      };
-  
-      const handleDurationChange = (index, hours, minutes) => {
-        const totalMinutes = parseInt(hours) * 60 + parseInt(minutes);
-      
-        if (index === 0) {
-          handleInputChange({ duration: totalMinutes });
-      
-          if (extraSlots.length > 0 && formData.startTime) {
-            const newStart = addMinutesToTime(formData.startTime, totalMinutes);
-            setExtraSlots((prev) => {
-              const updated = [...prev];
-              updated[0] = { ...updated[0], startTime: newStart };
-              return updated;
-            });
-          }
-        } else {
-          updateSlot(index - 1, { duration: totalMinutes });
-      
-          // auto-update next slot’s startTime
-          if (extraSlots[index]) {
-            const currentSlot = extraSlots[index - 1];
-            const startTime = currentSlot?.startTime || '';
-            const newStart = addMinutesToTime(startTime, totalMinutes);
-      
-            updateSlot(index, { startTime: newStart });
-          }
-        }
-      };
-  
-    const updateSlot = (slotIndex, updates) => {
-      setExtraSlots((prev) => {
-        const updated = [...prev];
-        updated[slotIndex] = {
-          ...updated[slotIndex],
-          ...updates,
+
+    const recalcFrom = (slots, startIdx) => {
+      // slots = [{ startTime, duration }, ...extraSlots...]
+      for (let i = startIdx + 1; i < slots.length; i++) {
+        const prev = slots[i - 1];
+        const prevStart = prev?.startTime || '';
+        const prevDur = Number(prev?.duration) || 0;
+        slots[i] = {
+          ...slots[i],
+          startTime: prevStart ? addMinutesToTime(prevStart, prevDur) : slots[i]?.startTime || '',
         };
-        return updated;
-      });
+      }
+      return slots;
+    };
+  
+
+    const handleStartTimeChange = (index, value) => {
+      if (!value) return;
+    
+      if (index === 0) {
+        // Update base startTime
+        handleInputChange({ startTime: value });
+        // Cascade all extra slots from the base
+        setExtraSlots((prev) => {
+          const slots = [{ startTime: value, duration: formData.duration }, ...prev.map(s => s || { startTime: '', duration: '' })];
+          recalcFrom(slots, 0);
+          return slots.slice(1);
+        });
+      } else {
+        // Guard: min allowed is previous slot's end
+        const prevSlot = index === 1
+          ? { startTime: formData.startTime, duration: formData.duration }
+          : extraSlots[index - 2];
+    
+        const minAllowed = addMinutesToTime(prevSlot?.startTime || '', Number(prevSlot?.duration) || 0);
+        const newValue = (minAllowed && value < minAllowed) ? minAllowed : value;
+    
+        if (minAllowed && value < minAllowed) {
+          toast.error(`Start time cannot be before ${minAllowed}`);
+        }
+    
+        setExtraSlots((prev) => {
+          const slots = [{ startTime: formData.startTime, duration: formData.duration }, ...prev.map(s => s || { startTime: '', duration: '' })];
+          // Update the changed slot (index maps to extraSlots[index-1])
+          slots[index] = { ...slots[index], startTime: newValue };
+          // Recompute everything after this slot
+          recalcFrom(slots, index);
+          return slots.slice(1);
+        });
+      }
+    };
+    
+    const handleDurationChange = (index, hours, minutes) => {
+      const totalMinutes = (parseInt(hours, 10) || 0) * 60 + (parseInt(minutes, 10) || 0);
+    
+      if (index === 0) {
+        // Update base duration
+        handleInputChange({ duration: totalMinutes });
+        // Cascade all extra slots from the base
+        setExtraSlots((prev) => {
+          const slots = [{ startTime: formData.startTime, duration: totalMinutes }, ...prev.map(s => s || { startTime: '', duration: '' })];
+          recalcFrom(slots, 0);
+          return slots.slice(1);
+        });
+      } else {
+        setExtraSlots((prev) => {
+          const slots = [{ startTime: formData.startTime, duration: formData.duration }, ...prev.map(s => s || { startTime: '', duration: '' })];
+          // Update the changed slot’s duration (index maps to extraSlots[index-1])
+          slots[index] = { ...slots[index], duration: totalMinutes };
+          // Recompute everything after this slot
+          recalcFrom(slots, index);
+          return slots.slice(1);
+        });
+      }
     };
 
     const addMinutesToTime = (timeStr, minutesToAdd) => {
@@ -97,21 +102,12 @@ export const GigTimings = ({
         { startTime: formData.startTime, duration: formData.duration },
         ...extraSlots.map(s => s || { startTime: '', duration: '' }),
       ];
-
-    const addOneHourToTime = (timeStr) => {
-        if (!timeStr) return '';
-        const [h, m] = timeStr.split(':').map(Number);
-        const date = new Date(0, 0, 0, h, m);
-        date.setHours(date.getHours() + 1);
-        return date.toTimeString().slice(0, 5);
-      };
       
     const addGigSlot = () => {
         const allSlots = [
           { startTime: formData.startTime, duration: formData.duration },
           ...extraSlots.map(s => s || { startTime: '', duration: '' }),
         ];
-      
         const lastSlot = allSlots[allSlots.length - 1];
         const defaultStart = addMinutesToTime(lastSlot.startTime, lastSlot.duration);
         setExtraSlots(prev => [...prev, { startTime: defaultStart, duration: '' }]);
@@ -127,7 +123,6 @@ export const GigTimings = ({
             <p className="text">If you want more than one musician to play, add a gig slot. NB: Each 'slot' is posted as its own individual gig.</p>
           )}
         </div>
-  
         <div className="body timings">
             <div className="gig-slots">
                 {allSlots.map((slot, index) => (
@@ -181,13 +176,11 @@ export const GigTimings = ({
                     </div>
                 ))}
             </div>
-
           {formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic' && (
             <button type="button" className="btn primary" onClick={addGigSlot}>
                 Add Gig Slot
             </button>
           )}
-  
         <div className="extra-timings">
             <div className="input-group">
                 <label className="label">Load In Time</label>
@@ -197,7 +190,6 @@ export const GigTimings = ({
                 onChange={(e) => handleInputChange({ loadInTime: e.target.value })}
                 />
             </div>
-
             <div className="input-group">
                 <label className="label">Sound Check Time</label>
                 <input
@@ -207,7 +199,6 @@ export const GigTimings = ({
                 />
             </div>
         </div>
-  
           {error && (
             <div className="error-cont" style={{ width: 'fit-content', margin: '0.5rem auto' }}>
               <p className="error-message">{error}</p>

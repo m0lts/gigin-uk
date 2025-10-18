@@ -17,6 +17,7 @@ import { changeDefaultCard } from '../../../services/function-calls/payments';
 import { useAuth } from '@hooks/useAuth';
 import { updateUserDocument } from '../../../services/client-side/users';
 import Portal from '../../shared/components/Portal';
+import { ensureVenueStripeCustomerId } from '../../../services/client-side/venues';
 
 
 export const Finances = ({ savedCards, receipts, customerDetails, setStripe, venues }) => {
@@ -28,6 +29,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+  const [ensuredVenueIds, setEnsuredVenueIds] = useState({});
 
   const toggleMenu = (cardId) => {
     setOpenMenuId(prev => (prev === cardId ? null : cardId));
@@ -37,16 +39,24 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
     setWindowWidth(width);
   });
 
+  const resolvedVenues = useMemo(() => {
+    const list = Array.isArray(venues) ? venues : [];
+    return list.map((v) => ({
+      ...v,
+      stripeCustomerId: v?.stripeCustomerId || ensuredVenueIds[v?.venueId] || null,
+    }));
+  }, [venues, ensuredVenueIds]);
+
   const customerLabelMap = useMemo(() => {
     const map = {};
     if (customerDetails?.id) map[customerDetails.id] = ': Personal Account';
-    (venues || []).forEach(v => {
+    (resolvedVenues || []).forEach(v => {
       if (v?.stripeCustomerId) {
         map[v.stripeCustomerId] = `: ${v.name || v.displayName || v.venueId || v.id}`;
       }
     });
     return map;
-  }, [customerDetails?.id, venues]);
+  }, [customerDetails?.id, resolvedVenues]);
 
 
   const totalExpenditure = receipts.reduce((total, receipt) => total + receipt.amount / 100, 0);
@@ -77,6 +87,29 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
     };
     if (user?.uid) checkFirstTime();
   }, [user]);
+
+  useEffect(() => {
+    const hydrateMissingIds = async () => {
+      const list = Array.isArray(venues) ? venues : [];
+      const missing = list.filter(v => v?.venueId && !v?.stripeCustomerId);
+      if (!missing.length) return;
+  
+      const entries = await Promise.all(
+        missing.map(async (v) => {
+          const id = await ensureVenueStripeCustomerId(v.venueId);
+          return [v.venueId, id || null];
+        })
+      );
+  
+      // Keep only successful lookups
+      const found = Object.fromEntries(entries.filter(([, id]) => !!id));
+      if (Object.keys(found).length) {
+        setEnsuredVenueIds((prev) => ({ ...prev, ...found }));
+      }
+    };
+  
+    hydrateMissingIds();
+  }, [venues]);
 
   const formatReceiptCharge = (amount) => {
     return (amount / 100).toFixed(2);
@@ -183,7 +216,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
           </div>
         </div>
         <div className="venue-expenditure-container">
-          {venues.map((venue) => {
+          {resolvedVenues.map((venue) => {
             const venueReceipts = receipts.filter(
               (r) => r.metadata?.venueId === venue.venueId
             );
@@ -332,7 +365,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
                 ...(customerDetails?.id
                   ? [{ label: 'My Account', id: customerDetails.id }]
                   : []),
-                ...((venues || [])
+                ...((resolvedVenues || [])
                   .filter(v => v.stripeCustomerId)
                   .map(v => ({
                     label: `Venue: ${v.name || v.displayName || v.id}`,

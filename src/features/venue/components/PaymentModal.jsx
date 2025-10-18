@@ -11,6 +11,7 @@ import { WalletButton } from './WalletButton';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { ensureVenueStripeCustomerId } from '../../../services/client-side/venues';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export const PaymentModal = ({
@@ -32,6 +33,9 @@ export const PaymentModal = ({
   }) => {
     const [selectedCardId, setSelectedCardId] = useState(null);
     const [addingNewCard, setAddingNewCard] = useState(false);
+    const [ensuredVenueCustomerId, setEnsuredVenueCustomerId] = useState(null);
+    const [ensuringVenueCustomer, setEnsuringVenueCustomer] = useState(false);
+    const [ensureError, setEnsureError] = useState(null);
 
     const selectedCard = useMemo(
       () => savedCards.find(c => c.id === selectedCardId) || null,
@@ -39,9 +43,10 @@ export const PaymentModal = ({
     );
 
     const venueCustomerId = useMemo(() => {
+      if (ensuredVenueCustomerId) return ensuredVenueCustomerId;
       const v = (venues || []).find(v => v.venueId === gigData?.venueId);
       return v?.stripeCustomerId || null;
-    }, [venues, gigData?.venueId]);
+    }, [ensuredVenueCustomerId, venues, gigData?.venueId]);
     
     const paymentCustomerId =
       selectedCard?.customer || venueCustomerId || customerDetails?.id || null;
@@ -63,6 +68,33 @@ export const PaymentModal = ({
       });
       return () => unsubscribe();
     }, [paymentIntentId]);
+
+    useEffect(() => {
+      let cancelled = false;
+      const run = async () => {
+        setEnsureError(null);
+        setEnsuredVenueCustomerId(null);
+        const vId = gigData?.venueId;
+        if (!vId) return;
+        const fromProps = (venues || []).find(v => v.venueId === vId)?.stripeCustomerId || null;
+        if (fromProps) {
+          if (!cancelled) setEnsuredVenueCustomerId(fromProps);
+          return;
+        }
+        try {
+          setEnsuringVenueCustomer(true);
+          const id = await ensureVenueStripeCustomerId(vId);
+          if (!cancelled) setEnsuredVenueCustomerId(id || null);
+        } catch (e) {
+          console.error('ensureVenueStripeCustomer failed:', e);
+          if (!cancelled) setEnsureError('Unable to prepare billing for this venue right now.');
+        } finally {
+          if (!cancelled) setEnsuringVenueCustomer(false);
+        }
+      };
+      run();
+      return () => { cancelled = true; };
+    }, [gigData?.venueId, venues]);
   
     const cardBrandIcons = {
       visa: VisaIcon,
@@ -70,7 +102,6 @@ export const PaymentModal = ({
       amex: AmexIcon,
       unknown: null
     };
-
 
     useEffect(() => {
       if (selectedCardId) return;
@@ -214,6 +245,15 @@ export const PaymentModal = ({
                 Pay £{totalDue}
               </button>
             </>
+          ) : (ensuringVenueCustomer && !venueCustomerId) ? (
+            <div className="making-payment" style={{ gap: 8 }}>
+              <LoadingSpinner />
+              <h3>Preparing billing…</h3>
+            </div>
+          ) : ensureError && !venueCustomerId ? (
+            <div className="error-cont" style={{ width: 'fit-content', margin: '0.5rem auto' }}>
+              <p className="error-message">{ensureError}</p>
+            </div>
           ) : (
             /* ADD NEW CARD */
             <>

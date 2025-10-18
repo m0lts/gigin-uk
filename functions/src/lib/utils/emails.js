@@ -1,5 +1,7 @@
 /* eslint-disable */
 
+import { toJsDate } from "./dates";
+
 /**
  * Returns a styled gig fee released email to both the musician and the venue.
  *
@@ -287,7 +289,7 @@ export const gigFeeReleasedEmail = (musicianName, venueName, isAdmin) => {
     gigTime,
     calendarLink,
   }) => {
-    const formattedDate = new Date(gigDate).toLocaleDateString("en-GB", {
+    const formattedDate = toJsDate(gigDate).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -297,7 +299,7 @@ export const gigFeeReleasedEmail = (musicianName, venueName, isAdmin) => {
     // Keep original plain-text wording
     const text =
         `Your gig at ${gigData.venue.venueName} on ` +
-        `${new Date(gigDate).toLocaleDateString()} is now confirmed. ` +
+        `${toJsDate(gigDate).toLocaleDateString()} is now confirmed. ` +
         `Fee: ${gigData.agreedFee}.`;
   
     // === Styled shell (same as your other templates) ===

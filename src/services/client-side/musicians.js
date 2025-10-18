@@ -23,6 +23,8 @@ import {
 import { getBandMembers } from './bands';
 import { getMostRecentMessage } from './messages';
 import { updateGigDocument } from '../function-calls/gigs';
+import { getOrCreateConversation, updateConversationDocument } from '../function-calls/conversations';
+import { updateMessage } from '../function-calls/messages';
 
 
 /*** CREATE OPERATIONS ***/
@@ -242,8 +244,9 @@ export const deleteMusicianProfile = async (musicianId) => {
  * Withdraw a musician/band application from a gig.
  * @returns {Promise<Object[]|null>} Updated applicants array, or null on error/not found.
  */
-export async function withdrawMusicianApplication(gigId, profile) {
+export async function withdrawMusicianApplication(gigId, profile, userId) {
   try {
+
     if (!gigId || !profile?.musicianId) {
       console.error('[Firestore Error] withdrawMusicianApplication: missing gigId or profile.musicianId');
       return null;
@@ -252,14 +255,18 @@ export async function withdrawMusicianApplication(gigId, profile) {
     const applicantId = profile.musicianId;
     const gigRef = doc(firestore, 'gigs', gigId);
     const gigSnap = await getDoc(gigRef);
+
     if (!gigSnap.exists()) return null;
 
     const gig = gigSnap.data() || {};
+
     const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+
     const hasApplied = applicants.some(a => a?.id === applicantId);
     if (!hasApplied) return applicants;
 
     const target = applicants.find(a => a?.id === applicantId);
+
     if (target?.status === 'accepted' || target?.status === 'confirmed') {
       console.error('[Firestore Error] withdrawMusicianApplication: cannot withdraw accepted/confirmed application');
       return applicants;
@@ -268,68 +275,61 @@ export async function withdrawMusicianApplication(gigId, profile) {
     const updatedApplicants = applicants.map(a =>
       a?.id === applicantId ? { ...a, status: 'withdrawn' } : a
     );
+
     await updateGigDocument(gigId, { applicants: updatedApplicants });
 
     const batch = writeBatch(firestore);
     const pruneApps = (apps = []) =>
       apps.filter(entry => !(entry?.gigId === gigId && entry?.profileId === applicantId));
 
-    if (profile.bandProfile) {
-      const bandRef = doc(firestore, 'musicianProfiles', applicantId);
-      const bandSnap = await getDoc(bandRef);
-      if (bandSnap.exists()) {
-        const bandApps = Array.isArray(bandSnap.data().gigApplications)
-          ? bandSnap.data().gigApplications
-          : [];
-        batch.update(bandRef, { gigApplications: pruneApps(bandApps) });
-      }
-      const members = await getBandMembers(applicantId);
-      members.forEach(member => {
-        const memberRef = doc(firestore, 'musicianProfiles', member.id);
-        const memberApps = Array.isArray(member.gigApplications) ? member.gigApplications : [];
-        const next = pruneApps(memberApps);
-        if (next.length !== memberApps.length) {
-          batch.update(memberRef, { gigApplications: next });
-        }
-      });
-    } else {
-      const musicianRef = doc(firestore, 'musicianProfiles', applicantId);
-      let apps = Array.isArray(profile.gigApplications) ? profile.gigApplications : null;
-      if (!apps) {
-        const musSnap = await getDoc(musicianRef);
-        apps = Array.isArray(musSnap.data()?.gigApplications) ? musSnap.data().gigApplications : [];
-      }
-      batch.update(musicianRef, { gigApplications: pruneApps(apps) });
+    const musicianRef = doc(firestore, 'musicianProfiles', applicantId);
+    let apps = Array.isArray(profile.gigApplications) ? profile.gigApplications : null;
+    if (!apps) {
+      const musSnap = await getDoc(musicianRef);
+      apps = Array.isArray(musSnap.data()?.gigApplications) ? musSnap.data().gigApplications : [];
     }
+    batch.update(musicianRef, { gigApplications: pruneApps(apps) });
+
 
     await batch.commit();
 
-    const convQ = query(
-      collection(firestore, 'conversations'),
-      where('gigId', '==', gigId),
-      where('participants', 'array-contains', applicantId)
+    const venueRef = doc(firestore, 'venueProfiles', gig.venueId);
+    const venueSnap = await getDoc(venueRef);
+    const venueProfile = venueSnap.exists() ? (venueSnap.data() || {}) : {};
+
+    const conversationId = await getOrCreateConversation(
+      profile,
+      { ...gig, gigId },
+      venueProfile,
+      'withdrawal'
     );
-    const convSnap = await getDocs(convQ);
-    if (!convSnap.empty) {
-      const convDoc = convSnap.docs[0];
-      const conversationId = convDoc.id;
 
-      const lastAppMsg = await getMostRecentMessage(conversationId, 'application');
-      if (lastAppMsg?.id) {
-        const msgRef = doc(firestore, 'conversations', conversationId, 'messages', lastAppMsg.id);
-        await updateDoc(msgRef, { status: 'withdrawn' });
-      }
+    const lastAppMsg = await getMostRecentMessage(conversationId, 'application');
+    const lastNegMsg = await getMostRecentMessage(conversationId, 'negotiation');
 
-      const lastNegMsg = await getMostRecentMessage(conversationId, 'negotiation');
-      if (lastNegMsg?.id) {
-        const msgRef = doc(firestore, 'conversations', conversationId, 'messages', lastNegMsg.id);
-        await updateDoc(msgRef, { status: 'withdrawn' });
-      }
-
-      await updateDoc(doc(firestore, 'conversations', conversationId), {
-        lastMessage: 'Application withdrawn by musician.',
-        lastMessageTimestamp: Timestamp.now(),
-      });
+    if (lastAppMsg?.id) {
+      await updateMessage(
+        conversationId,
+        lastAppMsg.id,
+        { status: "withdrawn" },
+        {
+          lastMessage: `${profile.name} has withdrawn their application.`,
+          lastMessageSenderId: "system",
+        },
+      );
+    }
+    
+    // Do the same for negotiation, if present
+    if (lastNegMsg?.id) {
+      await updateMessage(
+        conversationId,
+        lastNegMsg.id,
+        { status: "withdrawn" },
+        {
+          lastMessage: `${profile.name} has withdrawn their application.`,
+          lastMessageSenderId: "system",
+        },
+      );
     }
 
     return updatedApplicants;
@@ -337,4 +337,3 @@ export async function withdrawMusicianApplication(gigId, profile) {
     console.error('[Firestore Error] withdrawMusicianApplication:', error);
   }
 }
-

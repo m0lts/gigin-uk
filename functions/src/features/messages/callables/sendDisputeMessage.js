@@ -22,17 +22,27 @@ export const sendDisputeMessage = callable(
       throw new Error("conversationId and venueName are required.");
     }
 
+
     const ts = Timestamp.now();
-    const messagesRef = db.collection("conversations")
-      .doc(conversationId)
-      .collection("messages");
+    const convRef = db.collection("conversations").doc(conversationId);
+    const messagesRef = convRef.collection("messages");
+
+    const text = `${venueName} has reported this gig. We have withheld the gig fee until the dispute is resolved. We will be in touch shortly.`;
 
     await messagesRef.add({
       senderId: "system",
-      text: `${venueName} has reported this gig. We have withheld the gig fee until the dispute is resolved. We will be in touch shortly.`,
+      text,
       type: "announcement",
       status: "dispute",
       timestamp: ts,
+    });
+
+    // 🔔 Bump the conversation so list/notifications pick it up
+    await convRef.update({
+      lastMessage: text,
+      lastMessageTimestamp: ts,
+      lastMessageSenderId: "system",
+      status: "open",
     });
 
     return { timestamp: ts.toMillis() };

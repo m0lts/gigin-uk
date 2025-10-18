@@ -16,6 +16,19 @@ export async function sendMessage(conversationId, message) {
 }
 
 /**
+ * Updates a text message via CF and updates conversation metadata.
+ */
+export async function updateMessage(conversationId, messageId, updates, conversationUpdates) {
+  try {
+    const fn = httpsCallable(functions, "updateMessageDoc");
+    const { data } = await fn({ conversationId, messageId, updates, conversationUpdates });
+    return data?.timestamp ?? null;
+  } catch (error) {
+    console.error("[CloudFn Error] updateMessage:", error);
+  }
+}
+
+/**
  * Sends gig-accepted announcement via CF and updates conversation metadata.
  */
 export async function sendGigAcceptedMessage(

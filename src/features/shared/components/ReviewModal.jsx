@@ -62,11 +62,14 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
         try {
             setLoading(true);
             const success = await cancelTask(gigData.clearPendingFeeTaskName);
-            if (!success) {
+            const success2 = await cancelTask(gigData.automaticMessageTaskName);
+            if (!success || !success2) {
                 console.error('Failed to cancel task');
+                toast.error('Failed to submit dispute. Please try again.');
                 setLoading(false);
+                return;
             }
-            if (success) {
+            if (success && success2) {
                 await logDispute({
                     musicianId: musicianProfile.musicianId,
                     gigId: gigData.gigId,
@@ -75,15 +78,8 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     details: disputeText || null,
                     timestamp: Date.now(),
                 });
-                await updateGigDocument(gigData.gigId, {
-                    disputeLogged: true,
-                    disputeClearingTime: null,
-                    musicianFeeStatus: 'in dispute',
-                    venueHasReviewed: false,
-                });
                 const match = await findPendingFeeByGigId(musicianProfile.musicianId, gigData.gigId);
                 if (match) {
-                    console.log('reached this part')
                     await markPendingFeeInDispute({
                         musicianId: musicianProfile.musicianId,
                         docId: match.docId,
@@ -113,16 +109,21 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     musicianProfile: musicianProfile,
                     gigData: gigData,
                 })
+                await updateGigDocument(gigData.gigId, {
+                    disputeLogged: true,
+                    disputeClearingTime: null,
+                    musicianFeeStatus: 'in dispute',
+                    venueHasReviewed: false,
+                });
                 setDisputeSubmitted(true);
                 onClose(false);
-                toast.success('Dispute submitted.')
+                toast.success('Dispute submitted. A member of the team will be in touch shortly via email.')
             }
         } catch (error) {
             console.error('Error logging dispute:', error);
             toast.error('An error occurred while logging the dispute. Please try again.');
         } finally {
             setLoading(false);
-            setShowDisputeForm(false);
         }
     };
 

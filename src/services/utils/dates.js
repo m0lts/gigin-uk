@@ -1,4 +1,26 @@
 /**
+ * Converts a value to a JS Date object.
+ * Supports the following formats:
+ *   - Firestore Timestamp
+ *   - JS Date object
+ *   - { seconds: number, nanoseconds: number } object
+ *   - ISO string
+ *   - Milliseconds number
+ * @param {any} v
+ * @returns {Date|null} - JS Date object or null if invalid
+ */
+export function toJsDate(v) {
+  if (!v) return null;
+  if (typeof v.toDate === 'function') return v.toDate(); // Firestore Timestamp
+  if (v instanceof Date) return new Date(v);
+  if (typeof v === 'object' && typeof v.seconds === 'number') {
+    return new Date(v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6));
+  }
+  const d = new Date(v); // ISO string or millis number
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
  * Returns ordinal suffix for a given day
  * @param {number} day - Day of the month
  * @returns {string} Suffix (st, nd, rd, th)
@@ -14,62 +36,37 @@ const getOrdinalSuffix = (day) => {
 };
 
 /**
- * Formats a date-like value into various readable formats.
- * Accepts:
- *  - Firestore Timestamp (has .toDate())
- *  - { seconds, nanoseconds } object
- *  - ISO string
- *  - JS Date
+ * Formats a date-like value into readable formats.
+ * Uses toJsDate() internally to ensure consistent parsing.
  *
- * @param {any} input
+ * @param {any} input - Any supported date value
  * @param {'long' | 'short' | 'withTime'} format
  * @returns {string}
  */
 export const formatDate = (input, format = 'long') => {
-    if (!input) return '—';
-  
-    let date = null;
-  
-    // Firestore Timestamp
-    if (input && typeof input.toDate === 'function') {
-      date = input.toDate();
-    }
-    // Timestamp-like object from CF/REST
-    else if (typeof input === 'object' && input !== null && typeof input.seconds === 'number') {
-      date = new Date(input.seconds * 1000);
-    }
-    // ISO string or anything Date can parse
-    else if (typeof input === 'string' || typeof input === 'number') {
-      const d = new Date(input);
-      if (!isNaN(d.getTime())) date = d;
-    }
-    // JS Date
-    else if (input instanceof Date) {
-      date = input;
-    }
-  
-    if (!date) return 'Invalid date';
-  
-    const pad2 = (n) => String(n).padStart(2, '0');
-    const day = date.getDate();
-    const dayPadded = pad2(day);
-    const monthPadded = pad2(date.getMonth() + 1);
-    const year = date.getFullYear();
-    const hours = pad2(date.getHours());
-    const minutes = pad2(date.getMinutes());
-    const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
-    const monthName = date.toLocaleDateString('en-GB', { month: 'long' });
-  
-    switch (format) {
-      case 'short':
-        return `${dayPadded}/${monthPadded}/${year}`;
-      case 'withTime':
-        return `${dayPadded}/${monthPadded}/${year} - ${hours}:${minutes}`;
-      case 'long':
-      default:
-        return `${weekday} ${day}${getOrdinalSuffix(day)} ${monthName}`;
-    }
-  };
+  const date = toJsDate(input);
+  if (!date) return 'Invalid date';
+
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const day = date.getDate();
+  const dayPadded = pad2(day);
+  const monthPadded = pad2(date.getMonth() + 1);
+  const year = date.getFullYear();
+  const hours = pad2(date.getHours());
+  const minutes = pad2(date.getMinutes());
+  const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
+  const monthName = date.toLocaleDateString('en-GB', { month: 'long' });
+
+  switch (format) {
+    case 'short':
+      return `${dayPadded}/${monthPadded}/${year}`;
+    case 'withTime':
+      return `${dayPadded}/${monthPadded}/${year} - ${hours}:${minutes}`;
+    case 'long':
+    default:
+      return `${weekday} ${day}${getOrdinalSuffix(day)} ${monthName}`;
+  }
+};
 
 /**
  * Formats a timestamp into a readable weekday + date string
@@ -111,25 +108,3 @@ export const formatFeeDate = (timestamp) => {
 
   return `${day}/${month}/${year} - ${hours}:${minutes}`;
 };
-
-/**
- * Converts a value to a JS Date object.
- * Supports the following formats:
- *   - Firestore Timestamp
- *   - JS Date object
- *   - { seconds: number, nanoseconds: number } object
- *   - ISO string
- *   - Milliseconds number
- * @param {any} v
- * @returns {Date|null} - JS Date object or null if invalid
- */
-export function toJsDate(v) {
-  if (!v) return null;
-  if (typeof v.toDate === 'function') return v.toDate(); // Firestore Timestamp
-  if (v instanceof Date) return new Date(v);
-  if (typeof v === 'object' && typeof v.seconds === 'number') {
-    return new Date(v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6));
-  }
-  const d = new Date(v); // ISO string or millis number
-  return Number.isNaN(d.getTime()) ? null : d;
-}

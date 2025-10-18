@@ -417,6 +417,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     }
 
     const handleWithdrawApplication = async () => {
+        setApplyingToGig(true);
         try {
             const updatedApplicants = await withdrawMusicianApplication(gigId, selectedProfile);
             if (updatedApplicants) {
@@ -427,7 +428,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             console.error(e);
             toast.error('Failed to withdraw application.');
           } finally {
-            window.location.reload();
+            setApplyingToGig(false);
           }
     }
 
@@ -556,6 +557,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
     const handleAccept = async (event, proposedFee) => {
         event.stopPropagation();
+        setApplyingToGig(true);
         const musicianId = selectedProfile.id;
         try {
             if (!gigData) return console.error('Gig data is missing');
@@ -590,6 +592,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         } catch (error) {
             toast.error('Error accepting gig invitation. Please try again.')
             console.error('Error updating gig document:', error);
+        } finally {
+            setApplyingToGig(false);
         }
     };
 

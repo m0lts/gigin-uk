@@ -91,26 +91,42 @@ export const clearPendingFee = httpRaw(
         return res.status(400).send(`Dispute logged for gig ${gigId}`);
       }
 
-      // ✅ Structural change: use shared Stripe factory
       const stripe = makeStripe();
 
       let stripeTransferId = null;
       const stripeAccountId = musician.stripeAccountId;
       if (stripeAccountId) {
-        const transfer = await stripe.transfers.create({
-          amount: Math.round(Number(amount) * 100),
-          currency: "gbp",
-          destination: stripeAccountId,
-          metadata: {
-            musicianId,
-            applicantId,
-            gigId,
-            paymentIntentId,
-            description: "Gig fee transferred after dispute period cleared",
-          },
-        });
-        console.log(`Stripe transfer successful: ${transfer.id}`);
-        stripeTransferId = transfer.id;
+        try {
+          const acct = await stripe.accounts.retrieve(stripeAccountId);
+          const canTransfer =
+            acct?.capabilities?.transfers === 'active' || acct?.payouts_enabled === true;
+      
+          if (canTransfer) {
+            const transfer = await stripe.transfers.create({
+              amount: Math.round(Number(amount) * 100),
+              currency: "gbp",
+              destination: stripeAccountId,
+              metadata: {
+                musicianId,
+                applicantId,
+                gigId,
+                paymentIntentId,
+                description: "Gig fee transferred after dispute period cleared",
+              },
+            });
+            console.log(`Stripe transfer successful: ${transfer.id}`);
+            stripeTransferId = transfer.id;
+          } else {
+            console.log(
+              `Stripe account ${stripeAccountId} exists but transfers not active (capabilities.transfers=${acct?.capabilities?.transfers}, payouts_enabled=${acct?.payouts_enabled}). Skipping transfer; marking funds withdrawable.`
+            );
+          }
+        } catch (error) {
+          console.error(
+            `Stripe transfer skipped for ${stripeAccountId}:`,
+            err?.message || err
+          );
+        }
       } else {
         console.log(`Musician ${musicianId} has no Stripe account`);
       }
