@@ -23,7 +23,7 @@ import { removeGigFromVenue } from '@services/client-side/venues';
 import { confirmGigPayment, fetchSavedCards } from '@services/function-calls/payments';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
-import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
+import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PermissionsIcon, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { getVenueProfileById } from '../../../services/client-side/venues';
 import { loadStripe } from '@stripe/stripe-js';
@@ -187,6 +187,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const handleAccept = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
         event.stopPropagation();    
         try {
+            if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -242,6 +243,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const handleReject = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
         event.stopPropagation();
         try {
+            if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -267,7 +269,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 gigData: gigInfo,
             })
         } catch (error) {
-            toast.error('Error rejecting gig application. Please try again.')
+            toast.error('Error declining gig application. Please try again.')
             console.error('Error updating gig document:', error);
         } finally {
             setEventLoading(false);
@@ -282,6 +284,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
 
     const handleCompletePayment = async (profileId) => {
         if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
+        if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay')) return toast.error('You do not have permission to pay for gigs.');
         setLoadingPaymentDetails(true);
         try {
             const cards = await fetchSavedCards();
@@ -297,6 +300,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     };
 
     const handleSelectCard = async (cardId) => {
+        if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay')) return toast.error('You do not have permission to pay for gigs.');
         setMakingPayment(true);
         try {
             const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
@@ -684,7 +688,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                                 Past
                                                             </div>
                                                         </div>
-                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
+                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
                                                         <div className='leave-review'>
                                                             <button className='btn primary' onClick={(e) => {e.stopPropagation(); setShowReviewModal(true); setReviewProfile(profile)}}>
                                                                 Leave a Review
@@ -730,7 +734,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && gigInfo.budget !== '£' && gigInfo.budget !== '£0' && (
+                                                    {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && gigInfo.budget !== '£' && gigInfo.budget !== '£0' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay') && (
                                                         loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
                                                             <LoadingSpinner />
                                                         ) : (
@@ -739,7 +743,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </button>
                                                         )
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && !gigAlreadyConfirmed && sender !== 'venue' && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && !gigAlreadyConfirmed && sender !== 'venue' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
                                                         <>
                                                             {eventLoading ? (
                                                                 <LoadingSpinner width={15} height={15} />
@@ -757,7 +761,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             )}
                                                         </>
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && gigInfo.kind === 'Open Mic' && gigAlreadyConfirmed && sender !== 'venue' && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && gigInfo.kind === 'Open Mic' && gigAlreadyConfirmed && sender !== 'venue' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
                                                         <>
                                                             {eventLoading ? (
                                                                 <LoadingSpinner width={15} height={15} />
@@ -807,7 +811,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && (
+                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
                                                         <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId)}}>
                                                             Negotiate Fee
                                                         </button>
@@ -825,6 +829,22 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             <div className='status upcoming'>
                                                                 <ClockIcon />
                                                                 Payment Processing
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {status !== 'accepted' && !hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
+                                                        <div className='status-box'>
+                                                            <div className='status past'>
+                                                                <PermissionsIcon />
+                                                                You don't have permission to manage gig applications
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {status === 'accepted' && !hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay') && (
+                                                        <div className='status-box'>
+                                                            <div className='status past'>
+                                                                <PermissionsIcon />
+                                                                You don't have permission to pay for gigs
                                                             </div>
                                                         </div>
                                                     )}

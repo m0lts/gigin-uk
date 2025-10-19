@@ -48,6 +48,39 @@ export const createGigPaymentIntent = callable(
     }
     if (!gigData?.gigId) throw new Error("Missing inputs: gigData.gigId is required.");
     const userId = auth.uid;
+    if (!userId) {
+      const e = new Error('PERMISSION_DENIED: must be authenticated');
+      // @ts-ignore
+      e.code = 'permission-denied';
+      throw e;
+    }
+    const venueId = gigData?.venueId;
+    const venueRef = db.doc(`venueProfiles/${venueId}`);
+    const venueSnap = await venueRef.get();
+    if (!venueSnap.exists) {
+      const e = new Error('NOT_FOUND: venue');
+      // @ts-ignore
+      e.code = 'not-found';
+      throw e;
+    }
+    const venue = venueSnap.data() || {};
+    const isOwner = venue?.createdBy === userId || venue?.userId === userId;
+    let canPay = isOwner;
+    if (!canPay) {
+      const memberSnap = await venueRef.collection('members').doc(userId).get();
+      const memberData = memberSnap.exists ? memberSnap.data() : null;
+      const isActiveMember = !!memberData && memberData.status === 'active';
+      const perms = sanitizePermissions(memberData?.permissions);
+      const hasPayPerm = !!perms['gigs.pay'];
+      canPay = isActiveMember && hasPayPerm;
+    }
+    
+    if (!canPay) {
+      const e = new Error('PERMISSION_DENIED: requires venue owner or active member with gigs.pay');
+      // @ts-ignore
+      e.code = 'permission-denied';
+      throw e;
+    }
     const userSnap = await db.collection("users").doc(userId).get();
     const userCustomerId = userSnap.data()?.stripeCustomerId || null;
     const customerId = requestedCustomerId || userCustomerId;
@@ -67,12 +100,12 @@ export const createGigPaymentIntent = callable(
       applicantType = accepted.type || "musician";
       if (applicantType === "band") {
         const bandSnap = await db
-          .collection("musicianProfiles")
+          .collection("bands")
           .doc(musicianProfileId)
           .get();
         if (!bandSnap.exists) throw new Error(`Band ${musicianProfileId} n/a.`);
         const band = bandSnap.data() || {};
-        recipientMusicianId = band?.bandInfo?.admin?.musicianId;
+        recipientMusicianId = band?.admin?.musicianId;
         if (!recipientMusicianId) {
           throw new Error(`Band ${musicianProfileId} missing admin id.`);
         }

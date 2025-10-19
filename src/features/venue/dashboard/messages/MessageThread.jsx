@@ -22,6 +22,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import { notifyOtherApplicantsGigConfirmed } from '../../../../services/function-calls/conversations';
 import { acceptGigOffer, acceptGigOfferOM, declineGigApplication, updateGigWithCounterOffer  } from '../../../../services/function-calls/gigs';
 import { sendGigAcceptedMessage, sendMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '../../../../services/function-calls/messages';
+import { hasVenuePerm } from '../../../../services/utils/permissions';
+import { PermissionsIcon } from '../../../shared/ui/extras/Icons';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 
@@ -132,6 +134,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleAcceptGig = async (event, messageId) => {
         event.stopPropagation();
         try {
+            if (!hasVenuePerm(venues, gigData.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -179,6 +182,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleAcceptNegotiation = async (event, messageId) => {
         event.stopPropagation();    
         try {
+            if (!hasVenuePerm(venues, gigData.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -210,6 +214,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleDeclineNegotiation = async (event, newFee, messageId) => {
         event.stopPropagation();
         try {
+            if (!hasVenuePerm(venues, gigData.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -246,6 +251,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleDeclineApplication = async (event, messageId) => {
         event.stopPropagation();
         try {
+            if (!hasVenuePerm(venues, gigData.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -278,6 +284,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
     const handleSendCounterOffer = async (newFee, messageId) => {
         try {
+            if (!hasVenuePerm(venues, gigData.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -320,6 +327,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
     const handleCompletePayment = async () => {
         if (!ensureFuture()) return toast.error('Gig is in the past.');
+        if (!hasVenuePerm(venues, gigData.venueId, 'gigs.pay')) return toast.error('You do not have permission to pay for gigs.');
         setLoadingPaymentDetails(true);
         await fetchSavedCardsAndModal();
         setPaymentIntentId(null);
@@ -339,6 +347,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     };
 
     const handleSelectCard = async (cardId) => {
+        if (!hasVenuePerm(venues, gigData.venueId, 'gigs.pay')) return toast.error('You do not have permission to pay for gigs.');
         setMakingPayment(true);
         try {
             const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
@@ -481,26 +490,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                 {(message.type === 'application' || message.type === 'invitation') && isSameGroup ? (
                                     <>
                                         <div>
-                                            {message.type === 'application' ? (
-                                                <div className='accepted-group'>
-                                                    <h4>Gig application sent.</h4>
-                                                    {userRole !== 'venue' && activeConversation.bandConversation ? (
-                                                        <button className='btn primary' onClick={() => navigate(`/dashboard/bands/${activeConversation.accountNames.find(account => account.role === 'band')}`)}>
-                                                            Check Band Profile
-                                                        </button>
-                                                    ) : userRole === 'musician' && (
-                                                        <button className='btn primary' onClick={() => navigate('/dashboard/profile')}>
-                                                            Check my Profile
-                                                        </button>
-                                                    )}
-                                                </div>
-
-                                            ) : (
-                                                <>
-                                                    <h4>Gig invitation sent.</h4>
-                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                                </>
-                                            )}
+                                            <h4>Gig invitation sent.</h4>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                         </div>
                                         {message.status === 'accepted' ? (
                                             <div className='accepted-group'>
@@ -519,7 +510,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
+                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') ? (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                     {eventLoading ? (
                                                         <LoadingSpinner width={15} height={15} marginBottom={5} marginTop={5} />
@@ -544,7 +535,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                             </div>
                                                         </>
                                                     )}
-                                            </div>
+                                                </div>
+                                            ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && (
+                                                <div className="status-box">
+                                                    <div className='status past'>
+                                                        <PermissionsIcon />
+                                                        You do not have permission to manage gig applications
+                                                    </div>
+                                                </div>
                                             )}
                                             </>
                                         ) : message.status === 'withdrawn' && (
@@ -575,7 +573,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
+                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') ? (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                     {eventLoading ? (
                                                         <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
@@ -601,23 +599,39 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                         </>
                                                     )}
                                                 </div>
+                                            ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && (
+                                                <div className="status-box">
+                                                    <div className='status past'>
+                                                        <PermissionsIcon />
+                                                        You do not have permission to manage gig applications
+                                                    </div>
+                                                </div>
                                             )}
                                             </>
                                         ) : message.status !== 'countered' && message.status !== 'apps-closed' && message.status !== 'withdrawn' ? (
-                                            <div className='two-buttons'>
-                                                {eventLoading ? (
-                                                    <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
-                                                ) : (
-                                                    <>
-                                                        <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
-                                                            Accept
-                                                        </button>
-                                                        <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
-                                                            Decline
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
+                                            hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') ? (
+                                                <div className='two-buttons'>
+                                                    {eventLoading ? (
+                                                        <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                                    ) : (
+                                                        <>
+                                                            <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
+                                                                Accept
+                                                            </button>
+                                                            <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
+                                                                Decline
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            ) : !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && (
+                                                <div className="status-box">
+                                                    <div className='status past'>
+                                                        <PermissionsIcon />
+                                                        You do not have permission to manage gig applications
+                                                    </div>
+                                                </div>
+                                            )
                                         ) : message.status === 'withdrawn' && (
                                                 <div className='status-box'>
                                                 <div className='status rejected'>
@@ -675,7 +689,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                         Declined
                                                     </div>
                                                 </div>
-                                                {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && (
+                                                {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') ? (
                                                     <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                         {eventLoading ? (
                                                             <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
@@ -701,23 +715,39 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                             </>
                                                         )}
                                                     </div>
+                                                ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && (
+                                                    <div className="status-box">
+                                                        <div className="status past">
+                                                            <PermissionsIcon />
+                                                            You do not have permission to manage gig applications
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </>
                                         ) : message.status !== 'withdrawn' ? (
-                                            <div className='two-buttons'>
-                                                {eventLoading ? (
-                                                    <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
-                                                ) : (
-                                                    <>
-                                                        <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
-                                                            Accept
-                                                        </button>
-                                                        <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
-                                                            Decline
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
+                                            hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') ? (
+                                                <div className='two-buttons'>
+                                                    {eventLoading ? (
+                                                        <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                                    ) : (
+                                                        <>
+                                                            <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
+                                                                Accept
+                                                            </button>
+                                                            <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
+                                                                Decline
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            ) : !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') &&(
+                                                <div className="status-box">
+                                                    <div className="status past">
+                                                        <PermissionsIcon />
+                                                        You do not have permission to manage gig applications
+                                                    </div>
+                                                </div>
+                                            )
                                         ) : message.status === 'withdrawn' && (
                                             <div className='status-box'>
                                             <div className='status rejected'>
@@ -730,7 +760,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                     </>
                                 ) : message.type === 'announcement' ? (
                                     <>
-                                    {message.status === 'awaiting payment' && userRole === 'venue' && gigData?.budget !== '£' && gigData?.budget !== '£0' ? (
+                                    {message.status === 'awaiting payment' && userRole === 'venue' && gigData?.budget !== '£' && gigData?.budget !== '£0' && hasVenuePerm(venues, gigData?.venueId, 'gigs.pay') ? (
                                         <>
                                             <h6>{ts ? ts.toLocaleString() : ''}</h6>
                                             <h4>{message.text} Please click the button below to pay. The gig will be confirmed once you have paid.</h4>
@@ -741,6 +771,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Complete Payment
                                                 </button>
                                             )}
+                                        </>
+                                    ) : message.status === 'awaiting payment' && userRole === 'venue' && gigData?.budget !== '£' && gigData?.budget !== '£0' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.pay') ? (
+                                        <>
+                                            <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                            <PermissionsIcon />
+                                            <h4>You have accepted the musician's application. <br /> A member of staff with the correct permissions must complete the payment for this gig for it to be confirmed.</h4>
                                         </>
                                     ) : message.status === 'awaiting payment' && (userRole === 'musician' || userRole === 'band') ? (
                                         <>

@@ -4,6 +4,7 @@ import { admin, db, FieldValue } from "../../../lib/admin.js";
 import { makeStripe } from "../../../lib/stripeClient.js";
 import { STRIPE_LIVE_KEY, STRIPE_TEST_KEY } from "../../../config/secrets.js";
 import { REGION_PRIMARY } from "../../../config/regions.js";
+import { sanitizePermissions } from "../../../lib/utils/permissions.js";
 
 /**
  * Callable: creates & confirms a Stripe PaymentIntent for a booked gig.
@@ -57,6 +58,40 @@ export const confirmPayment = callable(
       throw new Error("Invalid amountToCharge (must be positive integer in minor units).");
     }
     const userId = auth.uid;
+    if (!userId) {
+      const e = new Error('PERMISSION_DENIED: must be authenticated');
+      // @ts-ignore
+      e.code = 'permission-denied';
+      throw e;
+    }
+    const venueId = gigData?.venueId;
+    const venueRef = db.doc(`venueProfiles/${venueId}`);
+    const venueSnap = await venueRef.get();
+    if (!venueSnap.exists) {
+      const e = new Error('NOT_FOUND: venue');
+      // @ts-ignore
+      e.code = 'not-found';
+      throw e;
+    }
+    const venue = venueSnap.data() || {};
+    const isOwner = venue?.createdBy === userId || venue?.userId === userId;
+    let canPay = isOwner;
+    if (!canPay) {
+      const memberSnap = await venueRef.collection('members').doc(userId).get();
+      const memberData = memberSnap.exists ? memberSnap.data() : null;
+      const isActiveMember = !!memberData && memberData.status === 'active';
+      const perms = sanitizePermissions(memberData?.permissions);
+      const hasPayPerm = !!perms['gigs.pay'];
+      canPay = isActiveMember && hasPayPerm;
+    }
+    
+    if (!canPay) {
+      const e = new Error('PERMISSION_DENIED: requires venue owner or active member with gigs.pay');
+      // @ts-ignore
+      e.code = 'permission-denied';
+      throw e;
+    }
+    
     const userSnap = await admin.firestore().collection("users").doc(userId).get();
     const userCustomerId = userSnap.data()?.stripeCustomerId || null;
     const customerId = requestedCustomerId || userCustomerId;
@@ -98,7 +133,7 @@ export const confirmPayment = callable(
           date: gigDate,
           venueName: gigData.venue.venueName,
           venueId: gigData.venueId,
-          applicantId: musicianProfileId,
+          applicantId: applicantId,
           applicantType,
           recipientMusicianId,
           paymentMessageId,

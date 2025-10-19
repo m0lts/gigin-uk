@@ -437,7 +437,7 @@
     align-items: center;
     justify-content: center;
     gap:5px;
-    padding:5px;
+    padding:5px 0.5rem;
     width:fit-content;
     border-radius: 5px;
 }
@@ -452,6 +452,13 @@
     border:1px solid var(--gn-red);
     background-color: var(--gn-offset-red);
     color: var(--gn-red);
+}
+
+.body.messages .status.past {
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-grey-250);
+    color: var(--gn-grey-700);
+    text-transform: capitalize;
 }
 
 .body.messages .message.sent {
