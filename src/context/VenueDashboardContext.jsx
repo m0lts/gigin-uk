@@ -7,6 +7,24 @@ import { fetchCustomerData } from '../services/function-calls/payments';
 
 const VenueDashboardContext = createContext();
 
+const canReadFinances = (venue, uid) => {
+  const isOwner = venue?.createdBy === uid || venue?.userId === uid;
+  const member = venue?.membership || null;
+  const isActiveMember = !!member && member.status === 'active';
+  const perms = member?.permissions || {};
+  const has = !!perms['finances.read'];
+  return isOwner || (isActiveMember && has);
+};
+
+const canUpdateFinances = (venue, uid) => {
+  const isOwner = venue?.createdBy === uid || venue?.userId === uid;
+  const member = venue?.membership || null;
+  const isActiveMember = !!member && member.status === 'active';
+  const perms = member?.permissions || {};
+  const has = !!perms['finances.update'];
+  return isOwner || (isActiveMember && has);
+};
+
 export const VenueDashboardProvider = ({ user, children }) => {
   const [loading, setLoading] = useState(true);
   const [venueProfiles, setVenueProfiles] = useState([]);
@@ -45,6 +63,13 @@ export const VenueDashboardProvider = ({ user, children }) => {
         completeVenues.map((venue) => fetchMyVenueMembership(venue, user.uid))
       );
       const safeVenues = venueProfilesWithMembership.filter(Boolean);
+      const readVenues   = safeVenues.filter(v => canReadFinances(v, user.uid));
+      const updateVenues = safeVenues.filter(v => canUpdateFinances(v, user.uid));
+
+      const financeCustomerIds = Array.from(new Set([
+        ...readVenues.map(v => v.stripeCustomerId).filter(Boolean),
+        ...updateVenues.map(v => v.stripeCustomerId).filter(Boolean),
+      ]));
       setVenueProfiles(safeVenues);
       const [gigsRes, templatesRes, requestsRes] = await Promise.all([
         getGigsByVenueIds(venueIds),
@@ -53,11 +78,18 @@ export const VenueDashboardProvider = ({ user, children }) => {
       ]);
       const customerIds = [
         null,
-        ...safeVenues.map(v => v.stripeCustomerId).filter(Boolean),
+        ...financeCustomerIds,
       ];
       const bundles = await Promise.all(customerIds.map(id => fetchCustomerData(id)));
       const userBundle = bundles[0];
       const venueBundles = bundles.slice(1);
+
+      const allowedReadVenueIds   = new Set(readVenues.map(v => v.venueId));
+      const allowedUpdateCustIds  = new Set([
+        userBundle?.customer?.id,
+        ...updateVenues.map(v => v.stripeCustomerId).filter(Boolean),
+      ].filter(Boolean));
+
       const mergedSavedCards = [
         ...(userBundle?.paymentMethods || []).map(pm => ({
           ...pm,
@@ -69,16 +101,25 @@ export const VenueDashboardProvider = ({ user, children }) => {
             default: pm.id === b?.defaultPaymentMethodId,
           }))
         ),
-      ].sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
-      const mergedReceipts = [
+      ]
+      .filter(pm => allowedUpdateCustIds.has(pm.customer))
+      .sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
+    
+      const allReceipts = [
         ...(userBundle?.receipts || []),
         ...venueBundles.flatMap(b => b?.receipts || []),
       ];
+      const mergedReceipts = allReceipts.filter(r => {
+        const vId = r?.metadata?.venueId || null;
+        return !vId || allowedReadVenueIds.has(vId);
+      });
+  
       const stripeRes = {
         customerDetails: userBundle?.customer || null,
         savedCards: mergedSavedCards,
         receipts: sortReceiptsByDateDesc(mergedReceipts.filter(r => r?.metadata?.gigId)),
       };
+
       applyGigs(gigsRes);
       setTemplates(templatesRes);
       const visibleRequests = requestsRes.filter(req => !req.removed);
@@ -112,46 +153,61 @@ export const VenueDashboardProvider = ({ user, children }) => {
     }
   };
   
-  const refreshStripe = async () => {
-    try {
-      const venuesWithCustomers = venueProfiles.filter(v => v.stripeCustomerId);
-      const customerIds = [
-        null,
-        ...venuesWithCustomers.map(v => v.stripeCustomerId),
-      ];
-      const bundles = await Promise.all(customerIds.map(id => fetchCustomerData(id)));
-  
-      const userBundle = bundles[0];
-      const venueBundles = bundles.slice(1);
-  
-      const mergedSavedCards = [
-        ...(userBundle?.paymentMethods || []).map(pm => ({
+const refreshStripe = async () => {
+  try {
+    const readVenues   = venueProfiles.filter(v => canReadFinances(v, user.uid));
+    const updateVenues = venueProfiles.filter(v => canUpdateFinances(v, user.uid));
+
+    const financeCustomerIds = Array.from(new Set([
+      ...readVenues.map(v => v.stripeCustomerId).filter(Boolean),
+      ...updateVenues.map(v => v.stripeCustomerId).filter(Boolean),
+    ]));
+
+    const customerIds = [null, ...financeCustomerIds];
+    const bundles = await Promise.all(customerIds.map(id => fetchCustomerData(id)));
+
+    const userBundle   = bundles[0];
+    const venueBundles = bundles.slice(1);
+
+    const allowedReadVenueIds  = new Set(readVenues.map(v => v.venueId));
+    const allowedUpdateCustIds = new Set([
+      userBundle?.customer?.id,
+      ...updateVenues.map(v => v.stripeCustomerId).filter(Boolean),
+    ].filter(Boolean));
+
+    const mergedSavedCards = [
+      ...(userBundle?.paymentMethods || []).map(pm => ({
+        ...pm,
+        default: pm.id === userBundle?.defaultPaymentMethodId,
+      })),
+      ...venueBundles.flatMap(b =>
+        (b?.paymentMethods || []).map(pm => ({
           ...pm,
-          default: pm.id === userBundle?.defaultPaymentMethodId,
-        })),
-        ...venueBundles.flatMap(b =>
-          (b?.paymentMethods || []).map(pm => ({
-            ...pm,
-            default: pm.id === b?.defaultPaymentMethodId,
-          }))
-        ),
-      ].sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
-  
-      const mergedReceipts = [
-        ...(userBundle?.receipts || []),
-        ...venueBundles.flatMap(b => b?.receipts || []),
-      ];
-  
-      setStripe({
-        customerDetails: userBundle?.customer || null,
-        savedCards: mergedSavedCards,
-        receipts: sortReceiptsByDateDesc(mergedReceipts.filter(r => r?.metadata?.gigId)),
-      });
-    } catch (err) {
-      console.error('Error refreshing Stripe:', err);
-    }
-  };
-  
+          default: pm.id === b?.defaultPaymentMethodId,
+        }))
+      ),
+    ]
+    .filter(pm => allowedUpdateCustIds.has(pm.customer))
+    .sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
+
+    const allReceipts = [
+      ...(userBundle?.receipts || []),
+      ...venueBundles.flatMap(b => b?.receipts || []),
+    ];
+    const mergedReceipts = allReceipts.filter(r => {
+      const vId = r?.metadata?.venueId || null;
+      return !vId || allowedReadVenueIds.has(vId);
+    });
+
+    setStripe({
+      customerDetails: userBundle?.customer || null,
+      savedCards: mergedSavedCards,
+      receipts: sortReceiptsByDateDesc(mergedReceipts.filter(r => r?.metadata?.gigId)),
+    });
+  } catch (err) {
+    console.error('Error refreshing Stripe:', err);
+  }
+};  
   const refreshData = async () => {
     await Promise.all([refreshGigs(), refreshTemplates(), refreshStripe()]);
   };

@@ -18,6 +18,7 @@ import { useAuth } from '@hooks/useAuth';
 import { updateUserDocument } from '../../../services/client-side/users';
 import Portal from '../../shared/components/Portal';
 import { ensureVenueStripeCustomerId } from '../../../services/client-side/venues';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 
 
 export const Finances = ({ savedCards, receipts, customerDetails, setStripe, venues }) => {
@@ -39,9 +40,22 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
     setWindowWidth(width);
   });
 
+  const readableVenueIds = new Set(
+    (venues || [])
+      .filter(v => hasVenuePerm(venues, v?.id || v?.venueId, 'finances.read'))
+      .map(v => v.venueId || v.id)
+  );
+
+  const updatableVenueIds = new Set(
+    (venues || [])
+      .filter(v => hasVenuePerm(venues, v?.id || v?.venueId, 'finances.update'))
+      .map(v => v.venueId || v.id)
+  );
+
   const resolvedVenues = useMemo(() => {
     const list = Array.isArray(venues) ? venues : [];
-    return list.map((v) => ({
+    const filtered = list.filter(v => readableVenueIds.has(v?.venueId || v?.id));
+    return filtered.map(v => ({
       ...v,
       stripeCustomerId: v?.stripeCustomerId || ensuredVenueIds[v?.venueId] || null,
     }));
@@ -59,8 +73,23 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
   }, [customerDetails?.id, resolvedVenues]);
 
 
-  const totalExpenditure = receipts.reduce((total, receipt) => total + receipt.amount / 100, 0);
+  const filteredReceipts = useMemo(() => {
+    return (receipts || []).filter(r => {
+      const vId = r?.metadata?.venueId || null;
+      return !vId || readableVenueIds.has(vId); // include personal
+    });
+  }, [receipts, readableVenueIds]);
+  
+  const totalExpenditure = filteredReceipts.reduce((total, r) => total + r.amount / 100, 0);
 
+  const updateVenues = useMemo(() => {
+    const list = Array.isArray(venues) ? venues : [];
+    const filtered = list.filter(v => updatableVenueIds.has(v?.venueId || v?.id));
+    return filtered.map(v => ({
+      ...v,
+      stripeCustomerId: v?.stripeCustomerId || ensuredVenueIds[v?.venueId] || null,
+    }));
+  }, [venues, ensuredVenueIds]);
 
   useEffect(() => {
     if (!newCardSaved) return;
@@ -93,21 +122,17 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       const list = Array.isArray(venues) ? venues : [];
       const missing = list.filter(v => v?.venueId && !v?.stripeCustomerId);
       if (!missing.length) return;
-  
       const entries = await Promise.all(
         missing.map(async (v) => {
           const id = await ensureVenueStripeCustomerId(v.venueId);
           return [v.venueId, id || null];
         })
       );
-  
-      // Keep only successful lookups
       const found = Object.fromEntries(entries.filter(([, id]) => !!id));
       if (Object.keys(found).length) {
         setEnsuredVenueIds((prev) => ({ ...prev, ...found }));
       }
     };
-  
     hydrateMissingIds();
   }, [venues]);
 
@@ -365,7 +390,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
                 ...(customerDetails?.id
                   ? [{ label: 'My Account', id: customerDetails.id }]
                   : []),
-                ...((resolvedVenues || [])
+                ...((updateVenues || [])
                   .filter(v => v.stripeCustomerId)
                   .map(v => ({
                     label: `Venue: ${v.name || v.displayName || v.id}`,

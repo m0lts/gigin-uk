@@ -24,74 +24,240 @@ import { makeStripe } from "../../../lib/stripeClient.js";
  */
 export const getCustomerData = callable(
   {
+    authRequired: true,
     secrets: [stripeLiveKey, stripeTestKey],
     region: REGION_PRIMARY,
     timeoutSeconds: 3600,
   },
   async (request) => {
-      const {auth} = request;
-      if (!auth) {
-        throw new Error("User must be authenticated.");
+    const { auth, data } = request;
+    if (!auth) throw new Error("User must be authenticated.");
+    const userId = auth.uid;
+
+    const requestedCustomerId = data?.customerId || null;
+    const include = Array.isArray(data?.include) ? data.include : null; 
+    // include can contain: 'customer', 'paymentMethods', 'receipts', 'defaultPaymentMethod'
+
+    // load caller user + personal customer
+    const userDoc = await admin.firestore().collection("users").doc(userId).get();
+    if (!userDoc.exists) throw new Error("User doc not found.");
+    const userCustomerId = userDoc.data()?.stripeCustomerId || null;
+
+    // Defaults: personal scope
+    let scope = { type: "personal", canPay: true, canRead: true, canUpdate: true };
+    let customerId = userCustomerId;
+
+    if (requestedCustomerId && requestedCustomerId !== userCustomerId) {
+      // Venue scope
+      const venueQuery = await admin.firestore()
+        .collection("venueProfiles")
+        .where("stripeCustomerId", "==", requestedCustomerId)
+        .limit(1).get();
+
+      if (venueQuery.empty) {
+        const e = new Error("UNAUTHORIZED: customerId not found or not linked to a venue.");
+        // @ts-ignore
+        e.code = "permission-denied";
+        throw e;
       }
-      const requestedCustomerId = request.data?.customerId || null;
-      const userId = auth.uid;
 
-      const userDoc = await admin.firestore().collection("users").doc(userId).get();
-      if (!userDoc.exists) throw new Error("User doc not found.");
-      const userData = userDoc.data() || {};
-      const userCustomerId = userData.stripeCustomerId || null;
+      const venueSnap = venueQuery.docs[0];
+      const venue = venueSnap.data() || {};
+      const venueRef = venueSnap.ref;
 
-      let customerId = userCustomerId;
-      if (requestedCustomerId) {
-        if (requestedCustomerId === userCustomerId) {
-          customerId = requestedCustomerId;
+      const isOwner = venue?.createdBy === userId || venue?.userId === userId;
+
+      let canPay = isOwner;
+      let canRead = isOwner;
+      let canUpdate = isOwner;
+
+      if (!isOwner) {
+        const mSnap = await venueRef.collection("members").doc(userId).get();
+        const m = mSnap.exists ? mSnap.data() : null;
+        const active = !!m && m.status === "active";
+        const perms = sanitizePermissions(m?.permissions || {});
+        if (active) {
+          canPay    = !!perms["gigs.pay"];
+          canRead   = !!perms["finances.read"];
+          canUpdate = !!perms["finances.update"];
         } else {
-          const venueQuery = await admin
-            .firestore()
-            .collection("venueProfiles")
-            .where("stripeCustomerId", "==", requestedCustomerId)
-            .limit(1)
-            .get();
-          if (venueQuery.empty) {
-            throw new Error("UNAUTHORIZED: customerId not found or not linked to a venue.");
-          }
-          customerId = requestedCustomerId;
+          canPay = canRead = canUpdate = false;
         }
       }
-      if (!customerId) {
-        throw new Error("Stripe customer ID not found.");
-      }
-      try {
-        const stripe = makeStripe();
-        const customer = await stripe.customers.retrieve(customerId, {
-          expand: ["invoice_settings.default_payment_method", "default_source"],
-        });
-        const pmList = await stripe.paymentMethods.list({
-          customer: customerId,
-          type: "card",
-        });
-        const charges =
-        await stripe.charges.list({customer: customerId, limit: 100});
-        const receipts = charges.data.filter(
-            (c) => c.status === "succeeded" && c.receipt_url,
-        );
-        const defaultPm = customer.invoice_settings.default_payment_method;
-        let defaultPmId;
-        let defaultSourceId;
-        if (defaultPm) {
-          defaultPmId = defaultPm.id;
-          defaultSourceId = customer.default_source || null;
-        }
-        return {
-          customer,
-          receipts,
-          paymentMethods: pmList.data,
-          defaultPaymentMethodId: defaultPmId,
-          defaultSourceId,
-        };
-      } catch (error) {
-        console.error("Error fetching customer data:", error);
-        throw new Error("Unable to fetch customer data.");
+
+      scope = { type: "venue", canPay, canRead, canUpdate };
+      customerId = requestedCustomerId;
+    }
+
+    if (!customerId) throw new Error("Stripe customer ID not found.");
+
+    // Decide what to fetch based on scope + include
+    const needCustomer = include ? include.includes("customer") || include.includes("defaultPaymentMethod") || include.includes("paymentMethods")
+                                 : true;
+    const needPMs      = scope.type === "personal" ? true
+                        : scope.canUpdate && (include ? include.includes("paymentMethods") : true);
+    const needDefault  = scope.type === "personal" ? true
+                        : scope.canPay && (include ? include.includes("defaultPaymentMethod") : true);
+    const needReceipts = scope.type === "personal" ? true
+                        : scope.canRead && (include ? include.includes("receipts") : true);
+
+    const stripe = makeStripe();
+
+    // Fetch only what’s needed
+    let customer = null;
+    let paymentMethods = [];
+    let defaultPaymentMethodId = null;
+    let defaultSourceId = null;
+    let receipts = [];
+
+    if (needCustomer || needDefault) {
+      customer = await stripe.customers.retrieve(customerId, {
+        expand: ["invoice_settings.default_payment_method", "default_source"],
+      });
+      const defaultPm = customer?.invoice_settings?.default_payment_method || null;
+      defaultPaymentMethodId = defaultPm ? defaultPm.id : null;
+      defaultSourceId = customer?.default_source || null;
+    }
+
+    if (needPMs) {
+      const pmList = await stripe.paymentMethods.list({ customer: customerId, type: "card" });
+      paymentMethods = pmList.data;
+    }
+
+    if (needReceipts) {
+      // TODO: paginate if needed
+      const charges = await stripe.charges.list({ customer: customerId, limit: 100 });
+      receipts = charges.data
+        .filter(c => c.status === "succeeded" && c.receipt_url)
+        .sort((a, b) => (b.created || 0) - (a.created || 0));
+    }
+
+    // For venue scope: trim fields the caller isn't allowed to see
+    if (scope.type === "venue") {
+      if (!scope.canUpdate) paymentMethods = [];            // no card list
+      if (!scope.canRead) receipts = [];                    // no receipts
+      if (!scope.canPay) {                                  // can't even see default
+        defaultPaymentMethodId = null;
+        defaultSourceId = null;
       }
     }
+
+    return {
+      // Always safe to return minimal customer object id
+      customer: needCustomer ? customer : { id: customerId },
+      receipts,
+      paymentMethods,
+      defaultPaymentMethodId,
+      defaultSourceId,
+      scope, // optional: useful on client for UI gating
+    };
+  }
 );
+
+
+// export const getCustomerData = callable(
+//   {
+//     secrets: [stripeLiveKey, stripeTestKey],
+//     region: REGION_PRIMARY,
+//     timeoutSeconds: 3600,
+//   },
+//   async (request) => {
+//       const {auth} = request;
+//       if (!auth) {
+//         throw new Error("User must be authenticated.");
+//       }
+//       const requestedCustomerId = request.data?.customerId || null;
+//       const userId = auth.uid;
+
+//       const userDoc = await admin.firestore().collection("users").doc(userId).get();
+//       if (!userDoc.exists) throw new Error("User doc not found.");
+//       const userData = userDoc.data() || {};
+//       const userCustomerId = userData.stripeCustomerId || null;
+
+
+
+//       let customerId = userCustomerId;
+//       if (requestedCustomerId) {
+//         if (requestedCustomerId === userCustomerId) {
+//           customerId = requestedCustomerId;
+//         } else {
+//           const venueQuery = await admin
+//           .firestore()
+//           .collection("venueProfiles")
+//           .where("stripeCustomerId", "==", requestedCustomerId)
+//           .limit(1)
+//           .get();
+
+//           if (venueQuery.empty) {
+//             const e = new Error("UNAUTHORIZED: customerId not found or not linked to a venue.");
+//             // @ts-ignore
+//             e.code = "permission-denied";
+//             throw e;
+//           }
+
+//           const venueSnap = venueQuery.docs[0];
+//           const venueId = venueSnap.id;
+//           const venue = venueSnap.data() || {};
+//           const venueRef = admin.firestore().doc(`venueProfiles/${venueId}`);
+
+//           const isOwner = venue?.createdBy === userId || venue?.userId === userId;
+
+//           let canRead = isOwner;
+//           if (!canRead) {
+//             const memberSnap = await venueRef.collection("members").doc(userId).get();
+//             const memberData = memberSnap.exists ? memberSnap.data() : null;
+//             const isActiveMember = !!memberData && memberData.status === "active";
+//             const perms = sanitizePermissions(memberData?.permissions || {}); // ensure default
+//             const hasReadPerm = !!perms["finances.read"];
+//             canRead = isActiveMember && hasReadPerm;
+//           }
+
+//           if (!canRead) {
+//             const e = new Error(
+//               "PERMISSION_DENIED: requires venue owner or active member with finances.read"
+//             );
+//             // @ts-ignore
+//             e.code = "permission-denied";
+//             throw e;
+//           }
+
+//           customerId = requestedCustomerId;
+//         }
+//       }
+//       if (!customerId) {
+//         throw new Error("Stripe customer ID not found.");
+//       }
+//       try {
+//         const stripe = makeStripe();
+//         const customer = await stripe.customers.retrieve(customerId, {
+//           expand: ["invoice_settings.default_payment_method", "default_source"],
+//         });
+//         const pmList = await stripe.paymentMethods.list({
+//           customer: customerId,
+//           type: "card",
+//         });
+//         const charges =
+//         await stripe.charges.list({customer: customerId, limit: 100});
+//         const receipts = charges.data.filter(
+//             (c) => c.status === "succeeded" && c.receipt_url,
+//         );
+//         const defaultPm = customer.invoice_settings.default_payment_method;
+//         let defaultPmId;
+//         let defaultSourceId;
+//         if (defaultPm) {
+//           defaultPmId = defaultPm.id;
+//           defaultSourceId = customer.default_source || null;
+//         }
+//         return {
+//           customer,
+//           receipts,
+//           paymentMethods: pmList.data,
+//           defaultPaymentMethodId: defaultPmId,
+//           defaultSourceId,
+//         };
+//       } catch (error) {
+//         console.error("Error fetching customer data:", error);
+//         throw new Error("Unable to fetch customer data.");
+//       }
+//     }
+// );
