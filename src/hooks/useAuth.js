@@ -7,6 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createMusicianProfile } from '../services/client-side/musicians';
 import { getEmailAddress, updateUserArrayField } from '../services/function-calls/users';
+import { httpsCallable } from "firebase/functions";
+import { functions } from '@lib/firebase';
+const sendVerificationEmail = httpsCallable(functions, "sendVerificationEmail");
 
 export const useAuth = () => {
 
@@ -112,11 +115,7 @@ export const useAuth = () => {
 
   const login = async (credentials) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
-      const userDoc = await getDoc(doc(firestore, 'users', userCredential.user.uid));
-      const userDocData = userDoc.data() || {};
-      setUser({ uid: userCredential.user.uid, ...userDocData });
-      const venueProfiles = userDocData.venueProfiles || [];
+      await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
       const redirect = sessionStorage.getItem('redirect');
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
@@ -125,13 +124,15 @@ export const useAuth = () => {
       if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
-      } else if (venueProfiles.length) {
-        navigate('/venues/dashboard');
       } else {
-        navigate('/find-a-gig');
+        navigate('/');
       }
       } catch (error) {
-        setUser(null);
+        const msg = error?.customData?.message || error?.message || "";
+        if (msg.includes("auth/email-not-verified")) {
+          toast.error("Please verify your email to continue.");
+          return;
+        }
         throw { error };
       }
   };
@@ -141,40 +142,29 @@ export const useAuth = () => {
     handleCodeInApp: false,
   };
 
-  const generateSearchKeywords = (name) => {
-    const lower = name.toLowerCase();
-    return Array.from({ length: lower.length }, (_, i) => lower.slice(0, i + 1));
-  };
-
   const signup = async (credentials, marketingConsent) => {
     try {
+      await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+      await sendVerificationEmail({actionUrl: `${window.location.origin}`});
       const redirect = sessionStorage.getItem('redirect');
-      const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
-      await setDoc(doc(firestore, 'users', userCredential.user.uid), {
-        name: credentials.name,
-        email: credentials.email,
-        phoneNumber: credentials.phoneNumber,
-        marketingConsent: marketingConsent,
-        createdAt: Timestamp.now(),
-        firstTimeInFinances: true,
-      });
-      await sendEmailVerification(userCredential.user, actionCodeSettings);
-      setUser({ uid: userCredential.user.uid, ...credentials, firstTimeInFinances: true });
       sessionStorage.setItem('newUser', true)
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
         return { redirect };
-      }
-      if (redirect) {
-          navigate(redirect);
-          sessionStorage.removeItem('redirect');
+      } else if (redirect) {
+        navigate(redirect);
+        sessionStorage.removeItem('redirect');
       } else {
         navigate('/');
       }
       return { needsEmailVerify: true };
     } catch (error) {
-      setUser(null);
-      throw { error }
+      const msg = error?.customData?.message || error?.message || "";
+      if (msg.includes("auth/email-not-verified")) {
+        toast.error("Please verify your email to continue.");
+        return;
+      }
+      throw { error };
     }
   };
   
@@ -221,29 +211,7 @@ const resetPassword = async (rawEmail) => {
 
   const loginWithGoogle = async () => {
     try {
-      const cred = await signInWithPopup(auth, googleProvider);
-      const { user } = cred;
-      const ref = doc(firestore, 'users', user.uid);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        try {
-          await deleteUser(user);
-        } catch (_) {
-          await signOut(auth);
-        }
-        toast.error('No Gigin account is linked to this Google account. Please sign up first.')
-        throw {
-          error: {
-            code: 'auth/account-not-registered',
-            message:
-              'No Gigin account is linked to this Google account. Please sign up and accept the Terms first.',
-          },
-        };
-      }
-      const userDoc = await getDoc(ref);
-      const userDocData = userDoc.data() || {};
-      setUser({ uid: user.uid, ...userDocData, email: user.email });
-      const venueProfiles = userDocData.venueProfiles || [];
+      await signInWithPopup(auth, googleProvider);
       const redirect = sessionStorage.getItem('redirect');
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
@@ -252,77 +220,39 @@ const resetPassword = async (rawEmail) => {
       if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
-      } else if (venueProfiles.length > 0 && venueProfiles.some(v => v.completed)) {
-        navigate('/venues/dashboard/gigs');
-      } else if (venueProfiles.length > 0 && !venueProfiles.some(v => v.completed)) {
-        navigate('/venues/add-venue');
       } else {
-        navigate('/find-a-gig');
+        navigate('/');
       }
     } catch (error) {
-      console.log(error);
-      // if (error?.code === 'auth/account-exists-with-different-credential') {
-      //   const email = error.customData?.email;
-      //   const methods = email ? await fetchSignInMethodsForEmail(auth, email) : [];
-      //   throw {
-      //     error: {
-      //       code: error.code,
-      //       message: `Account already exists with: ${methods.join(', ')}`,
-      //     },
-      //   };
-      // } else if (error?.code === 'auth/popup-closed-by-user') {
-      //   throw {
-      //     error: {
-      //       code: error.code,
-      //       message: '*Google Sign In Failed',
-      //     },
-      //   };
-      // }
+      const msg = error?.customData?.message || error?.message || "";
+      if (msg.includes("auth/account-not-registered")) {
+        toast.error('No Gigin account is linked to this Google account. Please sign up first.');
+        return;
+      }
       throw { error };
     }
   };
   
   const signupWithGoogle = async (marketingConsent) => {
     try {
-      const cred = await signInWithPopup(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
       const redirect = sessionStorage.getItem('redirect');
-      const { user } = cred;
-      const ref = doc(firestore, 'users', user.uid);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        await setDoc(ref, {
-          name: user.displayName || '',
-          email: user.email || '',
-          marketingConsent,
-          createdAt: Timestamp.now(),
-          emailVerified: true,
-          firstTimeInFinances: true,
-          googleAccount: true,
-        });
-      }
-      const userDoc = await getDoc(ref);
-      const userDocData = userDoc.data() || {};
-      setUser({ uid: user.uid, ...userDocData, email: user.email, firstTimeInFinances: true });
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
         return { redirect };
-      }
-      if (redirect) {
+      } else if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
       } else {
         navigate('/');
       }
     } catch (error) {
+      const msg = error?.customData?.message || error?.message || "";
+      if (msg.includes("auth/account-not-registered")) {
+        toast.error('No Gigin account is linked to this Google account. Please sign up first.');
+        return;
+      }
       throw { error };
-      // if (error?.code === 'auth/popup-closed-by-user') {
-      //   throw {
-      //     error: {
-      //       code: error.code,
-      //       message: `*Google Sign Up Failed`,
-      //     }
-      //   };
-      // }
     }
   };
 

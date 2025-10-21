@@ -132,10 +132,6 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 disabled={loading}
                 onClick={async () => {
                   try {
-                    if (!termsAccepted) {
-                      toast.error('Please accept our terms and conditions.');
-                      return;
-                    }
                     setLoading(true);
                     const signupResponse = await signupWithGoogle(marketingConsent);
                     if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
@@ -156,6 +152,9 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 <GoogleIcon />
                 Continue With Google
               </button>
+              <div className="disclaimer">
+                <p>By signing up with Google, you agree to our <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions.</Link></p>
+              </div>
               <div className="oauth-divider">
                 <span className="line" />
                 <h6>OR</h6>

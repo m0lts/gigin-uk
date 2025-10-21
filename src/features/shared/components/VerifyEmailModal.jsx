@@ -8,7 +8,8 @@ import { LoadingThreeDots } from "@features/shared/ui/loading/Loading";
 import { useAuth } from '@hooks/useAuth'
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "../ui/loading/Loading";
-
+import { httpsCallable } from "firebase/functions";
+import { functions } from '@lib/firebase';
 
 export const  VerifyEmailModal = ({ onClose }) => {
 
@@ -34,11 +35,8 @@ export const  VerifyEmailModal = ({ onClose }) => {
     }
     setSending(true);
     try {
-      const actionCodeSettings = {
-        url: `${window.location.origin}/email-verified`,
-        handleCodeInApp: false,
-      };
-      await sendEmailVerification(auth.currentUser, actionCodeSettings);
+      const fn = httpsCallable(functions, "sendVerificationEmail");
+      await fn({});
       toast.success("Verification email sent.");
       setCooldown(30);
     } catch (e) {
@@ -92,7 +90,7 @@ export const  VerifyEmailModal = ({ onClose }) => {
         </div>
 
         <div className="modal-body" style={{ marginTop: 16 }}>
-          <div className="two-buttons" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div className={`${checking ? "loading" : ""} two-buttons`} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {checking ? (
                 <LoadingSpinner />
             ) : (

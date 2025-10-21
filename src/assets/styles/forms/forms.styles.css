@@ -255,3 +255,12 @@ input:-webkit-autofill {
     justify-content: center;
     gap:0.5rem;
 }
+
+.auth-form .disclaimer p {
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.auth-form .disclaimer p .tc-link {
+    font-size: 0.8rem;
+}

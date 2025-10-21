@@ -8,6 +8,7 @@ import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 import '@styles/forms/forms.styles.css'
 import { GoogleIcon } from '../ui/extras/Icons';
 import { LoadingSpinner } from '../ui/loading/Loading';
+import { Link } from 'react-router-dom';
 
 
 
@@ -120,6 +121,9 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                 <GoogleIcon />
                 Continue With Google
               </button>
+              <div className="disclaimer">
+                <p>By continuing with Google, you agree to our <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions.</Link></p>
+              </div>
               <div className="oauth-divider">
                 <span className="line" />
                 <h6>OR</h6>

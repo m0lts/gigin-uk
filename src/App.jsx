@@ -36,6 +36,7 @@ import { logClientError } from './services/client-side/errors';
 import { TermsAndConditions } from './features/legals/TermsAndConditions';
 import { PrivacyPolicy } from './features/legals/PrivacyPolicy';
 import { JoinVenuePage } from './features/venue/components/JoinVenue';
+import { EmailActionHandler } from './features/shared/components/EmailActionHandler';
 
 
 
@@ -121,11 +122,11 @@ export default function App() {
   
   useEffect(() => {
     // ✅ Skip all checks in dev mode
-    if (import.meta.env.MODE === 'development' || location.pathname.includes('gigin-uk-git-dev-gigin-dev-team.vercel.app')) {
-      setVerifyEmailModal(false);
-      setVerifyInfoModal(false);
-      return;
-    }
+    // if (import.meta.env.MODE === 'development' || location.pathname.includes('gigin-uk-git-dev-gigin-dev-team.vercel.app')) {
+    //   setVerifyEmailModal(false);
+    //   setVerifyInfoModal(false);
+    //   return;
+    // }
   
     const u = auth.currentUser;
     if (!u) {
@@ -194,6 +195,7 @@ export default function App() {
         <Route path='/join-venue' element={<JoinVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
+        <Route path="/auth/email-verified" element={<EmailActionHandler user={user} />} />
         
       </Routes>
       
