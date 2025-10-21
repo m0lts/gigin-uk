@@ -194,14 +194,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig" || gigInfo.budget === '£' || gigInfo.budget === '£0';
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianId);
+                const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianId, 'venue');
                 setGigInfo((prevGigInfo) => ({
                     ...prevGigInfo,
                     applicants: updatedApplicants,
                     paid: true,
                 }));
             } else {
-                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigInfo, musicianId, nonPayableGig);
+                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigInfo, musicianId, nonPayableGig, 'venue');
                 setGigInfo((prevGigInfo) => ({
                     ...prevGigInfo,
                     applicants: updatedApplicants,

@@ -276,7 +276,7 @@ export async function withdrawMusicianApplication(gigId, profile, userId) {
       a?.id === applicantId ? { ...a, status: 'withdrawn' } : a
     );
 
-    await updateGigDocument(gigId, { applicants: updatedApplicants });
+    await updateGigDocument(gigId, 'musician.withdraw.application', { applicants: updatedApplicants });
 
     const batch = writeBatch(firestore);
     const pruneApps = (apps = []) =>

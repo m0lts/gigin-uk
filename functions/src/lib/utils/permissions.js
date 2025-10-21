@@ -1,4 +1,6 @@
 /* eslint-disable */
+import { db } from "../admin.js";
+
 /** Flat, explicit permission keys for venue-scoped actions. */
 export const PERM_KEYS = [
   "gigs.read",                 // viewing gigs (default true)
@@ -59,4 +61,38 @@ export function sanitizePermissions(input) {
   // always ensure read is true
   out["gigs.read"] = true;
   return out;
+}
+
+export async function assertVenuePerm(caller, venueId, permKey) {
+  if (!caller) {
+    const e = new Error('PERMISSION_DENIED: must be authenticated');
+    e.code = 'permission-denied';
+    throw e;
+  }
+  if (!venueId || typeof venueId !== 'string') {
+    const e = new Error('INVALID_ARGUMENT: venueId required');
+    e.code = 'invalid-argument';
+    throw e;
+  }
+  const venueRef = db.doc(`venueProfiles/${venueId}`);
+  const venueSnap = await venueRef.get();
+  if (!venueSnap.exists) {
+    const e = new Error('NOT_FOUND: venue');
+    e.code = 'not-found';
+    throw e;
+  }
+  const venue = venueSnap.data() || {};
+  const isOwner = venue?.createdBy === caller || venue?.userId === caller;
+  if (isOwner) return true;
+  const memberSnap = await venueRef.collection('members').doc(caller).get();
+  const memberData = memberSnap.exists ? memberSnap.data() : null;
+  const isActiveMember = !!memberData && memberData.status === 'active';
+  const perms = sanitizePermissions(memberData?.permissions || {});
+  const has = !!perms[permKey];
+  if (!(isActiveMember && has)) {
+    const e= new Error(`PERMISSION_DENIED: requires venue owner or active member with ${permKey}`);
+    e.code = 'permission-denied';
+    throw e;
+  }
+  return true;
 }

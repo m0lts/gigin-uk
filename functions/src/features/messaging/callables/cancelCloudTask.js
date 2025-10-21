@@ -2,6 +2,8 @@
 import { callable } from "../../../lib/callable.js";
 import { REGION_PRIMARY } from "../../../config/regions.js";
 import { tasksClient } from "../../../lib/tasks.js";
+import { db } from "../../../lib/admin.js";
+import { assertVenuePerm } from "../../../lib/utils/permissions.js";
 
 /**
  * Callable: cancels a Cloud Tasks task by full task name.
@@ -28,7 +30,7 @@ export const cancelCloudTask = callable(
   },
   async (request) => {
       const {auth} = request;
-      const {taskName} = request.data;
+      const {taskName, gigId, venueId: venueIdRaw} = request.data;
       if (!auth) {
         throw new Error(
             "unauthenticated", "User must be authenticated.",
@@ -38,6 +40,22 @@ export const cancelCloudTask = callable(
         console.error("Task name is required to cancel a task.");
         throw new Error("Missing taskName parameter.");
       }
+      let venueId = venueIdRaw;
+      if (!venueId && gigId) {
+        const gigSnap = await db.doc(`gigs/${gigId}`).get();
+        if (!gigSnap.exists) {
+          const e = new Error("NOT_FOUND: gig");
+          e.code = "not-found";
+          throw e;
+        }
+        venueId = gigSnap.data()?.venueId;
+      }
+      if (!venueId) {
+        const e = new Error("INVALID_ARGUMENT: venueId or gigId required");
+        e.code = "invalid-argument";
+        throw e;
+      }
+      await assertVenuePerm(caller, venueId, 'reviews.create');
       try {
         const client = tasksClient();
         await client.deleteTask({name: taskName});

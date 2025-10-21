@@ -696,7 +696,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           closeOptionsMenu();
                                           const newStatus = gig.openMicApplications ? false : true;
                                           try {
-                                              await updateGigDocument(gig.gigId, { openMicApplications: newStatus, limitApplications: false });
+                                              await updateGigDocument(gig.gigId, 'gigs.update', { openMicApplications: newStatus, limitApplications: false });
                                               toast.success(`Open mic night ${(newStatus) ? 'opened for applications.' : 'changed to turn up and play.'}`);
                                           } catch (error) {
                                               console.error('Error updating status:', error);

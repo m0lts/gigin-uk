@@ -1,26 +1,5 @@
 /* eslint-disable */
-export function toJsDate(v) {
-  if (!v) return null;
-  if (typeof v.toDate === 'function') return v.toDate();
-  if (v instanceof Date) return new Date(v);
-  const secs =
-    typeof v.seconds === 'number'
-      ? v.seconds
-      : typeof v._seconds === 'number'
-      ? v._seconds
-      : null;
-  if (secs !== null) {
-    const nanos =
-      typeof v.nanoseconds === 'number'
-        ? v.nanoseconds
-        : typeof v._nanoseconds === 'number'
-        ? v._nanoseconds
-        : 0;
-    return new Date(secs * 1000 + Math.floor(nanos / 1e6));
-  }
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
+import { toJsDate } from "./dates.js";
 
 /**
  * Returns a styled gig fee released email to both the musician and the venue.

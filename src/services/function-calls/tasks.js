@@ -6,10 +6,10 @@ import { functions } from '@lib/firebase';
  * @param {string} taskName - The name of the task to cancel.
  * @returns {Promise<boolean>} - True if successful, false otherwise.
  */
-export const cancelTask = async (taskName) => {
+export const cancelTask = async (taskName, gigId, venueId) => {
   try {
     const cancelCloudTask = httpsCallable(functions, "cancelCloudTask");
-    const { data } = await cancelCloudTask({ taskName });
+    const { data } = await cancelCloudTask({ taskName, gigId, venueId });
     return data?.success || false;
   } catch (error) {
     console.error("[CloudFn Error] cancelTask:", error);

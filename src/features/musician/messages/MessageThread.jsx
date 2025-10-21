@@ -121,14 +121,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianProfileId);
+                const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianProfileId, 'musician');
                 setGigData((prevGigData) => ({
                     ...prevGigData,
                     applicants: updatedApplicants,
                     paid: true,
                 }));
             } else {
-                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig);
+                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig, 'musician');
                 setGigData((prevGigData) => ({
                     ...prevGigData,
                     applicants: updatedApplicants,
@@ -165,7 +165,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId);
+            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
+            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig, 'musician');
             setGigData(prev => ({
               ...prev,
               applicants: updatedApplicants,

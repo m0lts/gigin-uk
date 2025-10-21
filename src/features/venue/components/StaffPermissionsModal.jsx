@@ -6,10 +6,12 @@ import { LeftArrowIcon, RightChevronIcon, SettingsIcon } from "../../shared/ui/e
 import { LoadingSpinner } from "../../shared/ui/loading/Loading";
 import { removeVenueMember, updateVenueMemberPermissions } from "../../../services/function-calls/venues";
 import { fetchVenueMembersWithUsers } from "../../../services/function-calls/venues";
-import { normalizePermissions } from "../../../services/utils/permissions";
+import { hasVenuePerm, normalizePermissions } from "../../../services/utils/permissions";
 import { formatDate } from "../../../services/utils/dates";
+import { useVenueDashboard } from "../../../context/VenueDashboardContext";
 
 export const StaffPermissionsModal = ({ user, venue, onClose }) => {
+    const {venueProfiles} = useVenueDashboard();
     const [stage, setStage] = useState("select");
     const [loading, setLoading] = useState(true);
     const [members, setMembers] = useState([]);
@@ -57,6 +59,10 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
   
     const handleSave = async () => {
       if (!selectedUid || !venue?.venueId) return;
+      if (!hasVenuePerm(venueProfiles, venue.venueId, 'members.update')) {
+        toast.error('You do not have permission to update member permissions.');
+        return;
+      }
       const prev = members;
       try {
         setLoading(true);
@@ -83,6 +89,10 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
       if (!selectedUid || !venue?.venueId) return;
       if (selectedUid === user?.uid) {
         toast.error("You can’t remove yourself here.");
+        return;
+      }
+      if (!hasVenuePerm(venueProfiles, venue.venueId, 'members.update')) {
+        toast.error('You do not have permission to update members.');
         return;
       }
       if (!confirm("Are you sure?")) return;
@@ -183,6 +193,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
                         <input
                             type="checkbox"
                             checked={!!permissions[key]}
+                            disabled={!hasVenuePerm(venueProfiles, venue.venueId, 'members.update')}
                             onChange={() => togglePerm(key)}
                         />
                         {PERMS_DISPLAY[key]}
@@ -194,7 +205,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
                     <button
                         className="btn danger"
                         onClick={handleRemove}
-                        disabled={removing || selectedUid === user?.uid}
+                        disabled={removing || selectedUid === user?.uid || !hasVenuePerm(venueProfiles, venue.venueId, 'members.update')}
                         title={selectedUid === user?.uid ? "You cannot remove yourself" : "Remove member from venue"}
                     >
                         {removing ? "Removing…" : "Remove Member"}
@@ -202,7 +213,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
                     <button
                         className="btn primary"
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || !hasVenuePerm(venueProfiles, venue.venueId, 'members.update')}
                     >
                         {saving ? "Saving…" : "Save"}
                     </button>

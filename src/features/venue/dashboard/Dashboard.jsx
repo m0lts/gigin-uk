@@ -24,6 +24,7 @@ import { MessagePage } from './messages/MessagePage';
 import { listenToUserConversations } from '@services/client-side/conversations';
 import Portal from '../../shared/components/Portal';
 import { VenuePage } from './VenuePage';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 
 export const VenueDashboard = ({ user }) => {
     const {
@@ -69,31 +70,39 @@ export const VenueDashboard = ({ user }) => {
     }, [location]);
   
     useEffect(() => {
-        const localGigsToReview = getPendingGigsToReview(gigs);
-        const unreviewedGigs = getUnreviewedPastGigs(gigs);
-        if (localGigsToReview.length > 0) {
-          setGigToReview(localGigsToReview[0]);
-          setShowReviewModal(true);
-        } else if (unreviewedGigs.length > 0) {
-          setGigsToReview(unreviewedGigs);
-        }
-      }, [gigs]);
+      if (!gigs?.length) return;
+      const gigsWithReviewPerm = gigs.filter(gig =>
+        hasVenuePerm(venueProfiles, gig.venueId, 'reviews.create')
+      );
+      const localGigsToReview = getPendingGigsToReview(gigsWithReviewPerm);
+      const unreviewedGigs = getUnreviewedPastGigs(gigsWithReviewPerm);
+      if (localGigsToReview.length > 0) {
+        setGigToReview(localGigsToReview[0]);
+        setShowReviewModal(true);
+      } else if (unreviewedGigs.length > 0) {
+        setGigsToReview(unreviewedGigs);
+      } else {
+        setGigToReview(null);
+        setShowReviewModal(false);
+        setGigsToReview([]);
+      }
+    }, [gigs, venueProfiles]);
 
 
-      useEffect(() => {
-        if (!user) return;
-        const unsubscribe = listenToUserConversations(user, (updatedConversations) => {
-          setConversations(prev => mergeAndSortConversations(prev, updatedConversations));
-          const hasUnread = updatedConversations.some((conv) => {
-            const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
-            const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
-            const isNotSender = conv.lastMessageSenderId !== user.uid;
-            return lastMessage > lastViewed && isNotSender;
-          });
-          setNewMessages(hasUnread);
+    useEffect(() => {
+      if (!user) return;
+      const unsubscribe = listenToUserConversations(user, (updatedConversations) => {
+        setConversations(prev => mergeAndSortConversations(prev, updatedConversations));
+        const hasUnread = updatedConversations.some((conv) => {
+          const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
+          const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
+          const isNotSender = conv.lastMessageSenderId !== user.uid;
+          return lastMessage > lastViewed && isNotSender;
         });
-        return unsubscribe;
-      }, [user]);
+        setNewMessages(hasUnread);
+      });
+      return unsubscribe;
+    }, [user]);
 
     return (
         <>  
@@ -164,7 +173,7 @@ export const VenueDashboard = ({ user }) => {
               </Portal>
             )
             }
-            {showReviewModal && (
+            {showReviewModal && gigToReview && hasVenuePerm(venueProfiles, gigToReview.venueId, 'reviews.create') && (
               <Portal>
                 <ReviewModal
                     gigData={gigToReview}

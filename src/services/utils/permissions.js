@@ -20,7 +20,7 @@ export const PERMS_DISPLAY = {
     "gigs.applications.manage": "Manage gig applications",
     "gigs.invite": "Invite musicians to gigs",
     "gigs.pay": "Pay for gigs",
-    "reviews.create": "Review musicians",
+    "reviews.create": "Review and dispute artist performances",
     "finances.read": "View venue finances",
     "finances.update": "Edit venue finances",
     "venue.update": "Edit venue profile",

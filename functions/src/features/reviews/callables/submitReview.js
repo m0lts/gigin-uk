@@ -92,10 +92,20 @@ export const submitReview = callable(
 
       // minimal role verification
       if (reviewer === "venue") {
-        const owner = venue.createdBy || venue.userId;
-        if (owner !== caller) {
-          const e = new Error("FORBIDDEN: only venue owner can write venue review");
-          e.code = "permission-denied";
+        const isOwner = venue?.createdBy === caller || venue?.userId === caller;
+        let canReview = isOwner;
+        if (!canReview) {
+          const memberSnap = await venueRef.collection('members').doc(caller).get();
+          const memberData = memberSnap.exists ? memberSnap.data() : null;
+          const isActiveMember = !!memberData && memberData.status === 'active';
+          const perms = sanitizePermissions(memberData?.permissions);
+          const hasReviewPerm = !!perms['reviews.create'];
+          canReview = isActiveMember && hasReviewPerm;
+        }
+        if (!canReview) {
+          const e = new Error('PERMISSION_DENIED: requires venue owner or active member with reviews.create');
+          // @ts-ignore
+          e.code = 'permission-denied';
           throw e;
         }
       } else { // reviewer === 'musician'

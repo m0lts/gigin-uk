@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { callable } from "../../../lib/callable.js";
 import { db, Timestamp } from "../../../lib/admin.js";
+import { sanitizePermissions } from "../../../lib/utils/permissions.js";
 
 /**
  * logDispute
@@ -56,20 +57,28 @@ export const logDispute = callable(
     const venue = venueSnap.data() || {};
     const musician = musicianSnap.data() || {};
     const callerUser = callerUserSnap.data() || {};
-    const ownerUid = venue.createdBy || venue.userId || null;
+    const ownerUid = (venue.createdBy || venue.userId) || null;
 
-    // Authorisation: caller must be venue owner OR have the musician profile
     const callerMusicianIds = Array.isArray(callerUser.musicianProfile)
-      ? callerUser.musicianProfile
-      : callerUser.musicianProfile
-        ? [callerUser.musicianProfile]
-        : [];
-
-    const callerIsVenueOwner = ownerUid && ownerUid === caller;
+    ? callerUser.musicianProfile
+    : callerUser.musicianProfile
+      ? [callerUser.musicianProfile]
+      : [];
     const callerIsLinkedMusician = callerMusicianIds.includes(musicianId);
-
-    if (!callerIsVenueOwner && !callerIsLinkedMusician) {
-      const e = new Error("FORBIDDEN: caller not a participant");
+    
+    let callerHasVenueReviewPerm = false;
+    if (ownerUid === caller) {
+      callerHasVenueReviewPerm = true;
+    } else {
+      const memberSnap = await venueRef.collection('members').doc(caller).get();
+      const memberData = memberSnap.exists ? memberSnap.data() : null;
+      const isActiveMember = !!memberData && memberData.status === 'active';
+      const perms = sanitizePermissions(memberData?.permissions || {});
+      callerHasVenueReviewPerm = isActiveMember && !!perms['reviews.create'];
+    }
+    
+    if (!callerIsLinkedMusician && !callerHasVenueReviewPerm) {
+      const e = new Error("FORBIDDEN: caller not authorised to log dispute");
       e.code = "permission-denied";
       throw e;
     }

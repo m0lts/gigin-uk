@@ -32,7 +32,7 @@ export async function postMultipleGigs(venueId, gigDocuments) {
   export const handleCloseGig = async (gigId) => {
     try {
       const updateGigDocument = httpsCallable(functions, "updateGigDocument");
-      await updateGigDocument({ gigId, updates: { status: "closed" } });
+      await updateGigDocument({ gigId, action: 'gigs.applications.manage', updates: { status: "closed" } });
     } catch (error) {
       console.error("[CloudFn Error] handleCloseGig:", error);
     }
@@ -44,7 +44,7 @@ export async function postMultipleGigs(venueId, gigDocuments) {
   export const handleOpenGig = async (gigId) => {
     try {
       const updateGigDocument = httpsCallable(functions, "updateGigDocument");
-      await updateGigDocument({ gigId, updates: { status: "open" } });
+      await updateGigDocument({ gigId, action: 'gigs.applications.manage', updates: { status: "open" } });
     } catch (error) {
       console.error("[CloudFn Error] handleOpenGig:", error);
     }
@@ -93,10 +93,10 @@ export async function postMultipleGigs(venueId, gigDocuments) {
   /**
    * Updates a gig document via Cloud Function.
    */
-  export async function updateGigDocument(gigId, updates) {
+  export async function updateGigDocument(gigId, action, updates) {
     try {
       const fn = httpsCallable(functions, "updateGigDocument");
-      const { data } = await fn({ gigId, updates });
+      const { data } = await fn({ gigId, action, updates });
       return !!data?.success;
     } catch (error) {
       console.error("[CloudFn Error] updateGigDocument:", error);
@@ -148,10 +148,10 @@ export async function postMultipleGigs(venueId, gigDocuments) {
   /**
    * Accepts a gig offer via Cloud Function.
    */
-  export async function acceptGigOffer(gigData, musicianProfileId, nonPayableGig = false) {
+  export async function acceptGigOffer(gigData, musicianProfileId, nonPayableGig = false, role) {
     try {
       const fn = httpsCallable(functions, "acceptGigOffer");
-      const { data } = await fn({ gigData, musicianProfileId, nonPayableGig });
+      const { data } = await fn({ gigData, musicianProfileId, nonPayableGig, role });
       return {
         updatedApplicants: data?.updatedApplicants || [],
         agreedFee: data?.agreedFee ?? null,
@@ -164,10 +164,10 @@ export async function postMultipleGigs(venueId, gigDocuments) {
   /**
    * Accepts a gig offer (Open Mic) via Cloud Function.
    */
-  export async function acceptGigOfferOM(gigData, musicianProfileId) {
+  export async function acceptGigOfferOM(gigData, musicianProfileId, role) {
     try {
       const fn = httpsCallable(functions, "acceptGigOfferOM");
-      const { data } = await fn({ gigData, musicianProfileId });
+      const { data } = await fn({ gigData, musicianProfileId, role });
       return { updatedApplicants: data?.updatedApplicants || [] };
     } catch (error) {
       console.error("[CloudFn Error] acceptGigOfferOM:", error);

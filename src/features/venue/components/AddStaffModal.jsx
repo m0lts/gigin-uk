@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { createVenueInvite } from "../../../services/client-side/venues";
 import { sendVenueInviteEmail } from "../../../services/client-side/emails";
 import { toast } from "sonner";
 import { LoadingSpinner } from "../../shared/ui/loading/Loading";
 import { AddMember } from "../../shared/ui/extras/Icons";
-import { PERMS_DISPLAY, PERM_DEFAULTS, PERM_KEYS } from "../../../services/utils/permissions";
+import { PERMS_DISPLAY, PERM_DEFAULTS, PERM_KEYS, hasVenuePerm } from "../../../services/utils/permissions";
+import { useVenueDashboard } from "../../../context/VenueDashboardContext";
+import { createVenueInviteCF } from "../../../services/function-calls/venues";
 
 export const AddStaffModal = ({user, venue, onClose}) => {
-
+    const {venueProfiles} = useVenueDashboard();
     const [emailToInvite, setEmailToInvite] = useState('');
     const [loading, setLoading] = useState(false);
     const [permissions, setPermissions] = useState(PERM_DEFAULTS);
@@ -16,13 +17,31 @@ export const AddStaffModal = ({user, venue, onClose}) => {
     const togglePerm = (key) => setPermissions((p) => ({ ...p, [key]: !p[key] }));
 
     const generateInviteLink = async () => {
-        const inviteId = await createVenueInvite(venue.id, user.uid, emailToInvite, permissions, user.name);
-        return `${window.location.origin}/join-venue?invite=${inviteId}`;
-    };
+        setLoading(true);
+        try {
+          const inviteId = await createVenueInviteCF({
+            venueId: venue.id,
+            email: emailToInvite,
+            permissionsInput: permissions,
+            invitedByName: user?.name || null,
+          });
+          if (!inviteId) {
+            toast.error("Failed to create invite");
+            return null;
+          }
+          return `${window.location.origin}/join-venue?invite=${inviteId}`;
+        } finally {
+          setLoading(false);
+        }
+      };
 
     const handleSendEmailInvite = async () => {
         try {
             if (!user) return;
+            if (!hasVenuePerm(venueProfiles, venue.venueId, 'members.invite')) {
+                toast.error('You do not have permission to update member permissions.');
+                return;
+              }        
             if (emailToInvite === user.email) {
                 toast.error('You cannot invite yourself.');
                 return;
@@ -91,7 +110,7 @@ export const AddStaffModal = ({user, venue, onClose}) => {
                                 </div>
                             )}
                             
-                            <button className="btn primary email" onClick={handleSendEmailInvite}>
+                            <button className="btn primary email" onClick={handleSendEmailInvite} disabled={!hasVenuePerm(venueProfiles, venue.venueId, 'members.invite')}>
                                 Send Invite
                             </button>
                         </>

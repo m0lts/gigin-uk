@@ -45,7 +45,7 @@ import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
 import { notifyOtherApplicantsGigConfirmed } from '../../services/function-calls/conversations';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
-import { acceptGigOffer, applyToGig, negotiateGigFee } from '../../services/function-calls/gigs';
+import { acceptGigOffer, acceptGigOfferOM, applyToGig, negotiateGigFee } from '../../services/function-calls/gigs';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '../../services/function-calls/messages';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
@@ -563,13 +563,24 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             if (!gigData) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianId, nonPayableGig);
-            setGigData((prevgigData) => ({
-                ...prevgigData,
-                applicants: updatedApplicants,
-                agreedFee: `${agreedFee}`,
-                paid: false,
-            }));
+            let globalAgreedFee;
+            if (gigData.kind === 'Open Mic') {
+                const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianId, 'musician');
+                setGigData((prevGigData) => ({
+                    ...prevGigData,
+                    applicants: updatedApplicants,
+                    paid: true,
+                }));
+            } else {
+                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianId, nonPayableGig, 'musician');
+                setGigData((prevGigData) => ({
+                    ...prevGigData,
+                    applicants: updatedApplicants,
+                    agreedFee: `${agreedFee}`,
+                    paid: false,
+                }));
+                globalAgreedFee = agreedFee;
+            }
             const musicianProfile = selectedProfile;
             const venueProfile = await getVenueProfileById(gigData.venueId);
             const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'application');
@@ -582,7 +593,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 musicianName: musicianName,
                 venueProfile: venueProfile,
                 gigData: gigData,
-                agreedFee: agreedFee,
+                agreedFee: globalAgreedFee,
                 nonPayableGig: nonPayableGig,
             })
             if (nonPayableGig) {

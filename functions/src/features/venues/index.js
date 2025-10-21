@@ -6,3 +6,4 @@ export * from "./callables/transferVenueOwnership.js";
 export * from "./callables/fetchVenueMembersWithUsers.js";
 export * from "./callables/saveGigTemplate.js";
 export * from "./callables/deleteVenueData.js";
+export * from "./callables/createVenueInvite.js";

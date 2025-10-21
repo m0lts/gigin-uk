@@ -21,7 +21,6 @@ import {
 } from 'firebase/firestore';
 import { distanceBetween } from 'geofire-common';
 import { PERM_DEFAULTS, sanitizePermissions } from '../utils/permissions';
-import { v4 as uuid } from "uuid";
 
 /*** CREATE OPERATIONS ***/
 
@@ -108,39 +107,6 @@ export const createVenueProfile = async (venueId, data, userId) => {
     throw error;
   }
 };
-
-/**
- * Create a venue invite with optional initial permissions.
- * @returns {Promise<string|null>} inviteId or null on error
- */
-export async function createVenueInvite(
-  venueId,
-  invitedByUid,
-  email,
-  permissionsInput = PERM_DEFAULTS,
-  invitedByName
-) {
-  try {
-    const inviteId = uuid();
-    const permissions = sanitizePermissions(permissionsInput);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-    await setDoc(doc(firestore, "venueInvites", inviteId), {
-      venueId,
-      invitedBy: invitedByUid,
-      invitedByName,
-      email: email?.trim().toLowerCase() || null,
-      permissions,
-      createdAt: Timestamp.now(),
-      expiresAt,
-      status: "pending",
-    });
-
-    return inviteId;
-  } catch (error) {
-    console.error("[Firestore Error] createVenueInvite:", error);
-  }
-}
 
 /*** READ OPERATIONS ***/
 
