@@ -70,10 +70,10 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       return;
     }
 
-    if (!isValidE164(credentials.phoneNumber)) {
-      setError({ status: true, input: 'phoneNumber', message: '*Please enter a valid phone number' });
-      return;
-    }
+    // if (!isValidE164(credentials.phoneNumber)) {
+    //   setError({ status: true, input: 'phoneNumber', message: '*Please enter a valid phone number' });
+    //   return;
+    // }
 
     if (!termsAccepted) {
       setError({ status: true, input: 'terms', message: '*You must accept the terms and conditions' });
@@ -84,11 +84,11 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     setLoading(true);
 
     try {
-      const exists = await getPhoneExistsBoolean(credentials.phoneNumber);
-      if (exists) {
-        setError({ status: true, input: 'phoneNumber', message: '*Phone number already in use.' });
-        return;
-      }
+      // const exists = await getPhoneExistsBoolean(credentials.phoneNumber);
+      // if (exists) {
+      //   setError({ status: true, input: 'phoneNumber', message: '*Phone number already in use.' });
+      //   return;
+      // }
       const signupResponse = await signup(credentials, marketingConsent);
       if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
         setAuthModal(false);
@@ -99,6 +99,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
         setAuthClosable(true);
       }
     } catch (err) {
+      console.log(err);
       switch (err.error.code) {
         case 'auth/email-already-in-use':
           setError({ status: true, input: 'email', message: '*Email already in use.' });
@@ -125,7 +126,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           setShowPasswordInfo(true);
           break;
         default:
-          setError({ status: true, input: '', message: err.message });
+          setError({ status: true, input: '', message: '*An error occurred. Please try again.' });
           break;
       }
     } finally {
@@ -216,7 +217,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
               disabled={loading}
             />
           </div>
-          <div className="input-group">
+          {/* <div className="input-group">
             <PhoneField
               initialCountry="GB"
               value={credentials.phoneNumber}
@@ -231,7 +232,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
             {(error.input.includes('phoneNumber') && error.message !== '*Phone number already in use.') && (
               <p className="error-msg">* Please enter a valid phone number</p>
             )}
-          </div>
+          </div> */}
           <div className='input-group'>
             <label htmlFor='password'>
               Password

@@ -36,7 +36,7 @@ export const  VerifyEmailModal = ({ onClose }) => {
     setSending(true);
     try {
       const fn = httpsCallable(functions, "sendVerificationEmail");
-      await fn({});
+      await fn({actionUrl: `${window.location.origin}`});
       toast.success("Verification email sent.");
       setCooldown(30);
     } catch (e) {
@@ -68,7 +68,6 @@ export const  VerifyEmailModal = ({ onClose }) => {
   const handleLogout = async () => {
     try {
         await logout();
-        navigate();
     } catch (err) {
         console.error(err);
     } finally {
@@ -90,7 +89,7 @@ export const  VerifyEmailModal = ({ onClose }) => {
         </div>
 
         <div className="modal-body" style={{ marginTop: 16 }}>
-          <div className={`${checking ? "loading" : ""} two-buttons`} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div className={`${checking || sending || cooldown ? "loading" : ""} two-buttons`} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {checking ? (
                 <LoadingSpinner />
             ) : (
@@ -104,6 +103,11 @@ export const  VerifyEmailModal = ({ onClose }) => {
                 </button>
             )}
 
+          {sending ? (
+            <LoadingSpinner />
+          ) : cooldown > 0 ? (
+            <h4>Resend email ({cooldown}s)</h4>
+          ) : (
             <button
               type="button"
               className="btn secondary"
@@ -111,14 +115,9 @@ export const  VerifyEmailModal = ({ onClose }) => {
               disabled={sending || cooldown > 0}
               title={cooldown > 0 ? `Try again in ${cooldown}s` : undefined}
             >
-              {sending ? (
-                <LoadingSpinner />
-              ) : cooldown > 0 ? (
-                `Resend email (${cooldown}s)`
-              ) : (
-                "Resend verification email"
-              )}
+            Resend verification email
             </button>
+          )}
           </div>
           <button className="btn tertiary" onClick={handleLogout} style={{ margin: '1rem auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             Log Out

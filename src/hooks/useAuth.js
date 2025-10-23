@@ -36,7 +36,7 @@ export const useAuth = () => {
       const userDocRef = doc(firestore, 'users', firebaseUser.uid);
       userUnsubRef.current = onSnapshot(userDocRef, async (userSnap) => {
         if (!userSnap.exists()) {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email }); // bare minimum
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
           setLoading(false);
           return;
         }
@@ -144,8 +144,13 @@ export const useAuth = () => {
 
   const signup = async (credentials, marketingConsent) => {
     try {
-      await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+      const user = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
       await sendVerificationEmail({actionUrl: `${window.location.origin}`});
+      const userRef = doc(firestore, 'users', user.user.uid);
+      await setDoc(userRef, {
+        name: credentials.name || '',
+        marketingConsent: !!marketingConsent,
+      }, { merge: true });
       const redirect = sessionStorage.getItem('redirect');
       sessionStorage.setItem('newUser', true)
       if (redirect === 'create-musician-profile') {
