@@ -15,7 +15,7 @@ export const WalletButton = ({ amountToCharge, gigData, onSucceeded, musicianPro
       if (!correctId) {
 
       }
-      const { data } = await confirmPaymentIntent({ amountToCharge, gigData, musicianProfileId, customerId });
+      const data = await confirmPaymentIntent({ amountToCharge, gigData, musicianProfileId, customerId });
       console.log("[Wallet Button] confirmPaymentIntent response:", data);
       const clientSecret = data?.clientSecret;
       if (!clientSecret) throw new Error('No client secret returned');
