@@ -61,7 +61,6 @@ export const confirmPaymentIntent = async ({ amountToCharge, gigData, musicianPr
       musicianProfileId,
       customerId,
     });
-    console.log("[CloudFn Response] confirmPaymentIntent:", data);
     return data;
   } catch (error) {
     console.error("[CloudFn Error] confirmPaymentIntent:", error);
