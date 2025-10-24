@@ -337,7 +337,7 @@ export const VenuePage = ({ user, venues, setVenues }) => {
                                     </button>
                                 </li>
                             )}
-                            {venueData?.members?.length > 1 && hasVenuePerm(venues, venueId, 'members.update') && (
+                            {hasVenuePerm(venues, venueId, 'members.update') && (
                                 <li className="settings-item">
                                     <button className="btn secondary" onClick={() => setShowPermissionsModal(true)}>
                                         Manage Staff Members
