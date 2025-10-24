@@ -182,3 +182,23 @@ export const validateGigTimings = (formData, extraSlots) => {
 
   return { valid: true };
 };
+
+
+const BLOCKED_EMAIL_DOMAINS = ['cam.ac.uk'];
+
+
+/**
+ * Checks if the given email address is blocked due to its domain.
+ *
+ * @param {string} email - The email address to check.
+ * @returns {boolean} True if the email address is blocked, false otherwise.
+ * @example
+ * isBlockedEmail('user@cam.ac.uk') // true
+ * isBlockedEmail('user@example.com') // false
+ */
+export const isBlockedEmail = (email) => {
+  const m = String(email || '').toLowerCase().trim().match(/@([^@\s>]+)$/);
+  if (!m) return false;
+  const domain = m[1]; // e.g. "cam.ac.uk"
+  return BLOCKED_EMAIL_DOMAINS.some(d => domain === d || domain.endsWith(`.${d}`));
+};

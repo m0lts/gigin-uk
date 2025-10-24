@@ -115,7 +115,10 @@ export const useAuth = () => {
 
   const login = async (credentials) => {
     try {
-      await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+      const user = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+      if (!user.user.emailVerified) {
+        return { needsEmailVerify: true };
+      }
       const redirect = sessionStorage.getItem('redirect');
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
@@ -152,17 +155,8 @@ export const useAuth = () => {
         marketingConsent: !!marketingConsent,
       }, { merge: true });
       const redirect = sessionStorage.getItem('redirect');
-      sessionStorage.setItem('newUser', true)
-      if (redirect === 'create-musician-profile') {
-        sessionStorage.removeItem('redirect');
-        return { redirect };
-      } else if (redirect) {
-        navigate(redirect);
-        sessionStorage.removeItem('redirect');
-      } else {
-        navigate('/');
-      }
-      return { needsEmailVerify: true };
+      sessionStorage.setItem('newUser', true);
+      return { needsEmailVerify: true, redirect };
     } catch (error) {
       const msg = error?.customData?.message || error?.message || "";
       if (msg.includes("auth/email-not-verified")) {

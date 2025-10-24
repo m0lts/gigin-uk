@@ -317,7 +317,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
             });
             setAllowCounterOffer(false);
-            setNewCounterOffer('£');
+            setNewCounterOffer('');
         } catch (error) {
             console.error('Error sending counter-offer:', error);
         } finally {
@@ -449,6 +449,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         if (m?.status && sysStatuses.has(m.status)) return true;
         return false;
     };
+
+    console.log(gigData)
 
     return (
         <>

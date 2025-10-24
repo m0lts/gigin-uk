@@ -76,19 +76,6 @@ export default function App() {
     }
   }, [location.pathname]);
 
-  const getCreatedAtMs = (authUser, userDoc) => {
-    const meta = authUser?.metadata?.creationTime;
-    const fromAuth = meta ? Date.parse(meta) : NaN;
-    if (!Number.isNaN(fromAuth)) return fromAuth;
-    const raw = userDoc?.createdAt;
-    if (!raw) return NaN;
-    if (typeof raw === 'number') return raw;
-    if (raw?.toDate) {
-      try { return raw.toDate().getTime(); } catch { /* ignore */ }
-    }
-    return NaN;
-  }
-
   let __loggingNow = false;
 
   window.addEventListener('error', (event) => {
@@ -121,31 +108,15 @@ export default function App() {
 
   
   useEffect(() => {
-    // ✅ Skip all checks in dev mode
-    // if (import.meta.env.MODE === 'development' || location.pathname.includes('gigin-uk-git-dev-gigin-dev-team.vercel.app')) {
-    //   setVerifyEmailModal(false);
-    //   setVerifyInfoModal(false);
-    //   return;
-    // }
-  
     const u = auth.currentUser;
-    if (!u) {
-      setVerifyEmailModal(false);
+    if (!u) return;
+    if (!u.emailVerified) {
+      setAuthType('verify-email');
+      setAuthModal(true);
+      setAuthClosable(false);
       return;
     }
-    if (u.emailVerified) {
-      setVerifyEmailModal(false);
-      return;
-    }
-    const createdAtMs = getCreatedAtMs(u, user);
-    if (Number.isNaN(createdAtMs)) {
-      setVerifyEmailModal(false);
-      return;
-    }
-    const hours = (Date.now() - createdAtMs) / 36e5;
-    setVerifyEmailModal(hours >= 48);
-    if (newUser) setVerifyInfoModal(true);
-  }, [user, newUser]);
+  }, [user]);
 
   if (loading) {
     return <LoadingScreen />;

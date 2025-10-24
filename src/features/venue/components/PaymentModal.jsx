@@ -12,6 +12,7 @@ import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { ensureVenueStripeCustomerId } from '../../../services/client-side/venues';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export const PaymentModal = ({
@@ -95,6 +96,40 @@ export const PaymentModal = ({
       run();
       return () => { cancelled = true; };
     }, [gigData?.venueId, venues]);
+
+    const updatableVenueIds = useMemo(() => {
+      const list = Array.isArray(venues) ? venues : [];
+      return new Set(
+        list
+          .filter(v => hasVenuePerm(venues, v?.id || v?.venueId, 'finances.update'))
+          .map(v => v.venueId || v.id)
+      );
+    }, [venues]);
+    
+    const updateVenues = useMemo(() => {
+      const list = Array.isArray(venues) ? venues : [];
+      const filtered = list.filter(v => updatableVenueIds.has(v?.venueId || v?.id));
+    
+      return filtered.map(v => {
+        const vid = v?.venueId || v?.id;
+        // mirror Finances: prefer existing stripeCustomerId, else ensured fallback (we only ensure current gig's venue here)
+        const ensuredForThisVenue = vid === gigData?.venueId ? ensuredVenueCustomerId : null;
+        return {
+          ...v,
+          stripeCustomerId: v?.stripeCustomerId || ensuredForThisVenue || null,
+        };
+      });
+    }, [venues, updatableVenueIds, ensuredVenueCustomerId, gigData?.venueId]);
+    
+    const destinationChoices = useMemo(() => ([
+      ...(customerDetails?.id ? [{ label: 'My Account', id: customerDetails.id }] : []),
+      ...updateVenues
+        .filter(v => v.stripeCustomerId)
+        .map(v => ({
+          label: `Venue: ${v.name || v.displayName || v.id}`,
+          id: v.stripeCustomerId,
+        })),
+    ]), [customerDetails?.id, updateVenues]);
   
     const cardBrandIcons = {
       visa: VisaIcon,
@@ -271,17 +306,7 @@ export const PaymentModal = ({
                 cardDetails={savedCards}
                 setAddingNewCard={setAddingNewCard}
                 handleCardSelection={handleCardSelection}
-                destinationChoices={[
-                  ...(customerDetails?.id
-                    ? [{ label: 'My Account', id: customerDetails.id }]
-                    : []),
-                  ...((venues || [])
-                    .filter(v => v.stripeCustomerId)
-                    .map(v => ({
-                      label: `Venue: ${v.name || v.displayName || v.id}`,
-                      id: v.stripeCustomerId,
-                    })))
-                ]}
+                destinationChoices={destinationChoices}
               />
             </>
           )}

@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { NextGigIcon } from '../../features/shared/ui/extras/Icons';
 import { TextLogo } from '../../features/shared/ui/logos/Logos';
+import { toJsDate } from '../utils/dates';
 
 /**
  * Sends an email using the Firestore 'mail' collection.
@@ -368,9 +369,10 @@ export const sendGigAcceptedEmail = async ({
   isNegotiated = false,
   nonPayableGig = false,
 }) => {
-  const formattedDate = new Date(gigData.date).toLocaleDateString('en-GB', {
+  const jSDate = toJsDate(gigData.startDateTime);
+  const formattedDate = jSDate.toLocaleDateString('en-UK', {
     day: 'numeric',
-    month: 'short',
+    month: 'long',
     year: 'numeric',
   });
 
@@ -526,7 +528,7 @@ export const sendGigAcceptedEmail = async ({
         <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${formattedDate}</td>
       </tr>
       <tr>
-        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Fee:</strong>${!nonPayableGig && (agreedFee)}</td>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Fee:</strong>${!nonPayableGig ? gigData.agreedFee : 'No fee'}</td>
       </tr>
     </table>
     <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
@@ -580,12 +582,12 @@ export const sendGigDeclinedEmail = async ({
   gigData,
   declineType = 'application',
 }) => {
-  const formattedDate = new Date(gigData.date).toLocaleDateString('en-GB', {
+  const jSDate = toJsDate(gigData.startDateTime);
+  const formattedDate = jSDate.toLocaleDateString('en-UK', {
     day: 'numeric',
-    month: 'short',
+    month: 'long',
     year: 'numeric',
   });
-
   const mailRef = collection(firestore, 'mail');
   const isBand = musicianProfile.bandProfile === true;
   const musicianName = musicianProfile.name;
@@ -830,12 +832,12 @@ export const sendCounterOfferEmail = async ({
   gigData,
   newFee,
 }) => {
-  const formattedDate = new Date(gigData.date).toLocaleDateString('en-GB', {
+  const jSDate = toJsDate(gigData.startDateTime);
+  const formattedDate = jSDate.toLocaleDateString('en-UK', {
     day: 'numeric',
-    month: 'short',
+    month: 'long',
     year: 'numeric',
   });
-
   const mailRef = collection(firestore, 'mail');
   const isBand = musicianProfile.bandProfile === true;
   const name = musicianProfile.name;
@@ -1027,12 +1029,14 @@ export const sendInvitationAcceptedEmailToVenue = async ({
   const origin =
     baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
 
-  const formatDate = (d) =>
-    new Date(d).toLocaleDateString('en-GB', {
+  const formatDate = (d) => {
+    const jsDate = toJsDate(d);
+    new Date(jsDate).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
+  };
 
   const subject = `${musicianName} Has Accepted Your Invitation!`;
   const text = `Congratulations! Your invitation sent to ${musicianName} for the gig at ${gigData.venue.venueName} on ${formatDate(
@@ -1135,7 +1139,7 @@ export const sendInvitationAcceptedEmailToVenue = async ({
         <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Musician:</strong> ${musicianName}</td>
       </tr>
       <tr>
-        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${formatDate(gigData.date)}</td>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${formatDate(gigData.startDateTime)}</td>
       </tr>
       <tr>
         <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Fee:</strong> ${agreedFee}</td>
@@ -1580,12 +1584,14 @@ export const sendTestimonialRequestEmail = async ({
  * });
  */
 export const sendDisputeLoggedEmail = async ({ musicianProfile, gigData, baseUrl }) => {
-  const formatDate = (d) =>
-    new Date(d).toLocaleDateString('en-GB', {
+  const formatDate = (d) => {
+    const jsDate = toJsDate(d);
+    new Date(jsDate).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
+  }
 
   const subject = 'Dispute Logged';
   const text = `The venue ${gigData.venue.venueName} has reported your performance at the gig on ${formatDate(
@@ -1730,12 +1736,14 @@ export const sendVenueDisputeLoggedEmail = async ({
   gigData,
   baseUrl,
 }) => {
-  const formatDate = (d) =>
-    new Date(d).toLocaleDateString('en-GB', {
+  const formatDate = (d) => {
+    const jsDate = toJsDate(d);
+    new Date(jsDate).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
+  }
 
   const subject = 'Your Dispute Has Been Logged';
   const text = `Hi ${venueProfile.accountName},

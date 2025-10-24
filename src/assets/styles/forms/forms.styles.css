@@ -217,6 +217,11 @@ input:-webkit-autofill {
     text-transform: none;
 }
 
+.auth-form .tick-boxes .input-group label span {
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
 .auth-form .tick-boxes .input-group .tc-link {
     font-size: 0.75rem;
     font-weight: 400;

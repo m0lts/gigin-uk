@@ -511,11 +511,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         return <LoadingScreen />;
     }
 
-    
-    
-    // console.log('gigDateTime', gigDateTime);
-    // console.log('now', now);
-
     const hasConfirmed =
     Array.isArray(gigInfo?.applicants) &&
     gigInfo.applicants.some(a => a?.status === 'confirmed');
@@ -579,9 +574,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                 <button className='btn danger' onClick={() => setShowCancelConfirmationModal(true)}>
                                     Cancel Gig
                                 </button>
-                                <button className='primary btn' onClick={() => setShowPromoteModal(true)}>
+                                {/* <button className='primary btn' onClick={() => setShowPromoteModal(true)}>
                                     <PeopleGroupIconSolid /> Promote Gig
-                                </button>
+                                </button> */}
                             </>
                         )}
                     </div>

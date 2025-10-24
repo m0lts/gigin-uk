@@ -198,7 +198,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
+            const updatedApplicants = await declineGigApplication(gigData, musicianProfileId, 'musician');
             setGigData(prev => ({
                 ...prev,
                 applicants: updatedApplicants,
@@ -234,7 +234,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
+            const updatedApplicants = await declineGigApplication(gigData, musicianProfileId, 'musician');
             setGigData((prevGigData) => ({
                 ...prevGigData,
                 applicants: updatedApplicants,
@@ -294,6 +294,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
             });
             setAllowCounterOffer(false);
+            setNewCounterOffer('');
         } catch (error) {
             console.error('Error sending counter-offer:', error);
         } finally {
@@ -377,6 +378,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         // Treat pure announcements and review prompts as system
         return msg?.type === 'announcement' || msg?.type === 'review';
     };
+
+    console.log(gigData)
     
     
     return (

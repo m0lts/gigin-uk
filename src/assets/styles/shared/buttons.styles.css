@@ -91,6 +91,10 @@ button {
     box-shadow: 0 0 3px var(--gn-grey-300);
 }
 
+.btn.secondary.logout:hover {
+    background-color: transparent;
+}
+
 
 /* TERTIARY BUTTONS */
 

@@ -11,6 +11,7 @@ import { LoadingSpinner } from '../ui/loading/Loading';
 import { PhoneField, isValidE164 } from './PhoneField';
 // Styles
 import '@styles/forms/forms.styles.css';
+import { isBlockedEmail } from '../../../services/utils/validation';
 
 /**
  * SignupForm - a React component for signing up to Gigin.
@@ -70,6 +71,15 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       return;
     }
 
+    if (isBlockedEmail(credentials.email)) {
+      setError({
+        status: true,
+        input: 'email',
+        message: "*We can't deliver to the email address you entered. Please use a personal email (e.g. Gmail/Outlook)."
+      });
+      return;
+    }
+
     // if (!isValidE164(credentials.phoneNumber)) {
     //   setError({ status: true, input: 'phoneNumber', message: '*Please enter a valid phone number' });
     //   return;
@@ -90,16 +100,11 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       //   return;
       // }
       const signupResponse = await signup(credentials, marketingConsent);
-      if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
-        setAuthModal(false);
-        setAuthClosable(true);
-        setNoProfileModal(true);
-      } else {        
-        setAuthModal(false);
-        setAuthClosable(true);
+      if (signupResponse && signupResponse.needsEmailVerify) {
+        setAuthClosable(false);
+        setAuthType('verify-email');
       }
     } catch (err) {
-      console.log(err);
       switch (err.error.code) {
         case 'auth/email-already-in-use':
           setError({ status: true, input: 'email', message: '*Email already in use.' });
@@ -269,27 +274,36 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           )}
           <div className='tick-boxes'>
             <div className='input-group'>
-              <input
-                type='checkbox'
-                id='terms'
-                name='terms'
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                required
-                disabled={loading}
-              />
-              <label htmlFor='terms'>I accept Gigin's <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions</Link>.</label>
+              <label>
+                <input
+                  type='checkbox'
+                  name='terms'
+                  style={{ marginRight: 5 }}
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  required
+                  disabled={loading}
+                />
+                <span>
+                  I accept Gigin's{' '}
+                  <Link className="tc-link" to="/terms-and-conditions" onClick={(e) => e.stopPropagation()}>
+                    terms and conditions
+                  </Link>.
+                </span>
+              </label>
             </div>
             <div className='input-group'>
-              <input
-                type='checkbox'
-                id='marketingConsent'
-                name='marketingConsent'
-                checked={marketingConsent}
-                onChange={(e) => setMarketingConsent(e.target.checked)}
-                disabled={loading}
-              />
-              <label htmlFor='marketingConsent'>I consent to receive marketing communications from Gigin.</label>
+              <label>
+                <input
+                  type='checkbox'
+                  name='marketingConsent'
+                  style={{ marginRight: 5 }}
+                  checked={marketingConsent}
+                  onChange={(e) => setMarketingConsent(e.target.checked)}
+                  disabled={loading}
+                />
+                <span>I consent to receive marketing communications from Gigin.</span>
+              </label>
             </div>
           </div>
           {loading ? (

@@ -107,6 +107,7 @@
 
 
 /* AUTH MODAL */
+
 .modal-content.auth {
     border: none;
     width:450px;
@@ -155,6 +156,17 @@
 
 .modal-padding.auth .change-auth-type .btn:hover {
     color: var(--gn-grey-600);
+}
+
+.modal-content.auth .modal-body.verification {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 2rem;
+}
+
+.modal-content.auth .modal-body.verification .btn.text {
+    margin-top: 1rem;
 }
 
 

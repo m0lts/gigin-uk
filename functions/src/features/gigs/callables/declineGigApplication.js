@@ -18,7 +18,7 @@ import { sanitizePermissions } from "../../../lib/utils/permissions.js";
 export const declineGigApplication = callable(
   { authRequired: true, enforceAppCheck: true },
   async (req) => {
-    const { gigData, musicianProfileId } = req.data || {};
+    const { gigData, musicianProfileId, role = 'venue' } = req.data || {};
 
     const caller = req.auth.uid;
 
@@ -36,33 +36,35 @@ export const declineGigApplication = callable(
       throw e;
     }
 
-    const venueId = gigData?.venueId;
-    const venueRef = db.doc(`venueProfiles/${venueId}`);
-    const venueSnap = await venueRef.get();
-    if (!venueSnap.exists) {
-      const e = new Error('NOT_FOUND: venue');
-      // @ts-ignore
-      e.code = 'not-found';
-      throw e;
-    }
-    const venue = venueSnap.data() || {};
-    const isOwner = venue?.createdBy === caller || venue?.userId === caller;
-
-    let canInvite = isOwner;
-    if (!canInvite) {
-      const memberSnap = await venueRef.collection('members').doc(caller).get();
-      const memberData = memberSnap.exists ? memberSnap.data() : null;
-      const isActiveMember = !!memberData && memberData.status === 'active';
-      const perms = sanitizePermissions(memberData?.permissions);
-      const hasInvitePerm = !!perms['gigs.applications.manage'];
-      canInvite = isActiveMember && hasInvitePerm;
-    }
-    
-    if (!canInvite) {
-      const e = new Error('PERMISSION_DENIED: requires venue owner or active member with gigs.applications.manage');
-      // @ts-ignore
-      e.code = 'permission-denied';
-      throw e;
+    if (role === 'venue') {
+      const venueId = gigData?.venueId;
+      const venueRef = db.doc(`venueProfiles/${venueId}`);
+      const venueSnap = await venueRef.get();
+      if (!venueSnap.exists) {
+        const e = new Error('NOT_FOUND: venue');
+        // @ts-ignore
+        e.code = 'not-found';
+        throw e;
+      }
+      const venue = venueSnap.data() || {};
+      const isOwner = venue?.createdBy === caller || venue?.userId === caller;
+  
+      let canInvite = isOwner;
+      if (!canInvite) {
+        const memberSnap = await venueRef.collection('members').doc(caller).get();
+        const memberData = memberSnap.exists ? memberSnap.data() : null;
+        const isActiveMember = !!memberData && memberData.status === 'active';
+        const perms = sanitizePermissions(memberData?.permissions);
+        const hasInvitePerm = !!perms['gigs.applications.manage'];
+        canInvite = isActiveMember && hasInvitePerm;
+      }
+      
+      if (!canInvite) {
+        const e = new Error('PERMISSION_DENIED: requires venue owner or active member with gigs.applications.manage');
+        // @ts-ignore
+        e.code = 'permission-denied';
+        throw e;
+      }
     }
 
     const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];

@@ -47,6 +47,10 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
 
     try {
       const loginResponse = await login(credentials);
+      if (loginResponse && loginResponse.needsEmailVerify) {
+        setAuthClosable(false);
+        setAuthType('verify-email');
+      }
       if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
         setAuthModal(false);
         setAuthClosable(true);

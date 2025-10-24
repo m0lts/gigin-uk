@@ -71,8 +71,6 @@ export const NoProfileModal = ({
 
     const wasOpen = useRef(false);
 
-    console.log('musicianProfile', musicianProfile)
-
     useEffect(() => {
       if (isOpen && !wasOpen.current) {
         setStage(Stage.SELECT);
@@ -574,7 +572,7 @@ export const NoProfileModal = ({
                         className="loading-stage"
                     >
                         <div className="loading-wrap">
-                            <LoadingSpinner width={40} height={40} />
+                            <LoadingSpinner />
                             <h3>{loadingMessage}</h3>
                             <p>This usually only takes a moment.</p>
                         </div>

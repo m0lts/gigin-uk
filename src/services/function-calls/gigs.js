@@ -177,10 +177,10 @@ export async function postMultipleGigs(venueId, gigDocuments) {
   /**
    * Declines a gig application via Cloud Function.
    */
-  export async function declineGigApplication(gigData, musicianProfileId) {
+  export async function declineGigApplication(gigData, musicianProfileId, role) {
     try {
       const fn = httpsCallable(functions, "declineGigApplication");
-      const { data } = await fn({ gigData, musicianProfileId });
+      const { data } = await fn({ gigData, musicianProfileId, role });
       return data?.applicants || [];
     } catch (error) {
       console.error("[CloudFn Error] declineGigApplication:", error);

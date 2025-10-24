@@ -66,8 +66,8 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                 </button>
                             </Link>
                         </div>
-                        <button className='btn logout' onClick={() => handleLogout()}>
-                            <LogOutIcon />
+                        <button className='btn secondary logout' onClick={() => handleLogout()}>
+                            Log Out
                         </button>
                     </div>
                 </>

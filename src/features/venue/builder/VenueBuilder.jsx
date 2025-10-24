@@ -158,7 +158,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             try {
                 await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             } catch (error) {
-                console.log(error);
                 toast.error('Please check you have been given permission to edit this venue.');
                 navigate('/venues/dashboard/gigs');
                 return;
@@ -247,7 +246,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             try {
                 await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             } catch (error) {
-                console.log(error);
                 toast.error('Please check you have been given permission to edit this venue.');
                 navigate('/venues/dashboard/gigs')
                 return;

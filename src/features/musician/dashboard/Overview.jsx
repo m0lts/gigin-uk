@@ -76,8 +76,6 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
         ].filter(Boolean);
         
         const now = Date.now();
-
-        // console.log('all profiles', allProfiles);
         
         const nextConfirmed = allProfiles
         .flatMap((p) => {
@@ -134,8 +132,6 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
     const formatName = (name) => {
         return name.split(' ')[0];
     };
-
-    // console.log(nextGig)
 
     return (
         <>

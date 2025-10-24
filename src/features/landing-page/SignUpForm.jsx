@@ -13,6 +13,7 @@ import { GoogleIcon } from '../shared/ui/extras/Icons';
 import { PhoneField, isValidE164 } from '../shared/forms/PhoneField';
 import { getPhoneExistsBoolean } from '@services/function-calls/users';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
+import { isBlockedEmail } from '../../services/utils/validation';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
@@ -47,6 +48,15 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
 
     if (!validateEmail(credentials.email)) {
       setError({ status: true, input: 'email', message: '*Please enter a valid email address' });
+      return;
+    }
+
+    if (isBlockedEmail(credentials.email)) {
+      setError({
+        status: true,
+        input: 'email',
+        message: "*We can't deliver to the email address you entered. Please use a personal email (e.g. Gmail/Outlook)."
+      });
       return;
     }
 
@@ -242,27 +252,36 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           )}
           <div className='tick-boxes'>
             <div className='input-group'>
-              <input
-                type='checkbox'
-                id='terms'
-                name='terms'
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                required
-                disabled={loading}
-              />
-              <label htmlFor='terms'>I accept Gigin's <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions</Link>.</label>
+              <label>
+                <input
+                  type='checkbox'
+                  name='terms'
+                  style={{ marginRight: 5 }}
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  required
+                  disabled={loading}
+                />
+                <span>
+                  I accept Gigin's{' '}
+                  <Link className="tc-link" to="/terms-and-conditions" onClick={(e) => e.stopPropagation()}>
+                    terms and conditions
+                  </Link>.
+                </span>
+              </label>
             </div>
             <div className='input-group'>
-              <input
-                type='checkbox'
-                id='marketingConsent'
-                name='marketingConsent'
-                checked={marketingConsent}
-                onChange={(e) => setMarketingConsent(e.target.checked)}
-                disabled={loading}
-              />
-              <label htmlFor='marketingConsent'>I consent to receive marketing communications from Gigin.</label>
+              <label>
+                <input
+                  type='checkbox'
+                  name='marketingConsent'
+                  style={{ marginRight: 5 }}
+                  checked={marketingConsent}
+                  onChange={(e) => setMarketingConsent(e.target.checked)}
+                  disabled={loading}
+                />
+                <span>I consent to receive marketing communications from Gigin.</span>
+              </label>
             </div>
           </div>
           {loading ? (
