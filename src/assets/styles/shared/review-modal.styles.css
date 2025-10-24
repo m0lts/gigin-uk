@@ -45,6 +45,11 @@
     gap:1rem;
 }
 
+.modal .modal-content.review .leave-review .review-body.permissions {
+    align-items: center;
+    margin-top: 2rem;
+}
+
 .modal .modal-content.review .leave-review .review-body.dispute {
     gap:10px
 }

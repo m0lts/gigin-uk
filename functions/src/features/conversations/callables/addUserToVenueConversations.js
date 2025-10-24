@@ -14,17 +14,13 @@ import { db, FieldValue } from "../../../lib/admin.js";
  */
 export async function addUserToVenueConversations(venueId, uid) {
   // Fetch minimal user + venue display info for the entry
-  const [userSnap, venueSnap] = await Promise.all([
-    db.doc(`users/${uid}`).get(),
-    db.doc(`venueProfiles/${venueId}`).get(),
-  ]);
+  const userSnap = await db.doc(`users/${uid}`).get();
 
   const user = userSnap.exists ? (userSnap.data() || {}) : {};
-  const venue = venueSnap.exists ? (venueSnap.data() || {}) : {};
 
   const entry = {
     accountId: uid,
-    accountName: user.name,
+    accountName: user.name ?? null,
     role: "venue",
     participantId: venueId,
     accountImg: user.picture || null,

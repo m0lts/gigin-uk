@@ -214,10 +214,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         if (formData.name === '') {
             if (Array.isArray(user.venueProfiles) && user.venueProfiles.length < 1) {
                 await clearUserArrayField('venueProfiles');
-                window.location.href = '/';
+                navigate('/')
                 return;
             } else {
-                navigate(-1);
+                navigate('/');
                 return;
             }
         }

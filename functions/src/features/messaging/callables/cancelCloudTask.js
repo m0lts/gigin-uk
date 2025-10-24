@@ -55,7 +55,7 @@ export const cancelCloudTask = callable(
         e.code = "invalid-argument";
         throw e;
       }
-      await assertVenuePerm(caller, venueId, 'reviews.create');
+      await assertVenuePerm(auth.uid, venueId, 'reviews.create');
       try {
         const client = tasksClient();
         await client.deleteTask({name: taskName});

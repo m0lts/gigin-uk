@@ -38,7 +38,7 @@ import { isBlockedEmail } from '../../../services/utils/validation';
  */
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
-  const { signup, signupWithGoogle } = useAuth();
+  const { signup, continueWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordInfo, setShowPasswordInfo] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -165,7 +165,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 onClick={async () => {
                   try {
                     setLoading(true);
-                    const signupResponse = await signupWithGoogle(marketingConsent);
+                    const signupResponse = await continueWithGoogle(marketingConsent);
                     if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);

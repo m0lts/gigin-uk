@@ -183,7 +183,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
           }
         };
         return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
-      };
+    };
+
+    const assertOk = (res, name) => {
+        if (!res) throw new Error(`${name}: empty response`);
+        if (res.error) throw (res.error instanceof Error ? res.error : new Error(`${name}: ${res.error?.message || 'failed'}`));
+        return res;
+    };
+
     const handleAccept = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
         event.stopPropagation();    
         try {
@@ -194,14 +201,32 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig" || gigInfo.budget === '£' || gigInfo.budget === '£0';
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianId, 'venue');
+                const { updatedApplicants } = assertOk(
+                    await acceptGigOfferOM(gigInfo, musicianProfileId, 'venue'),
+                    'acceptGigOfferOM'
+                );
+                if (!Array.isArray(updatedApplicants)) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOfferOM: updatedApplicants is not an array');
+                };
                 setGigInfo((prevGigInfo) => ({
                     ...prevGigInfo,
                     applicants: updatedApplicants,
                     paid: true,
                 }));
             } else {
-                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigInfo, musicianId, nonPayableGig, 'venue');
+                const { updatedApplicants, agreedFee } = assertOk(
+                    await acceptGigOffer(gigInfo, musicianProfileId, nonPayableGig, 'venue'),
+                    'acceptGigOffer'
+                  );
+                if (!Array.isArray(updatedApplicants)) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOffer: no updatedApplicants')
+                };
+                if (agreedFee == null) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOffer: no agreedFee')
+                };
                 setGigInfo((prevGigInfo) => ({
                     ...prevGigInfo,
                     applicants: updatedApplicants,
@@ -247,7 +272,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const updatedApplicants = await declineGigApplication(gigInfo, musicianId);
+            const updatedApplicants = assertOk(
+                await declineGigApplication(gigInfo, musicianProfileId, 'venue'),
+                'declineGigApplication'
+            );
+            if (!Array.isArray(updatedApplicants)) {
+                toast.error('Failed to update gig status. Please try again.');
+                throw new Error('declineGigApplication: no updatedApplicants')
+            };
             setGigInfo((prevGigInfo) => ({
                 ...prevGigInfo,
                 applicants: updatedApplicants,
@@ -587,7 +619,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     <LoadingSpinner />
                 ) : (
                     <>
-                        {showDispute && (
+                        {showDispute && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') && (
                             <div className='dispute-box'>
                                 <h3>Not happy with how the gig went?</h3>
                                 <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
@@ -688,6 +720,13 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             <button className='btn primary' onClick={(e) => {e.stopPropagation(); setShowReviewModal(true); setReviewProfile(profile)}}>
                                                                 Leave a Review
                                                             </button>
+                                                        </div>
+                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && !hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
+                                                        <div className='status-box'>
+                                                            <div className='status past'>
+                                                                <PermissionsIcon />
+                                                                You don't have permission to review musicians
+                                                            </div>
                                                         </div>
                                                     ) : gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
                                                         <div className='status-box'>
@@ -827,7 +866,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status !== 'accepted' && !hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
+                                                    {status !== 'accepted' && status !== 'declined' && status !== 'confirmed' && !hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
                                                         <div className='status-box'>
                                                             <div className='status past'>
                                                                 <PermissionsIcon />
@@ -896,6 +935,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                         gigData={gigInfo}
                         setGigData={setGigInfo}
                         reviewer='venue'
+                        venueProfiles={venues}
                         onClose={() => {
                             setShowReviewModal(false)
                             setReviewProfile(null)

@@ -41,13 +41,6 @@ export const fetchVenueMembersWithUsers = callable(
       e.code = "not-found";
       throw e;
     }
-    const venue = venueSnap.data() || {};
-    const ownerUid = venue.createdBy || venue.userId;
-    if (ownerUid !== caller) {
-      const e = new Error("FORBIDDEN: only the venue owner can view members");
-      e.code = "permission-denied";
-      throw e;
-    }
 
     // Fetch active members
     const membersSnap = await venueRef.collection("members")

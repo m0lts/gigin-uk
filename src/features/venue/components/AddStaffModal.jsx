@@ -49,13 +49,15 @@ export const AddStaffModal = ({user, venue, onClose}) => {
             setLoading(true);
             if (!emailToInvite) return;
             const link = await generateInviteLink();
-            await sendVenueInviteEmail({
-                to: emailToInvite,
-                venue: venue,
-                link: link,
-            });
-            setEmailToInvite('');
-            toast.success('Email Sent!')
+            if (link) {
+                await sendVenueInviteEmail({
+                    to: emailToInvite,
+                    venue: venue,
+                    link: link,
+                });
+                setEmailToInvite('');
+                toast.success('Email Sent!')
+            }
         } catch (err) {
             console.error('Error sending invite email:', err);
             toast.error('Failed to send invite. Please try again.')

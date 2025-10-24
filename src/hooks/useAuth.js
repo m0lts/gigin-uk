@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, fetchSignInMethodsForEmail, deleteUser, sendEmailVerification } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion, query, collection, getDocs, where, limit, serverTimestamp } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion, query, collection, getDocs, where, limit, serverTimestamp, updateDoc, FieldValue } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -119,6 +119,14 @@ export const useAuth = () => {
       if (!user.user.emailVerified) {
         return { needsEmailVerify: true };
       }
+      try {
+        await updateDoc(
+          doc(firestore, "users", user.user.uid),
+          { lastLoginAt: Timestamp.now(), }
+        );
+      } catch (error) {
+        console.log("Error creating user document:", error);
+      }
       const redirect = sessionStorage.getItem('redirect');
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
@@ -207,34 +215,32 @@ const resetPassword = async (rawEmail) => {
       console.error('Logout failed', error);
     }
   };
-
-  const loginWithGoogle = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-      const redirect = sessionStorage.getItem('redirect');
-      if (redirect === 'create-musician-profile') {
-        sessionStorage.removeItem('redirect');
-        return;
-      }
-      if (redirect) {
-        navigate(redirect);
-        sessionStorage.removeItem('redirect');
-      } else {
-        navigate('/');
-      }
-    } catch (error) {
-      const msg = error?.customData?.message || error?.message || "";
-      if (msg.includes("auth/account-not-registered")) {
-        toast.error('No Gigin account is linked to this Google account. Please sign up first.');
-        return;
-      }
-      throw { error };
-    }
-  };
   
-  const signupWithGoogle = async (marketingConsent) => {
+  const continueWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const { isNewUser } = getAdditionalUserInfo(result);
+      if (isNewUser) {
+        try {
+          await setDoc(
+            doc(firestore, "users", user.uid),
+            { name: user.displayName || "" },
+            { merge: true }
+          );
+        } catch (error) {
+          console.error("Error creating user document:", error);
+        }
+      } else {
+        try {
+          await updateDoc(
+            doc(firestore, "users", user.uid),
+            { lastLoginAt: Timestamp.now(), }
+          );
+        } catch (error) {
+          console.error("Error updating user document:", error);
+        }
+      }
       const redirect = sessionStorage.getItem('redirect');
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
@@ -263,7 +269,6 @@ const resetPassword = async (rawEmail) => {
     signup,
     logout,
     resetPassword,
-    loginWithGoogle,
-    signupWithGoogle
+    continueWithGoogle,
   };
 };

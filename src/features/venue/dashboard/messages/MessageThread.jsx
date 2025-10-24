@@ -45,6 +45,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const navigate = useNavigate();
     const messagesEndRef = useRef(null);
 
+
     const scrollToBottom = () => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -131,6 +132,12 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         setNewCounterOffer(`£${value}`)
     }
 
+    const assertOk = (res, name) => {
+        if (!res) throw new Error(`${name}: empty response`);
+        if (res.error) throw (res.error instanceof Error ? res.error : new Error(`${name}: ${res.error?.message || 'failed'}`));
+        return res;
+    };
+
     const handleAcceptGig = async (event, messageId) => {
         event.stopPropagation();
         try {
@@ -141,14 +148,32 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianProfileId, 'venue');
+                const { updatedApplicants } = assertOk(
+                    await acceptGigOfferOM(gigData, musicianProfileId, 'venue'),
+                    'acceptGigOfferOM'
+                );
+                if (!Array.isArray(updatedApplicants)) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOfferOM: updatedApplicants is not an array');
+                };
                 setGigData((prevGigData) => ({
                     ...prevGigData,
                     applicants: updatedApplicants,
                     paid: true,
                 }));
             } else {
-                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig, 'venue');
+                const { updatedApplicants, agreedFee } = assertOk(
+                    await acceptGigOffer(gigData, musicianProfileId, nonPayableGig, 'venue'),
+                    'acceptGigOffer'
+                  );
+                if (!Array.isArray(updatedApplicants)) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOffer: no updatedApplicants')
+                };
+                if (agreedFee == null) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOffer: no agreedFee')
+                };
                 setGigData((prevGigData) => ({
                     ...prevGigData,
                     applicants: updatedApplicants,
@@ -187,7 +212,18 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianProfileId, nonPayableGig, 'venue');
+            const { updatedApplicants, agreedFee } = assertOk(
+                await acceptGigOffer(gigData, musicianProfileId, nonPayableGig, 'venue'),
+                'acceptGigOffer'
+              );
+            if (!Array.isArray(updatedApplicants)) {
+                toast.error('Failed to update gig status. Please try again.');
+                throw new Error('acceptGigOffer: no updatedApplicants')
+            };
+            if (agreedFee == null) {
+                toast.error('Failed to update gig status. Please try again.');
+                throw new Error('acceptGigOffer: no agreedFee')
+            };
             setGigData(prev => ({
               ...prev,
               applicants: updatedApplicants,
@@ -219,7 +255,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
+            const updatedApplicants = assertOk(
+                await declineGigApplication(gigData, musicianProfileId, 'venue'),
+                'declineGigApplication'
+            );
+            if (!Array.isArray(updatedApplicants)) {
+                toast.error('Failed to update gig status. Please try again.');
+                throw new Error('declineGigApplication: no updatedApplicants')
+            };
             setGigData(prev => ({
                 ...prev,
                 applicants: updatedApplicants,
@@ -256,7 +299,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const updatedApplicants = await declineGigApplication(gigData, musicianProfileId);
+            const updatedApplicants = assertOk(
+                await declineGigApplication(gigData, musicianProfileId, 'venue'),
+                'declineGigApplication'
+              );
+            if (!Array.isArray(updatedApplicants)) {
+                toast.error('Failed to update gig status. Please try again.');
+                throw new Error('declineGigApplication: no updatedApplicants');
+            };
             setGigData((prevGigData) => ({
                 ...prevGigData,
                 applicants: updatedApplicants,
@@ -296,7 +346,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 toast.info('Please enter a valid value.');
                 return;
             }
-            const updatedApplicants = await updateGigWithCounterOffer(gigData, musicianProfileId, newFee, 'venue');
+            const updatedApplicants = assertOk(
+                await updateGigWithCounterOffer(gigData, musicianProfileId, newFee, 'venue'),
+                'updateGigWithCounterOffer'
+            );
+            if (!Array.isArray(updatedApplicants)) {
+                toast.error('Failed to update gig status. Please try again.');
+                throw new Error('updateGigWithCounterOffer: no updatedApplicants')
+            };
             setGigData((prev) => ({ ...prev, applicants: updatedApplicants }));
             await sendCounterOfferMessage(
                 conversationId,
@@ -450,7 +507,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         return false;
     };
 
-    console.log(gigData)
+    const confirmedMusicianId = gigData?.applicants?.find(a => a?.status === 'confirmed')?.id;
 
     return (
         <>
@@ -513,7 +570,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') ? (
+                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && !confirmedMusicianId ? (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                     {eventLoading ? (
                                                         <LoadingSpinner width={15} height={15} marginBottom={5} marginTop={5} />
@@ -539,7 +596,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                         </>
                                                     )}
                                                 </div>
-                                            ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && (
+                                            ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && !confirmedMusicianId && (
                                                 <div className="status-box">
                                                     <div className='status past'>
                                                         <PermissionsIcon />
@@ -576,7 +633,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') ? (
+                                            {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && !confirmedMusicianId ? (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                     {eventLoading ? (
                                                         <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
@@ -602,7 +659,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                         </>
                                                     )}
                                                 </div>
-                                            ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && (
+                                            ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && !confirmedMusicianId && (
                                                 <div className="status-box">
                                                     <div className='status past'>
                                                         <PermissionsIcon />
@@ -692,7 +749,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                         Declined
                                                     </div>
                                                 </div>
-                                                {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') ? (
+                                                {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && !confirmedMusicianId ? (
                                                     <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                         {eventLoading ? (
                                                             <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
@@ -718,7 +775,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                             </>
                                                         )}
                                                     </div>
-                                                ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && (
+                                                ) : message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && message.status !== 'withdrawn' && !hasVenuePerm(venues, gigData?.venueId, 'gigs.applications.manage') && !confirmedMusicianId && (
                                                     <div className="status-box">
                                                         <div className="status past">
                                                             <PermissionsIcon />
@@ -787,37 +844,44 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             <h4>{message.text} Once the venue has paid the fee, the gig will be confirmed.</h4>
                                         </>
                                     ) : message.status === 'gig confirmed' ? (
-                                        (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
-                                            <>
-                                                <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                                <h4>{message.text} The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
-                                                {gigData && (
-                                                    <AddToCalendarButton
-                                                        event={{
-                                                            title: `${gigData?.kind === 'Open Mic' ? gigData?.kind : 'Gig'} at ${gigData?.venue?.venueName}`,
-                                                            start: start,
-                                                            end: end,
-                                                            description: `${gigData?.kind === 'Open Mic' ? gigData?.kind : 'Gig'} confirmed.`,
-                                                            location: gigData?.venue?.address,
-                                                        }}
-                                                    />
-                                                )}
-                                            </>
+                                        confirmedMusicianId === musicianProfileId ? (
+                                            (gigData?.kind === 'Open Mic' || gigData?.kind === 'Ticketed Gig') ? (
+                                                <>
+                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                    <h4>{message.text} The gig is confirmed for {formatDate(gigData.startDateTime, 'withTime')}.</h4>
+                                                    {gigData && (
+                                                        <AddToCalendarButton
+                                                            event={{
+                                                                title: `${gigData?.kind === 'Open Mic' ? gigData?.kind : 'Gig'} at ${gigData?.venue?.venueName}`,
+                                                                start: start,
+                                                                end: end,
+                                                                description: `${gigData?.kind === 'Open Mic' ? gigData?.kind : 'Gig'} confirmed.`,
+                                                                location: gigData?.venue?.address,
+                                                            }}
+                                                        />
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <h6>{ts ? ts.toLocaleString() : ''}</h6>
+                                                    <h4>{message.text} The gig is confirmed for {formatDate(gigData?.startDateTime, 'withTime')}.</h4>
+                                                    {gigData && (
+                                                        <AddToCalendarButton
+                                                            event={{
+                                                                title: `Gig at ${gigData?.venue?.venueName}`,
+                                                                start: start,
+                                                                end: end,
+                                                                description: `Gig confirmed with fee: ${gigData?.agreedFee}`,
+                                                                location: gigData?.venue?.address,
+                                                            }}
+                                                        />
+                                                    )}
+                                                </>
+                                            )
                                         ) : (
                                             <>
                                                 <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                                <h4>{message.text} The gig is confirmed for {formatDate(gigData?.startDateTime, 'withTime')}.</h4>
-                                                {gigData && (
-                                                    <AddToCalendarButton
-                                                        event={{
-                                                            title: `Gig at ${gigData?.venue?.venueName}`,
-                                                            start: start,
-                                                            end: end,
-                                                            description: `Gig confirmed with fee: ${gigData?.agreedFee}`,
-                                                            location: gigData?.venue?.address,
-                                                        }}
-                                                    />
-                                                )}
+                                                    <h4>{message.text}</h4>
                                             </>
                                         )
                                     ) : message.status === 'payment failed' && userRole === 'venue' ? (
@@ -976,6 +1040,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                         gigData={gigData}
                         setGigData={setGigData}
                         reviewer={userRole}
+                        venueProfiles={venues}
                         onClose={(reviewSubmitted) => {
                             setShowReviewModal(false);
                             if (reviewSubmitted) {

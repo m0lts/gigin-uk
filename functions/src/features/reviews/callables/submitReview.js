@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { callable } from "../../../lib/callable.js";
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
+import { sanitizePermissions } from "../../../lib/utils/permissions.js";
 
 // helper to compute next stats
 function nextStats(current, rating) {

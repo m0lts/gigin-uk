@@ -21,9 +21,8 @@ import { updateGigDocument } from '../../../services/function-calls/gigs';
 import { useVenueDashboard } from '../../../context/VenueDashboardContext';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 
-export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
+export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData, venueProfiles }) => {
 
-    const { venueProfiles } = useVenueDashboard();
     const [loading, setLoading] = useState(!inheritedProfile);
     const [musicianProfile, setMusicianProfile] = useState(inheritedProfile);
     const [venueProfile, setVenueProfile] = useState(null);
@@ -281,10 +280,10 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                         <h4 style={{ marginBottom: '1rem', textAlign: 'center' }}>{formatDate(gigData.date)}</h4>
                         {reviewer === 'venue' ? (
                             !canCreateReview ? (
-                                <>
+                                <div className='review-body permissions'>
                                     <PermissionsIcon />
                                     <h4 className="perm-hint">You don’t have permission to review gigs for this venue.</h4>
-                                </>
+                                </div>
                             ) : (
                                 <>
                                     <div className='review-head'>

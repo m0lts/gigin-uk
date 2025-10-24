@@ -12,7 +12,7 @@ import { VerifyEmailModal } from './VerifyEmailModal';
 
 export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
-  const { login, signup, resetPassword, checkUser, loginWithGoogle } = useAuth();
+  const { login, signup, resetPassword, checkUser, continueWithGoogle } = useAuth();
   const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
   const [error, setError] = useState({ status: false, input: '', message: '' });
   const [loading, setLoading] = useState(false);
@@ -50,7 +50,7 @@ export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, s
           setAuthModal={setAuthModal}
           loading={loading}
           setLoading={setLoading}
-          loginWithGoogle={loginWithGoogle}
+          continueWithGoogle={continueWithGoogle}
           noProfileModal={noProfileModal}
           setNoProfileModal={setNoProfileModal}
         />

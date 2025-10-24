@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 
 
 
-export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, loginWithGoogle, noProfileModal, setNoProfileModal }) => {
+export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, continueWithGoogle, noProfileModal, setNoProfileModal }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -106,7 +106,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                 onClick={async () => {
                   try {
                     setLoading(true);
-                    const loginResponse = await loginWithGoogle();
+                    const loginResponse = await continueWithGoogle();
                     if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
