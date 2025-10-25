@@ -25,7 +25,7 @@ import { FieldValue } from "firebase-admin/firestore";
  *   { applicants: Array<Object> } // reopened applicants
  */
 export const revertGigAfterCancellation = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { authRequired: true, enforceAppCheck: true, memory: "512MiB" },
   async (req) => {
     const { gigData, musicianId, cancellationReason } = req.data || {};
     const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];

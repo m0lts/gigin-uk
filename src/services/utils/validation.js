@@ -22,7 +22,8 @@ export const validateMusicianUser = ({
   if (!user) {
     setAuthModal?.(true);
     setAuthType?.('login');
-    sessionStorage.setItem('redirect', 'create-musician-profile');
+    setNoProfileModalClosable(true);
+    sessionStorage.setItem('redirect', 'do-not-redirect');
     return { valid: false };
   }
   const p =
@@ -49,6 +50,7 @@ export const validateMusicianUser = ({
  * @returns {{ canApply: boolean, reasons: string[] }}
  */
 export function getMusicianEligibility(profile) {
+  console.log('getMusicianEligibility profile=', profile);
   if (!profile) {
     return { canApply: false, reasons: ['No musician profile found'] };
   }

@@ -17,7 +17,7 @@ import { db } from "../../../lib/admin.js";
  * Output: { success: true }
  */
 export const deleteGigAndInformation = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { authRequired: true, enforceAppCheck: true, memory: "512MiB" },
   async (req) => {
     const { gigId } = req.data || {};
     if (!gigId || typeof gigId !== "string") {

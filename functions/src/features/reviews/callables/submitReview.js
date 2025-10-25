@@ -32,7 +32,7 @@ function nextStats(current, rating) {
  * }
  */
 export const submitReview = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { authRequired: true, enforceAppCheck: true, memory: "512MiB" },
   async (req) => {
     const caller = req.auth.uid;
     const {

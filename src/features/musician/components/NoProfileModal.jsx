@@ -43,7 +43,7 @@ const Stage = {
 export const NoProfileModal = ({
   isOpen,
   onClose,
-  noProfileModalClosable = false
+  noProfileModalClosable = false,
 }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -51,10 +51,15 @@ export const NoProfileModal = ({
     const [direction, setDirection] = useState(1);
     const [selectedUserType, setSelectedUserType] = useState(null);
 
+    console.log('isOpen', isOpen, 'noProfileModalClosable', noProfileModalClosable);
+
     const musicianProfile = useMemo(
         () => user?.musicianProfile,
         [user]
     );
+
+    console.log('musicianProfile', musicianProfile);
+
     const musicianId = useMemo(
         () => musicianProfile?.id || musicianProfile?.musicianId,
         [musicianProfile]

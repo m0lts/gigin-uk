@@ -32,6 +32,7 @@ export const createGigPaymentIntent = callable(
     region: REGION_PRIMARY,
     secrets: [STRIPE_LIVE_KEY, STRIPE_TEST_KEY],
     timeoutSeconds: 3600,
+    memory: "512MiB",
   },
   async (request) => {
     const { auth } = request;

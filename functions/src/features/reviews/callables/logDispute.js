@@ -17,7 +17,7 @@ import { sanitizePermissions } from "../../../lib/utils/permissions.js";
  * Auth: required
  */
 export const logDispute = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { authRequired: true, enforceAppCheck: true, memory: "512MiB",},
   async (req) => {
     const caller = req.auth.uid;
     const {

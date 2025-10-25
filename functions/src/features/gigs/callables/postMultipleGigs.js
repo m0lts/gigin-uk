@@ -4,7 +4,7 @@ import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { REGION_PRIMARY } from "../../../config/regions.js";
 import { requirePerm } from "../../../lib/authz.js"; // 
 import { toAdminGeoPoint, toAdminTimestamp, buildStartDateTime } from "../../../lib/utils/typing.js";
-import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
+import { WARM_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 const ALLOWED_FIELDS = new Set([
   // venue-bound fields you allow clients to propose
@@ -103,7 +103,7 @@ export const postMultipleGigs = callable(
     timeoutSeconds: 60,
     authRequired: true,
     enforceAppCheck: true,
-    ...PROD_RUNTIME_OPTIONS,
+    ...WARM_RUNTIME_OPTIONS,
   },
   async (req) => {
     const uid = req.auth.uid;

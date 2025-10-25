@@ -10,7 +10,7 @@ import { REGION_PRIMARY } from "../../../config/regions.js";
  * Input: { venueId: string, memberUid: string }
  */
 export const removeVenueMember = callable(
-  { region: REGION_PRIMARY, timeoutSeconds: 300, authRequired: true },
+  { region: REGION_PRIMARY, timeoutSeconds: 300, authRequired: true, memory: "512MiB" },
   async (req) => {
     const callerUid = req.auth.uid;
     const { venueId, memberUid } = req.data || {};

@@ -3,7 +3,7 @@ import { callable } from "../../../lib/callable.js";
 import { db } from "../../../lib/admin.js";
 import { FieldValue } from "firebase-admin/firestore";
 import { sanitizePermissions } from "../../../lib/utils/permissions.js";
-import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
+import { WARM_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 /**
  * acceptGigOfferOM (CF)
@@ -21,7 +21,6 @@ export const acceptGigOfferOM = callable(
   { 
     authRequired: true,
     enforceAppCheck: true,
-    ...PROD_RUNTIME_OPTIONS,
   },
   async (req) => {
     const { gigData, musicianProfileId, role } = req.data || {};

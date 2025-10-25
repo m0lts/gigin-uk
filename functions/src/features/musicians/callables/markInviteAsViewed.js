@@ -22,11 +22,6 @@ export const markInviteAsViewed = callable(
   { 
     authRequired: true,
     enforceAppCheck: true,
-    concurrency: 80,
-    minInstances: 1,
-    maxInstances: 20,
-    memory: '256MiB',
-    cpu: 1,
   },
   async (req) => {
     const { gigId, applicantId } = req.data || {};

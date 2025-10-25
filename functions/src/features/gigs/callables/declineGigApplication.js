@@ -2,7 +2,7 @@
 import { callable } from "../../../lib/callable.js";
 import { db } from "../../../lib/admin.js";
 import { sanitizePermissions } from "../../../lib/utils/permissions.js";
-import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
+import { WARM_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 /**
  * declineGigApplication (CF)
@@ -20,7 +20,7 @@ export const declineGigApplication = callable(
   {
     authRequired: true,
     enforceAppCheck: true,
-    ...PROD_RUNTIME_OPTIONS,
+    ...WARM_RUNTIME_OPTIONS,
   },
   async (req) => {
     const { gigData, musicianProfileId, role = 'venue' } = req.data || {};

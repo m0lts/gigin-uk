@@ -24,7 +24,7 @@ function decStats(current, rating) {
  * Input: { reviewId: string }
  */
 export const deleteReview = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { authRequired: true, enforceAppCheck: true, memory: "512MiB" },
   async (req) => {
     const caller = req.auth.uid;
     const { reviewId } = req.data || {};

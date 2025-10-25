@@ -13,7 +13,7 @@ import { toJsDate } from "./dates.js";
  * @param {string} params.venueName - Venue display name.
  * @return {Promise<void>}
  */
-export const gigFeeReleasedEmail = (musicianName, venueName, isAdmin) => {
+export const gigFeeReleasedEmail = (musicianName, venueName, isAdmin = false) => {
     const subject = "Your gig fee is available!";
     const text =
         "We have just cleared your gig fee. You can now withdraw it to your bank account.";

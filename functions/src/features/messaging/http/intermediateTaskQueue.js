@@ -20,6 +20,7 @@ export const intermediateTaskQueue = httpRaw(
   {
     timeoutSeconds: 3600,
     region: REGION_US_CENTRAL,
+    memory: "512MiB",
   },
   async (req, res) => {
     const {

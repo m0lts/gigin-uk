@@ -106,7 +106,7 @@ export const formatDate = (input, format = 'long') => {
  *   { conversationId: string }
  */
 export const getOrCreateConversation = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { authRequired: true, enforceAppCheck: true, memory: "512MiB" },
   async (req) => {
     const { musicianProfile = {}, gigData = {}, venueProfile = {}, type = "application" } = req.data || {};
     const isBand = !!musicianProfile.bandProfile;

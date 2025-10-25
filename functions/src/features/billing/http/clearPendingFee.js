@@ -192,8 +192,7 @@ export const clearPendingFee = httpRaw(
       }
 
       const mailRef = db.collection("mail");
-      const isAdmin = applicantId === musicianId;
-      const mailMessage = gigFeeReleasedEmail(musicianName, venueName, isAdmin);
+      const mailMessage = gigFeeReleasedEmail(musicianName, venueName);
       await mailRef.add({
         to: musicianEmail,
         message: mailMessage,

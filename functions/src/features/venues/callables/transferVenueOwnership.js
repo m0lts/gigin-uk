@@ -34,7 +34,7 @@ async function commitInChunks(mutators, chunkSize = 400) {
 }
 
 export const transferVenueOwnership = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { authRequired: true, enforceAppCheck: true, memory: "1GiB", cpu: 0.5 },
   async (req) => {
     const caller = req.auth.uid;
     const { venueId, recipientEmail, toUserId: rawToUserId } = req.data || {};

@@ -130,9 +130,12 @@ export const useAuth = () => {
       const redirect = sessionStorage.getItem('redirect');
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
+        window.location.reload()
         return;
-      }
-      if (redirect) {
+      } else if (redirect === 'do-not-redirect') {
+        sessionStorage.removeItem('redirect');
+
+      } else if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
       } else {
@@ -146,6 +149,55 @@ export const useAuth = () => {
         }
         throw { error };
       }
+  };
+
+  const continueWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const { isNewUser } = getAdditionalUserInfo(result);
+      if (isNewUser) {
+        try {
+          await setDoc(
+            doc(firestore, "users", user.uid),
+            { name: user.displayName || "" },
+            { merge: true }
+          );
+        } catch (error) {
+          console.error("Error creating user document:", error);
+        }
+      } else {
+        try {
+          await updateDoc(
+            doc(firestore, "users", user.uid),
+            { lastLoginAt: Timestamp.now(), }
+          );
+        } catch (error) {
+          console.error("Error updating user document:", error);
+        }
+      }
+      const redirect = sessionStorage.getItem('redirect');
+      if (redirect === 'create-musician-profile') {
+        sessionStorage.removeItem('redirect');
+        window.location.reload()
+        return;
+      } else if (redirect === 'do-not-redirect') {
+        sessionStorage.removeItem('redirect');
+
+      } else if (redirect) {
+        navigate(redirect);
+        sessionStorage.removeItem('redirect');
+      } else {
+        navigate('/');
+      }
+    } catch (error) {
+      const msg = error?.customData?.message || error?.message || "";
+      if (msg.includes("auth/account-not-registered")) {
+        toast.error('No Gigin account is linked to this Google account. Please sign up first.');
+        return;
+      }
+      throw { error };
+    }
   };
 
   const actionCodeSettings = {
@@ -213,51 +265,6 @@ const resetPassword = async (rawEmail) => {
         }
     } catch (error) {
       console.error('Logout failed', error);
-    }
-  };
-  
-  const continueWithGoogle = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      const { isNewUser } = getAdditionalUserInfo(result);
-      if (isNewUser) {
-        try {
-          await setDoc(
-            doc(firestore, "users", user.uid),
-            { name: user.displayName || "" },
-            { merge: true }
-          );
-        } catch (error) {
-          console.error("Error creating user document:", error);
-        }
-      } else {
-        try {
-          await updateDoc(
-            doc(firestore, "users", user.uid),
-            { lastLoginAt: Timestamp.now(), }
-          );
-        } catch (error) {
-          console.error("Error updating user document:", error);
-        }
-      }
-      const redirect = sessionStorage.getItem('redirect');
-      if (redirect === 'create-musician-profile') {
-        sessionStorage.removeItem('redirect');
-        return { redirect };
-      } else if (redirect) {
-        navigate(redirect);
-        sessionStorage.removeItem('redirect');
-      } else {
-        navigate('/');
-      }
-    } catch (error) {
-      const msg = error?.customData?.message || error?.message || "";
-      if (msg.includes("auth/account-not-registered")) {
-        toast.error('No Gigin account is linked to this Google account. Please sign up first.');
-        return;
-      }
-      throw { error };
     }
   };
 

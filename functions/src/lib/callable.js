@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { onCall } from "firebase-functions/v2/https";
 import { DEFAULT_REGION } from "../config/regions.js";
-import { DEFAULT_CONCURRENCY } from "../config/constants.js";
+import { DEFAULT_RUNTIME_OPTIONS } from "../config/constants.js";
 
 /**
  * callable({ authRequired, secrets, region, ...fnOpts }, handler)
@@ -12,10 +12,9 @@ export function callable(opts, handler) {
     region = DEFAULT_REGION,
     enforceAppCheck = true,
     secrets = [],
-    concurrency = DEFAULT_CONCURRENCY,
     ...rest
   } = opts || {};
-  return onCall({ region, enforceAppCheck, secrets, concurrency, ...rest }, async (req) => {
+  return onCall({ region, enforceAppCheck, secrets, ...DEFAULT_RUNTIME_OPTIONS, ...rest }, async (req) => {
     if (authRequired && !req.auth?.uid) {
       throw new Error("UNAUTHENTICATED");
     }

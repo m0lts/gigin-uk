@@ -1,14 +1,14 @@
 /* eslint-disable */
 import { callable } from "../../../lib/callable.js";
 import { admin, db } from "../../../lib/admin.js";
-import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
+import { WARM_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 export const sendVerificationEmail = callable(
   { 
     authRequired: true,
     timeoutSeconds: 30,
     enforceAppCheck: true,
-    ...PROD_RUNTIME_OPTIONS,
+    ...WARM_RUNTIME_OPTIONS,
   },
   async (req) => {
     const user = await admin.auth().getUser(req.auth.uid);

@@ -33,6 +33,8 @@ export const stripeWebhook = httpRaw(
     secrets: [whLive, whTest, stripeLiveKey, stripeTestKey],
     timeoutSeconds: 3600,
     region: REGION_US_CENTRAL,
+    memory: "1GiB",
+    cpu: 0.5,
   },
   async (req, res) => {
     const sig = req.headers["stripe-signature"];

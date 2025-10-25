@@ -9,7 +9,7 @@ import { assertVenuePerm } from "../../../lib/utils/permissions.js";
  * Auth: required. Verifies caller owns the musician profile.
  */
 export const markPendingFeeInDispute = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { authRequired: true, enforceAppCheck: true, memory: "512MiB" },
   async (req) => {
     const callerUid = req.auth.uid;
     const {

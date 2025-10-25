@@ -2,7 +2,7 @@
 // src/lib/schedule.js
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { DEFAULT_REGION } from "../config/regions.js";
-import { DEFAULT_CONCURRENCY } from "../config/constants.js";
+import { DEFAULT_RUNTIME_OPTIONS } from "../config/constants.js";
 
 /**
  * schedule({ schedule, timeZone, region, ...fnOpts }, handler)
@@ -23,13 +23,12 @@ export function schedule(opts, handler) {
     schedule: cron,
     timeZone = "Etc/UTC",
     region = DEFAULT_REGION,
-    concurrency = DEFAULT_CONCURRENCY,
     ...rest
   } = opts || {};
 
   if (!cron) throw new Error("schedule() requires a cron `schedule` string");
 
-  return onSchedule({ schedule: cron, timeZone, region, concurrency, ...rest }, async (event) => {
+  return onSchedule({ schedule: cron, timeZone, region, ...DEFAULT_RUNTIME_OPTIONS, ...rest }, async (event) => {
     try {
       await handler(event);
     } catch (e) {
