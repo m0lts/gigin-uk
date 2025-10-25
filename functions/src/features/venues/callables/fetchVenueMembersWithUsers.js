@@ -2,6 +2,7 @@
 import { callable } from "../../../lib/callable.js";
 import { db } from "../../../lib/admin.js";
 import { PERM_DEFAULTS, PERM_KEYS } from "../../../lib/utils/permissions.js";
+import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 /** server-side mirror of your normalizePermissions */
 function normalizePermissions(incoming) {
@@ -24,7 +25,11 @@ function normalizePermissions(incoming) {
  * Output: [{ uid, status, role, permissions, user: { id, name, email, photoURL? } }]
  */
 export const fetchVenueMembersWithUsers = callable(
-  { authRequired: true, enforceAppCheck: true },
+  { 
+    authRequired: true,
+    enforceAppCheck: true,
+    ...PROD_RUNTIME_OPTIONS,
+  },
   async (req) => {
     const caller = req.auth.uid;
     const { venueId } = req.data || {};

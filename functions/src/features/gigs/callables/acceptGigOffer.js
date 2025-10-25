@@ -3,6 +3,7 @@ import { callable } from "../../../lib/callable.js";
 import { db } from "../../../lib/admin.js";
 import { FieldValue } from "firebase-admin/firestore";
 import { sanitizePermissions } from "../../../lib/utils/permissions.js";
+import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 /**
  * acceptGigOffer (CF)
@@ -28,11 +29,7 @@ export const acceptGigOffer = callable(
   { 
     authRequired: true,
     enforceAppCheck: true,
-    // concurrency: 80,
-    // minInstances: 1,
-    // maxInstances: 20,
-    // memory: '256MiB',
-    // cpu: 1,
+    ...PROD_RUNTIME_OPTIONS,
   },
   async (req) => {
     const { gigData, musicianProfileId, nonPayableGig = false, role } = req.data || {};

@@ -2,6 +2,7 @@
 import { callable } from "../../../lib/callable.js";
 import { db } from "../../../lib/admin.js";
 import { sanitizePermissions } from "../../../lib/utils/permissions.js";
+import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 /**
  * declineGigApplication (CF)
@@ -16,7 +17,11 @@ import { sanitizePermissions } from "../../../lib/utils/permissions.js";
  *   { applicants: Array<Object> } // updated applicants
  */
 export const declineGigApplication = callable(
-  { authRequired: true, enforceAppCheck: true },
+  {
+    authRequired: true,
+    enforceAppCheck: true,
+    ...PROD_RUNTIME_OPTIONS,
+  },
   async (req) => {
     const { gigData, musicianProfileId, role = 'venue' } = req.data || {};
 

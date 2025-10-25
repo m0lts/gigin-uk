@@ -3,18 +3,14 @@ import { callable } from "../../../lib/callable.js";
 import { db } from "../../../lib/admin.js";
 import { REGION_PRIMARY } from "../../../config/regions.js";
 import { assertVenuePerm } from "../../../lib/utils/permissions.js";
-
+import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 export const updateGigDocument = callable(
   { 
     region: REGION_PRIMARY,
     authRequired: true,
     enforceAppCheck: true,
-    // concurrency: 80,
-    // minInstances: 1,
-    // maxInstances: 20,
-    // memory: '256MiB',
-    // cpu: 1,
+    ...PROD_RUNTIME_OPTIONS,
   },
   async (req) => {
     const caller = req.auth?.uid;

@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { callable } from "../../../lib/callable.js";
 import { db } from "../../../lib/admin.js";
+import { PROD_RUNTIME_OPTIONS } from "../../../config/constants.js";
 
 /**
  * applyToGig (CF)
@@ -18,11 +19,7 @@ export const applyToGig = callable(
   { 
     authRequired: true,
     enforceAppCheck: true,
-    concurrency: 80,
-    minInstances: 1,
-    maxInstances: 20,
-    memory: '256MiB',
-    cpu: 1,
+    ...PROD_RUNTIME_OPTIONS,
   },
   async (req) => {
     const { gigId, musicianProfile } = req.data || {};
