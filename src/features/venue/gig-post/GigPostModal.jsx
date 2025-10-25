@@ -599,7 +599,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
       
               // Build base safely; we’ll set applicants explicitly below
               const {
-                gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
                 repeatData: _discardRepeatData,
                 templateId: _discardTemplateId,

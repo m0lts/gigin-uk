@@ -115,10 +115,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             const gig = await getGigById(gigId);
             if (!gig || cancelled) return;
             let enrichedGig = gig;
+            console.log(enrichedGig)
             if (Array.isArray(enrichedGig?.gigSlots)) {
                 const ids = enrichedGig.gigSlots;
                 const otherGigs = await getGigsByIds(ids);
-
                 if (cancelled) return;
                 setOtherSlots(otherGigs.filter(g => (g.status || '').toLowerCase() !== 'closed'));
             }

@@ -27,3 +27,4 @@ dist-ssr
 .env.production
 .env.development
 functions/service-account.json
+scripts/

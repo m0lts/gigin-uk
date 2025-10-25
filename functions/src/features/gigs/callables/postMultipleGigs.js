@@ -10,6 +10,7 @@ const ALLOWED_FIELDS = new Set([
   "gigId",
   "gigName",
   "gigType",
+  "gigSlots",
   "kind",
   "genre",
   "privacy",
