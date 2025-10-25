@@ -202,7 +202,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
                 const { updatedApplicants } = assertOk(
-                    await acceptGigOfferOM(gigInfo, musicianProfileId, 'venue'),
+                    await acceptGigOfferOM(gigInfo, musicianId, 'venue'),
                     'acceptGigOfferOM'
                 );
                 if (!Array.isArray(updatedApplicants)) {
@@ -216,7 +216,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 }));
             } else {
                 const { updatedApplicants, agreedFee } = assertOk(
-                    await acceptGigOffer(gigInfo, musicianProfileId, nonPayableGig, 'venue'),
+                    await acceptGigOffer(gigInfo, musicianId, nonPayableGig, 'venue'),
                     'acceptGigOffer'
                   );
                 if (!Array.isArray(updatedApplicants)) {
@@ -273,7 +273,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
             setEventLoading(true);
             const updatedApplicants = assertOk(
-                await declineGigApplication(gigInfo, musicianProfileId, 'venue'),
+                await declineGigApplication(gigInfo, musicianId, 'venue'),
                 'declineGigApplication'
             );
             if (!Array.isArray(updatedApplicants)) {
@@ -845,7 +845,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
+                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.budget !== '£' && gigInfo.budget !== '£0') && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
                                                         <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId)}}>
                                                             Negotiate Fee
                                                         </button>

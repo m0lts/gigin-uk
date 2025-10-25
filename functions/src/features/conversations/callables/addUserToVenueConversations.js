@@ -62,6 +62,7 @@ export async function addUserToVenueConversations(venueId, uid) {
 
       batch.update(doc.ref, {
         accountNames: FieldValue.arrayUnion(entry),
+        authorizedUserIds: FieldValue.arrayUnion(uid),
       });
       opsInBatch++;
       updatedCount++;

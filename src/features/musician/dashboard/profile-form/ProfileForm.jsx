@@ -127,15 +127,15 @@ const genres = {
 
 const instruments = {
     'Musician': [
-        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
+        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Alto Sax', 'Tenor Sax', 'Trombone', 'Trumpet', 'Flute', 'Cello',
         'Harmonica', 'Banjo', 'Mandolin', 'Harp', 'Accordion'
     ],
     'Musician/Band': [
-        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
+        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Alto Sax', 'Tenor Sax', 'Trombone', 'Trumpet', 'Flute', 'Cello',
         'Harmonica', 'Banjo', 'Mandolin', 'Harp', 'Accordion'
     ],
     'Band': [
-        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
+        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Alto Sax', 'Tenor Sax', 'Trombone', 'Trumpet', 'Flute', 'Cello',
         'Harmonica', 'Banjo', 'Mandolin', 'Harp', 'Accordion'
     ],
     'DJ': [

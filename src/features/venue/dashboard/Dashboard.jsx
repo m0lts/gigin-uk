@@ -176,6 +176,7 @@ export const VenueDashboard = ({ user }) => {
             {showReviewModal && gigToReview && hasVenuePerm(venueProfiles, gigToReview.venueId, 'reviews.create') && (
               <Portal>
                 <ReviewModal
+                    venueProfiles={venueProfiles}
                     gigData={gigToReview}
                     reviewer='venue'
                     setGigData={setGigToReview}
