@@ -11,111 +11,131 @@ import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
 import '@styles/shared/card-details.styles.css'
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading'
-import { createStripePaymentMethod, saveStripePaymentMethod } from '@services/functions';
+import { createStripePaymentMethod, saveStripePaymentMethod } from '@services/function-calls/payments';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../ui/loading/Loading';
 
 
-// Card input form component
-export const CardForm = ({ activityType, setCardDetails, setSaveCardModal, setNewCardSaved, setAddingNewCard, handleCardSelection }) => {
-    const stripe = useStripe();
-    const elements = useElements();
-    const [loading, setLoading] = useState(false);
-    const [name, setName] = useState('');
-    const [billingDetails, setBillingDetails] = useState({
-      address: {
-        line1: '',
-        line2: '',
-        city: '',
-        state: '',
-        postal_code: '',
-        country: 'GB',
-      },
+export const CardForm = ({
+  activityType,
+  setCardDetails,
+  setSaveCardModal,
+  setNewCardSaved,
+  setAddingNewCard,
+  handleCardSelection,
+  destinationChoices = [],
+}) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [name, setName] = useState('');
+  const [billingDetails, setBillingDetails] = useState({
+    address: { line1: '', line2: '', city: '', state: '', postal_code: '', country: 'GB' },
+  });
+  const [cardBrand, setCardBrand] = useState('unknown');
+  const [saveCard, setSaveCard] = useState(false);
+
+  // NEW: destination picker
+  const [selectedCustomerId, setSelectedCustomerId] = useState(
+    destinationChoices[0]?.id || null
+  );
+
+  const cardBrandIcons = { visa: VisaIcon, mastercard: MastercardIcon, amex: AmexIcon, unknown: null };
+
+  const [cardComplete, setCardComplete] = useState({ number: false, expiry: false, cvc: false });
+  const handleCardNumberChange = (event) => {
+    setCardBrand(event.brand || 'unknown');
+    setCardComplete((prev) => ({ ...prev, number: event.complete }));
+  };
+
+  const handleBillingChange = (e) => {
+    const { name, value } = e.target;
+    const fieldPath = name.split('.');
+    setBillingDetails((prev) => {
+      const next = { ...prev };
+      let cur = next;
+      for (let i = 0; i < fieldPath.length - 1; i++) cur = cur[fieldPath[i]];
+      cur[fieldPath[fieldPath.length - 1]] = value;
+      return next;
     });
-    const [cardBrand, setCardBrand] = useState('unknown');
-    const [saveCard, setSaveCard] = useState(false);
+  };
 
-    const cardBrandIcons = {
-        visa: VisaIcon,
-        mastercard: MastercardIcon,
-        amex: AmexIcon,
-        unknown: null,
-    };
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!selectedCustomerId) {
+      toast.error('Please choose where to save this card.');
+      return;
+    }
+    setLoading(true);
+    const cardElement = elements.getElement(CardNumberElement);
 
-    const handleCardNumberChange = (event) => {
-        setCardBrand(event.brand || 'unknown');
-        setCardComplete((prev) => ({ ...prev, number: event.complete }));
-    };
+    try {
+      // 1) Create a PM from the card fields
+      const pm = await createStripePaymentMethod(
+        stripe,
+        cardElement,
+        name,
+        billingDetails.address
+      );
 
-    const [cardComplete, setCardComplete] = useState({
-        number: false,
-        expiry: false,
-        cvc: false,
-      });
-  
-    const handleBillingChange = (e) => {
-      const { name, value } = e.target;
-      const fieldPath = name.split('.');
-  
-      setBillingDetails((prevDetails) => {
-        const updatedDetails = { ...prevDetails };
-        let current = updatedDetails;
-  
-        for (let i = 0; i < fieldPath.length - 1; i++) {
-          current = current[fieldPath[i]];
+      if (activityType === 'adding card') {
+        // 2) Save/attach PM to the selected Stripe Customer
+        //    ⬇️ UPDATED: pass target customer id
+        const data = await saveStripePaymentMethod(pm.id, selectedCustomerId);
+        if (data.success) {
+          const savedPm = data.paymentMethodUpdate || pm;
+          const newDefaultId =
+            data.customerUpdate?.invoice_settings?.default_payment_method || savedPm.id;
+
+          setNewCardSaved({
+            ...savedPm,
+            default: savedPm.id === newDefaultId,
+            __newDefaultId: newDefaultId,
+          });
+
+          setSaveCardModal(false);
+          toast.success('Card saved.');
+        } else {
+          toast.error('Error saving card details. Please try again.');
+          setSaveCardModal(false);
         }
-        current[fieldPath[fieldPath.length - 1]] = value;
-  
-        return updatedDetails;
-      });
-    };
-  
-    const handleSave = async (e) => {
-      e.preventDefault();
-      setLoading(true);
-      const cardElement = elements.getElement(CardNumberElement);
-      try {
-        const pm = await createStripePaymentMethod(
-          stripe,
-          cardElement,
-          name,
-          billingDetails.address
-        );
-        if (activityType === 'adding card') {
-          const { data } = await saveStripePaymentMethod(pm.id);
-          if (data.success) {
-            const savedPm = data.paymentMethodUpdate || pm;
-            const newDefaultId =
-              data.customerUpdate?.invoice_settings?.default_payment_method || savedPm.id;
-            setNewCardSaved({
-              ...savedPm,
-              default: savedPm.id === newDefaultId,
-              __newDefaultId: newDefaultId,
-            });
-            setSaveCardModal(false);
-            toast.success('Card saved.');
-          } else {
-            toast.error('Error saving card details. Please try again.');
-            setSaveCardModal(false);
-          }
-        } else if (activityType === 'making payment') {
-          handleCardSelection(pm.id)
-          setCardDetails((prev) => [...prev, pm]);
-          if (saveCard) await saveStripePaymentMethod(pm.id);
-          setAddingNewCard(false);
-        }
-      } catch (err) {
-        console.error('Error processing card:', err);
-        toast.error('An error occurred. Please try again.');
-      } finally {
-        setLoading(false);
+      } else if (activityType === 'making payment') {
+        // keep your existing flow
+        handleCardSelection(pm.id);
+        setCardDetails((prev) => [...prev, pm]);
+        if (saveCard) await saveStripePaymentMethod(pm.id, selectedCustomerId);
+        setAddingNewCard(false);
       }
-    };
+    } catch (err) {
+      console.error('Error processing card:', err);
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
 return (
     <form className='card-details-form'>
         <div className='card-details-container'>
           <h4>Card Details:</h4>
+
+          {destinationChoices.length > 0 && activityType === 'adding card' && (
+            <div className='field-container'>
+              <label htmlFor='save-destination' className='label'>Save card to</label>
+              <select
+                id='save-destination'
+                className='input'
+                value={selectedCustomerId || ''}
+                onChange={(e) => setSelectedCustomerId(e.target.value)}
+                disabled={loading}
+              >
+                {destinationChoices.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className='field-container'>
             <label htmlFor='cardholder-name' className="label">Name on Card</label>
             <input
@@ -293,18 +313,37 @@ return (
             </div>
           </div>
           {activityType === 'making payment' && (
-          <div className='field-container save-card'>
-              <label htmlFor='save-card' className="label">
-                  <input
-                      id='save-card'
-                      type='checkbox'
-                      checked={saveCard}
-                      onChange={() => setSaveCard(!saveCard)}
-                      disabled={loading}
-                  />
-                  Save this card for future payments
-              </label>
-          </div>)}
+            <>
+              <div className='field-container save-card'>
+                  <label htmlFor='save-card' className="label">
+                      <input
+                          id='save-card'
+                          type='checkbox'
+                          checked={saveCard}
+                          onChange={() => setSaveCard(!saveCard)}
+                          disabled={loading}
+                      />
+                      Save this card for future payments
+                  </label>
+              </div>
+              {saveCard && (
+                <div className='field-container'>
+                  <label htmlFor='save-destination' className='label'>Where would you like to save this card?</label>
+                  <select
+                    id='save-destination'
+                    className='input'
+                    value={selectedCustomerId || ''}
+                    onChange={(e) => setSelectedCustomerId(e.target.value)}
+                    disabled={loading}
+                  >
+                    {destinationChoices.map(opt => (
+                      <option key={opt.id} value={opt.id}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
           {loading ? (
             <div className="loading-card-details">
               <LoadingSpinner width={20} height={20} />

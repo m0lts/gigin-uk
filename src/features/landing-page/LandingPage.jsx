@@ -14,7 +14,7 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
 
     const navigate = useNavigate();
 
-    const { login, signup, resetPassword, checkUser, loginWithGoogle, user } = useAuth();
+    const { login, signup, resetPassword, checkUser, continueWithGoogle, user } = useAuth();
     const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
     const [error, setError] = useState({ status: false, input: '', message: '' });
     const [loading, setLoading] = useState(false);

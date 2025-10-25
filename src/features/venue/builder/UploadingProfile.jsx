@@ -1,7 +1,6 @@
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
-import { CameraIcon, DashboardIconLight, HouseIconLight } from '@features/shared/ui/extras/Icons';
+import { LoadingSpinner } from '@features/shared/ui/loading/Loading';
 import '@styles/host/venue-builder.styles.css'
-import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 
 
 export const UploadingProfile = ({ text, progress }) => {

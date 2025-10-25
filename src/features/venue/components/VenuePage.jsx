@@ -13,11 +13,11 @@ import {
     TwitterIcon } from '@features/shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { getVenueProfileById } from '@services/venues';
-import { getGigsByVenueId } from '../../../services/gigs';
+import { getVenueProfileById } from '@services/client-side/venues';
+import { getGigsByVenueId } from '../../../services/client-side/gigs';
 import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/musicians';
+import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
 import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';
@@ -25,6 +25,7 @@ import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
+import { toJsDate } from '../../../services/utils/dates';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
@@ -49,43 +50,36 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     useEffect(() => {
         if (!venueId) return;
         const fetchVenueAndGigs = async () => {
-            setLoading(true);
-            try {
-              const profile = await getVenueProfileById(venueId);
-              setVenueData(profile);
-        
-              const gigs = await getGigsByVenueId(venueId);
-              const now = new Date();
-        
-              const futureGigs = gigs
-                .filter(gig => {
-                  const startDateTime = gig.startDateTime?.toDate?.() ?? gig.startDateTime;
-                  const openGigs = gig.status !== 'closed';
-                  return (startDateTime > now) && openGigs;
-                })
-                .sort((a, b) => {
-                  const aDate = a.startDateTime?.toDate?.() ?? a.startDateTime;
-                  const bDate = b.startDateTime?.toDate?.() ?? b.startDateTime;
-                  return aDate - bDate;
-                });
-
-                
-                setVenueGigs(futureGigs);
-                const filterConfirmedGigs = futureGigs
-                .filter(gig => {
-                    const confirmedApplicant = gig.applicants.some(g => g.status === 'confirmed');
-                    return confirmedApplicant;
-                })
-              setConfirmedGigs(filterConfirmedGigs)
-        
-            } catch (error) {
-              console.error('Error loading venue profile or gigs:', error);
-            } finally {
-              setLoading(false);
-            }
-          };
+          setLoading(true);
+          try {
+            const profile = await getVenueProfileById(venueId);
+            setVenueData(profile);
+            const gigs = await getGigsByVenueId(venueId);
+            const now = new Date();
+            const normalized = gigs.map(g => {
+              const dt = toJsDate(g.startDateTime);
+              return {
+                ...g,
+                startDateTimeDate: dt,
+                startDateTimeMs: dt ? dt.getTime() : Number.NaN,
+              };
+            });
+            const futureGigs = normalized
+              .filter(gig => gig.startDateTimeDate && gig.startDateTimeDate > now && gig.status !== 'closed')
+              .sort((a, b) => a.startDateTimeMs - b.startDateTimeMs);
+            setVenueGigs(futureGigs);
+            const confirmed = futureGigs.filter(gig =>
+              Array.isArray(gig.applicants) && gig.applicants.some(a => a.status === 'confirmed')
+            );
+            setConfirmedGigs(confirmed);
+          } catch (error) {
+            console.error('Error loading venue profile or gigs:', error);
+          } finally {
+            setLoading(false);
+          }
+        };
         fetchVenueAndGigs();
-    }, [venueId]);
+      }, [venueId]);
 
     useEffect(() => {
         if (!venueViewing) return;
@@ -232,9 +226,6 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         percentFromTop = 50;
     }
     }
-
-    console.log(percentFromTop)
-
 
     return (
         <div className='venue-page'>

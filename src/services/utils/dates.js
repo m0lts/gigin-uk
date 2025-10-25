@@ -1,4 +1,47 @@
 /**
+ * Converts a value to a JS Date object.
+ * Supports:
+ *  - Firestore Timestamp (has .toDate())
+ *  - JS Date
+ *  - { seconds/nanoseconds } or { _seconds/_nanoseconds } object
+ *  - ISO string
+ *  - Milliseconds number
+ * @param {any} v
+ * @returns {Date|null}
+ */
+export function toJsDate(v) {
+  if (!v) return null;
+
+  // Firestore Timestamp instance
+  if (typeof v.toDate === 'function') return v.toDate();
+
+  // JS Date
+  if (v instanceof Date) return new Date(v);
+
+  // Firestore timestamp-like object
+  const secs =
+    typeof v.seconds === 'number'
+      ? v.seconds
+      : typeof v._seconds === 'number'
+      ? v._seconds
+      : null;
+
+  if (secs !== null) {
+    const nanos =
+      typeof v.nanoseconds === 'number'
+        ? v.nanoseconds
+        : typeof v._nanoseconds === 'number'
+        ? v._nanoseconds
+        : 0;
+    return new Date(secs * 1000 + Math.floor(nanos / 1e6));
+  }
+
+  // ISO string or milliseconds number
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
  * Returns ordinal suffix for a given day
  * @param {number} day - Day of the month
  * @returns {string} Suffix (st, nd, rd, th)
@@ -14,42 +57,35 @@ const getOrdinalSuffix = (day) => {
 };
 
 /**
- * Formats a Firestore Timestamp or JavaScript Date into various readable formats
- * @param {Timestamp | Date} input - Firestore Timestamp or JS Date
- * @param {'long' | 'short' | 'withTime'} format - Desired format
- * @returns {string} Formatted date string
+ * Formats a date-like value into readable formats.
+ * Uses toJsDate() internally to ensure consistent parsing.
+ *
+ * @param {any} input - Any supported date value
+ * @param {'long' | 'short' | 'withTime'} format
+ * @returns {string}
  */
 export const formatDate = (input, format = 'long') => {
-  let date;
+  const date = toJsDate(input);
+  if (!date) return 'Invalid date';
 
-  // Handle Firestore Timestamp or JS Date
-  if (input && typeof input.toDate === 'function') {
-      date = input.toDate(); // Firestore Timestamp
-  } else if (input instanceof Date) {
-      date = input; // JS Date
-  } else {
-      return 'Invalid date';
-  }
-
+  const pad2 = (n) => String(n).padStart(2, '0');
   const day = date.getDate();
-  const dayPadded = String(day).padStart(2, '0');
-  const month = date.getMonth() + 1;
-  const monthPadded = String(month).padStart(2, '0');
+  const dayPadded = pad2(day);
+  const monthPadded = pad2(date.getMonth() + 1);
   const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-
+  const hours = pad2(date.getHours());
+  const minutes = pad2(date.getMinutes());
   const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
   const monthName = date.toLocaleDateString('en-GB', { month: 'long' });
 
   switch (format) {
-      case 'short':
-          return `${dayPadded}/${monthPadded}/${year}`;
-      case 'withTime':
-          return `${dayPadded}/${monthPadded}/${year} - ${hours}:${minutes}`;
-      case 'long':
-      default:
-          return `${weekday} ${day}${getOrdinalSuffix(day)} ${monthName}`;
+    case 'short':
+      return `${dayPadded}/${monthPadded}/${year}`;
+    case 'withTime':
+      return `${dayPadded}/${monthPadded}/${year} - ${hours}:${minutes}`;
+    case 'long':
+    default:
+      return `${weekday} ${day}${getOrdinalSuffix(day)} ${monthName}`;
   }
 };
 
@@ -65,16 +101,18 @@ export const formatFeeDate = (timestamp) => {
       return 'Invalid date';
   }
 
+  const cleanTimestamp = toJsDate(timestamp);
+
   let date;
   try {
-      if (timestamp.toDate) {
-          date = timestamp.toDate();
-      } else if (timestamp instanceof Date) {
-          date = timestamp;
-      } else if (timestamp.seconds) {
-          date = new Date(timestamp.seconds * 1000);
+      if (cleanTimestamp.toDate) {
+          date = cleanTimestamp.toDate();
+      } else if (cleanTimestamp instanceof Date) {
+          date = cleanTimestamp;
+      } else if (cleanTimestamp.seconds) {
+          date = new Date(cleanTimestamp.seconds * 1000);
       } else {
-          date = new Date(timestamp);
+          date = new Date(cleanTimestamp);
       }
 
       if (isNaN(date.getTime())) throw new Error('Invalid date object');

@@ -8,7 +8,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { WelcomeModal } from '@features/musician/components/WelcomeModal';
 import { useUpcomingGigs } from '@hooks/useUpcomingGigs';
 import { useUserLocation } from '@hooks/useUserLocation';
-import { fetchNearbyGigs } from '../../services/gigs';
+import { fetchNearbyGigs } from '../../services/client-side/gigs';
 import { FilterPanel } from './FilterPanel';
 import { TopBanner } from './TopBanner';
 import Portal from '../shared/components/Portal';

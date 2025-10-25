@@ -8,10 +8,11 @@ import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 import '@styles/forms/forms.styles.css'
 import { GoogleIcon } from '../ui/extras/Icons';
 import { LoadingSpinner } from '../ui/loading/Loading';
+import { Link } from 'react-router-dom';
 
 
 
-export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, loginWithGoogle, noProfileModal, setNoProfileModal }) => {
+export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, continueWithGoogle, noProfileModal, setNoProfileModal }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -46,6 +47,10 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
 
     try {
       const loginResponse = await login(credentials);
+      if (loginResponse && loginResponse.needsEmailVerify) {
+        setAuthClosable(false);
+        setAuthType('verify-email');
+      }
       if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
         setAuthModal(false);
         setAuthClosable(true);
@@ -101,7 +106,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                 onClick={async () => {
                   try {
                     setLoading(true);
-                    const loginResponse = await loginWithGoogle();
+                    const loginResponse = await continueWithGoogle();
                     if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
@@ -120,6 +125,9 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                 <GoogleIcon />
                 Continue With Google
               </button>
+              <div className="disclaimer">
+                <p>By continuing with Google, you agree to our <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions.</Link></p>
+              </div>
               <div className="oauth-divider">
                 <span className="line" />
                 <h6>OR</h6>

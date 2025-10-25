@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CardForm } from '@features/shared/components/CardDetails'
 import '@assets/styles/host/payment-modal.styles.css'
 import { SuccessIcon, PlusIcon } from '@features/shared/ui/extras/Icons'
@@ -6,11 +6,13 @@ import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
 import { CardIcon, ClockIcon, LeftArrowIcon } from '../../shared/ui/extras/Icons';
-import { listenToPaymentStatus } from '../../../services/payments';
+import { listenToPaymentStatus } from '../../../services/client-side/payments';
 import { WalletButton } from './WalletButton';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { ensureVenueStripeCustomerId } from '../../../services/client-side/venues';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export const PaymentModal = ({
@@ -26,10 +28,29 @@ export const PaymentModal = ({
     paymentIntentId,
     setPaymentIntentId,
     setGigData,
-    musicianProfileId
+    musicianProfileId,
+    customerDetails,
+    venues,
   }) => {
     const [selectedCardId, setSelectedCardId] = useState(null);
     const [addingNewCard, setAddingNewCard] = useState(false);
+    const [ensuredVenueCustomerId, setEnsuredVenueCustomerId] = useState(null);
+    const [ensuringVenueCustomer, setEnsuringVenueCustomer] = useState(false);
+    const [ensureError, setEnsureError] = useState(null);
+
+    const selectedCard = useMemo(
+      () => savedCards.find(c => c.id === selectedCardId) || null,
+      [savedCards, selectedCardId]
+    );
+
+    const venueCustomerId = useMemo(() => {
+      if (ensuredVenueCustomerId) return ensuredVenueCustomerId;
+      const v = (venues || []).find(v => v.venueId === gigData?.venueId);
+      return v?.stripeCustomerId || null;
+    }, [ensuredVenueCustomerId, venues, gigData?.venueId]);
+    
+    const paymentCustomerId =
+      selectedCard?.customer || venueCustomerId || customerDetails?.id || null;
   
     useEffect(() => {
       if (!paymentIntentId) return;
@@ -48,6 +69,67 @@ export const PaymentModal = ({
       });
       return () => unsubscribe();
     }, [paymentIntentId]);
+
+    useEffect(() => {
+      let cancelled = false;
+      const run = async () => {
+        setEnsureError(null);
+        setEnsuredVenueCustomerId(null);
+        const vId = gigData?.venueId;
+        if (!vId) return;
+        const fromProps = (venues || []).find(v => v.venueId === vId)?.stripeCustomerId || null;
+        if (fromProps) {
+          if (!cancelled) setEnsuredVenueCustomerId(fromProps);
+          return;
+        }
+        try {
+          setEnsuringVenueCustomer(true);
+          const id = await ensureVenueStripeCustomerId(vId);
+          if (!cancelled) setEnsuredVenueCustomerId(id || null);
+        } catch (e) {
+          console.error('ensureVenueStripeCustomer failed:', e);
+          if (!cancelled) setEnsureError('Unable to prepare billing for this venue right now.');
+        } finally {
+          if (!cancelled) setEnsuringVenueCustomer(false);
+        }
+      };
+      run();
+      return () => { cancelled = true; };
+    }, [gigData?.venueId, venues]);
+
+    const updatableVenueIds = useMemo(() => {
+      const list = Array.isArray(venues) ? venues : [];
+      return new Set(
+        list
+          .filter(v => hasVenuePerm(venues, v?.id || v?.venueId, 'finances.update'))
+          .map(v => v.venueId || v.id)
+      );
+    }, [venues]);
+    
+    const updateVenues = useMemo(() => {
+      const list = Array.isArray(venues) ? venues : [];
+      const filtered = list.filter(v => updatableVenueIds.has(v?.venueId || v?.id));
+    
+      return filtered.map(v => {
+        const vid = v?.venueId || v?.id;
+        // mirror Finances: prefer existing stripeCustomerId, else ensured fallback (we only ensure current gig's venue here)
+        const ensuredForThisVenue = vid === gigData?.venueId ? ensuredVenueCustomerId : null;
+        return {
+          ...v,
+          stripeCustomerId: v?.stripeCustomerId || ensuredForThisVenue || null,
+        };
+      });
+    }, [venues, updatableVenueIds, ensuredVenueCustomerId, gigData?.venueId]);
+    
+    const destinationChoices = useMemo(() => ([
+      ...(customerDetails?.id ? [{ label: 'My Account', id: customerDetails.id }] : []),
+      ...updateVenues
+        .filter(v => v.stripeCustomerId)
+        .map(v => ({
+          label: `Venue: ${v.name || v.displayName || v.id}`,
+          id: v.stripeCustomerId,
+        })),
+    ]), [customerDetails?.id, updateVenues]);
   
     const cardBrandIcons = {
       visa: VisaIcon,
@@ -55,15 +137,6 @@ export const PaymentModal = ({
       amex: AmexIcon,
       unknown: null
     };
-  
-    // useEffect(() => {
-    //   const defaultCard = savedCards.find(
-    //     (card) => card.card.id === card.customer?.default_source
-    //   );
-    //   if (defaultCard) {
-    //     setSelectedCardId(defaultCard.id);
-    //   }
-    // }, [savedCards]);
 
     useEffect(() => {
       if (selectedCardId) return;
@@ -123,19 +196,20 @@ export const PaymentModal = ({
                 <h2 className="title">Complete Gig Payment</h2>
                 <p>Pay the gig fee that you agreed with the musician. This fee is held by Gigin until 48 hours after the gig has been performed - giving you plenty of time to log a dispute, stopping the payment from being released to the musician until resolved.</p>
               </div>
-              {gigData?.agreedFee && (
+              {/* {gigData?.agreedFee && (
                     <div className='payment-details'>
                         <div className='payment-line'>
                             <h6>Total Payment Due:</h6>
                             <h1>{gigData.agreedFee}</h1>
                         </div>
                     </div>
-                )}
+                )} */}
               <div className="wallets">
               <WalletButton
                 amountToCharge={amountSubunits}
                 gigData={gigData}
                 musicianProfileId={musicianProfileId}
+                customerId={paymentCustomerId}
                 onSucceeded={(piId) => {
                   setPaymentIntentId?.(piId);
                   setPaymentSuccess(true);
@@ -177,7 +251,17 @@ export const PaymentModal = ({
                           Expires {card.card.exp_month}/{card.card.exp_year}
                         </h6>
                       </div>
+
                     </div>
+                    {card.ownerType === "user" ? (
+                      <div className="card-owner">
+                        <h6>Personal Card</h6>
+                      </div>
+                    ) : (
+                      <div className="card-owner">
+                        <h6>{card.venueName}'s Card</h6>
+                      </div>
+                    )}
                   </li>
                 ))}
                 <li
@@ -196,6 +280,15 @@ export const PaymentModal = ({
                 Pay £{totalDue}
               </button>
             </>
+          ) : (ensuringVenueCustomer && !venueCustomerId) ? (
+            <div className="making-payment" style={{ gap: 8 }}>
+              <LoadingSpinner />
+              <h3>Preparing billing…</h3>
+            </div>
+          ) : ensureError && !venueCustomerId ? (
+            <div className="error-cont" style={{ width: 'fit-content', margin: '0.5rem auto' }}>
+              <p className="error-message">{ensureError}</p>
+            </div>
           ) : (
             /* ADD NEW CARD */
             <>
@@ -213,6 +306,7 @@ export const PaymentModal = ({
                 cardDetails={savedCards}
                 setAddingNewCard={setAddingNewCard}
                 handleCardSelection={handleCardSelection}
+                destinationChoices={destinationChoices}
               />
             </>
           )}

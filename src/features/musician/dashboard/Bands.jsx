@@ -73,7 +73,7 @@ export const Bands = ({ bandProfiles }) => {
                                 </span>
                             ))}
                         </div>
-                        <div className="stats-container">
+                        {/* <div className="stats-container">
                             <span className="spacer"></span>
                             {band?.totalEarnings ? (
                                 <div className="stats-box earnings">
@@ -106,7 +106,7 @@ export const Bands = ({ bandProfiles }) => {
                                     <span className="text">followers</span>
                                 </div>
                             )}
-                        </div>
+                        </div> */}
                       </>
                     )}
                     <button className="btn primary" onClick={() => navigate(`/dashboard/bands/${band.id}`, { state: {band: band} })}>

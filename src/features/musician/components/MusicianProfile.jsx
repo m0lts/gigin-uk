@@ -1,31 +1,27 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { EditIcon, StarIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/musician/musician-profile.styles.css'
 import { OverviewTab } from '@features/musician/profile/OverviewTab';
-import { MusicTab } from '@features/musician/profile/MusicTab';
-import { ReviewsTab } from '@features/musician/profile/ReviewsTab';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { EmptyIcon, InviteIconSolid, NoImageIcon, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
 import { AboutTab } from '../profile/AboutTab';
-import { getGigsByIds, inviteToGig } from '../../../services/gigs';
-import Skeleton from 'react-loading-skeleton';
-import { openInNewTab } from '@services/utils/misc';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/musicians';
+import { getGigsByIds, } from '../../../services/client-side/gigs';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { getOrCreateConversation } from '../../../services/conversations';
-import { sendGigInvitationMessage } from '../../../services/messages';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { sendGigInvitationMessage } from '../../../services/client-side/messages';
 import { toast } from 'sonner';
-import { updateUserDocument } from '../../../services/users';
 import { validateVenueUser } from '../../../services/utils/validation';
 import { filterInvitableGigsForMusician } from '../../../services/utils/filtering';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
-import { arrayRemove, arrayUnion } from 'firebase/firestore';
 import { formatDate } from '@services/utils/dates';
 import { BandMembersTab } from '../bands/BandMembersTab';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
+import { updateUserArrayField } from '../../../services/function-calls/users';
+import { inviteToGig } from '../../../services/function-calls/gigs';
+import { fetchMyVenueMembership } from '../../../services/client-side/venues';
 
 
 const VideoModal = ({ video, onClose }) => {
@@ -189,10 +185,6 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
                 return <OverviewTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} videoToPlay={videoToPlay} setVideoToPlay={setVideoToPlay} bandAdmin={bandAdmin} setCurrentTrack={setCurrentTrack} />; 
             case 'tech-info':
                 return <AboutTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
-            // case 'tech-info':
-            //     return <ReviewsTab profile={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
-            // case 'members':
-            //   return bandProfile ? <BandMembersTab band={profile} bandMembers={bandMembers} setBandMembers={setBandMembers} musicianId={musicianId} bandAdmin={bandAdmin} /> : null;
             default:
                 return null;
         }        
@@ -214,28 +206,38 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         );
     }
 
+    const canInviteForVenue = (gig) => {
+      const role = gig?.myMembership?.role || "member";
+      const perms = gig?.myMembership?.permissions || {};
+      return role === "owner" || perms["gigs.invite"] === true;
+    };
+
     const handleSendMusicianInvite = async (gigData) => {
         if (!profile || !gigData) {
           return;
         }
+        // if (!canInviteForVenue(gigData)) {
+        //   toast.error("You do not have permission to invite musicians to gigs at this venue.");
+        //   setInviting(false);
+        //   return;
+        // }
         const venueToSend = user.venueProfiles.find(venue => venue.id === gigData.venueId);
         if (!venueToSend) {
           console.error('Venue not found in user profiles.');
           return;
         }
         try {
-          await inviteToGig(gigData.gigId, profile);
-          const newGigApplicationEntry = {
-            gigId: gigData.gigId,
-            profileId: profile.musicianId,
-            name: profile.name,
-          };
-          const updatedGigApplicationsArray = profile.gigApplications
-            ? [...profile.gigApplications, newGigApplicationEntry]
-            : [newGigApplicationEntry];
-          await updateMusicianProfile(profile.musicianId, {
-            gigApplications: updatedGigApplicationsArray,
-          });
+          const res = await inviteToGig(gigData.gigId, profile);
+          if (!res.ok) {
+            if (res.code === "permission-denied") {
+              toast.error("You don’t have permission to invite musicians for this venue.");
+            } else if (res.code === "failed-precondition") {
+              toast.error("This gig is missing required venue info.");
+            } else {
+              toast.error("Error inviting musician. Do you have permission to invite musicians to gigs at this venue?");
+            }
+            return;
+          }
           const conversationId = await getOrCreateConversation(
             profile,
             gigData,
@@ -271,9 +273,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         if (user && routeMusicianId) {
           setSavingMusician(true);
           try {
-            await updateUserDocument(user.uid, {
-              savedMusicians: arrayUnion(routeMusicianId),
-            });
+            await updateUserArrayField('savedMusicians', 'add', routeMusicianId);
             setMusicianSaved(true);
             toast.success('Musician Saved.');
           } catch (error) {
@@ -289,9 +289,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         if (user && routeMusicianId) {
           setSavingMusician(true);
           try {
-            await updateUserDocument(user.uid, {
-              savedMusicians: arrayRemove(routeMusicianId),
-            });
+            await updateUserArrayField('savedMusicians', 'remove', routeMusicianId);
             setMusicianSaved(false);
             toast.success('Musician Unsaved.');
           } catch (error) {
@@ -310,17 +308,25 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
           setAuthType,
           showAlert: (msg) => alert(msg),
         });
-      
         if (!valid) return;
-      
         const gigIds = venueProfiles.flatMap(venueProfile => venueProfile.gigs || []);
-      
         try {
           const fetchedGigs = await getGigsByIds(gigIds);
           const availableGigs = filterInvitableGigsForMusician(fetchedGigs, routeMusicianId);
-      
+          const venuesWithMembership = await Promise.all(
+            (venueProfiles || []).map(v => fetchMyVenueMembership(v, user.uid))
+          );
+          const membershipByVenueId = Object.fromEntries(
+            venuesWithMembership
+              .filter(Boolean)
+              .map(v => [v.venueId, v.myMembership || null])
+          );
+          const gigsWithMembership = availableGigs.map(gig => ({
+            ...gig,
+            myMembership: membershipByVenueId[gig.venueId] || null,
+          }));
+          setUsersGigs(gigsWithMembership);
           setInviteMusicianModal(true);
-          setUsersGigs(availableGigs);
         } catch (error) {
           console.error('Error fetching future gigs:', error);
           toast.error('We encountered an error. Please try again.');
@@ -366,9 +372,6 @@ return (
                       {profile?.name}
                       <span className="orange-dot">.</span>
                     </h1>
-                    <h4 className="number-of-gigs">
-                      {profile?.gigsPerformed || 0} Gigs Performed
-                    </h4>
                     {user.venueProfiles && user.venueProfiles.length > 0 && (
                       <div className="action-buttons">
                         <button
@@ -448,57 +451,6 @@ return (
                     />
                 </div>
               )}
-
-            {/* {!!profile?.confirmedGigs?.length && (
-              <div className="gigs-box">
-                {loadingGigs ? (
-                  <Skeleton width={"100%"} height={250} />
-                ) : upcomingGigs.length > 0 ? (
-                  <>
-                    <div className="gigs-box-header">
-                      <h3>Upcoming Gigs</h3>
-                      {upcomingGigs.length > 3 && (
-                        <button
-                          type="button"
-                          className="btn text"
-                          onClick={() => setExpanded((v) => !v)}
-                          aria-expanded={expanded}
-                        >
-                          {expanded ? "See less" : `See more (${upcomingGigs.length - 3})`}
-                        </button>
-                      )}
-                    </div>
-
-                    {displayed.map((gig) => {
-                      const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
-                      const day = gigDate.toLocaleDateString("en-US", { day: "2-digit" });
-                      const month = gigDate.toLocaleDateString("en-US", { month: "short" });
-
-                      return (
-                        <div key={gig.id || gig.gigId} className="gig-card">
-                          <div className="date-box">
-                            <h4 className="month">{month.toUpperCase()}</h4>
-                            <h2 className="day">{day}</h2>
-                          </div>
-                          <div className="gig-type">
-                            <h4>{gig.gigName}</h4>
-                          </div>
-                          <button
-                            className="btn tertiary"
-                            onClick={(e) => openInNewTab(`/gig/${gig.gigId ?? gig.id}`, e)}
-                          >
-                            Open
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </>
-                ) : (
-                  <p>No upcoming gigs found</p>
-                )}
-              </div>
-          )} */}
-
             <div className="musician-tracks">
               <h3>Tracks</h3>
               {profile?.tracks?.length ? (
@@ -555,17 +507,31 @@ return (
                     </button>
                   </div>
                   <div className='gig-selection'>
-                      {usersGigs.length > 0 && (
-                          usersGigs.map((gig, index) => (
-                              <div className={`card ${selectedGig === gig ? 'selected' : ''}`} key={index} onClick={() => setSelectedGig(gig)}>
-                                  <div className="gig-details">
-                                      <h4 className='text'>{gig.gigName}</h4>
-                                      <h5>{gig.venue.venueName}</h5>
-                                  </div>
-                                  <p className='sub-text'>{formatDate(gig.date, 'short')} - {gig.startTime}</p>
-                              </div>
-                          ))
-                      )}
+                    {usersGigs.length > 0 && (
+                      usersGigs.map((gig, index) => {
+                        if (canInviteForVenue(gig)) {
+                          return (
+                            <div className={`card ${selectedGig === gig ? 'selected' : ''}`} key={index} onClick={() => setSelectedGig(gig)}>
+                                <div className="gig-details">
+                                    <h4 className='text'>{gig.gigName}</h4>
+                                    <h5>{gig.venue.venueName}</h5>
+                                </div>
+                                <p className='sub-text'>{formatDate(gig.date, 'short')} - {gig.startTime}</p>
+                            </div>
+                          )
+                        } else {
+                          return (
+                            <div className={`card disabled`} key={index}>
+                                <div className="gig-details">
+                                    <h4 className='text'>{gig.gigName}</h4>
+                                    <h5 className='details-text'>You don't have permission to invite musicians to gigs at this venue.</h5>
+                                </div>
+                                <p className='sub-text'>{formatDate(gig.date, 'short')} - {gig.startTime}</p>
+                            </div>
+                          )
+                        }
+                      })
+                    )}
                   </div>
                   <div className='two-buttons'>
                       <button className='btn tertiary' onClick={() => setInviteMusicianModal(false)}>Cancel</button>

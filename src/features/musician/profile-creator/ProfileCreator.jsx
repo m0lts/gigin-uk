@@ -11,13 +11,13 @@ import { ProfilePictureStage } from './ProfilePictureStage';
 
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { updateUserDocument } from '@services/users';
-import { createMusicianProfile } from '@services/musicians';
+import { createMusicianProfile } from '@services/client-side/musicians';
 import { uploadProfilePicture } from '@services/storage';
 import { ProfileIconSolid, SuccessIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { updateUserArrayField } from '../../../services/function-calls/users';
 
 export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
   const navigate = useNavigate();
@@ -135,7 +135,7 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
         ...(existingProfile ? {} : { createdAt: Timestamp.now() }),
       };
       await createMusicianProfile(formData.musicianId, payload, user.uid);
-      await updateUserDocument(user.uid, { musicianProfile: arrayUnion(formData.musicianId) });
+      await updateUserArrayField('musicianProfiles', 'add', formData.musicianId);
       setFormData(prev => ({
         ...prev,
         picture: pictureUrl || prev.picture,

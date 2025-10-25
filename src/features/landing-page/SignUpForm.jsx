@@ -11,13 +11,13 @@ import '@styles/forms/forms.styles.css';
 import { toast } from 'sonner';
 import { GoogleIcon } from '../shared/ui/extras/Icons';
 import { PhoneField, isValidE164 } from '../shared/forms/PhoneField';
-import { phoneExists } from '@services/users';
-import { getPhoneExistsBoolean } from '@services/functions';
+import { getPhoneExistsBoolean } from '@services/function-calls/users';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
+import { isBlockedEmail } from '../../services/utils/validation';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
-  const { signup, signupWithGoogle } = useAuth();
+  const { signup, continueWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordInfo, setShowPasswordInfo] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -51,10 +51,19 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       return;
     }
 
-    if (!isValidE164(credentials.phoneNumber)) {
-      setError({ status: true, input: 'phoneNumber', message: '*Please enter a valid phone number' });
+    if (isBlockedEmail(credentials.email)) {
+      setError({
+        status: true,
+        input: 'email',
+        message: "*We can't deliver to the email address you entered. Please use a personal email (e.g. Gmail/Outlook)."
+      });
       return;
     }
+
+    // if (!isValidE164(credentials.phoneNumber)) {
+    //   setError({ status: true, input: 'phoneNumber', message: '*Please enter a valid phone number' });
+    //   return;
+    // }
 
     if (!termsAccepted) {
       setError({ status: true, input: 'terms', message: '*You must accept the terms and conditions' });
@@ -65,11 +74,11 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     setLoading(true);
 
     try {
-      const exists = await getPhoneExistsBoolean(credentials.phoneNumber);
-      if (exists) {
-        setError({ status: true, input: 'phoneNumber', message: '*Phone number already in use.' });
-        return;
-      }
+      // const exists = await getPhoneExistsBoolean(credentials.phoneNumber);
+      // if (exists) {
+      //   setError({ status: true, input: 'phoneNumber', message: '*Phone number already in use.' });
+      //   return;
+      // }
       const signupResponse = await signup(credentials, marketingConsent);
       if (signupResponse) {
         navigate('/find-a-gig')
@@ -133,12 +142,8 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 disabled={loading}
                 onClick={async () => {
                   try {
-                    if (!termsAccepted) {
-                      toast.error('Please accept our terms and conditions.');
-                      return;
-                    }
                     setLoading(true);
-                    const signupResponse = await signupWithGoogle(marketingConsent);
+                    const signupResponse = await continueWithGoogle(marketingConsent);
                     if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
@@ -157,6 +162,9 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 <GoogleIcon />
                 Continue With Google
               </button>
+              <div className="disclaimer">
+                <p>By signing up with Google, you agree to our <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions.</Link></p>
+              </div>
               <div className="oauth-divider">
                 <span className="line" />
                 <h6>OR</h6>
@@ -192,7 +200,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
               disabled={loading}
             />
           </div>
-          <div className="input-group">
+          {/* <div className="input-group">
             <PhoneField
               initialCountry="GB"
               value={credentials.phoneNumber}
@@ -207,7 +215,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
             {(error.input.includes('phoneNumber') && error.message !== '*Phone number already in use.') && (
               <p className="error-msg">* Please enter a valid phone number</p>
             )}
-          </div>
+          </div> */}
           <div className='input-group'>
             <label htmlFor='password'>
               Password
@@ -244,27 +252,36 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           )}
           <div className='tick-boxes'>
             <div className='input-group'>
-              <input
-                type='checkbox'
-                id='terms'
-                name='terms'
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                required
-                disabled={loading}
-              />
-              <label htmlFor='terms'>I accept Gigin's <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions</Link>.</label>
+              <label>
+                <input
+                  type='checkbox'
+                  name='terms'
+                  style={{ marginRight: 5 }}
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  required
+                  disabled={loading}
+                />
+                <span>
+                  I accept Gigin's{' '}
+                  <Link className="tc-link" to="/terms-and-conditions" onClick={(e) => e.stopPropagation()}>
+                    terms and conditions
+                  </Link>.
+                </span>
+              </label>
             </div>
             <div className='input-group'>
-              <input
-                type='checkbox'
-                id='marketingConsent'
-                name='marketingConsent'
-                checked={marketingConsent}
-                onChange={(e) => setMarketingConsent(e.target.checked)}
-                disabled={loading}
-              />
-              <label htmlFor='marketingConsent'>I consent to receive marketing communications from Gigin.</label>
+              <label>
+                <input
+                  type='checkbox'
+                  name='marketingConsent'
+                  style={{ marginRight: 5 }}
+                  checked={marketingConsent}
+                  onChange={(e) => setMarketingConsent(e.target.checked)}
+                  disabled={loading}
+                />
+                <span>I consent to receive marketing communications from Gigin.</span>
+              </label>
             </div>
           </div>
           {loading ? (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CardForm } from '@features/shared/components/CardDetails'
 import { 
   InvoiceIcon,
@@ -8,27 +8,17 @@ import {
 import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
-import { Bar } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-} from 'chart.js';
-import { deleteSavedCard } from '@services/functions';
+import { deleteSavedCard } from '@services/function-calls/payments';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { CardIcon, CoinsIconSolid, DeleteGigIcon, HouseIconSolid, PeopleRoofIconSolid, PieChartIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
-import { changeDefaultCard } from '../../../services/functions';
+import { changeDefaultCard } from '../../../services/function-calls/payments';
 import { useAuth } from '@hooks/useAuth';
-import { updateUserDocument } from '../../../services/users';
+import { updateUserDocument } from '../../../services/client-side/users';
 import Portal from '../../shared/components/Portal';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+import { ensureVenueStripeCustomerId } from '../../../services/client-side/venues';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 
 
 export const Finances = ({ savedCards, receipts, customerDetails, setStripe, venues }) => {
@@ -40,6 +30,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+  const [ensuredVenueIds, setEnsuredVenueIds] = useState({});
 
   const toggleMenu = (cardId) => {
     setOpenMenuId(prev => (prev === cardId ? null : cardId));
@@ -49,9 +40,56 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
     setWindowWidth(width);
   });
 
+  const readableVenueIds = new Set(
+    (venues || [])
+      .filter(v => hasVenuePerm(venues, v?.id || v?.venueId, 'finances.read'))
+      .map(v => v.venueId || v.id)
+  );
 
-  const totalExpenditure = receipts.reduce((total, receipt) => total + receipt.amount / 100, 0);
+  const updatableVenueIds = new Set(
+    (venues || [])
+      .filter(v => hasVenuePerm(venues, v?.id || v?.venueId, 'finances.update'))
+      .map(v => v.venueId || v.id)
+  );
 
+  const resolvedVenues = useMemo(() => {
+    const list = Array.isArray(venues) ? venues : [];
+    const filtered = list.filter(v => readableVenueIds.has(v?.venueId || v?.id));
+    return filtered.map(v => ({
+      ...v,
+      stripeCustomerId: v?.stripeCustomerId || ensuredVenueIds[v?.venueId] || null,
+    }));
+  }, [venues, ensuredVenueIds]);
+
+  const customerLabelMap = useMemo(() => {
+    const map = {};
+    if (customerDetails?.id) map[customerDetails.id] = ': Personal Account';
+    (resolvedVenues || []).forEach(v => {
+      if (v?.stripeCustomerId) {
+        map[v.stripeCustomerId] = `: ${v.name || v.displayName || v.venueId || v.id}`;
+      }
+    });
+    return map;
+  }, [customerDetails?.id, resolvedVenues]);
+
+
+  const filteredReceipts = useMemo(() => {
+    return (receipts || []).filter(r => {
+      const vId = r?.metadata?.venueId || null;
+      return !vId || readableVenueIds.has(vId); // include personal
+    });
+  }, [receipts, readableVenueIds]);
+  
+  const totalExpenditure = filteredReceipts.reduce((total, r) => total + r.amount / 100, 0);
+
+  const updateVenues = useMemo(() => {
+    const list = Array.isArray(venues) ? venues : [];
+    const filtered = list.filter(v => updatableVenueIds.has(v?.venueId || v?.id));
+    return filtered.map(v => ({
+      ...v,
+      stripeCustomerId: v?.stripeCustomerId || ensuredVenueIds[v?.venueId] || null,
+    }));
+  }, [venues, ensuredVenueIds]);
 
   useEffect(() => {
     if (!newCardSaved) return;
@@ -67,9 +105,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       nextCards.sort((a, b) => (b.default === a.default ? 0 : b.default ? 1 : -1));
       return { ...prev, savedCards: nextCards };
     });
-  
-    // Clear the flag/object once consumed (optional)
-    // setNewCardSaved(null);
+
   }, [newCardSaved, setStripe]);
 
   useEffect(() => {
@@ -80,6 +116,25 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
     };
     if (user?.uid) checkFirstTime();
   }, [user]);
+
+  useEffect(() => {
+    const hydrateMissingIds = async () => {
+      const list = Array.isArray(venues) ? venues : [];
+      const missing = list.filter(v => v?.venueId && !v?.stripeCustomerId);
+      if (!missing.length) return;
+      const entries = await Promise.all(
+        missing.map(async (v) => {
+          const id = await ensureVenueStripeCustomerId(v.venueId);
+          return [v.venueId, id || null];
+        })
+      );
+      const found = Object.fromEntries(entries.filter(([, id]) => !!id));
+      if (Object.keys(found).length) {
+        setEnsuredVenueIds((prev) => ({ ...prev, ...found }));
+      }
+    };
+    hydrateMissingIds();
+  }, [venues]);
 
   const formatReceiptCharge = (amount) => {
     return (amount / 100).toFixed(2);
@@ -114,7 +169,8 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       }
       toast.info('Deleting card...')
       setOpenMenuId(null);
-      const result = await deleteSavedCard(cardId);
+      const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
+      const result = await deleteSavedCard(cardId, customerId);
       if (result.success) {
         toast.success("Card deleted.");
         setStripe((prev) => ({
@@ -133,13 +189,16 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
     try {
       toast.info('Changing default payment method...')
       setOpenMenuId(null);
-      await changeDefaultCard(cardId);
+      const targetCard = savedCards.find(c => c.id === cardId);
+      const customerId = targetCard?.customer || null;
+      await changeDefaultCard(cardId, customerId);
       setStripe((prev) => ({
         ...prev,
-        savedCards: prev.savedCards.map((c) => ({
-          ...c,
-          default: c.id === cardId,
-        })),
+        savedCards: prev.savedCards.map((c) => (
+          c.customer === customerId
+          ? { ...c, default: c.id === cardId }
+          : c
+        )),
       }));
       toast.success("Card set as default.");
     } catch (err) {
@@ -147,6 +206,23 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       console.error(err);
     }
   };
+
+  const getReceiptCardLast4 = (receipt, savedCards = []) => {
+    const fromCharge = receipt?.payment_method_details?.card?.last4;
+    if (fromCharge) return fromCharge;
+    const pmId = receipt?.payment_method;
+    const pm = savedCards.find(c => c?.id === pmId);
+    return pm?.card?.last4 || '----';
+  };
+
+  const getReceiptCardBrand = (receipt, savedCards = []) => {
+    const fromCharge = receipt?.payment_method_details?.card?.brand;
+    if (fromCharge) return fromCharge;
+    const pmId = receipt?.payment_method;
+    const pm = savedCards.find(c => c?.id === pmId);
+    return pm?.card?.brand || 'card';
+  };
+
 
   return (
     <>
@@ -165,7 +241,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
           </div>
         </div>
         <div className="venue-expenditure-container">
-          {venues.map((venue) => {
+          {resolvedVenues.map((venue) => {
             const venueReceipts = receipts.filter(
               (r) => r.metadata?.venueId === venue.venueId
             );
@@ -192,7 +268,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       <div className='saved-cards'>
         <h2>My Cards</h2>
         <ul className="card-list">
-          <li className="styled-card add-card" onClick={() => setAddCardModal(true)}>
+          <li className="styled-card add-card" onClick={() => {setAddCardModal(true)}}>
             <div className="add-card-content">
               <PlusIcon />
               <h3>Add Card</h3>
@@ -228,7 +304,9 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
               </div>
 
               {card.default && (
-                <span className="card-default">Default</span>
+                <span className="card-default">
+                  Default for{customerLabelMap[card.customer] || 'Selected Account'}
+                </span>
               )}
             </li>
           ))}
@@ -247,6 +325,8 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
               </th>
               <th>Amount</th>
               <th>Venue</th>
+              <th>Payment Made By</th>
+              <th>Payment Method</th>
               <th className='centre'>Status</th>
             </tr>
           </thead>
@@ -258,11 +338,23 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
                     <td>{formatReceiptDate(receipt.created)}</td>
                     <td>£{formatReceiptCharge(receipt.amount)}</td>
                     <td>{receipt.metadata.venueName}</td>
-                    <td className={`status-box ${receipt.status}`}>
-                      <div className={`status ${receipt.status}`}>
-                        {receipt.status}
-                      </div>
+                    <td>{receipt.metadata.paymentMadeByName}</td>
+                    <td>
+                      {getReceiptCardBrand(receipt, savedCards).toUpperCase()} **** {getReceiptCardLast4(receipt, savedCards)}
                     </td>
+                    {receipt.refunded ? (
+                      <td className={`status-box declined`}>
+                        <div className={`status declined`}>
+                          Refunded
+                        </div>
+                      </td>
+                    ) : (
+                      <td className={`status-box ${receipt.status}`}>
+                        <div className={`status ${receipt.status}`}>
+                          {receipt.status}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })
@@ -280,25 +372,40 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
         </table>
       </div>
   </div>
-    {addCardModal && (
-      <Portal>
-        <div className='modal' onClick={() => setAddCardModal(false)}>
-          <div className='modal-content scrollable'onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <CardIcon />
-              <h2>Add New Payment Method</h2>
-              <p>Save a card to your account to make future gig payments quicker.</p>
-            </div>
-            <div className="modal-body">
-              <CardForm activityType={'adding card'} setSaveCardModal={setAddCardModal} setNewCardSaved={setNewCardSaved} />
-            </div>
-            <button className='btn tertiary close' onClick={() => setAddCardModal(false)}>
-              Close
-            </button>
+  {addCardModal && (
+    <Portal>
+      <div className='modal' onClick={() => setAddCardModal(false)}>
+        <div className='modal-content scrollable' onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <CardIcon />
+            <h2>Add New Payment Method</h2>
+            <p>Save a card to your account or a venue so staff can use it.</p>
           </div>
+          <div className="modal-body">
+            <CardForm
+              activityType="adding card"
+              setSaveCardModal={setAddCardModal}
+              setNewCardSaved={setNewCardSaved}
+              destinationChoices={[
+                ...(customerDetails?.id
+                  ? [{ label: 'My Account', id: customerDetails.id }]
+                  : []),
+                ...((updateVenues || [])
+                  .filter(v => v.stripeCustomerId)
+                  .map(v => ({
+                    label: `Venue: ${v.name || v.displayName || v.id}`,
+                    id: v.stripeCustomerId,
+                  })))
+              ]}
+            />
+          </div>
+          <button className='btn tertiary close' onClick={() => setAddCardModal(false)}>
+            Close
+          </button>
         </div>
-      </Portal>
-    )}
+      </div>
+    </Portal>
+  )}
     {showFirstTimeModal && (
       <Portal>
         <div className='modal' onClick={async () => {setShowFirstTimeModal(false); await updateUserDocument(user?.uid, {firstTimeInFinances: false});}}>

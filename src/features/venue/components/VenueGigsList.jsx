@@ -16,7 +16,7 @@ import {
     TwitterIcon,
     WeddingIcon } from '@features/shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
-import { createVenueRequest, getMusicianProfileByMusicianId } from "../../../services/musicians";
+import { createVenueRequest, getMusicianProfileByMusicianId } from "../../../services/client-side/musicians";
 import { toast } from "sonner";
 
 export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null, venueId }) => {
@@ -125,6 +125,7 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
             const day = gigDate.toLocaleDateString("en-US", { day: "2-digit" });
             const month = gigDate.toLocaleDateString("en-US", { month: "short" });
             const confirmed = (gig?.applicants ?? []).filter(a => a?.status === "confirmed");
+            if (confirmed.length > 0) return null;
             return (
               <div key={gig.gigId} className="venue-gig" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
                   {title === 'Upcoming' ? (
@@ -151,7 +152,7 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
                               })}
                           </div>
                       </div>
-                  ) : (
+                ) : (
                       <div className="confirmed-musician">
                         <div className="left">
                           <div className="date-box">
@@ -171,7 +172,7 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
                               )}
                           </div>
                       </div>
-                  )}
+                )}
     
                 {title !== "Upcoming" && !isVenue ? (
                   <button

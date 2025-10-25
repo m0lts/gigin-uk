@@ -154,6 +154,7 @@
     min-width: 100%;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap:3px;
 }
 
@@ -394,9 +395,21 @@
     text-align: center;
 }
 
-.message-page .message h6 {
-    display: block;
+.body.messages .message .msg-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.body.messages .message .msg-meta .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+
+.body.messages .message h6 {
     margin-top: 5px;
+    display: block;
     text-align: right;
 }
 
@@ -581,5 +594,36 @@
     margin: 0.25rem 1.5rem;
     height:125px;
     border-radius: 10px;
+}
+
+.message-page .message-container .message-sender {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 4px;
+}
+  
+.message-page .message-container .sender-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+  
+.message-page .message-container .sender-placeholder {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--gn-grey-350);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+  
+.message-page .message-container .sender-name {
+    font-size: 0.8rem;
+    font-weight: 500;
 }
 

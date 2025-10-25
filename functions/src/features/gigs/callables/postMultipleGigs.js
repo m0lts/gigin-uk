@@ -1,0 +1,152 @@
+/* eslint-disable */
+import { callable } from "../../../lib/callable.js";
+import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
+import { REGION_PRIMARY } from "../../../config/regions.js";
+import { requirePerm } from "../../../lib/authz.js"; // 
+import { toAdminGeoPoint, toAdminTimestamp, buildStartDateTime } from "../../../lib/utils/typing.js";
+import { WARM_RUNTIME_OPTIONS } from "../../../config/constants.js";
+
+const ALLOWED_FIELDS = new Set([
+  // venue-bound fields you allow clients to propose
+  "gigId",
+  "gigName",
+  "gigType",
+  "gigSlots",
+  "kind",
+  "genre",
+  "privacy",
+  "date",
+  "dateUndecided",
+  "startTime",
+  "duration",
+  "budget",
+  "budgetValue",
+  "extraInformation",
+  "privateApplications",
+  "privateApplicationsLink",
+  "limitApplications",
+  "openMicApplications",
+  "loadInTime",
+  "soundCheckTime",
+  "soundTechnicianRequired",
+  "technicalInformation",
+  "accountName",
+  "status",
+  "complete",
+  "startDateTime",   // you can recompute server-side if you prefer
+  "coordinates",
+  "geohash",
+  "geopoint",
+  "venue",           // small metadata block used in your app
+  // NOTE: we *intentionally* do NOT accept applicants from client
+]);
+
+function sanitizeGig(base, { venueId }) {
+  const out = {};
+
+  // Copy only allowed keys
+  for (const k of Object.keys(base || {})) {
+    if (ALLOWED_FIELDS.has(k)) out[k] = base[k];
+  }
+
+  // Force & normalize sensitive/system fields
+  out.venueId = venueId;
+  out.status = typeof out.status === "string" ? out.status : "open";
+  out.complete = out.complete === true;
+
+  // ⏱ createdAt: keep if valid TS; else server time
+  const createdAtTs = toAdminTimestamp(base?.createdAt);
+  out.createdAt = createdAtTs || FieldValue.serverTimestamp();
+
+  // ⏱ startDateTime: prefer provided TS; else build from (date, startTime)
+  const sdtFromClient = toAdminTimestamp(base?.startDateTime);
+  const sdtFromParts = buildStartDateTime(base?.date, base?.startTime);
+  out.startDateTime = sdtFromClient || sdtFromParts;
+  if (!out.startDateTime) {
+    throw new Error("INVALID_GIG: missing startDateTime");
+  }
+
+  // Optional: normalize `date` to an Admin Timestamp (you keep it for legacy/UI)
+  const dateTs = toAdminTimestamp(base?.date);
+  if (dateTs) out.date = dateTs;
+
+  // 📍 geopoint (accepts various shapes): prefer `geopoint`, else `coordinates`
+  const geo = toAdminGeoPoint(base?.geopoint) || toAdminGeoPoint(base?.coordinates);
+  if (geo) out.geopoint = geo;
+
+  // 💷 budgetValue normalization (number or null)
+  if (out.budgetValue !== null && out.budgetValue !== undefined) {
+    const n = Number(out.budgetValue);
+    out.budgetValue = Number.isFinite(n) ? n : null;
+  } else {
+    out.budgetValue = null;
+  }
+
+  // 👥 applicants: preserve on edit (if array), else ensure empty array
+  if (Array.isArray(base?.applicants)) {
+    out.applicants = base.applicants;
+  } else {
+    out.applicants = [];
+  }
+
+  // Defensive: gigId must exist
+  if (!out.gigId || typeof out.gigId !== "string") {
+    throw new Error("INVALID_GIG: missing gigId");
+  }
+
+  return out;
+}
+
+export const postMultipleGigs = callable(
+  { 
+    region: REGION_PRIMARY,
+    timeoutSeconds: 60,
+    authRequired: true,
+    enforceAppCheck: true,
+    ...WARM_RUNTIME_OPTIONS,
+  },
+  async (req) => {
+    const uid = req.auth.uid;
+    const { venueId, gigDocuments } = req.data || {};
+
+    if (!venueId || !Array.isArray(gigDocuments) || gigDocuments.length === 0) {
+      throw new Error("INVALID_ARGUMENT");
+    }
+    if (gigDocuments.length > 20) {
+      // keep batches reasonable; tweak as needed
+      throw new Error("TOO_MANY_GIGS");
+    }
+
+    // Server-side permission check
+    await requirePerm(venueId, uid, "gigs.create");
+
+    // Sanitize + prepare batch
+    const batch = db.batch();
+    const gigIds = [];
+
+    for (const raw of gigDocuments) {
+      const gig = sanitizeGig(raw, { venueId });
+      const gigRef = db.collection("gigs").doc(gig.gigId);
+      batch.set(gigRef, gig, { merge: false });
+      gigIds.push(gig.gigId);
+    }
+
+    // push IDs into venueProfiles/{venueId}.gigs
+    const uniqueIds = Array.from(new Set(gigIds));
+    const venueRef = db.collection("venueProfiles").doc(venueId);
+    batch.set(venueRef, { gigs: FieldValue.arrayUnion(...uniqueIds) }, { merge: true });
+
+    // (optional) audit
+    batch.set(db.collection("auditLogs").doc(), {
+      type: "gigsCreated",
+      venueId,
+      count: uniqueIds.length,
+      gigIds: uniqueIds,
+      byUid: uid,
+      at: Timestamp.now(),
+    });
+
+    await batch.commit();
+    return { ok: true, gigIds: uniqueIds };
+  }
+);

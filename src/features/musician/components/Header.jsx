@@ -22,8 +22,7 @@ import {
 import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth';
 import { useState, useEffect } from 'react'
-import { listenToUserConversations } from '@services/conversations';
-import { submitUserFeedback } from '@services/reports';
+import { listenToUserConversations } from '@services/client-side/conversations';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';
 import { NoProfileModal } from './NoProfileModal';
@@ -64,11 +63,8 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
     const handleLogout = async () => {
         try {
             await logout();
-            navigate('/');
         } catch (err) {
             console.error(err);
-        } finally {
-            window.location.reload();
         }
     }
 

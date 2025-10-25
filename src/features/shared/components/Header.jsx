@@ -4,7 +4,7 @@ import { GuitarsIcon, LogOutIcon, TelescopeIcon, UserIcon, VenueBuilderIcon } fr
 import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth'
 import { useState, useEffect } from 'react'
-import { listenToUserConversations } from '@services/conversations';
+import { listenToUserConversations } from '@services/client-side/conversations';
 import { ProfileCreator } from '../../musician/profile-creator/ProfileCreator';
 import { ExitIcon, MapIcon } from '../ui/extras/Icons';
 import { NoProfileModal } from '../../musician/components/NoProfileModal';
@@ -23,11 +23,8 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
     const handleLogout = async () => {
         try {
             await logout();
-            navigate();
         } catch (err) {
             console.error(err);
-        } finally {
-            window.location.reload();
         }
     }
 
@@ -59,7 +56,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                     Find a Gig
                                 </button>
                             </Link>
-                            <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(noProfileModalClosable)}}>
+                            <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(!noProfileModalClosable)}}>
                                 <GuitarsIcon />
                                 Create a Musician Profile
                             </button>
@@ -69,8 +66,8 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                 </button>
                             </Link>
                         </div>
-                        <button className='btn logout' onClick={() => handleLogout()}>
-                            <LogOutIcon />
+                        <button className='btn secondary logout' onClick={() => handleLogout()}>
+                            Log Out
                         </button>
                     </div>
                 </>

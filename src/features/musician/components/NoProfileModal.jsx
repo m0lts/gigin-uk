@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Icons (replace with your actual imports)
@@ -9,10 +9,8 @@ import { Timestamp, arrayUnion } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
 // Your service functions (assumed to exist as per your spec)
-import { updateMusicianProfile } from '@services/musicians';
-import { createBandProfile } from '@services/bands';
-import { createMusicianProfile } from '@services/musicians';
-import { updateUserDocument } from '@services/users';
+import { updateMusicianProfile } from '@services/client-side/musicians';
+import { createMusicianProfile } from '@services/client-side/musicians';
 import { uploadFileToStorage } from '@services/storage';
 import { generateBandPassword } from '@services/utils/validation';
 import { toast } from 'sonner';
@@ -21,8 +19,10 @@ import { uploadProfilePicture } from '../../../services/storage';
 import '@styles/musician/no-profile.styles.css'
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useNavigate } from 'react-router-dom';
-import { getUserById } from '../../../services/users';
-import { getMusicianProfileByMusicianId } from '../../../services/musicians';
+import { getUserById } from '../../../services/client-side/users';
+import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
+import { updateUserArrayField } from '../../../services/function-calls/users';
+import { createBandProfile } from '../../../services/function-calls/bands';
 
 // Helpers
 const slideVariants = {
@@ -43,7 +43,7 @@ const Stage = {
 export const NoProfileModal = ({
   isOpen,
   onClose,
-  noProfileModalClosable = false
+  noProfileModalClosable = false,
 }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -51,10 +51,15 @@ export const NoProfileModal = ({
     const [direction, setDirection] = useState(1);
     const [selectedUserType, setSelectedUserType] = useState(null);
 
+    console.log('isOpen', isOpen, 'noProfileModalClosable', noProfileModalClosable);
+
     const musicianProfile = useMemo(
         () => user?.musicianProfile,
         [user]
     );
+
+    console.log('musicianProfile', musicianProfile);
+
     const musicianId = useMemo(
         () => musicianProfile?.id || musicianProfile?.musicianId,
         [musicianProfile]
@@ -69,8 +74,10 @@ export const NoProfileModal = ({
     const [prevStage, setPrevStage] = useState(Stage.SELECT);
     const [loadingMessage, setLoadingMessage] = useState('Loading…');
 
+    const wasOpen = useRef(false);
+
     useEffect(() => {
-        if (!isOpen) return;
+      if (isOpen && !wasOpen.current) {
         setStage(Stage.SELECT);
         setDirection(1);
         setSelectedUserType(null);
@@ -81,7 +88,10 @@ export const NoProfileModal = ({
         setBandName('');
         setBandImageFile(null);
         setBandImagePreview(null);
-    }, [isOpen, musicianProfile]);
+      }
+      wasOpen.current = isOpen;
+      setMusicianName(musicianProfile?.name || '');
+    }, [isOpen, musicianProfile?.name]);
 
     useEffect(() => {
         if (stage === Stage.BAND && !bandId) {
@@ -120,7 +130,7 @@ export const NoProfileModal = ({
         try {
             let pictureUrl;
             if (musicianImageFile) {
-                await uploadProfilePicture(musicianImageFile, musicianId)
+                pictureUrl = await uploadProfilePicture(musicianImageFile, musicianId)
             }
             const payload = {
                 onboarded: true,
@@ -150,7 +160,6 @@ export const NoProfileModal = ({
         try {
             const payload = {
               onboarded: true,
-              searchKeywords: generateSearchKeywords(musicianName),
               updatedAt: Timestamp.now(),
             };
             await updateMusicianProfile(musicianId, payload);
@@ -250,7 +259,7 @@ export const NoProfileModal = ({
       
           // 6) Link band to user + creator’s musician profile
           await Promise.all([
-            updateUserDocument(uid, { bands: arrayUnion(bandId) }),
+            updateUserArrayField('bands', 'add', bandId),
             updateMusicianProfile(creatorMusicianId, {
               bands: arrayUnion(bandId),
               onboarded: true,
@@ -344,9 +353,7 @@ export const NoProfileModal = ({
                                           createdAt: Timestamp.now(),
                                         };
                                         await createMusicianProfile(id, payload, user.uid);
-                                        await updateUserDocument(user.uid, {
-                                            musicianProfile: arrayUnion(id)
-                                        })
+                                        await updateUserArrayField('musicianProfile', 'add', id);
                                         handleSelect('musician')
                                     } catch (error) {
                                         console.error(error)
@@ -376,9 +383,7 @@ export const NoProfileModal = ({
                                           createdAt: Timestamp.now(),
                                         };
                                         await createMusicianProfile(id, payload, user.uid);
-                                        await updateUserDocument(user.uid, {
-                                            musicianProfile: arrayUnion(id)
-                                        })
+                                        await updateUserArrayField('musicianProfile', 'add', id);
                                         handleSelect('band')
                                     } catch (error) {
                                         console.error(error)
@@ -463,7 +468,7 @@ export const NoProfileModal = ({
                     </div>
 
                     <div className="modal-actions">
-                        <button className="btn tertiary" onClick={handleSkipMusician} disabled={!musicianId}>
+                        <button className="btn tertiary" onClick={() => handleSkipMusician()} disabled={!musicianId}>
                             Skip
                         </button>
                         <div className="action-buttons">
@@ -572,7 +577,7 @@ export const NoProfileModal = ({
                         className="loading-stage"
                     >
                         <div className="loading-wrap">
-                            <LoadingSpinner width={40} height={40} />
+                            <LoadingSpinner />
                             <h3>{loadingMessage}</h3>
                             <p>This usually only takes a moment.</p>
                         </div>

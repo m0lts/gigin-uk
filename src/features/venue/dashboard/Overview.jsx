@@ -9,15 +9,15 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js';
-import { getMusicianProfileByMusicianId } from '@services/musicians';
-import { getReviewsByVenueIds } from '@services/reviews';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { AllGigsIcon, CalendarIconSolid, ExclamationIcon, GigIcon, MailboxFullIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { NextGig } from '../components/NextGig';
 import { FeedbackSection } from './FeedbackSection';
-import { submitReview } from '../../../services/reviews';
 import { toast } from 'sonner';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
+import { getLocalGigDateTime } from '../../../services/utils/filtering';
+import { submitReview } from '../../../services/function-calls/reviews';
 
 export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gigsToReview, setGigsToReview, requests }) => {
 
@@ -42,15 +42,6 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
     useEffect(() => {
         if (!gigs?.length) return;
         const now = new Date();
-        const getLocalGigDateTime = (gig) => {
-            const dateObj = gig.date.toDate();
-            const [hours, minutes] = gig.startTime.split(':').map(Number);
-            dateObj.setHours(hours);
-            dateObj.setMinutes(minutes);
-            dateObj.setSeconds(0);
-            dateObj.setMilliseconds(0);
-            return dateObj;
-        };
         const newApplications = gigs.filter(gig =>
             gig.applicants.some(applicant =>
               (applicant.viewed === false || applicant.viewed === undefined) &&

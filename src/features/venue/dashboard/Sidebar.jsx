@@ -32,7 +32,6 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/');
     } catch (err) {
       toast.error('Failed to logout. Please try again.')
       console.error('Logout Failed:', err);
@@ -97,13 +96,15 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
       </div>
       <ul className={`account-dropdown ${showDropdown ? 'open' : ''}`} onClick={() => setShowDropdown(!showDropdown)}>
         <li className='account-dropdown-item exempt'>
-          <div>
+          <div className='account-info'>
             <h6>Venue Dashboard</h6>
             <div className='user-container'>
               <UserIcon />
               <div className='user-details'>
                 <h4>{user?.name}</h4>
-                <p>{user?.email}</p>
+                <p>
+                  {user?.email}
+                </p>
               </div>
             </div>
           </div>

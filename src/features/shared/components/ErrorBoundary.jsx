@@ -1,6 +1,6 @@
 // components/ErrorBoundary.tsx
 import React from 'react';
-import { logClientError } from '@services/errors';
+import { logClientError } from '@services/client-side/errors';
 
 export class ErrorBoundary extends React.Component {
     constructor(props) {

@@ -10,22 +10,26 @@ import {
 CloseIcon } from '@features/shared/ui/extras/Icons';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
-import { deleteGigsBatch, duplicateGig, saveGigTemplate, updateGigDocument } from '@services/gigs';
+import { deleteGigsBatch } from '@services/client-side/gigs';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { openInNewTab } from '../../../services/utils/misc';
 import { RequestCard } from '../components/RequestCard';
-import { getVenueProfileById, removeVenueRequest } from '../../../services/venues';
+import { getVenueProfileById, removeVenueRequest } from '../../../services/client-side/venues';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
-import { cancelGigAndRefund } from '../../../services/functions';
-import { getOrCreateConversation } from '../../../services/conversations';
-import { postCancellationMessage } from '../../../services/messages';
-import { getGigById, logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
-import { getMusicianProfileByMusicianId, updateMusicianCancelledGig } from '../../../services/musicians';
+import { cancelGigAndRefund } from '@services/function-calls/tasks';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { postCancellationMessage } from '../../../services/function-calls/messages';
+import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
+import { toJsDate } from '../../../services/utils/dates';
+import { getLocalGigDateTime } from '../../../services/utils/filtering';
+import { hasVenuePerm } from '../../../services/utils/permissions';
+import { duplicateGig, handleCloseGig, handleOpenGig, logGigCancellation, saveGigTemplate, updateGigDocument, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
+import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
 
 
-export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user }) => {
+export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user, refreshGigs }) => {
     const location = useLocation();
     const navigate = useNavigate();
   
@@ -93,32 +97,25 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
   
     const normalizedGigs = useMemo(() => {
       return gigs.map(gig => {
-        const dateObj = gig.date.toDate();
-        const [hours, minutes] = gig.startTime.split(':').map(Number);
-        dateObj.setHours(hours);
-        dateObj.setMinutes(minutes);
-        dateObj.setSeconds(0);
-        dateObj.setMilliseconds(0);
-        const gigDateTime = new Date(dateObj);
-    
-        const isoDate = gigDateTime.toISOString().split('T')[0];
-    
-        const confirmedApplicant = gig.applicants?.some(app => app.status === 'confirmed');
-        const acceptedApplicant = gig.applicants?.some(app => app.status === 'accepted');
+        const dt = getLocalGigDateTime(gig);
+        const isoDate = dt ? dt.toISOString().split('T')[0] : null;
+        const confirmedApplicant = gig.applicants?.some(a => a.status === 'confirmed');
+        const acceptedApplicant = gig.applicants?.some(a => a.status === 'accepted');
+        const inDispute = gig?.disputeLogged;
         let status = 'past';
-    
-        if (gigDateTime > now) {
+        if (dt && dt > now) {
           if (confirmedApplicant) status = 'confirmed';
-          else if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) status = 'awaiting payment'
+          else if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) status = 'awaiting payment';
           else if (gig.status === 'open') status = 'upcoming';
           else status = 'closed';
+        } else if (dt && dt < now) {
+          if (!!inDispute) status = 'in dispute';
         }
-    
         return {
           ...gig,
-          dateObj: gigDateTime,
+          dateObj: dt,
           dateIso: isoDate,
-          dateTime: gigDateTime,
+          dateTime: dt,
           status,
         };
       });
@@ -171,25 +168,27 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     const handleDeleteSelected = async () => {
         if (selectedGigs.length === 0) return;
         try {
+          setLoading(true);
           await deleteGigsBatch(selectedGigs);
           toast.success('Gig Deleted.');
           setConfirmModal(false);
           setSelectedGigs([]);
+          refreshGigs();
+          setConfirmType(null);
+          setConfirmMessage(null);
         } catch (error) {
           console.error('Failed to delete selected gig:', error);
           toast.error('Failed to delete selected gig. Please try again.');
           setConfirmModal(false);
         } finally {
-          setTimeout(() => {
-            setConfirmType(null);
-            setConfirmMessage(null);
-          }, 2500);
+          setLoading(false);
         }
       };
       
       const handleDuplicateSelected = async () => {
         if (selectedGigs.length === 0) return;      
         try {
+          setLoading(true);
           const newGigIds = [];
           for (const gigId of selectedGigs) {
             const newId = await duplicateGig(gigId);
@@ -198,15 +197,14 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           toast.success('Gigs Duplicated');
           setConfirmModal(false);
           setSelectedGigs([]);
+          setConfirmType(null);
+          setConfirmMessage(null);
         } catch (error) {
           console.error('Failed to duplicate gigs:', error);
           toast.error('Failed to duplicate gigs. Please try again.');
           setConfirmModal(false);
         } finally {
-            setTimeout(() => {
-              setConfirmType(null);
-              setConfirmMessage(null);
-            }, 2500);
+          setLoading(false);
           }
       };
 
@@ -238,39 +236,40 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
             const isOpenMic = nextGig.kind === 'Open Mic';
             const isTicketed = nextGig.kind === 'Ticketed Gig';
             if (!isOpenMic && !isTicketed) {
-                const taskNames = [
-                    nextGig.clearPendingFeeTaskName,
-                    nextGig.automaticMessageTaskName,
-                ];
-                await cancelGigAndRefund({
-                    taskNames,
-                    transactionId: nextGig.paymentIntentId,
-                });
+              const taskNames = [
+                nextGig.clearPendingFeeTaskName,
+                nextGig.automaticMessageTaskName,
+              ];
+              await cancelGigAndRefund({
+                taskNames,
+                transactionId: nextGig.paymentIntentId,
+              });
             }
             const handleMusicianCancellation = async (musician) => {
-                const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
-                await postCancellationMessage(
-                  conversationId,
-                  user.uid,
-                  `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
-                    cancellationReason
-                  )}. We apologise for any inconvenience caused.`,
-                  'venue'
-                );
-                await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
-                await updateMusicianCancelledGig(musician.musicianId, gigId);
-                await logGigCancellation(gigId, musician.musicianId, cancellationReason);
-              };
-          
-              if (isOpenMic) {
-                const bandOrMusicianProfiles = await Promise.all(
-                  nextGig.applicants
-                    .filter(app => app.status === 'confirmed')
-                    .map(app => getMusicianProfileByMusicianId(app.id))
-                );
-                for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
-                  await handleMusicianCancellation(musician);
-                }
+              const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
+              await postCancellationMessage(
+                conversationId,
+                user.uid,
+                `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                  cancellationReason
+                )}. We apologise for any inconvenience caused.`,
+                'venue'
+              );
+              await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
+              await updateMusicianCancelledGig(musician.musicianId, gigId);
+              const cancellingParty = 'venue';
+              await logGigCancellation(gigId, musician.musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
+            };
+        
+            if (isOpenMic) {
+              const bandOrMusicianProfiles = await Promise.all(
+                nextGig.applicants
+                  .filter(app => app.status === 'confirmed')
+                  .map(app => getMusicianProfileByMusicianId(app.id))
+              );
+              for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
+                await handleMusicianCancellation(musician);
+              }
             } else {
               const confirmedApplicant = nextGig.applicants.find(app => app.status === 'confirmed');
               if (!confirmedApplicant) {
@@ -281,7 +280,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
               await handleMusicianCancellation(musicianProfile);
             }
             setLoading(false);
-            window.location.reload();
             toast.success('Gig cancellation successful.')
             setConfirmModal(false);
             setSelectedGigs([]);
@@ -546,9 +544,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       'awaiting payment': <ExclamationIconSolid />,
                       confirmed: <TickIcon />,
                       closed: <ErrorIcon />,
+                      'in dispute': <ErrorIcon />,
                       past: <PreviousIcon />,
                     }[gig.status];
-    
                     return (
                       <React.Fragment key={gig.gigId}>
                         {isFirstPreviousGig && (
@@ -579,7 +577,11 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               <td></td>
                           )} */}
                           <td>{gig.gigName}</td>
-                          <td>{gig.startTime} - {gig.dateObj.toLocaleDateString('en-GB')}</td>
+                          <td>
+                            {gig.dateObj
+                              ? `${gig.dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} - ${gig.dateObj.toLocaleDateString('en-GB')}`
+                              : '—'}
+                          </td>
                           <td className='truncate'>{gig.venue.venueName}</td>
                           {windowWidth > 880 && (
                             <td className='centre'>
@@ -596,8 +598,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               )}
                             </td>
                           )}
-                          <td className={`status-box ${gig.status === 'awaiting payment' ? 'closed' : gig.status}`}>
-                            <div className={`status ${gig.status === 'awaiting payment' ? 'closed' : gig.status}`}>
+                          <td className={`status-box ${gig.status === 'awaiting payment' || gig.status === 'in dispute' ? 'closed' : gig.status}`}>
+                            <div className={`status ${gig.status === 'awaiting payment' || gig.status === 'in dispute' ? 'closed' : gig.status}`}>
                               {StatusIcon} {gig.status}
                             </div>
                           </td>
@@ -631,12 +633,21 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               {openOptionsGigId === gig.gigId && (
                                   <div className="options-dropdown">
                                   <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <GigIcon /></button>
-                                  {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && (
-                                      <button onClick={() => { closeOptionsMenu(); openGigPostModal(gig); console.log(gig) }}>Edit <EditIcon /></button>
+                                  {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
+                                      <button onClick={() => { 
+                                        if (!hasVenuePerm(venues, gig.venueId, 'gigs.create')) {
+                                          toast.error('You do not have permission to duplicate this gig.');
+                                        };
+                                        closeOptionsMenu();
+                                        openGigPostModal(gig);
+                                    }}>Edit <EditIcon /></button>
                                   )}
-                                  {gig.dateTime > now && (
+                                  {gig.dateTime > now && hasVenuePerm(venues, gig.venueId, 'gigs.create')&& (
                                       <button 
                                           onClick={() => {
+                                              if (!hasVenuePerm(venues, gig.venueId, 'gigs.create')) {
+                                                toast.error('You do not have permission to duplicate this gig.');
+                                              }
                                               closeOptionsMenu();
                                               setSelectedGigs([gig.gigId]);
                                               setConfirmType('duplicate');
@@ -648,13 +659,20 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           <DuplicateGigIcon />
                                       </button>
                                   )}
-                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && gig.kind !== 'Open Mic') ? (
+                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && gig.kind !== 'Open Mic') && hasVenuePerm(venues, gig.venueId, 'gigs.update') ? (
                                       <button
                                       onClick={async () => {
+                                          if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                            toast.error('You do not have permission to edit this gig.');
+                                          }
                                           closeOptionsMenu();
                                           const newStatus = (gig.status === 'open' || gig.status === 'upcoming') ? 'closed' : 'open';
                                           try {
-                                              await updateGigDocument(gig.gigId, { status: newStatus });
+                                            if (newStatus === 'closed') {
+                                              await handleCloseGig(gig.gigId);
+                                            } else {
+                                              await handleOpenGig(gig.gigId);
+                                            }
                                               toast.success(`Gig ${(newStatus === 'open' || newStatus === 'upcoming') ? 'Opened for Applications' : 'Closed from Applications'}`);
                                           } catch (error) {
                                               console.error('Error updating status:', error);
@@ -669,13 +687,16 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                               <TickIcon />
                                           )}
                                       </button>
-                                  ) : (gig.dateTime > now && gig.status !== 'confirmed' && gig.kind === 'Open Mic') && (
+                                  ) : (gig.dateTime > now && gig.status !== 'confirmed' && gig.kind === 'Open Mic') && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
                                     <button
                                       onClick={async () => {
+                                          if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                            toast.error('You do not have permission to edit this gig.');
+                                          }
                                           closeOptionsMenu();
                                           const newStatus = gig.openMicApplications ? false : true;
                                           try {
-                                              await updateGigDocument(gig.gigId, { openMicApplications: newStatus, limitApplications: false });
+                                              await updateGigDocument(gig.gigId, 'gigs.update', { openMicApplications: newStatus, limitApplications: false });
                                               toast.success(`Open mic night ${(newStatus) ? 'opened for applications.' : 'changed to turn up and play.'}`);
                                           } catch (error) {
                                               console.error('Error updating status:', error);
@@ -691,17 +712,34 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           )}
                                       </button>
                                   )}
-                                  <button onClick={() => { closeOptionsMenu(); handleCloneAsTemplate(gig); }}>
-                                      Make Gig a Template <TemplateIcon />
-                                  </button>
-                                  {gig.privateApplications && (
-                                    <button onClick={() => { closeOptionsMenu(); copyToClipboard(gig.privateApplicationsLink); }}>
+                                  {hasVenuePerm(venues, gig.venueId, 'gigs.create') && (
+                                    <button onClick={() => {
+                                      if (!hasVenuePerm(venues, gig.venueId, 'gigs.create')) {
+                                        toast.error('You do not have permission to perform this action.');
+                                      };
+                                      closeOptionsMenu();
+                                      handleCloneAsTemplate(gig);
+                                    }}>
+                                        Make Gig a Template <TemplateIcon />
+                                    </button>
+                                  )}
+                                  {gig.privateApplications && hasVenuePerm(venues, gig.venueId, 'gigs.invite') && (
+                                    <button onClick={() => {
+                                      if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
+                                        toast.error('You do not have permission to perform this action.');
+                                      };
+                                      closeOptionsMenu();
+                                      copyToClipboard(gig.privateApplicationsLink);
+                                      }}>
                                         Copy Private Link <LinkIcon />
                                     </button>
                                   )}
-                                  {gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' ? (
+                                  {gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && hasVenuePerm(venues, gig.venueId, 'gigs.update') ? (
                                       <button 
                                           onClick={() => {
+                                              if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                                toast.error('You do not have permission to delete this gig.');
+                                              }
                                               closeOptionsMenu();
                                               setSelectedGigs([gig.gigId]);
                                               setConfirmType('delete');
@@ -711,9 +749,12 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                               Delete
                                               <DeleteGigIcon />
                                       </button>
-                                  ) : gig.dateTime > now && gig.status === 'confirmed' && (
+                                  ) : gig.dateTime > now && gig.status === 'confirmed' && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
                                         <button 
                                           onClick={() => {
+                                              if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                                toast.error('You do not have permission to delete this gig.');
+                                              }
                                               closeOptionsMenu();
                                               setSelectedGigs([gig.gigId]);
                                               setConfirmType('cancel');
@@ -802,9 +843,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                         </div>
                     </div>
                 </div>
-                  ) : (
-                    <LoadingModal title={confirmType === 'delete' ? 'Deleting Gig' : confirmType === 'cancel' ? 'Cancelling Gig' : 'Duplicating Gig'}/>
-                  )}
+                ) : (
+                  <LoadingModal />
+                )}
               </Portal>
             )}
         </div>

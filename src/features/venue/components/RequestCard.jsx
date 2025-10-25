@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { markRequestAsViewed } from '@services/venues';
+import { markRequestAsViewed } from '@services/client-side/venues';
 import { openInNewTab } from '../../../services/utils/misc';
 
 export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, venues }) => {

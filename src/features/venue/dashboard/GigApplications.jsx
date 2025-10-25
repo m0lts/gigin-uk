@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { 
@@ -15,28 +15,33 @@ import { useAuth } from '@hooks/useAuth';
 import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { declineGigApplication, deleteGig, updateGigApplicants } from '@services/gigs';
-import { getMusicianProfileByMusicianId, removeGigFromMusician } from '@services/musicians';
-import { deleteConversationsByGigId, getConversationsByParticipantAndGigId, getOrCreateConversation } from '@services/conversations';
-import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, getMostRecentMessage } from '@services/messages';
-import { removeGigFromVenue } from '@services/venues';
-import { confirmGigPayment, fetchSavedCards } from '@services/functions';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { getMostRecentMessage } from '@services/client-side/messages';
+import { removeGigFromVenue } from '@services/client-side/venues';
+import { confirmGigPayment, fetchSavedCards } from '@services/function-calls/payments';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
-import { acceptGigOffer, acceptGigOfferOM, deleteGigAndInformation, logGigCancellation, revertGigAfterCancellationVenue, updateGigDocument } from '../../../services/gigs';
-import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
+import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PermissionsIcon, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
-import { getVenueProfileById } from '../../../services/venues';
+import { getVenueProfileById } from '../../../services/client-side/venues';
 import { loadStripe } from '@stripe/stripe-js';
-import { sendGigAcceptedEmail, sendGigDeclinedEmail } from '../../../services/emails';
+import { sendGigAcceptedEmail, sendGigDeclinedEmail } from '../../../services/client-side/emails';
 import Portal from '../../shared/components/Portal';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
-import { notifyOtherApplicantsGigConfirmed } from '../../../services/conversations';
+import { notifyOtherApplicantsGigConfirmed } from '../../../services/function-calls/conversations';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
-import { cancelGigAndRefund } from '../../../services/functions';
-import { postCancellationMessage } from '../../../services/messages';
-import { updateMusicianCancelledGig } from '../../../services/musicians';
+import { cancelGigAndRefund } from '@services/function-calls/tasks';
+import { acceptGigOffer, acceptGigOfferOM, logGigCancellation, markApplicantsViewed } from '../../../services/function-calls/gigs';
+import { postCancellationMessage } from '../../../services/function-calls/messages';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { hasVenuePerm } from '../../../services/utils/permissions';
+import { getLocalGigDateTime } from '../../../services/utils/filtering';
+import { toJsDate } from '../../../services/utils/dates';
+import { handleCloseGig, handleOpenGig, declineGigApplication, revertGigAfterCancellationVenue, deleteGigAndInformation } from '../../../services/function-calls/gigs';
+import { sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../../services/function-calls/messages';
+import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const VideoModal = ({ video, onClose }) => {
@@ -53,7 +58,7 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
+export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe, customerDetails }) => {
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -82,6 +87,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         reason: '',
         extraDetails: '',
       });
+    const [eventLoading, setEventLoading] = useState(false);
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
     const venueName = location.state?.gig?.venue?.venueName || '';
@@ -98,81 +104,129 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         setGigInfo(activeGig);
     }, [gigId, gigs]);
 
-    const getLocalGigDateTime = (gig) => {
-        const dateObj = gig.date.toDate();
-        const [hours, minutes] = gig.startTime.split(':').map(Number);
-        dateObj.setHours(hours);
-        dateObj.setMinutes(minutes);
-        dateObj.setSeconds(0);
-        dateObj.setMilliseconds(0);
-        return dateObj;
-      };
+    const markedRef = useRef(new Set()); // gigIds we’ve already marked this session
 
     useEffect(() => {
-        if (!gigInfo) return;
-        const updateApplicantsViewed = async () => {
-            try {
-                const updatedApplicants = gigInfo.applicants.map(applicant => ({
-                    ...applicant,
-                    viewed: true
-                }));
-                await updateGigApplicants(gigInfo.gigId, updatedApplicants)
-            } catch (error) {
-                console.error("Error updating applicants 'viewed' field:", error);
-            }
-        };
-        const fetchMusicianProfiles = async () => {
-            const profiles = await Promise.all(gigInfo.applicants.map(async (applicant) => {
-                const musicianData = await getMusicianProfileByMusicianId(applicant.id)
-                return { 
-                    ...musicianData, 
-                    id: applicant.id, 
-                    status: applicant.status, 
-                    proposedFee: applicant.fee,
-                    viewed: true,
-                };
-            }));
-            
-            setMusicianProfiles(profiles.filter(profile => profile !== null));
-            setLoading(false);
-        };
-        updateApplicantsViewed();
-        fetchMusicianProfiles();
+      if (!gigInfo) return;
+    
+      // Only mark if there are unviewed applicants
+      const hasUnviewed = Array.isArray(gigInfo.applicants) &&
+        gigInfo.applicants.some(a => a?.viewed !== true);
+    
+      // Don’t call again for the same gig this session
+      if (!hasUnviewed || markedRef.current.has(gigInfo.gigId)) {
+        // still run musician profiles fetch
+        fetchProfiles();
+        return;
+      }
+    
+      (async () => {
+        try {
+          await markApplicantsViewed(gigInfo.venueId, gigInfo.gigId);
+          markedRef.current.add(gigInfo.gigId);
+        } catch (err) {
+          console.error("Error marking applicants viewed:", err);
+        } finally {
+          fetchProfiles();
+        }
+      })();
+    
+      async function fetchProfiles() {
+        try {
+          const profiles = await Promise.all(
+            (gigInfo.applicants || []).map(async (app) => {
+              const m = await getMusicianProfileByMusicianId(app.id);
+              return m ? {
+                ...m,
+                id: app.id,
+                status: app.status,
+                proposedFee: app.fee,
+                viewed: true,
+              } : null;
+            })
+          );
+          setMusicianProfiles(profiles.filter(Boolean));
+          setLoading(false);
+        } catch (e) {
+          console.error("Error fetching musician profiles:", e);
+        }
+      }
     }, [gigInfo]);
 
     const formatDate = (timestamp) => {
-        const date = timestamp.toDate();
+        if (!timestamp) return "—";
+        let date;
+        if (typeof timestamp.toDate === "function") {
+          date = timestamp.toDate();
+        }
+        else if (timestamp instanceof Date) {
+          date = timestamp;
+        }
+        else if (typeof timestamp === "string") {
+          date = new Date(timestamp);
+        }
+        else if (typeof timestamp === "object" && "seconds" in timestamp) {
+          date = new Date(timestamp.seconds * 1000);
+        } else {
+          return "Invalid date";
+        }
         const day = date.getDate();
-        const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
-        const month = date.toLocaleDateString('en-GB', { month: 'long' });
-        const getOrdinalSuffix = (day) => {
-            if (day > 3 && day < 21) return 'th';
-            switch (day % 10) {
-                case 1: return 'st';
-                case 2: return 'nd';
-                case 3: return 'rd';
-                default: return 'th';
-            }
+        const weekday = date.toLocaleDateString("en-GB", { weekday: "long" });
+        const month = date.toLocaleDateString("en-GB", { month: "long" });
+        const getOrdinalSuffix = (d) => {
+          if (d > 3 && d < 21) return "th";
+          switch (d % 10) {
+            case 1: return "st";
+            case 2: return "nd";
+            case 3: return "rd";
+            default: return "th";
+          }
         };
         return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
+    };
+
+    const assertOk = (res, name) => {
+        if (!res) throw new Error(`${name}: empty response`);
+        if (res.error) throw (res.error instanceof Error ? res.error : new Error(`${name}: ${res.error?.message || 'failed'}`));
+        return res;
     };
 
     const handleAccept = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
         event.stopPropagation();    
         try {
+            if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
+            setEventLoading(true);
             const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig" || gigInfo.budget === '£' || gigInfo.budget === '£0';
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM(gigInfo, musicianId);
+                const { updatedApplicants } = assertOk(
+                    await acceptGigOfferOM(gigInfo, musicianId, 'venue'),
+                    'acceptGigOfferOM'
+                );
+                if (!Array.isArray(updatedApplicants)) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOfferOM: updatedApplicants is not an array');
+                };
                 setGigInfo((prevGigInfo) => ({
                     ...prevGigInfo,
                     applicants: updatedApplicants,
                     paid: true,
                 }));
             } else {
-                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigInfo, musicianId, nonPayableGig);
+                const { updatedApplicants, agreedFee } = assertOk(
+                    await acceptGigOffer(gigInfo, musicianId, nonPayableGig, 'venue'),
+                    'acceptGigOffer'
+                  );
+                if (!Array.isArray(updatedApplicants)) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOffer: no updatedApplicants')
+                };
+                if (agreedFee == null) {
+                    toast.error('Failed to update gig status. Please try again.');
+                    throw new Error('acceptGigOffer: no agreedFee')
+                };
                 setGigInfo((prevGigInfo) => ({
                     ...prevGigInfo,
                     applicants: updatedApplicants,
@@ -206,15 +260,26 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         } catch (error) {
             toast.error('Error accepting gig application. Please try again.')
             console.error('Error updating gig document:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
     const handleReject = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
         event.stopPropagation();
         try {
+            if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
-            const updatedApplicants = await declineGigApplication(gigInfo, musicianId);
+            setEventLoading(true);
+            const updatedApplicants = assertOk(
+                await declineGigApplication(gigInfo, musicianId, 'venue'),
+                'declineGigApplication'
+            );
+            if (!Array.isArray(updatedApplicants)) {
+                toast.error('Failed to update gig status. Please try again.');
+                throw new Error('declineGigApplication: no updatedApplicants')
+            };
             setGigInfo((prevGigInfo) => ({
                 ...prevGigInfo,
                 applicants: updatedApplicants,
@@ -236,19 +301,22 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                 gigData: gigInfo,
             })
         } catch (error) {
-            toast.error('Error rejecting gig application. Please try again.')
+            toast.error('Error declining gig application. Please try again.')
             console.error('Error updating gig document:', error);
+        } finally {
+            setEventLoading(false);
         }
     };
 
-    const sendToConversation = async (profileId) => {
-        const conversations = await getConversationsByParticipantAndGigId(gigInfo.gigId, profileId)
+    const sendToConversation = async (userId) => {
+        const conversations = await getConversationsByParticipantAndGigId(gigInfo.gigId, userId)
         const conversationId = conversations[0].id;
         navigate(`/venues/dashboard/messages?conversationId=${conversationId}`);
     }
 
     const handleCompletePayment = async (profileId) => {
         if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
+        if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay')) return toast.error('You do not have permission to pay for gigs.');
         setLoadingPaymentDetails(true);
         try {
             const cards = await fetchSavedCards();
@@ -264,9 +332,11 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
     };
 
     const handleSelectCard = async (cardId) => {
+        if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay')) return toast.error('You do not have permission to pay for gigs.');
         setMakingPayment(true);
         try {
-            const result = await confirmGigPayment({ cardId, gigData: gigInfo, musicianProfileId });
+            const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
+            const result = await confirmGigPayment({ cardId, gigData: gigInfo, musicianProfileId, customerId });
             if (result.success && result.paymentIntent) {
                 const piId = result?.paymentIntent?.id;
                 if (piId) setWatchPaymentIntentId(piId);
@@ -313,26 +383,30 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             toast.error('An error occurred while processing the payment. Please try again.');
         } finally {
             setMakingPayment(false);
+            refreshStripe();
         }
     };
 
     const formatDisputeDate = (timestamp) => {
         if (!timestamp || !timestamp.toDate) return '24 hours after the gig started';
-    
         const date = timestamp.toDate();
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are 0-indexed
         const year = date.getFullYear().toString().slice(-2); // Last two digits of the year
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
-    
         return `${hours}:${minutes} ${day}/${month}/${year}`;
     };
 
     const openGigPostModal = (gig) => {
+        const startDT = toJsDate(gig.startDateTime) ?? toJsDate(gig.date);
+        const dateOnly = startDT
+            ? new Date(startDT.getFullYear(), startDT.getMonth(), startDT.getDate())
+            : null;
+
         const convertedGig = {
             ...gig,
-            date: gig.date ? gig.date.toDate() : null,
+            date: dateOnly,
         };
         setEditGigData(convertedGig);
         setGigPostModal(true);
@@ -353,11 +427,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         }
     };
 
-    const handleCloseGig = async () => {
+    const handleCloseGigLocal = async () => {
         try {
-            await updateGigDocument(gigId, {
-                status: 'closed',
-            });
+            await handleCloseGig(gigId);
             navigate('/venues/dashboard/gigs');
             toast.success(`Gig Closed`);
         } catch (error) {
@@ -368,9 +440,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
 
     const handleReopenGig = async () => {
         try {
-            await updateGigDocument(gigId, {
-                status: 'open',
-            });
+            await handleOpenGig(gigId);
             navigate('/venues/dashboard/gigs');
             toast.success(`Gig Opened`);
         } catch (error) {
@@ -473,6 +543,28 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
         return <LoadingScreen />;
     }
 
+    const hasConfirmed =
+    Array.isArray(gigInfo?.applicants) &&
+    gigInfo.applicants.some(a => a?.status === 'confirmed');
+
+    const gigDateTime = getLocalGigDateTime(gigInfo);
+    const clearing = gigInfo?.disputeClearingTime?.toDate?.();
+
+    const showDispute =
+        hasConfirmed &&
+        !!gigDateTime &&
+        !!clearing &&
+        clearing > gigDateTime && 
+        !gigInfo?.disputeLogged && 
+        gigDateTime < now &&
+        !gigInfo.venueHasReviewed;
+
+    const disputeLogged = 
+        hasConfirmed &&
+        !!gigDateTime &&
+        !!gigInfo?.disputeLogged &&
+        gigDateTime < now;
+
     return (
         <>
             <div className='head gig-applications'>
@@ -487,38 +579,36 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                     <div className='action-buttons'>
                         {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
                             ['accepted', 'confirmed', 'paid'].includes(applicant.status)
-                        ) && (
+                        ) && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
                             <button className='btn tertiary' onClick={() => openGigPostModal(gigInfo)}>
                                 Edit Gig Details
                             </button>
                         )}
                         {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
                             ['accepted', 'confirmed', 'paid'].includes(applicant.status)
-                        ) ? (
+                        ) && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') ? (
                             <>
                                 {gigInfo.status === 'closed' ? (
-                                <button className="btn tertiary" onClick={handleReopenGig}>
-                                    Open To Applications
-                                </button>
-
+                                    <button className="btn tertiary" onClick={handleReopenGig}>
+                                        Open To Applications
+                                    </button>
                                 ) : (
-                                <button className="btn tertiary" onClick={handleCloseGig}>
-                                    Close From Applications
-                                </button>
-
+                                    <button className="btn tertiary" onClick={handleCloseGigLocal}>
+                                        Close From Applications
+                                    </button>
                                 )}
                                 <button className='btn danger' onClick={() => setShowDeleteConfirmationModal(true)}>
                                     Delete Gig
                                 </button>
                             </>
-                        ) : (
+                        ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
                             <>
                                 <button className='btn danger' onClick={() => setShowCancelConfirmationModal(true)}>
                                     Cancel Gig
                                 </button>
-                                <button className='primary btn' onClick={() => setShowPromoteModal(true)}>
+                                {/* <button className='primary btn' onClick={() => setShowPromoteModal(true)}>
                                     <PeopleGroupIconSolid /> Promote Gig
-                                </button>
+                                </button> */}
                             </>
                         )}
                     </div>
@@ -529,16 +619,20 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                     <LoadingSpinner />
                 ) : (
                     <>
-                    {new Date(gigInfo.disputeClearingTime) > getLocalGigDateTime(gigInfo) &&
-                        Array.isArray(gigInfo?.applicants) && gigInfo?.applicants.some(applicant => applicant.status === 'confirmed' &&
-                        !gigInfo.disputeLogged) && (
-                        <div className='dispute-box'>
-                            <h3>Not happy with how the gig went?</h3>
-                            <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
-                            <button className='btn primary' onClick={() => {setShowReviewModal(true)}}>
-                                Dispute Gig
-                            </button>
-                        </div>
+                        {showDispute && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') && (
+                            <div className='dispute-box'>
+                                <h3>Not happy with how the gig went?</h3>
+                                <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
+                                <button className='btn danger' onClick={() => {setShowReviewModal(true)}}>
+                                    Dispute Gig
+                                </button>
+                            </div>
+                        )}
+                        {disputeLogged && (
+                            <div className='dispute-box'>
+                                <h3>Dispute logged.</h3>
+                                <h4 style={{ marginBottom: 0 }}>Our team is looking into the dispute. We'll update you soon.</h4>
+                            </div>
                         )}
                         {musicianProfiles.length > 0 ? (
                         <table className='applications-table'>
@@ -621,11 +715,18 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                                 Past
                                                             </div>
                                                         </div>
-                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
+                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
                                                         <div className='leave-review'>
                                                             <button className='btn primary' onClick={(e) => {e.stopPropagation(); setShowReviewModal(true); setReviewProfile(profile)}}>
                                                                 Leave a Review
                                                             </button>
+                                                        </div>
+                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && !hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
+                                                        <div className='status-box'>
+                                                            <div className='status past'>
+                                                                <PermissionsIcon />
+                                                                You don't have permission to review musicians
+                                                            </div>
                                                         </div>
                                                     ) : gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
                                                         <div className='status-box'>
@@ -638,7 +739,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                         <div className='status-box'>
                                                             <div className='status declined'>
                                                                 <ErrorIcon />
-                                                                Reported
+                                                                In Dispute
                                                             </div>
                                                         </div>
                                                     )}
@@ -667,7 +768,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && gigInfo.budget !== '£' && gigInfo.budget !== '£0' && (
+                                                    {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && gigInfo.budget !== '£' && gigInfo.budget !== '£0' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay') && (
                                                         loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
                                                             <LoadingSpinner />
                                                         ) : (
@@ -676,28 +777,40 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </button>
                                                         )
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && !gigAlreadyConfirmed && sender !== 'venue' && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && !gigAlreadyConfirmed && sender !== 'venue' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
                                                         <>
-                                                            <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                                <TickIcon />
-                                                                Accept
-                                                            </button>
-                                                            <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                                <ErrorIcon />
-                                                                Decline
-                                                            </button>
+                                                            {eventLoading ? (
+                                                                <LoadingSpinner width={15} height={15} />
+                                                            ) : (
+                                                                <>
+                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                        <TickIcon />
+                                                                        Accept
+                                                                    </button>
+                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                        <ErrorIcon />
+                                                                        Decline
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </>
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && gigInfo.kind === 'Open Mic' && gigAlreadyConfirmed && sender !== 'venue' && (
+                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && gigInfo.kind === 'Open Mic' && gigAlreadyConfirmed && sender !== 'venue' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
                                                         <>
-                                                            <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                                <TickIcon />
-                                                                Accept
-                                                            </button>
-                                                            <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
-                                                                <ErrorIcon />
-                                                                Decline
-                                                            </button>
+                                                            {eventLoading ? (
+                                                                <LoadingSpinner width={15} height={15} />
+                                                            ) : (
+                                                                <>
+                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                        <TickIcon />
+                                                                        Accept
+                                                                    </button>
+                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                        <ErrorIcon />
+                                                                        Decline
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </>
                                                     )}
                                                     {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && applicant?.invited && !gigAlreadyConfirmed && (
@@ -732,8 +845,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && (
-                                                        <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.id)}}>
+                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.budget !== '£' && gigInfo.budget !== '£0') && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
+                                                        <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId)}}>
                                                             Negotiate Fee
                                                         </button>
                                                     )}
@@ -753,6 +866,22 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                                                             </div>
                                                         </div>
                                                     )}
+                                                    {status !== 'accepted' && status !== 'declined' && status !== 'confirmed' && !hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
+                                                        <div className='status-box'>
+                                                            <div className='status past'>
+                                                                <PermissionsIcon />
+                                                                You don't have permission to manage gig applications
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {status === 'accepted' && !hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay') && (
+                                                        <div className='status-box'>
+                                                            <div className='status past'>
+                                                                <PermissionsIcon />
+                                                                You don't have permission to pay for gigs
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             )}
                                         </tr>
@@ -762,12 +891,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                         </table>
                     ) : gigInfo.status === 'closed' ? (
                         <div className='no-applications'>
-                            <h4>You have closed this gig.</h4>
-                            <button className='btn primary' onClick={handleReopenGig}>
-                                Reopen Gig to Applications
-                            </button>
+                            <h4>This Gig has been closed.</h4>
+                            {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                <button className='btn primary' onClick={handleReopenGig}>
+                                    Reopen Gig to Applications
+                                </button>
+                            )}
                         </div>
-                    ) : (
+                    ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite') && (
                         <div className='no-applications'>
                             <h4>No musicians have applied to this gig yet.</h4>
                             <button className='btn primary' onClick={() => navigate('/venues/dashboard/musicians/find')}>
@@ -793,6 +924,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                         paymentIntentId={watchPaymentIntentId}
                         setGigData={setGigInfo}
                         musicianProfileId={musicianProfileId}
+                        customerDetails={customerDetails}
+                        venues={venues}
                     />
                 </Portal>
             )}
@@ -802,6 +935,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
                         gigData={gigInfo}
                         setGigData={setGigInfo}
                         reviewer='venue'
+                        venueProfiles={venues}
                         onClose={() => {
                             setShowReviewModal(false)
                             setReviewProfile(null)
@@ -822,22 +956,19 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             {showDeleteConfirmationModal && (
                 <Portal>
                     {modalLoading ? (
-                        <LoadingModal title={'Deleting gig...'} />
+                        <LoadingModal />
                     ) : (
                         <div className='modal delete-gig' onClick={() => setShowDeleteConfirmationModal(false)}>
                             <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-                                <h3>Are you sure you want to delete this gig?</h3>
-                                <div className='two-buttons'>
-                                    <button className='btn danger' onClick={handleDeleteGig}>
-                                        Delete Gig
-                                    </button>
+                                <h3 style={{ textAlign: 'center' }}>Are you sure you want to delete this gig?</h3>
+                                <div className='two-buttons' style={{ marginTop: '1.5rem'}}>
                                     <button className='btn tertiary' onClick={() => setShowDeleteConfirmationModal(false)}>
                                         Cancel
                                     </button>
+                                    <button className='btn danger' onClick={handleDeleteGig}>
+                                        Delete Gig
+                                    </button>
                                 </div>
-                                <button className='btn tertiary close' onClick={() => setShowDeleteConfirmationModal(false)}>
-                                    Close
-                                </button>
                             </div>
                         </div>
                     )}
@@ -846,7 +977,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs }) => {
             {showCancelConfirmationModal && (
                 <Portal>
                     {modalLoading ? (
-                        <LoadingModal title={'Cancelling gig...'} />
+                        <LoadingModal />
                     ) : (
                         <div className='modal cancel-gig' onClick={() => setShowCancelConfirmationModal(false)}>
                             <div className='modal-content' onClick={(e) => e.stopPropagation()}>

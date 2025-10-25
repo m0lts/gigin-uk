@@ -7,21 +7,19 @@ import {
   ConnectAccountManagement,
 } from '@stripe/react-connect-js';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/musicians';
-import { payoutToBankAccount, transferStripeFunds } from '@services/functions';
+import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { payoutToBankAccount, transferStripeFunds } from '@services/function-calls/payments';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatFeeDate } from '@services/utils/dates';
 import { toast } from 'sonner';
 import { BankAccountIcon, CoinsIconSolid, CopyIcon, DeleteGigIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, MoreInformationIcon, PaymentSystemIcon, PieChartIcon, StripeIcon, SuccessIcon, TickIcon, WarningIcon } from '../../shared/ui/extras/Icons';
-import { deleteStripeConnectAccount } from '../../../services/functions';
-import { getConnectAccountStatus } from '../../../services/functions';
-import { getMusicianFees } from '../../../services/musicians';
-import { updateUserDocument } from '../../../services/users';
+import { deleteStripeConnectAccount } from '../../../services/function-calls/payments';
+import { getConnectAccountStatus } from '../../../services/function-calls/payments';
+import { getMusicianFees } from '../../../services/client-side/musicians';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
-import { clearMusicianBalance } from '../../../services/payments';
 
 function CountdownTimer({ targetDate }) {
     const [label, setLabel] = React.useState("");
@@ -463,17 +461,17 @@ export const Finances = ({ user, musicianProfile }) => {
                                         // choose a status label or a component
                                         let statusNode;
                                         if (fee.status === "cleared") {
-                                        statusNode = "Withdrawable";
+                                            statusNode = "Fee Released";
                                         } else if (fee.status === "in dispute") {
-                                        statusNode = "In Dispute";
+                                            statusNode = "In Dispute";
                                         } else if (fee.status === "pending") {
-                                        if (isFutureGig) {
-                                            statusNode = "Gig Not Performed";
-                                        } else if (inDisputeWind) {
-                                            statusNode = <CountdownTimer targetDate={clearingDate} />;
-                                        } else {
-                                            statusNode = "Pending";
-                                        }
+                                            if (isFutureGig) {
+                                                statusNode = "Gig Not Performed Yet";
+                                            } else if (inDisputeWind) {
+                                                statusNode = <CountdownTimer targetDate={clearingDate} />;
+                                            } else {
+                                                statusNode = "Pending";
+                                            }
                                         } else {
                                         statusNode = fee.status;
                                         }
@@ -490,7 +488,11 @@ export const Finances = ({ user, musicianProfile }) => {
                                             {windowWidth > 915 && <td>{formatFeeDate(fee.gigDate, "short")}</td>}
                                             <td>{fee.venueName}</td>
                                             <td>£{fee.amount.toFixed(2)}</td>
-                                            <td>{formatFeeDate(fee.disputeClearingTime)}</td>
+                                            {fee.disputeLogged ? (
+                                                <td>N/A: Dispute Logged</td>
+                                            ) : (
+                                                <td>{formatFeeDate(fee.disputeClearingTime)}</td>
+                                            )}
                                             <td className={`status-box ${statusClass}`}>
                                             <div className={`status ${statusClass}`}>{statusNode}</div>
                                             </td>

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { EditIcon, CopyIcon } from '@features/shared/ui/extras/Icons';
-import { saveGigTemplate } from '@services/gigs';
 import { toast } from 'sonner';
 import { ExclamationIcon, NewTabIcon } from '../../shared/ui/extras/Icons';
+import { saveGigTemplate } from '../../../services/function-calls/gigs';
 
 export const GigReview = ({ formData, handleInputChange, setStage, buildingForMusician, buildingForMusicianData, extraSlots }) => {
 

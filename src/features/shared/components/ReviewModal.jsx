@@ -3,24 +3,26 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { StarEmptyIcon, StarIcon } from '@features/shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import '@styles/shared/review-modal.styles.css';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '@services/musicians';
-import { getVenueProfileById } from '@services/venues';
-import { logDispute } from '@services/reviews';
-import { updateGigDocument } from '@services/gigs';
-import { sendDisputeMessage } from '@services/messages';
-import { sendEmail } from '@services/emails';
-import { cancelTask } from '@services/functions';
-import { submitReview } from '../../../services/reviews';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getVenueProfileById } from '@services/client-side/venues';
+import { sendDisputeMessage } from '@services/function-calls/messages';
+import { sendEmail } from '@services/client-side/emails';
+import { cancelTask } from '@services/function-calls/tasks';
 import { toast } from 'sonner';
-import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/payments';
-import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/emails';
+import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/client-side/emails';
 import Portal from './Portal';
-import { getOrCreateConversation } from '../../../services/conversations';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { LoadingModal } from '../ui/loading/LoadingModal';
-import { ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';
+import { PermissionsIcon, ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';
+import { logDispute, submitReview } from '../../../services/function-calls/reviews';
+import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/function-calls/musicians';
+import { updateGigDocument } from '../../../services/function-calls/gigs';
+import { useVenueDashboard } from '../../../context/VenueDashboardContext';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 
-export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData }) => {
+export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData, venueProfiles }) => {
+
     const [loading, setLoading] = useState(!inheritedProfile);
     const [musicianProfile, setMusicianProfile] = useState(inheritedProfile);
     const [venueProfile, setVenueProfile] = useState(null);
@@ -32,6 +34,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
     const [rating, setRating] = useState(null);
     const [reviewText, setReviewText] = useState('');
     const [reviewingAfterDispute, setReviewingAfterDispute] = useState(false);
+    const canCreateReview = reviewer !== 'venue' || hasVenuePerm(venueProfiles, gigData?.venueId, 'reviews.create');
 
     useEffect(() => {
         if (!gigData || inheritedProfile) return;
@@ -58,16 +61,23 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
     }, [gigData, inheritedProfile]);
 
     const handleDisputeSubmit = async () => {
+        if (reviewer === 'venue' && !canCreateReview) {
+            toast.error("You don't have permission to file a report for this venue.");
+            return;
+        }
         if (!disputeReason) return;
         if (!disputeAllowed) return;
         try {
             setLoading(true);
-            const success = await cancelTask(gigData.clearPendingFeeTaskName);
-            if (!success) {
+            const success = await cancelTask(gigData.clearPendingFeeTaskName, gigData.gigId, gigData.venueId);
+            const success2 = await cancelTask(gigData.automaticMessageTaskName, gigData.gigId, gigData.venueId);
+            if (!success || !success2) {
                 console.error('Failed to cancel task');
+                toast.error('Failed to submit dispute. Please try again.');
                 setLoading(false);
+                return;
             }
-            if (success) {
+            if (success && success2) {
                 await logDispute({
                     musicianId: musicianProfile.musicianId,
                     gigId: gigData.gigId,
@@ -76,20 +86,20 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     details: disputeText || null,
                     timestamp: Date.now(),
                 });
-                await updateGigDocument(gigData.gigId, {
-                    disputeLogged: true,
-                    disputeClearingTime: null,
-                    musicianFeeStatus: 'in dispute',
-                    venueHasReviewed: false,
-                });
                 const match = await findPendingFeeByGigId(musicianProfile.musicianId, gigData.gigId);
                 if (match) {
-                    await markPendingFeeInDispute(musicianProfile.musicianId, match.docId, {
-                        disputeReason,
+                    await markPendingFeeInDispute({
+                        musicianId: musicianProfile.musicianId,
+                        docId: match.docId,
+                        gigId: gigData.gigId,
+                        disputeLogged: true,
+                        status: 'in dispute',
+                        reason: disputeReason,
                         disputeDetails: disputeText || null,
+                        venueId: gigData.venueId,
                     });
                 } else {
-                console.warn('No pending fee doc found for this gig to mark as disputed.');
+                    console.warn('No pending fee doc found for this gig to mark as disputed.');
                 }
                 const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'dispute');
                 await sendDisputeMessage(conversationId, gigData.venue.venueName);
@@ -108,14 +118,21 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     musicianProfile: musicianProfile,
                     gigData: gigData,
                 })
-                setLoading(false);
-                setShowDisputeForm(false);
+                await updateGigDocument(gigData.gigId, 'reviews.create', {
+                    disputeLogged: true,
+                    disputeClearingTime: null,
+                    musicianFeeStatus: 'in dispute',
+                    venueHasReviewed: false,
+                });
                 setDisputeSubmitted(true);
-                toast.success('Dispute submitted.')
+                onClose(false);
+                toast.success('Dispute submitted. A member of the team will be in touch shortly via email.')
             }
         } catch (error) {
             console.error('Error logging dispute:', error);
             toast.error('An error occurred while logging the dispute. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -138,7 +155,12 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
     };
 
     const handleSubmitReview = async () => {
+        if (reviewer === 'venue' && !canCreateReview) {
+            toast.error("You don't have permission to submit a review for this venue.");
+            return;
+        }
         try {
+            setLoading(true);
             await submitReview({
                 reviewer,
                 musicianId: musicianProfile.musicianId,
@@ -160,6 +182,8 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
         } catch (error) {
             console.error('Error submitting review:', error);
             toast.error('An error occurred while submitting the review. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -255,61 +279,68 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                         <h2 style={{ textAlign: 'center'}}>How was the gig?</h2>
                         <h4 style={{ marginBottom: '1rem', textAlign: 'center' }}>{formatDate(gigData.date)}</h4>
                         {reviewer === 'venue' ? (
-                            <>
-                            <div className='review-head'>
-                                {musicianProfile?.picture && (
-                                    <figure className='musician-img-cont'>
-                                        <img src={musicianProfile.picture} alt={musicianProfile.name} className='musician-img' />
-                                    </figure>
-                                    
-                                )}
-                                <div className='name-and-reviews'>
-                                    <h2>{musicianProfile?.name || 'the musician'}</h2>
-                                    {musicianProfile?.avgReviews ? (
-                                        <h4>{musicianProfile.avgReviews.totalReviews} Review(s)</h4>
-                                    ) : (
-                                        <h6>No Reviews</h6>
-                                    )}
+                            !canCreateReview ? (
+                                <div className='review-body permissions'>
+                                    <PermissionsIcon />
+                                    <h4 className="perm-hint">You don’t have permission to review gigs for this venue.</h4>
                                 </div>
-                            </div>
-                            <div className='review-body'>
-                                <div className="review-buttons">
-                                    <button className={`btn secondary ${rating === 'negative' ? 'selected' : ''}`} onClick={() => setRating('negative')}>Negative <ThumbsDownIcon /></button>
-                                    <button className={`btn secondary ${rating === 'positive' ? 'selected' : ''}`} onClick={() => setRating('positive')}>Positive <ThumbsUpIcon /></button>
-                                </div>
-                                {rating && (
-                                    <textarea
-                                        value={reviewText}
-                                        onChange={(e) => setReviewText(e.target.value)}
-                                        placeholder='Write your review (optional)...'
-                                        disabled={!rating}
-                                    />
-                                )}
-                                {disputeAllowed && !reviewingAfterDispute ? (
-                                    <div className='two-buttons'>
-                                        <button className='btn danger' onClick={() => setShowDisputeForm(true)}>
-                                            Report Issue
-                                        </button>
-                                        <button
-                                            className='btn primary'
-                                            onClick={handleSubmitReview}
-                                            disabled={!rating}
-                                        >
-                                            Submit Review
-                                        </button>
+                            ) : (
+                                <>
+                                    <div className='review-head'>
+                                        {musicianProfile?.picture && (
+                                            <figure className='musician-img-cont'>
+                                                <img src={musicianProfile.picture} alt={musicianProfile.name} className='musician-img' />
+                                            </figure>
+                                            
+                                        )}
+                                        <div className='name-and-reviews'>
+                                            <h2>{musicianProfile?.name || 'the musician'}</h2>
+                                            {musicianProfile?.avgReviews ? (
+                                                <h4>{musicianProfile.avgReviews.totalReviews} Review(s)</h4>
+                                            ) : (
+                                                <h6>No Reviews</h6>
+                                            )}
+                                        </div>
                                     </div>
-                                ) : (
-                                    <button
-                                        className='btn primary'
-                                        style={{ width: '100%'}}
-                                        onClick={handleSubmitReview}
-                                        disabled={!rating}
-                                    >
-                                        Submit Review
-                                    </button>
-                                )}
-                            </div>
-                            </>
+                                    <div className='review-body'>
+                                        <div className="review-buttons">
+                                            <button disabled={!canCreateReview} className={`btn secondary ${rating === 'negative' ? 'selected' : ''}`} onClick={() => setRating('negative')}>Negative <ThumbsDownIcon /></button>
+                                            <button disabled={!canCreateReview} className={`btn secondary ${rating === 'positive' ? 'selected' : ''}`} onClick={() => setRating('positive')}>Positive <ThumbsUpIcon /></button>
+                                        </div>
+                                        {rating && (
+                                            <textarea
+                                                value={reviewText}
+                                                onChange={(e) => setReviewText(e.target.value)}
+                                                placeholder='Write your review (optional)...'
+                                                disabled={!rating || !canCreateReview}
+                                            />
+                                        )}
+                                        {disputeAllowed && !reviewingAfterDispute ? (
+                                            <div className='two-buttons' style={{ width: '100%'}}>
+                                                <button className='btn danger' onClick={() => setShowDisputeForm(true)} disabled={!canCreateReview}>
+                                                    Report Issue
+                                                </button>
+                                                <button
+                                                    className='btn primary'
+                                                    onClick={handleSubmitReview}
+                                                    disabled={!rating || !canCreateReview}
+                                                >
+                                                    Submit Review
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                className='btn primary'
+                                                style={{ width: '100%', margin: '0 auto' }}
+                                                onClick={handleSubmitReview}
+                                                disabled={!rating || !canCreateReview}
+                                            >
+                                                Submit Review
+                                            </button>
+                                        )}
+                                    </div>
+                                </>
+                            )
                         ) : reviewer === 'musician' && venueProfile ? (
                             <>
                             <div className='review-head'>
@@ -342,6 +373,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                     className='btn primary'
                                     onClick={handleSubmitReview}
                                     disabled={!rating}
+                                    style={{ width: '100%', margin: '0 auto' }}
                                 >
                                     Submit Review
                                 </button>

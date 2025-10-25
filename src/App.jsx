@@ -32,9 +32,11 @@ import { auth } from "@lib/firebase";
 import { NoProfileModal } from './features/musician/components/NoProfileModal';
 import { VenueFinder } from './features/venue-discovery/VenueFinder';
 import Portal from './features/shared/components/Portal';
-import { logClientError } from './services/errors';
+import { logClientError } from './services/client-side/errors';
 import { TermsAndConditions } from './features/legals/TermsAndConditions';
 import { PrivacyPolicy } from './features/legals/PrivacyPolicy';
+import { JoinVenuePage } from './features/venue/components/JoinVenue';
+import { EmailActionHandler } from './features/shared/components/EmailActionHandler';
 
 
 
@@ -74,19 +76,6 @@ export default function App() {
     }
   }, [location.pathname]);
 
-  const getCreatedAtMs = (authUser, userDoc) => {
-    const meta = authUser?.metadata?.creationTime;
-    const fromAuth = meta ? Date.parse(meta) : NaN;
-    if (!Number.isNaN(fromAuth)) return fromAuth;
-    const raw = userDoc?.createdAt;
-    if (!raw) return NaN;
-    if (typeof raw === 'number') return raw;
-    if (raw?.toDate) {
-      try { return raw.toDate().getTime(); } catch { /* ignore */ }
-    }
-    return NaN;
-  }
-
   let __loggingNow = false;
 
   window.addEventListener('error', (event) => {
@@ -119,31 +108,15 @@ export default function App() {
 
   
   useEffect(() => {
-    // ✅ Skip all checks in dev mode
-    if (import.meta.env.MODE === 'development' || location.pathname.includes('gigin-uk-git-dev-gigin-dev-team.vercel.app')) {
-      setVerifyEmailModal(false);
-      setVerifyInfoModal(false);
-      return;
-    }
-  
     const u = auth.currentUser;
-    if (!u) {
-      setVerifyEmailModal(false);
+    if (!u) return;
+    if (!u.emailVerified) {
+      setAuthType('verify-email');
+      setAuthModal(true);
+      setAuthClosable(false);
       return;
     }
-    if (u.emailVerified) {
-      setVerifyEmailModal(false);
-      return;
-    }
-    const createdAtMs = getCreatedAtMs(u, user);
-    if (Number.isNaN(createdAtMs)) {
-      setVerifyEmailModal(false);
-      return;
-    }
-    const hours = (Date.now() - createdAtMs) / 36e5;
-    setVerifyEmailModal(hours >= 48);
-    if (newUser) setVerifyInfoModal(true);
-  }, [user, newUser]);
+  }, [user]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -158,7 +131,6 @@ export default function App() {
       </div>
     );
   }
-
 
   return (
     <>
@@ -190,8 +162,10 @@ export default function App() {
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
         <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
         <Route path='/testimonials' element={<Testimonials />} />
+        <Route path='/join-venue' element={<JoinVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
+        <Route path="/auth/email-verified" element={<EmailActionHandler user={user} />} />
         
       </Routes>
       

@@ -778,7 +778,12 @@
     align-items: center;
     justify-content: center;
     gap:1rem;
+    padding:2.5rem;
     box-shadow: 0 0 10px var(--gn-shadow);
+}
+
+.venue-builder .uploading-profile h1 {
+    text-align: center;
 }
 
 .venue-builder .uploading-profile .progress-bar-container {

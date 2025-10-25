@@ -14,20 +14,22 @@ import { GigExtraDetails } from './ExtraDetails';
 import { GigTemplates } from './Templates';
 import { formatISO, addDays, addWeeks, addMonths } from 'date-fns';
 import { GigName } from './Name';
-import { postMultipleGigs } from '@services/gigs';
 import { toast } from 'sonner';
 import { OpenMicGig } from './OpenMic';
 import { TicketedGig } from './TicketedGig';
 import { GeoPoint, Timestamp } from 'firebase/firestore';
 import { geohashForLocation } from 'geofire-common';
 import { validateGigTimings } from '../../../services/utils/validation';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/musicians';
-import { getOrCreateConversation } from '../../../services/conversations';
-import { sendGigInvitationMessage } from '../../../services/messages';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { sendGigInvitationMessage } from '../../../services/client-side/messages';
 import { formatDate } from '../../../services/utils/dates';
-import { inviteToGig } from '../../../services/gigs';
 import Portal from '../../shared/components/Portal';
-import { removeVenueRequest } from '../../../services/venues';
+import { removeVenueRequest } from '../../../services/client-side/venues';
+import { hasVenuePerm } from '../../../services/utils/permissions';
+import { friendlyError } from '../../../services/utils/errors';
+import { inviteToGig, postMultipleGigs } from '../../../services/function-calls/gigs';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -36,7 +38,7 @@ function formatPounds(amount) {
 }
 
 export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests }) => {
-    const [stage, setStage] = useState(incompleteGigs.length > 0 || templates.length > 0 ? 0 : 1);
+    const [stage, setStage] = useState(incompleteGigs?.length > 0 || templates?.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
         venueId: '',
@@ -63,6 +65,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
         privateApplications: false,
         applicants: [],
         createdAt: new Date(),
+        createdBy: user.uid,
         accountName: user.name,
         status: 'open',
         numberOfApplicants: 0,
@@ -258,11 +261,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             if (formData.kind === 'Open Mic') {
               if (formData.openMicApplications === null) {
                 setError("Please select whether you'd like the musicians to apply.");
-              } else if (formData.limitApplications === null) {
-                setError("Please select whether you'd like to limit the amount of musicians.");
-              } else if (formData.limitApplications && Number(formData.numberOfApplicants || 0) <= 0) {
-                setError("Please enter the maximum number of applicants.");
-              } else {
+              }
+               else {
                 setStage(prev => prev + 1);
               }
               return;
@@ -459,7 +459,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     };
 
     const getProgressPercentage = () => {
-        if (templates.length > 0 || incompleteGigs.length > 0) {
+        if (templates?.length > 0 || incompleteGigs?.length > 0) {
             if (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig') {
                 return ((stage) / 10) * 100;
             } else {
@@ -510,6 +510,14 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     const handlePostGig = async () => {
         setLoading(true);
         try {
+          const venueId = formData?.venueId;
+          if (!venueId) throw new Error("Missing venueId");
+          const permNeeded = editGigData ? "gigs.update" : "gigs.create";
+          if (!hasVenuePerm(venueProfiles, venueId, permNeeded)) {
+            setLoading(false);
+            toast.error("You don’t have permission to perform this action.");
+            return;
+          }
           const repeatEnabled =
             !!formData.repeatData &&
             formData.repeatData.repeat &&
@@ -591,7 +599,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
       
               // Build base safely; we’ll set applicants explicitly below
               const {
-                gigSlots: _discardGigSlots,
                 slotBudgets: _discardSlotBudgets,
                 repeatData: _discardRepeatData,
                 templateId: _discardTemplateId,
@@ -624,6 +631,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   budgetValue: slotBudgetValue === undefined ? '£' : slotBudgetValue,
                   gigSlots: groupIds.filter(id => id !== slotGigId),
                   status: 'open',
+                  venueId: formData.venueId,
                   // ✅ Applicants rule: keep on edit, otherwise empty array (must exist)
                   ...(editGigData ? applicantsForEdit : applicantsForNew),
                 };
@@ -666,6 +674,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 budgetValue: getBudgetValue(base.budget),
                 privateApplicationsLink: privateLink,
                 status: 'open',
+                venueId: formData.venueId,
                 ...(editGigData ? applicantsForEdit : applicantsForNew),
               };
       
@@ -674,9 +683,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             }
           }
       
-          await postMultipleGigs(formData.venueId, allGigsToPost);
-      
-          const newGigIds = allGigsToPost.map(g => g.gigId);
+          const newGigIds = await postMultipleGigs(formData.venueId, allGigsToPost);
+
+          // update local state as you already do:
           setVenueProfiles(prev => {
             if (!Array.isArray(prev)) return prev;
             return prev.map(vp => {
@@ -689,32 +698,31 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
           });
       
           if (buildingForMusician && firstGigDoc) {
+            if (!hasVenuePerm(venueProfiles, venueId, "gigs.invite")) {
+              toast.error("You do not have permission to invite musicians to gigs at this venue.");
+              setBuildingForMusician(false);
+              setBuildingForMusicianData(false);
+              return;
+            }
             const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
             const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
-      
+            const res = await inviteToGig(firstGigDoc.gigId, musicianProfile);
+            if (!res.ok) {
+              if (res.code === "permission-denied") {
+                toast.error("You don’t have permission to invite musicians for this venue.");
+              } else if (res.code === "failed-precondition") {
+                toast.error("This gig is missing required venue info.");
+              } else {
+                toast.error("Error inviting musician. Do you have permission to invite musicians to gigs at this venue?");
+              }
+              return;
+            }
             const conversationId = await getOrCreateConversation(
               musicianProfile,
               firstGigDoc,
               venueToSend,
               "invitation"
             );
-      
-            await inviteToGig(firstGigDoc.gigId, musicianProfile);
-      
-            const newGigApplicationEntry = {
-              gigId: firstGigDoc.gigId,
-              profileId: musicianProfile.id,
-              name: musicianProfile.name,
-            };
-      
-            const updatedGigApplicationsArray = musicianProfile.gigApplications
-              ? [...musicianProfile.gigApplications, newGigApplicationEntry]
-              : [newGigApplicationEntry];
-      
-            await updateMusicianProfile(musicianProfile.id, {
-              gigApplications: updatedGigApplicationsArray,
-            });
-      
             if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
               await sendGigInvitationMessage(conversationId, {
                 senderId: user.uid,
@@ -728,7 +736,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
               });
             }
-      
             if (requestId) {
               await removeVenueRequest(requestId);
               setRequests(prev =>
@@ -736,18 +743,17 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               );
               setRequestId(null);
             }
-      
             setBuildingForMusician(false);
             setBuildingForMusicianData(false);
           }
-      
+          await refreshGigs();
           resetFormData();
           toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
           setGigPostModal(false);
           setLoading(false);
         } catch (error) {
           setLoading(false);
-          toast.error('Error posting gig. Please try again.');
+          toast.error(friendlyError(error));
           console.error('Failed to post gig:', error);
         }
       };
@@ -755,56 +761,57 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     return (
             <div className='modal gig-post' onClick={handleModalClick}>
                 <div className='modal-content'>
-                    {/* {(stage !== 1 && stage !== 10 && stage !== 0) ? (
-                        <button className='btn tertiary close-modal' onClick={handleSaveAndExit}>
-                            {saving ? 'Saving...' : 'Save and Exit'}
-                        </button>
-                    ) : (stage === 1 || stage === 0) && ( */}
-                    <button className='btn tertiary close-modal' onClick={() => {setGigPostModal(false); resetFormData()}}>
-                        Cancel
-                    </button>
+                    {!loading && (
+                      <button className='btn tertiary close-modal' onClick={() => {setGigPostModal(false); resetFormData()}}>
+                          Cancel
+                      </button>
+                    )}
                     <div className='stage'>
                         {loading ? (
                             <div className='head'>
-                                <h1 className='title'>Posting Gig...</h1>
+                                <LoadingSpinner />
                             </div>
                         ) : (
                             renderStageContent()
                         )}
                     </div>
-                    <div className='progress-bar-container'>
-                        <div className='progress-bar' style={{ width: `${getProgressPercentage()}%` }}></div>
-                    </div>
-                    <div
-                        className={`control-buttons ${
-                            (stage === 0 || stage === 1) && incompleteGigs.length === 0 && templates.length === 0
-                            ? 'single'
-                            : ''
-                        }`}
-                    >
-                        {(stage === 0 || stage === 1) ? (
-                            (incompleteGigs.length === 0 && templates.length === 0) ? (
-                                <button className='btn primary' onClick={nextStage}>Next</button>
-                            ) : (
+                    {!loading && (
+                      <>
+                        <div className='progress-bar-container'>
+                            <div className='progress-bar' style={{ width: `${getProgressPercentage()}%` }}></div>
+                        </div>
+                        <div
+                            className={`control-buttons ${
+                                (stage === 0 || stage === 1) && incompleteGigs?.length === 0 && templates?.length === 0
+                                ? 'single'
+                                : ''
+                            }`}
+                        >
+                            {(stage === 0 || stage === 1) ? (
+                                (incompleteGigs?.length === 0 && templates?.length === 0) ? (
+                                    <button className='btn primary' onClick={nextStage}>Next</button>
+                                ) : (
+                                    <>
+                                    <button className='btn secondary' onClick={prevStage}>Back</button>
+                                    <button className='btn primary' onClick={nextStage}>Next</button>
+                                    </>
+                                )
+                                ) : stage === 10 ? (
                                 <>
-                                <button className='btn secondary' onClick={prevStage}>Back</button>
-                                <button className='btn primary' onClick={nextStage}>Next</button>
+                                    <button className='btn secondary' onClick={prevStage}>Back</button>
+                                    <button className='btn primary' onClick={handlePostGig}>
+                                        Post Gig{formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}
+                                    </button>
                                 </>
-                            )
-                            ) : stage === 10 ? (
-                            <>
-                                <button className='btn secondary' onClick={prevStage}>Back</button>
-                                <button className='btn primary' onClick={handlePostGig}>
-                                    Post Gig{formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}
-                                </button>
-                            </>
-                            ) : (
-                            <>
-                                <button className='btn secondary' onClick={prevStage}>Back</button>
-                                <button className='btn primary' onClick={nextStage}>Next</button>
-                            </>
-                        )}
-                    </div>
+                                ) : (
+                                <>
+                                    <button className='btn secondary' onClick={prevStage}>Back</button>
+                                    <button className='btn primary' onClick={nextStage}>Next</button>
+                                </>
+                            )}
+                        </div>
+                      </>
+                    )}
                 </div>
             </div>
     )

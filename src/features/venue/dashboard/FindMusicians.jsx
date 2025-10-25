@@ -3,11 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { openInNewTab } from '@services/utils/misc';
 import { NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, SearchIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
-import { useResizeEffect } from '@hooks/useResizeEffect';
-import { fetchMusiciansPaginated } from '../../../services/musicians';
+import { fetchMusiciansPaginated } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
-import { saveMusician } from '../../../services/venues';
-
+import { updateUserArrayField } from '../../../services/function-calls/users';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 const VideoModal = ({ video, onClose }) => {
     return (
@@ -36,6 +35,7 @@ export const FindMusicians = ({ user }) => {
     const selectedGenres = useMemo(() => rawGenres.split(',').filter(Boolean), [rawGenres]);
     const [lastDocId, setLastDocId] = useState(null);
     const [hasMore, setHasMore] = useState(true);
+    const [saving, setSaving] = useState(null);
     
     const fetchMusicians = useCallback(async (reset = false) => {
         if ((loading && !reset) || (!hasMore && !reset)) return;
@@ -97,20 +97,6 @@ export const FindMusicians = ({ user }) => {
         setSearchParams(newParams);
     };
 
-    const formatEarnings = (e) => {
-        if (e < 100) return '<£100';
-        if (e < 500) return '£100+';
-        if (e < 1000) return '£500+';
-        if (e < 2500) return '£1k+';
-        if (e < 5000) return '£2.5k+';
-        return '£5k+';
-    };
-
-    const openVideoModal = (video) => {
-        setVideo(video);
-        setShowModal(true);
-    }
-
     const closeVideoModal = () => {
         setShowModal(false);
         setVideo(null);
@@ -118,18 +104,31 @@ export const FindMusicians = ({ user }) => {
 
     const handleMusicianSave = async (musician) => {
         if (!user?.uid || !musician?.id) return;
+        setSaving(musician?.id);
         try {
-          const action = await saveMusician(user.uid, musician.id);
-          toast.success(
-            action === 'saved'
-              ? `Saved ${musician.name} to your list`
-              : `Removed ${musician.name} from your list`
-          );
+            await updateUserArrayField('savedMusicians', 'add', musician.id);
+          toast.success(`Saved ${musician.name} to your list`);
         } catch (error) {
           console.error('Error toggling saved musician:', error);
           toast.error('Something went wrong. Please try again.');
+        } finally {
+          setSaving(null);
         }
       };
+
+    const handleMusicianUnsave = async (musician) => {
+        if (!user?.uid || !musician?.id) return;
+        setSaving(musician?.id);
+        try {
+          await updateUserArrayField('savedMusicians', 'remove', musician.id);
+          toast.success(`Removed ${musician.name} from your saved musicians`);
+        } catch (error) {
+          console.error('Error unsaving musician:', error);
+          toast.error('Failed to unsave musician. Please try again.');
+        } finally {
+          setSaving(null);
+        }
+    };
 
     return (
         <>
@@ -190,8 +189,6 @@ export const FindMusicians = ({ user }) => {
                             genres = [],
                             musicianType = '',
                             videos = [],
-                            totalEarnings,
-                            followers,
                         } = musician;
 
                         const firstVideo = videos[0];
@@ -199,11 +196,6 @@ export const FindMusicians = ({ user }) => {
                         typeof firstVideo === 'string'
                             ? firstVideo
                             : firstVideo?.file || firstVideo?.url || null;
-                        const videoThumb =
-                        typeof firstVideo === 'object' ? firstVideo?.thumbnail : undefined;
-
-                        const completedMusician =
-                        !!videoSrc && genres.length > 0 && !!musicianType;
 
                         return (
                         <div className='musician-card' key={id}>
@@ -223,20 +215,15 @@ export const FindMusicians = ({ user }) => {
                             <div className="musician-card-flex">
                                 <div className="musician-name-type">
                                     <h2>{name}</h2>
-                                    {/* <p>{musicianType}</p> */}
                                 </div>
-                                <button className="btn icon" onClick={() => handleMusicianSave(musician)}>
-                                    {user?.savedMusicians?.includes(id) ? <SavedIcon /> : <SaveIcon />}
+                                <button className="btn icon" onClick={() => user?.savedMusicians?.includes(id) ? handleMusicianUnsave(musician) : handleMusicianSave(musician)}>
+                                    {saving === id ? (
+                                        <LoadingSpinner marginBottom={0} width={15} height={15} />
+                                    ) : (
+                                        user?.savedMusicians?.includes(id) ? <SavedIcon /> : <SaveIcon />
+                                    )}
                                 </button>
                             </div>
-
-                            {/* {genres.length > 0 && (
-                                <div className="genre-tags">
-                                    {genres.map((g) => (
-                                    <span className="genre-tag" key={g}>{g}</span>
-                                    ))}
-                                </div>
-                            )} */}
 
                             <button
                                 className="btn tertiary"

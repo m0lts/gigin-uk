@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
@@ -6,24 +6,29 @@ import { EditIcon } from '@features/shared/ui/extras/Icons';
 import { updateEmail, updatePassword, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '@lib/firebase';
 import '@styles/shared/account-page.styles.css';
-import { removeGigApplicant } from '@services/gigs';
-import { getVenueProfilesByUserId } from '@services/venues';
-import { getMusicianProfileByUserId } from '@services/musicians';
-import { deleteGig, getGigsByVenueId, getGigsByVenueIds } from '@services/gigs';
-import { deleteReview, getReviewsByMusicianId, getReviewsByVenueId, getReviewsByVenueIds } from '@services/reviews';
-import { deleteConversation, getConversationsByParticipantId, getConversationsByParticipants } from '@services/conversations';
-import { deleteMusicianProfileInUserDocument, deleteUserDocument, getUserById } from '@services/users';
-import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services/musicians';
+import { removeGigApplicant } from '@services/function-calls/gigs';
+import { getVenueProfilesByUserId } from '@services/client-side/venues';
+import { getMusicianProfileByUserId } from '@services/client-side/musicians';
+import { getGigsByVenueId, getGigsByVenueIds } from '@services/client-side/gigs';
+import { getReviewsByMusicianId, getReviewsByVenueId, getReviewsByVenueIds } from '@services/client-side/reviews';
+import { getConversationsByParticipantId, getConversationsByParticipants } from '@services/client-side/conversations';
+import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { deleteFolderFromStorage } from '@services/storage';
-import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/venues';
+import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/client-side/venues';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { getUserByEmail, updateUserDocument } from '../../services/users';
-import { removeVenueIdFromUser, transferVenueOwnership, updateVenueProfileAccountNames } from '../../services/venues';
+import { updateUserDocument } from '../../services/client-side/users';
+import { updateVenueProfileAccountNames } from '../../services/client-side/venues';
 import { toast } from 'sonner';
 import Portal from '../shared/components/Portal';
-import { DeleteGigIcon, InviteIconSolid, LogOutIcon, PasswordIcon, UserIcon } from '../shared/ui/extras/Icons';
+import { CameraIcon, DeleteGigIcon, InviteIconSolid, LogOutIcon, PasswordIcon, UserIcon } from '../shared/ui/extras/Icons';
 import { LoadingModal } from '../shared/ui/loading/LoadingModal';
 import { firestore } from '@lib/firebase';
+import { uploadFileToStorage } from '../../services/storage';
+import { clearUserArrayField, deleteUserDocument, updateUserArrayField } from '../../services/function-calls/users';
+import { transferVenueOwnership } from '../../services/function-calls/venues';
+import { deleteReview } from '../../services/function-calls/reviews';
+import { deleteGigsBatch } from '../../services/client-side/gigs';
+import { deleteConversation } from '../../services/function-calls/conversations';
 
 export const Account = () => {
     const { user,  } = useAuth();
@@ -101,42 +106,42 @@ export const Account = () => {
         }
     };
 
-    const handleEmailUpdate = async () => {
-        if (!newEmail) {
-            toast('Please enter a new email address.')
-            return;
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(newEmail)) {
-            toast('Please enter a valid email address.');
-            return;
-        }
-        setEventLoading(true);
-        try {
-            if (auth.currentUser) {
-                await updateEmail(auth.currentUser, newEmail);
-                const userId = auth.currentUser.uid;
-                const batch = firestore.batch();
-                const venueProfiles = await getVenueProfilesByUserId(userId);
-                venueProfiles.forEach(profile => {
-                    batch.update(profile.ref, { email: newEmail });
-                });
-                const musicianProfile = await getMusicianProfileByUserId(userId);
-                if (musicianProfile) {
-                    batch.update(musicianProfile.ref, { email: newEmail });
-                }
-                await batch.commit();
-                toast.success('Email updated successfully');
-                setShowEmailModal(false);
-                setNewEmail('');
-            }
-        } catch (error) {
-            console.error('Error updating email:', error);
-            toast.error('Failed to update email');
-        } finally {
-            setEventLoading(false);
-        }
-    };
+    // const handleEmailUpdate = async () => {
+    //     if (!newEmail) {
+    //         toast('Please enter a new email address.')
+    //         return;
+    //     }
+    //     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    //     if (!emailRegex.test(newEmail)) {
+    //         toast('Please enter a valid email address.');
+    //         return;
+    //     }
+    //     setEventLoading(true);
+    //     try {
+    //         if (auth.currentUser) {
+    //             await updateEmail(auth.currentUser, newEmail);
+    //             const userId = auth.currentUser.uid;
+    //             const batch = firestore.batch();
+    //             const venueProfiles = await getVenueProfilesByUserId(userId);
+    //             venueProfiles.forEach(profile => {
+    //                 batch.update(profile.ref, { email: newEmail });
+    //             });
+    //             const musicianProfile = await getMusicianProfileByUserId(userId);
+    //             if (musicianProfile) {
+    //                 batch.update(musicianProfile.ref, { email: newEmail });
+    //             }
+    //             await batch.commit();
+    //             toast.success('Email updated successfully');
+    //             setShowEmailModal(false);
+    //             setNewEmail('');
+    //         }
+    //     } catch (error) {
+    //         console.error('Error updating email:', error);
+    //         toast.error('Failed to update email');
+    //     } finally {
+    //         setEventLoading(false);
+    //     }
+    // };
 
     const handlePasswordUpdate = async () => {
         if (!newPassword || !confirmPassword) {
@@ -184,9 +189,7 @@ export const Account = () => {
             const musicianId = musicianProfile?.id;
             await deleteMusicianProfile(musicianId);
             const venueGigs = await getGigsByVenueIds(venueIds);
-            for (const { id } of venueGigs) {
-                await deleteGig(id);
-            }
+            await deleteGigsBatch(venueGigs.map(gig => gig.id));
             const venueReviews = await getReviewsByVenueIds(venueIds);
             for (const { id } of venueReviews) {
                 await deleteReview(id);
@@ -202,8 +205,7 @@ export const Account = () => {
                     await removeGigApplicant(application.gigId, musicianProfile.musicianId);
                 }
             }
-            const participantIds = [...venueIds, musicianId].filter(Boolean);
-            const conversations = await getConversationsByParticipants(participantIds);
+            const conversations = await getConversationsByParticipantId(userId);
             for (const { id } of conversations) {
                 await deleteConversation(id);
             }
@@ -213,7 +215,7 @@ export const Account = () => {
             if (musicianId) {
                 await deleteFolderFromStorage(`musicians/${musicianId}`);
             }
-            await deleteUserDocument(userId);
+            await deleteUserDocument();
             await deleteUser(auth.currentUser);
             toast.success('Account and all associated data deleted successfully.');
             navigate('/');
@@ -255,12 +257,12 @@ export const Account = () => {
                 for (const { id } of musicianReviews) {
                   await deleteReview(id);
                 }
-                const conversations = await getConversationsByParticipants(musicianId);
+                const conversations = await getConversationsByParticipantId(musicianProfile.userId);
                 for (const { id } of conversations) {
                     await deleteConversation(id);
                 }
                 await deleteFolderFromStorage(`musicians/${musicianId}`);
-                await deleteMusicianProfileInUserDocument(auth.currentUser.uid);
+                await clearUserArrayField('musicianProfile');
                 toast.success('Musician profile deleted successfully.');
                 setShowEventLoadingModal(false);
             } else {
@@ -279,22 +281,20 @@ export const Account = () => {
         try {   
             if (window.confirm('Are you sure you want to delete this venue profile? This action cannot be undone.')) {
                 setShowEventLoadingModal(true);
+                await deleteTemplatesByVenueId(venueId);
                 await deleteVenueProfile(venueId);
                 const gigs = await getGigsByVenueId(venueId);
-                for (const { id } of gigs) {
-                    await deleteGig(id);
-                }
+                await deleteGigsBatch(gigs.map(gig => gig.id));
                 const reviews = await getReviewsByVenueId(venueId);
                 for (const { id } of reviews) {
                     await deleteReview(id);
                 }
-                const conversations = await getConversationsByParticipantId(venueId);
+                const conversations = await getConversationsByParticipantId(user.uid);
                 for (const { id } of conversations) {
                     await deleteConversation(id);
                 }
-                await deleteTemplatesByVenueId(venueId);
                 await deleteFolderFromStorage(`venues/${venueId}`);
-                await removeVenueIdFromUser(auth.currentUser.uid, venueId);
+                await updateUserArrayField('venueProfiles', 'remove', venueId);
                 toast.success('Venue profile deleted successfully.');
                 setShowEventLoadingModal(false);
             } else {
@@ -308,6 +308,94 @@ export const Account = () => {
         }
     };
 
+    const [preview, setPreview] = useState(user?.picture || user?.photoURL || '');
+    const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState('');
+    const currentObjectUrlRef = useRef(null); // track local object URLs to revoke later
+    const lastSelectedFileRef = useRef(null);  // track last file to avoid double-upload
+  
+    // keep preview in sync if user doc updates elsewhere
+    useEffect(() => {
+      if (user?.picture || user?.photoURL) {
+        setPreview(user.picture || user.photoURL);
+      }
+    }, [user?.picture, user?.photoURL]);
+  
+    // utility: clean up an existing object URL
+    const revokePreviewUrl = () => {
+      if (currentObjectUrlRef.current) {
+        URL.revokeObjectURL(currentObjectUrlRef.current);
+        currentObjectUrlRef.current = null;
+      }
+    };
+  
+    // validate before upload
+    const validateImage = (file) => {
+      if (!file) return 'No file selected.';
+      if (!file.type.startsWith('image/')) return 'Please choose an image file.';
+      const MAX_MB = 8;
+      if (file.size > MAX_MB * 1024 * 1024) return `Image must be smaller than ${MAX_MB}MB.`;
+      return null;
+    };
+  
+    // upload + save + swap preview to CDN URL
+    const uploadAndSave = async (file) => {
+      try {
+        setUploading(true);
+        setError('');
+  
+        // Choose a path. If you prefer the bands path, replace the next line with:
+        // const path = `bands/${formData.bandId}/profileImg/${file.name}`;
+        const path = `users/${user.uid}/profile/${file.name}`;
+  
+        const pictureUrl = await uploadFileToStorage(file, path);
+  
+        // persist on the user document
+        await updateUserDocument(user.uid, {
+          picture: pictureUrl,
+          lastUpdatedAt: Date.now() // optional: useful for cache-busting
+        });
+  
+        // swap preview to the final hosted URL (and revoke any temp object URL)
+        revokePreviewUrl();
+        setPreview(pictureUrl);
+  
+        // toast.success('Profile photo updated.'); // uncomment if you use toast
+      } catch (e) {
+        console.error('Profile photo upload failed:', e);
+        setError('Failed to upload your image. Please try again.');
+        // toast.error('Failed to upload your image.');
+      } finally {
+        setUploading(false);
+      }
+    };
+  
+    const handleFileChange = (e) => {
+      const file = e.target.files?.[0];
+      const validation = validateImage(file);
+      if (validation) {
+        setError(validation);
+        return;
+      }
+      setError('');
+  
+      // Avoid re-uploading the identical File object
+      if (file === lastSelectedFileRef.current) return;
+      lastSelectedFileRef.current = file;
+  
+      // show local preview immediately
+      revokePreviewUrl();
+      const localUrl = URL.createObjectURL(file);
+      currentObjectUrlRef.current = localUrl;
+      setPreview(localUrl);
+  
+      // kick off upload
+      uploadAndSave(file);
+    };
+  
+    // cleanup on unmount
+    useEffect(() => revokePreviewUrl, []);
+
     if (!user) {
         return <LoadingScreen />;
     } else {
@@ -319,6 +407,32 @@ export const Account = () => {
 
                 <div className='account-settings'>
                     <h2>Account Settings</h2>
+                    <div className="img-settings">
+                        <h3>Profile Picture:</h3>
+
+                        <div className="image-container data-highlight">
+                            <div
+                                className={`image-preview ${!preview ? 'placeholder' : ''}`}
+                                style={{ backgroundImage: preview ? `url(${preview})` : undefined }}
+                                aria-busy={uploading}
+                            >
+                            {!preview && <CameraIcon />}
+                            </div>
+                            <label className="upload-btn btn secondary">
+                                {uploading ? 'Uploading…' : 'Choose Photo'}
+                                <input
+                                    className="input photo"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    disabled={uploading}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
+                        </div>
+
+                        {error && <p className="error-text">{error}</p>}
+                    </div>
                     <div className='name-settings'>
                         <h3>Name:</h3>
                         <div className='data-highlight'>
@@ -332,9 +446,9 @@ export const Account = () => {
                         <h3>Email Address:</h3>
                         <div className='data-highlight'>
                             <h4>{user.email}</h4>
-                            <button className='btn primary' onClick={() => setShowEmailModal(true)}>
+                            {/* <button className='btn primary' onClick={() => setShowEmailModal(true)}>
                                 Change Email Address
-                            </button>
+                            </button> */}
                         </div>
                     </div>
                     <div className='password-settings'>
@@ -347,10 +461,15 @@ export const Account = () => {
                         </div>
                     </div>
                     <div className='delete-settings'>
-                        <h3>Delete Account:</h3>
+                        <h3>Account Deletion:</h3>
                         <div className='data-highlight'>
-                            <h4>Once you delete your account, all associated data will be lost.</h4>
-                            <button className='btn danger' onClick={() => setShowDeleteModal(true)}>Delete Account</button>
+                            <h4>Please get in touch with us if you'd like to delete your account.</h4>
+                            <button
+                                className='btn danger'
+                                onClick={() => window.location.href = 'mailto:hq.gigin@gmail.com?subject=Account%20Deletion%20Request'}
+                            >
+                                Contact Us
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -376,7 +495,7 @@ export const Account = () => {
                                             <button
                                                 className='btn tertiary'
                                                 onClick={() =>
-                                                    navigate('/venues/add-venue', { state: { venueProfile: venue } })
+                                                    navigate('/venues/add-venue', { state: { venue } })
                                                 }
                                             >
                                                 <EditIcon />
@@ -391,12 +510,12 @@ export const Account = () => {
                                                 >
                                                 Transfer Ownership
                                                 </button>
-                                            <button
+                                            {/* <button
                                                 className='btn danger'
                                                 onClick={() => handleDeleteVenueProfile(venue.id)}
                                             >
                                                 Delete Profile
-                                            </button>
+                                            </button> */}
                                         </div>
                                     </li>
                                 ))}
@@ -427,12 +546,12 @@ export const Account = () => {
                                     >
                                         <EditIcon />
                                     </button>
-                                    <button
+                                    {/* <button
                                         className='btn danger'
                                         onClick={() => handleDeleteMusicianProfile(user.musicianProfile.musicianId)}
                                     >
                                         Delete Profile
-                                    </button>
+                                    </button> */}
                                 </div>
                             </div>
                         </>
@@ -584,8 +703,8 @@ export const Account = () => {
                                                 type='password'
                                                 className='input'
                                                 placeholder='Enter Your Password to Confirm'
-                                                value={confirmPassword}
-                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                                value={currentPassword}
+                                                onChange={(e) => setCurrentPassword(e.target.value)}
                                             />
                                         </div>
                                         <div className="two-buttons">
@@ -658,23 +777,7 @@ export const Account = () => {
                                                 if (!ok) return;
                                                 setTransferLoading(true);
                                                 try {
-                                                    const target = await getUserByEmail(recipientEmail);
-                                                    if (!target) {
-                                                        toast.error('No Gigin account found for that email.');
-                                                        setTransferLoading(false);
-                                                        return;
-                                                    }
-                                                    if (target.id === user.uid) {
-                                                        toast.error('You already own this venue profile.')
-                                                        setTransferLoading(false);
-                                                        return;
-                                                    }
-                                                    toast.info('Transferring venue ownership...')
-                                                    await transferVenueOwnership({
-                                                        venueId: venueToTransfer.id,
-                                                        fromUserId: user.uid,
-                                                        toUserId: target.id,
-                                                    });
+                                                    await transferVenueOwnership(venueToTransfer, recipientEmail);
                                                     setVenueList(prev => prev.filter(v => v.id !== venueToTransfer.id));
                                                     toast.success('Venue ownership transferred successfully.');
                                                     setShowTransferModal(false);

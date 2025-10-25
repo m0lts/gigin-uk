@@ -21,8 +21,9 @@ export const validateMusicianUser = ({
 }) => {
   if (!user) {
     setAuthModal?.(true);
-    setAuthType?.('signup');
-    sessionStorage.setItem('redirect', 'create-musician-profile');
+    setAuthType?.('login');
+    setNoProfileModalClosable(true);
+    sessionStorage.setItem('redirect', 'do-not-redirect');
     return { valid: false };
   }
   const p =
@@ -49,11 +50,12 @@ export const validateMusicianUser = ({
  * @returns {{ canApply: boolean, reasons: string[] }}
  */
 export function getMusicianEligibility(profile) {
+  console.log('getMusicianEligibility profile=', profile);
   if (!profile) {
     return { canApply: false, reasons: ['No musician profile found'] };
   }
   const reasons = [];
-  const hasName = typeof profile.name === 'string' && profile.name.trim().length >= 2;
+  const hasName = typeof profile.name === 'string' && profile.name.trim().length >= 0;
   const completedSignup = profile.onboarded;
   if (!hasName) reasons.push('Add a stage name');
   if (!completedSignup) reasons.push('Complete signup');
@@ -181,4 +183,24 @@ export const validateGigTimings = (formData, extraSlots) => {
   }
 
   return { valid: true };
+};
+
+
+const BLOCKED_EMAIL_DOMAINS = ['cam.ac.uk'];
+
+
+/**
+ * Checks if the given email address is blocked due to its domain.
+ *
+ * @param {string} email - The email address to check.
+ * @returns {boolean} True if the email address is blocked, false otherwise.
+ * @example
+ * isBlockedEmail('user@cam.ac.uk') // true
+ * isBlockedEmail('user@example.com') // false
+ */
+export const isBlockedEmail = (email) => {
+  const m = String(email || '').toLowerCase().trim().match(/@([^@\s>]+)$/);
+  if (!m) return false;
+  const domain = m[1]; // e.g. "cam.ac.uk"
+  return BLOCKED_EMAIL_DOMAINS.some(d => domain === d || domain.endsWith(`.${d}`));
 };

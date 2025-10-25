@@ -29,7 +29,7 @@ export const TextLogoLink = () => {
 export const VenueLogoLink = () => {
     return (
         <h1 className='logo'>
-            <Link className='link' to={'/venues/add-venue'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+            <Link className='link' to={'/venues/dashboard/gigs'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
                 gigin<span className='orange-txt'>.</span>
                 <span className='user-type' style={{ fontWeight: 600 }}>VENUES</span>
             </Link>

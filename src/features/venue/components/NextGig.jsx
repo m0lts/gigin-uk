@@ -5,21 +5,21 @@ import { NewTabIcon, PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useAuth } from '@hooks/useAuth';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { getMusicianProfileByMusicianId } from '@services/musicians';
-import { getOrCreateConversation } from '@services/conversations';
-import { getVenueProfileById } from '@services/venues';
-import { postCancellationMessage } from '@services/messages';
-import { cancelGigAndRefund } from '@services/functions';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { getVenueProfileById } from '@services/client-side/venues';
+import { postCancellationMessage } from '@services/function-calls/messages';
+import { cancelGigAndRefund } from '@services/function-calls/tasks';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '@services/utils/misc';
 import { CloseIcon, ErrorIcon, ExitIcon, PeopleGroupIconSolid } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
-import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/gigs';
-import { updateMusicianCancelledGig } from '../../../services/musicians';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
+import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
 
 
 export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
@@ -122,7 +122,8 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 );
                 await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
                 await updateMusicianCancelledGig(musician.musicianId, gigId);
-                await logGigCancellation(gigId, musician.musicianId, cancellationReason);
+                const cancellingParty = 'venue';
+                await logGigCancellation(gigId, musician.musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
               };
           
               if (isOpenMic) {

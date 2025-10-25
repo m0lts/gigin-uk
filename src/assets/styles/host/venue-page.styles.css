@@ -310,3 +310,27 @@
     overflow: auto;
     padding:0.5rem;
 }
+
+/* VENUE DASHBOARD VERSION */
+.window.venues .venue-page .venue-page-body {
+    padding: 1rem 2%;
+}
+
+.window.venues .venue-page .venue-page-settings h2 {
+    margin-top: 1rem;
+}
+
+.window.venues .venue-page .venue-page-settings .settings-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap:0.5rem;
+    margin: 1rem 0;
+}
+
+.window.venues .venue-page .venue-page-settings .settings-list .settings-item .btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}

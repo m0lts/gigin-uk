@@ -2,17 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import '@styles/musician/musician-profile.styles.css'
 import { BackgroundMusicIcon, CameraIcon, DownChevronIcon, EditIcon, ErrorIcon, FacebookIcon, InstagramIcon, MediaIcon, MicrophoneIconSolid, MicrophoneLinesIcon, MoreInformationIcon, Mp3Icon, Mp4Icon, MusicianIconSolid, PeopleGroupIconSolid, ProfileIconSolid, SocialMediaIcon, SoundcloudIcon, SpotifyIcon, StarIcon, TickIcon, TwitterIcon, UpChevronIcon, VideoIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
 import { v4 as uuidv4 } from 'uuid';
-import { updateUserDocument } from '@services/users';
-import { createMusicianProfile } from '@services/musicians';
+import { createMusicianProfile } from '@services/client-side/musicians';
 import { uploadProfilePicture, uploadTracks, uploadVideosWithThumbnails } from '@services/storage';
 import { useMusicianDashboard } from '../../../../context/MusicianDashboardContext';
 import { arrayUnion } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { deleteFileFromStorage, uploadFileToStorage, uploadFileWithProgress } from '../../../../services/storage';
-import { sendTestimonialRequestEmail } from '../../../../services/emails';
+import { sendTestimonialRequestEmail } from '../../../../services/client-side/emails';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../../shared/ui/loading/LoadingModal';
-import { updateBandMemberImg } from '../../../../services/bands';
+import { updateBandMemberImg } from '../../../../services/function-calls/bands';
+import { updateUserArrayField } from '../../../../services/function-calls/users';
+import { useNavigate } from 'react-router-dom';
 
 
 const VideoModal = ({ video, onClose }) => {
@@ -126,15 +127,15 @@ const genres = {
 
 const instruments = {
     'Musician': [
-        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
+        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Alto Sax', 'Tenor Sax', 'Trombone', 'Trumpet', 'Flute', 'Cello',
         'Harmonica', 'Banjo', 'Mandolin', 'Harp', 'Accordion'
     ],
     'Musician/Band': [
-        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
+        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Alto Sax', 'Tenor Sax', 'Trombone', 'Trumpet', 'Flute', 'Cello',
         'Harmonica', 'Banjo', 'Mandolin', 'Harp', 'Accordion'
     ],
     'Band': [
-        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Saxophone', 'Trumpet', 'Flute', 'Cello',
+        'Singer', 'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Alto Sax', 'Tenor Sax', 'Trombone', 'Trumpet', 'Flute', 'Cello',
         'Harmonica', 'Banjo', 'Mandolin', 'Harp', 'Accordion'
     ],
     'DJ': [
@@ -216,7 +217,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
     const [uploadingMedia, setUploadingMedia] = useState(false);
     const [testimonialEmail, setTestimonialEmail] = useState('');
     const [testimonialMessage, setTestimonialMessage] = useState(null);
-
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!musicianProfile) return;
@@ -308,10 +309,10 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
     const MAX_PHOTOS = 10;
 
     const canAddVideo = (formData, videoUploads = []) =>
-    (formData?.videos?.length ?? 0) + videoUploads.length < MAX_VIDEOS;
+    (formData?.videos?.length ?? 0) < MAX_VIDEOS;
 
     const canAddTrack = (formData, trackUploads = []) =>
-    (formData?.tracks?.length ?? 0) + trackUploads.length < MAX_TRACKS;
+    (formData?.tracks?.length ?? 0) < MAX_TRACKS;
 
     const remainingPhotoSlots = (formData, photoUploads=[]) =>
         MAX_PHOTOS - (formData?.photos?.length ?? 0) - photoUploads.filter(u => !u.url).length;
@@ -625,23 +626,26 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
         }
         setUploadingProfile(true);
         try {
-            let nextLocation = { ...formData.location };
+            let nextLocation = (formData && formData.location && typeof formData.location === 'object')
+                ? { ...formData.location }
+                : { city: '', coordinates: [] };
             if (!Array.isArray(nextLocation.coordinates) || nextLocation.coordinates.length !== 2) {
-                const geo = await geocodeCity(formData.location?.city);
-                if (geo) {
-                    nextLocation = { ...nextLocation, city: geo.city, coordinates: geo.coordinates };
+                const city = nextLocation.city || formData.location?.city || formData?.city || '';
+                if (city) {
+                    const geo = await geocodeCity(city);
+                    if (geo) {
+                        nextLocation = { ...nextLocation, city: geo.city, coordinates: geo.coordinates };
+                    }
                 }
             }
-            const pictureVal = formData.picture; // could be File/Blob or URL string or ''
+            const pictureVal = formData.picture;
             let pictureUrl =
             typeof pictureVal === 'string' && pictureVal.trim()
-                ? pictureVal.trim() // keep existing URL
+                ? pictureVal.trim()
                 : null;
 
             if (pictureVal && typeof pictureVal !== 'string') {
-            // treat as File/Blob
             if (band) {
-                // if you really need both uploads, keep both; otherwise choose one
                 pictureUrl = await uploadFileToStorage(
                 pictureVal,
                 `bands/${formData.musicianId}/profileImg/${pictureVal.name}`
@@ -650,27 +654,27 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
             } else {
                 pictureUrl = await uploadProfilePicture(pictureVal, formData.musicianId);
                 if (Array.isArray(formData.bands) && formData.bands.length > 0) {
-                await updateBandMemberImg(formData.musicianId, pictureUrl, formData.bands);
+                    await updateBandMemberImg(formData.musicianId, pictureUrl, formData.bands);
                 }
             }
             }
 
-            // ----- rest of payload -----
-            const keywords = generateSearchKeywords(formData.name);
+            const name = (formData?.name || '').trim();
+            const keywords = generateSearchKeywords(name);
             const isCompleted = !!(formData.name && pictureUrl);
 
             const updatedFormData = {
-            ...formData,
-            completed: isCompleted,
-            searchKeywords: keywords,
-            email: user?.email,
-            location: nextLocation,
-            picture: pictureUrl || null, // keep the URL or newly uploaded URL; null if none
+                ...formData,
+                completed: isCompleted,
+                searchKeywords: keywords,
+                email: user?.email,
+                location: nextLocation,
+                picture: pictureUrl || null,
             };
             await createMusicianProfile(formData.musicianId, updatedFormData, user.uid);
-            await updateUserDocument(user.uid, {
-                musicianProfile: arrayUnion(formData.musicianId),
-            });
+            if (!band) {
+                await updateUserArrayField('musicianProfile', 'add', formData.musicianId);
+            }
             if (band) {
                 await refreshSingleBand(formData.musicianId);
                 setUploadingProfile(false);

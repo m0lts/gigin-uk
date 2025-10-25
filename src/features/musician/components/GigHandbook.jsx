@@ -5,18 +5,18 @@ import { NewTabIcon, PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useAuth } from '@hooks/useAuth';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { getMusicianProfileByMusicianId } from '@services/musicians';
-import { getOrCreateConversation } from '@services/conversations';
-import { getVenueProfileById } from '@services/venues';
-import { postCancellationMessage } from '@services/messages';
-import { cancelGigAndRefund } from '@services/functions';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { getVenueProfileById } from '@services/client-side/venues';
+import { postCancellationMessage } from '@services/function-calls/messages';
+import { cancelGigAndRefund } from '@services/function-calls/tasks';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '../../../services/utils/misc';
-import { logGigCancellation, revertGigAfterCancellation } from '../../../services/gigs';
-import { updateMusicianCancelledGig } from '../../../services/musicians';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { logGigCancellation, revertGigAfterCancellation } from '../../../services/function-calls/gigs';
+import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
 
 
 export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation }) => {
@@ -143,10 +143,10 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
             );
             await revertGigAfterCancellation(gigForHandbook, musicianId, cancellationReason);
             await updateMusicianCancelledGig(musicianId, gigId);
-            await logGigCancellation(gigId, musicianId, cancellationReason);
+            const cancellingParty = 'musician';
+            await logGigCancellation(gigId, musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
             setLoading(false);
             setShowGigHandbook(false);
-            window.location.reload();
         } catch (error) {
             console.error('Error canceling task:', error.message);
             setLoading(false);
@@ -166,8 +166,8 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                     {loading ? (
                         <>
                             <LoadingSpinner />
-                            <h3>Cancelling gig...</h3>
-                            <p>Please don't leave this window or close your browser.</p>
+                            <h3 style={{ textAlign: 'center', marginTop: '1rem' }}>Cancelling gig...</h3>
+                            <p style={{ textAlign: 'center' }}>Please don't leave this window or close your browser.</p>
                         </>
                     ) : !askCancellationReason ? (
                         <> 

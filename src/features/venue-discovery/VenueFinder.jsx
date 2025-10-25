@@ -6,7 +6,7 @@ import '@styles/musician/gig-finder.styles.css';
 import { WelcomeModal } from '@features/musician/components/WelcomeModal';
 import { useUserLocation } from '@hooks/useUserLocation';
 import { TopBanner } from './TopBanner';
-import { fetchNearbyVenues } from '../../services/venues';
+import { fetchNearbyVenues } from '../../services/client-side/venues';
 import Portal from '../shared/components/Portal';
 
 export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, noProfileModal }) => {

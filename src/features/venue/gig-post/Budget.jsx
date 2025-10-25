@@ -58,42 +58,6 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
       
       const formatPounds = (n) => `£${Number(n || 0).toLocaleString('en-GB')}`;
 
-    const formatSubText = (kind, gigType) => {
-        if (kind === 'Wedding') {
-            if (gigType === 'DJ') {
-                return 'Typically, a DJ for a wedding costs more than £150 an hour.'
-            } else {
-                return 'Typically, a musician/band for a wedding costs more than £250 an hour.'
-            }
-        } else if (kind === 'Background Music') {
-            if (gigType === 'DJ') {
-                return 'DJs typically charge around £50 an hour for background music.'
-            } else {
-                return 'Musicians typically charge around £50 an hour for background music.'
-            }
-        } else if (kind === 'Live Music') {
-            if (gigType === 'DJ') {
-                return 'Typically, a live DJ costs more than £100 an hour.'
-            } else {
-                return 'Typically, a live musician/band costs more than £100 an hour.'
-            }
-        } else if (kind === 'Ticketed Gig') {
-            if (gigType === 'DJ') {
-                return 'For ticketed gigs, a DJ costs more than £300 an hour.'
-            } else {
-                return 'For ticketed gigs, a musician/band costs more than £300 an hour.'
-            }
-        } else if (kind === 'House Party') {
-            if (gigType === 'DJ') {
-                return 'Typically, a DJ for a house party costs more than £50 an hour.'
-            } else {
-                return 'Typically, a musician/band for a house party costs more than £50 an hour.'
-            }
-        } else if (kind === 'Open Mic') {
-            return 'Typically, for an open mic night, musicians are not paid. In this case, set the budget to £0.'
-        }
-    }
-
     return (
         <>
             <div className='head'>
@@ -166,7 +130,6 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
                                     </div>
                                 </div>
                             )}
-                            <p className='sub-text'>{formatSubText(formData.kind, formData.gigType)}</p>
                         </div>
                     ) : showSecondStage && localKind === 'Ticketed Gig' && (
                         <div className='ticketed-container'>

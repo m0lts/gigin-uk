@@ -21,8 +21,10 @@ import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 import { useVenueDashboard } from '@context/VenueDashboardContext';
 import { getUnreviewedPastGigs } from '../../../services/utils/filtering';
 import { MessagePage } from './messages/MessagePage';
-import { listenToUserConversations } from '@services/conversations';
+import { listenToUserConversations } from '@services/client-side/conversations';
 import Portal from '../../shared/components/Portal';
+import { VenuePage } from './VenuePage';
+import { hasVenuePerm } from '../../../services/utils/permissions';
 
 export const VenueDashboard = ({ user }) => {
     const {
@@ -55,7 +57,7 @@ export const VenueDashboard = ({ user }) => {
     const [buildingForMusicianData, setBuildingForMusicianData] = useState(false);
     const [requestId, setRequestId] = useState(null);
     const location = useLocation();
-    const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname), [location.pathname]);
+    const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'venue', venueProfiles), [location.pathname]);
   
     useEffect(() => {
       if (location.state?.newUser && user?.venueProfiles?.length === 1) {
@@ -68,31 +70,39 @@ export const VenueDashboard = ({ user }) => {
     }, [location]);
   
     useEffect(() => {
-        const localGigsToReview = getPendingGigsToReview(gigs);
-        const unreviewedGigs = getUnreviewedPastGigs(gigs);
-        if (localGigsToReview.length > 0) {
-          setGigToReview(localGigsToReview[0]);
-          setShowReviewModal(true);
-        } else if (unreviewedGigs.length > 0) {
-          setGigsToReview(unreviewedGigs);
-        }
-      }, [gigs]);
+      if (!gigs?.length) return;
+      const gigsWithReviewPerm = gigs.filter(gig =>
+        hasVenuePerm(venueProfiles, gig.venueId, 'reviews.create')
+      );
+      const localGigsToReview = getPendingGigsToReview(gigsWithReviewPerm);
+      const unreviewedGigs = getUnreviewedPastGigs(gigsWithReviewPerm);
+      if (localGigsToReview.length > 0) {
+        setGigToReview(localGigsToReview[0]);
+        setShowReviewModal(true);
+      } else if (unreviewedGigs.length > 0) {
+        setGigsToReview(unreviewedGigs);
+      } else {
+        setGigToReview(null);
+        setShowReviewModal(false);
+        setGigsToReview([]);
+      }
+    }, [gigs, venueProfiles]);
 
 
-      useEffect(() => {
-        if (!user) return;
-        const unsubscribe = listenToUserConversations(user, (updatedConversations) => {
-          setConversations(prev => mergeAndSortConversations(prev, updatedConversations));
-          const hasUnread = updatedConversations.some((conv) => {
-            const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
-            const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
-            const isNotSender = conv.lastMessageSenderId !== user.uid;
-            return lastMessage > lastViewed && isNotSender;
-          });
-          setNewMessages(hasUnread);
+    useEffect(() => {
+      if (!user) return;
+      const unsubscribe = listenToUserConversations(user, (updatedConversations) => {
+        setConversations(prev => mergeAndSortConversations(prev, updatedConversations));
+        const hasUnread = updatedConversations.some((conv) => {
+          const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
+          const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
+          const isNotSender = conv.lastMessageSenderId !== user.uid;
+          return lastMessage > lastViewed && isNotSender;
         });
-        return unsubscribe;
-      }, [user]);
+        setNewMessages(hasUnread);
+      });
+      return unsubscribe;
+    }, [user]);
 
     return (
         <>  
@@ -128,10 +138,11 @@ export const VenueDashboard = ({ user }) => {
                 <div className="output">
                     <Routes>
                         {/* <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} /> */}
-                        <Route index path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} user={user} />} />
-                        <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} />} />
-                        <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} />} />
+                        <Route index path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} />} />
+                        <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} venues={venueProfiles} refreshStripe={refreshStripe} customerDetails={customerDetails} />} />
+                        <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
+                        <Route path='my-venues/:venueId' element={<VenuePage user={user} venues={venueProfiles} setVenues={setVenueProfiles} />} />
                         <Route path='musicians' element={<SavedMusicians user={user} />} />
                         <Route path='musicians/find' element={<FindMusicians user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />
@@ -162,9 +173,10 @@ export const VenueDashboard = ({ user }) => {
               </Portal>
             )
             }
-            {showReviewModal && (
+            {showReviewModal && gigToReview && hasVenuePerm(venueProfiles, gigToReview.venueId, 'reviews.create') && (
               <Portal>
                 <ReviewModal
+                    venueProfiles={venueProfiles}
                     gigData={gigToReview}
                     reviewer='venue'
                     setGigData={setGigToReview}

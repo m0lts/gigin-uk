@@ -19,33 +19,34 @@ import {
     TwitterIcon,
     WeddingIcon } from '@features/shared/ui/extras/Icons';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { getVenueProfileById } from '@services/venues';
-import { updateMusicianGigApplications } from '@services/musicians';
-import { applyToGig, negotiateGigFee } from '@services/gigs';
-import { getOrCreateConversation } from '@services/conversations';
-import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/messages';
-import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/emails';
+import { getVenueProfileById } from '@services/client-side/venues';
+import { updateMusicianGigApplications } from '@services/client-side/musicians';
+import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/client-side/messages';
+import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
 import { validateMusicianUser } from '@services/utils/validation';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
-import { getMusicianProfilesByIds, saveGigToMusicianProfile, unSaveGigFromMusicianProfile, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/musicians';
-import { getBandMembers } from '../../services/bands';
-import { acceptGigOffer, getGigById, getGigsByIds } from '../../services/gigs';
-import { getMostRecentMessage, sendCounterOfferMessage, sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../services/messages';
+import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/client-side/musicians';
+import { getBandMembers } from '../../services/client-side/bands';
+import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
+import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
-import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/emails';
+import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
 import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
 import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
 import { NoProfileModal } from '../musician/components/NoProfileModal';
-import { getUserById } from '../../services/users';
 import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
-import { notifyOtherApplicantsGigConfirmed } from '../../services/conversations';
+import { notifyOtherApplicantsGigConfirmed } from '../../services/function-calls/conversations';
+import { getLocalGigDateTime } from '../../services/utils/filtering';
+import { acceptGigOffer, acceptGigOfferOM, applyToGig, negotiateGigFee } from '../../services/function-calls/gigs';
+import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '../../services/function-calls/messages';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId } = useParams();
@@ -89,18 +90,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
     });
 
-    const getLocalGigDateTime = (gig) => {
-        if (gig) {
-            const dateObj = gig.date.toDate();
-            const [hours, minutes] = gig.startTime.split(':').map(Number);
-            dateObj.setHours(hours);
-            dateObj.setMinutes(minutes);
-            dateObj.setSeconds(0);
-            dateObj.setMilliseconds(0);
-            return dateObj;
-        }
-      };
-
     useMapbox({
         containerRef: mapContainerRef,
         coordinates: venueProfile?.coordinates,
@@ -126,15 +115,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             const gig = await getGigById(gigId);
             if (!gig || cancelled) return;
             let enrichedGig = gig;
-            if (gig?.venue?.userId) {
-                const userDoc = await getUserById(gig.venue.userId);
-                if (cancelled) return;
-                enrichedGig = { ...gig, user: userDoc };
-            }
             if (Array.isArray(enrichedGig?.gigSlots)) {
                 const ids = enrichedGig.gigSlots;
                 const otherGigs = await getGigsByIds(ids);
-
                 if (cancelled) return;
                 setOtherSlots(otherGigs.filter(g => (g.status || '').toLowerCase() !== 'closed'));
             }
@@ -409,15 +392,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
                 text: musicianProfile.bandProfile
-                ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`
-                : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.date)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`,                profileId: musicianProfile.musicianId,
+                ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.startDateTime)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`
+                : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.startDateTime)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`,                profileId: musicianProfile.musicianId,
                 profileType: musicianProfile.bandProfile ? 'band' : 'musician',
             });
             await sendGigApplicationEmail({
                 to: venueProfile.email,
                 musicianName: musicianProfile.name,
                 venueName: gigData.venue.venueName,
-                date: formatDate(gigData.date),
+                date: formatDate(gigData.startDateTime),
                 budget: gigData.budget,
                 profileType: musicianProfile.bandProfile ? 'band' : 'musician',
                 nonPayableGig,
@@ -433,6 +416,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     }
 
     const handleWithdrawApplication = async () => {
+        setApplyingToGig(true);
         try {
             const updatedApplicants = await withdrawMusicianApplication(gigId, selectedProfile);
             if (updatedApplicants) {
@@ -443,7 +427,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             console.error(e);
             toast.error('Failed to withdraw application.');
           } finally {
-            window.location.reload();
+            setApplyingToGig(false);
           }
     }
 
@@ -526,7 +510,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     senderId: user.uid,
                     oldFee: gigData.budget,
                     newFee: newOffer,
-                    text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.date)} at ${venueName}`,
+                    text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.startDateTime)} at ${venueName}`,
                     profileId: musicianProfile.musicianId,
                     profileType
                 });
@@ -536,7 +520,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     venueName,
                     oldFee: gigData.budget,
                     newFee: newOffer,
-                    date: formatDate(gigData.date),
+                    date: formatDate(gigData.startDateTime),
                     profileType
                 });
             }
@@ -572,18 +556,30 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
     const handleAccept = async (event, proposedFee) => {
         event.stopPropagation();
+        setApplyingToGig(true);
         const musicianId = selectedProfile.id;
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
-            const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianId, nonPayableGig);
-            setGigData((prevgigData) => ({
-                ...prevgigData,
-                applicants: updatedApplicants,
-                agreedFee: `${agreedFee}`,
-                paid: false,
-            }));
+            let globalAgreedFee;
+            if (gigData.kind === 'Open Mic') {
+                const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianId, 'musician');
+                setGigData((prevGigData) => ({
+                    ...prevGigData,
+                    applicants: updatedApplicants,
+                    paid: true,
+                }));
+            } else {
+                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianId, nonPayableGig, 'musician');
+                setGigData((prevGigData) => ({
+                    ...prevGigData,
+                    applicants: updatedApplicants,
+                    agreedFee: `${agreedFee}`,
+                    paid: false,
+                }));
+                globalAgreedFee = agreedFee;
+            }
             const musicianProfile = selectedProfile;
             const venueProfile = await getVenueProfileById(gigData.venueId);
             const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'application');
@@ -596,7 +592,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 musicianName: musicianName,
                 venueProfile: venueProfile,
                 gigData: gigData,
-                agreedFee: agreedFee,
+                agreedFee: globalAgreedFee,
                 nonPayableGig: nonPayableGig,
             })
             if (nonPayableGig) {
@@ -606,30 +602,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         } catch (error) {
             toast.error('Error accepting gig invitation. Please try again.')
             console.error('Error updating gig document:', error);
-        }
-    };
-
-    const handleUnSaveGig = async () => {
-        try {
-          const profileIds = validProfiles.map(prof => prof.musicianId);
-          await unSaveGigFromMusicianProfile(gigData.gigId, profileIds);
-          setGigSaved(false);
-          toast.success('Gig Unsaved');
-        } catch (error) {
-          console.error(error);
-          toast.error('Failed to unsave gig. Please try again.');
-        }
-      };
-      
-      const handleSaveGig = async () => {
-        try {
-          const profileIds = validProfiles.map(prof => prof.musicianId);
-          await saveGigToMusicianProfile(gigData.gigId, profileIds);
-          setGigSaved(true);
-          toast.success('Gig Saved');
-        } catch (error) {
-          console.error(error);
-          toast.error('Failed to save gig. Please try again.');
+        } finally {
+            setApplyingToGig(false);
         }
     };
 
@@ -703,20 +677,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                             <div className='title'>
                                 <h1>{gigData.gigName}</h1>
                             </div>
-                            {/* <div className='options'>
-                                <button className='btn tertiary'>
-                                    <ShareIcon />
-                                </button>
-                                {gigSaved ? (
-                                    <button className='btn tertiary' onClick={() => handleUnSaveGig()}>
-                                        <SavedIcon />
-                                    </button>
-                                ) : (
-                                    <button className='btn tertiary' onClick={() => handleSaveGig()}>
-                                        <SaveIcon />
-                                    </button>
-                                )}
-                            </div> */}
                         </div>
                         <div className='images-and-location'>
                             <div className='main-image'>
@@ -749,16 +709,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 </div>
                                 <div className="gig-host">
                                     <h5>Gig Posted By: {gigData.accountName}</h5>
-                                    {gigData?.user?.createdAt ? (
-                                        <p>
-                                            Joined in {new Date(gigData.user.createdAt).toLocaleDateString(undefined, {
-                                                year: 'numeric',
-                                                month: 'long'
-                                            })}
-                                        </p>
-                                    ) : (
-                                        <p>A trusted Gigin member</p>
-                                    )}
+                                    <p>A trusted Gigin member</p>
                                 </div>
                                 <div className='details'>
                                     <div className="detail">
@@ -859,18 +810,25 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 <div className='equipment'>
                                     <h4>Equipment Available at {gigData.venue.venueName}</h4>
                                     {venueProfile?.equipmentAvailable === 'yes' ? (
-                                        <div className="equipment-grid">
-                                            {venueProfile.equipment.map((e) => (
-                                                <span className="equipment-item" key={e}>
-                                                    {formatEquipmentIcon(e)}
-                                                    {e}
-                                                </span>
-                                            ))}
-                                        </div>
+                                        <>
+                                            <div className="equipment-grid">
+                                                {venueProfile.equipment.map((e) => (
+                                                    <span className="equipment-item" key={e}>
+                                                        {formatEquipmentIcon(e)}
+                                                        {e}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            {venueProfile?.equipmentInformation && (
+                                                <div className="equipment-notes" style={{ marginTop: '1rem' }}>
+                                                    <h6>EQUIPMENT INFORMATION</h6>
+                                                    <p>{venueProfile?.equipmentInformation}</p>
+                                                </div>
+                                            )}
+                                        </>
                                     ) : (
                                         <p>Unfortunately, the venue has no equipment for use.</p>
                                     )}
-
                                 </div>
                                 {venueProfile?.description && (
                                     <div className='description'>
@@ -927,29 +885,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         </div>
                                     </div>
                                 )}
-                                {/* {similarGigs.length > 0 && (
-                                    <div className='similar-gigs'>
-                                        <h4 className='subtitle'>More Gigs</h4>
-                                        <div className='similar-gigs-list'>
-                                            {similarGigs.map(gig => (
-                                                <div key={gig.id} className='similar-gig-item' onClick={() => openGig(gig.id)}>
-                                                    <div className='similar-gig-item-venue'>
-                                                        <figure className='similar-gig-img'>
-                                                            <img src={gig.venue.photo} alt={gig.venue.venueName} />
-                                                        </figure>
-                                                        <div className='similar-gig-info'>
-                                                            <h4>{gig.venue.venueName}</h4>
-                                                            <p>{formatDate(gig.date)}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className='similar-gig-budget'>
-                                                        <h3>{gig.budget}</h3>
-                                                    </div>
-                                                </div>                                            
-                                            ))}
-                                        </div>
-                                    </div>
-                                )} */}
                             </div>
                             <div className="sticky-right">
                                 <div className='action-box'>
@@ -982,7 +917,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                     </div>
                                     <div className='action-box-date-and-time'>
                                         <div className='action-box-date'>
-                                            <h3>{formatDate(gigData.date)}, {gigData.startTime}</h3>
+                                            <h3>{formatDate(gigData.startDateTime, 'withTime')}</h3>
                                         </div>
                                     </div>
                                     {/* {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig' && !venueVisiting) && (

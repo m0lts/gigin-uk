@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import '@styles/shared/promote-modal.styles.css';
 import { FacebookIcon, InstagramIcon, SoundcloudIcon, SpotifyIcon, TwitterIcon, YoutubeIcon } from '@features/shared/ui/extras/Icons';
-import { getMusicianProfileByMusicianId } from '@services/musicians';
-import { getVenueProfileById } from '@services/venues';
+import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getVenueProfileById } from '@services/client-side/venues';
 import { ensureProtocol } from '../../../services/utils/misc';
 import Portal from './Portal';
 

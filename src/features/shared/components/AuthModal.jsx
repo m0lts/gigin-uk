@@ -7,11 +7,12 @@ import { SignupForm } from '@features/shared/forms/Signup';
 // Styles
 import '@styles/shared/modals.styles.css'
 import { ForgotPasswordForm } from '@features/shared/forms/ForgotPassword';
+import { VerifyEmailModal } from './VerifyEmailModal';
 
 
 export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
-  const { login, signup, resetPassword, checkUser, loginWithGoogle } = useAuth();
+  const { login, signup, resetPassword, checkUser, continueWithGoogle } = useAuth();
   const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
   const [error, setError] = useState({ status: false, input: '', message: '' });
   const [loading, setLoading] = useState(false);
@@ -49,7 +50,7 @@ export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, s
           setAuthModal={setAuthModal}
           loading={loading}
           setLoading={setLoading}
-          loginWithGoogle={loginWithGoogle}
+          continueWithGoogle={continueWithGoogle}
           noProfileModal={noProfileModal}
           setNoProfileModal={setNoProfileModal}
         />
@@ -69,6 +70,17 @@ export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, s
           loading={loading}
           setLoading={setLoading}
           checkUser={checkUser}
+          noProfileModal={noProfileModal}
+          setNoProfileModal={setNoProfileModal}
+        />
+      ) : authType === 'verify-email' ? (
+        <VerifyEmailModal
+          authClosable={authClosable}
+          setAuthClosable={setAuthClosable}
+          setAuthType={setAuthType}
+          setAuthModal={setAuthModal}
+          loading={loading}
+          setLoading={setLoading}
           noProfileModal={noProfileModal}
           setNoProfileModal={setNoProfileModal}
         />

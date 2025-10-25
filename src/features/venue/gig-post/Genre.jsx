@@ -61,8 +61,8 @@ export const GigGenre = ({ formData, handleInputChange, error }) => {
                 </div>
                 {!formData.noMusicPreference && (
                     <div className='selections'>
-                        {genresToShow.map((genre) => (
-                            <div className={`card small ${formData.genre.includes(genre) ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect(genre)}>
+                        {genresToShow.map((genre, index) => (
+                            <div key={index} className={`card small ${formData.genre.includes(genre) ? 'selected' : ''} ${formData.noMusicPreference === true && 'disabled'}`} onClick={() => handleGenreSelect(genre)}>
                                 <h4 className='text'>{genre}</h4>
                             </div>
                         ))}
