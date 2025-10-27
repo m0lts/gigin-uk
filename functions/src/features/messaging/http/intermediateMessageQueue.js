@@ -36,11 +36,30 @@ export const intermediateMessageQueue = httpRaw(
       ...rest
     } = req.body;
 
-    const gigStartDate = new Date(gigDate);
-    const [hours, minutes] = gigTime.split(":").map(Number);
-    gigStartDate.setHours(hours);
-    gigStartDate.setMinutes(minutes);
-    gigStartDate.setSeconds(0);
+    let gigStartDate = new Date(gigDate);
+    try {
+      // Check if gigTime exists and is splitable
+      if (typeof gigTime === "string" && gigTime.includes(":")) {
+        const [hours, minutes] = gigTime.split(":").map(Number);
+        gigStartDate.setHours(hours || 0);
+        gigStartDate.setMinutes(minutes || 0);
+        gigStartDate.setSeconds(0);
+      } else {
+        // gigTime missing or invalid — fallback to extracting from gigDate
+        const dateStr = new Date(gigDate);
+        const hours = dateStr.getHours();
+        const minutes = dateStr.getMinutes();
+        const seconds = dateStr.getSeconds();
+        gigStartDate.setHours(hours, minutes, seconds, 0);
+        console.warn(
+          `⚠️ gigTime missing or invalid for gigId=${gigId}. Using time from gigDate instead.`
+        );
+      }
+    } catch (err) {
+      console.error("Error parsing gigDate/gigTime. Defaulting to midnight:", err);
+      gigStartDate = new Date(gigDate);
+      gigStartDate.setHours(23, 0, 0, 0);
+    }
 
     const maxAllowedDate = new Date(Date.now() + 720 * 60 * 60 * 1000);
     const targetUriForMessage = await getFunctionUrl("automaticReviewMessage");
