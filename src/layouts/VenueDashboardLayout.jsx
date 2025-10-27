@@ -1,14 +1,17 @@
 import { useEffect } from 'react';
 import { useAuth } from '@hooks/useAuth'
 import '@styles/shared/dashboard.styles.css'
-import { useLocation, useNavigate } from 'react-router-dom';
-import { VenueDashboardProvider } from '@context/VenueDashboardContext';
+import { useNavigate } from 'react-router-dom';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { Header } from '../features/venue/components/Header';
+import { useVenueDashboard } from '../context/VenueDashboardContext';
 
 export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user, setAuthClosable }) => {
 
     const { loading } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation();
+    const { isMdUp } = useBreakpoint();
+    const { loading: dashboardLoading } = useVenueDashboard();
 
     useEffect(() => {
         if (!loading && !user) {
@@ -17,15 +20,20 @@ export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user
             setAuthClosable(false);
         }
         if (user && !user.venueProfiles) {
-            navigate('/venues/add-venue')
+            if (isMdUp) {
+                navigate('/venues/add-venue');
+            } else {
+                navigate('/');
+            }
         }
     }, [user])
 
     return (
-        <VenueDashboardProvider user={user}>
+        <>
+            {!isMdUp && !dashboardLoading && <Header setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} />}
             <section className="dashboard">
                 { children }
             </section>
-        </VenueDashboardProvider>
+        </>
     )
 };

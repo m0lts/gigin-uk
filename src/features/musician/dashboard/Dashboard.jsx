@@ -19,6 +19,7 @@ import { RightChevronIcon } from '../../shared/ui/extras/Icons';
 import { TopBar } from './TopBar';
 import Portal from '../../shared/components/Portal';
 import { WelcomeModal } from '../components/WelcomeModal';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 
 export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalClosable }) => {
@@ -41,6 +42,7 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
     savedGigs,
     setSavedGigs
   } = useMusicianDashboard();
+  const { isMdUp } = useBreakpoint();
 
   const [newMessages, setNewMessages] = useState(false);
   const [conversations, setConversations] = useState([]);
@@ -95,8 +97,8 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
 
   return (
     <>
-        {loading && <LoadingScreen />}
-          <Sidebar
+      {isMdUp && (
+        <Sidebar
           user={user}
           newMessages={newMessages}
           unseenInvites={unseenInvites}
@@ -105,21 +107,24 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
           setShowWelcomeModal={setShowWelcomeModal}
           setRevisitingModal={setRevisitingModal}
         />
-          <div className='window musicians'>
-            <TopBar user={user} bandProfiles={bandProfiles} />
-              <div className="output">
-              <Routes>
-                <Route index element={<Overview user={user} musicianProfile={musicianProfile} gigApplications={gigApplications} gigs={gigs} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} bandProfiles={bandProfiles} unseenInvites={unseenInvites} setUnseenInvites={setUnseenInvites} />} />
-                <Route path='profile' element={<Profile musicianProfile={musicianProfile} user={user} />} />
-                <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} savedGigs={savedGigs} setSavedGigs={setSavedGigs} />} />
-                <Route path='bands' element={<Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
-                <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
-                <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />
-                <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} />} />
-                <Route path='finances' element={<Finances user={user} musicianProfile={musicianProfile} />} />
-              </Routes>
-              </div>
-          </div>
+      )}
+      <div className='window musicians'>
+        {isMdUp && (
+          <TopBar user={user} bandProfiles={bandProfiles} />
+        )}
+        <div className="output">
+          <Routes>
+            <Route index element={<Overview user={user} musicianProfile={musicianProfile} gigApplications={gigApplications} gigs={gigs} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} bandProfiles={bandProfiles} unseenInvites={unseenInvites} setUnseenInvites={setUnseenInvites} />} />
+            <Route path='profile' element={<Profile musicianProfile={musicianProfile} user={user} />} />
+            <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} savedGigs={savedGigs} setSavedGigs={setSavedGigs} />} />
+            <Route path='bands' element={<Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
+            <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
+            <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />
+            <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} />} />
+            <Route path='finances' element={<Finances user={user} musicianProfile={musicianProfile} />} />
+          </Routes>
+        </div>
+      </div>
       {showReviewModal && gigToReview && (
         <Portal>
           <ReviewModal

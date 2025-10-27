@@ -3,6 +3,8 @@ button {
     font-size: 1rem;
     font-weight: 300;
     cursor: pointer;
+    border: none;
+    background-color: transparent;
 }
 
 .btn.disabled {

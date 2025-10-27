@@ -60,6 +60,24 @@ export const NoTextLogoLink = () => {
         </h1>
     )
 }
+export const NoTextMusicianLogoLink = () => {
+    return (
+        <h1 className='logo'>
+            <Link className='link' to={'/find-a-gig'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+                g<span className='orange-txt'>.</span>
+            </Link>
+        </h1>
+    )
+}
+export const NoTextVenueLogoLink = () => {
+    return (
+        <h1 className='logo'>
+            <Link className='link' to={'/venues/dashboard/gigs'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+                g<span className='orange-txt'>.</span>
+            </Link>
+        </h1>
+    )
+}
 export const WhiteBckgrdLogo = () => {
     return (
         <div className='bckgrd-white logo'>

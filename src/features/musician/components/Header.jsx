@@ -26,19 +26,21 @@ import { listenToUserConversations } from '@services/client-side/conversations';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';
 import { NoProfileModal } from './NoProfileModal';
+import { CloseIcon, HamburgerMenuIcon } from '../../shared/ui/extras/Icons';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { MobileMenu } from '../../shared/components/MobileMenu';
 
 export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModal, setNoProfileModal, setNoProfileModalClosable, noProfileModalClosable = false }) => {
     
     const { logout } = useAuth();
-    const navigate = useNavigate();
+    const { isMdUp, isLgUp } = useBreakpoint();
     const location = useLocation();
     const [accountMenu, setAccountMenu] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
-    useResizeEffect((width) => {
-        setWindowWidth(width);
-      });
+    window.addEventListener('click', () => {
+        setAccountMenu(false);
+    });
 
     useEffect(() => {
         if (!user) return;
@@ -74,211 +76,123 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
         : '0 1rem',
       };
 
-    const menuStyle = {
-        right: (location.pathname.includes('dashboard') || location.pathname.includes('venues')) ? '1rem' : '5%',
-      };
-
     return (
-        <header className='header default' style={headerStyle}>
-            {user ? (
-                <>
-                    <div className='left musician'>
-                        <MusicianLogoLink />
-                    </div>
-                    <div className='right'>
-                        <div className='buttons'>
-                            {user.venueProfiles && !user.musicianProfile ? (
-                                <Link className='link' to={'/venues/dashboard/gigs'}>
-                                    <button className='btn secondary'>
-                                        <DashboardIconLight />
-                                        Dashboard
-                                    </button>
-                                </Link>
-                            ) : (
-                                <>
+        <>
+            <header className='header default' style={headerStyle}>
+                {isMdUp ? (
+                    user ? (
+                        <>
+                            <div className='left musician'>
+                                <MusicianLogoLink />
+                            </div>
+                            <div className='right'>
+                                <div className='buttons'>
                                     <Link className='link no-margin' to={'/find-a-gig'}>
                                         <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                                             <MapIcon />
                                             Find a Gig
                                         </button>
                                     </Link>
-                                    <Link className='link no-margin' to={'/find-venues'}>
-                                        <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
-                                            <TelescopeIcon />
-                                            Find a Venue
-                                        </button>
-                                    </Link>
-                                    {user.musicianProfile ? (
-                                        windowWidth > 1100 && (
+                                    {isLgUp && (
+                                        <Link className='link no-margin' to={'/find-venues'}>
+                                            <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
+                                                <TelescopeIcon />
+                                                Find a Venue
+                                            </button>
+                                        </Link>
+                                    )}
+                                    {user.musicianProfile && isLgUp ? (
                                             <Link className='link' to={'/dashboard'}>
                                                 <button className={`btn secondary ${location.pathname.includes('dashboard') ? 'disabled' : ''}`}>
                                                     <DashboardIconLight />
                                                     Dashboard
                                                 </button>
                                             </Link>
-                                        )
-                                    ) : (
+                                    ) : isLgUp && (
                                         <button className='btn secondary' onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(noProfileModalClosable)}}>
                                             <GuitarsIcon />
                                             Create Musician Profile
                                         </button>
                                     )}
-                                </>
-                            )}
-                            {user.musicianProfile && (
-                                newMessages ? (
-                                    <Link className='link' to={'/messages'}>
-                                        <button className={`btn secondary messages ${location.pathname === '/messages' ? 'disabled' : ''}`}>
-                                            <span className='notification-dot'><DotIcon /></span>
-                                            <MailboxFullIcon />
-                                            Messages
-                                        </button>
-                                    </Link>
-                                ) : (
-                                    <Link className='link' to={'/messages'}>
-                                        <button className={`btn secondary ${location.pathname === '/messages' ? 'disabled' : ''}`}>
-                                            <MailboxEmptyIcon />
-                                            Messages
-                                        </button>
-                                    </Link>
-                                )
-                            )}
-                        </div>
-                        <button className={`btn account-btn ${accountMenu ? 'active' : ''}`} onClick={() => setAccountMenu(!accountMenu)}>
-                            <h4 className='withdrawable-earnings'>My Gigin</h4>
-                            <UserIcon />
-                        </button>
-                    </div>
-                    {accountMenu && (
-                        user.venueProfiles && user.musicianProfile ? (
-                            <nav className='account-menu' style={menuStyle}>
-                            <div className='item name-and-email no-margin'>
-                                <h6>{user.name}</h6>
-                                <p>{user.email}</p>
-                            </div>
-                            {user.musicianProfile && (
-                                newMessages ? (
-                                    <Link className='link item no-margin' to={'/messages'}>
-                                            Messages
-                                            <MailboxFullIcon />
-                                    </Link>
-                                ) : (
-                                    <Link className='link item no-margin' to={'/messages'}>
-                                            Messages
-                                            <MailboxEmptyIcon />
-                                    </Link>
-                                )
-                            )}
-                            {/* <div className='break' />
-                            <h6 className='title'>venues</h6>
-                            {user.venueProfiles && user.venueProfiles.length > 0 ? (
-                                <>
-                                    <Link className='link item no-margin' to={'/venues/dashboard/gigs'}>
-                                        Dashboard
-                                        <DashboardIconLight />
-                                    </Link>
-                                    <Link className='link item' to={'/venues/add-venue'}>
-                                        Add another venue
-                                        <VenueBuilderIcon />
-                                    </Link>
-                                </>
-                            ) : (
-                                <Link className='link item' to={'/venues/add-venue'}>
-                                    Add my Venue
-                                    <VenueBuilderIcon />
-                                </Link>
-                            )} */}
-                            {!user?.musicianProfile && (
-                                <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
-                                    Create a Musician Profile
-                                    <GuitarsIcon />
-                                </Link>
-                            )}
-                            <Link to={'/account'} className='item no-margin link'>
-                                Settings
-                                <SettingsIcon />
-                            </Link>
-                            <button className='btn logout no-margin' onClick={handleLogout}>
-                                Log Out
-                                <LogOutIcon />
-                            </button>
-                        </nav>
-
-                        ) : (
-                            <nav className='account-menu' style={menuStyle}>
-                                <div className='item name-and-email no-margin'>
-                                    <h6>{user.name}</h6>
-                                    <p>{user.email}</p>
+                                    {user.musicianProfile && (
+                                        newMessages ? (
+                                            <Link className='link' to={'/messages'}>
+                                                <button className={`btn secondary messages ${location.pathname === '/messages' ? 'disabled' : ''}`}>
+                                                    <span className='notification-dot'><DotIcon /></span>
+                                                    <MailboxFullIcon />
+                                                    Messages
+                                                </button>
+                                            </Link>
+                                        ) : (
+                                            <Link className='link' to={'/messages'}>
+                                                <button className={`btn secondary ${location.pathname === '/messages' ? 'disabled' : ''}`}>
+                                                    <MailboxEmptyIcon />
+                                                    Messages
+                                                </button>
+                                            </Link>
+                                        )
+                                    )}
                                 </div>
-                                {
-                                newMessages ? (
-                                    <Link className='link item' to={'/messages'}>
-                                            Messages
-                                            <MailboxFullIcon />
-                                    </Link>
-                                ) : (
-                                    <Link className='link item' to={'/messages'}>
-                                            Messages
-                                            <MailboxEmptyIcon />
-                                    </Link>
-                                )
-                            }
-                                <div className='break' />
-                                <h6 className='title'>musicians</h6>
-                                {user.musicianProfile ? (
-                                    <Link className='link item no-margin' to={'/dashboard'}>
-                                        Dashboard
-                                        <DashboardIconLight />
-                                    </Link>
-                                ) : (
-                                    <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
-                                        Create Musician Profile
-                                        <GuitarsIcon />
-                                    </Link>
-                                )}
-                                <Link className='link item no-margin' to={'/find-a-gig'}>
-                                    Find a Gig
-                                    <MapIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/find-venues'}>
-                                    Find a Venue
-                                    <TelescopeIcon />
-                                </Link>
-                                {/* <div className='break' />
-                                <Link className='link item no-margin' to={'/venues/add-venue'}>
-                                    Create a Venue Profile
-                                    <VenueBuilderIcon />
-                                </Link> */}
-                                <div className='break' />
-                                <a className='link item no-margin' href='mailto:hq.gigin@gmail.com'>
-                                    Contact Us
-                                    <TicketIcon />
-                                </a>
-                                <Link to={'/account'} className='item no-margin link'>
-                                    Settings
-                                    <SettingsIcon />
-                                </Link>
-                                <button className='btn logout no-margin' onClick={handleLogout}>
-                                    Log Out
-                                    <LogOutIcon />
+                                <button
+                                    className='btn icon'
+                                    onClick={(e) => {e.stopPropagation(); setAccountMenu(!accountMenu)}}
+                                >
+                                    {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
+                                </button>
+                            </div>
+                            {accountMenu && (
+                                <MobileMenu
+                                    setMobileOpen={setAccountMenu}
+                                    user={user}
+                                    showAuthModal={showAuthModal}
+                                    setAuthType={setAuthType}
+                                    handleLogout={handleLogout}
+                                    newMessages={newMessages}
+                                    isMobile={!isMdUp}
+                                    menuStyle={{right: '1rem'}}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <MusicianLogoLink />
+                            <nav className='nav-list'>
+                                <button className='item btn secondary' onClick={() => {showAuthModal(true); setAuthType('login')}}>
+                                    Log In
+                                </button>
+                                <button className='item btn primary' onClick={() => {showAuthModal(true); setAuthType('signup')}}>
+                                    Sign Up
                                 </button>
                             </nav>
-                        )
-                    )}
-                </>
-            ) : (
-                <>
-                    <MusicianLogoLink />
-                    <nav className='nav-list'>
-                        <button className='item btn secondary' onClick={() => {showAuthModal(true); setAuthType('login')}}>
-                            Log In
+                        </>
+                    )
+                ) : (
+                    <>
+                        <MusicianLogoLink />
+                        <button
+                            className='btn icon'
+                            aria-label={accountMenu ? 'Close Menu' : 'Open Menu'}
+                            aria-expanded={accountMenu}
+                            aria-controls='account-menu'
+                            onClick={(e) => {setAccountMenu(o => !o); e.stopPropagation();}}
+                        >
+                            {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
                         </button>
-                        <button className='item btn primary' onClick={() => {showAuthModal(true); setAuthType('signup')}}>
-                            Sign Up
-                        </button>
-                    </nav>
-                </>
+                    </>
+                )}
+            </header>
+            {accountMenu && (
+                <MobileMenu
+                    setMobileOpen={setAccountMenu}
+                    user={user}
+                    showAuthModal={showAuthModal}
+                    setAuthType={setAuthType}
+                    handleLogout={handleLogout}
+                    newMessages={newMessages}
+                    isMobile={!isMdUp}
+                    menuStyle={{right: '1rem'}}
+                />
             )}
-        </header>
+        </>
     )
 }

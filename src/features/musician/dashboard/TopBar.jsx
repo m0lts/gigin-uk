@@ -25,7 +25,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { listenToUserConversations } from '@services/client-side/conversations';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { DashboardIconSolid } from '../../shared/ui/extras/Icons';
+import { CloseIcon, DashboardIconSolid, HamburgerMenuIcon } from '../../shared/ui/extras/Icons';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { MobileMenu } from '../../shared/components/MobileMenu';
 
 export const TopBar = ({ user, bandProfiles }) => {
     
@@ -37,6 +39,7 @@ export const TopBar = ({ user, bandProfiles }) => {
     const menuRef = useRef(null);
     const buttonRef = useRef(null);
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'musician', bandProfiles), [location.pathname, bandProfiles]);
+    const { isMdUp, isLgUp, isXlUp } = useBreakpoint();
 
     useEffect(() => {
         if (!user) return;
@@ -83,47 +86,47 @@ export const TopBar = ({ user, bandProfiles }) => {
     
     return (
         <header className='top-bar'>
-                {location.pathname !== '/dashboard' && (
-                  <div className="breadcrumbs">
-                      {breadcrumbs.map((crumb, index) => (
-                          <React.Fragment key={crumb.path}>
-                          <Link className="breadcrumb" to={crumb.path}>
-                              {index !== breadcrumbs.length - 1 ? (
-                              <p className='breadcrumb-link'>{crumb.label}</p>
-                              ) : (
-                                <p className='breadcrumb-text'>{crumb.label}</p>
-                              )}
-                          </Link>
-                          {index !== breadcrumbs.length - 1 && (
-                              <div className="breadcrumb-separator">
-                              <RightChevronIcon />
-                              </div>
-                          )}
-                          </React.Fragment>
-                      ))}
-                  </div>
-              )}
-            <div className="right">
-                <div className='buttons'>
-                    <Link className='link' to={'/find-a-gig'}>
-                        <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                            <MapIcon />
-                            Find a Gig
-                        </button>
-                    </Link>
+            {location.pathname !== '/dashboard' && (
+                <div className="breadcrumbs">
+                    {breadcrumbs.map((crumb, index) => (
+                        <React.Fragment key={crumb.path}>
+                        <Link className="breadcrumb" to={crumb.path}>
+                            {index !== breadcrumbs.length - 1 ? (
+                            <p className='breadcrumb-link'>{crumb.label}</p>
+                            ) : (
+                            <p className='breadcrumb-text'>{crumb.label}</p>
+                            )}
+                        </Link>
+                        {index !== breadcrumbs.length - 1 && (
+                            <div className="breadcrumb-separator">
+                            <RightChevronIcon />
+                            </div>
+                        )}
+                        </React.Fragment>
+                    ))}
+                </div>
+            )}
+            <div className="right buttons">
+                {isLgUp && (
+                    <>
+                        <Link className='link' to={'/find-a-gig'}>
+                            <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
+                                <MapIcon />
+                                Find a Gig
+                            </button>
+                        </Link>
+                    </>
+                )}
+                {isXlUp && (
                     <Link className='link' to={'/find-venues'}>
                         <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
                             <TelescopeIcon />
                             Find a Venue
                         </button>
                     </Link>
-                    <Link className='link' to={'/dashboard'}>
-                        <button className={`btn secondary ${location.pathname.includes('dashboard') ? 'disabled' : ''}`}>
-                            <DashboardIconLight />
-                            Dashboard
-                        </button>
-                    </Link>
-                    {newMessages ? (
+                )}
+                {isLgUp && (
+                    newMessages ? (
                         <Link className='link' to={'/messages'}>
                             <button className='btn secondary messages'>
                                 <MailboxFullIcon />
@@ -138,59 +141,23 @@ export const TopBar = ({ user, bandProfiles }) => {
                                 Messages
                             </button>
                         </Link>
-                    )}
-                </div>
-                <button className={`btn account-btn ${accountMenu ? 'active' : ''}`} onClick={() => setAccountMenu(!accountMenu)} ref={buttonRef}>
-                    <h4 className='withdrawable-earnings'>My Gigin</h4>
-                    <UserIcon />
+                    )
+                )}
+                <button className='btn icon' onClick={() => setAccountMenu(!accountMenu)} ref={buttonRef}>
+                    {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
                 </button>
             </div>
             {accountMenu && (
-                    <nav className='account-menu' ref={menuRef}>
-                        <div className='item name-and-email no-margin'>
-                            <h6>{user.name}</h6>
-                            <p>{user.email}</p>
-                        </div>
-                        {
-                        newMessages ? (
-                            <Link className='link item no-margin' to={'/messages'}>
-                                    Messages
-                                    <MailboxFullIcon />
-                            </Link>
-                        ) : (
-                            <Link className='link item no-margin' to={'/messages'}>
-                                    Messages
-                                    <MailboxEmptyIcon />
-                            </Link>
-                        )
-                        }
-                        <Link className='link item no-margin' to={'/find-a-gig'}>
-                            Find a Gig
-                            <MapIcon />
-                        </Link>
-                        <Link className='link item no-margin' to={'/find-venues'}>
-                            Find a Venue
-                            <TelescopeIcon />
-                        </Link>
-                        {/* <div className='break' />
-                        <Link className='link item no-margin' to={'/venues/add-venue'}>
-                            Create a Venue Profile
-                            <VenueBuilderIcon />
-                        </Link> */}
-                        <a className='link item no-margin' href='mailto:hq.gigin@gmail.com'>
-                            Contact Us
-                            <TicketIcon />
-                        </a>
-                        <Link to={'/account'} className='item no-margin link'>
-                            Settings
-                            <SettingsIcon />
-                        </Link>
-                        <button className='btn logout no-margin' onClick={handleLogout}>
-                            Log Out
-                            <LogOutIcon />
-                        </button>
-                    </nav>
-                
+                <MobileMenu 
+                    setMobileOpen={setAccountMenu}
+                    user={user}
+                    showAuthModal={null}
+                    setAuthType={null}
+                    handleLogout={handleLogout}
+                    newMessages={newMessages}
+                    isMobile={!isMdUp}
+                    menuStyle={{right: '1rem'}}
+                />
             )}
         </header>
     )

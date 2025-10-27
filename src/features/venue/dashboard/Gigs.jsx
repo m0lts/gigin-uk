@@ -420,8 +420,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       <option value={venue.venueId} key={venue.venueId}>{venue.name}</option>
                       ))}
                   </select>
-                  <div className="spacer" />
-                  <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
                 </>
               ) : (
                 <>
@@ -430,7 +428,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       <FilterIconEmpty />
                       Filters
                   </button>
-                  <button className='btn primary' onClick={() => setGigPostModal(true)}>New Gig</button>
                 </>
               )}
             </div>

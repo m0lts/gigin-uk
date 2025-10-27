@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@hooks/useAuth'
-import { MusicianDashboardProvider } from '../context/MusicianDashboardContext';
+import { useMusicianDashboard } from '../context/MusicianDashboardContext';
 import '@styles/shared/dashboard.styles.css'
 import { ProfileCreator } from '../features/musician/profile-creator/ProfileCreator';
+import { Header } from '../features/musician/components/Header';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 export const MusicianDashboardLayout = ({
     children,
@@ -15,6 +17,8 @@ export const MusicianDashboardLayout = ({
     setNoProfileModalClosable
   }) => {
     const { loading } = useAuth();
+    const { isMdUp } = useBreakpoint();
+    const { loading: dashboardLoading } = useMusicianDashboard();
 
     const hasBasics = useMemo(() => {
       const p = user?.musicianProfile || null;
@@ -62,12 +66,13 @@ export const MusicianDashboardLayout = ({
     }, [loading, user, hasBasics, setAuthModal, setAuthType, setAuthClosable]);
   
     return (
-      <MusicianDashboardProvider user={user}>
-        {hasBasics && (
+      hasBasics && (
+        <>
+          {!isMdUp && !dashboardLoading && <Header setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} />}
           <section className="dashboard">
             {children}
           </section>
-        )}
-      </MusicianDashboardProvider>
+        </>
+      )
     );
   };

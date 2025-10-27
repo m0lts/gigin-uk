@@ -10,10 +10,8 @@ export const useResizeEffect = (callback, runOnMount = true) => {
     const handleResize = () => {
       callback(window.innerWidth);
     };
-
     if (runOnMount) handleResize();
     window.addEventListener('resize', handleResize);
-
     return () => {
       window.removeEventListener('resize', handleResize);
     };

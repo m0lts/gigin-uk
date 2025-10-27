@@ -25,6 +25,8 @@ import { listenToUserConversations } from '@services/client-side/conversations';
 import Portal from '../../shared/components/Portal';
 import { VenuePage } from './VenuePage';
 import { hasVenuePerm } from '../../../services/utils/permissions';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { Header } from '../components/Header';
 
 export const VenueDashboard = ({ user }) => {
     const {
@@ -43,6 +45,7 @@ export const VenueDashboard = ({ user }) => {
       refreshTemplates,
       refreshStripe
     } = useVenueDashboard();
+    const { isMdUp } = useBreakpoint();
   
     const [gigPostModal, setGigPostModal] = useState(false);
     const [editGigData, setEditGigData] = useState();
@@ -107,15 +110,18 @@ export const VenueDashboard = ({ user }) => {
     return (
         <>  
             {loading && <LoadingScreen />}
-            <Sidebar
-              setGigPostModal={setGigPostModal}
-              user={user}
-              newMessages={newMessages}
-              setShowWelcomeModal={setShowWelcomeModal}
-              setRevisitingModal={setRevisitingModal}
-            />
+            {isMdUp && (
+              <Sidebar
+                setGigPostModal={setGigPostModal}
+                user={user}
+                newMessages={newMessages}
+                setShowWelcomeModal={setShowWelcomeModal}
+                setRevisitingModal={setRevisitingModal}
+              />
+            )}
             <div className='window venues'>
-                {location.pathname !== '/venues/dashboard' && (
+              {isMdUp && (
+                location.pathname !== '/venues/dashboard' && (
                     <div className="breadcrumbs">
                         {breadcrumbs.map((crumb, index) => (
                             <React.Fragment key={crumb.path}>
@@ -134,7 +140,8 @@ export const VenueDashboard = ({ user }) => {
                             </React.Fragment>
                         ))}
                     </div>
-                )}
+                )
+              )}
                 <div className="output">
                     <Routes>
                         {/* <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} /> */}

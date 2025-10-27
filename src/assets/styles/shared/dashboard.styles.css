@@ -1,6 +1,6 @@
+@import '@styles/breakpoints.css';
 
 /* WHOLE DASHBOARD LAYOUT */
-
 .dashboard {
     width: 100vw;
     height: 100vh;
@@ -10,6 +10,12 @@
     display: grid;
     grid-template-columns: 275px auto;
     overflow: hidden;
+}
+
+@media (--bp-md) {
+    .dashboard {
+        grid-template-columns: auto;
+    }
 }
 
 

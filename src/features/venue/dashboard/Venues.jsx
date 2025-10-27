@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { VenueIconSolid } from '@icons';
 import { getCityFromAddress } from '@services/utils/misc';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const Venues = ({ venues}) => {
     const navigate = useNavigate();
+    const { isMdUp } = useBreakpoint();
     const handleOpenVenuePage = (venueProfile) => {
         navigate(`/venues/dashboard/my-venues/${venueProfile.venueId}`);
     }
@@ -12,9 +14,11 @@ export const Venues = ({ venues}) => {
         <>
             <div className='head'>
                 <h1 className='title'>My Venues</h1>
-                <button className='btn primary' onClick={() => navigate('/venues/add-venue')}>
-                    Add Another Venue
-                </button>
+                {isMdUp && (
+                    <button className='btn primary' onClick={() => navigate('/venues/add-venue')}>
+                        Add Another Venue
+                    </button>
+                )}
             </div>
 
             <div className='body venues'>
