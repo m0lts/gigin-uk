@@ -4,7 +4,7 @@ import { ErrorIcon } from '@features/shared/ui/extras/Icons';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '@services/utils/dates';
 import { LoadingSpinner, LoadingThreeDots } from '../shared/ui/loading/Loading';
-import { openInNewTab } from '../../services/utils/misc';
+import { getCityFromAddress, openInNewTab } from '../../services/utils/misc';
 import { TelescopeIcon } from '../shared/ui/extras/Icons';
 
 const toLngLat = (venue) => {
@@ -32,7 +32,7 @@ const toFeatureCollection = (list) => ({
     .filter(Boolean),
 });
 
-export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user }) => {
+export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user, clickedVenues, setClickedVenues }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const latestVenuesRef = useRef(venues);
@@ -75,6 +75,7 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user })
           'circle-blur': 1.2,
         },
       });
+
       map.addLayer({
         id: 'clusters',
         type: 'circle',
@@ -86,13 +87,14 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user })
           'circle-stroke-width': 0,
         },
       });
+
       map.addLayer({
         id: 'cluster-count',
         type: 'symbol',
         source: sourceId,
         filter: ['has', 'point_count'],
         layout: {
-          'text-field': '{point_count_abbreviated}',
+          'text-field': ['concat', ['get', 'point_count_abbreviated'], ' Venues'],
           'text-font': ['DM Sans Bold'],
           'text-size': 13,
           'text-anchor': 'center',
@@ -103,6 +105,7 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user })
           'text-halo-width': 1.5,
         },
       });
+
       map.addLayer({
         id: 'unclustered-point',
         type: 'circle',
@@ -116,6 +119,7 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user })
           'circle-stroke-width': 0,
         },
       });
+
       map.addLayer({
         id: 'unclustered-point-label',
         type: 'symbol',
@@ -135,6 +139,7 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user })
           'text-halo-blur': 0.5,
         },
       });
+
       map.addLayer({
         id: 'unclustered-hit',
         type: 'circle',
@@ -168,13 +173,43 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user })
 
       map.on('click', 'unclustered-hit', handleUnclusteredClick);
       ['unclustered-point', 'unclustered-hit'].forEach((l) => {
-        map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
-        map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
+          map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
+          map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
+        });
       });
-    });
+
+      map.on('mouseenter', 'clusters', () => (map.getCanvas().style.cursor = 'pointer'));
+      map.on('mouseleave', 'clusters', () => (map.getCanvas().style.cursor = ''));
+
+      map.on('click', 'clusters', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+        if (!features.length) return;
+      
+        const clusterId = features[0].properties.cluster_id;
+        const source = map.getSource(sourceId);
+      
+        source.getClusterLeaves(clusterId, Infinity, 0, (err, leaves) => {
+          if (err) return console.error(err);
+      
+          const newVenues = leaves
+            .map(f => {
+              const id = f.properties?.id;
+              return (latestVenuesRef.current || []).find(v => v.id === id);
+            })
+            .filter(Boolean)
+            .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+      
+          setClickedVenues(prev => {
+            const byId = Object.fromEntries((prev || []).map(v => [v.id, v]));
+            newVenues.forEach(v => { byId[v.id] = v; });
+            return Object.values(byId);
+          });
+        });
+      });
 
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
+
   }, []);
 
   // Recenter when userLocation changes
@@ -191,8 +226,8 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user })
   }, [venues]);
 
   return (
-    <div className="output-container" style={{ position: 'relative' }}>
-      <div ref={mapContainerRef} className="map" style={{ width: '100%', height: '100%' }}>
+    <div className="output-container">
+      <div ref={mapContainerRef} className="map" style={{ width: '100%', height: clickedVenues.length > 0 ? '70%' : '100%' }}>
         {!loading && (
           <button
             className="btn primary"
@@ -213,6 +248,40 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user })
           </div>
         )}
       </div>
+
+      {(clickedVenues?.length ?? 0) > 0 && (
+        <div className="preview-gig-container">
+          <ul className="preview-gig-list">
+            <button
+              className="btn danger clear-all"
+              onClick={() => setClickedVenues([])}
+            >
+              <ErrorIcon />
+              Clear All
+            </button>
+            {clickedVenues.map((venue, i) => (
+              <li key={i} className="preview-gig-item" onClick={(e) => openInNewTab(`/gig/${venue.venueId}`, e)}>
+                <button className="btn danger" onClick={(e) => {
+                  e.stopPropagation();
+                  setClickedVenues(prev => prev.filter(g => g.venueId !== venue.venueId));
+                }}>
+                  <ErrorIcon />
+                </button>
+                <div className="preview-gig-item-venue">
+                  <figure className="preview-gig-img">
+                    <img src={venue.photos[0]} alt={venue.name} />
+                  </figure>
+                  <div className="preview-gig-info">
+                    <h3>{venue.name?.trim()}</h3>
+                    <p>{getCityFromAddress(venue.address)}</p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
     </div>
   );
 };

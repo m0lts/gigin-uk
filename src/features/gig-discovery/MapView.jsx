@@ -42,15 +42,6 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
     ? [userLocation.longitude, userLocation.latitude]
     : [0.1218, 52.2053];
 
-    const toMillis = (ts) => {
-      if (!ts) return Number.MAX_SAFE_INTEGER;
-      if (typeof ts.toMillis === 'function') return ts.toMillis();
-      if (typeof ts.toDate === 'function') return ts.toDate().getTime();
-      if (ts instanceof Date) return ts.getTime();
-      const n = Number(ts);
-      return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
-    };
-
     useEffect(() => {
       if (!mapContainerRef.current || mapRef.current) return;
         mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;

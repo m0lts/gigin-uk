@@ -15,6 +15,7 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [clickedVenues, setClickedVenues] = useState([]);
 
   const { location: userLocation, error: locationError } = useUserLocation();
 
@@ -67,6 +68,8 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal
               venues={venues}
               loading={loading}
               userLocation={userLocation}
+              clickedVenues={clickedVenues}
+              setClickedVenues={setClickedVenues}
               onSearchArea={async (center) => {
                 setLoading(true);
                 try {

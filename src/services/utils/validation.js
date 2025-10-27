@@ -50,7 +50,6 @@ export const validateMusicianUser = ({
  * @returns {{ canApply: boolean, reasons: string[] }}
  */
 export function getMusicianEligibility(profile) {
-  console.log('getMusicianEligibility profile=', profile);
   if (!profile) {
     return { canApply: false, reasons: ['No musician profile found'] };
   }
