@@ -122,15 +122,15 @@ export default function App() {
     return <LoadingScreen />;
   }
 
-  // if (isScreenTooSmall) {
-  //   return (
-  //     <div className='small-screen-message'>
-  //       <TextLogo />
-  //       <h1>Beta Mode</h1>
-  //       <p style={{ padding: '0 2rem', textAlign: 'center' }}>Gigin is in the beta testing phase and we don't support screen sizes smaller than 768px.</p>
-  //     </div>
-  //   );
-  // }
+  if (isScreenTooSmall) {
+    return (
+      <div className='small-screen-message'>
+        <TextLogo />
+        <h1>Beta Mode</h1>
+        <p style={{ padding: '0 2rem', textAlign: 'center' }}>Gigin is in the beta testing phase and we don't support screen sizes smaller than 768px.</p>
+      </div>
+    );
+  }
 
   return (
     <>
