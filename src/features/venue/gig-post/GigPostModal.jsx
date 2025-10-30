@@ -30,6 +30,7 @@ import { hasVenuePerm } from '../../../services/utils/permissions';
 import { friendlyError } from '../../../services/utils/errors';
 import { inviteToGig, postMultipleGigs } from '../../../services/function-calls/gigs';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -80,6 +81,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [extraSlots, setExtraSlots] = useState([]);
+    const { isSmUp } = useBreakpoint();
 
     const resetFormData = () => {
         setFormData({

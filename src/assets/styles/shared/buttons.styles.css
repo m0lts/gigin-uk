@@ -209,6 +209,22 @@ button {
     background-color: var(--gn-grey-300);
 }
 
+/* HAMBURGER MENU BUTTON */
+
+.hamburger-menu-btn {
+    min-width: 35px;
+    min-height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gn-black);
+    transition: color 200ms ease;
+}
+
+.hamburger-menu-btn:hover {
+    background-color: transparent !important;
+    color: var(--gn-grey-600);
+}
 
 /* DANGER BUTTONS */
 

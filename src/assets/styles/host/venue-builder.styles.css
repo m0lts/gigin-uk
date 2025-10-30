@@ -802,3 +802,31 @@
 .venue-builder .uploading-profile .warning {
     color: var(--gn-grey-600);
 }
+
+
+/* MOBILE INACCESSIBILITY */
+
+.venue-builder.inaccessible {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.venue-builder.inaccessible .body {
+    background-color: rgba(255, 255, 255, 0.643);
+    border-radius: 1rem;
+    padding:2rem 1rem;
+}
+
+.venue-builder.inaccessible .body h2 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.venue-builder.inaccessible .body .icon {
+    font-size: 2rem;
+}
+
+.venue-builder.inaccessible .body .btn {
+    margin-top: 1rem;
+}

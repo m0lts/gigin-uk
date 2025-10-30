@@ -4,6 +4,7 @@ import { EditIcon, CopyIcon } from '@features/shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { ExclamationIcon, NewTabIcon } from '../../shared/ui/extras/Icons';
 import { saveGigTemplate } from '../../../services/function-calls/gigs';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const GigReview = ({ formData, handleInputChange, setStage, buildingForMusician, buildingForMusicianData, extraSlots }) => {
 
@@ -22,6 +23,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
     const [endRepeatDate, setEndRepeatDate] = useState('');
     const [privateApplicationsToken, setPrivateApplicationsToken] = useState(null);
     const [privateApplicationsLink, setPrivateApplicationsLink] = useState(null);
+    const {isMdUp} = useBreakpoint();
 
     useEffect(() => {
         if (formData.privateApplications && formData.gigId && !privateApplicationsToken) {
@@ -280,139 +282,217 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                                 </button>
                             </div>                            
                         )}
-                    </div>
-                    <div className='review-right'>
-                        {(formData.dateUndecided === false && !buildingForMusician) && (
-                            <div className='review-extra-option'>
-                                <h4 className='label'>Do you want this to be a repeating gig?</h4>
-                                <div className='repeat-group'>
-                                    <select name='gigRepeat' id='gigRepeat' onChange={(e) => setGigRepeat(e.target.value)}>
-                                        <option value='no'>No</option>
-                                        <option value='daily'>Repeat daily</option>
-                                        <option value='weekly'>Repeat weekly</option>
-                                        <option value='fortnightly'>Repeat fornightly</option>
-                                        <option value='monthly'>Repeat monthly</option>
-                                    </select>
-                                    {gigRepeat !== 'no' && (
-                                        <>
-                                            <select name='repeatEnd' id='repeatEnd' onChange={(e) => {setRepeatEnd(e.target.value); if (e.target.value === 'after') {setEndRepeatDate('')}; if (e.target.value === 'date') {setEndRepeatAfter('')} }}>
-                                                <option value='after'>End After</option>
-                                                <option value='date'>End Date</option>
-                                            </select>
-                                            {repeatEnd === 'after' && (
-                                                <div className='end-repeat-after-cont'>
-                                                    <input
-                                                    type='number'
-                                                    name='endRepeatAfter'
-                                                    id='endRepeatAfter'
-                                                    onChange={handleEndRepeatAfterChange}
-                                                    value={endRepeatAfter}
-                                                    min={1}
-                                                    max={getMaxRepeat()}
-                                                    />
-                                                    <p>gigs.</p>
-                                                </div>
-                                            )}
-                                            {repeatEnd === 'date' && (
-                                                <input 
-                                                    type='date' 
-                                                    name='endRepeatDate' 
-                                                    id='endRepeatDate'
-                                                    onChange={handleRepeatDateChange}
-                                                    value={endRepeatDate}
-                                                />
-                                            )}
-                                        </>
+                        {!isMdUp && (
+                            buildingForMusician ? (
+                                <div className='review-extra-option body'>
+                                    <div className="error-cont">
+                                        <ExclamationIcon />
+                                        <p className='error-message'>You're building this gig for "{buildingForMusicianData.name}".</p>
+                                    </div>
+                                    <div className='toggle-container'>
+                                        <label htmlFor='private-applications' className='label warning'>Only allow "{buildingForMusicianData.name}" to apply?</label>
+                                        <label className='switch'>
+                                            <input
+                                                type='checkbox'
+                                                id='private-applications'
+                                                checked={formData.privateApplications}
+                                                onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
+                                            />
+                                            <span className='slider round'></span>
+                                        </label>
+                                    </div>
+                                    {!formData.privateApplications ? (
+                                        <p className='text'>
+                                            Selecting this means only "{buildingForMusicianData.name}" can apply to this gig. Leave it unselected if you want to allow other musicians to apply.
+                                        </p>
+                                    ) : (
+                                        <p className='text'>
+                                            This link will be sent to the musician so they can apply to your gig.
+                                        </p>
+                                    )}
+                                    {formData.privateApplications && privateApplicationsLink && (
+                                        <div className='private-link'>
+                                            <p className='text'>{privateApplicationsLink}</p>
+                                            <div className='icon' onClick={copyToClipboard}>
+                                                <CopyIcon />
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
-                            </div>
-                        )}
-                        {!savedTemplate && (
-                            <div className='review-extra-option template'>
-                                <div className='input-group'>
-                                    <label htmlFor='templateName' className='label'>Enter a name below to save the gig as a template:</label>
-                                    <input 
-                                        type='text' 
-                                        name='templateName' 
-                                        className='input'
-                                        id='templateName'
-                                        placeholder='E.g. Friday Night Jazz'
-                                        value={templateName}
-                                        onChange={(e) => setTemplateName(e.target.value)}
-                                    />
-                                </div>
-                                {templateName && (
-                                    <button className='btn primary' onClick={handleSaveTemplate}>{saving ? 'Saving...' : 'Save Gig Template'}</button>
-                                )}
-                            </div>
-                        )}
-                        {buildingForMusician ? (
-                            <div className='review-extra-option body'>
-                                <div className="error-cont">
-                                    <ExclamationIcon />
-                                    <p className='error-message'>You're building this gig for "{buildingForMusicianData.name}".</p>
-                                </div>
-                                <div className='toggle-container'>
-                                    <label htmlFor='private-applications' className='label warning'>Only allow "{buildingForMusicianData.name}" to apply?</label>
-                                    <label className='switch'>
-                                        <input
-                                            type='checkbox'
-                                            id='private-applications'
-                                            checked={formData.privateApplications}
-                                            onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
-                                        />
-                                        <span className='slider round'></span>
-                                    </label>
-                                </div>
-                                {!formData.privateApplications ? (
-                                    <p className='text'>
-                                        Selecting this means only "{buildingForMusicianData.name}" can apply to this gig. Leave it unselected if you want to allow other musicians to apply.
-                                    </p>
-                                ) : (
-                                    <p className='text'>
-                                        This link will be sent to the musician so they can apply to your gig.
-                                    </p>
-                                )}
-                                {formData.privateApplications && privateApplicationsLink && (
-                                    <div className='private-link'>
-                                        <p className='text'>{privateApplicationsLink}</p>
-                                        <div className='icon' onClick={copyToClipboard}>
-                                            <CopyIcon />
-                                        </div>
+                            ) : (
+                                <div className='review-extra-option'>
+                                    <div className='toggle-container'>
+                                        <label htmlFor='private-applications' className='label'>Make applications private?</label>
+                                        <label className='switch'>
+                                            <input
+                                                type='checkbox'
+                                                id='private-applications'
+                                                checked={formData.privateApplications}
+                                                onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
+                                            />
+                                            <span className='slider round'></span>
+                                        </label>
                                     </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className='review-extra-option'>
-                                <div className='toggle-container'>
-                                    <label htmlFor='private-applications' className='label'>Make applications private?</label>
-                                    <label className='switch'>
-                                        <input
-                                            type='checkbox'
-                                            id='private-applications'
-                                            checked={formData.privateApplications}
-                                            onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
-                                        />
-                                        <span className='slider round'></span>
-                                    </label>
-                                </div>
-                                {!formData.privateApplications && (
-                                    <p className='text'>
-                                        Selecting this means only musicians with your private gig link can apply. 
-                                        Useful when inviting someone directly.
-                                    </p>
-                                )}
-                                {formData.privateApplications && privateApplicationsLink && (
-                                    <div className='private-link'>
-                                        <p className='text'>{privateApplicationsLink}</p>
-                                        <div className='icon' onClick={copyToClipboard}>
-                                            <CopyIcon />
+                                    {!formData.privateApplications ? (
+                                        <p className='text'>
+                                            Selecting this means only musicians with your private gig link can apply. 
+                                            Useful when inviting someone directly.
+                                        </p>
+                                    ) : (
+                                        <p className='text'>
+                                            Only musicians that follow the link below can apply to your gig.
+                                        </p>
+                                    )}
+                                    {formData.privateApplications && privateApplicationsLink && (
+                                        <div className='private-link'>
+                                            <p className='text'>{privateApplicationsLink}</p>
+                                            <div className='icon' onClick={copyToClipboard}>
+                                                <CopyIcon />
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )
                         )}
                     </div>
+                    {isMdUp && (
+                        <div className='review-right'>
+                            {(formData.dateUndecided === false && !buildingForMusician) && (
+                                <div className='review-extra-option'>
+                                    <h4 className='label'>Do you want this to be a repeating gig?</h4>
+                                    <div className='repeat-group'>
+                                        <select name='gigRepeat' id='gigRepeat' onChange={(e) => setGigRepeat(e.target.value)}>
+                                            <option value='no'>No</option>
+                                            <option value='daily'>Repeat daily</option>
+                                            <option value='weekly'>Repeat weekly</option>
+                                            <option value='fortnightly'>Repeat fornightly</option>
+                                            <option value='monthly'>Repeat monthly</option>
+                                        </select>
+                                        {gigRepeat !== 'no' && (
+                                            <>
+                                                <select name='repeatEnd' id='repeatEnd' onChange={(e) => {setRepeatEnd(e.target.value); if (e.target.value === 'after') {setEndRepeatDate('')}; if (e.target.value === 'date') {setEndRepeatAfter('')} }}>
+                                                    <option value='after'>End After</option>
+                                                    <option value='date'>End Date</option>
+                                                </select>
+                                                {repeatEnd === 'after' && (
+                                                    <div className='end-repeat-after-cont'>
+                                                        <input
+                                                        type='number'
+                                                        name='endRepeatAfter'
+                                                        id='endRepeatAfter'
+                                                        onChange={handleEndRepeatAfterChange}
+                                                        value={endRepeatAfter}
+                                                        min={1}
+                                                        max={getMaxRepeat()}
+                                                        />
+                                                        <p>gigs.</p>
+                                                    </div>
+                                                )}
+                                                {repeatEnd === 'date' && (
+                                                    <input 
+                                                        type='date' 
+                                                        name='endRepeatDate' 
+                                                        id='endRepeatDate'
+                                                        onChange={handleRepeatDateChange}
+                                                        value={endRepeatDate}
+                                                    />
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {!savedTemplate && (
+                                <div className='review-extra-option template'>
+                                    <div className='input-group'>
+                                        <label htmlFor='templateName' className='label'>Enter a name below to save the gig as a template:</label>
+                                        <input 
+                                            type='text' 
+                                            name='templateName' 
+                                            className='input'
+                                            id='templateName'
+                                            placeholder='E.g. Friday Night Jazz'
+                                            value={templateName}
+                                            onChange={(e) => setTemplateName(e.target.value)}
+                                        />
+                                    </div>
+                                    {templateName && (
+                                        <button className='btn primary' onClick={handleSaveTemplate}>{saving ? 'Saving...' : 'Save Gig Template'}</button>
+                                    )}
+                                </div>
+                            )}
+                            {buildingForMusician ? (
+                                <div className='review-extra-option body'>
+                                    <div className="error-cont">
+                                        <ExclamationIcon />
+                                        <p className='error-message'>You're building this gig for "{buildingForMusicianData.name}".</p>
+                                    </div>
+                                    <div className='toggle-container'>
+                                        <label htmlFor='private-applications' className='label warning'>Only allow "{buildingForMusicianData.name}" to apply?</label>
+                                        <label className='switch'>
+                                            <input
+                                                type='checkbox'
+                                                id='private-applications'
+                                                checked={formData.privateApplications}
+                                                onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
+                                            />
+                                            <span className='slider round'></span>
+                                        </label>
+                                    </div>
+                                    {!formData.privateApplications ? (
+                                        <p className='text'>
+                                            Selecting this means only "{buildingForMusicianData.name}" can apply to this gig. Leave it unselected if you want to allow other musicians to apply.
+                                        </p>
+                                    ) : (
+                                        <p className='text'>
+                                            This link will be sent to the musician so they can apply to your gig.
+                                        </p>
+                                    )}
+                                    {formData.privateApplications && privateApplicationsLink && (
+                                        <div className='private-link'>
+                                            <p className='text'>{privateApplicationsLink}</p>
+                                            <div className='icon' onClick={copyToClipboard}>
+                                                <CopyIcon />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className='review-extra-option'>
+                                    <div className='toggle-container'>
+                                        <label htmlFor='private-applications' className='label'>Make applications private?</label>
+                                        <label className='switch'>
+                                            <input
+                                                type='checkbox'
+                                                id='private-applications'
+                                                checked={formData.privateApplications}
+                                                onChange={(e) => handleInputChange({ privateApplications: e.target.checked })}
+                                            />
+                                            <span className='slider round'></span>
+                                        </label>
+                                    </div>
+                                    {!formData.privateApplications ? (
+                                        <p className='text'>
+                                            Selecting this means only musicians with your private gig link can apply. 
+                                            Useful when inviting someone directly.
+                                        </p>
+                                    ) : (
+                                        <p className='text'>
+                                            Only musicians that follow the link below can apply to your gig.
+                                        </p>
+                                    )}
+                                    {formData.privateApplications && privateApplicationsLink && (
+                                        <div className='private-link'>
+                                            <p className='text'>{privateApplicationsLink}</p>
+                                            <div className='icon' onClick={copyToClipboard}>
+                                                <CopyIcon />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </>

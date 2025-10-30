@@ -44,7 +44,6 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
         <>
             <div className='head'>
                 <h1 className='title'>What kind of gig is it?</h1>
-                <p className='text'>Select whether the gig is private or open to the public, and then select the type of event it is.</p>
             </div>
             <div className='body privacy'>
                 {/* <div className='selections'>

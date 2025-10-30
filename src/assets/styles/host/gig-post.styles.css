@@ -1,3 +1,4 @@
+@import '../breakpoints.css';
 
 .gig-post .modal-content {
     padding:1rem 1rem;
@@ -107,10 +108,10 @@
 }
 
 .gig-post .stage .card.small.selected {
-    background-color: var(--gn-offset-orange);
-    border-color: var(--gn-orange);
-    color: var(--gn-orange);
-    outline: none;
+    background-color: var(--gn-white);
+    border-color: var(--gn-off-black);
+    outline:1px solid var(--gn-off-black);
+    color: var(--black);
 }
 
 .gig-post .stage .card.disabled {
@@ -120,6 +121,22 @@
 
 .gig-post .stage .card.disabled:hover {
     border-color: var(--gn-grey-400);
+}
+
+@media (--bp-md) {
+    .gig-post .stage .card {
+        padding:0 0.75rem;
+        padding-right: 1rem;
+        min-width: 100px;
+        max-width: 250px;
+        min-height: 75px;
+        max-height: 150px;
+    }
+
+    .gig-post .stage .card .icon {
+        margin-bottom: 3px;
+        font-size: 1.25rem;
+    }
 }
 
 /* STAGES */
@@ -151,6 +168,12 @@
 .gig-post .stage .head .title {
     font-size: 2rem;
     font-weight: 600;
+}
+
+@media (--bp-md) {
+    .gig-post .stage .head .title {
+        font-size: 1.5rem;
+    }
 }
 
 .gig-post .stage .head .title.templates {
@@ -514,6 +537,17 @@
     gap:1rem;
 }
 
+@media (--bp-sm) {
+    
+    .gig-post .stage .timings .gig-slot {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid var(--gn-grey-350);
+        padding-top: 1rem;
+    }
+    
+}
+
 /* Timeline */
 
 /* .gig-post .stage .timings .timeline {
@@ -591,6 +625,10 @@
 
 .gig-post .stage .budget {
     margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .gig-post .stage .budget .selections {
@@ -602,6 +640,7 @@
 }
 
 .gig-post .stage .budget .input-group {
+    max-width: 100%;
     display:flex;
     align-items: center;
     justify-content: center;
@@ -611,15 +650,10 @@
 .gig-post .stage .budget .input-group input {
     font-size: 5rem;
     font-weight: var(--gn-semi-bold);
-    width:50%;
-    text-align: center;
-}
-
-.gig-post .stage .budget .input-group input {
-    border:none;
     background-color: transparent;
-    width:fit-content;
+    max-width: 100%;
     text-align: center;
+    border: none;
 }
 
 .gig-post .stage .budget .input-group input:focus {
@@ -694,6 +728,31 @@
     width:75px;
 }
 
+@media (--bp-md) {
+
+    .gig-post .stage .budget {
+        max-width: 100%;
+    }
+    
+    .gig-post .stage .budget .input-group input {
+        font-size: 2.5rem;
+    }
+    
+    .gig-post .stage .budget .input-group input:focus {
+        outline: none;
+    }
+    
+    .gig-post .stage .budget .slot-budgets {
+        flex-direction: column;
+        gap:5px;
+    }
+    
+    .gig-post .stage .budget .ticketed-container .selections {
+        flex-direction: column;
+    }
+    
+}
+
 /* OPEN MIC NIGHTS */
 
 .gig-post .stage .open-mic {
@@ -721,6 +780,12 @@
 
 .gig-post .stage .open-mic #numberOfApplications {
     width:75px;
+}
+
+@media (--bp-md) {
+    .gig-post .stage .open-mic .selections {
+        flex-direction: column;
+    }
 }
 
 
@@ -961,6 +1026,34 @@
 
 .gig-post .stage .review .review-extra-option .private-link .icon {
     cursor: pointer;
+}
+
+@media (--bp-md) {
+    
+    .gig-post .stage .review .review-grid {
+        display: block;
+    }
+    
+    .gig-post .stage .review .review-right {
+        display: none;
+    }
+    
+    .gig-post .stage .review .review-left {
+        border-right: none;
+    }
+
+    .gig-post .stage .review .review-extra-option {
+        align-items: center;
+    }
+
+    .gig-post .stage .review .review-extra-option .text {
+        text-align: center;
+    }
+    
+    .gig-post .stage .review .review-extra-option .private-link {
+        max-width: 250px;
+    }
+
 }
 
 

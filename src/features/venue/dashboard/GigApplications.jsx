@@ -23,7 +23,7 @@ import { removeGigFromVenue } from '@services/client-side/venues';
 import { confirmGigPayment, fetchSavedCards } from '@services/function-calls/payments';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
-import { CloseIcon, NewTabIcon, PeopleGroupIconSolid, PermissionsIcon, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
+import { CloseIcon, LeftArrowIcon, NewTabIcon, PeopleGroupIconSolid, PermissionsIcon, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { getVenueProfileById } from '../../../services/client-side/venues';
 import { loadStripe } from '@stripe/stripe-js';
@@ -42,6 +42,7 @@ import { toJsDate } from '../../../services/utils/dates';
 import { handleCloseGig, handleOpenGig, declineGigApplication, revertGigAfterCancellationVenue, deleteGigAndInformation } from '../../../services/function-calls/gigs';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../../services/function-calls/messages';
 import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const VideoModal = ({ video, onClose }) => {
@@ -60,6 +61,7 @@ const VideoModal = ({ video, onClose }) => {
 
 export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe, customerDetails }) => {
 
+    const {isMdUp} = useBreakpoint();
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -569,6 +571,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         <>
             <div className='head gig-applications'>
                 <div>
+                    {!isMdUp && (
+                        <button className="btn text" onClick={() => navigate(-1)} style={{ marginBottom: '1rem'}}><LeftArrowIcon /> Back</button>
+                    )}
                     <h1 className='title' style={{ fontWeight: 500 }}>
                         Applications for "{gigInfo.gigName}"
                     </h1>

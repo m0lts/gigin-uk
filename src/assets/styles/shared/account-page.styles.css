@@ -1,3 +1,5 @@
+@import '../breakpoints.css';
+
 .account-page {
     margin: 2rem auto;
 }
@@ -14,6 +16,34 @@
     margin: 1rem auto;
     padding: 2rem;
 }
+
+@media (--bp-md) {
+    .account-page .account-settings {
+        width:100%;
+        border-bottom: none;
+        padding: 2rem 1rem;
+    };
+
+    .account-page .profile-settings {
+        display: none;
+    }
+}
+
+@media (--bp-md-up) {
+    .account-page .account-settings,
+    .account-page .profile-settings {
+        width:100%;
+    }
+}
+
+@media (--bp-lg-up) {
+    .account-page .account-settings,
+    .account-page .profile-settings {
+        width:90%;
+    }
+}
+
+
 
 .account-page .account-settings h2 {
     margin-bottom: 1rem;
@@ -35,6 +65,16 @@
     border-radius: 10px;
     padding: 10px;
     background-color: var(--gn-grey-100);
+}
+
+@media (--bp-md) {
+    .account-page .account-settings .data-highlight {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap:0.5rem;
+        padding:1rem;
+    }
 }
 
 .account-page .account-settings .password-settings,

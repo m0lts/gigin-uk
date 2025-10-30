@@ -1,3 +1,4 @@
+@import '../breakpoints.css';
 
 .gig-finder {
     min-height: 100vh;
@@ -7,6 +8,7 @@
     grid-template-rows: 60px auto;
     overflow: hidden;
 }
+
 
 .gig-finder .body {
     display: flex;
@@ -19,13 +21,24 @@
     overflow: hidden;
 }
 
+
 .gig-finder .body .top-banner {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 1rem 0;
 }
-  
+
+@media (--bp-md) {
+    .gig-finder .body {
+        padding: 0 !important;
+    }
+
+    .gig-finder .body .top-banner {
+        display: none;
+    }
+}
+
 .gig-finder .body .top-banner .filter-header {
     display: flex;
     align-items: center;
@@ -72,6 +85,15 @@
   
 .gig-finder .body .content-grid.with-filters {
     grid-template-columns: 300px auto;
+}
+
+@media (--bp-md) {
+    .gig-finder .body .content-grid {
+        display: block;
+        height: 100%;
+        min-height: 100%;
+        max-height: 100%;
+    }
 }
   
 .gig-finder .filters-container {
@@ -190,6 +212,16 @@
     gap:5px;
 }
 
+@media (--bp-md) {
+    .gig-finder .filters-container {
+        padding:1rem;
+    }
+
+    .gig-finder .filters-container .select option {
+        font-size: 1rem;
+    }
+}
+
 .gig-finder .output-container {
     display: flex;
     flex-direction: column;
@@ -207,6 +239,7 @@
     transition: height 0.3s ease;
 }
 
+
 .gig-finder .output-container .map .btn.primary {
     position: absolute;
     bottom: 10px;
@@ -216,6 +249,35 @@
     display: flex;
     align-items: center;
     gap:5px;
+}
+
+@media (--bp-md) {
+    .gig-finder .output-container .map {
+        border-radius: 0;
+    }
+
+    .gig-finder .output-container .map .btn.primary {
+        bottom: 2.5rem;
+    }
+
+    .gig-finder .output-container .map .filter-button,
+    .gig-finder .output-container .map .venue-button {
+        position: absolute;
+        top:1rem;
+        z-index: 2;
+        border:1px solid var(--gn-grey-400);
+    }
+
+    .gig-finder .output-container .map .filter-button {
+        left: 1rem;
+    }
+
+    .gig-finder .output-container .map .venue-button {
+        right: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
 }
 
 .gig-finder .output-container .map .map-loading {
@@ -375,6 +437,39 @@
 .gig-finder .preview-gig-list .preview-gig-budget .budget.text {
     font-size: 1rem;
     text-align: center;
+}
+
+@media (--bp-md) {
+    .gig-finder .preview-gig-container {
+        padding: 0.5rem;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+    
+    .gig-finder .preview-gig-container .btn.danger.clear-all {
+        min-width:fit-content;
+        width:fit-content;
+        margin-left: auto;
+        flex-direction: row;
+        gap:5px;
+    }
+    
+    .gig-finder .preview-gig-list {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .gig-finder .preview-gig-list .preview-gig-item {
+        min-width: 100%;
+        height: 50px;
+        padding:0 0.5rem;
+        box-shadow: 0 0 2px var(--gn-shadow);
+    }
+
+    .gig-finder .preview-gig-list .preview-gig-budget .budget.text {
+        font-size: 0.85rem;
+        text-align: center;
+    }
 }
 
 

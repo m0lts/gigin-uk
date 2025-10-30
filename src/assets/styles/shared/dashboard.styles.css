@@ -14,7 +14,7 @@
 
 @media (--bp-md) {
     .dashboard {
-        grid-template-columns: auto;
+        display: block;
     }
 }
 
@@ -51,7 +51,8 @@
     justify-content: space-between;
     align-items: center;
 }
-  
+
+
 .dashboard .window .body {
     max-width:100%;
     flex: 1;
@@ -60,6 +61,21 @@
     flex-direction: column;
     padding: 1% 2%;
 }
+
+@media (--bp-md) {
+    .dashboard .window {
+        width:100%;
+        padding:0 0.5rem;
+    }
+    .dashboard .window .head {
+        padding: 1.5rem 0;
+    }
+    .dashboard .window .body {
+        width:100%;
+        padding: 0;
+    }
+}
+
 
 .dashboard .window .output .head .title {
     font-size: 2.5rem;

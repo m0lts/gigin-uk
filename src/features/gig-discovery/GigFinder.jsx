@@ -12,11 +12,13 @@ import { fetchNearbyGigs } from '../../services/client-side/gigs';
 import { FilterPanel } from './FilterPanel';
 import { TopBanner } from './TopBanner';
 import Portal from '../shared/components/Portal';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, noProfileModal, setNoProfileModalClosable }) => {
 
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
+    const { isMdUp } = useBreakpoint();
 
     const filters = useMemo(() => ({
         genres: searchParams.getAll('genre'),
@@ -152,29 +154,32 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
                 />
             )}
             <div className="body">
-                <TopBanner
-                    showFilters={showFilters}
-                    setShowFilters={setShowFilters}
-                    gigCount={gigs.length}
-                    gigMarkerDisplay={gigMarkerDisplay}
-                    setGigMarkerDisplay={setGigMarkerDisplay}
-                    viewType={viewType}
-                    setViewType={setViewType}
-                    toggleFilters={toggleFilters}
-                />
+                {isMdUp && (
+                  <TopBanner
+                      showFilters={showFilters}
+                      setShowFilters={setShowFilters}
+                      gigCount={gigs.length}
+                      gigMarkerDisplay={gigMarkerDisplay}
+                      setGigMarkerDisplay={setGigMarkerDisplay}
+                      viewType={viewType}
+                      setViewType={setViewType}
+                      toggleFilters={toggleFilters}
+                  />
+                )}
                 <div className={`content-grid ${showFilters ? 'with-filters' : ''}`}>
                     {showFilters && (
                         <FilterPanel
-                        filters={pendingFilters}
-                        pendingFilters={pendingFilters}
-                        setPendingFilters={setPendingFilters}
-                        setFilters={updateFilters}
-                        applyFilters={() => updateFilters(pendingFilters)}
+                          filters={pendingFilters}
+                          pendingFilters={pendingFilters}
+                          setPendingFilters={setPendingFilters}
+                          setFilters={updateFilters}
+                          applyFilters={() => updateFilters(pendingFilters)}
+                          toggleFilters={toggleFilters}
                       />
                     )}
                     <div className={`output-container ${viewType === 'map' ? 'map-view' : 'list-view'}`}>
                     {viewType === 'map' && (
-                        <MapOutput
+                      <MapOutput
                         upcomingGigs={gigs}
                         clickedGigs={clickedGigs}
                         setClickedGigs={setClickedGigs}
@@ -199,9 +204,11 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
                             setLoading(false);
                           }
                         }}
+                        showFilters={showFilters}
+                        toggleFilters={toggleFilters}
                       />
                     )}
-                    </div>
+                  </div>
                 </div>
             </div>
             {showWelcomeModal && (

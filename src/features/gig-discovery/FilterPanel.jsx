@@ -1,22 +1,24 @@
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-export const FilterPanel = ({ filters, setFilters, pendingFilters, setPendingFilters, applyFilters }) => {
+const EMPTY_FILTERS = {
+    genres: [],
+    kind: '',
+    musicianType: '',
+    minBudget: null,
+    maxBudget: null,
+    startDate: null,
+    endDate: null,
+  };
+
+export const FilterPanel = ({ filters, setFilters, pendingFilters, setPendingFilters, applyFilters, toggleFilters }) => {
     const musicianGenres = ['Pop', 'Rock', 'Classical', 'Jazz', 'Folk'];
     const djGenres = ['Club Classics', 'House', 'New Hits', 'Hip-Hop & RnB', 'Funk & Soul', 'Disco', 'Drum & Bass', 'Jungle', 'Rock', 'Chillout/Lounge'];
   
     const clearFilters = () => {
-      const empty = {
-        genres: [],
-        kind: '',
-        musicianType: '',
-        minBudget: null,
-        maxBudget: null,
-        startDate: null,
-        endDate: null,
-      };
-      setFilters(empty);
-      setPendingFilters(empty);
+      setFilters(EMPTY_FILTERS);
+      setPendingFilters(EMPTY_FILTERS);
+      toggleFilters();
     };
   
     return (
@@ -141,7 +143,9 @@ export const FilterPanel = ({ filters, setFilters, pendingFilters, setPendingFil
           </div>
         </div>
         <div className="filter-buttons">
-          <button className="btn secondary" onClick={clearFilters}>Clear Filters</button>
+          <button className="btn secondary" onClick={clearFilters}>
+            {pendingFilters === EMPTY_FILTERS ? 'Close' : 'Clear Filters'}
+          </button>
           <button className="btn primary" onClick={applyFilters}>Apply Filters</button>
         </div>
       </div>

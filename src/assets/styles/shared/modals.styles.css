@@ -1,3 +1,4 @@
+@import '../breakpoints.css';
 
 .modal {
     position: fixed;
@@ -30,6 +31,15 @@
     gap:2rem;
     box-shadow: 0 0 20px var(--gn-shadow);
     transition: width 0.5s linear height 0.5s linear;
+}
+
+@media (--bp-md) {
+    .modal-content {
+        min-width: 300px;
+        padding: 1rem;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
 }
 
 .modal-padding {
@@ -167,6 +177,13 @@
 
 .modal-content.auth .modal-body.verification .btn.text {
     margin-top: 1rem;
+}
+
+@media (--bp-md) {
+    .modal-content.auth {
+        width: 85vw;
+    }
+
 }
 
 

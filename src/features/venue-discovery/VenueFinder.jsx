@@ -8,6 +8,7 @@ import { useUserLocation } from '@hooks/useUserLocation';
 import { TopBanner } from './TopBanner';
 import { fetchNearbyVenues } from '../../services/client-side/venues';
 import Portal from '../shared/components/Portal';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, noProfileModal }) => {
   const [venues, setVenues] = useState([]);
@@ -16,6 +17,7 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal
   const [hasMore, setHasMore] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [clickedVenues, setClickedVenues] = useState([]);
+  const {isMdUp} = useBreakpoint();
 
   const { location: userLocation, error: locationError } = useUserLocation();
 
@@ -61,7 +63,9 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal
         <MusicianHeader setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} />
       )}
       <div className="body">
-        <TopBanner venueCount={venues.length} />
+        {isMdUp && (
+          <TopBanner venueCount={venues.length} />
+        )}
         <div className="content-grid">
           <div className="output-container map-view">
             <MapOutput

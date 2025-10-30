@@ -10,10 +10,12 @@ import {
     RestaurantIcon,
     VillageHallIcon } from '@features/shared/ui/extras/Icons';
 import { BeerIconSolid, ClubIconSolid, HouseIconSolid, MicrophoneIconSolid, PlaceOfWorshipIconSolid, RestaurantIconSolid, VillageHallIconSolid } from '../../shared/ui/extras/Icons';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const GigLocation = ({ formData, handleInputChange, venueProfiles, setStage, error, setError, user }) => {
 
     const navigate = useNavigate();
+    const { isSmUp } = useBreakpoint();
 
     const canCreateForVenue = (venue) => {
         const role = venue?.myMembership?.role || "member";
@@ -117,9 +119,11 @@ export const GigLocation = ({ formData, handleInputChange, venueProfiles, setSta
                         <p className="error-message">{error}</p>
                     </div>
                 )}
-                <button className='btn secondary add-venue' onClick={() => navigate('/venues/add-venue')}>
-                    Add Venue
-                </button>
+                {isSmUp && (
+                    <button className='btn secondary add-venue' onClick={() => navigate('/venues/add-venue')}>
+                        Add Venue
+                    </button>
+                )}
             </div>
         </>
     );

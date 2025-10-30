@@ -77,7 +77,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                     )}
                                 </div>
                                 <button
-                                    className='btn icon'
+                                    className='btn icon hamburger-menu-btn'
                                     onClick={(e) => {e.stopPropagation(); setAccountMenu(!accountMenu)}}
                                 >
                                     {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
@@ -113,7 +113,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                     <>
                         <VenueLogoLink />
                         <button
-                            className='btn icon'
+                            className='btn icon hamburger-menu-btn'
                             aria-label={accountMenu ? 'Close Menu' : 'Open Menu'}
                             aria-expanded={accountMenu}
                             aria-controls='account-menu'

@@ -1,9 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AllGigsIcon, CoinsIcon, DashboardIconLight, FeedbackIcon, GigIcon, GuitarsIcon, LogOutIcon, MailboxEmptyIcon, MailboxFullIcon, MapIcon, MusicianIconLight, PeopleGroupIcon, ProfileIcon, SettingsIcon, TelescopeIcon, TicketIcon, VenueBuilderIcon, VenueIconLight, VenueIconSolid } from "../ui/extras/Icons";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 
 export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle }) => {
     const { isLgUp, isXlUp, isMdUp } = useBreakpoint();
+    const navigate = useNavigate();
     return (
         <nav className='mobile-menu' style={menuStyle}>
             {!user ? (
@@ -57,7 +58,17 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                         <p>{user.email}</p>
                     </div>
                     {isMobile && (
-                        <button className="btn primary inline no-margin">
+                        <button 
+                            className="btn primary inline no-margin"
+                            onClick={() => 
+                                navigate(
+                                    '/venues/dashboard/gigs',
+                                    { state: {
+                                        showGigPostModal: true,
+                                    }}
+                                )
+                            }
+                        >
                             Post a Gig
                             <GigIcon />
                         </button>

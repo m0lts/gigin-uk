@@ -130,7 +130,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       <div className='modal-content auth scrollable'>
         <div className='head'>
           <NoTextLogo />
-          <h1>Welcome to Gigin</h1>
+          <h1>Sign Up</h1>
           <p>Sign up to create your account. Then create a venue or musician profile.</p>
         </div>
         <form className='auth-form' onSubmit={handleSignup}>

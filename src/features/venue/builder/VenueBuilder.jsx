@@ -11,7 +11,7 @@ import { UploadingProfile } from './UploadingProfile';
 import { arrayUnion, arrayRemove, GeoPoint, deleteField } from 'firebase/firestore';
 import { createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
 import { useResizeEffect } from '@hooks/useResizeEffect';
-import { BuildingIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
+import { BuildingIcon, ErrorIcon, MobileIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
 import { uploadImageArrayWithFallback } from '../../../services/storage';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
@@ -21,12 +21,14 @@ import Portal from '../../shared/components/Portal';
 import { useAuth } from '../../../hooks/useAuth';
 import { clearUserArrayField, updateUserArrayField } from '../../../services/function-calls/users';
 import { hasVenuePerm } from '../../../services/utils/permissions';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType }) => {
 
     const { setUser } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const { isSmUp } = useBreakpoint();
     const { venue } = location.state || {};
     const [showErrorModal, setShowErrorModal] = useState(false);
 
@@ -474,6 +476,19 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
       ].filter(Boolean).length;
     
     const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
+
+    if (!isSmUp) {
+        return (
+            <div className='venue-builder inaccessible'>
+                <div className="body">
+                    <MobileIcon />
+                    <h2>Not supported on mobile</h2>
+                    <p>Sorry, but you can't build a venue profile on a mobile device. Please use a desktop computer to build your venue profile.</p>
+                    <button className="btn primary" onClick={() => navigate(-1)}>Go Back</button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`venue-builder ${uploadingProfile || saving ? 'upload-screen' : ''}`}>

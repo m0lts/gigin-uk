@@ -19,6 +19,7 @@ import { updateUserDocument } from '../../../services/client-side/users';
 import Portal from '../../shared/components/Portal';
 import { ensureVenueStripeCustomerId } from '../../../services/client-side/venues';
 import { hasVenuePerm } from '../../../services/utils/permissions';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 
 export const Finances = ({ savedCards, receipts, customerDetails, setStripe, venues }) => {
@@ -27,18 +28,14 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
   const [sortOrder, setSortOrder] = useState('desc');
   const [addCardModal, setAddCardModal] = useState(false);
   const [newCardSaved, setNewCardSaved] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
   const [ensuredVenueIds, setEnsuredVenueIds] = useState({});
+  const { isMdUp } = useBreakpoint();
 
   const toggleMenu = (cardId) => {
     setOpenMenuId(prev => (prev === cardId ? null : cardId));
   };
-
-  useResizeEffect((width) => {
-    setWindowWidth(width);
-  });
 
   const readableVenueIds = new Set(
     (venues || [])
@@ -240,30 +237,32 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
             <h2>£{totalExpenditure.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
           </div>
         </div>
-        <div className="venue-expenditure-container">
-          {resolvedVenues.map((venue) => {
-            const venueReceipts = receipts.filter(
-              (r) => r.metadata?.venueId === venue.venueId
-            );
+        {isMdUp && (
+          <div className="venue-expenditure-container">
+            {resolvedVenues.map((venue) => {
+              const venueReceipts = receipts.filter(
+                (r) => r.metadata?.venueId === venue.venueId
+              );
 
-            if (venueReceipts.length === 0) return null;
+              if (venueReceipts.length === 0) return null;
 
-            const totalSpent = venueReceipts.reduce(
-              (acc, r) => acc + (r.amount || 0),
-              0
-            );
+              const totalSpent = venueReceipts.reduce(
+                (acc, r) => acc + (r.amount || 0),
+                0
+              );
 
-            return (
-              <div key={venue.venueId} className="expenditure-card other">
-                <PieChartIcon />
-                <div className="expenditure-text">
-                  <h3>£{(totalSpent / 100).toFixed(2)}</h3>
-                  <h5>{venue.name}</h5>
+              return (
+                <div key={venue.venueId} className="expenditure-card other">
+                  <PieChartIcon />
+                  <div className="expenditure-text">
+                    <h3>£{(totalSpent / 100).toFixed(2)}</h3>
+                    <h5>{venue.name}</h5>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
       <div className='saved-cards'>
         <h2>My Cards</h2>
@@ -324,9 +323,13 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
               </button>
               </th>
               <th>Amount</th>
-              <th>Venue</th>
-              <th>Payment Made By</th>
-              <th>Payment Method</th>
+              {isMdUp && (
+                <>
+                  <th>Venue</th>
+                  <th>Payment Made By</th>
+                  <th>Payment Method</th>
+                </>
+              )}
               <th className='centre'>Status</th>
             </tr>
           </thead>
@@ -337,11 +340,15 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
                   <tr key={receipt.id} onClick={(e) => openInNewTab(receipt.receipt_url, e)}>
                     <td>{formatReceiptDate(receipt.created)}</td>
                     <td>£{formatReceiptCharge(receipt.amount)}</td>
-                    <td>{receipt.metadata.venueName}</td>
-                    <td>{receipt.metadata.paymentMadeByName}</td>
-                    <td>
-                      {getReceiptCardBrand(receipt, savedCards).toUpperCase()} **** {getReceiptCardLast4(receipt, savedCards)}
-                    </td>
+                    {isMdUp && (
+                      <>
+                        <td>{receipt.metadata.venueName}</td>
+                        <td>{receipt.metadata.paymentMadeByName}</td>
+                        <td>
+                          {getReceiptCardBrand(receipt, savedCards).toUpperCase()} **** {getReceiptCardLast4(receipt, savedCards)}
+                        </td>
+                      </>
+                    )}
                     {receipt.refunded ? (
                       <td className={`status-box declined`}>
                         <div className={`status declined`}>

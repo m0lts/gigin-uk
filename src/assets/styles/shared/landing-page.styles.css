@@ -1,3 +1,5 @@
+@import '../breakpoints.css';
+
 .landing-page {
     background-color: var(--gn-grey-200);
     display: grid;
@@ -54,4 +56,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+@media (--bp-md) {
+    .landing-page {
+        display: flex;
+        flex-direction: column;
+        min-height: 75vh;
+    }
+
+    .landing-page .heading {
+        padding: 10rem 0.5rem;
+    }
+
+    .landing-page .heading .two-buttons {
+        margin-top: 5rem;
+    }
+
+    .landing-page .sign-up-form {
+        display: none;
+    }
 }

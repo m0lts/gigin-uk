@@ -56,7 +56,7 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
         return slotBudgets.reduce((sum, s) => sum + parsePounds(s), 0);
       }, [formData.slotBudgets, allSlots.length]);
       
-      const formatPounds = (n) => `£${Number(n || 0).toLocaleString('en-GB')}`;
+    const formatPounds = (n) => `£${Number(n || 0).toLocaleString('en-GB')}`;
 
     return (
         <>

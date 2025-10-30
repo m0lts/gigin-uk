@@ -9,10 +9,12 @@ import { SignupForm } from './SignUpForm';
 import { useAuth } from '../../hooks/useAuth';
 import { useState } from 'react';
 import { MusicianIconSolid, VenueIconSolid } from '../shared/ui/extras/Icons';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
 
     const navigate = useNavigate();
+    const { isMdUp } = useBreakpoint();
 
     const { login, signup, resetPassword, checkUser, continueWithGoogle, user } = useAuth();
     const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
@@ -26,14 +28,6 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
     const clearError = () => {
       setError({ status: false, input: '', message: '' });
     };
-  
-    const handleModalClick = (e) => {
-      if (loading) return;
-      if (!authClosable) return;
-      if (e.target.className !== 'modal') {
-        setAuthModal(false);
-      }
-    };
 
     return (
         <div className={`landing-page ${user ? 'user' : ''}`}>
@@ -42,27 +36,51 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                     <h1>Welcome {user && 'back'} to</h1>
                     <TextLogoXL />
                 </div>
-                {!user ? (
-                    <div className="two-buttons">
-                        <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-                        <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}><VenueIconSolid />Create a Venue Profile</button>
-                    </div>
-                ) : (
-                    <div className="two-buttons">
-                        {user?.musicianProfile ? (
+                {isMdUp ? (
+                    !user ? (
+                        <div className="two-buttons">
                             <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-                        ) : user?.venueProfiles ? (
-                            <button className="btn tertiary" onClick={() => navigate('/venues/dashboard')}><VenueIconSolid />Go To Dashboard</button>
-                        ) : (
-                            <>
+                            <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}><VenueIconSolid />Create a Venue Profile</button>
+                        </div>
+                    ) : (
+                        <div className="two-buttons">
+                            {user?.musicianProfile ? (
                                 <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-                                <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}><VenueIconSolid />Create a Venue Profile</button>    
-                            </>
-                        )}
-                    </div>
+                            ) : user?.venueProfiles ? (
+                                <button className="btn tertiary" onClick={() => navigate('/venues/dashboard/gigs')}><VenueIconSolid />Go To Dashboard</button>
+                            ) : (
+                                <>
+                                    <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
+                                    {isMdUp && (
+                                        <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}><VenueIconSolid />Create a Venue Profile</button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )
+                ) : (
+                    !user ? (
+                        <div className="two-buttons">
+                            <button className="btn secondary" onClick={() => {setAuthModal(true); setAuthType('login')}}>Log In</button>
+                            <button className="btn primary" onClick={() => {setAuthModal(true); setAuthType('signup')}}>Sign Up</button>
+                        </div>
+                    ) : (
+                        <div className="two-buttons">
+                            {user?.musicianProfile ? (
+                                <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
+                            ) : user?.venueProfiles ? (
+                                <button className="btn tertiary" onClick={() => navigate('/venues/dashboard/gigs')}><VenueIconSolid />Go To Dashboard</button>
+                            ) : (
+                                <>
+                                    <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
+                                    <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}><VenueIconSolid />Create a Venue Profile</button>
+                                </>
+                            )}
+                        </div>
+                    )
                 )}
             </div>
-            {!user && (
+            {!user && isMdUp && (
                 <div className='sign-up-form'>
                     <SignupForm
                         authClosable={authClosable}

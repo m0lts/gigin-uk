@@ -105,7 +105,7 @@ export const TopBar = ({ user, bandProfiles }) => {
                         </React.Fragment>
                     ))}
                 </div>
-            )}
+            )} 
             <div className="right buttons">
                 {isLgUp && (
                     <>
@@ -143,7 +143,7 @@ export const TopBar = ({ user, bandProfiles }) => {
                         </Link>
                     )
                 )}
-                <button className='btn icon' onClick={() => setAccountMenu(!accountMenu)} ref={buttonRef}>
+                <button className='btn icon hamburger-menu-btn' onClick={() => setAccountMenu(!accountMenu)} ref={buttonRef}>
                     {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
                 </button>
             </div>

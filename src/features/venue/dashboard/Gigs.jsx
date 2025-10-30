@@ -8,7 +8,6 @@ import {
     SortIcon,
     TickIcon,
 CloseIcon } from '@features/shared/ui/extras/Icons';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch } from '@services/client-side/gigs';
 import { v4 as uuidv4 } from 'uuid';
@@ -27,16 +26,16 @@ import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { duplicateGig, handleCloseGig, handleOpenGig, logGigCancellation, saveGigTemplate, updateGigDocument, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
 import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user, refreshGigs }) => {
     const location = useLocation();
     const navigate = useNavigate();
-  
+    const {isMdUp, isLgUp, isXlUp} = useBreakpoint();
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortOrder, setSortOrder] = useState('asc');
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
     const [selectedGigs, setSelectedGigs] = useState([]);
     const [confirmModal, setConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
@@ -70,8 +69,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     };
 
     const clearSelection = () => setSelectedGigs([]);
-  
-    useResizeEffect((width) => setWindowWidth(width));
 
     useEffect(() => {
       const handleClickOutside = (e) => {
@@ -387,7 +384,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       Past
                   </button>
               </div>
-              {windowWidth >= 1400 ? (
+              {isXlUp ? (
                 <>
                   <span className="separator"></span>
                   <div className="search-bar-container">
@@ -423,16 +420,15 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                 </>
               ) : (
                 <>
-                  <div className="spacer" />
                   <button className={`btn tertiary ${showMobileFilters ? 'open' : ''}`} onClick={() => setShowMobileFilters(prev => !prev)}>
                       <FilterIconEmpty />
-                      Filters
+                      {isMdUp && 'Filters'}
                   </button>
                 </>
               )}
             </div>
 
-            {windowWidth < 1400 && showMobileFilters && (
+            {!isLgUp && showMobileFilters && (
               <div className="filters ext">
                   <input
                   type='date'
@@ -514,7 +510,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           }}
                       />
                   </th> */}
-                  <th id='name'>Name</th>
+                  {isMdUp && (
+                    <th id='name'>Name</th>
+                  )}
                   <th id='date'>
                     Time and Date
                     <button className='sort btn text' onClick={toggleSortOrder}>
@@ -522,9 +520,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                     </button>
                   </th>
                   <th>Venue</th>
-                  {windowWidth > 880 && <th className='centre'>Budget</th>}
+                  {isMdUp && <th className='centre'>Budget</th>}
                   <th className='centre'>Status</th>
-                  {windowWidth > 1268 && <th className='centre'>Applications</th>}
+                  {isXlUp && <th className='centre'>Applications</th>}
                   <th></th>
                 </tr>
               </thead>
@@ -573,14 +571,21 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           ) : (
                               <td></td>
                           )} */}
-                          <td>{gig.gigName}</td>
-                          <td>
+                          {isMdUp && (
+                            <td>{gig.gigName}</td>
+                          )}
+                          <td className='time-and-date'>
+                            {!isXlUp && gig?.applicants && gig?.applicants?.length && gig?.applicants.some(app => !app.viewed && app.invited !== true) ? (
+                              <span className="notification-dot" />
+                            ) : (
+                              null
+                            )}
                             {gig.dateObj
                               ? `${gig.dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} - ${gig.dateObj.toLocaleDateString('en-GB')}`
                               : '—'}
                           </td>
                           <td className='truncate'>{gig.venue.venueName}</td>
-                          {windowWidth > 880 && (
+                          {isMdUp && (
                             <td className='centre'>
                               {gig.kind === 'Open Mic' ? (
                                 'Open Mic'
@@ -600,7 +605,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               {StatusIcon} {gig.status}
                             </div>
                           </td>
-                          {windowWidth > 1268 && (
+                          {isXlUp && (
                             gig?.applicants && gig?.applicants?.length ? (
                               <td className={`centre ${gig?.applicants.some(app => !app.viewed && app.invited !== true) ? 'has-new-applications' : ''}`}>
                                 {gig.kind === 'Open Mic' && !gig.openMicApplications ? (

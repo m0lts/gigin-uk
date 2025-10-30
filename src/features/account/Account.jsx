@@ -15,7 +15,6 @@ import { getConversationsByParticipantId, getConversationsByParticipants } from 
 import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { deleteFolderFromStorage } from '@services/storage';
 import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/client-side/venues';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { updateUserDocument } from '../../services/client-side/users';
 import { updateVenueProfileAccountNames } from '../../services/client-side/venues';
 import { toast } from 'sonner';
@@ -29,11 +28,12 @@ import { transferVenueOwnership } from '../../services/function-calls/venues';
 import { deleteReview } from '../../services/function-calls/reviews';
 import { deleteGigsBatch } from '../../services/client-side/gigs';
 import { deleteConversation } from '../../services/function-calls/conversations';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 export const Account = () => {
     const { user,  } = useAuth();
     const navigate = useNavigate();
-
+    const { isMdUp } = useBreakpoint();
     const [showNameModal, setShowNameModal] = useState(false);
     const [newName, setNewName] = useState('');
     const [showEmailModal, setShowEmailModal] = useState(false);
@@ -52,17 +52,17 @@ export const Account = () => {
     const [transferLoading, setTransferLoading] = useState(false);
     const [showEventLoadingModal, setShowEventLoadingModal] = useState(false);
 
-    useResizeEffect((width) => {
-        if (width > 1100) {
-          setWidth('80%');
+    useEffect(() => {
+        if (isMdUp) {
+            setWidth('80%');
         } else {
-          setWidth('95%');
+            setWidth('95%');
         }
-    });
+    }, [isMdUp]);
 
     useEffect(() => {
         setVenueList(user?.venueProfiles || []);
-      }, [user]);
+    }, [user]);
 
     const reauthenticateUser = async () => {
         try {
@@ -241,72 +241,72 @@ export const Account = () => {
         }
     };
 
-    const handleDeleteMusicianProfile = async (musicianId) => {
-        setEventLoading(true);
-        try {   
-            if (window.confirm('Are you sure you want to delete your musician profile? This action cannot be undone.')) {
-                setShowEventLoadingModal(true);
-                const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
-                if (musicianProfile?.gigApplications?.length) {
-                    for (const application of musicianProfile.gigApplications) {
-                        await removeGigApplicant(application.gigId, musicianId);
-                    }
-                }
-                await deleteMusicianProfile(musicianId);
-                const musicianReviews = await getReviewsByMusicianId(musicianId);
-                for (const { id } of musicianReviews) {
-                  await deleteReview(id);
-                }
-                const conversations = await getConversationsByParticipantId(musicianProfile.userId);
-                for (const { id } of conversations) {
-                    await deleteConversation(id);
-                }
-                await deleteFolderFromStorage(`musicians/${musicianId}`);
-                await clearUserArrayField('musicianProfile');
-                toast.success('Musician profile deleted successfully.');
-                setShowEventLoadingModal(false);
-            } else {
-                setEventLoading(false);
-            }
-        } catch (error) {
-            console.error('Error deleting musician profile:', error);
-            toast.error('Failed to delete musician profile');
-        } finally {
-            setEventLoading(false)
-        }
-    };
+    // const handleDeleteMusicianProfile = async (musicianId) => {
+    //     setEventLoading(true);
+    //     try {   
+    //         if (window.confirm('Are you sure you want to delete your musician profile? This action cannot be undone.')) {
+    //             setShowEventLoadingModal(true);
+    //             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
+    //             if (musicianProfile?.gigApplications?.length) {
+    //                 for (const application of musicianProfile.gigApplications) {
+    //                     await removeGigApplicant(application.gigId, musicianId);
+    //                 }
+    //             }
+    //             await deleteMusicianProfile(musicianId);
+    //             const musicianReviews = await getReviewsByMusicianId(musicianId);
+    //             for (const { id } of musicianReviews) {
+    //               await deleteReview(id);
+    //             }
+    //             const conversations = await getConversationsByParticipantId(musicianProfile.userId);
+    //             for (const { id } of conversations) {
+    //                 await deleteConversation(id);
+    //             }
+    //             await deleteFolderFromStorage(`musicians/${musicianId}`);
+    //             await clearUserArrayField('musicianProfile');
+    //             toast.success('Musician profile deleted successfully.');
+    //             setShowEventLoadingModal(false);
+    //         } else {
+    //             setEventLoading(false);
+    //         }
+    //     } catch (error) {
+    //         console.error('Error deleting musician profile:', error);
+    //         toast.error('Failed to delete musician profile');
+    //     } finally {
+    //         setEventLoading(false)
+    //     }
+    // };
 
-    const handleDeleteVenueProfile = async (venueId) => {
-        setEventLoading(true)
-        try {   
-            if (window.confirm('Are you sure you want to delete this venue profile? This action cannot be undone.')) {
-                setShowEventLoadingModal(true);
-                await deleteTemplatesByVenueId(venueId);
-                await deleteVenueProfile(venueId);
-                const gigs = await getGigsByVenueId(venueId);
-                await deleteGigsBatch(gigs.map(gig => gig.id));
-                const reviews = await getReviewsByVenueId(venueId);
-                for (const { id } of reviews) {
-                    await deleteReview(id);
-                }
-                const conversations = await getConversationsByParticipantId(user.uid);
-                for (const { id } of conversations) {
-                    await deleteConversation(id);
-                }
-                await deleteFolderFromStorage(`venues/${venueId}`);
-                await updateUserArrayField('venueProfiles', 'remove', venueId);
-                toast.success('Venue profile deleted successfully.');
-                setShowEventLoadingModal(false);
-            } else {
-                setEventLoading(false);
-            }
-        } catch (error) {
-            console.error('Error deleting venue profile:', error);
-            toast.error('Failed to delete venue profile');
-        } finally {
-            setEventLoading(false);
-        }
-    };
+    // const handleDeleteVenueProfile = async (venueId) => {
+    //     setEventLoading(true)
+    //     try {   
+    //         if (window.confirm('Are you sure you want to delete this venue profile? This action cannot be undone.')) {
+    //             setShowEventLoadingModal(true);
+    //             await deleteTemplatesByVenueId(venueId);
+    //             await deleteVenueProfile(venueId);
+    //             const gigs = await getGigsByVenueId(venueId);
+    //             await deleteGigsBatch(gigs.map(gig => gig.id));
+    //             const reviews = await getReviewsByVenueId(venueId);
+    //             for (const { id } of reviews) {
+    //                 await deleteReview(id);
+    //             }
+    //             const conversations = await getConversationsByParticipantId(user.uid);
+    //             for (const { id } of conversations) {
+    //                 await deleteConversation(id);
+    //             }
+    //             await deleteFolderFromStorage(`venues/${venueId}`);
+    //             await updateUserArrayField('venueProfiles', 'remove', venueId);
+    //             toast.success('Venue profile deleted successfully.');
+    //             setShowEventLoadingModal(false);
+    //         } else {
+    //             setEventLoading(false);
+    //         }
+    //     } catch (error) {
+    //         console.error('Error deleting venue profile:', error);
+    //         toast.error('Failed to delete venue profile');
+    //     } finally {
+    //         setEventLoading(false);
+    //     }
+    // };
 
     const [preview, setPreview] = useState(user?.picture || user?.photoURL || '');
     const [uploading, setUploading] = useState(false);
@@ -360,7 +360,7 @@ export const Account = () => {
         revokePreviewUrl();
         setPreview(pictureUrl);
   
-        // toast.success('Profile photo updated.'); // uncomment if you use toast
+        toast.success('Profile photo updated.');
       } catch (e) {
         console.error('Profile photo upload failed:', e);
         setError('Failed to upload your image. Please try again.');
@@ -474,89 +474,91 @@ export const Account = () => {
                     </div>
                 </div>
 
-                <div className='profile-settings'>
-                    {user.venueProfiles && user.venueProfiles.length > 0 && (
-                        <>
-                            <h2>Venue Profiles</h2>
-                            <ul className='account-profile-list'>
-                                {venueList.map((venue) => (
-                                    <li key={venue.id} className='account-profile'>
-                                        <div className='account-profile-data'>
-                                            <figure className='account-profile-img'>
-                                                <img src={venue.photos[0]} alt={venue.name} />
-                                            </figure>
-                                            <div className='account-profile-details'>
-                                                <h3>{venue.name}</h3>
-                                                <h4>{venue.address}</h4>
+                {isMdUp && (
+                    <div className='profile-settings'>
+                        {user.venueProfiles && user.venueProfiles.length > 0 && (
+                            <>
+                                <h2>Venue Profiles</h2>
+                                <ul className='account-profile-list'>
+                                    {venueList.map((venue) => (
+                                        <li key={venue.id} className='account-profile'>
+                                            <div className='account-profile-data'>
+                                                <figure className='account-profile-img'>
+                                                    <img src={venue.photos[0]} alt={venue.name} />
+                                                </figure>
+                                                <div className='account-profile-details'>
+                                                    <h3>{venue.name}</h3>
+                                                    <h4>{venue.address}</h4>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className='account-profile-actions'>
+                                            <div className='account-profile-actions'>
 
-                                            <button
-                                                className='btn tertiary'
-                                                onClick={() =>
-                                                    navigate('/venues/add-venue', { state: { venue } })
-                                                }
-                                            >
-                                                <EditIcon />
-                                            </button>
-                                            <button
-                                                className='btn secondary'
-                                                onClick={() => {
-                                                    setVenueToTransfer(venue);
-                                                    setRecipientEmail('');
-                                                    setShowTransferModal(true);
-                                                }}
+                                                <button
+                                                    className='btn tertiary'
+                                                    onClick={() =>
+                                                        navigate('/venues/add-venue', { state: { venue } })
+                                                    }
                                                 >
-                                                Transfer Ownership
+                                                    <EditIcon />
                                                 </button>
-                                            {/* <button
-                                                className='btn danger'
-                                                onClick={() => handleDeleteVenueProfile(venue.id)}
-                                            >
-                                                Delete Profile
-                                            </button> */}
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        </>
-                    )}
+                                                <button
+                                                    className='btn secondary'
+                                                    onClick={() => {
+                                                        setVenueToTransfer(venue);
+                                                        setRecipientEmail('');
+                                                        setShowTransferModal(true);
+                                                    }}
+                                                    >
+                                                    Transfer Ownership
+                                                    </button>
+                                                {/* <button
+                                                    className='btn danger'
+                                                    onClick={() => handleDeleteVenueProfile(venue.id)}
+                                                >
+                                                    Delete Profile
+                                                </button> */}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
 
-                    {/* Musician Profile Section */}
-                    {user.musicianProfile && (
-                        <>
-                            <h2>Musician Profile</h2>
-                            <div className='account-profile'>
-                                <div className='account-profile-data'>
-                                    <figure className='account-profile-img'>
-                                        <img src={user.musicianProfile.picture} alt={user.musicianProfile.name} />
-                                    </figure>
-                                    <div className='account-profile-details'>
-                                        <h3>{user.musicianProfile.name}</h3>
-                                        <h4>{user.musicianProfile.musicianType}</h4>
+                        {/* Musician Profile Section */}
+                        {user.musicianProfile && (
+                            <>
+                                <h2>Musician Profile</h2>
+                                <div className='account-profile'>
+                                    <div className='account-profile-data'>
+                                        <figure className='account-profile-img'>
+                                            <img src={user.musicianProfile.picture} alt={user.musicianProfile.name} />
+                                        </figure>
+                                        <div className='account-profile-details'>
+                                            <h3>{user.musicianProfile.name}</h3>
+                                            <h4>{user.musicianProfile.musicianType}</h4>
+                                        </div>
+                                    </div>
+                                    <div className='account-profile-actions'>
+                                        <button
+                                            className='btn tertiary'
+                                            onClick={() =>
+                                                navigate('/dashboard/profile')
+                                            }
+                                        >
+                                            <EditIcon />
+                                        </button>
+                                        {/* <button
+                                            className='btn danger'
+                                            onClick={() => handleDeleteMusicianProfile(user.musicianProfile.musicianId)}
+                                        >
+                                            Delete Profile
+                                        </button> */}
                                     </div>
                                 </div>
-                                <div className='account-profile-actions'>
-                                    <button
-                                        className='btn tertiary'
-                                        onClick={() =>
-                                            navigate('/dashboard/profile')
-                                        }
-                                    >
-                                        <EditIcon />
-                                    </button>
-                                    {/* <button
-                                        className='btn danger'
-                                        onClick={() => handleDeleteMusicianProfile(user.musicianProfile.musicianId)}
-                                    >
-                                        Delete Profile
-                                    </button> */}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
+                            </>
+                        )}
+                    </div>
+                )}
                 {showNameModal && (
                     eventLoading ? (
                         <Portal>

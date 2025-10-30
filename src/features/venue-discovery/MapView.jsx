@@ -5,7 +5,9 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDate } from '@services/utils/dates';
 import { LoadingSpinner, LoadingThreeDots } from '../shared/ui/loading/Loading';
 import { getCityFromAddress, openInNewTab } from '../../services/utils/misc';
-import { TelescopeIcon } from '../shared/ui/extras/Icons';
+import { MapIcon, TelescopeIcon } from '../shared/ui/extras/Icons';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { useNavigate } from 'react-router-dom';
 
 const toLngLat = (venue) => {
   if (venue?.geopoint?.longitude != null && venue?.geopoint?.latitude != null) {
@@ -33,11 +35,12 @@ const toFeatureCollection = (list) => ({
 });
 
 export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user, clickedVenues, setClickedVenues }) => {
+  const navigate = useNavigate();
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const latestVenuesRef = useRef(venues);
   latestVenuesRef.current = venues;
-
+  const { isMdUp } = useBreakpoint();
   const sourceId = 'venues';
   const centerLngLat = userLocation
     ? [userLocation.longitude, userLocation.latitude]
@@ -246,6 +249,12 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user, c
             <LoadingSpinner width={20} height={20} />
             <span style={{ marginRight: 2 }}>Finding Venues...</span>
           </div>
+        )}
+        {(!isMdUp && !loading) && (
+          <button className="btn secondary venue-button" onClick={() => navigate('/find-a-gig')}>
+            <MapIcon />
+            Find a Gig
+          </button>
         )}
       </div>
 
