@@ -26,9 +26,11 @@ import { ensureProtocol } from '../../../services/utils/misc';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { toJsDate } from '../../../services/utils/dates';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
+    const { isMdUp, isSmUp } = useBreakpoint();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const musicianId = searchParams.get('musicianId');
@@ -227,6 +229,81 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     }
     }
 
+    function ImageCarousel({ photos = [], altBase = '' }) {
+        const trackRef = useRef(null);
+        const [index, setIndex] = useState(0);
+        const total = photos.length || 1;
+        
+        useEffect(() => {
+            const el = trackRef.current;
+            if (!el) return;
+          
+            let to;
+            const compute = () => {
+              const i = Math.round(el.scrollLeft / el.clientWidth);
+              setIndex(prev => (prev !== i ? i : prev));
+            };
+          
+            const onScrollEnd = () => compute();
+            const onScrollFallback = () => {
+              clearTimeout(to);
+              to = setTimeout(compute, 80); // debounce
+            };
+          
+            if ('onscrollend' in window) {
+              el.addEventListener('scrollend', onScrollEnd);
+              return () => el.removeEventListener('scrollend', onScrollEnd);
+            } else {
+              el.addEventListener('scroll', onScrollFallback, { passive: true });
+              return () => {
+                clearTimeout(to);
+                el.removeEventListener('scroll', onScrollFallback);
+              };
+            }
+        }, []);
+
+        useEffect(() => {
+            const el = trackRef.current;
+            if (!el || !('ResizeObserver' in window)) return;
+            const ro = new ResizeObserver(() => {
+                el.scrollTo({ left: el.clientWidth * index, behavior: 'auto' });
+            });
+            ro.observe(el);
+            return () => ro.disconnect();
+        }, [index]);
+    
+      
+        if (!photos?.length) {
+          return (
+            <figure className="img single">
+              <img src="/placeholder.jpg" alt={`${altBase} photo`} />
+            </figure>
+          );
+        }
+      
+        return (
+          <div className="img-carousel" aria-roledescription="carousel" aria-label="Venue photos">
+            <div
+              className="img-track"
+              ref={trackRef}
+              role="group"
+              aria-live="polite"
+            >
+              {photos.map((src, i) => (
+                <figure className="img slide" key={i}>
+                  <img src={src} alt={`${altBase} photo ${i + 1} of ${total}`} />
+                </figure>
+              ))}
+            </div>
+      
+              <div className="img-count">
+                <span>{index + 1}/{total}</span>
+              </div>
+          </div>
+        );
+      }
+
+
     return (
         <div className='venue-page'>
             {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
@@ -253,147 +330,255 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                         </div>
                     </>
                 ) : (
-                    <>
-                        <div className='venue-page-hero'>
-                            <img
-                                src={venueData?.photos[0]}
-                                alt={venueData?.name}
-                                className='background-image'
-                                style={{
-                                       // 0% = top, 50% = center, 100% = bottom
-                                       objectPosition: `50% ${50 - percentFromTop}%`,
-                                       transition: 'object-position 0.3s ease-out',
-                                      }}
-                            />
-                            <div className="primary-information">
-                                {venueData?.verified && (
-                                    <div className="verified-tag">
-                                        <VerifiedIcon />
-                                        <p>Verified Venue</p>
-                                    </div>
-                                )}
-                                <h1 className="venue-name">
-                                    {venueData?.name}
-                                    <span className='orange-dot'>.</span>
-                                </h1>
-                                <h4 className="number-of-gigs">
-                                    {venueData?.gigs?.length} Gigs Posted
-                                </h4>
-                                {(musicianId && !venueViewing) ? (
-                                    <div className="action-buttons">
-                                        <button className="btn quaternary" onClick={() => {setLoadingRequest(true); setShowRequestModal(true); handleFetchMusicianProfiles()}}>
-                                            Request a Gig
-                                        </button>
-                                        {/* <button className="btn quaternary">
-                                            Message
-                                        </button>
-                                        <button className="btn icon white">
-                                            <OptionsIcon />
-                                        </button> */}
-                                    </div>
-                                ) : venueViewing && (
-                                    <div className="action-buttons">
-                                        <button className="btn quaternary" onClick={() => navigate(`/venues/add-venue`, {state: { venue: venueData }})}>
-                                            Edit Profile
-                                        </button>
-                                        <button className="btn quaternary" onClick={() => copyToClipboard(venueData.venueId)}>
-                                            Share
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="venue-page-information" style={{ width: `95%`, margin: '0 auto'}}>
-                            <div className="venue-page-details">
-                                <div className="section bio">
-                                    <h2>Bio</h2>
-                                    <p>{venueData?.description}</p>
-                                </div>
-                                <div className="section secondary-information">
-                                    <div className="info-box location">
-                                        <h2>Location</h2>
-                                        <MapSection venueData={venueData} />
-                                        <h5>{venueData?.address}</h5>
-                                        <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
-                                            Get Directions <NewTabIcon />
-                                        </button>
-                                    </div>
-                                    <div className="info-box equipment">
-                                        <div className="info-box-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                                            <h2>Equipment at {venueData.name}</h2>
-                                            <button className="btn text" onClick={() => setExpanded(!expanded)}>
-                                                {expanded ? 'Hide' : 'Show'}
-                                            </button>
-                                        </div>
-                                        {expanded && venueData.type === 'Public Establishment' && (
-                                            venueData.equipment.map((e) => (
-                                                <span className="equipment-item" key={e}>
-                                                    {formatEquipmentIcon(e)}
-                                                    {e}
-                                                </span>
-                                            ))
-                                        )}
-                                    </div>
-                                    {venueData?.website && (
-                                        <div className="info-box website">
-                                            <h2>Website</h2>
-                                            <a
-                                                href={venueData.website.startsWith('http') ? venueData.website : `https://${venueData.website}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                <p>{venueData.website}</p>
-                                            </a>
+                    isMdUp ? (
+                        <>
+                            <div className='venue-page-hero'>
+                                <img
+                                    src={venueData?.photos[0]}
+                                    alt={venueData?.name}
+                                    className='background-image'
+                                    style={{
+                                        // 0% = top, 50% = center, 100% = bottom
+                                        objectPosition: `50% ${50 - percentFromTop}%`,
+                                        transition: 'object-position 0.3s ease-out',
+                                        }}
+                                />
+                                <div className="primary-information">
+                                    {venueData?.verified && (
+                                        <div className="verified-tag">
+                                            <VerifiedIcon />
+                                            <p>Verified Venue</p>
                                         </div>
                                     )}
-                                    {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
-                                        <div className="info-box socials">
-                                            <h2>Socials</h2>
-                                            <div className="socials-buttons">
-                                                {venueData?.socialMedia?.facebook && (
-                                                    <a href={ensureProtocol(venueData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
-                                                        <FacebookIcon />
-                                                    </a>
-                                                )}
-                                                {venueData?.socialMedia?.instagram && (
-                                                    <a href={ensureProtocol(venueData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
-                                                        <InstagramIcon />
-                                                    </a>
-                                                )}
-                                                {venueData?.socialMedia?.twitter && (
-                                                    <a href={ensureProtocol(venueData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
-                                                        <TwitterIcon />
-                                                    </a>
-                                                )}
+                                    <h1 className="venue-name">
+                                        {venueData?.name}
+                                        <span className='orange-dot'>.</span>
+                                    </h1>
+                                    <h4 className="number-of-gigs">
+                                        {venueData?.gigs?.length} Gigs Posted
+                                    </h4>
+                                    {
+                                        (musicianId && !venueViewing) ? (
+                                            <div className="action-buttons">
+                                                <button className="btn quaternary" onClick={() => {setLoadingRequest(true); setShowRequestModal(true); handleFetchMusicianProfiles()}}>
+                                                    Request a Gig
+                                                </button>
+                                            </div>
+                                        ) : venueViewing && (
+                                            <div className="action-buttons">
+                                                <button className="btn quaternary" onClick={() => navigate(`/venues/add-venue`, {state: { venue: venueData }})}>
+                                                    Edit Profile
+                                                </button>
+                                                <button className="btn quaternary" onClick={() => copyToClipboard(venueData.venueId)}>
+                                                    Share
+                                                </button>
+                                            </div>
+                                        )
+                                    }
+                                </div>
+                            </div>
+                            <div className="venue-page-information" style={{ width: `95%`, margin: '0 auto'}}>
+                                <div className="venue-page-details">
+                                    <div className="section bio">
+                                        <h2>Bio</h2>
+                                        <p>{venueData?.description}</p>
+                                    </div>
+                                    <div className="section secondary-information">
+                                        <div className="info-box location">
+                                            <h2>Location</h2>
+                                            <MapSection venueData={venueData} />
+                                            <h5>{venueData?.address}</h5>
+                                            <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
+                                                Get Directions <NewTabIcon />
+                                            </button>
+                                        </div>
+                                        <div className="info-box equipment">
+                                            <div className="info-box-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                                <h2>Equipment at {venueData.name}</h2>
+                                                <button className="btn text" onClick={() => setExpanded(!expanded)}>
+                                                    {expanded ? 'Hide' : 'Show'}
+                                                </button>
+                                            </div>
+                                            {expanded && venueData.type === 'Public Establishment' && (
+                                                venueData.equipment.map((e) => (
+                                                    <span className="equipment-item" key={e}>
+                                                        {formatEquipmentIcon(e)}
+                                                        {e}
+                                                    </span>
+                                                ))
+                                            )}
+                                        </div>
+                                        {venueData?.website && (
+                                            <div className="info-box website">
+                                                <h2>Website</h2>
+                                                <a
+                                                    href={venueData.website.startsWith('http') ? venueData.website : `https://${venueData.website}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <p>{venueData.website}</p>
+                                                </a>
+                                            </div>
+                                        )}
+                                        {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
+                                            <div className="info-box socials">
+                                                <h2>Socials</h2>
+                                                <div className="socials-buttons">
+                                                    {venueData?.socialMedia?.facebook && (
+                                                        <a href={ensureProtocol(venueData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
+                                                            <FacebookIcon />
+                                                        </a>
+                                                    )}
+                                                    {venueData?.socialMedia?.instagram && (
+                                                        <a href={ensureProtocol(venueData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
+                                                            <InstagramIcon />
+                                                        </a>
+                                                    )}
+                                                    {venueData?.socialMedia?.twitter && (
+                                                        <a href={ensureProtocol(venueData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
+                                                            <TwitterIcon />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                    </div>
+                                    {venueData?.photos?.length > 1 && (
+                                        <div className="section photos">
+                                            <h2>Photos</h2>
+                                            <div className="photos-collage">
+                                            {venueData.photos.map((photo, index) => (
+                                                <figure className="collage-item" key={photo}>
+                                                <img
+                                                    src={photo}
+                                                    alt={venueData.name}
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                />
+                                                </figure>
+                                            ))}
                                             </div>
                                         </div>
                                     )}
-
                                 </div>
-                                {venueData?.photos?.length > 1 && (
-                                    <div className="section photos">
-                                        <h2>Photos</h2>
-                                        <div className="photos-collage">
-                                        {venueData.photos.map((photo, index) => (
-                                            <figure className="collage-item" key={photo}>
-                                            <img
-                                                src={photo}
-                                                alt={venueData.name}
-                                                loading="lazy"
-                                                decoding="async"
-                                            />
-                                            </figure>
-                                        ))}
+                                <div className="venue-page-gigs">
+                                    <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                    {/* <VenueGigsList title={'Upcoming'} gigs={confirmedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} /> */}
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className='venue-page-hero'>
+                                <ImageCarousel
+                                    photos={venueData?.photos}
+                                    altBase={venueData?.name}
+                                />
+                            </div>
+                            <div className="venue-page-information">
+                                <div className="section">
+                                    <div className={`highlights ${!venueData?.verified && 'single'}`}>
+                                        {venueData?.verified && (
+                                            <div className="verified-tag">
+                                                <VerifiedIcon />
+                                                <h4>Verified Venue</h4>
+                                            </div>
+                                        )}
+                                        <h4 className="number-of-gigs">
+                                            {venueData?.gigs?.length} Gigs Posted
+                                        </h4>
+                                    </div>
+                                    <h1 className="venue-name">
+                                        {venueData?.name}
+                                        <span className='orange-dot'>.</span>
+                                    </h1>
+                                    {(musicianId && !venueViewing) ? (
+                                        <div className="action-buttons">
+                                            <button className="btn secondary" onClick={() => {setLoadingRequest(true); setShowRequestModal(true); handleFetchMusicianProfiles()}}>
+                                                Request a Gig
+                                            </button>
+                                        </div>
+                                    ) : venueViewing && (
+                                        <div className="action-buttons">
+                                            <button className="btn secondary" onClick={() => navigate(`/venues/add-venue`, {state: { venue: venueData }})}>
+                                                Edit Profile
+                                            </button>
+                                            <button className="btn secondary" onClick={() => copyToClipboard(venueData.venueId)}>
+                                                Share
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="section venue-page-gigs">
+                                    <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                </div>
+                                {venueData?.description && (
+                                    <div className="section">
+                                        <h4 className='subtitle'>Bio</h4>
+                                        <p>{venueData?.description}</p>
+                                    </div>
+                                )}
+                                <div className="section location">
+                                    <h4 className='subtitle'>Location</h4>
+                                    <MapSection venueData={venueData} />
+                                    <h5>{venueData?.address}</h5>
+                                    <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
+                                        Get Directions <NewTabIcon />
+                                    </button>
+                                </div>
+                                {venueData.equipment.length > 0 && (
+                                    <div className="section equipment">
+                                        <h4>Equipment at {venueData.name}</h4>
+                                        <div className="equipment-list">
+                                            {venueData.type === 'Public Establishment' && (
+                                                venueData.equipment.map((e) => (
+                                                    <span className="equipment-item" key={e}>
+                                                        {formatEquipmentIcon(e)}
+                                                        {e}
+                                                    </span>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                {venueData?.website && (
+                                    <div className="section">
+                                        <h4 className='subtitle'>Website</h4>
+                                        <a
+                                            href={venueData.website.startsWith('http') ? venueData.website : `https://${venueData.website}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <p>{venueData.website}</p>
+                                        </a>
+                                    </div>
+                                )}
+                                {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
+                                    <div className="section">
+                                        <h4 className='subtitle'>Socials</h4>
+                                        <div className="socials-buttons">
+                                            {venueData?.socialMedia?.facebook && (
+                                                <a href={ensureProtocol(venueData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
+                                                    <FacebookIcon />
+                                                </a>
+                                            )}
+                                            {venueData?.socialMedia?.instagram && (
+                                                <a href={ensureProtocol(venueData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
+                                                    <InstagramIcon />
+                                                </a>
+                                            )}
+                                            {venueData?.socialMedia?.twitter && (
+                                                <a href={ensureProtocol(venueData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
+                                                    <TwitterIcon />
+                                                </a>
+                                            )}
                                         </div>
                                     </div>
                                 )}
                             </div>
-                            <div className="venue-page-gigs">
-                                <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
-                                {/* <VenueGigsList title={'Upcoming'} gigs={confirmedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} /> */}
-                            </div>
-                        </div>
-                    </>
+                        </>
+                    )
                 )}
                 {fullscreenImage && (
                     <div className='fullscreen-overlay' onClick={closeFullscreen}>

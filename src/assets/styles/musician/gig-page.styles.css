@@ -1,4 +1,4 @@
-
+@import '../breakpoints.css';
 
 .gig-page-body {
     margin: 2rem auto;
@@ -66,7 +66,7 @@
     height: 350px;
 }
 
-@media (max-width: 850px) {
+@media (--bp-lg) {
     .gig-page-body .images-and-location {
         grid-template-columns: auto 275px;
     }
@@ -173,7 +173,7 @@
     margin-top: 1rem;
 }
 
-@media (max-width: 850px) {
+@media (--bp-lg) {
     .gig-page-body .main {
         grid-template-columns: auto 275px;
     }
@@ -575,4 +575,213 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
+}
+
+@media (--bp-md) {
+    .gig-page-body.mobile {
+        width:100vw;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* VENUE TITLE */
+
+    .gig-page-body.mobile .head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding:0;
+    }
+
+    .gig-page-body.mobile .head .img {
+        width:100vw;
+        height:40vh;
+        border-radius: 0;
+        position: relative;
+    }
+
+    .gig-page-body.mobile .head .img img {
+        width:100%;
+        height:100%;
+        overflow: hidden;
+        position: relative;
+        object-fit: cover;
+        border-radius: 0;
+    }
+
+    .gig-page-body.mobile .head .img-carousel {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+    }
+    
+    .gig-page-body.mobile .head .img-track {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .gig-page-body.mobile .head .img-track::-webkit-scrollbar { display: none; }
+    
+    .gig-page-body.mobile .head .img.slide {
+        margin: 0;
+        min-width: 100%;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+        position: relative;
+        background: var(--gn-grey-300);
+    }
+    .gig-page-body.mobile .head .img.slide img {
+        display: block;
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+    }
+  
+    .gig-page-body.mobile .head .img-carousel .img-count {
+        position: absolute;
+        bottom:3rem;
+        right:1rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 5px;
+        background-color: var(--gn-off-black);
+        color: var(--gn-white);
+    }  
+
+    .gig-page-body.mobile .head .img-carousel .img-count span {
+        color: var(--gn-white);
+        font-size: 0.8rem;
+    }
+
+    /* MAIN DETAILS */
+
+    .gig-page-body.mobile .main {
+        position: relative;
+        display: block;
+        margin-top: -2.5rem;
+        background-color: var(--gn-white);
+        border-radius: 2rem 2rem 0 0;
+        padding: 0 0.75rem;
+        padding-top: 2rem;
+    }
+
+    .gig-page-body.mobile .main .section {
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--gn-grey-300);
+    }
+
+    .gig-page-body.mobile .main .section h1 {
+        text-align: center;
+    }
+
+    .gig-page-body.mobile .main .section .divider {
+        margin:1rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap:1rem;
+    }
+
+    .gig-page-body.mobile .main .section .divider .line {
+        width:40%;
+        border-bottom: 1px solid var(--gn-grey-400);
+    }
+
+    .gig-page-body.mobile .main .section .gig-venue {
+        color: var(--gn-grey-800);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .gig-page-body.mobile .main .section .gig-venue p {
+        text-align: center;
+        font-size: 0.9rem;
+        width:75%;
+    }
+
+    .gig-page-body.mobile .main .section .gig-venue .btn {
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap:5px;
+    }
+
+    .gig-page-body.mobile .main .section .gig-host {
+        padding-left: 1rem;
+    }
+
+    /* TIMELINE */
+
+    .gig-page-body.mobile .timeline h4 {
+        padding-left: 1rem;
+    }
+
+    .gig-page-body.mobile .timeline-time {
+        font-size: 0.8rem;
+        width: fit-content;
+        padding: 5px 5px;
+    }
+
+    /* EQUIPMENT */
+
+    .gig-page-body.mobile .equipment {
+        padding: 0 1rem;
+    }
+
+    .gig-page-body.mobile .equipment .equipment-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap:1%;
+    }
+
+    .gig-page-body.mobile .equipment .equipment-grid .equipment-item {
+        display: flex;
+        justify-content: center;
+        border:1px solid var(--gn-grey-350);
+        border-radius: 0.5rem;
+    }
+
+    /* DESCRIPTION */
+
+    .gig-page-body.mobile .section .description,
+    .gig-page-body.mobile .section .extra-info,
+    .gig-page-body.mobile .section .socials {
+        padding: 0 1rem;
+        margin-bottom: 2rem;
+    }
+
+    /* ACTION BOX */
+
+    .gig-page-body.mobile .sticky-bottom {
+        position: sticky;
+        bottom: 0;
+        width:100%;
+        background: var(--gn-white);
+        padding:1rem;
+    }
+
+    .gig-page-body.mobile .action-box-budget h1, .gig-page-body.mobile .action-box-budget h2 {
+        font-size: 1.25rem;
+    }
+
+    .gig-page-body.mobile .action-box-duration h4 {
+        font-size: 1rem;
+    }
+
+    .gig-page-body.mobile .action-box-date h3 {
+        font-size: 1rem;
+    }
+
+    /* SIMILAR GIGS */
+    .gig-page-body.mobile .similar-gigs-list {
+        max-width: 100vw;
+    }
+
+    .gig-page-body .similar-gigs-list .similar-gig-budget h3 {
+        text-align: center;
+        font-size: 1rem;
+    }
 }

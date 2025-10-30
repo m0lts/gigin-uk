@@ -269,7 +269,7 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user, c
               Clear All
             </button>
             {clickedVenues.map((venue, i) => (
-              <li key={i} className="preview-gig-item" onClick={(e) => openInNewTab(`/gig/${venue.venueId}`, e)}>
+              <li key={i} className="preview-gig-item" onClick={(e) => openInNewTab(`/venues/${venue.venueId}`, e)}>
                 <button className="btn danger" onClick={(e) => {
                   e.stopPropagation();
                   setClickedVenues(prev => prev.filter(g => g.venueId !== venue.venueId));

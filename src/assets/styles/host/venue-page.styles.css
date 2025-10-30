@@ -82,7 +82,7 @@
     grid-template-columns: 65% auto;
     gap: 2rem;
     align-items: start;
-  }
+}
 
 .venue-page-body .venue-page-information .venue-page-details {
     width: 100%;
@@ -336,26 +336,220 @@
     justify-content: space-between;
 }
 
-@media (--bp-sm) {
-
-    .venue-page-body .venue-page-hero .primary-information {
-        margin:0.75rem 1rem;
+@media (--bp-md) {
+    
+    .venue-page-body .venue-page-hero {
+        border-radius: 0;
+        box-shadow: none;
+        margin-bottom: 0;
+    }
+      
+    .venue-page-body .venue-page-hero .img {
+        width:100vw;
+        height:40vh;
+        border-radius: 0;
+        position: relative;
     }
 
-    .venue-page-body .venue-page-hero .primary-information .venue-name {
-        font-size: 3rem;
+    .venue-page-body .venue-page-hero .img img {
+        width:100%;
+        height:100%;
+        overflow: hidden;
+        position: relative;
+        object-fit: cover;
+        border-radius: 0;
     }
 
-    .venue-page-body .venue-page-hero .primary-information .venue-name .orange-dot {
-        font-size: 3rem;
+    .venue-page-body .venue-page-hero .img-carousel {
+        position: absolute;  /* sit inside hero */
+        inset: 0;            /* fill hero */
+        width: 100%;
+        height: 100%;
+      }
+      
+    
+    .venue-page-body .venue-page-hero .img-track {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .venue-page-body .venue-page-hero .img-track::-webkit-scrollbar { display: none; }
+    
+    .venue-page-body .venue-page-hero .img.slide {
+        margin: 0;
+        min-width: 100%;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+        position: relative;
+        background: var(--gn-grey-300);
+    }
+    .venue-page-body .venue-page-hero .img.slide img {
+        display: block;
+        width: 100%;
+        object-fit: cover;
+    }
+  
+    .venue-page-body .venue-page-hero .img-carousel .img-count {
+        position: absolute;
+        bottom:3rem;
+        right:1rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 5px;
+        background-color: var(--gn-off-black);
+    }  
+
+    .venue-page-body .venue-page-hero .img-carousel .img-count span {
+        color: var(--gn-white);
+        font-size: 0.8rem;
     }
 
-    .window.venues .venue-page .venue-page-body .venue-page-information {
+    .venue-page-body .venue-page-information {
+        position: relative;
+        background-color: var(--gn-white);
+        border-radius: 2rem 2rem 0 0;
+        margin-top: -2rem;
+        z-index: 1;
+        padding:1.5rem;
+        padding-bottom: 0 !important;
+        margin-bottom:0 !important;
         display: block;
     }
 
-    .window.venues .venue-page .venue-page-settings h2 {
-        margin-top: 2rem;
+
+    .venue-page-body .venue-page-information .section {
+        width:100%;
+        padding-bottom: 2rem;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--gn-grey-300);
     }
 
+    .venue-page-body .venue-page-information .section .highlights {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .venue-page-body .venue-page-information .section .highlights.single {
+        justify-content: center;
+    }
+    
+    .venue-page-body .venue-page-information .section .verified-tag {
+        display: flex;
+        align-items: center;
+        gap:5px;
+    }
+
+    .venue-page-body .venue-page-information .section .venue-name {
+        font-size: 2rem;
+        text-align: center;
+        margin-top: 2rem;
+    }
+    
+    .venue-page-body .venue-page-information .section .venue-name .orange-dot {
+        color: var(--gn-orange);
+        font-size: 2rem;
+    }
+    
+    .venue-page-body .venue-page-information .section .action-buttons {
+        margin-top: 1rem;
+        width:100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap:1rem;
+    }
+
+    .venue-page-body .venue-page-information .section .subtitle {
+        margin-bottom: 5px;
+    }
+          
+    .venue-page-body .venue-page-information .section.location .map-container {
+        min-height: 250px;
+        min-width: 100%;
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .venue-page-body .venue-page-information .section.location h5 {
+        font-size: 1rem;
+        margin: 5px 0;
+    }
+    
+    .venue-page-body .venue-page-information .section.location .btn {
+        width:100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap:1rem;
+    }
+
+    .venue-page-body .venue-page-information .section.equipment .equipment-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap:5px;
+    }
+    
+    .venue-page-body .venue-page-information .section.equipment .equipment-item {
+        display: flex;
+        gap:5px;
+        align-items: center;
+        padding:1rem 0.5rem;
+        font-weight: 400;
+    }
+    
+    .venue-page-body .venue-page-information .section.equipment .equipment-item .icon {
+        font-size: 1.25rem;
+    }
+    
+    .venue-page-body .venue-page-information .venue-page-details .section.socials-buttons {
+        display: flex;
+        align-items: center;
+        gap:0.5rem;
+    }
+    
+    .venue-page-body .venue-page-information .venue-page-details .section.socials-buttons a .icon {
+        font-size: 2rem;
+        color: var(--gn-off-black);
+    }
+    
+    
+    .venue-page-body .venue-page-information .venue-page-gigs {
+        margin-top: 0;
+    }
+    
+    .venue-page-body .venue-page-information .venue-page-gigs .gigs-box {
+        max-width: 100%;
+        margin-bottom: 0
+    }
+    
+    .venue-page-body .venue-page-information .venue-page-gigs .gigs-box .venue-gig .confirmed-musician {
+        width:auto;
+    }
+            
+    .window.venues .venue-page .venue-page-body {
+        padding:0;
+        padding-top:0.5rem;
+    }
+    
+    .window.venues .venue-page .venue-page-settings h2 {
+        margin-top: 1rem;
+    }
+    
+    .window.venues .venue-page .venue-page-settings .settings-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap:0.5rem;
+        margin: 1rem 0;
+    }
+    
+    .window.venues .venue-page .venue-page-settings .settings-list .settings-item .btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
 }

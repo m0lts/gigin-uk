@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
@@ -25,7 +25,6 @@ import { getOrCreateConversation } from '@services/function-calls/conversations'
 import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/client-side/messages';
 import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
 import { validateMusicianUser } from '@services/utils/validation';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
@@ -47,11 +46,13 @@ import { notifyOtherApplicantsGigConfirmed } from '../../services/function-calls
 import { getLocalGigDateTime } from '../../services/utils/filtering';
 import { acceptGigOffer, acceptGigOfferOM, applyToGig, negotiateGigFee } from '../../services/function-calls/gigs';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '../../services/function-calls/messages';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { NoTextLogo } from '../shared/ui/logos/Logos';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId } = useParams();
     const navigate = useNavigate();
-
+    const {isSmUp, isMdUp, isLgUp} = useBreakpoint();
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token'); 
     const venueVisiting = searchParams.get('venue');
@@ -80,15 +81,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const [gigSaved, setGigSaved] = useState(false);
     const [otherSlots, setOtherSlots] = useState(null);
 
-    useResizeEffect((width) => {
-        if (width > 1100) {
-          setPadding('10%');
-          setWidth('80%');
+    useEffect(() => {
+        if (isLgUp) {
+            setPadding('10%');
+            setWidth('80%');
+        } else if (isMdUp) {
+            setPadding('2.5%');
+            setWidth('95%');
         } else {
-          setPadding('2.5%');
-          setWidth('95%');
+            setPadding('2.5%');
+            setWidth('100%');
         }
-    });
+    }, [isSmUp]);
 
     useMapbox({
         containerRef: mapContainerRef,
@@ -607,6 +611,80 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
     };
 
+    function ImageCarousel({ photos = [], altBase = '' }) {
+        const trackRef = useRef(null);
+        const [index, setIndex] = useState(0);
+        const total = photos.length || 1;
+        
+        useEffect(() => {
+            const el = trackRef.current;
+            if (!el) return;
+          
+            let to;
+            const compute = () => {
+              const i = Math.round(el.scrollLeft / el.clientWidth);
+              setIndex(prev => (prev !== i ? i : prev));
+            };
+          
+            const onScrollEnd = () => compute();
+            const onScrollFallback = () => {
+              clearTimeout(to);
+              to = setTimeout(compute, 80); // debounce
+            };
+          
+            if ('onscrollend' in window) {
+              el.addEventListener('scrollend', onScrollEnd);
+              return () => el.removeEventListener('scrollend', onScrollEnd);
+            } else {
+              el.addEventListener('scroll', onScrollFallback, { passive: true });
+              return () => {
+                clearTimeout(to);
+                el.removeEventListener('scroll', onScrollFallback);
+              };
+            }
+        }, []);
+
+        useEffect(() => {
+            const el = trackRef.current;
+            if (!el || !('ResizeObserver' in window)) return;
+            const ro = new ResizeObserver(() => {
+                el.scrollTo({ left: el.clientWidth * index, behavior: 'auto' });
+            });
+            ro.observe(el);
+            return () => ro.disconnect();
+        }, [index]);
+    
+      
+        if (!photos?.length) {
+          return (
+            <figure className="img single">
+              <img src="/placeholder.jpg" alt={`${altBase} photo`} />
+            </figure>
+          );
+        }
+      
+        return (
+          <div className="img-carousel" aria-roledescription="carousel" aria-label="Venue photos">
+            <div
+              className="img-track"
+              ref={trackRef}
+              role="group"
+              aria-live="polite"
+            >
+              {photos.map((src, i) => (
+                <figure className="img slide" key={i}>
+                  <img src={src} alt={`${altBase} photo ${i + 1} of ${total}`} />
+                </figure>
+              ))}
+            </div>
+      
+              <div className="img-count">
+                <span>{index + 1}/{total}</span>
+              </div>
+          </div>
+        );
+      }
+
     const formatSlotName = (name = '') => {
         const match = name.match(/\(([^)]+)\)/);
         return match ? match[1] : '';
@@ -666,390 +744,788 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     noProfileModalClosable={true}
                 />
             )}
-            <section className='gig-page-body' style={{ width: `${width}`}}>
+            <section className={`gig-page-body ${!isMdUp && 'mobile'}`} style={{ width: `${width}`}}>
                 {loading ? (
                     <div className='loading-state'>
                         <LoadingSpinner />
                     </div>
                 ) : (
-                    <>
-                        <div className='head'>
-                            <div className='title'>
-                                <h1>{gigData.gigName}</h1>
-                            </div>
-                        </div>
-                        <div className='images-and-location'>
-                            <div className='main-image'>
-                                <figure className='img' onClick={() => handleImageClick(0)}>
-                                    <img src={venueProfile?.photos[0]} alt={`${gigData.venue.venueName} photo`} />
-                                    <div className='more-overlay'>
-                                        <h2>+{venueProfile?.photos.length - 1}</h2>
-                                    </div>
-                                </figure>
-                            </div>
-                            <div className='location'>
-                                <div ref={mapContainerRef} className='map-container' style={{ height: '100%', width: '100%' }} />
-                            </div>
-                        </div>
-                        <div className='main'>
-                            <div className='gig-info'>
-                                <div className='important-info'>
-                                    <div className='date-and-time'>
-                                        <h2>{gigData.venue.venueName}</h2>
-                                        <button className="btn secondary" onClick={
-                                            selectedProfile && selectedProfile?.id ? 
-                                            (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e)
-                                            : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
-                                            <VenueIconSolid /> See {venueProfile?.name && venueProfile.name + "'s"} Venue Page
-                                        </button>
-                                    </div>
-                                    <div className='address'>
-                                        <h4>{gigData.venue.address}</h4>
-                                    </div>
+                    isMdUp ? (
+                        <>
+                            <div className='head'>
+                                <div className='title'>
+                                    <h1>{gigData.gigName}</h1>
                                 </div>
-                                <div className="gig-host">
-                                    <h5>Gig Posted By: {gigData.accountName}</h5>
-                                    <p>A trusted Gigin member</p>
+                            </div>
+                            <div className='images-and-location'>
+                                <div className='main-image'>
+                                    <figure className='img' onClick={() => handleImageClick(0)}>
+                                        <img src={venueProfile?.photos[0]} alt={`${gigData.venue.venueName} photo`} />
+                                        <div className='more-overlay'>
+                                            <h2>+{venueProfile?.photos.length - 1}</h2>
+                                        </div>
+                                    </figure>
                                 </div>
-                                <div className='details'>
-                                    <div className="detail">
-                                        {gigData.gigType === 'Musician/Band' ? (
-                                            <GuitarsIcon />
-                                        ) : (
-                                            <ClubIconSolid />
-                                        )}
-                                        <div className="detail-copy">
-                                            <span className="detail-title">
-                                                {gigData.gigType}
-                                            </span>
-                                            <p className='detail-text'>
-                                                {gigData.gigType === 'Musician/Band' ? (
-                                                    'This gig is for a live musician/band rather than DJs'
-                                                ) : (
-                                                    'This gig is for a DJ rather than a live musician/band'
-                                                )}
-                                            </p>
+                                <div className='location'>
+                                    <div ref={mapContainerRef} className='map-container' style={{ height: '100%', width: '100%' }} />
+                                </div>
+                            </div>
+                            <div className='main'>
+                                <div className='gig-info'>
+                                    <div className='important-info'>
+                                        <div className='date-and-time'>
+                                            <h2>{gigData.venue.venueName}</h2>
+                                            <button className="btn secondary" onClick={
+                                                selectedProfile && selectedProfile?.id ? 
+                                                (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e)
+                                                : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
+                                                <VenueIconSolid /> See {venueProfile?.name && venueProfile.name + "'s"} Venue Page
+                                            </button>
+                                        </div>
+                                        <div className='address'>
+                                            <h4>{gigData.venue.address}</h4>
                                         </div>
                                     </div>
-                                    <div className="detail">
-                                        {gigData.privacy === 'Public' || '' ? (
-                                            <PeopleRoofIconLight />
-                                        ) : (
-                                            <InviteIcon />
-                                        )}
-                                        <div className="detail-copy">
-                                            <span className="detail-title">
-                                                Audience
-                                            </span>
-                                            <p className='detail-text'>
-                                            {(gigData.privacy === 'Public' || '') ? (
-                                                'This gig is open to the public, rather than a private event'
+                                    <div className="gig-host">
+                                        <h5>Gig Posted By: {gigData.accountName}</h5>
+                                        <p>A trusted Gigin member</p>
+                                    </div>
+                                    <div className='details'>
+                                        <div className="detail">
+                                            {gigData.gigType === 'Musician/Band' ? (
+                                                <GuitarsIcon />
                                             ) : (
-                                                'This gig is a private event - not open to the public'
+                                                <ClubIconSolid />
                                             )}
-                                                
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="detail">
-                                        <SpeakersIcon />
-                                        <div className="detail-copy">
-                                            <span className="detail-title">
-                                                Genres
-                                            </span>
-                                            <p className='detail-text'>
-                                                {gigData.genre !== '' ? (
-                                                    `The preferred genres for this gig are: ${formatGenres(gigData.genre)}`
-                                                ) : (
-                                                    'There are no preferred genres for this gig'
-                                                )}
-                                            </p>
-                                            <p className='detail-text'>
-                                                {gigData.extraInformation !== '' && (
-                                                    gigData.extraInformation
-                                                )}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className='timeline'>
-                                    <h4 className='subtitle'>Gig Timeline</h4>
-                                    {gigData.startTime && (
-                                        <div className='timeline-cont'>
-                                            <div className='timeline-event'>
-                                                <div className='timeline-content'>
-                                                    <p>Load In</p>
-                                                    <div className='timeline-time'>{gigData?.loadInTime && gigData?.loadInTime !== '' ? formatTime(gigData?.loadInTime) : 'TBC'}</div>
-                                                </div>
-                                                <div className='timeline-line'></div>
-                                            </div>
-                                            <div className='timeline-event'>
-                                                <div className='timeline-content'>
-                                                    <p>Sound Check</p>
-                                                    <div className='timeline-time'>{gigData?.soundCheckTime && gigData?.soundCheckTime !== '' ? formatTime(gigData?.soundCheckTime) : 'TBC'}</div>
-                                                </div>
-                                                <div className='timeline-line'></div>
-                                            </div>
-                                            <div className='timeline-event'>
-                                                <div className='timeline-content'>
-                                                    <p>Set Starts</p>
-                                                    <div className='timeline-time orange'>{formatTime(gigData.startTime)}</div>
-                                                </div>
-                                                <div className='timeline-line'></div>
-                                            </div>
-                                            <div className='timeline-event'>
-                                                <div className='timeline-content'>
-                                                    <p>Set Ends</p>
-                                                    <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
-                                                </div>
-                                                <div className='timeline-line'></div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className='equipment'>
-                                    <h4>Equipment Available at {gigData.venue.venueName}</h4>
-                                    {venueProfile?.equipmentAvailable === 'yes' ? (
-                                        <>
-                                            <div className="equipment-grid">
-                                                {venueProfile.equipment.map((e) => (
-                                                    <span className="equipment-item" key={e}>
-                                                        {formatEquipmentIcon(e)}
-                                                        {e}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                            {venueProfile?.equipmentInformation && (
-                                                <div className="equipment-notes" style={{ marginTop: '1rem' }}>
-                                                    <h6>EQUIPMENT INFORMATION</h6>
-                                                    <p>{venueProfile?.equipmentInformation}</p>
-                                                </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <p>Unfortunately, the venue has no equipment for use.</p>
-                                    )}
-                                </div>
-                                {venueProfile?.description && (
-                                    <div className='description'>
-                                        <h4>About {venueProfile?.name}</h4>
-                                        <p>{venueProfile?.description}</p>
-                                    </div>
-                                )}
-                                <div className='extra-info'>
-                                    <h4 className='subtitle'>Additional Technical Information</h4>
-                                    {gigData.applicants.length > 0 && (
-                                        <div className='info'>
-                                            <h6>Gig Applications</h6>
-                                            <div className='text'>
-                                                <p>{gigData.applicants.length}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {venueProfile?.extraInformation && (
-                                        <div className='info'>
-                                            <h6>Venue Information</h6>
-                                            <div className='text'>
-                                                <p>{venueProfile?.extraInformation}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {venueProfile?.website && (
-                                        <div className='info'>
-                                            <h6>Venue Website</h6>
-                                            <div className='text'>
-                                                <a href={venueProfile.website.startsWith('http') ? venueProfile.website : `https://${venueProfile.website}`} target="_blank" rel="noopener noreferrer">{venueProfile.website}</a>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                {venueProfile?.socialMedia && (
-                                    <div className='socials'>
-                                        <h4 className='subtitle'>Socials</h4>
-                                        <div className='links'>
-                                            {venueProfile.socialMedia.facebook && (
-                                                <a href={ensureProtocol(venueProfile.socialMedia.facebook)} target='_blank' rel='noreferrer'>
-                                                    <FacebookIcon />
-                                                </a>
-                                            )}
-                                            {venueProfile.socialMedia.instagram && (
-                                                <a href={ensureProtocol(venueProfile.socialMedia.instagram)} target='_blank' rel='noreferrer'>
-                                                    <InstagramIcon />
-                                                </a>
-                                            )}
-                                            {venueProfile.socialMedia.twitter && (
-                                                <a href={ensureProtocol(venueProfile.socialMedia.twitter)} target='_blank' rel='noreferrer'>
-                                                    <TwitterIcon />
-                                                </a>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="sticky-right">
-                                <div className='action-box'>
-                                    <div className='action-box-info'>
-                                        <div className='action-box-budget'>
-                                            {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
-                                                <h2 className="gig-kind">
-                                                    {gigData.kind}
-                                                    {gigData.kind === 'Ticketed Gig' && (
-                                                    <span
-                                                        className="tooltip-wrapper"
-                                                        data-tooltip="A ticketed gig means the musicians receive 100% of the ticket revenue but the administration of ticket sales is to be discussed between the two of you."
-                                                    >
-                                                        <MoreInformationIcon />
-                                                    </span>
-                                                    )}
-                                                </h2>
-                                            ) : (
-                                                <>
-                                                    <h1>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h1>
-                                                    {gigData.budget !== '£' && gigData.budget !== '£0' && (
-                                                        <p>gig fee</p>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                        <div className='action-box-duration'>
-                                            <h4>{formatDuration(gigData.duration)}</h4>
-                                        </div>
-                                    </div>
-                                    <div className='action-box-date-and-time'>
-                                        <div className='action-box-date'>
-                                            <h3>{formatDate(gigData.startDateTime, 'withTime')}</h3>
-                                        </div>
-                                    </div>
-                                    {/* {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig' && !venueVisiting) && (
-                                        <div className='action-box-fees'>
-                                            <div className='action-box-service-fee'>
-                                            <p>Service Fee</p>
-                                            <p>£{calculateServiceFee(gigData.budget)}</p>
-                                            </div>
-                                            <div className='action-box-total-income'>
-                                            <p>Total Income</p>
-                                            <p>£{calculateTotalIncome(gigData.budget)}</p>
-                                            </div>
-                                        </div>
-                                    )} */}
-                                    {!(user?.venueProfiles?.length > 0 && !user.musicianProfile) && !venueVisiting && (
-                                        <>
-                                            {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && !applyingToGig && (
-                                                <div className="profile-select-wrapper">
-                                                    <label htmlFor="profileSelect" className="profile-select-label">Applying as:</label>
-                                                    <select
-                                                        id="profileSelect"
-                                                        className="input"
-                                                        value={selectedProfile?.musicianId}
-                                                        onChange={(e) => {
-                                                            const selected = validProfiles.find(profile => profile.musicianId === e.target.value);
-                                                            setSelectedProfile(selected);
-                                                        }}
-                                                    >
-                                                    {validProfiles.map((profile) => (
-                                                        <option key={profile.musicianId} value={profile.musicianId}>
-                                                        {profile.name} {profile.bandProfile ? '(Band)' : '(Solo)'}
-                                                        </option>
-                                                    ))}
-                                                    </select>
-                                                </div>
-                                            )}
-                                            <div className='action-box-buttons'>
-                                                {isFutureOpen  ? (
-                                                    applyingToGig ? (
-                                                        <div className="applying-to-gig">
-                                                            <LoadingSpinner width={20} height={20} />
-                                                        </div>
+                                            <div className="detail-copy">
+                                                <span className="detail-title">
+                                                    {gigData.gigType}
+                                                </span>
+                                                <p className='detail-text'>
+                                                    {gigData.gigType === 'Musician/Band' ? (
+                                                        'This gig is for a live musician/band rather than DJs'
                                                     ) : (
-                                                        <>
-                                                            {showApplied && hasAccessToPrivateGig ? (
-                                                                <button className='btn primary-alt disabled' disabled>Applied To Gig</button>
-                                                            ) : accepted && hasAccessToPrivateGig ? (
-                                                                <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
-                                                            ) : showAcceptInvite && hasAccessToPrivateGig ? (
-                                                                    <button className='btn primary-alt' onClick={handleAccept}>
-                                                                        Accept Invitation
-                                                                    </button>
-                                                            ) : showApply && hasAccessToPrivateGig ? (
-                                                                    <button className='btn primary-alt' onClick={handleGigApplication}>
-                                                                        Apply To Gig
-                                                                    </button>
-                                                            ) : null}
-
-                                                            {showApplied && hasAccessToPrivateGig && (
-                                                                <button className='btn secondary' onClick={handleWithdrawApplication} style={{ marginTop: '5px'}}>
-                                                                    Withdraw Application
-                                                                </button>
-                                                            )}
-
-                                                            <div className='two-buttons'>
-                                                                {/* Negotiate */}
-                                                                {showNegotiate && !kindBlocksNegotiate && hasAccessToPrivateGig && (
-                                                                    <button className='btn secondary' onClick={handleNegotiateButtonClick}>
-                                                                        Negotiate
-                                                                    </button>
-                                                                )}
-
-                                                                {/* Message */}
-                                                                {showMessage && hasAccessToPrivateGig && (
-                                                                <button className='btn secondary' onClick={handleMessage}>
-                                                                    Message
-                                                                </button>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Private notice (only if private AND no invite) */}
-                                                            {isPrivate && !hasAccessToPrivateGig && (
-                                                                <div className="private-applications">
-                                                                <InviteIconSolid />
-                                                                <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
-                                                                </div>
-                                                            )}
-                                                        </>
-
-                                                    )
+                                                        'This gig is for a DJ rather than a live musician/band'
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="detail">
+                                            {gigData.privacy === 'Public' || '' ? (
+                                                <PeopleRoofIconLight />
+                                            ) : (
+                                                <InviteIcon />
+                                            )}
+                                            <div className="detail-copy">
+                                                <span className="detail-title">
+                                                    Audience
+                                                </span>
+                                                <p className='detail-text'>
+                                                {(gigData.privacy === 'Public' || '') ? (
+                                                    'This gig is open to the public, rather than a private event'
+                                                ) : (
+                                                    'This gig is a private event - not open to the public'
+                                                )}
+                                                    
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="detail">
+                                            <SpeakersIcon />
+                                            <div className="detail-copy">
+                                                <span className="detail-title">
+                                                    Genres
+                                                </span>
+                                                <p className='detail-text'>
+                                                    {gigData.genre !== '' ? (
+                                                        `The preferred genres for this gig are: ${formatGenres(gigData.genre)}`
+                                                    ) : (
+                                                        'There are no preferred genres for this gig'
+                                                    )}
+                                                </p>
+                                                <p className='detail-text'>
+                                                    {gigData.extraInformation !== '' && (
+                                                        gigData.extraInformation
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className='timeline'>
+                                        <h4 className='subtitle'>Gig Timeline</h4>
+                                        {gigData.startTime && (
+                                            <div className='timeline-cont'>
+                                                <div className='timeline-event'>
+                                                    <div className='timeline-content'>
+                                                        <p>Load In</p>
+                                                        <div className='timeline-time'>{gigData?.loadInTime && gigData?.loadInTime !== '' ? formatTime(gigData?.loadInTime) : 'TBC'}</div>
+                                                    </div>
+                                                    <div className='timeline-line'></div>
+                                                </div>
+                                                <div className='timeline-event'>
+                                                    <div className='timeline-content'>
+                                                        <p>Sound Check</p>
+                                                        <div className='timeline-time'>{gigData?.soundCheckTime && gigData?.soundCheckTime !== '' ? formatTime(gigData?.soundCheckTime) : 'TBC'}</div>
+                                                    </div>
+                                                    <div className='timeline-line'></div>
+                                                </div>
+                                                <div className='timeline-event'>
+                                                    <div className='timeline-content'>
+                                                        <p>Set Starts</p>
+                                                        <div className='timeline-time orange'>{formatTime(gigData.startTime)}</div>
+                                                    </div>
+                                                    <div className='timeline-line'></div>
+                                                </div>
+                                                <div className='timeline-event'>
+                                                    <div className='timeline-content'>
+                                                        <p>Set Ends</p>
+                                                        <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
+                                                    </div>
+                                                    <div className='timeline-line'></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className='equipment'>
+                                        <h4>Equipment Available at {gigData.venue.venueName}</h4>
+                                        {venueProfile?.equipmentAvailable === 'yes' ? (
+                                            <>
+                                                <div className="equipment-grid">
+                                                    {venueProfile.equipment.map((e) => (
+                                                        <span className="equipment-item" key={e}>
+                                                            {formatEquipmentIcon(e)}
+                                                            {e}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                {venueProfile?.equipmentInformation && (
+                                                    <div className="equipment-notes" style={{ marginTop: '1rem' }}>
+                                                        <h6>EQUIPMENT INFORMATION</h6>
+                                                        <p>{venueProfile?.equipmentInformation}</p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <p>Unfortunately, the venue has no equipment for use.</p>
+                                        )}
+                                    </div>
+                                    {venueProfile?.description && (
+                                        <div className='description'>
+                                            <h4>About {venueProfile?.name}</h4>
+                                            <p>{venueProfile?.description}</p>
+                                        </div>
+                                    )}
+                                    <div className='extra-info'>
+                                        <h4 className='subtitle'>Additional Technical Information</h4>
+                                        {gigData.applicants.length > 0 && (
+                                            <div className='info'>
+                                                <h6>Gig Applications</h6>
+                                                <div className='text'>
+                                                    <p>{gigData.applicants.length}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {venueProfile?.extraInformation && (
+                                            <div className='info'>
+                                                <h6>Venue Information</h6>
+                                                <div className='text'>
+                                                    <p>{venueProfile?.extraInformation}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {venueProfile?.website && (
+                                            <div className='info'>
+                                                <h6>Venue Website</h6>
+                                                <div className='text'>
+                                                    <a href={venueProfile.website.startsWith('http') ? venueProfile.website : `https://${venueProfile.website}`} target="_blank" rel="noopener noreferrer">{venueProfile.website}</a>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {venueProfile?.socialMedia && (
+                                        <div className='socials'>
+                                            <h4 className='subtitle'>Socials</h4>
+                                            <div className='links'>
+                                                {venueProfile.socialMedia.facebook && (
+                                                    <a href={ensureProtocol(venueProfile.socialMedia.facebook)} target='_blank' rel='noreferrer'>
+                                                        <FacebookIcon />
+                                                    </a>
+                                                )}
+                                                {venueProfile.socialMedia.instagram && (
+                                                    <a href={ensureProtocol(venueProfile.socialMedia.instagram)} target='_blank' rel='noreferrer'>
+                                                        <InstagramIcon />
+                                                    </a>
+                                                )}
+                                                {venueProfile.socialMedia.twitter && (
+                                                    <a href={ensureProtocol(venueProfile.socialMedia.twitter)} target='_blank' rel='noreferrer'>
+                                                        <TwitterIcon />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="sticky-right">
+                                    <div className='action-box'>
+                                        <div className='action-box-info'>
+                                            <div className='action-box-budget'>
+                                                {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
+                                                    <h2 className="gig-kind">
+                                                        {gigData.kind}
+                                                        {gigData.kind === 'Ticketed Gig' && (
+                                                        <span
+                                                            className="tooltip-wrapper"
+                                                            data-tooltip="A ticketed gig means the musicians receive 100% of the ticket revenue but the administration of ticket sales is to be discussed between the two of you."
+                                                        >
+                                                            <MoreInformationIcon />
+                                                        </span>
+                                                        )}
+                                                    </h2>
                                                 ) : (
                                                     <>
-                                                    <div className='two-buttons'>
-                                                        {showMessage && (
-                                                            <button className='btn secondary' onClick={handleMessage}>Message</button>
+                                                        <h1>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h1>
+                                                        {gigData.budget !== '£' && gigData.budget !== '£0' && (
+                                                            <p>gig fee</p>
                                                         )}
-                                                    </div>
-                                                    <button className='btn secondary' onClick={(e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
-                                                        Other Gigs at {gigData.venue.venueName}
-                                                    </button>
                                                     </>
                                                 )}
                                             </div>
-                                        </>
+                                            <div className='action-box-duration'>
+                                                <h4>{formatDuration(gigData.duration)}</h4>
+                                            </div>
+                                        </div>
+                                        <div className='action-box-date-and-time'>
+                                            <div className='action-box-date'>
+                                                <h3>{formatDate(gigData.startDateTime, 'withTime')}</h3>
+                                            </div>
+                                        </div>
+                                        {/* {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig' && !venueVisiting) && (
+                                            <div className='action-box-fees'>
+                                                <div className='action-box-service-fee'>
+                                                <p>Service Fee</p>
+                                                <p>£{calculateServiceFee(gigData.budget)}</p>
+                                                </div>
+                                                <div className='action-box-total-income'>
+                                                <p>Total Income</p>
+                                                <p>£{calculateTotalIncome(gigData.budget)}</p>
+                                                </div>
+                                            </div>
+                                        )} */}
+                                        {!(user?.venueProfiles?.length > 0 && !user.musicianProfile) && !venueVisiting && (
+                                            <>
+                                                {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && !applyingToGig && (
+                                                    <div className="profile-select-wrapper">
+                                                        <label htmlFor="profileSelect" className="profile-select-label">Applying as:</label>
+                                                        <select
+                                                            id="profileSelect"
+                                                            className="input"
+                                                            value={selectedProfile?.musicianId}
+                                                            onChange={(e) => {
+                                                                const selected = validProfiles.find(profile => profile.musicianId === e.target.value);
+                                                                setSelectedProfile(selected);
+                                                            }}
+                                                        >
+                                                        {validProfiles.map((profile) => (
+                                                            <option key={profile.musicianId} value={profile.musicianId}>
+                                                            {profile.name} {profile.bandProfile ? '(Band)' : '(Solo)'}
+                                                            </option>
+                                                        ))}
+                                                        </select>
+                                                    </div>
+                                                )}
+                                                <div className='action-box-buttons'>
+                                                    {isFutureOpen  ? (
+                                                        applyingToGig ? (
+                                                            <div className="applying-to-gig">
+                                                                <LoadingSpinner width={20} height={20} />
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                {showApplied && hasAccessToPrivateGig ? (
+                                                                    <button className='btn primary-alt disabled' disabled>Applied To Gig</button>
+                                                                ) : accepted && hasAccessToPrivateGig ? (
+                                                                    <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
+                                                                ) : showAcceptInvite && hasAccessToPrivateGig ? (
+                                                                        <button className='btn primary-alt' onClick={handleAccept}>
+                                                                            Accept Invitation
+                                                                        </button>
+                                                                ) : showApply && hasAccessToPrivateGig ? (
+                                                                        <button className='btn primary-alt' onClick={handleGigApplication}>
+                                                                            Apply To Gig
+                                                                        </button>
+                                                                ) : null}
+
+                                                                {showApplied && hasAccessToPrivateGig && (
+                                                                    <button className='btn secondary' onClick={handleWithdrawApplication} style={{ marginTop: '5px'}}>
+                                                                        Withdraw Application
+                                                                    </button>
+                                                                )}
+
+                                                                <div className='two-buttons'>
+                                                                    {/* Negotiate */}
+                                                                    {showNegotiate && !kindBlocksNegotiate && hasAccessToPrivateGig && (
+                                                                        <button className='btn secondary' onClick={handleNegotiateButtonClick}>
+                                                                            Negotiate
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Message */}
+                                                                    {showMessage && hasAccessToPrivateGig && (
+                                                                    <button className='btn secondary' onClick={handleMessage}>
+                                                                        Message
+                                                                    </button>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Private notice (only if private AND no invite) */}
+                                                                {isPrivate && !hasAccessToPrivateGig && (
+                                                                    <div className="private-applications">
+                                                                    <InviteIconSolid />
+                                                                    <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
+                                                                    </div>
+                                                                )}
+                                                            </>
+
+                                                        )
+                                                    ) : (
+                                                        <>
+                                                        <div className='two-buttons'>
+                                                            {showMessage && (
+                                                                <button className='btn secondary' onClick={handleMessage}>Message</button>
+                                                            )}
+                                                        </div>
+                                                        <button className='btn secondary' onClick={(e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
+                                                            Other Gigs at {gigData.venue.venueName}
+                                                        </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                    {otherSlots && (
+                                        <div className="other-slots">
+                                            <h4 className='subtitle'>Other Available Sets</h4>
+                                            <div className='similar-gigs-list'>
+                                                {otherSlots.map(gig => (
+                                                    <div key={gig.id} className='similar-gig-item' onClick={(e) => openInNewTab(gig.id, e)}>
+                                                        <div className='similar-gig-item-venue'>
+                                                            <figure className='similar-gig-img'>
+                                                                <img src={gig.venue.photo} alt={gig.venue.venueName} />
+                                                            </figure>
+                                                            <div className='similar-gig-info'>
+                                                                <h4>{formatSlotName(gig.gigName)}</h4>
+                                                                <p>{formatFeeDate(gig.startDateTime)}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className='similar-gig-budget'>
+                                                            {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
+                                                                <h3 className="gig-kind">
+                                                                    {gigData.kind}
+                                                                </h3>
+                                                            ) : (
+                                                                <>
+                                                                    <h3>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h3>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>                                            
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className='head'>
+                                <ImageCarousel
+                                    photos={venueProfile?.photos}
+                                    altBase={gigData.venue.venueName}
+                                />
+                            </div>
+                            <div className='main'>
+                                <div className="section">
+                                    <h1>{gigData.gigName}</h1>
+                                    <div className="divider">
+                                        <span className="line"></span>
+                                        <h6>@</h6>
+                                        <span className="line"></span>
+                                    </div>
+                                    <div className="gig-venue">
+                                        <h4>{gigData.venue.venueName}</h4>
+                                        <p>{gigData.venue.address}</p>
+                                        <button
+                                            className='btn secondary'
+                                            onClick={
+                                                selectedProfile && selectedProfile?.id ? 
+                                                (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e)
+                                                : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}
+                                        >
+                                                <VenueIconSolid />
+                                                View {gigData.venue.venueName}'s Profile
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="section">
+                                    <div className="gig-host">
+                                        <h5>Gig Posted By: {gigData.accountName}</h5>
+                                        <p>A trusted Gigin member</p>
+                                    </div>
+                                </div>
+                                <div className="section">
+                                    <div className='details'>
+                                        <div className="detail">
+                                            {gigData.gigType === 'Musician/Band' ? (
+                                                <GuitarsIcon />
+                                            ) : (
+                                                <ClubIconSolid />
+                                            )}
+                                            <div className="detail-copy">
+                                                <span className="detail-title">
+                                                    {gigData.gigType}
+                                                </span>
+                                                <p className='detail-text'>
+                                                    {gigData.gigType === 'Musician/Band' ? (
+                                                        'This gig is for a live musician/band rather than DJs'
+                                                    ) : (
+                                                        'This gig is for a DJ rather than a live musician/band'
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="detail">
+                                            {gigData.privacy === 'Public' || '' ? (
+                                                <PeopleRoofIconLight />
+                                            ) : (
+                                                <InviteIcon />
+                                            )}
+                                            <div className="detail-copy">
+                                                <span className="detail-title">
+                                                    Audience
+                                                </span>
+                                                <p className='detail-text'>
+                                                {(gigData.privacy === 'Public' || '') ? (
+                                                    'This gig is open to the public, rather than a private event'
+                                                ) : (
+                                                    'This gig is a private event - not open to the public'
+                                                )}
+                                                    
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="detail">
+                                            <SpeakersIcon />
+                                            <div className="detail-copy">
+                                                <span className="detail-title">
+                                                    Genres
+                                                </span>
+                                                <p className='detail-text'>
+                                                    {gigData.genre !== '' ? (
+                                                        `The preferred genres for this gig are: ${formatGenres(gigData.genre)}`
+                                                    ) : (
+                                                        'There are no preferred genres for this gig'
+                                                    )}
+                                                </p>
+                                                <p className='detail-text'>
+                                                    {gigData.extraInformation !== '' && (
+                                                        gigData.extraInformation
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="section">
+                                    <div className='timeline'>
+                                        <h4 className='subtitle'>Gig Timeline</h4>
+                                        {gigData.startTime && (
+                                            <div className='timeline-cont'>
+                                                <div className='timeline-event'>
+                                                    <div className='timeline-content'>
+                                                        <p>Load In</p>
+                                                        <div className='timeline-time'>{gigData?.loadInTime && gigData?.loadInTime !== '' ? formatTime(gigData?.loadInTime) : 'TBC'}</div>
+                                                    </div>
+                                                    <div className='timeline-line'></div>
+                                                </div>
+                                                <div className='timeline-event'>
+                                                    <div className='timeline-content'>
+                                                        <p>Sound Check</p>
+                                                        <div className='timeline-time'>{gigData?.soundCheckTime && gigData?.soundCheckTime !== '' ? formatTime(gigData?.soundCheckTime) : 'TBC'}</div>
+                                                    </div>
+                                                    <div className='timeline-line'></div>
+                                                </div>
+                                                <div className='timeline-event'>
+                                                    <div className='timeline-content'>
+                                                        <p>Set Starts</p>
+                                                        <div className='timeline-time orange'>{formatTime(gigData.startTime)}</div>
+                                                    </div>
+                                                    <div className='timeline-line'></div>
+                                                </div>
+                                                <div className='timeline-event'>
+                                                    <div className='timeline-content'>
+                                                        <p>Set Ends</p>
+                                                        <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
+                                                    </div>
+                                                    <div className='timeline-line'></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="section">
+                                    <div className='equipment'>
+                                        <h4>Equipment Available at {gigData.venue.venueName}</h4>
+                                        {venueProfile?.equipmentAvailable === 'yes' ? (
+                                            <>
+                                                <div className="equipment-grid">
+                                                    {venueProfile.equipment.map((e) => (
+                                                        <span className="equipment-item" key={e}>
+                                                            {formatEquipmentIcon(e)}
+                                                            {e}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                {venueProfile?.equipmentInformation && (
+                                                    <div className="equipment-notes" style={{ marginTop: '1rem' }}>
+                                                        <h6>EQUIPMENT INFORMATION</h6>
+                                                        <p>{venueProfile?.equipmentInformation}</p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <p>Unfortunately, the venue has no equipment for use.</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="section">
+                                    {venueProfile?.description && (
+                                        <div className='description'>
+                                            <h4>About {venueProfile?.name}</h4>
+                                            <p>{venueProfile?.description}</p>
+                                        </div>
+                                    )}
+                                    <div className='extra-info'>
+                                        <h4 className='subtitle'>Additional Technical Information</h4>
+                                        {gigData.applicants.length > 0 && (
+                                            <div className='info'>
+                                                <h6>Gig Applications</h6>
+                                                <div className='text'>
+                                                    <p>{gigData.applicants.length}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {venueProfile?.extraInformation && (
+                                            <div className='info'>
+                                                <h6>Venue Information</h6>
+                                                <div className='text'>
+                                                    <p>{venueProfile?.extraInformation}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {venueProfile?.website && (
+                                            <div className='info'>
+                                                <h6>Venue Website</h6>
+                                                <div className='text'>
+                                                    <a href={venueProfile.website.startsWith('http') ? venueProfile.website : `https://${venueProfile.website}`} target="_blank" rel="noopener noreferrer">{venueProfile.website}</a>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {venueProfile?.socialMedia && (
+                                        <div className='socials'>
+                                            <h4 className='subtitle'>Socials</h4>
+                                            <div className='links'>
+                                                {venueProfile.socialMedia.facebook && (
+                                                    <a href={ensureProtocol(venueProfile.socialMedia.facebook)} target='_blank' rel='noreferrer'>
+                                                        <FacebookIcon />
+                                                    </a>
+                                                )}
+                                                {venueProfile.socialMedia.instagram && (
+                                                    <a href={ensureProtocol(venueProfile.socialMedia.instagram)} target='_blank' rel='noreferrer'>
+                                                        <InstagramIcon />
+                                                    </a>
+                                                )}
+                                                {venueProfile.socialMedia.twitter && (
+                                                    <a href={ensureProtocol(venueProfile.socialMedia.twitter)} target='_blank' rel='noreferrer'>
+                                                        <TwitterIcon />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                                 {otherSlots && (
-                                    <div className="other-slots">
-                                        <h4 className='subtitle'>Other Available Sets</h4>
-                                        <div className='similar-gigs-list'>
-                                            {otherSlots.map(gig => (
-                                                <div key={gig.id} className='similar-gig-item' onClick={(e) => openInNewTab(gig.id, e)}>
-                                                    <div className='similar-gig-item-venue'>
-                                                        <figure className='similar-gig-img'>
-                                                            <img src={gig.venue.photo} alt={gig.venue.venueName} />
-                                                        </figure>
-                                                        <div className='similar-gig-info'>
-                                                            <h4>{formatSlotName(gig.gigName)}</h4>
-                                                            <p>{formatFeeDate(gig.startDateTime)}</p>
+                                    <div className="section">
+                                        <div className="other-slots">
+                                            <h4 className='subtitle'>Other Available Sets</h4>
+                                            <div className='similar-gigs-list'>
+                                                {otherSlots.map(gig => (
+                                                    <div key={gig.id} className='similar-gig-item' onClick={(e) => openInNewTab(gig.id, e)}>
+                                                        <div className='similar-gig-item-venue'>
+                                                            <figure className='similar-gig-img'>
+                                                                <img src={gig.venue.photo} alt={gig.venue.venueName} />
+                                                            </figure>
+                                                            <div className='similar-gig-info'>
+                                                                <h4>{formatSlotName(gig.gigName)}</h4>
+                                                                <p>{formatFeeDate(gig.startDateTime)}</p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className='similar-gig-budget'>
-                                                        <h3>{gig.budget}</h3>
-                                                    </div>
-                                                </div>                                            
-                                            ))}
+                                                        <div className='similar-gig-budget'>
+                                                        {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
+                                                            <h3 className="gig-kind">
+                                                                {gigData.kind}
+                                                            </h3>
+                                                        ) : (
+                                                            <>
+                                                                <h3>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h3>
+                                                            </>
+                                                        )}
+                                                        </div>
+                                                    </div>                                            
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
+                                <div className="sticky-bottom">
+                                        <div className='action-box-info'>
+                                            <div className='action-box-budget'>
+                                                {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
+                                                    <h2 className="gig-kind">
+                                                        {gigData.kind}
+                                                        {gigData.kind === 'Ticketed Gig' && (
+                                                        <span
+                                                            className="tooltip-wrapper"
+                                                            data-tooltip="A ticketed gig means the musicians receive 100% of the ticket revenue but the administration of ticket sales is to be discussed between the two of you."
+                                                        >
+                                                            <MoreInformationIcon />
+                                                        </span>
+                                                        )}
+                                                    </h2>
+                                                ) : (
+                                                    <>
+                                                        <h1>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h1>
+                                                        {gigData.budget !== '£' && gigData.budget !== '£0' && (
+                                                            <p>gig fee</p>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div className='action-box-duration'>
+                                                <h4>{formatDuration(gigData.duration)}</h4>
+                                            </div>
+                                        </div>
+                                        <div className='action-box-date-and-time'>
+                                            <div className='action-box-date'>
+                                                <h3>{formatDate(gigData.startDateTime, 'withTime')}</h3>
+                                            </div>
+                                        </div>
+                                        {/* {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig' && !venueVisiting) && (
+                                            <div className='action-box-fees'>
+                                                <div className='action-box-service-fee'>
+                                                <p>Service Fee</p>
+                                                <p>£{calculateServiceFee(gigData.budget)}</p>
+                                                </div>
+                                                <div className='action-box-total-income'>
+                                                <p>Total Income</p>
+                                                <p>£{calculateTotalIncome(gigData.budget)}</p>
+                                                </div>
+                                            </div>
+                                        )} */}
+                                        {!(user?.venueProfiles?.length > 0 && !user.musicianProfile) && !venueVisiting && (
+                                            <>
+                                                {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && !applyingToGig && (
+                                                    <div className="profile-select-wrapper">
+                                                        <label htmlFor="profileSelect" className="profile-select-label">Applying as:</label>
+                                                        <select
+                                                            id="profileSelect"
+                                                            className="input"
+                                                            value={selectedProfile?.musicianId}
+                                                            onChange={(e) => {
+                                                                const selected = validProfiles.find(profile => profile.musicianId === e.target.value);
+                                                                setSelectedProfile(selected);
+                                                            }}
+                                                        >
+                                                        {validProfiles.map((profile) => (
+                                                            <option key={profile.musicianId} value={profile.musicianId}>
+                                                            {profile.name} {profile.bandProfile ? '(Band)' : '(Solo)'}
+                                                            </option>
+                                                        ))}
+                                                        </select>
+                                                    </div>
+                                                )}
+                                                <div className='action-box-buttons'>
+                                                    {isFutureOpen  ? (
+                                                        applyingToGig ? (
+                                                            <div className="applying-to-gig">
+                                                                <LoadingSpinner width={20} height={20} />
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                {showApplied && hasAccessToPrivateGig ? (
+                                                                    <button className='btn primary-alt disabled' disabled>Applied To Gig</button>
+                                                                ) : accepted && hasAccessToPrivateGig ? (
+                                                                    <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
+                                                                ) : showAcceptInvite && hasAccessToPrivateGig ? (
+                                                                        <button className='btn primary-alt' onClick={handleAccept}>
+                                                                            Accept Invitation
+                                                                        </button>
+                                                                ) : showApply && hasAccessToPrivateGig ? (
+                                                                        <button className='btn primary-alt' onClick={handleGigApplication}>
+                                                                            Apply To Gig
+                                                                        </button>
+                                                                ) : null}
+
+                                                                {showApplied && hasAccessToPrivateGig && (
+                                                                    <button className='btn secondary' onClick={handleWithdrawApplication} style={{ marginTop: '5px'}}>
+                                                                        Withdraw Application
+                                                                    </button>
+                                                                )}
+
+                                                                <div className='two-buttons'>
+                                                                    {/* Negotiate */}
+                                                                    {showNegotiate && !kindBlocksNegotiate && hasAccessToPrivateGig && (
+                                                                        <button className='btn secondary' onClick={handleNegotiateButtonClick}>
+                                                                            Negotiate
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Message */}
+                                                                    {showMessage && hasAccessToPrivateGig && (
+                                                                    <button className='btn secondary' onClick={handleMessage}>
+                                                                        Message
+                                                                    </button>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Private notice (only if private AND no invite) */}
+                                                                {isPrivate && !hasAccessToPrivateGig && (
+                                                                    <div className="private-applications">
+                                                                    <InviteIconSolid />
+                                                                    <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
+                                                                    </div>
+                                                                )}
+                                                            </>
+
+                                                        )
+                                                    ) : (
+                                                        <>
+                                                            <div className='two-buttons'>
+                                                                {showMessage && (
+                                                                    <button className='btn secondary' onClick={handleMessage}>Message</button>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                </div>
                             </div>
-                        </div>
-                    </>
+                        </>
+                    )
                 )}
                 {fullscreenImage && (
                     <div className='fullscreen-overlay' onClick={closeFullscreen}>

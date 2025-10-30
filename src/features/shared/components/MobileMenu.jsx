@@ -73,8 +73,8 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                         </button>
                     )}
                     <Link className='link item no-margin' to={'/venues/dashboard/gigs'}>
-                        Gigs
-                        <AllGigsIcon />
+                        Dashboard
+                        <DashboardIconLight />
                     </Link>
                     {newMessages ? (
                         <Link className='link item no-margin' to={'/venues/dashboard/messages'}>
@@ -122,7 +122,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                         Settings
                         <SettingsIcon />
                     </Link>
-                    <button className='btn logout no-margin' onClick={handleLogout()}>
+                    <button className='btn logout no-margin' onClick={handleLogout}>
                         Log Out
                         <LogOutIcon />
                     </button>
@@ -145,12 +145,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <TelescopeIcon />
                         </Link>
                     )}
-                    {user.musicianProfile && !isLgUp ? (
-                        <Link className='link item no-margin' to={'/dashboard'}>
-                            Dashboard
-                            <DashboardIconLight />
-                        </Link>
-                    ) : !isLgUp && (
+                    {!user.musicianProfile && !isLgUp && (
                         <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
                             Create Musician Profile
                             <GuitarsIcon />

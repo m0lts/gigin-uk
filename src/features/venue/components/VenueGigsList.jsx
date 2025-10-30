@@ -18,8 +18,10 @@ import {
 import { openInNewTab } from '@services/utils/misc';
 import { createVenueRequest, getMusicianProfileByMusicianId } from "../../../services/client-side/musicians";
 import { toast } from "sonner";
+import { useBreakpoint } from "../../../hooks/useBreakpoint";
 
 export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null, venueId }) => {
+    const { isMdUp } = useBreakpoint();
     const [expanded, setExpanded] = useState(false);
     const displayed = useMemo(() => (expanded ? gigs : gigs?.slice(0, 3) ?? []), [expanded, gigs]);
     const [profilesById, setProfilesById] = useState({});
@@ -106,7 +108,11 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
     return (
       <div className="gigs-box">
         <div className="gigs-box-header">
-          <h3>{title}</h3>
+          {isMdUp ? (
+            <h3>{title}</h3>
+          ) : (
+            <h4 className="subtitle">{title}</h4>
+          )}
           {gigs?.length > 3 && (
             <button
               type="button"
@@ -159,9 +165,11 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
                               <h4 className="month">{month.toUpperCase()}</h4>
                               <h2 className="day">{day}</h2>
                           </div>
-                          <div className="gig-time" style={{ display: 'flex', alignItems: 'center', margin: '0 1rem'}}>
+                          {isMdUp && (
+                            <div className="gig-time" style={{ display: 'flex', alignItems: 'center', margin: '0 1rem'}}>
                               <h3>{gig.startTime}</h3>
-                          </div>
+                            </div>
+                          )}
                         </div>
                           <div className="gig-type">
                               {findGigIcon(gig.kind)}
