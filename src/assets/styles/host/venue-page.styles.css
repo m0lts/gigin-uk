@@ -1,3 +1,4 @@
+@import '../breakpoints.css';
 
 .venue-page-body {
     margin: 2rem auto;
@@ -333,4 +334,28 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+
+@media (--bp-sm) {
+
+    .venue-page-body .venue-page-hero .primary-information {
+        margin:0.75rem 1rem;
+    }
+
+    .venue-page-body .venue-page-hero .primary-information .venue-name {
+        font-size: 3rem;
+    }
+
+    .venue-page-body .venue-page-hero .primary-information .venue-name .orange-dot {
+        font-size: 3rem;
+    }
+
+    .window.venues .venue-page .venue-page-body .venue-page-information {
+        display: block;
+    }
+
+    .window.venues .venue-page .venue-page-settings h2 {
+        margin-top: 2rem;
+    }
+
 }

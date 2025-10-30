@@ -1,26 +1,27 @@
-/* PROFILE MODAL */
+@import '../breakpoints.css';
 
- .modal.profile-select .modal-content {
+/* PROFILE MODAL */
+.modal.profile-select .modal-content {
     max-width: 650px;
     width:650px;
 }
 
- .modal.profile-select .modal-content {
+.modal.profile-select .modal-content {
     position: relative;
 }
 
- .modal.profile-select .modal-content .profile-preview {
+.modal.profile-select .modal-content .profile-preview {
     display: grid;
     gap: 14px;
     margin-top: 8px;
 }
 
- .modal.profile-select .modal-content .banner-upload {
+.modal.profile-select .modal-content .banner-upload {
     display: grid;
     gap: 10px;
 }
 
- .modal.profile-select .modal-content .banner-frame {
+.modal.profile-select .modal-content .banner-frame {
     width: 100%;
     height: 25vh;
     max-height:250px;
@@ -30,11 +31,11 @@
     transition: all 0.2s linear;
 }
 
- .modal.profile-select .modal-content .banner-frame:hover {
+.modal.profile-select .modal-content .banner-frame:hover {
     background: var(--gn-grey-350);
 }
 
- .modal.profile-select .modal-content .banner-hero {
+.modal.profile-select .modal-content .banner-hero {
     position: relative;
     border-radius: 12px;
     overflow: hidden;
@@ -43,14 +44,14 @@
     height: 100%;
 }
   
- .modal.profile-select .modal-content .banner-hero img {
+.modal.profile-select .modal-content .banner-hero img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
   
- .modal.profile-select .modal-content .banner-hero h1 {
+.modal.profile-select .modal-content .banner-hero h1 {
     position: absolute;
     left: 1rem;
     bottom: 0.5rem;
@@ -162,3 +163,35 @@
 .loading-wrap h3 { margin: 12px 0 6px; }
 .loading-wrap p { color: var(--gn-grey-600); margin: 0; }
 
+@media (--bp-sm) {
+    .modal.profile-select .modal-content {
+        max-width: 90vw;
+        width:90vw;
+    }
+
+    .modal.profile-select .modal-content .banner-hero h1 {
+        font-size: 2.5rem;
+    }
+    
+     .modal.profile-select .modal-content .banner-hero .orange-dot {
+        font-size: 3rem;
+    }
+        
+     .modal.profile-select .modal-content .modal-actions {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap:5px;
+    }
+    
+     .modal.profile-select .modal-content .modal-actions .action-buttons {
+        width:100%;
+        justify-content: center;
+        gap:5px;
+    }
+
+    .modal.profile-select .modal-content .modal-actions .action-buttons .btn {
+        width:100%;
+    }
+    
+}

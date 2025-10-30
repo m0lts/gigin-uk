@@ -30,10 +30,12 @@ import { hasVenuePerm } from '../../../services/utils/permissions';
 import { updateUserArrayField } from '../../../services/function-calls/users';
 import { confirmDeleteVenueData, fetchVenueMembersWithUsers } from '../../../services/function-calls/venues';
 import { deleteReview } from '../../../services/function-calls/reviews';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const VenuePage = ({ user, venues, setVenues }) => {
     const navigate = useNavigate();
     const { venueId } = useParams();
+    const {isSmUp} = useBreakpoint();
     const [venueData, setVenueData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [fullscreenImage, setFullscreenImage] = useState(null);
@@ -222,91 +224,103 @@ export const VenuePage = ({ user, venues, setVenues }) => {
                     </div>
                 </div>
                 <div className="venue-page-information" style={{ width: `95%`, margin: '0 auto'}}>
-                    <div className="venue-page-details">
-                        <div className="section bio">
-                            <h2>Bio</h2>
-                            <p>{venueData?.description}</p>
-                        </div>
-                        <div className="section secondary-information">
-                            <div className="info-box location">
-                                <h2>Location</h2>
-                                <MapSection venueData={venueData} />
-                                <h5>{venueData?.address}</h5>
-                                <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
-                                    Get Directions <NewTabIcon />
-                                </button>
+                    {isSmUp && (
+                        <div className="venue-page-details">
+                            <div className="section bio">
+                                <h2>Bio</h2>
+                                <p>{venueData?.description}</p>
                             </div>
-                            <div className="info-box equipment">
-                                <div className="info-box-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                                    <h2>Equipment at {venueData.name}</h2>
-                                    <button className="btn text" onClick={() => setExpanded(!expanded)}>
-                                        {expanded ? 'Hide' : 'Show'}
+                            <div className="section secondary-information">
+                                <div className="info-box location">
+                                    <h2>Location</h2>
+                                    <MapSection venueData={venueData} />
+                                    <h5>{venueData?.address}</h5>
+                                    <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
+                                        Get Directions <NewTabIcon />
                                     </button>
                                 </div>
-                                {expanded && venueData.type === 'Public Establishment' && (
-                                    venueData.equipment.map((e) => (
-                                        <span className="equipment-item" key={e}>
-                                            {formatEquipmentIcon(e)}
-                                            {e}
-                                        </span>
-                                    ))
-                                )}
-                            </div>
-                            {venueData?.website && (
-                                <div className="info-box website">
-                                    <h2>Website</h2>
-                                    <a
-                                        href={venueData.website.startsWith('http') ? venueData.website : `https://${venueData.website}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        <p>{venueData.website}</p>
-                                    </a>
+                                <div className="info-box equipment">
+                                    <div className="info-box-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                        <h2>Equipment at {venueData.name}</h2>
+                                        <button className="btn text" onClick={() => setExpanded(!expanded)}>
+                                            {expanded ? 'Hide' : 'Show'}
+                                        </button>
+                                    </div>
+                                    {expanded && venueData.type === 'Public Establishment' && (
+                                        venueData.equipment.map((e) => (
+                                            <span className="equipment-item" key={e}>
+                                                {formatEquipmentIcon(e)}
+                                                {e}
+                                            </span>
+                                        ))
+                                    )}
                                 </div>
-                            )}
-                            {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
-                                <div className="info-box socials">
-                                    <h2>Socials</h2>
-                                    <div className="socials-buttons">
-                                        {venueData?.socialMedia?.facebook && (
-                                            <a href={ensureProtocol(venueData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
-                                                <FacebookIcon />
-                                            </a>
-                                        )}
-                                        {venueData?.socialMedia?.instagram && (
-                                            <a href={ensureProtocol(venueData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
-                                                <InstagramIcon />
-                                            </a>
-                                        )}
-                                        {venueData?.socialMedia?.twitter && (
-                                            <a href={ensureProtocol(venueData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
-                                                <TwitterIcon />
-                                            </a>
-                                        )}
+                                {venueData?.website && (
+                                    <div className="info-box website">
+                                        <h2>Website</h2>
+                                        <a
+                                            href={venueData.website.startsWith('http') ? venueData.website : `https://${venueData.website}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <p>{venueData.website}</p>
+                                        </a>
+                                    </div>
+                                )}
+                                {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
+                                    <div className="info-box socials">
+                                        <h2>Socials</h2>
+                                        <div className="socials-buttons">
+                                            {venueData?.socialMedia?.facebook && (
+                                                <a href={ensureProtocol(venueData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
+                                                    <FacebookIcon />
+                                                </a>
+                                            )}
+                                            {venueData?.socialMedia?.instagram && (
+                                                <a href={ensureProtocol(venueData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
+                                                    <InstagramIcon />
+                                                </a>
+                                            )}
+                                            {venueData?.socialMedia?.twitter && (
+                                                <a href={ensureProtocol(venueData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
+                                                    <TwitterIcon />
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+                            {venueData?.photos?.length > 1 ? (
+                                <div className="section photos">
+                                    <h2>Photos</h2>
+                                    <div className="photos-collage">
+                                    {venueData.photos.map((photo, index) => (
+                                        <figure className="collage-item" key={photo}>
+                                        <img
+                                            src={photo}
+                                            alt={venueData.name}
+                                            loading="lazy"
+                                            decoding="async"
+                                        />
+                                        </figure>
+                                    ))}
                                     </div>
                                 </div>
-                            )}
-
-                        </div>
-                        {venueData?.photos?.length > 1 && (
-                            <div className="section photos">
-                                <h2>Photos</h2>
-                                <div className="photos-collage">
-                                {venueData.photos.map((photo, index) => (
-                                    <figure className="collage-item" key={photo}>
-                                    <img
-                                        src={photo}
-                                        alt={venueData.name}
-                                        loading="lazy"
-                                        decoding="async"
-                                    />
-                                    </figure>
-                                ))}
+                            ) : (
+                                <div className="section photos empty">
+                                    <h2>Photos</h2>
+                                    <p>No photos uploaded.</p>
                                 </div>
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div>
+                    )}
                     <div className="venue-page-settings">
+                        {!isSmUp && (
+                            <button className="btn text" onClick={() => navigate(-1)} style={{marginTop: '1rem'}}>
+                                <LeftArrowIcon /> Back
+                            </button>
+                        )}
                         <h2>Venue Settings</h2>
                         <ul className="settings-list">
                             <li className="settings-item">

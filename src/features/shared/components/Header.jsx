@@ -149,6 +149,10 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                     showAuthModal={showAuthModal}
                     setAuthType={setAuthType}
                     handleLogout={handleLogout}
+                    setNoProfileModal={setNoProfileModal}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
+                    noProfileModal={noProfileModal}
+                    noProfileModalClosable={noProfileModalClosable}
                 />
             )}
         </>

@@ -17,11 +17,13 @@ import { getVenueProfileById } from '../../../services/client-side/venues';
 import { getMusicianProfileByMusicianId, withdrawMusicianApplication } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
 import { markInviteAsViewed } from '../../../services/function-calls/musicians';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 
 export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandProfiles, setGigs, setGigApplications, savedGigs, setSavedGigs }) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const {isMdUp, isLgUp, isXlUp, isSmUp} = useBreakpoint();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchParams] = useSearchParams();
     const [sortOrder, setSortOrder] = useState('asc');
@@ -251,7 +253,7 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                             Past
                         </button>
                     </div>
-                    {windowWidth >= 1400 ? (
+                    {isXlUp ? (
                         <>
                         {/* <span className="separator"></span>
                         <div className="search-bar-container">
@@ -292,13 +294,13 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                         <div className="spacer" />
                         <button className={`btn tertiary ${showMobileFilters ? 'open' : ''}`} onClick={() => setShowMobileFilters(prev => !prev)}>
                             <FilterIconEmpty />
-                            Filters
+                            {isMdUp && 'Filters'}
                         </button>
                         </>
                     )}
                 </div>
 
-                {windowWidth < 1400 && showMobileFilters && (
+                {!isXlUp && showMobileFilters && (
                     <div className="filters ext">
                         <input
                             type='date'
@@ -326,17 +328,23 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                     <table>
                         <thead>
                             <tr>
-                                <th id="profile">
-                                    Profile
-                                </th>
+                                {isSmUp && (
+                                    <th id="profile">
+                                        Profile
+                                    </th>
+                                )}
                                 <th id='date'>
                                     Time and Date
                                     <button className='sort btn text' onClick={toggleSortOrder}>
                                         <SortIcon />
                                     </button>
                                 </th>
-                                <th>Venue</th>
-                                <th>Type</th>
+                                {isMdUp && (
+                                    <>
+                                        <th>Venue</th>
+                                        <th>Type</th>
+                                    </>
+                                )}
                                 <th className='centre'>Fee</th>
                                 <th className='centre'>Status</th>
                                 <th></th>
@@ -381,28 +389,40 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                 }
                                             }}
                                         >
-                                            <td className="applied-profile-name">
-                                                {applicant?.invited && !applicant?.viewed && (
-                                                    <div className="new-invite">
-                                                        <p>NEW INVITE</p>
-                                                    </div>
-                                                )}
-                                                {appliedProfile?.profileName || musicianProfile.name}
-                                            </td>
+                                            {isSmUp && (
+                                                <td className="applied-profile-name">
+                                                    {applicant?.invited && !applicant?.viewed && (
+                                                        <div className="new-invite">
+                                                            <p>NEW INVITE</p>
+                                                        </div>
+                                                    )}
+                                                    {appliedProfile?.profileName || musicianProfile.name}
+                                                </td>
+                                            )}
                                             <td>
-                                            {gig.startDateTime.toDate().toLocaleTimeString('en-GB', {
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                                hour12: false,
-                                            })}{' - '}
-                                            {gig.startDateTime.toDate().toLocaleDateString('en-GB', {
-                                                day: '2-digit',
-                                                month: '2-digit',
-                                                year: 'numeric',
-                                            })}
+                                                {!isSmUp && applicant?.invited && !applicant?.viewed && (
+                                                    <span className="notification-dot"></span>
+                                                )}
+                                                {!isSmUp && (
+                                                    <span className="notification-dot"></span>
+                                                )}
+                                                {gig.startDateTime.toDate().toLocaleTimeString('en-GB', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    hour12: false,
+                                                })}{' - '}
+                                                {gig.startDateTime.toDate().toLocaleDateString('en-GB', {
+                                                    day: '2-digit',
+                                                    month: '2-digit',
+                                                    year: 'numeric',
+                                                })}
                                             </td>
-                                            <td>{gig.venue.venueName}</td>
-                                            <td>{gig.kind}</td>
+                                            {isMdUp && (
+                                                <>
+                                                    <td>{gig.venue.venueName}</td>
+                                                    <td>{gig.kind}</td>
+                                                </>
+                                            )}
                                             <td className='centre'>
                                                 {gig.applicants.length > 0
                                                     ? formatFee(gig.applicants.find(applicant => applicant.id === musicianId)?.fee || gig.budget)

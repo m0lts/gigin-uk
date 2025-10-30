@@ -10,11 +10,12 @@ import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { MapIcon, NextGigIcon, NoImageIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { formatDate } from '../../../services/utils/dates';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToReview, setGigsToReview, bandProfiles, unseenInvites }) => {
 
     const navigate = useNavigate();
-
+    const {isMdUp} = useBreakpoint();
     const [nextGig, setNextGig] = useState(null);
     const [awaitingResponse, setAwaitingResponse] = useState([]);
     const [showGigHandbook, setShowGigHandbook] = useState(false);
@@ -138,7 +139,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
             <div className='body overview'>
                 <div className="welcome-box">
                     <h1 className='title'>Good Afternoon, {formatName(user.name)} 👋</h1>
-                    <h2>Have a look at your next gig arrangements, profile, venues who have invited you, or find your next gig</h2>
+                    <h2>Have a look at your next gig arrangements, profile, venues who have invited you, or find your next gig.</h2>
                     <div className="two-buttons" style={{ justifyContent: 'flex-start' }}>
                         <button className="btn secondary" onClick={() => navigate('/find-a-gig')}>
                             <MapIcon />
@@ -150,60 +151,64 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                         </button>
                     </div>
                 </div>
-                <div className="overview-profile-container">
-                    {!isOnlyNameFilled ? (
-                        <>
-                            <h1 className='large-title'>My Musician Profile</h1>
-                            <div className="overview-profile">
-                                {musicianProfile.picture ? (
-                                    <img src={musicianProfile.picture} alt={musicianProfile.name} />
-                                ) : (
-                                    <div className="background-image empty">
-                                        <NoImageIcon />
-                                        <h4>No Artist Image</h4>
-                                    </div>
-                                )}
-                                <div className="profile-overlay">
-                                    <h1 className='profile-name'>
-                                        {musicianProfile.name}
-                                        <span className="orange-dot">.</span>
-                                    </h1>
-                                    <div className="action-buttons">
-                                        <button className="btn quaternary" onClick={() => navigate(`/dashboard/profile`)}>
-                                            View My Profile
-                                        </button>
-                                        <button className="btn quaternary" onClick={() => navigate(`/dashboard/profile`, { state: {preview: false} })}>
-                                            Add New Photos / Videos
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    ) : bandProfiles.length > 0 && bandProfiles[0] && (
-                        <>
-                            <h1 className='large-title'>My Band Profile</h1>
-                            <div className="overview-profile">
-                                <img src={bandProfiles[0].picture} alt={bandProfiles[0].name} />
-                                <div className="profile-overlay">
-                                    <h1 className='profile-name'>
-                                        {bandProfiles[0].name}
-                                        <span className="orange-dot">.</span>
-                                    </h1>
-                                    <div className="action-buttons">
-                                        <button className="btn quaternary" onClick={() => navigate(`/dashboard/bands/${bandProfiles[0].id}`, { state: {band: bandProfiles[0]} })}>
-                                            View Band Profile
-                                        </button>
-                                        <button className="btn quaternary" onClick={() => navigate(`/dashboard/bands/${bandProfiles[0].id}`, { state: {band: bandProfiles[0], preview: false} })}>
-                                            Add New Photos / Videos
-                                        </button>
+                {isMdUp && (
+                    <div className="overview-profile-container">
+                        {!isOnlyNameFilled ? (
+                            <>
+                                <h1 className='large-title'>My Musician Profile</h1>
+                                <div className="overview-profile">
+                                    {musicianProfile.picture ? (
+                                        <img src={musicianProfile.picture} alt={musicianProfile.name} />
+                                    ) : (
+                                        <div className="background-image empty">
+                                            <NoImageIcon />
+                                            <h4>No Artist Image</h4>
+                                        </div>
+                                    )}
+                                    <div className="profile-overlay">
+                                        <h1 className='profile-name'>
+                                            {musicianProfile.name}
+                                            <span className="orange-dot">.</span>
+                                        </h1>
+                                        <div className="action-buttons">
+                                            <button className="btn quaternary" onClick={() => navigate(`/dashboard/profile`)}>
+                                                View My Profile
+                                            </button>
+                                            <button className="btn quaternary" onClick={() => navigate(`/dashboard/profile`, { state: {preview: false} })}>
+                                                Add New Photos / Videos
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </>
-                    )}
-                </div>
+                            </>
+                        ) : bandProfiles.length > 0 && bandProfiles[0] && (
+                            <>
+                                <h1 className='large-title'>My Band Profile</h1>
+                                <div className="overview-profile">
+                                    <img src={bandProfiles[0].picture} alt={bandProfiles[0].name} />
+                                    <div className="profile-overlay">
+                                        <h1 className='profile-name'>
+                                            {bandProfiles[0].name}
+                                            <span className="orange-dot">.</span>
+                                        </h1>
+                                        <div className="action-buttons">
+                                            <button className="btn quaternary" onClick={() => navigate(`/dashboard/bands/${bandProfiles[0].id}`, { state: {band: bandProfiles[0]} })}>
+                                                View Band Profile
+                                            </button>
+                                            <button className="btn quaternary" onClick={() => navigate(`/dashboard/bands/${bandProfiles[0].id}`, { state: {band: bandProfiles[0], preview: false} })}>
+                                                Add New Photos / Videos
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
                 <div className="next-gig-container">
-                    <h1 className='large-title'>Gigs</h1>
+                    {isMdUp && (
+                        <h1 className='large-title'>Gigs</h1>
+                    )}
                     {nextGig ? (
                         <div className="next-gig">
                             <div className="heading">

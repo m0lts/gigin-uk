@@ -150,6 +150,10 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                     newMessages={newMessages}
                                     isMobile={!isMdUp}
                                     menuStyle={{right: '1rem'}}
+                                    setNoProfileModal={setNoProfileModal}
+                                    setNoProfileModalClosable={setNoProfileModalClosable}
+                                    noProfileModal={noProfileModal}
+                                    noProfileModalClosable={noProfileModalClosable}
                                 />
                             )}
                         </>
@@ -191,6 +195,10 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                     newMessages={newMessages}
                     isMobile={!isMdUp}
                     menuStyle={{right: '1rem'}}
+                    setNoProfileModal={setNoProfileModal}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
+                    noProfileModal={noProfileModal}
+                    noProfileModalClosable={noProfileModalClosable}
                 />
             )}
         </>

@@ -20,6 +20,7 @@ import { getMusicianFees } from '../../../services/client-side/musicians';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 function CountdownTimer({ targetDate }) {
     const [label, setLabel] = React.useState("");
@@ -52,6 +53,7 @@ function CountdownTimer({ targetDate }) {
   }
 
 export const Finances = ({ user, musicianProfile }) => {
+    const {isMdUp, isLgUp, isSmUp} = useBreakpoint();
     const [sortOrder, setSortOrder] = useState('desc');
     const [feesToDisplay, setFeesToDisplay] = useState([]);
     const [pendingTotal, setPendingTotal] = useState(0);
@@ -60,7 +62,6 @@ export const Finances = ({ user, musicianProfile }) => {
     const [error, setError] = useState(false);
     const [connectedAccountId, setConnectedAccountId] = useState();
     const stripeConnectInstance = useStripeConnect(connectedAccountId);
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
     const [payingOut, setPayingOut] = useState(false);
     const accountUrl = import.meta.env.VITE_STRIPE_ACCOUNT_URL;
     const [showHelp, setShowHelp] = useState(false);
@@ -71,10 +72,6 @@ export const Finances = ({ user, musicianProfile }) => {
     const [paymentSystemModal, setPaymentSystemModal] = useState(false);
     const [stripeSystemModal, setStripeSystemModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-    useResizeEffect((width) => {
-        setWindowWidth(width);
-    });
 
     useEffect(() => {
         if (!connectedAccountId && musicianProfile?.stripeAccountId) {
@@ -288,15 +285,17 @@ export const Finances = ({ user, musicianProfile }) => {
                             </h4>
                         )}
                     </div>
-                    <div className="venue-expenditure-container">
-                        <div className="expenditure-card other">
-                            <PieChartIcon />
-                            <div className="expenditure-text">
-                                <h5>Total Earnings</h5>
-                                <h3>£{musicianProfile.totalEarnings ? parseFloat(musicianProfile.totalEarnings).toFixed(2) : '0.00'}</h3>
+                    {isSmUp && (
+                        <div className="venue-expenditure-container">
+                            <div className="expenditure-card other">
+                                <PieChartIcon />
+                                <div className="expenditure-text">
+                                    <h5>Total Earnings</h5>
+                                    <h3>£{musicianProfile.totalEarnings ? parseFloat(musicianProfile.totalEarnings).toFixed(2) : '0.00'}</h3>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
                     {!musicianProfile.bankDetailsAdded && (
                         <div className='connect-account'>
@@ -428,7 +427,7 @@ export const Finances = ({ user, musicianProfile }) => {
                             <table>
                                 <thead>
                                     <tr>
-                                        {windowWidth > 915 && (
+                                        {isLgUp && (
                                             <th id='date'>
                                                 Gig Date
                                                 <button className='sort btn text' onClick={toggleSortOrder}>
@@ -485,7 +484,7 @@ export const Finances = ({ user, musicianProfile }) => {
 
                                         return (
                                         <tr key={fee.id || index} onClick={(e) => openInNewTab(`/gig/${fee.gigId}`, e)}>
-                                            {windowWidth > 915 && <td>{formatFeeDate(fee.gigDate, "short")}</td>}
+                                            {isLgUp && <td>{formatFeeDate(fee.gigDate, "short")}</td>}
                                             <td>{fee.venueName}</td>
                                             <td>£{fee.amount.toFixed(2)}</td>
                                             {fee.disputeLogged ? (

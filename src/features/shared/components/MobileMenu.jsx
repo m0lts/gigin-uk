@@ -1,10 +1,11 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AllGigsIcon, CoinsIcon, DashboardIconLight, FeedbackIcon, GigIcon, GuitarsIcon, LogOutIcon, MailboxEmptyIcon, MailboxFullIcon, MapIcon, MusicianIconLight, PeopleGroupIcon, ProfileIcon, SettingsIcon, TelescopeIcon, TicketIcon, VenueBuilderIcon, VenueIconLight, VenueIconSolid } from "../ui/extras/Icons";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 
-export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle }) => {
+export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable }) => {
     const { isLgUp, isXlUp, isMdUp } = useBreakpoint();
     const navigate = useNavigate();
+    const location = useLocation();
     return (
         <nav className='mobile-menu' style={menuStyle}>
             {!user ? (
@@ -32,23 +33,21 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                 </>
             ) : user && !user?.musicianProfile && !user.venueProfiles ? (
                 <>
-                    <Link className='link' to={'/find-a-gig'}>
-                        <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                            <MapIcon />
-                            Find a Gig
-                        </button>
+                    <Link className='link item no-margin' to={'/find-a-gig'}>
+                        Find a Gig
+                        <MapIcon />
                     </Link>
-                    <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(!noProfileModalClosable)}}>
-                        <GuitarsIcon />
+                    <button className={`btn inline item no-margin ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(!noProfileModalClosable)}}>
                         Create a Musician Profile
+                        <GuitarsIcon />
                     </button>
-                    <Link className='link' to={'/venues/add-venue'}>
-                        <button className='btn text'>
-                            I'm a Venue
-                        </button>
+                    <Link className='link item no-margin' to={'/venues/add-venue'}>
+                        I'm a Venue
+                        <VenueIconLight />
                     </Link>
-                    <button className='btn secondary logout' onClick={() => handleLogout()}>
+                    <button className='btn logout no-margin' onClick={handleLogout}>
                         Log Out
+                        <LogOutIcon />
                     </button>
                 </>
             ) : user && !user?.musicianProfile && user?.venueProfiles ? (
@@ -123,7 +122,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                         Settings
                         <SettingsIcon />
                     </Link>
-                    <button className='btn logout no-margin' onClick={handleLogout}>
+                    <button className='btn logout no-margin' onClick={handleLogout()}>
                         Log Out
                         <LogOutIcon />
                     </button>

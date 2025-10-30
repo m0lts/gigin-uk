@@ -1,3 +1,4 @@
+@import '../breakpoints.css';
 
 .window.musicians .top-bar {
     background-color: transparent;
@@ -161,6 +162,8 @@
     background-color: var(--gn-grey-400);
     margin: 5px 0;
 }
+
+/* OVERVIEW */
 
 .window.musicians .body.overview {
     display: grid;
@@ -562,6 +565,46 @@
     margin-top: 0.5rem;
 }
 
+@media (--bp-md) {
+    .window.musicians .body.overview {
+        display: block;
+    }
+
+    .window.musicians .body.overview .welcome-box {
+        padding:1rem 0.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .window.musicians .body.overview .welcome-box .title {
+        font-size: 2rem;
+    }
+    
+    .window.musicians .body.overview .welcome-box h2 {
+        margin: 0.5rem 0;
+        font-size: 1rem;
+    }
+    
+    .window.musicians .body.overview .welcome-box .btn {
+        margin-top: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+        gap:5px;
+    }
+    
+    .window.musicians .body.overview .welcome-box .btn .icon {
+        font-size: 1rem;
+    }
+    
+        
+    .window.musicians .body.overview .next-gig-container,
+    .window.musicians .body.overview .awaiting-response-container {
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+    }
+}
+
 
 /* GIGS */
 
@@ -756,6 +799,16 @@
 .window.musicians .body.gigs table tbody tr:hover {
     background-color: var(--gn-grey-300);
 }
+
+.window.musicians .body.gigs table .notification-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gn-orange);
+    margin-right: 6px;
+    vertical-align: middle;
+  }
 
 .window.musicians .body.gigs table .applied-profile-name .new-invite {
     border: 1px solid var(--gn-orange);
@@ -1555,6 +1608,12 @@
     align-items: center;
     justify-content: center;
     gap:5px;
+}
+
+@media (--bp-sm) {    
+    .window.musicians .body.bands .band-card {
+        max-width: 100%;
+    }
 }
 
 /* FINANCES */
