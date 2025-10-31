@@ -16,7 +16,8 @@ import { fetchTutorialVideos, getTutorialTitles } from '../../../services/storag
 export const WelcomeModal = ({
   setShowWelcomeModal,
   role,
-  revisiting = false
+  revisiting = false,
+  financesOnly = false
 }) => {
   const [videos, setVideos] = useState(null);
   const [activeTutorial, setActiveTutorial] = useState(null);
@@ -30,8 +31,14 @@ export const WelcomeModal = ({
       .then((map) => {
         if (!isMounted) return;
         setVideos(map);
-        const first = Object.keys(map)[0];
-        setActiveTutorial(first || null);
+
+        // ✅ If financesOnly, set the "Finances" tutorial directly
+        if (financesOnly && map['Finances']) {
+          setActiveTutorial('Finances');
+        } else {
+          const first = Object.keys(map)[0];
+          setActiveTutorial(first || null);
+        }
       })
       .catch((err) => {
         console.error('Failed to load tutorial videos:', err);
@@ -39,7 +46,7 @@ export const WelcomeModal = ({
     return () => {
       isMounted = false;
     };
-  }, [role]);
+  }, [role, financesOnly]);
 
   return (
     <div className='modal welcome' onClick={() => setShowWelcomeModal(false)}>
@@ -60,21 +67,30 @@ export const WelcomeModal = ({
         </div>
 
         <div className="modal-body">
-          <div
-            className="tabs"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0.5rem', marginBottom: '1rem' }}
-          >
-            {titles.map((title) => (
-              <button
-                key={title}
-                className={`btn tertiary ${activeTutorial === title ? 'active' : ''}`}
-                onClick={() => setActiveTutorial(title)}
-                disabled={!videos}
-              >
-                {title}
-              </button>
-            ))}
-          </div>
+          {/* ✅ Hide tab buttons if financesOnly */}
+          {!financesOnly && (
+            <div
+              className="tabs"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                gap: '0.5rem',
+                marginBottom: '1rem'
+              }}
+            >
+              {titles.map((title) => (
+                <button
+                  key={title}
+                  className={`btn tertiary ${activeTutorial === title ? 'active' : ''}`}
+                  onClick={() => setActiveTutorial(title)}
+                  disabled={!videos}
+                >
+                  {title}
+                </button>
+              ))}
+            </div>
+          )}
 
           {!videos || !activeTutorial ? (
             <div style={{ padding: '1rem' }}>Loading video…</div>

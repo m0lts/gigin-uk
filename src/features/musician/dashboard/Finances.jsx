@@ -20,6 +20,7 @@ import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { WelcomeModal } from '../components/WelcomeModal';
 
 function CountdownTimer({ targetDate }) {
     const [label, setLabel] = React.useState("");
@@ -71,6 +72,7 @@ export const Finances = ({ user, musicianProfile }) => {
     const [paymentSystemModal, setPaymentSystemModal] = useState(false);
     const [stripeSystemModal, setStripeSystemModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
     useEffect(() => {
         if (!connectedAccountId && musicianProfile?.stripeAccountId) {
@@ -430,6 +432,9 @@ export const Finances = ({ user, musicianProfile }) => {
                             <button className={`btn tertiary information-button`}  onClick={() => setShowDeleteModal(true)} disabled={deleting || musicianProfile.withdrawableEarnings > 0}>
                                 Delete Stripe Account
                             </button>
+                            <button className="btn tertiary" onClick={() => setShowWelcomeModal(true)}>
+                                View Tutorial
+                            </button>
                         </div>
                     )}
                     {musicianProfile.bankDetailsAdded && (
@@ -777,6 +782,17 @@ export const Finances = ({ user, musicianProfile }) => {
                     </Portal>
                 )}
             </div>
+            {showWelcomeModal && (
+              <Portal>
+                <WelcomeModal
+                  user={user}
+                  setShowWelcomeModal={setShowWelcomeModal}
+                  role='musician'
+                  revisiting={true}
+                  financesOnly={true}
+                />
+              </Portal>
+            )}
         </>
     );
 };

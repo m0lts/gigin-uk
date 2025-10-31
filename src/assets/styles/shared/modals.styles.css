@@ -85,6 +85,13 @@
     text-align: center;
 }
 
+@media (--bp-md) {
+    .modal-content.welcome {
+        min-width: 300px;
+        max-width: 350px;
+    }
+}
+
 .modal-header {
     margin-bottom: 1.5rem;
 }
