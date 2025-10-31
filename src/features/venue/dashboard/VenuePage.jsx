@@ -17,7 +17,7 @@ import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, Verifi
 import { MapSection } from '../components/MapSection';
 import { ensureProtocol } from '@services/utils/misc';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
-import { AddMember, DeleteGigIcon, EditIcon, LeftArrowIcon, SettingsIcon, ShareIcon, SpeakerIcon } from '../../shared/ui/extras/Icons';
+import { AddMember, BassIcon, DeleteGigIcon, EditIcon, LeftArrowIcon, SettingsIcon, ShareIcon, SpeakerIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '../../../services/utils/misc';
 import { deleteGigsBatch, getGigsByVenueId } from '../../../services/client-side/gigs';
 import { getReviewsByVenueId } from '../../../services/client-side/reviews';
@@ -168,7 +168,7 @@ export const VenuePage = ({ user, venues, setVenues }) => {
         } else if (input === 'Piano/Keyboard') {
             return <PianoIcon />
         } else if (input === 'Bass') {
-            return <PlugIcon />
+            return <BassIcon />
         } else {
             return <MicrophoneIcon />
         }

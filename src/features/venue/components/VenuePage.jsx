@@ -19,7 +19,7 @@ import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
-import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { AmpIcon, BassIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
@@ -190,7 +190,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         } else if (input === 'Piano/Keyboard') {
             return <PianoIcon />
         } else if (input === 'Bass') {
-            return <PlugIcon />
+            return <BassIcon />
         } else {
             return <MicrophoneIcon />
         }
