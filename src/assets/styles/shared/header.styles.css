@@ -305,6 +305,22 @@
     margin: 10px 0;
 }
 
+.mobile-menu .item.message div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width:100%;
+    gap:5px;
+    margin-right: 5px;
+}
+
+.mobile-menu .item.message .notification-dot {
+    background-color: var(--gn-orange);
+    width:8px;
+    height:8px;
+    border-radius: 50%;
+}
+
 .mobile-menu .name-and-email {
     cursor: auto;
     flex-direction: column;
