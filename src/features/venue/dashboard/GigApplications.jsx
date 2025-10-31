@@ -863,6 +863,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
+                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind === 'Ticketed Gig' || gigInfo.kind === 'Open Mic') && !applicant?.invited && (
+                                                        <div className='status-box'>
+                                                            <div className='status declined'>
+                                                                <ErrorIcon />
+                                                                Declined
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {status === 'payment processing' && (
                                                         <div className='status-box'>
                                                             <div className='status upcoming'>
