@@ -222,54 +222,51 @@ import { useBreakpoint } from '../../../hooks/useBreakpoint';
             )}
           </div>
         )}
-        {!isMdUp && (
+        {!isMdUp && profile?.tracks?.length > 0 && (
           <div className="musician-profile-gigs-and-tracks">
             <div className="musician-tracks">
+              <ul className="track-list">
+                {profile.tracks.map((track, idx) => {
+                  const trackKey = track?.id ?? track?.file ?? String(idx);
+                  const currentKey = currentTrack ? (currentTrack.id ?? currentTrack.file ?? String(idx)) : null;
+                  const isPlaying = currentTrack && (trackKey === (currentTrack.id ?? currentTrack.file));
 
-              {profile?.tracks?.length && (
-                <ul className="track-list">
-                  {profile.tracks.map((track, idx) => {
-                    const trackKey = track?.id ?? track?.file ?? String(idx);
-                    const currentKey = currentTrack ? (currentTrack.id ?? currentTrack.file ?? String(idx)) : null;
-                    const isPlaying = currentTrack && (trackKey === (currentTrack.id ?? currentTrack.file));
-
-                    if (isPlaying) {
-                      return (
-                        <li key={trackKey} className="track-item playing">
-                          <div className="track-info">
-                            <h4 className="now-playing">Now playing: {currentTrack.title}</h4>
-                            <button className="btn danger small" onClick={handleStopTrack}>Cancel</button>
-                          </div>
-                          <audio
-                            ref={audioRef}
-                            controls
-                            autoPlay
-                            src={currentTrack.file}
-                            onEnded={handleStopTrack}
-                          />
-                        </li>
-                      );
-                    }
-
+                  if (isPlaying) {
                     return (
-                      <li key={trackKey} className="track-item">
-                        <button
-                          type="button"
-                          className="btn icon"
-                          onClick={() => handlePlayTrack(track)}
-                          aria-label={`Play ${track?.title}`}
-                        >
-                          <PlayIcon />
-                        </button>
-                        <div className="track-details">
-                          <span className="track-name">{track?.title}</span>
-                          <p>{track?.date}</p>
+                      <li key={trackKey} className="track-item playing">
+                        <div className="track-info">
+                          <h4 className="now-playing">Now playing: {currentTrack.title}</h4>
+                          <button className="btn danger small" onClick={handleStopTrack}>Cancel</button>
                         </div>
+                        <audio
+                          ref={audioRef}
+                          controls
+                          autoPlay
+                          src={currentTrack.file}
+                          onEnded={handleStopTrack}
+                        />
                       </li>
                     );
-                  })}
-                </ul>
-              )}
+                  }
+
+                  return (
+                    <li key={trackKey} className="track-item">
+                      <button
+                        type="button"
+                        className="btn icon"
+                        onClick={() => handlePlayTrack(track)}
+                        aria-label={`Play ${track?.title}`}
+                      >
+                        <PlayIcon />
+                      </button>
+                      <div className="track-details">
+                        <span className="track-name">{track?.title}</span>
+                        <p>{track?.date}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           </div>
         )}
