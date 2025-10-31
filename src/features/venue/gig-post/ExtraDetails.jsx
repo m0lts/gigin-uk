@@ -8,19 +8,18 @@ export const GigExtraDetails = ({ formData, handleInputChange }) => {
     return (
       <>
         <div className='head'>
-          <h1 className='title'>Final Details</h1>
-          <p className='text'>Is there anything else you’d like the musicians to know?</p>
+          <h1 className='title'>Gig Description</h1>
+          <p className='text'>Describe the gig's vibe and any additional details.</p>
         </div>
   
         <div className='body extra-details'>
           <div className='input-group'>
-            <label htmlFor='technicalInformation' className="label">Any other technical notes?</label>
             <textarea
               name='technicalInformation'
               id='extraInformation'
               onChange={(e) => handleTechnicalInfoChange(e.target.value)}
               value={formData.technicalInformation}
-              placeholder='Add information about sound technician requirements or other technical points...'
+              placeholder='An intimate candlelit gig. We have a sound technician...'
               maxLength={250}
             ></textarea>
           </div>

@@ -88,11 +88,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         } else if (isMdUp) {
             setPadding('2.5%');
             setWidth('95%');
-        } else {
+        } else if (!isLgUp && !isMdUp) {
             setPadding('2.5%');
             setWidth('100%');
         }
-    }, [isSmUp]);
+    }, [isSmUp, isMdUp, isLgUp]);
 
     useMapbox({
         containerRef: mapContainerRef,
@@ -799,15 +799,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             )}
                                             <div className="detail-copy">
                                                 <span className="detail-title">
-                                                    {gigData.gigType}
-                                                </span>
-                                                <p className='detail-text'>
                                                     {gigData.gigType === 'Musician/Band' ? (
-                                                        'This gig is for a live musician/band rather than DJs'
+                                                        'Live Music'
                                                     ) : (
-                                                        'This gig is for a DJ rather than a live musician/band'
+                                                        'DJ'
                                                     )}
-                                                </p>
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="detail">
@@ -818,31 +815,24 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             )}
                                             <div className="detail-copy">
                                                 <span className="detail-title">
-                                                    Audience
-                                                </span>
-                                                <p className='detail-text'>
                                                 {(gigData.privacy === 'Public' || '') ? (
-                                                    'This gig is open to the public, rather than a private event'
+                                                    'Public Audience'
                                                 ) : (
-                                                    'This gig is a private event - not open to the public'
+                                                    'Private Audience'
                                                 )}
-                                                    
-                                                </p>
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="detail">
                                             <SpeakersIcon />
                                             <div className="detail-copy">
                                                 <span className="detail-title">
-                                                    Genres
-                                                </span>
-                                                <p className='detail-text'>
                                                     {gigData.genre !== '' ? (
-                                                        `The preferred genres for this gig are: ${formatGenres(gigData.genre)}`
+                                                        `${formatGenres(gigData.genre)}`
                                                     ) : (
-                                                        'There are no preferred genres for this gig'
+                                                        'Any Genre'
                                                     )}
-                                                </p>
+                                                </span>
                                                 <p className='detail-text'>
                                                     {gigData.extraInformation !== '' && (
                                                         gigData.extraInformation
@@ -850,6 +840,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </p>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div className='equipment'>
+                                        <h4 className="subtitle">Gig Description</h4>
+                                        <p className='detail-text'>
+                                            {gigData.technicalInformation !== '' && (
+                                                gigData.technicalInformation
+                                            )}
+                                        </p>    
                                     </div>
                                     <div className='timeline'>
                                         <h4 className='subtitle'>Gig Timeline</h4>
@@ -1184,15 +1182,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             )}
                                             <div className="detail-copy">
                                                 <span className="detail-title">
-                                                    {gigData.gigType}
-                                                </span>
-                                                <p className='detail-text'>
                                                     {gigData.gigType === 'Musician/Band' ? (
-                                                        'This gig is for a live musician/band rather than DJs'
+                                                        'Live Music'
                                                     ) : (
-                                                        'This gig is for a DJ rather than a live musician/band'
+                                                        'DJ'
                                                     )}
-                                                </p>
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="detail">
@@ -1203,31 +1198,24 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             )}
                                             <div className="detail-copy">
                                                 <span className="detail-title">
-                                                    Audience
-                                                </span>
-                                                <p className='detail-text'>
                                                 {(gigData.privacy === 'Public' || '') ? (
-                                                    'This gig is open to the public, rather than a private event'
+                                                    'Public Audience'
                                                 ) : (
-                                                    'This gig is a private event - not open to the public'
+                                                    'Private Audience'
                                                 )}
-                                                    
-                                                </p>
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="detail">
                                             <SpeakersIcon />
                                             <div className="detail-copy">
                                                 <span className="detail-title">
-                                                    Genres
-                                                </span>
-                                                <p className='detail-text'>
                                                     {gigData.genre !== '' ? (
-                                                        `The preferred genres for this gig are: ${formatGenres(gigData.genre)}`
+                                                        `${formatGenres(gigData.genre)}`
                                                     ) : (
-                                                        'There are no preferred genres for this gig'
+                                                        'Any Genre'
                                                     )}
-                                                </p>
+                                                </span>
                                                 <p className='detail-text'>
                                                     {gigData.extraInformation !== '' && (
                                                         gigData.extraInformation
@@ -1235,6 +1223,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </p>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                                <div className="section">
+                                    <div className='equipment'>
+                                        <h4 className="subtitle">Gig Description</h4>
+                                        <p className='detail-text'>
+                                            {gigData.technicalInformation !== '' && (
+                                                gigData.technicalInformation
+                                            )}
+                                        </p>    
                                     </div>
                                 </div>
                                 <div className="section">
