@@ -27,17 +27,18 @@
       "port": 4000
     }
   },
-  "hosting": {
-    "headers": [
-      {
-        "source": "**",
-        "headers": [
-          {
-            "key": "Permissions-Policy",
-            "value": "payment=(self \"https://js.stripe.com\")"
-          }
-        ]
-      }
-    ]
-  }
+  "hosting": [
+    {
+      "target": "prod",
+      "public": "dist",
+      "ignore": ["**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    },
+    {
+      "target": "dev",
+      "public": "dist",
+      "ignore": ["**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    }
+  ]
 }

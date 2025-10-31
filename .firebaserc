@@ -1,8 +1,24 @@
 {
   "projects": {
     "prod": "giginltd-16772",
-    "dev": "giginltd-dev"
+    "dev": "giginltd-dev",
+    "default": "giginltd-dev"
   },
-  "targets": {},
+  "targets": {
+    "giginltd-dev": {
+      "hosting": {
+        "dev": [
+          "giginltd-dev"
+        ]
+      }
+    },
+    "giginltd-16772": {
+      "hosting": {
+        "prod": [
+          "giginltd-16772"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

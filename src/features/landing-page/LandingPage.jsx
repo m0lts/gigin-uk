@@ -33,7 +33,7 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
         <div className={`landing-page ${user ? 'user' : ''}`}>
             <div className={`heading`}>
                 <div className='welcome-hero'>
-                    <h1>Welcome {user && 'back'} to</h1>
+                    <h1>Welcome {user && 'back'} tooooo</h1>
                     <TextLogoXL />
                 </div>
                 {isMdUp ? (
