@@ -9,7 +9,6 @@ import {
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { payoutToBankAccount, transferStripeFunds } from '@services/function-calls/payments';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatFeeDate } from '@services/utils/dates';
 import { toast } from 'sonner';

@@ -23,9 +23,6 @@ import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth';
 import { useState, useEffect } from 'react'
 import { listenToUserConversations } from '@services/client-side/conversations';
-import { useResizeEffect } from '@hooks/useResizeEffect';
-import { ProfileCreator } from '../profile-creator/ProfileCreator';
-import { NoProfileModal } from './NoProfileModal';
 import { CloseIcon, HamburgerMenuIcon } from '../../shared/ui/extras/Icons';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { MobileMenu } from '../../shared/components/MobileMenu';

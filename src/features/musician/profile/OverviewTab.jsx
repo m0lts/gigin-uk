@@ -13,27 +13,6 @@ import {
     SpotifyIcon,
     TwitterIcon,
     YoutubeIcon } from '@features/shared/ui/extras/Icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-    faGuitar,
-    faDrum,
-    faPiano,
-    faKeyboard,
-    faSaxophone,
-    faTrumpet,
-    faFlute,
-    faViolin,
-    faMicrophone,
-    faBanjo,
-    faMandolin,
-    faHeadphones,
-    faLaptop,
-    faMusic,
-    faTurntable,
-    faLightbulb
-} from '@fortawesome/pro-light-svg-icons';
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { EmptyIcon, PlayVideoIcon } from '../../shared/ui/extras/Icons';
 import { ensureProtocol } from '../../../services/utils/misc';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';

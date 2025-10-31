@@ -10,7 +10,6 @@ import {
     Legend,
 } from 'chart.js';
 import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { AllGigsIcon, CalendarIconSolid, ExclamationIcon, GigIcon, MailboxFullIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { NextGig } from '../components/NextGig';
 import { FeedbackSection } from './FeedbackSection';
@@ -28,16 +27,11 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
     const [nextGig, setNextGig] = useState(null);
     const [newApplicationsGigs, setNewApplicationsGigs] = useState([]);
     const [musiciansToReview, setMusiciansToReview] = useState([]);
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
     const [ratings, setRatings] = useState({});
     const [reviewTexts, setReviewTexts] = useState({});
     const [submittingReviews, setSubmittingReviews] = useState({});
     const [musicianRequests, setMusicianRequests] = useState([]);
     const [justReviewed, setJustReviewed] = useState(false);
-
-    useResizeEffect((width) => {
-        setWindowWidth(width);
-      });
 
     useEffect(() => {
         if (!gigs?.length) return;

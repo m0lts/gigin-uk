@@ -21,7 +21,6 @@ import { getOrCreateConversation } from '@services/function-calls/conversations'
 import { getMostRecentMessage } from '@services/client-side/messages';
 import { removeGigFromVenue } from '@services/client-side/venues';
 import { confirmGigPayment, fetchSavedCards } from '@services/function-calls/payments';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '../../../services/utils/misc';
 import { CloseIcon, LeftArrowIcon, NewTabIcon, PeopleGroupIconSolid, PermissionsIcon, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
@@ -61,7 +60,7 @@ const VideoModal = ({ video, onClose }) => {
 
 export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe, customerDetails }) => {
 
-    const {isMdUp} = useBreakpoint();
+    const {isMdUp, isLgUp} = useBreakpoint();
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -93,12 +92,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
     const venueName = location.state?.gig?.venue?.venueName || '';
-
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-    useResizeEffect((width) => {
-        setWindowWidth(width);
-      });
 
     useEffect(() => {
         if (!gigId || !gigs) return;
@@ -644,7 +637,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    {windowWidth > 880 && (
+                                    {isLgUp && (
                                         <th>Genre(s)</th>
                                     )}
                                     <th>Video</th>
@@ -667,7 +660,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                 )}
                                                 {profile.name}
                                             </td>
-                                            {windowWidth > 880 && (
+                                            {isLgUp && (
                                                 <td className='genres'>
                                                     {profile?.genres ? (
                                                         <>

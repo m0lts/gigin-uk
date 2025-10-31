@@ -10,7 +10,6 @@ import '@styles/host/venue-builder.styles.css'
 import { UploadingProfile } from './UploadingProfile';
 import { arrayUnion, arrayRemove, GeoPoint, deleteField } from 'firebase/firestore';
 import { createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { BuildingIcon, ErrorIcon, MobileIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
 import { uploadImageArrayWithFallback } from '../../../services/storage';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
@@ -28,7 +27,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     const { setUser } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const { isSmUp } = useBreakpoint();
+    const { isSmUp, isLgUp } = useBreakpoint();
     const { venue } = location.state || {};
     const [showErrorModal, setShowErrorModal] = useState(false);
 
@@ -54,11 +53,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             instagram: '',
         },
         primaryImageOffsetY: 0,
-    });
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-    useResizeEffect((width) => {
-        setWindowWidth(width);
     });
 
     useEffect(() => {
@@ -584,7 +578,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                             </button>
                     </aside>
                     <section className='right'>
-                        {windowWidth < 1000 && (
+                        {!isLgUp && (
                             <button className='btn secondary save-and-exit' onClick={handleSaveAndExit}>
                                 Save and Exit
                             </button>

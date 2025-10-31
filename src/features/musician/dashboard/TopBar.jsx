@@ -24,7 +24,6 @@ import { useAuth } from '@hooks/useAuth';
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { listenToUserConversations } from '@services/client-side/conversations';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CloseIcon, DashboardIconSolid, HamburgerMenuIcon } from '../../shared/ui/extras/Icons';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { MobileMenu } from '../../shared/components/MobileMenu';

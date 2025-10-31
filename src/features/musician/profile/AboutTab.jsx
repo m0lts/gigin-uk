@@ -32,8 +32,6 @@ import {
     faTurntable,
     faLightbulb
 } from '@fortawesome/pro-light-svg-icons';
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { EmptyIcon, NewTabIcon, QuestionCircleIcon } from '../../shared/ui/extras/Icons';
 import { useMapbox } from '../../../hooks/useMapbox';
 import { ensureProtocol, openInNewTab } from '../../../services/utils/misc';

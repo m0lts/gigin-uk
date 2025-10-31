@@ -9,7 +9,6 @@ import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
 import { deleteSavedCard } from '@services/function-calls/payments';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { CardIcon, CoinsIconSolid, DeleteGigIcon, HouseIconSolid, PeopleRoofIconSolid, PieChartIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';

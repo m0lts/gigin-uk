@@ -14,7 +14,6 @@ import {
     listenToUserConversations,
     updateConversationLastViewed,
 } from '@services/client-side/conversations';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { formatDate } from '@services/utils/dates';
 import { ArchiveIcon, InboxIcon, SaveIcon, SendMessageIcon } from '@features/shared/ui/extras/Icons';

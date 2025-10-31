@@ -25,7 +25,6 @@ import { MessagesLayout } from '@layouts/MessagesLayout';
 import { VenueDashboardLayout } from '@layouts/VenueDashboardLayout';
 import { Account } from '@features/account/Account';
 import { Testimonials } from '@features/musician/profile/TestimonialPage';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { VenuePage } from './features/venue/components/VenuePage';
 import { VerifyEmailModal } from './features/shared/components/VerifyEmailModal';
 import { auth } from "@lib/firebase";
@@ -50,16 +49,11 @@ export default function App() {
   const [authModal, setAuthModal] = useState(false);
   const [authType, setAuthType] = useState('login');
   const [authClosable, setAuthClosable] = useState(true);
-  const [isScreenTooSmall, setIsScreenTooSmall] = useState(false);
   const [verifyEmailModal, setVerifyEmailModal] = useState(false);
   const [verifyInfoModal, setVerifyInfoModal] = useState(false);
   const [noProfileModal, setNoProfileModal] = useState(false)
   const [noProfileModalClosable, setNoProfileModalClosable] = useState(false);
   const newUser =  sessionStorage.getItem('newUser');
-
-  useResizeEffect((width) => {
-    setIsScreenTooSmall(width < 768);
-  });
 
   useEffect(() => {
     if (location.pathname.includes('dashboard') || location.pathname.includes('venue-builder') || location.pathname.includes('create-profile')) {
@@ -123,16 +117,6 @@ export default function App() {
   if (loading) {
     return <LoadingScreen />;
   }
-
-  // if (isScreenTooSmall) {
-  //   return (
-  //     <div className='small-screen-message'>
-  //       <TextLogo />
-  //       <h1>Beta Mode</h1>
-  //       <p style={{ padding: '0 2rem', textAlign: 'center' }}>Gigin is in the beta testing phase and we don't support screen sizes smaller than 768px.</p>
-  //     </div>
-  //   );
-  // }
 
   return (
     <>

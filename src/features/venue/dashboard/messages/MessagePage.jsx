@@ -17,7 +17,6 @@ import {
 import { 
     markGigApplicantAsViewed,
 } from '@services/function-calls/conversations';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { ArchiveIcon, InboxIcon } from '@features/shared/ui/extras/Icons';
 import { updateConversationDocument } from '@services/function-calls/conversations';
@@ -61,7 +60,6 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const paramsConversationId = queryParams.get('conversationId');
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
     const [showArchived, setShowArchived] = useState(false);
     const [selectedVenueId, setSelectedVenueId] = useState('all');
     const [menuOpen, setMenuOpen] = useState(false);
@@ -69,9 +67,6 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     const [archiving, setArchiving] = useState(false);
     const menuRef = useRef();
 
-    useResizeEffect((width) => {
-        setWindowWidth(width);
-    });
 
     const conversationsToDisplay = useMemo(() => {
         return conversations.filter(conv => {

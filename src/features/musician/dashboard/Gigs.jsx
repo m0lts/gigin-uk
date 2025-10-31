@@ -10,7 +10,6 @@ import {
     RejectedIcon } from '@features/shared/ui/extras/Icons';
 import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { openInNewTab } from '../../../services/utils/misc';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, ExclamationIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SaveIcon, SavedIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
 import { getOrCreateConversation } from '@services/function-calls/conversations';
 import { getVenueProfileById } from '../../../services/client-side/venues';
@@ -31,7 +30,6 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
     const [showGigHandbook, setShowGigHandbook] = useState(false);
     const [gigForHandbook, setGigForHandbook] = useState(null);
     const [usersConfirmedGigs, setUsersConfirmedGigs] = useState([]);
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [openOptionsGigId, setOpenOptionsGigId] = useState(null);
     const [userCancelling, setUserCancelling] = useState(false);
@@ -40,8 +38,6 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
     const selectedProfile = searchParams.get('profile') || '';
     const selectedDate = searchParams.get('date') || '';
     const selectedStatus = searchParams.get('status') || 'all';
-
-    useResizeEffect((width) => setWindowWidth(width));
 
     useEffect(() => {
         const filterGigs = () => {

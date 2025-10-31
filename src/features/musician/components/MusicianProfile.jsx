@@ -8,7 +8,6 @@ import { getGigsByIds, } from '../../../services/client-side/gigs';
 import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
 import { Header as MusicianHeader } from '@features/musician/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
-import { useResizeEffect } from '@hooks/useResizeEffect';
 import { getOrCreateConversation } from '@services/function-calls/conversations';
 import { sendGigInvitationMessage } from '../../../services/client-side/messages';
 import { toast } from 'sonner';
@@ -41,7 +40,7 @@ const VideoModal = ({ video, onClose }) => {
 
 export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingOwnProfile = false, setShowPreview, user, setAuthModal, setAuthType, bandProfile = false, bandMembers, setBandMembers, musicianId, bandAdmin=false }) => {
     const { musicianId: routeMusicianId } = useParams();
-    const {isMdUp} = useBreakpoint();
+    const {isMdUp, isLgUp} = useBreakpoint();
     const [activeTab, setActiveTab] = useState('home');
     const [upcomingGigs, setUpcomingGigs] = useState([]);
     const [loadingGigs, setLoadingGigs] = useState(false);
@@ -60,13 +59,14 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
     const [selectedGig, setSelectedGig] = useState();
     const [inviting, setInviting] = useState(false);
 
-    useResizeEffect((width) => {
-        if (width > 1100) {
-          setPadding('15vw');
-        } else {
-          setPadding('1rem');
-        }
-      });
+
+    useEffect(() => {
+      if (isLgUp) {
+        setPadding('15vw');
+      } else {
+        setPadding('1rem');
+      }
+    }, [isLgUp])
 
 
     // Local state for fetched profile (when coming from public route)
