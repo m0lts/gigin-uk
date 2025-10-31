@@ -376,13 +376,19 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                 </td>
                                             </tr>
                                         )}
-                                        <tr onClick={
-                                            gigStatus?.text.toLowerCase() === 'confirmed'
-                                                ? () => openGigHandbook(gig)
-                                                : gig.privateApplications ?
-                                                (e) => openInNewTab(`${gig.privateApplicationsLink}`, e) :
-                                                (e) => openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile ? appliedProfile.profileId : null}`, e)
-                                        }
+                                        <tr 
+                                            onClick={(e) => {
+                                                if (gigStatus?.text.toLowerCase() === 'confirmed') {
+                                                    openGigHandbook(gig)
+                                                } else if (gig.privateApplications) {
+                                                    openInNewTab(`${gig.privateApplicationsLink}`, e)
+                                                } else {
+                                                    openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile ? appliedProfile.profileId : null}`, e)
+                                                };
+                                                if (isSmUp) {
+                                                    markInviteAsViewed(gig.gigId, applicant.id);
+                                                }
+                                            }}
                                             onMouseEnter={() => {
                                                 if (applicant?.invited && (!applicant?.viewed || applicant?.viewed == undefined)) {
                                                     markInviteAsViewed(gig.gigId, applicant.id);
@@ -401,9 +407,6 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             )}
                                             <td>
                                                 {!isSmUp && applicant?.invited && !applicant?.viewed && (
-                                                    <span className="notification-dot"></span>
-                                                )}
-                                                {!isSmUp && (
                                                     <span className="notification-dot"></span>
                                                 )}
                                                 {gig.startDateTime.toDate().toLocaleTimeString('en-GB', {

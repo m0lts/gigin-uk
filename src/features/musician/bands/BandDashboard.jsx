@@ -9,10 +9,12 @@ import { useMusicianDashboard } from '../../../context/MusicianDashboardContext'
 import { ProfileForm } from '../dashboard/profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
 import Portal from '../../shared/components/Portal';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const { refreshMusicianProfile, loading, setLoading } = useMusicianDashboard();
   const { bandId } = useParams();
+  const {isMdUp} = useBreakpoint();
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state;
@@ -84,80 +86,164 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
 
   return (
       <>
-        <div className="musician-profile-hero">
-          {bandProfile?.picture ? (
-              <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
-          ) : (
-              <div className="background-image empty">
-                  <NoImageIcon />
-                  <h4>No Band Image</h4>
-              </div>
-          )}
-            <div className="primary-information">
-                {bandProfile?.verified && (
-                    <div className="verified-tag">
-                        <VerifiedIcon />
-                        <p>Verified Band</p>
-                    </div>
-                )}
-                <h1 className="venue-name">
-                    {bandProfile?.name}
-                    <span className='orange-dot'>.</span>
-                </h1>
-                <div className="action-buttons">
-                  {bandAdmin ? (
-                    <>
-                      <button className="btn quaternary" onClick={() => {
-                          const next = !showPreview;
-                          setShowPreview(next);
-                          if (next) {
-                            navigate(location.pathname, { replace: true, state: null });
-                            setBandProfile(null);
-                            setBandMembers(null);
-                            loadBandFromProfiles();
-                          }
-                        }}
-                      >
-                        {showPreview ? (
-                          'Edit Profile'
-                        ) : (
-                          'View Profile'
-                        )}
-                      </button>
-                      {/* COLLAPSED HEADER (shown when NOT expanded) */}
-                      {isPrimaryOpen && !showPreview ? (
-                          <button
-                              className="btn quaternary"
-                              onClick={() => toggleSection('primary-information')}
-                              aria-expanded={false}
-                              aria-controls="primary-information-panel"
+          {isMdUp ? (
+            <div className="musician-profile-hero">
+              {bandProfile?.picture ? (
+                  <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
+              ) : (
+                  <div className="background-image empty">
+                      <NoImageIcon />
+                      <h4>No Band Image</h4>
+                  </div>
+              )}
+                <div className="primary-information">
+                    {bandProfile?.verified && (
+                        <div className="verified-tag">
+                            <VerifiedIcon />
+                            <p>Verified Band</p>
+                        </div>
+                    )}
+                    <h1 className="venue-name">
+                        {bandProfile?.name}
+                        <span className='orange-dot'>.</span>
+                    </h1>
+                    <div className="action-buttons">
+                      {bandAdmin ? (
+                        <>
+                          <button className="btn quaternary" onClick={() => {
+                              const next = !showPreview;
+                              setShowPreview(next);
+                              if (next) {
+                                navigate(location.pathname, { replace: true, state: null });
+                                setBandProfile(null);
+                                setBandMembers(null);
+                                loadBandFromProfiles();
+                              }
+                            }}
                           >
-                              Hide Name and Profile Picture
+                            {showPreview ? (
+                              'Edit Profile'
+                            ) : (
+                              'View Profile'
+                            )}
                           </button>
-                          ) : !showPreview &&(
+                          {/* COLLAPSED HEADER (shown when NOT expanded) */}
+                          {isPrimaryOpen && !showPreview ? (
                               <button
-                              className="btn quaternary"
-                              onClick={() => toggleSection('primary-information')}
-                              aria-expanded={false}
-                              aria-controls="primary-information-panel"
-                          >
-                              Edit Name and Profile Picture
+                                  className="btn quaternary"
+                                  onClick={() => toggleSection('primary-information')}
+                                  aria-expanded={false}
+                                  aria-controls="primary-information-panel"
+                              >
+                                  Hide Name and Profile Picture
+                              </button>
+                              ) : !showPreview &&(
+                                  <button
+                                  className="btn quaternary"
+                                  onClick={() => toggleSection('primary-information')}
+                                  aria-expanded={false}
+                                  aria-controls="primary-information-panel"
+                              >
+                                  Edit Name and Profile Picture
+                              </button>
+                              )}
+                          <button className="btn quaternary" onClick={() => setShowDeleteModal(true)}>
+                            Delete Band
                           </button>
-                          )}
-                      <button className="btn quaternary" onClick={() => setShowDeleteModal(true)}>
-                        Delete Band
-                      </button>
-                    </>
-                  ) : (
-                    <button className="btn quaternary" onClick={() => setShowLeaveModal(true)}>
-                      Leave Band
-                    </button>
-                  )}
+                        </>
+                      ) : (
+                        <button className="btn quaternary" onClick={() => setShowLeaveModal(true)}>
+                          Leave Band
+                        </button>
+                      )}
+                    </div>
                 </div>
             </div>
-        </div>
+          ) : (
+            <div className="musician-profile-hero">
+              {bandProfile?.picture ? (
+                  <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
+              ) : (
+                  <div className="background-image empty">
+                      <NoImageIcon />
+                      <h4>No Band Image</h4>
+                  </div>
+              )}
+                <div className="primary-information">
+                    <h1 className="venue-name">
+                        {bandProfile?.name}
+                        <span className='orange-dot'>.</span>
+                    </h1>
+                    <div className="action-buttons">
+                        <>
+                          
+                          {/* COLLAPSED HEADER (shown when NOT expanded) */}
+                          
+
+                        </>
+                    </div>
+                </div>
+            </div>
+          )}
         {!showPreview ? (
             <div className="body profile">
+                {!isMdUp && (
+                    <div className='top-section'>
+                        {bandProfile?.verified && (
+                            <div className="verified-tag">
+                                <VerifiedIcon />
+                                <h4>Verified Artist</h4>
+                            </div>
+                        )}
+                        {bandAdmin ? (
+                          <div className="action-buttons">
+                              <button className="btn secondary" onClick={() => {
+                                  const next = !showPreview;
+                                  setShowPreview(next);
+                                  if (next) {
+                                    navigate(location.pathname, { replace: true, state: null });
+                                    setBandProfile(null);
+                                    setBandMembers(null);
+                                    loadBandFromProfiles();
+                                  }
+                                }}
+                              >
+                                {showPreview ? (
+                                  'Edit Profile'
+                                ) : (
+                                  'View Profile'
+                                )}
+                              </button>
+                              {isPrimaryOpen ? (
+                              <button
+                                  className="btn secondary"
+                                  onClick={() => toggleSection('primary-information')}
+                                  aria-expanded={false}
+                                  aria-controls="primary-information-panel"
+                              >
+                                  Hide Name and Profile Picture
+                              </button>
+                              ) : (
+                                  <button
+                                  className="btn secondary"
+                                  onClick={() => toggleSection('primary-information')}
+                                  aria-expanded={false}
+                                  aria-controls="primary-information-panel"
+                              >
+                                  Edit Name and Profile Picture
+                              </button>
+                              )}
+                              <button className="btn secondary" onClick={() => setShowDeleteModal(true)}>
+                                Delete Band
+                              </button>
+                          </div>
+                        ) : (
+                          <button className="btn secondary" onClick={() => setShowLeaveModal(true)}>
+                            Leave Band
+                          </button>
+                        )}
+                    </div>
+                  )}
                 <ProfileForm
                     user={user}
                     musicianProfile={bandProfile}
@@ -170,6 +256,44 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
             </div>
         ) : (
             <div className="body profile-preview">
+                  {!isMdUp && (
+                    <div className='top-section'>
+                        {bandProfile?.verified && (
+                            <div className="verified-tag">
+                                <VerifiedIcon />
+                                <h4>Verified Artist</h4>
+                            </div>
+                        )}
+                        {bandAdmin ? (
+                          <div className="action-buttons">
+                              <button className="btn secondary" onClick={() => {
+                                  const next = !showPreview;
+                                  setShowPreview(next);
+                                  if (next) {
+                                    navigate(location.pathname, { replace: true, state: null });
+                                    setBandProfile(null);
+                                    setBandMembers(null);
+                                    loadBandFromProfiles();
+                                  }
+                                }}
+                              >
+                                {showPreview ? (
+                                  'Edit Profile'
+                                ) : (
+                                  'View Profile'
+                                )}
+                              </button>
+                              <button className="btn secondary" onClick={() => setShowDeleteModal(true)}>
+                                Delete Band
+                              </button>
+                          </div>
+                        ) : (
+                          <button className="btn secondary" onClick={() => setShowLeaveModal(true)}>
+                            Leave Band
+                          </button>
+                        )}
+                    </div>
+                  )}
                 <MusicianProfile
                     musicianProfile={bandProfile}
                     viewingOwnProfile={true}

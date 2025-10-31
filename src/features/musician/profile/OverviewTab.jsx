@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo} from 'react';
 import { 
     BackgroundMusicIcon,
     ClubIcon,
@@ -36,9 +36,10 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useResizeEffect } from '@hooks/useResizeEffect';
 import { EmptyIcon, PlayVideoIcon } from '../../shared/ui/extras/Icons';
 import { ensureProtocol } from '../../../services/utils/misc';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
   
-  export const OverviewTab = ({ musicianData, viewingOwnProfile, setShowPreview, videoToPlay, setVideoToPlay, bandAdmin, setCurrentTrack }) => {
-  
+  export const OverviewTab = ({ musicianData, viewingOwnProfile, setShowPreview, videoToPlay, setVideoToPlay, bandAdmin, setCurrentTrack, currentTrack, audioRef, profile, handleStopTrack, handlePlayTrack }) => {
+    const {isMdUp} = useBreakpoint();
     const media = useMemo(() => {
       const imgs = (musicianData?.photos ?? []).map((src, i) => ({
         id: `img-${i}-${src}`,
@@ -58,14 +59,10 @@ import { ensureProtocol } from '../../../services/utils/misc';
         ? merged.sort((a, b) => (new Date(b.date || 0)) - (new Date(a.date || 0)))
         : merged;
     }, [musicianData]);
-
-    const handlePlayTrack = (track) => {
-      setCurrentTrack(track);
-    };
   
     return (
       <div className="musician-profile-home">
-        {(musicianData?.bio || musicianData?.videos?.length || musicianData?.tracks?.length) && (
+        {(musicianData?.bio || musicianData?.videos?.length || musicianData?.tracks?.length) && isMdUp && (
           <div className="musician-profile-bio-buttons-container">
             {!!musicianData?.videos?.length ? (
               <figure className="showcase-video">
@@ -142,6 +139,137 @@ import { ensureProtocol } from '../../../services/utils/misc';
                     </a>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+        {(musicianData?.bio || musicianData?.videos?.length || musicianData?.tracks?.length) && !isMdUp && (
+          <div className="musician-profile-bio-buttons-container">
+            <div className="artist-details">
+              {!!musicianData?.bio?.text ? (
+                <p className='bio-text'>{musicianData.bio.text}</p>
+              ) : (
+                <div className="empty-container">
+                  <EmptyIcon />
+                  <p>No Artist Bio</p>
+                  {viewingOwnProfile && (
+                    <button className="btn tertiary" onClick={() => setShowPreview(false)}>
+                      Add Bio
+                    </button>
+                  )}
+              </div>
+              )}
+              <div className="interactive-buttons">
+                {!!musicianData?.tracks?.length && (
+                  <button
+                    className="btn icon orange"
+                    onClick={() => handlePlayTrack(musicianData.tracks[0])}
+                  >
+                    <PlayIcon />
+                  </button>
+                )}
+                {musicianData?.socialMedia?.facebook && (
+                    <a href={ensureProtocol(musicianData?.socialMedia?.facebook)} target='_blank' rel='noreferrer' className='btn icon'>
+                        <FacebookIcon />
+                    </a>
+                )}
+                {musicianData?.socialMedia?.instagram && (
+                    <a href={ensureProtocol(musicianData?.socialMedia?.instagram)} target='_blank' rel='noreferrer' className='btn icon'>
+                        <InstagramIcon />
+                    </a>
+                )}
+                {musicianData?.socialMedia?.twitter && (
+                    <a href={ensureProtocol(musicianData?.socialMedia?.twitter)} target='_blank' rel='noreferrer' className='btn icon'>
+                        <TwitterIcon />
+                    </a>
+                )}
+                {musicianData?.socialMedia?.spotify && (
+                    <a href={ensureProtocol(musicianData?.socialMedia?.spotify)} target='_blank' rel='noreferrer' className='btn icon'>
+                        <SpotifyIcon />
+                    </a>
+                )}
+                {musicianData?.socialMedia?.soundcloud && (
+                    <a href={ensureProtocol(musicianData?.socialMedia?.soundcloud)} target='_blank' rel='noreferrer' className='btn icon'>
+                        <SoundcloudIcon />
+                    </a>
+                )}
+                {musicianData?.socialMedia?.youtube && (
+                    <a href={ensureProtocol(musicianData?.socialMedia?.youtube)} target='_blank' rel='noreferrer' className='btn icon'>
+                        <YoutubeIcon />
+                    </a>
+                )}
+              </div>
+            </div>
+            {!!musicianData?.videos?.length ? (
+              <figure className="showcase-video">
+                <img src={musicianData.videos[0].thumbnail} alt={musicianData.videos[0].title} />
+                <button
+                  className="btn icon"
+                  onClick={() => setVideoToPlay(musicianData.videos[0])}
+                >
+                  <PlayIcon />
+                </button>
+              </figure>
+            ) : (
+              <div className="showcase-video empty-container">
+                <EmptyIcon />
+                <h4>No Video Uploaded</h4>
+                {viewingOwnProfile && (
+                  <button className="btn tertiary" onClick={() => setShowPreview(false)}>
+                    Add Videos
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {!isMdUp && (
+          <div className="musician-profile-gigs-and-tracks">
+            <div className="musician-tracks">
+
+              {profile?.tracks?.length && (
+                <ul className="track-list">
+                  {profile.tracks.map((track, idx) => {
+                    const trackKey = track?.id ?? track?.file ?? String(idx);
+                    const currentKey = currentTrack ? (currentTrack.id ?? currentTrack.file ?? String(idx)) : null;
+                    const isPlaying = currentTrack && (trackKey === (currentTrack.id ?? currentTrack.file));
+
+                    if (isPlaying) {
+                      return (
+                        <li key={trackKey} className="track-item playing">
+                          <div className="track-info">
+                            <h4 className="now-playing">Now playing: {currentTrack.title}</h4>
+                            <button className="btn danger small" onClick={handleStopTrack}>Cancel</button>
+                          </div>
+                          <audio
+                            ref={audioRef}
+                            controls
+                            autoPlay
+                            src={currentTrack.file}
+                            onEnded={handleStopTrack}
+                          />
+                        </li>
+                      );
+                    }
+
+                    return (
+                      <li key={trackKey} className="track-item">
+                        <button
+                          type="button"
+                          className="btn icon"
+                          onClick={() => handlePlayTrack(track)}
+                          aria-label={`Play ${track?.title}`}
+                        >
+                          <PlayIcon />
+                        </button>
+                        <div className="track-details">
+                          <span className="track-name">{track?.title}</span>
+                          <p>{track?.date}</p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
         )}

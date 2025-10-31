@@ -22,6 +22,7 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { updateUserArrayField } from '../../../services/function-calls/users';
 import { inviteToGig } from '../../../services/function-calls/gigs';
 import { fetchMyVenueMembership } from '../../../services/client-side/venues';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 
 const VideoModal = ({ video, onClose }) => {
@@ -40,6 +41,7 @@ const VideoModal = ({ video, onClose }) => {
 
 export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingOwnProfile = false, setShowPreview, user, setAuthModal, setAuthType, bandProfile = false, bandMembers, setBandMembers, musicianId, bandAdmin=false }) => {
     const { musicianId: routeMusicianId } = useParams();
+    const {isMdUp} = useBreakpoint();
     const [activeTab, setActiveTab] = useState('home');
     const [upcomingGigs, setUpcomingGigs] = useState([]);
     const [loadingGigs, setLoadingGigs] = useState(false);
@@ -182,7 +184,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
     const renderActiveTabContent = () => {
         switch (activeTab) {
             case 'home':
-                return <OverviewTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} videoToPlay={videoToPlay} setVideoToPlay={setVideoToPlay} bandAdmin={bandAdmin} setCurrentTrack={setCurrentTrack} />; 
+                return <OverviewTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} videoToPlay={videoToPlay} setVideoToPlay={setVideoToPlay} bandAdmin={bandAdmin} setCurrentTrack={setCurrentTrack} currentTrack={currentTrack} audioRef={audioRef} handlePlayTrack={handlePlayTrack} handleStopTrack={handleStopTrack} profile={profile} />; 
             case 'tech-info':
                 return <AboutTab musicianData={profile} viewingOwnProfile={viewingOwnProfile} setShowPreview={setShowPreview} bandAdmin={bandAdmin} />;
             default:
@@ -352,63 +354,123 @@ return (
                     setAuthType={setAuthType}
                 />
             )}
-            <div className={`musician-profile-hero ${padding === '15vw' ? 'large-padding' : 'normal-padding'}`}>
-                {profile?.picture ? (
-                    <img src={profile?.picture} alt={profile.name} className='background-image' />
-                ) : (
-                    <div className="background-image empty">
-                        <NoImageIcon />
-                        <h4>No Artist Image</h4>
-                    </div>
-                )}
-                <div className="primary-information">
-                    {profile?.verified && (
-                    <div className="verified-tag">
-                        <VerifiedIcon />
-                        <p>Verified Artist</p>
-                    </div>
-                    )}
-                    <h1 className="venue-name">
-                      {profile?.name}
-                      <span className="orange-dot">.</span>
-                    </h1>
-                    {user.venueProfiles && user.venueProfiles.length > 0 && (
-                      <div className="action-buttons">
-                        <button
-                            className="btn quaternary"
-                            onClick={() => handleInviteMusician()}
-                        >
-                            Invite to Gig
-                        </button>
-                        {!musicianSaved ? (
-                            <button className='btn quaternary' onClick={handleSaveMusician}>
-                                {savingMusician ? (
-                                    <LoadingSpinner width={10} height={10} />
-                                ) : (
-                                    <>
-                                        Save
-                                    </>
-                                )}
-                            </button>
-                        ) : (
-                            <button className='btn quaternary' onClick={handleUnsaveMusician}>
-                                {savingMusician ? (
-                                    <LoadingSpinner width={10} height={10} />
-                                ) : (
-                                    <>
-                                        Unsave
-                                    </>
-                                )}
-                            </button>   
-                        )}
+            {isMdUp ? (
+              <div className={`musician-profile-hero ${padding === '15vw' ? 'large-padding' : 'normal-padding'}`}>
+                  {profile?.picture ? (
+                      <img src={profile?.picture} alt={profile.name} className='background-image' />
+                  ) : (
+                      <div className="background-image empty">
+                          <NoImageIcon />
+                          <h4>No Artist Image</h4>
                       </div>
-                    )}
-                </div>
-            </div>
+                  )}
+                  <div className="primary-information">
+                      {profile?.verified && (
+                      <div className="verified-tag">
+                          <VerifiedIcon />
+                          <p>Verified Artist</p>
+                      </div>
+                      )}
+                      <h1 className="venue-name">
+                        {profile?.name}
+                        <span className="orange-dot">.</span>
+                      </h1>
+                      {user.venueProfiles && user.venueProfiles.length > 0 && (
+                        <div className="action-buttons">
+                          <button
+                              className="btn quaternary"
+                              onClick={() => handleInviteMusician()}
+                          >
+                              Invite to Gig
+                          </button>
+                          {!musicianSaved ? (
+                              <button className='btn quaternary' onClick={handleSaveMusician}>
+                                  {savingMusician ? (
+                                      <LoadingSpinner width={10} height={10} />
+                                  ) : (
+                                      <>
+                                          Save
+                                      </>
+                                  )}
+                              </button>
+                          ) : (
+                              <button className='btn quaternary' onClick={handleUnsaveMusician}>
+                                  {savingMusician ? (
+                                      <LoadingSpinner width={10} height={10} />
+                                  ) : (
+                                      <>
+                                          Unsave
+                                      </>
+                                  )}
+                              </button>   
+                          )}
+                        </div>
+                      )}
+                  </div>
+              </div>
+            ) : (
+              <div className={`musician-profile-hero`}>
+                  {profile?.picture ? (
+                      <img src={profile?.picture} alt={profile.name} className='background-image' />
+                  ) : (
+                      <div className="background-image empty">
+                          <NoImageIcon />
+                          <h4>No Artist Image</h4>
+                      </div>
+                  )}
+                  <div className="primary-information">
+                      <h1 className="venue-name">
+                        {profile?.name}
+                        <span className="orange-dot">.</span>
+                      </h1>
+                  </div>
+              </div>
+            )}
         </>
       )}
 
-      <div className="musician-profile-body" style={{ padding: `0 ${!viewingOwnProfile ? padding : '0 !important'}` }}>
+      <div className={`musician-profile-body ${!isMdUp && 'mobile'} ${!viewingOwnProfile && 'third-party-viewer'}`} style={{ padding: `0 ${!viewingOwnProfile ? padding : '0 !important'}` }}>
+        {!isMdUp && !viewingOwnProfile && (
+          <div className="top-section">
+            {profile?.verified && (
+              <div className="verified-tag">
+                <VerifiedIcon />
+                <h4>Verified Artist</h4>
+              </div>
+            )}
+            {user?.venueProfiles && user?.venueProfiles?.length > 0 && (
+              <div className="action-buttons">
+                <button
+                    className="btn secondary"
+                    onClick={() => handleInviteMusician()}
+                >
+                    Invite to Gig
+                </button>
+                {!musicianSaved ? (
+                    <button className='btn secondary' onClick={handleSaveMusician}>
+                        {savingMusician ? (
+                            <LoadingSpinner width={15} height={15} />
+                        ) : (
+                            <>
+                                Save
+                            </>
+                        )}
+                    </button>
+                ) : (
+                    <button className='btn secondary' onClick={handleUnsaveMusician}>
+                        {savingMusician ? (
+                            <LoadingSpinner width={15} height={15} />
+                        ) : (
+                            <>
+                                Unsave
+                            </>
+                        )}
+                    </button>   
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <div className="musician-profile-information-container">
           <div className="musician-profile-information">
             <nav
@@ -433,58 +495,61 @@ return (
           </div>
         </div>
 
-        <div className="musician-profile-gigs-and-tracks">
-              {currentTrack && (
-                <div className="track-player">
-                  <div className="track-info">
-                    <h4>Now playing: {currentTrack.title}</h4>
-                    <button className="btn text" onClick={handleStopTrack}>
-                      Close
-                    </button>
-                  </div>
-                  <audio
-                    ref={audioRef}
-                    controls
-                    autoPlay
-                    src={currentTrack.file}
-                    onEnded={handleStopTrack}
-                    />
-                </div>
-              )}
-            <div className="musician-tracks">
-              <h3>Tracks</h3>
-              {profile?.tracks?.length ? (
-                <ul className="track-list">
-                  {profile.tracks.map((track) => (
-                    <li key={track?.id || track?.file} className="track-item">
-                      <button
-                        type="button"
-                        className="btn icon"
-                        onClick={() => handlePlayTrack(track)}
-                        aria-label={`Play ${track?.title}`}
-                      >
-                        <PlayIcon />
+        {isMdUp && (
+          <div className="musician-profile-gigs-and-tracks">
+                {currentTrack && (
+                  <div className="track-player">
+                    <div className="track-info">
+                      <h4>Now playing: {currentTrack.title}</h4>
+                      <button className="btn text" onClick={handleStopTrack}>
+                        Close
                       </button>
-                      <div className="track-details">
-                        <span className="track-name">{track?.title}</span>
-                        <p>{track?.date}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="empty-container">
-                  <EmptyIcon />
-                  <h4>No Tracks Uploaded</h4>
-                  {viewingOwnProfile && (
-                    <button className="btn tertiary" onClick={() => setShowPreview(false)}>
-                      Add Tracks
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-        </div>
+                    </div>
+                    <audio
+                      ref={audioRef}
+                      controls
+                      autoPlay
+                      src={currentTrack.file}
+                      onEnded={handleStopTrack}
+                      />
+                  </div>
+                )}
+              <div className="musician-tracks">
+                <h3>Tracks</h3>
+                {profile?.tracks?.length ? (
+                  <ul className="track-list">
+                    {profile.tracks.map((track) => (
+                      <li key={track?.id || track?.file} className="track-item">
+                        <button
+                          type="button"
+                          className="btn icon"
+                          onClick={() => handlePlayTrack(track)}
+                          aria-label={`Play ${track?.title}`}
+                        >
+                          <PlayIcon />
+                        </button>
+                        <div className="track-details">
+                          <span className="track-name">{track?.title}</span>
+                          <p>{track?.date}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="empty-container">
+                    <EmptyIcon />
+                    <h4>No Tracks Uploaded</h4>
+                    {viewingOwnProfile && (
+                      <button className="btn tertiary" onClick={() => setShowPreview(false)}>
+                        Add Tracks
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+          </div>
+
+        )}
       </div>
 
       {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}

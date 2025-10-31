@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@styles/musician/musician-profile.styles.css'
-import { BackgroundMusicIcon, CameraIcon, DownChevronIcon, EditIcon, ErrorIcon, FacebookIcon, InstagramIcon, MediaIcon, MicrophoneIconSolid, MicrophoneLinesIcon, MoreInformationIcon, Mp3Icon, Mp4Icon, MusicianIconSolid, PeopleGroupIconSolid, ProfileIconSolid, SocialMediaIcon, SoundcloudIcon, SpotifyIcon, StarIcon, TickIcon, TwitterIcon, UpChevronIcon, VideoIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
+import { BackgroundMusicIcon, CameraIcon, CloseIcon, DownChevronIcon, EditIcon, ErrorIcon, FacebookIcon, InstagramIcon, MediaIcon, MicrophoneIconSolid, MicrophoneLinesIcon, MoreInformationIcon, Mp3Icon, Mp4Icon, MusicianIconSolid, PeopleGroupIconSolid, ProfileIconSolid, SocialMediaIcon, SoundcloudIcon, SpotifyIcon, StarIcon, TickIcon, TwitterIcon, UpChevronIcon, VideoIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
 import { v4 as uuidv4 } from 'uuid';
 import { createMusicianProfile } from '@services/client-side/musicians';
 import { uploadProfilePicture, uploadTracks, uploadVideosWithThumbnails } from '@services/storage';
@@ -14,13 +14,14 @@ import { LoadingModal } from '../../../shared/ui/loading/LoadingModal';
 import { updateBandMemberImg } from '../../../../services/function-calls/bands';
 import { updateUserArrayField } from '../../../../services/function-calls/users';
 import { useNavigate } from 'react-router-dom';
+import { useBreakpoint } from '../../../../hooks/useBreakpoint';
 
 
 const VideoModal = ({ video, onClose }) => {
     return (
         <div className='modal' onClick={onClose}>
             <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-                <span className='close' onClick={onClose}>&times;</span>
+                <button className='btn close' onClick={onClose}>&times;</button>
                 <video className='video' controls autoPlay>
                     <source src={typeof video.url === 'string' ? video.url : URL.createObjectURL(video.url)} type='video/mp4' />
                     Your browser does not support the video tag.
@@ -177,6 +178,7 @@ const equipmentMapping = {
 
 export const ProfileForm = ({ user, musicianProfile, band = false, expand, setShowPreview, bandAdmin = true }) => {
     const { setMusicianProfile, refreshSingleBand } = useMusicianDashboard();
+    const {isMdUp} = useBreakpoint();
     const sessionUploadsRef = useRef({
         videos: new Set(),
         thumbs: new Set(),
@@ -944,78 +946,78 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
                                             <div className='upload-item-top'>
                                                 {upload.url ? (
                                                     <>
-                                                    <div className='upload-item-meta'>
-                                                        {upload.thumbnail ? (
-                                                            <img
-                                                                className="media-preview"
-                                                                src={upload.thumbnail}
-                                                                alt={upload.title}
-                                                                onClick={() => openModal(index)}
-                                                            />
-                                                        ) : (
-                                                            <div className="media-preview no-preview" onClick={() => openModal(index)}>
-                                                                <Mp4Icon />
-                                                            </div>
-                                                        )}
-                        
-                                                        {/* Editable fields */}
-                                                        <div className="editable-meta-container">
-                                                            <div className='editable-meta'>
-                                                                <input
-                                                                    name='title'
-                                                                    id='title'
-                                                                    type="text"
-                                                                    placeholder='Title this video...'
-                                                                    value={
-                                                                        formData.videos?.[index]?.title || ''
-                                                                    }
-                                                                    onChange={(e) =>
-                                                                        handleMediaMetaChange('videos', index, 'title', e.target.value)
-                                                                    }
+                                                        <div className='upload-item-meta'>
+                                                            {upload.thumbnail ? (
+                                                                <img
+                                                                    className="media-preview"
+                                                                    src={upload.thumbnail}
+                                                                    alt={upload.title}
+                                                                    onClick={() => openModal(index)}
                                                                 />
-                                                                <EditIcon />
-                                                            </div>
+                                                            ) : (
+                                                                <div className="media-preview no-preview" onClick={() => openModal(index)}>
+                                                                    <Mp4Icon />
+                                                                </div>
+                                                            )}
                             
-                                                            <div className='editable-meta'>
-                                                                <input
-                                                                    name='date'
-                                                                    id='date'
-                                                                    type="date"
-                                                                    value={
-                                                                        formData.videos?.[index]?.date || ''
-                                                                    }
-                                                                    onChange={(e) =>
-                                                                        handleMediaMetaChange('videos', index, 'date', e.target.value)
-                                                                    }
-                                                                />
-                                                                <EditIcon />
+                                                            {/* Editable fields */}
+                                                            <div className="editable-meta-container">
+                                                                <div className='editable-meta'>
+                                                                    <input
+                                                                        name='title'
+                                                                        id='title'
+                                                                        type="text"
+                                                                        placeholder='Title this video...'
+                                                                        value={
+                                                                            formData.videos?.[index]?.title || ''
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            handleMediaMetaChange('videos', index, 'title', e.target.value)
+                                                                        }
+                                                                    />
+                                                                    <EditIcon />
+                                                                </div>
+                                
+                                                                <div className='editable-meta'>
+                                                                    <input
+                                                                        name='date'
+                                                                        id='date'
+                                                                        type="date"
+                                                                        value={
+                                                                            formData.videos?.[index]?.date || ''
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            handleMediaMetaChange('videos', index, 'date', e.target.value)
+                                                                        }
+                                                                    />
+                                                                    <EditIcon />
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className='media-buttons'>
-                                                        <button
-                                                        className={`btn showcase ${index === 0 ? 'active' : ''}`}
-                                                        onClick={() => handleSetShowcaseVideo(index)}
-                                                        >
-                                                            {index === 0 && (
+                                                        <div className='media-buttons'>
+                                                            <button
+                                                            className={`btn showcase ${index === 0 ? 'active' : ''}`}
+                                                            onClick={() => handleSetShowcaseVideo(index)}
+                                                            >
+                                                                {index === 0 && isMdUp && (
                                                                     <StarIcon />
-                                                            )}
-                                                            {index === 0 ? 'Showcase Video' : 'Set Showcase'}
-                                                        </button>
-                                                        <button
-                                                            className="btn danger small"
-                                                            onClick={() =>
-                                                                handleRemoveVideo(
-                                                                    index,
-                                                                    upload.url,
-                                                                    formData.videos?.find((v) => v.title === upload.title)?.thumbnail,
-                                                                    upload.title
-                                                                )
-                                                            }
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    </div>
+                                                                )}
+                                                                {index === 0 ? 'Showcase Video' : 'Set Showcase'}
+                                                            </button>
+                                                            <button
+                                                                className="btn danger small"
+                                                                onClick={() =>
+                                                                    handleRemoveVideo(
+                                                                        index,
+                                                                        upload.url,
+                                                                        formData.videos?.find((v) => v.title === upload.title)?.thumbnail,
+                                                                        upload.title
+                                                                    )
+                                                                }
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
                                                     </>
                                                 ) : (
                                                     <div className='processing'>
@@ -1066,54 +1068,66 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
         
                             <div className="upload-progress-list">
                                 {trackUploads.map((upload, index) => (
-                                <div key={index} className="upload-item">
+                                <div key={index} className="upload-item track">
                                     {upload.progress === 100 ? (
                                     <>
                                         <div className="upload-item-top">
-                                        <div className="upload-item-meta">
-                                            <div className="media-preview no-preview">
-                                                <Mp3Icon />
+                                            <div className="upload-item-meta">
+                                                <div className="media-preview no-preview">
+                                                    <Mp3Icon />
+                                                </div>
+                                                <div className="editable-meta-container">
+                                                    <div className="editable-meta">
+                                                        <input
+                                                        name="title"
+                                                        id="track-title"
+                                                        type="text"
+                                                        placeholder="Title this track..."
+                                                        value={formData.tracks?.[index]?.title || ''}
+                                                        onChange={(e) =>
+                                                            handleMediaMetaChange('tracks', index, 'title', e.target.value)
+                                                        }
+                                                        />
+                                                        <EditIcon />
+                                                    </div>
+                
+                                                    <div className="editable-meta">
+                                                        <input
+                                                        name="date"
+                                                        id="track-date"
+                                                        type="date"
+                                                        value={formData.tracks?.[index]?.date || ''}
+                                                        onChange={(e) =>
+                                                            handleMediaMetaChange('tracks', index, 'date', e.target.value)
+                                                        }
+                                                        />
+                                                        <EditIcon />
+                                                    </div>
+                                                </div>
+                                                {!isMdUp && (
+                                                    <button
+                                                        className="btn danger small"
+                                                        onClick={() =>
+                                                        handleRemoveTrack(index, upload.url, upload.title)
+                                                        }
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
                                             </div>
-                                            <div className="editable-meta-container">
-                                            <div className="editable-meta">
-                                                <input
-                                                name="title"
-                                                id="track-title"
-                                                type="text"
-                                                placeholder="Title this track..."
-                                                value={formData.tracks?.[index]?.title || ''}
-                                                onChange={(e) =>
-                                                    handleMediaMetaChange('tracks', index, 'title', e.target.value)
-                                                }
-                                                />
-                                                <EditIcon />
-                                            </div>
-        
-                                            <div className="editable-meta">
-                                                <input
-                                                name="date"
-                                                id="track-date"
-                                                type="date"
-                                                value={formData.tracks?.[index]?.date || ''}
-                                                onChange={(e) =>
-                                                    handleMediaMetaChange('tracks', index, 'date', e.target.value)
-                                                }
-                                                />
-                                                <EditIcon />
-                                            </div>
-                                            </div>
-                                        </div>
         
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem'}}>
                                                 <audio className="track-preview" src={upload.url} controls />
-                                                <button
-                                                    className="btn danger"
-                                                    onClick={() =>
-                                                    handleRemoveTrack(index, upload.url, upload.title)
-                                                    }
-                                                >
-                                                    Remove
-                                                </button>
+                                                {isMdUp && (
+                                                    <button
+                                                        className="btn danger small"
+                                                        onClick={() =>
+                                                        handleRemoveTrack(index, upload.url, upload.title)
+                                                        }
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
         

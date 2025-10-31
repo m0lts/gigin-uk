@@ -35,7 +35,9 @@
 
 @media (--bp-md) {
     .modal-content {
+        max-width: 350px;
         min-width: 300px;
+        width:95vw;
         padding: 1rem;
         padding-top: 2rem;
         padding-bottom: 2rem;
@@ -93,6 +95,16 @@
 
 .modal-header h2 {
     margin: 0.25rem 0;
+}
+
+@media (--bp-md) {
+    .modal-header .icon {
+        font-size: 1.25rem;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.25rem;
+    }
 }
 
 .modal-header p {
@@ -453,6 +465,23 @@
 .modal.invite-musician .gig-selection .card.disabled {
     opacity: 0.5;
     pointer-events: none;
+}
+
+@media (--bp-md) {
+    
+    .modal.invite-musician .modal-header {
+        padding: 0 0.5rem;
+    }
+    
+    .modal.invite-musician .modal-header-text h2,
+    .modal.invite-musician .modal-header-text .icon {
+        font-size: 1.25rem;
+    }
+    
+    .modal.invite-musician .gig-selection .card .sub-text {
+        text-align: right;
+    }
+
 }
 
 

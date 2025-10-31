@@ -63,6 +63,10 @@
 }
 
 @media (--bp-md) {
+    .dashboard {
+        height: calc(100vh - 60px);
+        max-height: calc(100vh - 60px);
+    }
     .dashboard .window {
         width:100%;
         padding:0 0.5rem;

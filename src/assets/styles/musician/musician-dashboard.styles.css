@@ -566,6 +566,18 @@
 }
 
 @media (--bp-md) {
+
+    .window.musicians {
+        padding:0;
+    }
+
+    .window.musicians .head,
+    .window.musicians .body {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+
     .window.musicians .body.overview {
         display: block;
     }
@@ -1299,7 +1311,7 @@
     font-size: 1.5rem;
 }
 
-.window.musicians .musician-profile-hero .primary-information .verified-tag p,
+.window.musicians .musician-profile-hero .primary-information .verified-tag h4,
 .window.musicians .musician-profile-hero .primary-information .number-of-gigs {
     font-size: 1rem;
     font-weight: 500;
@@ -1321,6 +1333,83 @@
     display: flex;
     align-items: center;
     gap:1rem;
+}
+
+@media (--bp-md) {
+
+    .window.musicians .profile {
+        padding: 0;
+    }
+
+    .window.musicians .body.profile-preview,
+    .window.musicians .body.profile {
+        background-color: var(--gn-white);
+        border-radius: 2rem 2rem 0 0;
+        padding: 1rem !important;
+        padding-top: 2rem !important;
+        margin-top: -2.5rem;
+        z-index: 1;
+    }
+
+    .window.musicians .body.profile-preview .top-section,
+    .window.musicians .body.profile .top-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap:1rem;
+        margin-bottom: 1rem;
+    }
+
+    .window.musicians .body.profile-preview .top-section {
+        margin-bottom: 1rem;
+    }
+
+    .window.musicians .body.profile .top-section {
+        margin-bottom: 0.5rem;
+    }
+
+    .window.musicians .body.profile-preview .top-section .verified-tag {
+        display: flex;
+        align-items: center;
+        gap:5px;
+    }
+
+    .window.musicians .body.profile-preview .top-section .verified-tag h4 {
+        color: var(--gn-orange);
+    }
+
+    .window.musicians .body.profile-preview .top-section .action-buttons,
+    .window.musicians .body.profile .top-section .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap:5px;
+    }
+
+    /* PROFILE */
+    .window.musicians .musician-profile-hero {
+        height: 40vh;
+        width:100%;
+        margin:0;
+        border-radius:0;
+    }
+
+    .window.musicians .musician-profile-hero .primary-information {
+        margin-bottom: 3rem;
+        margin-left: 1rem;
+    }
+
+    .window.musicians .musician-profile-hero .primary-information .venue-name {
+        font-size: 3rem;
+        text-shadow: 0 0 10px var(--gn-grey-700);
+    }
+
+    .window.musicians .musician-profile-hero .primary-information .venue-name .orange-dot {
+        color: var(--gn-orange);
+        font-size: 3rem;
+    }
 }
 
 
@@ -2019,4 +2108,15 @@
 
 .window.musicians .body.finances table .no-receipts .data .icon {
     font-size: 3rem;
+}
+
+
+@media (--bp-md) {
+
+    .window.musicians .body.finances .information-item {
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap:5px;
+    }
 }

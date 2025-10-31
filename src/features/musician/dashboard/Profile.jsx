@@ -4,9 +4,11 @@ import { ProfileForm } from './profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
 import { NoImageIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { useLocation } from 'react-router-dom';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 
 export const Profile = ({ musicianProfile, user }) => {
+    const {isMdUp} = useBreakpoint();
     const location = useLocation();
     const state = location.state;
     const [showPreview, setShowPreview] = useState(state?.preview === false ? false : true);
@@ -30,50 +32,88 @@ export const Profile = ({ musicianProfile, user }) => {
                     </div>
                 )}
                 <div className="primary-information">
-                    {musicianProfile?.verified && (
+                    {musicianProfile?.verified && isMdUp && (
                         <div className="verified-tag">
                             <VerifiedIcon />
-                            <p>Verified Artist</p>
+                            <h4>Verified Artist</h4>
                         </div>
                     )}
                     <h1 className="venue-name">
                         {musicianProfile?.name}
                         <span className='orange-dot'>.</span>
                     </h1>
-                    <div className="action-buttons">
-                        <button className="btn quaternary" onClick={() => setShowPreview(!showPreview)}>
-                            {showPreview ? (
-                                'Edit Profile'
-                            ) : (
-                                'View Profile'
-                            )}
-                        </button>
+                    {isMdUp && (
+                        <>
+                            <div className="action-buttons">
+                                <button className="btn quaternary" onClick={() => setShowPreview(!showPreview)}>
+                                    {showPreview ? (
+                                        'Edit Profile'
+                                    ) : (
+                                        'View Profile'
+                                    )}
+                                </button>
 
-                    {/* COLLAPSED HEADER (shown when NOT expanded) */}
-                    {isPrimaryOpen && !showPreview ? (
-                        <button
-                            className="btn quaternary"
-                            onClick={() => toggleSection('primary-information')}
-                            aria-expanded={false}
-                            aria-controls="primary-information-panel"
-                        >
-                            Hide Name and Profile Picture
-                        </button>
-                        ) : !showPreview &&(
-                            <button
-                            className="btn quaternary"
-                            onClick={() => toggleSection('primary-information')}
-                            aria-expanded={false}
-                            aria-controls="primary-information-panel"
-                        >
-                            Edit Name and Profile Picture
-                        </button>
-                        )}
-                    </div>
+                                {/* COLLAPSED HEADER (shown when NOT expanded) */}
+                                {isPrimaryOpen && !showPreview ? (
+                                    <button
+                                        className="btn quaternary"
+                                        onClick={() => toggleSection('primary-information')}
+                                        aria-expanded={false}
+                                        aria-controls="primary-information-panel"
+                                    >
+                                        Hide Name and Profile Picture
+                                    </button>
+                                ) : !showPreview && (
+                                        <button
+                                        className="btn quaternary"
+                                        onClick={() => toggleSection('primary-information')}
+                                        aria-expanded={false}
+                                        aria-controls="primary-information-panel"
+                                    >
+                                        Edit Name and Profile Picture
+                                    </button>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
             {!showPreview ? (
                 <div className="body profile">
+                    {!isMdUp && (
+                        <div className='top-section'>
+                            <div className="action-buttons">
+                                <button className="btn secondary" onClick={() => setShowPreview(!showPreview)}>
+                                    {showPreview ? (
+                                        'Edit Profile'
+                                    ) : (
+                                        'View Profile'
+                                    )}
+                                </button>
+
+                                {/* COLLAPSED HEADER (shown when NOT expanded) */}
+                                {isPrimaryOpen && !showPreview ? (
+                                    <button
+                                        className="btn secondary"
+                                        onClick={() => toggleSection('primary-information')}
+                                        aria-expanded={false}
+                                        aria-controls="primary-information-panel"
+                                    >
+                                        Hide Name and Profile Picture
+                                    </button>
+                                ) : !showPreview && (
+                                        <button
+                                        className="btn secondary"
+                                        onClick={() => toggleSection('primary-information')}
+                                        aria-expanded={false}
+                                        aria-controls="primary-information-panel"
+                                    >
+                                        Edit Name and Profile Picture
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     <ProfileForm
                         user={user}
                         musicianProfile={musicianProfile}
@@ -84,6 +124,25 @@ export const Profile = ({ musicianProfile, user }) => {
                 </div>
             ) : (
                 <div className="body profile-preview">
+                    {!isMdUp && (
+                        <div className='top-section'>
+                            {musicianProfile?.verified && (
+                                <div className="verified-tag">
+                                    <VerifiedIcon />
+                                    <h4>Verified Artist</h4>
+                                </div>
+                            )}
+                            <div className="action-buttons">
+                                <button className="btn secondary" onClick={() => setShowPreview(!showPreview)}>
+                                    {showPreview ? (
+                                        'Edit Musician Profile'
+                                    ) : (
+                                        'View Musician Profile'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     <MusicianProfile
                         musicianProfile={musicianProfile}
                         viewingOwnProfile={true}

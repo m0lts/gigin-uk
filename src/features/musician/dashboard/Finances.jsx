@@ -397,7 +397,7 @@ export const Finances = ({ user, musicianProfile }) => {
                             </div>
                         </div>
                     )}
-                    {musicianProfile.bankDetailsAdded && (
+                    {musicianProfile.bankDetailsAdded && isMdUp && (
                         <div className="information-grid">
                             <div className="information-item" onClick={() => setPaymentSystemModal(true)}>
                                 <PaymentSystemIcon />
@@ -419,6 +419,18 @@ export const Finances = ({ user, musicianProfile }) => {
                                     Delete Stripe Account
                                 </button>
                             </div>
+                        </div>
+                    )}
+                    {!isMdUp && (
+                        <div className="information-item actions">
+                            {musicianProfile.stripeAccountId && stripeConnectInstance && (
+                            <button className="btn tertiary information-button" onClick={() => setShowManage(true)}>
+                                Edit Stripe Details
+                            </button>
+                            )}
+                            <button className={`btn tertiary information-button`}  onClick={() => setShowDeleteModal(true)} disabled={deleting || musicianProfile.withdrawableEarnings > 0}>
+                                Delete Stripe Account
+                            </button>
                         </div>
                     )}
                     {musicianProfile.bankDetailsAdded && (

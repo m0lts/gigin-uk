@@ -21,9 +21,10 @@ import { useResizeEffect } from '@hooks/useResizeEffect';
 import { openInNewTab } from '@services/utils/misc';
 import { ArchiveIcon, InboxIcon } from '@features/shared/ui/extras/Icons';
 import { updateConversationDocument } from '@services/function-calls/conversations';
-import { DeleteGigIcon, DeleteIcon, ErrorIcon, OptionsIcon } from '../../../shared/ui/extras/Icons';
+import { DeleteGigIcon, DeleteIcon, ErrorIcon, LeftArrowIcon, OptionsIcon } from '../../../shared/ui/extras/Icons';
 import Portal from '../../../shared/components/Portal';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
+import { useBreakpoint } from '../../../../hooks/useBreakpoint';
 
 // Given a conversation doc, return the venueId (participantId of a venue entry).
 function getVenueIdFromConversation(conv) {
@@ -55,6 +56,7 @@ function getVenueIdFromConversation(conv) {
 
 export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles, customerDetails, refreshStripe }) => {
     const navigate = useNavigate();
+    const {isSmUp, isMdUp, isLgUp} = useBreakpoint();
     const [gigData, setGigData] = useState();
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
@@ -91,19 +93,41 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     }, [conversationsToDisplay, paramsConversationId]);
 
     useEffect(() => {
-        if (!user || conversationsToDisplay.length === 0) return;
+        if (!user) return;
+        if (conversationsToDisplay.length === 0) return;
       
+        const hasParam = !!paramsConversationId;
+      
+        // Mobile (md down): never auto-select; strip any conversationId so the list shows.
+         if (!isLgUp) {
+               // Mobile: don't auto-select, but also DON'T clear a user-selected conversation.
+               return;
+             }
+      
+        // Desktop (md up): if nothing selected, auto-select the first one.
+        if (!hasParam) {
+          navigate(`/venues/dashboard/messages?conversationId=${conversationsToDisplay[0].id}`, { replace: true });
+          return;
+        }
+      
+        // With an active conversation: mark as viewed iff it's unseen and last sent wasn't me.
         if (activeConversation) {
-          const lastViewedSec = activeConversation.lastViewed?.[user.uid]?.seconds || 0;
+          const lastViewedSec  = activeConversation.lastViewed?.[user.uid]?.seconds || 0;
           const lastMessageSec = activeConversation.lastMessageTimestamp?.seconds || 0;
           const unseen = lastMessageSec > lastViewedSec && !lastMessageFromMe(activeConversation, user.uid);
           if (unseen) {
-            updateConversationLastViewed(activeConversation.id, user.uid)
+            updateConversationLastViewed(activeConversation.id, user.uid).catch(() => {});
           }
-        } else if (!paramsConversationId && conversationsToDisplay[0]) {
-          navigate(`/venues/dashboard/messages?conversationId=${conversationsToDisplay[0].id}`);
         }
-      }, [activeConversation, conversationsToDisplay, paramsConversationId, user, navigate]);
+      }, [
+        isLgUp,
+        user,
+        user?.uid,
+        paramsConversationId,
+        conversationsToDisplay,
+        activeConversation?.id,
+        activeConversation?.lastMessageTimestamp?.seconds,
+      ]);
 
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -124,6 +148,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
           return;
         }
     }, [activeConversation, venueGigs]);
+
 
     const handleSelectConversation = async (conversationId) => {
         navigate(`/venues/dashboard/messages?conversationId=${conversationId}`);
@@ -158,63 +183,189 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
 
     return (
         <>
-            <div className="head">
-                <h1 className="title">Messages</h1>
-            </div>
+            {isMdUp && (
+                <div className="head">
+                    <h1 className="title">Messages</h1>
+                </div>
+            )}
             <div className="body messages">
                 {conversations.length > 0 ? (
-                    <>
-                        <div className='column conversations'>
-                            <div className='filters'>
-                                <select
-                                    className="venue-filter"
-                                    value={selectedVenueId}
-                                    onChange={(e) => setSelectedVenueId(e.target.value)}
-                                >
-                                    <option value="all">Filter By Venue</option>
-                                    {venueProfiles.map(venue => (
-                                        <option key={venue.id} value={venue.id}>{venue.name}</option>
-                                    ))}
-                                </select>
-                                <button className="btn tertiary" onClick={handleShowArchived}>
-                                    {showArchived ? 'Inbox' : 'Archived'}
-                                </button>
+                    isLgUp ? (
+                        <>
+                            <div className='column conversations'>
+                                <div className='filters'>
+                                    <select
+                                        className="venue-filter"
+                                        value={selectedVenueId}
+                                        onChange={(e) => setSelectedVenueId(e.target.value)}
+                                    >
+                                        <option value="all">Filter By Venue</option>
+                                        {venueProfiles.map(venue => (
+                                            <option key={venue.id} value={venue.id}>{venue.name}</option>
+                                        ))}
+                                    </select>
+                                    <button className="btn tertiary" onClick={handleShowArchived}>
+                                        {showArchived ? 'Inbox' : 'Archived'}
+                                    </button>
+                                </div>
+                                <ul className='conversations-list'>
+                                {conversationsToDisplay.length > 0 ? (
+                                        conversationsToDisplay.map(conversation => (
+                                            <ConversationItem
+                                                key={conversation.id}
+                                                conversation={conversation}
+                                                user={user}
+                                                isActive={activeConversation?.id === conversation.id}
+                                                onClick={handleSelectConversation}
+                                                showArchived={showArchived}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className='no-conversations'>
+                                            <InboxIcon />
+                                            <h4>No messages to show.</h4>
+                                        </div>
+                                    )}
+                                </ul>
                             </div>
-                            <ul className='conversations-list'>
-                            {conversationsToDisplay.length > 0 ? (
-                                    conversationsToDisplay.map(conversation => (
-                                        <ConversationItem
-                                            key={conversation.id}
-                                            conversation={conversation}
-                                            user={user}
-                                            isActive={activeConversation?.id === conversation.id}
-                                            onClick={handleSelectConversation}
-                                            showArchived={showArchived}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className='no-conversations'>
-                                        <InboxIcon />
-                                        <h4>No messages to show.</h4>
-                                    </div>
+                            <div className={`column message-thread ${!activeConversation ? 'empty' : ''}`}>
+                                {activeConversation && (
+                                    <>
+                                        <div className='top-banner'>
+                                            <h3
+                                                onClick={(e) => {
+                                                    const other = getOtherPartyAccount(activeConversation);
+                                                    if (!other) return;
+                                                    openInNewTab(`/${other.participantId}/${activeConversation.gigId || 'null'}`, e);
+                                                }}
+                                                >
+                                                {getOtherPartyAccount(activeConversation)?.accountName || 'Conversation'}
+                                                <NewTabIcon />
+                                            </h3>
+                                            <div className='buttons' style={{ display: 'flex', alignItems: 'center', gap:5}}>
+                                                {gigData && (
+                                                    <button
+                                                        className='btn tertiary'
+                                                        onClick={() => setShowGigModal(prev => !prev)}
+                                                        >
+                                                        Gig Info
+                                                    </button>
+                                                )}
+                                                
+                                                {showArchived ? (
+                                                    <button
+                                                        className="btn tertiary"
+                                                        style={{ display: 'flex', alignItems: 'center', gap:'0.5rem'}}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleArchiveConversation(activeConversation, !showArchived);
+                                                            setShowArchived(!showArchived)
+                                                        }}
+                                                    >
+                                                        {archiving ? (
+                                                            <LoadingSpinner width={15} height={15} />
+                                                        ) : (
+                                                            <>
+                                                                Unarchive <InboxIcon /> 
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="btn tertiary"
+                                                        style={{ display: 'flex', alignItems: 'center', gap:'0.5rem'}}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleArchiveConversation(activeConversation, !showArchived);
+                                                        }}
+                                                    >
+                                                        {archiving ? (
+                                                            <LoadingSpinner width={15} height={15} />
+                                                        ) : (
+                                                            <>
+                                                                Archive <ArchiveIcon /> 
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {(() => {
+                                            return (
+                                                <MessageThread
+                                                    activeConversation={activeConversation}
+                                                    conversationId={activeConversation.id}
+                                                    user={user}
+                                                    musicianProfileId={getMusicianProfileId(activeConversation)}
+                                                    gigId={activeConversation.gigId}
+                                                    gigData={gigData}
+                                                    setGigData={setGigData}
+                                                    venues={venueProfiles}
+                                                    customerDetails={customerDetails}
+                                                    refreshStripe={refreshStripe}
+                                                />
+                                            );
+                                        })()}
+                                    </>
                                 )}
-                            </ul>
-                        </div>
-                        <div className={`column message-thread ${!activeConversation ? 'empty' : ''}`}>
-                            {activeConversation && (
-                                <>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {!activeConversation ? (
+                            <div className='column conversations'>
+                                <div className='filters'>
+                                    <select
+                                        className="venue-filter"
+                                        value={selectedVenueId}
+                                        onChange={(e) => setSelectedVenueId(e.target.value)}
+                                    >
+                                        <option value="all">Filter By Venue</option>
+                                        {venueProfiles.map(venue => (
+                                            <option key={venue.id} value={venue.id}>{venue.name}</option>
+                                        ))}
+                                    </select>
+                                    <button className="btn tertiary" onClick={handleShowArchived}>
+                                        {showArchived ? 'Inbox' : 'Archived'}
+                                    </button>
+                                </div>
+                                <ul className='conversations-list'>
+                                {conversationsToDisplay.length > 0 ? (
+                                        conversationsToDisplay.map(conversation => (
+                                            <ConversationItem
+                                                key={conversation.id}
+                                                conversation={conversation}
+                                                user={user}
+                                                isActive={activeConversation?.id === conversation.id}
+                                                onClick={handleSelectConversation}
+                                                showArchived={showArchived}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className='no-conversations'>
+                                            <InboxIcon />
+                                            <h4>No messages to show.</h4>
+                                        </div>
+                                    )}
+                                </ul>
+                            </div>
+                            ) : (
+                                <div className={`column message-thread ${!activeConversation ? 'empty' : ''}`}>
                                     <div className='top-banner'>
-                                        <h3
-                                            onClick={(e) => {
-                                                const other = getOtherPartyAccount(activeConversation);
-                                                if (!other) return;
-                                                openInNewTab(`/${other.participantId}/${activeConversation.gigId || 'null'}`, e);
-                                            }}
-                                            >
-                                            {getOtherPartyAccount(activeConversation)?.accountName || 'Conversation'}
-                                            <NewTabIcon />
-                                        </h3>
-                                        <div className='buttons' style={{ display: 'flex', alignItems: 'center', gap:5}}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap:'1rem'}}>
+                                            <button className="btn text" onClick={() => navigate(-1)}><LeftArrowIcon /> Back</button>
+                                            <h3
+                                                onClick={(e) => {
+                                                    const other = getOtherPartyAccount(activeConversation);
+                                                    if (!other) return;
+                                                    openInNewTab(`/${other.participantId}/${activeConversation.gigId || 'null'}`, e);
+                                                }}
+                                                >
+                                                {getOtherPartyAccount(activeConversation)?.accountName || 'Conversation'}
+                                                <NewTabIcon />
+                                            </h3>
+                                        </div>
+                                        <div className='buttons' style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap:5}}>
                                             {gigData && (
                                                 <button
                                                     className='btn tertiary'
@@ -278,10 +429,10 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                             />
                                         );
                                     })()}
-                                </>
+                                </div>
                             )}
-                        </div>
-                    </>
+                        </>
+                    )
                 ) : (
                     <div className='message-page no-messages'>
                         <MailboxEmptyIcon />

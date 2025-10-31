@@ -143,7 +143,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
         <div className='musician-profile-about'>
             {musicianData?.genres?.length > 0 && (
                 <div className="musician-genres about-section">
-                    <h3>Genres</h3>
+                    <h4>Genres</h4>
                     <ul className="genre-list">
                         {musicianData.genres.map((g) => (
                             <ul className="genre-item" key={g}>
@@ -155,28 +155,28 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
             )}
             {musicianData?.musicType && (
                 <div className="musician-music about-section">
-                    <h3>Music Played</h3>
-                    <h4>{musicianData.musicType === 'Both' ? 'Both Covers And Originals' : musicianData.musicType}</h4>
+                    <h4>Music Played</h4>
+                    <p>{musicianData.musicType === 'Both' ? 'Both Covers And Originals' : musicianData.musicType}</p>
                 </div>
             )}
             {musicianData?.bio?.experience && (
                 <div className="musician-music about-section">
-                    <h3>Gigging Experience</h3>
-                    <h4>{musicianData.bio.experience}</h4>
+                    <h4>Gigging Experience</h4>
+                    <p>{musicianData.bio.experience}</p>
                 </div>
             )}
             {musicianData?.location && musicianData?.location?.city && musicianData?.location?.coordinates &&(
                 <div className="musician-location about-section">
-                    <h3>Location</h3>
+                    <h4>Location</h4>
                     {musicianData?.location?.coordinates.length > 0 && (
                         <div ref={mapContainerRef} className="map-container" />
                     )}
-                    <h4>{musicianData?.location?.city}; {formatTravelDistance(musicianData?.location?.travelDistance)}.</h4>
+                    <p>{musicianData?.location?.city}; {formatTravelDistance(musicianData?.location?.travelDistance)}.</p>
                 </div>
             )}
             {musicianData?.instruments?.length > 0 && (
                 <div className="musician-instruments about-section">
-                    <h3>Instruments Played</h3>
+                    <h4>Instruments Played</h4>
                     <ul className="instrument-list">
                         {musicianData.instruments.map((i) => (
                             <li className="instrument-item" key={i}>
@@ -189,7 +189,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
             )}
             {musicianData?.bandProfile && musicianData?.members && (
                 <div className="musician-band-members about-section">
-                    <h3>Band Members</h3>
+                    <h4>Band Members</h4>
                     {musicianData.members.map((bm) => (
                         <div className="band-member" key={bm} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                             <div className="member-info" style={{ display: 'flex', alignItems: 'center', gap:'1rem'}}>
@@ -200,7 +200,7 @@ export const AboutTab = ({musicianData, viewingOwnProfile, setShowPreview, bandA
                                         <QuestionCircleIcon />
                                     </div>
                                 )}
-                                <h3>{bm.memberName}</h3>
+                                <h4>{bm.memberName}</h4>
                             </div>
                             {bm.id !== musicianData.musicianId && (
                                 <button className="btn secondary" onClick={(e) => openInNewTab(`/${bm.id}`, e)}>
