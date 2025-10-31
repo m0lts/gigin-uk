@@ -17,7 +17,7 @@ import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, Verifi
 import { MapSection } from '../components/MapSection';
 import { ensureProtocol } from '@services/utils/misc';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
-import { AddMember, DeleteGigIcon, EditIcon, LeftArrowIcon, SettingsIcon, ShareIcon } from '../../shared/ui/extras/Icons';
+import { AddMember, DeleteGigIcon, EditIcon, LeftArrowIcon, SettingsIcon, ShareIcon, SpeakerIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '../../../services/utils/misc';
 import { deleteGigsBatch, getGigsByVenueId } from '../../../services/client-side/gigs';
 import { getReviewsByVenueId } from '../../../services/client-side/reviews';
@@ -154,7 +154,7 @@ export const VenuePage = ({ user, venues, setVenues }) => {
         if (input === 'PA System' || input === 'Speakers') {
             return <SpeakersIcon />
         } else if (input === 'Stage Monitors') {
-            return <MonitorIcon />
+            return <SpeakerIcon />
         } else if (input === 'Guitar Amp' || input === 'Bass Amp') {
             return <AmpIcon />
         } else if (input === 'Mixing/Sound Desk') {

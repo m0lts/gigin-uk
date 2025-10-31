@@ -19,7 +19,7 @@ import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
-import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { AmpIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
@@ -176,7 +176,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         if (input === 'PA System' || input === 'Speakers') {
             return <SpeakersIcon />
         } else if (input === 'Stage Monitors') {
-            return <MonitorIcon />
+            return <SpeakerIcon />
         } else if (input === 'Guitar Amp' || input === 'Bass Amp') {
             return <AmpIcon />
         } else if (input === 'Mixing/Sound Desk') {
@@ -357,24 +357,22 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     <h4 className="number-of-gigs">
                                         {venueData?.gigs?.length} Gigs Posted
                                     </h4>
-                                    {
-                                        (musicianId && !venueViewing) ? (
-                                            <div className="action-buttons">
-                                                <button className="btn quaternary" onClick={() => {setLoadingRequest(true); setShowRequestModal(true); handleFetchMusicianProfiles()}}>
-                                                    Request a Gig
-                                                </button>
-                                            </div>
-                                        ) : venueViewing && (
-                                            <div className="action-buttons">
-                                                <button className="btn quaternary" onClick={() => navigate(`/venues/add-venue`, {state: { venue: venueData }})}>
-                                                    Edit Profile
-                                                </button>
-                                                <button className="btn quaternary" onClick={() => copyToClipboard(venueData.venueId)}>
-                                                    Share
-                                                </button>
-                                            </div>
-                                        )
-                                    }
+                                    {(musicianId && !venueViewing) ? (
+                                        <div className="action-buttons">
+                                            <button className="btn quaternary" onClick={() => {setLoadingRequest(true); setShowRequestModal(true); handleFetchMusicianProfiles()}}>
+                                                Request a Gig
+                                            </button>
+                                        </div>
+                                    ) : venueViewing && (
+                                        <div className="action-buttons">
+                                            <button className="btn quaternary" onClick={() => navigate(`/venues/add-venue`, {state: { venue: venueData }})}>
+                                                Edit Profile
+                                            </button>
+                                            <button className="btn quaternary" onClick={() => copyToClipboard(venueData.venueId)}>
+                                                Share
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="venue-page-information" style={{ width: `95%`, margin: '0 auto'}}>

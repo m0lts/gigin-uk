@@ -34,7 +34,7 @@ import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
 import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
-import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
+import { AmpIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
 import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
@@ -340,7 +340,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         if (input === 'PA System' || input === 'Speakers') {
             return <SpeakersIcon />
         } else if (input === 'Stage Monitors') {
-            return <MonitorIcon />
+            return <SpeakerIcon />
         } else if (input === 'Guitar Amp' || input === 'Bass Amp') {
             return <AmpIcon />
         } else if (input === 'Mixing/Sound Desk') {
@@ -904,7 +904,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 )}
                                             </>
                                         ) : (
-                                            <p>Unfortunately, the venue has no equipment for use.</p>
+                                            <p>The venue has not listed any equipment for use.</p>
                                         )}
                                     </div>
                                     {venueProfile?.description && (
@@ -925,7 +925,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         )}
                                         {venueProfile?.extraInformation && (
                                             <div className='info'>
-                                                <h6>Venue Information</h6>
                                                 <div className='text'>
                                                     <p>{venueProfile?.extraInformation}</p>
                                                 </div>
@@ -1293,7 +1292,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 )}
                                             </>
                                         ) : (
-                                            <p>Unfortunately, the venue has no equipment for use.</p>
+                                            <p>The venue has not listed any equipment for use.</p>
                                         )}
                                     </div>
                                 </div>
@@ -1316,7 +1315,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         )}
                                         {venueProfile?.extraInformation && (
                                             <div className='info'>
-                                                <h6>Venue Information</h6>
                                                 <div className='text'>
                                                     <p>{venueProfile?.extraInformation}</p>
                                                 </div>
