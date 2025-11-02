@@ -16,6 +16,10 @@ initializeAdmin();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Trust proxy - required for Cloud Run (behind Google's load balancer)
+// This allows Express to correctly handle X-Forwarded-For headers for rate limiting
+app.set('trust proxy', true);
+
 // Security: Helmet sets various HTTP headers to help protect the app
 app.use(helmet({
   contentSecurityPolicy: {
