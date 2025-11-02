@@ -14,14 +14,14 @@ RUN apt-get update && \
 RUN groupadd -r nodeuser && useradd -r -g nodeuser nodeuser
 
 # Copy package files
-COPY gigin-api/package*.json ./
+COPY package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production && \
     npm cache clean --force
 
 # Copy application code
-COPY gigin-api/ ./
+COPY . ./
 
 # Copy functions source (if needed for shared utilities)
 # Uncomment if you need to import from functions/src
