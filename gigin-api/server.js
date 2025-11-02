@@ -36,6 +36,17 @@ app.use(cors({
       return;
     }
 
+    // Always allow Firebase Hosting domains (dev and prod)
+    const firebaseHostingPatterns = [
+      /^https:\/\/.*\.web\.app$/,
+      /^https:\/\/.*\.firebaseapp\.com$/,
+    ];
+    
+    if (firebaseHostingPatterns.some(pattern => pattern.test(origin))) {
+      callback(null, true);
+      return;
+    }
+
     // In development, allow localhost and all origins
     if (NODE_ENV === "development" || IS_DEV) {
       // Allow all localhost ports for development
