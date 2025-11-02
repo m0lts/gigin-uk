@@ -1,9 +1,22 @@
-name: Deploy to Firebase Hosting (dev)
+name: Deploy to Firebase Hosting and Cloud Run (dev)
 on:
   push:
-    branches: [ "staging" ]
+    branches: 
+      - "staging"
+      - "feature/server-migration"
+    paths:
+      - "gigin-api/**"
+      - "src/**"
+      - ".github/workflows/deploy-dev.yml"
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: giginltd-dev
+  REGION: europe-west3
+  SERVICE_NAME: gigin-api-staging
+
 jobs:
-  build_and_deploy:
+  deploy_hosting:
     runs-on: ubuntu-latest
     env:
       FONTAWESOME_NPM_AUTH_TOKEN: ${{ secrets.FONTAWESOME_NPM_AUTH_TOKEN }}
@@ -29,3 +42,49 @@ jobs:
       - run: firebase deploy --only hosting:dev --project giginltd-dev
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+  deploy_cloud_run:
+    runs-on: ubuntu-latest
+    # Deploy Cloud Run whenever workflow runs (you can skip by using paths filter in on: section)
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Build and Deploy to Cloud Run
+        working-directory: gigin-api
+        run: |
+          gcloud builds submit \
+            --config cloudbuild.yaml \
+            --project ${{ env.PROJECT_ID }}
+
+      - name: Get Cloud Run URL
+        id: url
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --format 'value(status.url)')
+          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "Service deployed to: $SERVICE_URL"
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Cloud Run Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ steps.url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ env.REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Project:** ${{ env.PROJECT_ID }}" >> $GITHUB_STEP_SUMMARY

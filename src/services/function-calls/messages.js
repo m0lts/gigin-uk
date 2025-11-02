@@ -1,17 +1,59 @@
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '@lib/firebase';
+import { functions, auth } from '@lib/firebase';
 
+// Cloud Run API URL (for migrated functions)
+// Set VITE_API_URL in .env file, e.g., VITE_API_URL=http://localhost:8080
+const API_URL = import.meta.env.VITE_API_URL;
 
 /**
- * Sends a text message via CF and updates conversation metadata.
+ * Get Firebase ID token for authenticated requests
+ */
+async function getIdToken() {
+  if (!auth.currentUser) {
+    throw new Error("User not authenticated");
+  }
+  return auth.currentUser.getIdToken();
+}
+
+/**
+ * Sends a text message via Cloud Run API or Cloud Functions (fallback).
+ * 
+ * If VITE_API_URL is set, uses Cloud Run API.
+ * Otherwise, falls back to Cloud Functions.
  */
 export async function sendMessage(conversationId, message) {
   try {
+    // Try Cloud Run API first if URL is configured
+    if (API_URL) {
+      const token = await getIdToken();
+      const response = await fetch(`${API_URL}/api/messages/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          conversationId,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data?.timestamp ?? null;
+    }
+
+    // Fallback to Cloud Functions
     const fn = httpsCallable(functions, "sendMessage");
     const { data } = await fn({ conversationId, message });
     return data?.timestamp ?? null;
   } catch (error) {
-    console.error("[CloudFn Error] sendMessage:", error);
+    console.error("[API Error] sendMessage:", error);
+    throw error; // Re-throw so UI can handle it
   }
 }
 

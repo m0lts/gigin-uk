@@ -8,6 +8,7 @@ import { PROJECT_ID, IS_PROD, IS_DEV, NODE_ENV } from "./config/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { logger } from "./middleware/logger.js";
 import userRoutes from "./routes/users.js";
+import messageRoutes from "./routes/messages.js";
 
 // Initialize Firebase Admin (must be done before importing routes that use it)
 initializeAdmin();
@@ -30,13 +31,24 @@ app.use(helmet({
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, Postman, Cloud Scheduler)
-    // In production, restrict this to your Firebase Hosting domains
-    if (!origin || process.env.NODE_ENV === "development") {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    // In development, allow localhost and all origins
+    if (NODE_ENV === "development" || IS_DEV) {
+      // Allow all localhost ports for development
+      if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+        callback(null, true);
+        return;
+      }
+      // Also allow all origins in development for flexibility
       callback(null, true);
       return;
     }
     
-    // Add your Firebase Hosting domains here
+    // Production: restrict to Firebase Hosting domains
     const allowedOrigins = [
       /^https:\/\/.*\.web\.app$/,
       /^https:\/\/.*\.firebaseapp\.com$/,
@@ -49,12 +61,15 @@ app.use(cors({
     })) {
       callback(null, true);
     } else {
+      console.warn(`CORS: Blocked origin: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  exposedHeaders: [],
+  maxAge: 86400, // 24 hours for preflight cache
 }));
 
 // Rate limiting - protect against DDoS and brute force
@@ -68,10 +83,14 @@ const limiter = rateLimit({
   trustProxy: true,
 });
 
-// Apply rate limiting to all requests except health check
+// Apply rate limiting to all requests except health check and OPTIONS (preflight)
 app.use((req, res, next) => {
   // Skip rate limiting for health check endpoint
   if (req.path === "/health") {
+    return next();
+  }
+  // Skip rate limiting for OPTIONS (preflight requests)
+  if (req.method === "OPTIONS") {
     return next();
   }
   // Apply rate limiter
@@ -96,6 +115,7 @@ app.get("/health", (req, res) => {
 
 // API routes
 app.use("/api/users", userRoutes);
+app.use("/api/messages", messageRoutes);
 
 // 404 handler (must come after all routes)
 app.use((req, res) => {

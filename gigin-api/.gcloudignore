@@ -5,6 +5,7 @@
 .gitignore
 README.md
 *.md
+test-*.sh
 
 # Environment files
 .env
@@ -26,3 +27,6 @@ tests/
 # Logs
 *.log
 logs/
+
+# Node modules (will be installed in container)
+# node_modules/
