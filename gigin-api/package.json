@@ -1,0 +1,32 @@
+{
+  "name": "gigin-api",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Gigin API Server on Cloud Run",
+  "main": "server.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@google-cloud/tasks": "^5.5.1",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "firebase-admin": "^13.5.0",
+    "google-auth-library": "^9.15.0",
+    "helmet": "^7.1.0",
+    "nodemailer": "^6.9.14",
+    "stripe": "^16.10.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-google": "^0.14.0"
+  },
+  "private": true
+}
