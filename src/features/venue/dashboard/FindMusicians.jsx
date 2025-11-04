@@ -5,7 +5,7 @@ import { NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, SearchIcon, Sta
 import Skeleton from 'react-loading-skeleton';
 import { fetchMusiciansPaginated } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
-import { updateUserArrayField } from '../../../services/function-calls/users';
+import { updateUserArrayField } from '@services/api/users';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 const VideoModal = ({ video, onClose }) => {

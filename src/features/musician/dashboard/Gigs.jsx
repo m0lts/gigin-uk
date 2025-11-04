@@ -11,7 +11,7 @@ import {
 import { GigHandbook } from '@features/musician/components/GigHandbook';
 import { openInNewTab } from '../../../services/utils/misc';
 import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, ExclamationIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SaveIcon, SavedIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
-import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { getOrCreateConversation } from '@services/api/conversations';
 import { getVenueProfileById } from '../../../services/client-side/venues';
 import { getMusicianProfileByMusicianId, withdrawMusicianApplication } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';

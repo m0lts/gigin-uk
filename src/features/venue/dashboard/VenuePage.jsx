@@ -27,8 +27,8 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { AddStaffModal } from '../components/AddStaffModal';
 import { StaffPermissionsModal } from '../components/StaffPermissionsModal';
 import { hasVenuePerm } from '../../../services/utils/permissions';
-import { updateUserArrayField } from '../../../services/function-calls/users';
-import { confirmDeleteVenueData, fetchVenueMembersWithUsers } from '../../../services/function-calls/venues';
+import { updateUserArrayField } from '@services/api/users';
+import { deleteVenueData, fetchVenueMembersWithUsers } from '@services/api/venues';
 import { deleteReview } from '../../../services/function-calls/reviews';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
@@ -58,7 +58,7 @@ export const VenuePage = ({ user, venues, setVenues }) => {
             try {
                 const [profile, members] = await Promise.all([
                     getVenueProfileById(venueId),
-                    fetchVenueMembersWithUsers(venueId),
+                    fetchVenueMembersWithUsers({ venueId }),
                   ]);
             
                   // Combine into one object
@@ -136,7 +136,7 @@ export const VenuePage = ({ user, venues, setVenues }) => {
                 await deleteReview(id);
             }
             await deleteFolderFromStorage(`venues/${venueId}`);
-            await confirmDeleteVenueData(venueId);
+            await deleteVenueData({ venueId });
             toast.success('Venue Deleted');
             navigate('/venues/dashboard/my-venues', { replace: true });
             setVenues(prevVenues => prevVenues.filter(venue => venue.venueId !== venueId));

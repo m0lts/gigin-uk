@@ -21,7 +21,7 @@ import {
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { updateMusicianGigApplications } from '@services/client-side/musicians';
-import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/client-side/messages';
 import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
 import { validateMusicianUser } from '@services/utils/validation';
@@ -42,7 +42,6 @@ import { NoProfileModal } from '../musician/components/NoProfileModal';
 import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
-import { notifyOtherApplicantsGigConfirmed } from '../../services/function-calls/conversations';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
 import { acceptGigOffer, acceptGigOfferOM, applyToGig, negotiateGigFee } from '../../services/function-calls/gigs';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '../../services/function-calls/messages';

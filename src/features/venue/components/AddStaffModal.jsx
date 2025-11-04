@@ -5,7 +5,7 @@ import { LoadingSpinner } from "../../shared/ui/loading/Loading";
 import { AddMember } from "../../shared/ui/extras/Icons";
 import { PERMS_DISPLAY, PERM_DEFAULTS, PERM_KEYS, hasVenuePerm } from "../../../services/utils/permissions";
 import { useVenueDashboard } from "../../../context/VenueDashboardContext";
-import { createVenueInviteCF } from "../../../services/function-calls/venues";
+import { createVenueInvite } from "@services/api/venues";
 
 export const AddStaffModal = ({user, venue, onClose}) => {
     const {venueProfiles} = useVenueDashboard();
@@ -19,12 +19,13 @@ export const AddStaffModal = ({user, venue, onClose}) => {
     const generateInviteLink = async () => {
         setLoading(true);
         try {
-          const inviteId = await createVenueInviteCF({
+          const invite = await createVenueInvite({
             venueId: venue.id,
             email: emailToInvite,
             permissionsInput: permissions,
             invitedByName: user?.name || null,
           });
+          const inviteId = invite?.inviteId || null;
           if (!inviteId) {
             toast.error("Failed to create invite");
             return null;

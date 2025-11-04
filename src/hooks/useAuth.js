@@ -6,10 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createMusicianProfile } from '../services/client-side/musicians';
-import { getEmailAddress, updateUserArrayField } from '../services/function-calls/users';
-import { httpsCallable } from "firebase/functions";
-import { functions } from '@lib/firebase';
-const sendVerificationEmail = httpsCallable(functions, "sendVerificationEmail");
+import { getEmailAddress } from '@services/api/users';
+import { sendVerificationEmail as sendVerificationEmailApi } from '../services/api/users';
 
 export const useAuth = () => {
 
@@ -208,7 +206,7 @@ export const useAuth = () => {
   const signup = async (credentials, marketingConsent) => {
     try {
       const user = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
-      await sendVerificationEmail({actionUrl: `${window.location.origin}`});
+      await sendVerificationEmailApi({ actionUrl: `${window.location.origin}` });
       const userRef = doc(firestore, 'users', user.user.uid);
       await setDoc(userRef, {
         name: credentials.name || '',

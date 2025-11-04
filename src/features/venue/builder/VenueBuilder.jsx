@@ -18,7 +18,7 @@ import { Links } from './Links';
 import { geohashForLocation } from 'geofire-common';
 import Portal from '../../shared/components/Portal';
 import { useAuth } from '../../../hooks/useAuth';
-import { clearUserArrayField, updateUserArrayField } from '../../../services/function-calls/users';
+import { clearUserArrayField, updateUserArrayField } from '@services/api/users';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 

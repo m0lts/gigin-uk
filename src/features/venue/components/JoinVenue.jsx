@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { TextLogoLink } from '../../shared/ui/logos/Logos';
 import '@styles/host/join-venue.styles.css';
 import { useAuth } from '../../../hooks/useAuth';
-import { acceptVenueInvite } from '../../../services/function-calls/venues';
+import { acceptVenueInvite } from '@services/api/venues';
 import { toast } from 'sonner';
 
 export const JoinVenuePage = ({ user, setAuthModal, setAuthType }) => {
@@ -82,7 +82,7 @@ export const JoinVenuePage = ({ user, setAuthModal, setAuthType }) => {
   const handleJoinVenue = async () => {
     try {
       setState(s => ({ ...s, loading: true }));
-      const result = await acceptVenueInvite(inviteId);
+      const result = await acceptVenueInvite({ inviteId });
       if (result?.ok) {
         toast.success(`Joined ${state.venue?.name}`);
         navigate(`/`, { replace: true });

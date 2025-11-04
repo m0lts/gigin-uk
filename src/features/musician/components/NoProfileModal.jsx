@@ -21,7 +21,7 @@ import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useNavigate } from 'react-router-dom';
 import { getUserById } from '../../../services/client-side/users';
 import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
-import { updateUserArrayField } from '../../../services/function-calls/users';
+import { updateUserArrayField } from '@services/api/users';
 import { createBandProfile } from '../../../services/function-calls/bands';
 
 // Helpers

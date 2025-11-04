@@ -18,7 +18,7 @@ import { getVenueProfileById, removeVenueRequest } from '../../../services/clien
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { cancelGigAndRefund } from '@services/function-calls/tasks';
-import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { getOrCreateConversation } from '@services/api/conversations';
 import { postCancellationMessage } from '../../../services/function-calls/messages';
 import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
 import { toJsDate } from '../../../services/utils/dates';

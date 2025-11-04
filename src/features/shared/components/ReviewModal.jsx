@@ -11,7 +11,7 @@ import { cancelTask } from '@services/function-calls/tasks';
 import { toast } from 'sonner';
 import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/client-side/emails';
 import Portal from './Portal';
-import { getOrCreateConversation } from '@services/function-calls/conversations';
+import { getOrCreateConversation } from '@services/api/conversations';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { LoadingModal } from '../ui/loading/LoadingModal';
 import { PermissionsIcon, ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';

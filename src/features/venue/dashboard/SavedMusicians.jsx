@@ -7,7 +7,7 @@ import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
 import { ErrorIcon, NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
-import { updateUserArrayField } from '../../../services/function-calls/users';
+import { updateUserArrayField } from '@services/api/users';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 const VideoModal = ({ video, onClose }) => {

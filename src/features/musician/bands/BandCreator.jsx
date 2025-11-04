@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { createMusicianProfile } from '../../../services/client-side/musicians';
 import '@styles/musician/profile-creator.styles.css';
-import { updateUserArrayField } from '../../../services/function-calls/users';
+import { updateUserArrayField } from '@services/api/users';
 import { createBandProfile } from '../../../services/function-calls/bands';
 
 export const BandCreator = ({ musicianProfile, refreshData }) => {

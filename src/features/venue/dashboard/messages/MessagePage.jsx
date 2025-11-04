@@ -16,10 +16,10 @@ import {
 } from '@services/client-side/conversations';
 import { 
     markGigApplicantAsViewed,
-} from '@services/function-calls/conversations';
+} from '@services/api/conversations';
 import { openInNewTab } from '@services/utils/misc';
 import { ArchiveIcon, InboxIcon } from '@features/shared/ui/extras/Icons';
-import { updateConversationDocument } from '@services/function-calls/conversations';
+import { updateConversationDocument } from '@services/api/conversations';
 import { DeleteGigIcon, DeleteIcon, ErrorIcon, LeftArrowIcon, OptionsIcon } from '../../../shared/ui/extras/Icons';
 import Portal from '../../../shared/components/Portal';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';

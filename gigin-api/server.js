@@ -9,7 +9,8 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { logger } from "./middleware/logger.js";
 import userRoutes from "./routes/users.js";
 import messageRoutes from "./routes/messages.js";
-
+import venueRoutes from "./routes/venues.js";
+import conversationRoutes from "./routes/conversations.js";
 // Initialize Firebase Admin (must be done before importing routes that use it)
 initializeAdmin();
 
@@ -131,6 +132,8 @@ app.get("/health", (req, res) => {
 // API routes
 app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/venues", venueRoutes);
+app.use("/api/conversations", conversationRoutes);
 
 // 404 handler (must come after all routes)
 app.use((req, res) => {

@@ -12,7 +12,7 @@ import { sendTestimonialRequestEmail } from '../../../../services/client-side/em
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../../shared/ui/loading/LoadingModal';
 import { updateBandMemberImg } from '../../../../services/function-calls/bands';
-import { updateUserArrayField } from '../../../../services/function-calls/users';
+import { updateUserArrayField } from '@services/api/users';
 import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from '../../../../hooks/useBreakpoint';
 

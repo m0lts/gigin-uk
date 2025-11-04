@@ -17,7 +17,7 @@ import { ProfileIconSolid, SuccessIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
-import { updateUserArrayField } from '../../../services/function-calls/users';
+import { updateUserArrayField } from '@services/api/users';
 
 export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
   const navigate = useNavigate();

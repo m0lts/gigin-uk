@@ -23,8 +23,8 @@ import { CameraIcon, DeleteGigIcon, InviteIconSolid, LogOutIcon, PasswordIcon, U
 import { LoadingModal } from '../shared/ui/loading/LoadingModal';
 import { firestore } from '@lib/firebase';
 import { uploadFileToStorage } from '../../services/storage';
-import { clearUserArrayField, deleteUserDocument, updateUserArrayField } from '../../services/function-calls/users';
-import { transferVenueOwnership } from '../../services/function-calls/venues';
+import { clearUserArrayField, deleteUserDocument, updateUserArrayField } from '@services/api/users';
+import { transferVenueOwnership } from '@services/api/venues';
 import { deleteReview } from '../../services/function-calls/reviews';
 import { deleteGigsBatch } from '../../services/client-side/gigs';
 import { deleteConversation } from '../../services/function-calls/conversations';
@@ -779,7 +779,7 @@ export const Account = () => {
                                                 if (!ok) return;
                                                 setTransferLoading(true);
                                                 try {
-                                                    await transferVenueOwnership(venueToTransfer, recipientEmail);
+                                                    await transferVenueOwnership({ venueId: venueToTransfer.id, recipientEmail });
                                                     setVenueList(prev => prev.filter(v => v.id !== venueToTransfer.id));
                                                     toast.success('Venue ownership transferred successfully.');
                                                     setShowTransferModal(false);

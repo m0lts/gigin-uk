@@ -4,8 +4,7 @@ import { toast } from "sonner";
 import { PERMS_DISPLAY, PERM_DEFAULTS } from "@services/utils/permissions";
 import { LeftArrowIcon, RightChevronIcon, SettingsIcon } from "../../shared/ui/extras/Icons";
 import { LoadingSpinner } from "../../shared/ui/loading/Loading";
-import { removeVenueMember, updateVenueMemberPermissions } from "../../../services/function-calls/venues";
-import { fetchVenueMembersWithUsers } from "../../../services/function-calls/venues";
+import { fetchVenueMembersWithUsers, removeVenueMember, updateVenueMemberPermissions } from "@services/api/venues";
 import { hasVenuePerm, normalizePermissions } from "../../../services/utils/permissions";
 import { formatDate } from "../../../services/utils/dates";
 import { useVenueDashboard } from "../../../context/VenueDashboardContext";
@@ -32,7 +31,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
           if (!venue?.venueId) return;
           try {
             setLoading(true);
-            const list = await fetchVenueMembersWithUsers(venue.venueId);
+            const list = await fetchVenueMembersWithUsers({ venueId: venue.venueId });
             const filtered = list.filter(
               (m) => m.role !== "owner" && m.uid !== user.uid
             );
@@ -49,13 +48,14 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
       }, [venue?.venueId, user?.uid]);
   
     const startEdit = (member) => {
-      setSelectedUid(member.uid);
+      setSelectedUid(member.id);
       setPermissions(normalizePermissions(member.permissions));
       setStage("edit");
     };
   
     const togglePerm = (key) =>
       setPermissions((p) => ({ ...p, [key]: !p[key] }));
+
   
     const handleSave = async () => {
       if (!selectedUid || !venue?.venueId) return;
@@ -67,7 +67,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
       try {
         setLoading(true);
         setSaving(true);
-        await updateVenueMemberPermissions(venue.venueId, selectedUid, permissions);
+        await updateVenueMemberPermissions({ venueId: venue.venueId, memberUid: selectedUid, permissions });
         toast.success("Permissions updated.");
         setMembers((prev) =>
           prev.map((m) =>
@@ -100,7 +100,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
       try {
         setLoading(true);
         setRemoving(true);
-        await removeVenueMember(venue.venueId, selectedUid);
+        await removeVenueMember({ venueId: venue.venueId, memberUid: selectedUid });
         toast.success("Member removed.");
         setMembers((prev) => prev.filter((m) => m.uid !== selectedUid));
         setSelectedUid("");
