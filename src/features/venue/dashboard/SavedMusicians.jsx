@@ -76,7 +76,7 @@ export const SavedMusicians = ({ user }) => {
         if (!user?.uid || !musician?.id) return;
         setSaving(musician.id);
         try {
-          await updateUserArrayField('savedMusicians', 'remove', musician.id);
+          await updateUserArrayField({ field: 'savedMusicians', op: 'remove', value: musician.id });
           toast.success(`Removed ${musician.name} from your saved musicians`);
         } catch (error) {
           console.error('Error unsaving musician:', error);

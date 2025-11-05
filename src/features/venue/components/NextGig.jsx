@@ -8,8 +8,8 @@ import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { postCancellationMessage } from '@services/function-calls/messages';
-import { cancelGigAndRefund } from '@services/function-calls/tasks';
+import { postCancellationMessage } from '@services/api/messages';
+import { cancelGigAndRefund } from '@services/api/payments';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
@@ -18,8 +18,8 @@ import { CloseIcon, ErrorIcon, ExitIcon, PeopleGroupIconSolid } from '../../shar
 import { toast } from 'sonner';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
-import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
-import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
+import { logGigCancellation, revertGigAfterCancellationVenue } from '@services/api/gigs';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
 
 
 export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
@@ -108,22 +108,21 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 await cancelGigAndRefund({
                     taskNames,
                     transactionId: nextGig.paymentIntentId,
+                    gigId: nextGig.gigId,
+                    venueId: nextGig.venueId,
                 });
             }
             const handleMusicianCancellation = async (musician) => {
-                const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
+                const { conversationId } = await getOrCreateConversation({ musicianProfile: musician, gigData: nextGig, venueProfile, type: 'cancellation' });
                 await postCancellationMessage(
-                  conversationId,
-                  user.uid,
-                  `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                  { conversationId, senderId: user.uid, message: `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
                     cancellationReason
-                  )}. We apologise for any inconvenience caused.`,
-                  { cancellingParty: 'venue' }
+                  )}. We apologise for any inconvenience caused.`, cancellingParty: 'venue' }
                 );
-                await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
-                await updateMusicianCancelledGig(musician.musicianId, gigId);
+                await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId: musician.musicianId, cancellationReason });
+                await cancelledGigMusicianProfileUpdate({ musicianId: musician.musicianId, gigId });
                 const cancellingParty = 'venue';
-                await logGigCancellation(gigId, musician.musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
+                await logGigCancellation({ gigId, musicianId: musician.musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
               };
           
               if (isOpenMic) {

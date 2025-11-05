@@ -1,7 +1,5 @@
 import { post } from '../http';
 
-// Base: /api/venues
-
 export function transferVenueOwnership({ venueId, recipientEmail }) {
   return post('/venues/transferVenueOwnership', { body: { venueId, recipientEmail } });
 }
@@ -30,4 +28,8 @@ export function deleteVenueData({ venueId, confirm = true }) {
   return post('/venues/deleteVenueData', { body: { venueId, confirm } });
 }
 
+export async function saveGigTemplate({ templateData }) {
+  const data = await post('/venues/saveGigTemplate', { body: { templateData } });
+  return data?.templateId;
+}
 

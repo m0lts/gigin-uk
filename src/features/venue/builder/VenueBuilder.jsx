@@ -158,7 +158,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 navigate('/venues/dashboard/gigs');
                 return;
             }
-            await updateUserArrayField('venueProfiles','add', formData.venueId);
+            await updateUserArrayField({ field: 'venueProfiles', op: 'add', value: formData.venueId });
             const progressIntervals = [11, 22, 33, 44, 55, 66, 77, 88, 100];
             progressIntervals.forEach((value, index) => {
                 setTimeout(() => setProgress(value), 1000 * (index + 1));
@@ -209,7 +209,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     const handleSaveAndExit = async () => {
         if (formData.name === '') {
             if (Array.isArray(user.venueProfiles) && user.venueProfiles.length < 1) {
-                await clearUserArrayField('venueProfiles');
+                await clearUserArrayField({ field: 'venueProfiles' });
                 navigate('/')
                 return;
             } else {
@@ -246,7 +246,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 navigate('/venues/dashboard/gigs')
                 return;
             }
-            await updateUserArrayField('venueProfiles', 'add', formData.venueId);
+            await updateUserArrayField({ field: 'venueProfiles', op: 'add', value: formData.venueId });
             if (updatedFormData.completed || (user?.venueProfiles && user?.venueProfiles?.length > 1)) {
                 navigate('/venues/dashboard/gigs')
             } else {
@@ -273,9 +273,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     const handleDeleteSavedProfile = async () => {
         try {
           await deleteVenueProfile(savedProfile.venueId);
-          await updateUserArrayField('venueProfiles', 'remove', savedProfile.venueId);
+          await updateUserArrayField({ field: 'venueProfiles', op: 'remove', value: savedProfile.venueId });
           if (Array.isArray(user.venueProfiles) && user.venueProfiles.length < 1) {
-            await clearUserArrayField('venueProfiles');
+            await clearUserArrayField({ field: 'venueProfiles' });
           }
           setCompleteSavedProfileModal(false);
           setSavedProfile(undefined);

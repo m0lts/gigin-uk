@@ -82,9 +82,9 @@ export const MessagePage = () => {
 
     const handleArchiveConversation = async (conversation, shouldArchive) => {
         try {
-          await updateConversationDocument(conversation.id, {
+          await updateConversationDocument({ convId: conversation.id, updates: {
             [`archived.${user.uid}`]: shouldArchive
-          });
+          }});
         } catch (err) {
           console.error("Failed to archive conversation:", err);
         }

@@ -152,7 +152,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
         try {
             await updateConversationLastViewed(conversationId, user.uid);
             if (musicianId && conv?.gigId) {
-                await markGigApplicantAsViewed(conv.gigId, musicianId);
+                await markGigApplicantAsViewed({ gigId: conv.gigId, musicianId });
             }
         } catch (e) {
             console.error('Failed to select conversation:', e);
@@ -162,9 +162,9 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     const handleArchiveConversation = async (conversation, shouldArchive) => {
         setArchiving(true);
         try {
-          await updateConversationDocument(conversation.id, {
+          await updateConversationDocument({ convId: conversation.id, updates: {
             [`archived.${user.uid}`]: shouldArchive
-          });
+          }});
         } catch (err) {
           console.error("Failed to archive conversation:", err);
         } finally {

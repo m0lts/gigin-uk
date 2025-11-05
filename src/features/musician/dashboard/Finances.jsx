@@ -8,13 +8,11 @@ import {
 } from '@stripe/react-connect-js';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
-import { payoutToBankAccount, transferStripeFunds } from '@services/function-calls/payments';
+import { payoutToBankAccount, transferStripeFunds, deleteStripeConnectAccount, getConnectAccountStatus } from '@services/api/payments';
 import { openInNewTab } from '@services/utils/misc';
 import { formatFeeDate } from '@services/utils/dates';
 import { toast } from 'sonner';
 import { BankAccountIcon, CoinsIconSolid, CopyIcon, DeleteGigIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, MoreInformationIcon, PaymentSystemIcon, PieChartIcon, StripeIcon, SuccessIcon, TickIcon, WarningIcon } from '../../shared/ui/extras/Icons';
-import { deleteStripeConnectAccount } from '../../../services/function-calls/payments';
-import { getConnectAccountStatus } from '../../../services/function-calls/payments';
 import { getMusicianFees } from '../../../services/client-side/musicians';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
@@ -152,7 +150,7 @@ export const Finances = ({ user, musicianProfile }) => {
           return;
         }
         try {
-            const success = await payoutToBankAccount(musicianProfile.musicianId, amountToWithdraw);
+            const success = await payoutToBankAccount({ musicianId: musicianProfile.musicianId, amount: amountToWithdraw });
             if (success) {
               toast.success('Payout successful!');
               window.location.reload();
@@ -171,7 +169,7 @@ export const Finances = ({ user, musicianProfile }) => {
         if (!musicianProfile?.musicianId) return;
         setDeleting(true);
         try {
-          const res = await deleteStripeConnectAccount(musicianProfile.musicianId);
+          const res = await deleteStripeConnectAccount({ musicianId: musicianProfile.musicianId });
           if (res.success) {
             setConnectedAccountId(null);
             toast.success('Stripe account deleted.');
@@ -377,12 +375,12 @@ export const Finances = ({ user, musicianProfile }) => {
                                         onExit={async () => {
                                             setOnboardingExited(true);
                                             try {
-                                                await updateMusicianProfile(musicianProfile.musicianId, {bankDetailsAdded: true});
+                                                await updateMusicianProfile({ musicianId: musicianProfile.musicianId, updates: {bankDetailsAdded: true} });
                                                 const musicianDoc = await getMusicianProfileByMusicianId(musicianProfile.musicianId);
                                                 const withdrawableFunds = musicianDoc.withdrawableEarnings;
                                                 if (withdrawableFunds && withdrawableFunds > 1) {
                                                     const sanitisedWithdrawableFunds = Math.round(parseFloat(withdrawableFunds) * 100);
-                                                    await transferStripeFunds(musicianProfile.stripeAccountId, sanitisedWithdrawableFunds);
+                                                    await transferStripeFunds({ connectedAccountId: musicianProfile.stripeAccountId, amount: sanitisedWithdrawableFunds });
                                                 }
                                                 window.location.reload();
                                                 toast.success('Stripe Account Linked!');

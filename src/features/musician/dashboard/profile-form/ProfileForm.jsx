@@ -11,7 +11,7 @@ import { deleteFileFromStorage, uploadFileToStorage, uploadFileWithProgress } fr
 import { sendTestimonialRequestEmail } from '../../../../services/client-side/emails';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../../shared/ui/loading/LoadingModal';
-import { updateBandMemberImg } from '../../../../services/function-calls/bands';
+import { updateBandMemberImg } from '@services/api/bands';
 import { updateUserArrayField } from '@services/api/users';
 import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from '../../../../hooks/useBreakpoint';
@@ -656,7 +656,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
             } else {
                 pictureUrl = await uploadProfilePicture(pictureVal, formData.musicianId);
                 if (Array.isArray(formData.bands) && formData.bands.length > 0) {
-                    await updateBandMemberImg(formData.musicianId, pictureUrl, formData.bands);
+                    await updateBandMemberImg({ musicianProfileId: formData.musicianId, pictureUrl, bands: formData.bands });
                 }
             }
             }
@@ -675,7 +675,7 @@ export const ProfileForm = ({ user, musicianProfile, band = false, expand, setSh
             };
             await createMusicianProfile(formData.musicianId, updatedFormData, user.uid);
             if (!band) {
-                await updateUserArrayField('musicianProfile', 'add', formData.musicianId);
+                await updateUserArrayField({ field: 'musicianProfile', op: 'add', value: formData.musicianId });
             }
             if (band) {
                 await refreshSingleBand(formData.musicianId);

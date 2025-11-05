@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { getUserById } from '../../../services/client-side/users';
 import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
 import { updateUserArrayField } from '@services/api/users';
-import { createBandProfile } from '../../../services/function-calls/bands';
+import { createBandProfile } from '@services/api/bands';
 
 // Helpers
 const slideVariants = {
@@ -251,11 +251,11 @@ export const NoProfileModal = ({
           };
       
           // 5) Create band admin profile (bands collection)
-          await createBandProfile(bandId, bandAdminData, uid, creatorMusicianProfile);
+          await createBandProfile({ bandId, data: bandAdminData, userId: uid, musicianProfile: creatorMusicianProfile });
       
           // 6) Link band to user + creator’s musician profile
           await Promise.all([
-            updateUserArrayField('bands', 'add', bandId),
+            updateUserArrayField({ field: 'bands', op: 'add', value: bandId }),
             updateMusicianProfile(creatorMusicianId, {
               bands: arrayUnion(bandId),
               onboarded: true,
@@ -349,7 +349,7 @@ export const NoProfileModal = ({
                                           createdAt: Timestamp.now(),
                                         };
                                         await createMusicianProfile(id, payload, user.uid);
-                                        await updateUserArrayField('musicianProfile', 'add', id);
+                                        await updateUserArrayField({ field: 'musicianProfile', op: 'add', value: id });
                                         handleSelect('musician')
                                     } catch (error) {
                                         console.error(error)
@@ -379,7 +379,7 @@ export const NoProfileModal = ({
                                           createdAt: Timestamp.now(),
                                         };
                                         await createMusicianProfile(id, payload, user.uid);
-                                        await updateUserArrayField('musicianProfile', 'add', id);
+                                        await updateUserArrayField({ field: 'musicianProfile', op: 'add', value: id });
                                         handleSelect('band')
                                     } catch (error) {
                                         console.error(error)

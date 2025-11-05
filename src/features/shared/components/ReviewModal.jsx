@@ -5,9 +5,9 @@ import Skeleton from 'react-loading-skeleton';
 import '@styles/shared/review-modal.styles.css';
 import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { sendDisputeMessage } from '@services/function-calls/messages';
+import { sendDisputeMessage } from '@services/api/messages';
 import { sendEmail } from '@services/client-side/emails';
-import { cancelTask } from '@services/function-calls/tasks';
+import { cancelTask } from '@services/api/tasks';
 import { toast } from 'sonner';
 import { sendDisputeLoggedEmail, sendVenueDisputeLoggedEmail } from '../../../services/client-side/emails';
 import Portal from './Portal';
@@ -15,9 +15,9 @@ import { getOrCreateConversation } from '@services/api/conversations';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { LoadingModal } from '../ui/loading/LoadingModal';
 import { PermissionsIcon, ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';
-import { logDispute, submitReview } from '../../../services/function-calls/reviews';
-import { findPendingFeeByGigId, markPendingFeeInDispute } from '../../../services/function-calls/musicians';
-import { updateGigDocument } from '../../../services/function-calls/gigs';
+import { logDispute, submitReview } from '@services/api/reviews';
+import { findPendingFeeByGigId, markPendingFeeInDispute } from '@services/api/musicians';
+import { updateGigDocument } from '@services/api/gigs';
 import { useVenueDashboard } from '../../../context/VenueDashboardContext';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 
@@ -69,8 +69,8 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
         if (!disputeAllowed) return;
         try {
             setLoading(true);
-            const success = await cancelTask(gigData.clearPendingFeeTaskName, gigData.gigId, gigData.venueId);
-            const success2 = await cancelTask(gigData.automaticMessageTaskName, gigData.gigId, gigData.venueId);
+            const success = await cancelTask({ taskName: gigData.clearPendingFeeTaskName, gigId: gigData.gigId, venueId: gigData.venueId });
+            const success2 = await cancelTask({ taskName: gigData.automaticMessageTaskName, gigId: gigData.gigId, venueId: gigData.venueId });
             if (!success || !success2) {
                 console.error('Failed to cancel task');
                 toast.error('Failed to submit dispute. Please try again.');
@@ -83,26 +83,17 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     gigId: gigData.gigId,
                     venueId: gigData.venueId,
                     reason: disputeReason,
-                    details: disputeText || null,
-                    timestamp: Date.now(),
+                    message: disputeText || "",
+                    attachments: [],
                 });
-                const match = await findPendingFeeByGigId(musicianProfile.musicianId, gigData.gigId);
+                const match = await findPendingFeeByGigId({ musicianId: musicianProfile.musicianId, gigId: gigData.gigId });
                 if (match) {
-                    await markPendingFeeInDispute({
-                        musicianId: musicianProfile.musicianId,
-                        docId: match.docId,
-                        gigId: gigData.gigId,
-                        disputeLogged: true,
-                        status: 'in dispute',
-                        reason: disputeReason,
-                        disputeDetails: disputeText || null,
-                        venueId: gigData.venueId,
-                    });
+                    await markPendingFeeInDispute({ musicianId: musicianProfile.musicianId, docId: match.docId, gigId: gigData.gigId, disputeReason, details: disputeText || null, venueId: gigData.venueId });
                 } else {
                     console.warn('No pending fee doc found for this gig to mark as disputed.');
                 }
-                const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'dispute');
-                await sendDisputeMessage(conversationId, gigData.venue.venueName);
+                const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData, venueProfile, type: 'dispute' });
+                await sendDisputeMessage({ conversationId, venueName: gigData.venue.venueName });
                 await sendEmail({
                     to: 'hq.gigin@gmail.com',
                     subject: 'Dispute Logged',
@@ -118,12 +109,12 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                     musicianProfile: musicianProfile,
                     gigData: gigData,
                 })
-                await updateGigDocument(gigData.gigId, 'reviews.create', {
+                await updateGigDocument({ gigId: gigData.gigId, action: 'reviews.create', updates: {
                     disputeLogged: true,
                     disputeClearingTime: null,
                     musicianFeeStatus: 'in dispute',
                     venueHasReviewed: false,
-                });
+                }});
                 setDisputeSubmitted(true);
                 onClose(false);
                 toast.success('Dispute submitted. A member of the team will be in touch shortly via email.')
@@ -168,7 +159,6 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                 gigId: gigData.gigId,
                 rating,
                 reviewText,
-                profile: musicianProfile,
             });
             setGigData((prevGigData) => ({
                 ...prevGigData,

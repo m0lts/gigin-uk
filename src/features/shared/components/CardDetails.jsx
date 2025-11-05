@@ -10,8 +10,7 @@ import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
 import '@styles/shared/card-details.styles.css'
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading'
-import { createStripePaymentMethod, saveStripePaymentMethod } from '@services/function-calls/payments';
+import { saveStripePaymentMethod } from '@services/api/payments';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../ui/loading/Loading';
 
@@ -71,17 +70,34 @@ export const CardForm = ({
 
     try {
       // 1) Create a PM from the card fields
-      const pm = await createStripePaymentMethod(
-        stripe,
-        cardElement,
-        name,
-        billingDetails.address
-      );
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardElement,
+        billing_details: { name, address: billingDetails.address },
+      });
+      if (error) {
+        console.error("[Stripe.js Error] createStripePaymentMethod:", error)
+        toast.error('Error creating card. Please try again.');
+        return;
+      }
+      const pm = {
+        id: paymentMethod.id,
+        card: {
+          brand: paymentMethod.card.brand,
+          last4: paymentMethod.card.last4,
+          exp_month: paymentMethod.card.exp_month,
+          exp_year: paymentMethod.card.exp_year,
+        },
+        billing_details: {
+          name: paymentMethod.billing_details.name,
+          address: paymentMethod.billing_details.address,
+        },
+      };
 
       if (activityType === 'adding card') {
         // 2) Save/attach PM to the selected Stripe Customer
         //    ⬇️ UPDATED: pass target customer id
-        const data = await saveStripePaymentMethod(pm.id, selectedCustomerId);
+        const data = await saveStripePaymentMethod({ paymentMethodId: pm.id, customerId: selectedCustomerId });
         if (data.success) {
           const savedPm = data.paymentMethodUpdate || pm;
           const newDefaultId =
@@ -103,7 +119,7 @@ export const CardForm = ({
         // keep your existing flow
         handleCardSelection(pm.id);
         setCardDetails((prev) => [...prev, pm]);
-        if (saveCard) await saveStripePaymentMethod(pm.id, selectedCustomerId);
+        if (saveCard) await saveStripePaymentMethod({ paymentMethodId: pm.id, customerId: selectedCustomerId });
         setAddingNewCard(false);
       }
     } catch (err) {

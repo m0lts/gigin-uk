@@ -135,7 +135,7 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
         ...(existingProfile ? {} : { createdAt: Timestamp.now() }),
       };
       await createMusicianProfile(formData.musicianId, payload, user.uid);
-      await updateUserArrayField('musicianProfiles', 'add', formData.musicianId);
+      await updateUserArrayField({ field: 'musicianProfiles', op: 'add', value: formData.musicianId });
       setFormData(prev => ({
         ...prev,
         picture: pictureUrl || prev.picture,

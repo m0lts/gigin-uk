@@ -29,7 +29,7 @@ import { StaffPermissionsModal } from '../components/StaffPermissionsModal';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { updateUserArrayField } from '@services/api/users';
 import { deleteVenueData, fetchVenueMembersWithUsers } from '@services/api/venues';
-import { deleteReview } from '../../../services/function-calls/reviews';
+import { deleteReview } from '@services/api/reviews';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const VenuePage = ({ user, venues, setVenues }) => {
@@ -127,13 +127,13 @@ export const VenuePage = ({ user, venues, setVenues }) => {
         try {
             setDeleting(true);
             setShowDeleteModal(false);
-            await updateUserArrayField('venueProfiles', 'remove', venueId);
+            await updateUserArrayField({ field: 'venueProfiles', op: 'remove', value: venueId });
             const gigs = await getGigsByVenueId(venueId);
             const gigIds = gigs.map(gig => gig.id);
             await deleteGigsBatch(gigIds);
             const reviews = await getReviewsByVenueId(venueId);
             for (const { id } of reviews) {
-                await deleteReview(id);
+                await deleteReview({ reviewId: id });
             }
             await deleteFolderFromStorage(`venues/${venueId}`);
             await deleteVenueData({ venueId });

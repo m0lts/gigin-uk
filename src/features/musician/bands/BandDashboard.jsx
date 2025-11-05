@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { leaveBand } from '@services/function-calls/bands';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, NoImageIcon, StarIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { deleteBand } from '../../../services/function-calls/bands';
+import { deleteBand, leaveBand } from '@services/api/bands';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import { ProfileForm } from '../dashboard/profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
@@ -45,7 +44,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const handleLeaveBand = async () => {
     try {
       setLoading(true);
-      await leaveBand(bandProfile.id, musicianProfile.musicianId, musicianProfile.userId);
+      await leaveBand({ bandId: bandProfile.id, musicianProfileId: musicianProfile.musicianId, userId: musicianProfile.userId });
       await refreshMusicianProfile();
       toast.success('Left the band.');
       navigate('/dashboard/bands');
@@ -58,7 +57,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
   const handleDeleteBand = async () => {
     setLoading(true);
     try {
-      await deleteBand(bandProfile.id);
+      await deleteBand({ bandId: bandProfile.id });
       await refreshMusicianProfile();
       toast.success('Band deleted.');
       navigate('/dashboard/bands');

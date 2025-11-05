@@ -19,7 +19,7 @@ import { BandMembersTab } from '../bands/BandMembersTab';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { updateUserArrayField } from '@services/api/users';
-import { inviteToGig } from '../../../services/function-calls/gigs';
+import { inviteToGig } from '@services/api/gigs';
 import { fetchMyVenueMembership } from '../../../services/client-side/venues';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
@@ -229,8 +229,8 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
           return;
         }
         try {
-          const res = await inviteToGig(gigData.gigId, profile);
-          if (!res.ok) {
+          const res = await inviteToGig({ gigId: gigData.gigId, musicianProfile: profile });
+          if (!res.success) {
             if (res.code === "permission-denied") {
               toast.error("You don’t have permission to invite musicians for this venue.");
             } else if (res.code === "failed-precondition") {
@@ -240,11 +240,8 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
             }
             return;
           }
-          const conversationId = await getOrCreateConversation(
-            profile,
-            gigData,
-            venueToSend,
-            'invitation'
+          const { conversationId } = await getOrCreateConversation(
+            { musicianProfile: profile, gigData, venueProfile: venueToSend, type: 'invitation' }
           );
           if (gigData.kind === 'Ticketed Gig' || gigData.kind === 'Open Mic') {
             await sendGigInvitationMessage(conversationId, {
@@ -275,7 +272,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         if (user && routeMusicianId) {
           setSavingMusician(true);
           try {
-            await updateUserArrayField('savedMusicians', 'add', routeMusicianId);
+            await updateUserArrayField({ field: 'savedMusicians', op: 'add', value: routeMusicianId });
             setMusicianSaved(true);
             toast.success('Musician Saved.');
           } catch (error) {
@@ -291,7 +288,7 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         if (user && routeMusicianId) {
           setSavingMusician(true);
           try {
-            await updateUserArrayField('savedMusicians', 'remove', routeMusicianId);
+            await updateUserArrayField({ field: 'savedMusicians', op: 'remove', value: routeMusicianId });
             setMusicianSaved(false);
             toast.success('Musician Unsaved.');
           } catch (error) {

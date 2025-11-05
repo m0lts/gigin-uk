@@ -15,7 +15,7 @@ import { getOrCreateConversation } from '@services/api/conversations';
 import { getVenueProfileById } from '../../../services/client-side/venues';
 import { getMusicianProfileByMusicianId, withdrawMusicianApplication } from '../../../services/client-side/musicians';
 import { toast } from 'sonner';
-import { markInviteAsViewed } from '../../../services/function-calls/musicians';
+import { markInviteAsViewed } from '@services/api/musicians';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 
@@ -205,10 +205,8 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
             throw new Error('Full musician profile not found.');
           }
       
-          const conversationId = await getOrCreateConversation(
-            fullMusicianProfile,
-            gigData,
-            venueProfile
+          const { conversationId } = await getOrCreateConversation(
+            { musicianProfile: fullMusicianProfile, gigData, venueProfile }
           );
       
           navigate(`/messages?conversationId=${conversationId}`);
@@ -382,12 +380,12 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                     openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile ? appliedProfile.profileId : null}`, e)
                                                 };
                                                 if (isSmUp) {
-                                                    markInviteAsViewed(gig.gigId, applicant.id);
+                                                    markInviteAsViewed({ gigId: gig.gigId, applicantId: applicant.id });
                                                 }
                                             }}
                                             onMouseEnter={() => {
                                                 if (applicant?.invited && (!applicant?.viewed || applicant?.viewed == undefined)) {
-                                                    markInviteAsViewed(gig.gigId, applicant.id);
+                                                    markInviteAsViewed({ gigId: gig.gigId, applicantId: applicant.id });
                                                 }
                                             }}
                                         >

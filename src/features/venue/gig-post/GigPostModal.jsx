@@ -28,7 +28,7 @@ import Portal from '../../shared/components/Portal';
 import { removeVenueRequest } from '../../../services/client-side/venues';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { friendlyError } from '../../../services/utils/errors';
-import { inviteToGig, postMultipleGigs } from '../../../services/function-calls/gigs';
+import { inviteToGig, postMultipleGigs } from '@services/api/gigs';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
   
@@ -685,7 +685,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             }
           }
       
-          const newGigIds = await postMultipleGigs(formData.venueId, allGigsToPost);
+          const { gigIds: newGigIds } = await postMultipleGigs({ venueId: formData.venueId, gigDocuments: allGigsToPost });
 
           // update local state as you already do:
           setVenueProfiles(prev => {
@@ -708,8 +708,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             }
             const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
             const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
-            const res = await inviteToGig(firstGigDoc.gigId, musicianProfile);
-            if (!res.ok) {
+            const res = await inviteToGig({ gigId: firstGigDoc.gigId, musicianProfile });
+            if (!res.success) {
               if (res.code === "permission-denied") {
                 toast.error("You don’t have permission to invite musicians for this venue.");
               } else if (res.code === "failed-precondition") {
@@ -719,11 +719,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               }
               return;
             }
-            const conversationId = await getOrCreateConversation(
-              musicianProfile,
-              firstGigDoc,
-              venueToSend,
-              "invitation"
+            const { conversationId } = await getOrCreateConversation(
+              { musicianProfile, gigData: firstGigDoc, venueProfile: venueToSend, type: "invitation" }
             );
             if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
               await sendGigInvitationMessage(conversationId, {

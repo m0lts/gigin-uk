@@ -48,7 +48,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
       }, [venue?.venueId, user?.uid]);
   
     const startEdit = (member) => {
-      setSelectedUid(member.id);
+      setSelectedUid(member.uid);
       setPermissions(normalizePermissions(member.permissions));
       setStage("edit");
     };
@@ -118,7 +118,7 @@ export const StaffPermissionsModal = ({ user, venue, onClose }) => {
   
     const headerTitle =
       stage === "edit"
-        ? `Edit Permissions — ${selectedMember?.user?.name || selectedMember?.user?.displayName || selectedMember?.user?.email || selectedUid}`
+        ? `Edit Permissions — ${selectedMember?.user?.name || selectedMember?.userName || selectedMember?.user?.email || selectedUid}`
         : `Edit Staff Permissions`;
   
     return (

@@ -43,8 +43,8 @@ import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
-import { acceptGigOffer, acceptGigOfferOM, applyToGig, negotiateGigFee } from '../../services/function-calls/gigs';
-import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '../../services/function-calls/messages';
+import { applyToGig, negotiateGigFee } from '@services/api/gigs';
+import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '@services/api/messages';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { NoTextLogo } from '../shared/ui/logos/Logos';
 
@@ -379,18 +379,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           setApplyingToGig(true);
           try {
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' || gigData.budget === '£' || gigData.budget === '£0';
-            const updatedApplicants = await applyToGig(gigId, musicianProfile);
+            const { updatedApplicants } = await applyToGig({ gigId, musicianProfile });
             setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
             if (musicianProfile.bandProfile) {
                 await updateBandMembersGigApplications(musicianProfile, gigId);
             } else {
                 await updateMusicianGigApplications(musicianProfile, gigId);
             }
-            const conversationId = await getOrCreateConversation(
-                musicianProfile,
-                { ...gigData, gigId },
-                venueProfile,
-                'application'
+            const { conversationId } = await getOrCreateConversation(
+                { musicianProfile, gigData: { ...gigData, gigId }, venueProfile, type: 'application' }
             );
             await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
@@ -421,7 +418,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const handleWithdrawApplication = async () => {
         setApplyingToGig(true);
         try {
-            const updatedApplicants = await withdrawMusicianApplication(gigId, selectedProfile);
+            const { updatedApplicants } = await withdrawMusicianApplication(gigId, selectedProfile);
             if (updatedApplicants) {
               setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
             }
@@ -474,33 +471,21 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
         setApplyingToGig(true);
         try {
-            const updatedApplicants = await negotiateGigFee(gigId, musicianProfile, newOffer, 'musician');
+            const { updatedApplicants } = await negotiateGigFee({ gigId, musicianProfile, newFee: newOffer, sender: 'musician' });
             setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
             if (musicianProfile.bandProfile) {
                 await updateBandMembersGigApplications(musicianProfile, gigId);
             } else {
                 await updateMusicianGigApplications(musicianProfile, gigId);
             }
-            const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'negotiation');
+            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData, venueProfile, type: 'negotiation' });
             const profileType = musicianProfile.bandProfile ? 'band' : 'musician';
             const senderName = musicianProfile.name;
             const venueName = gigData.venue?.venueName || 'the venue';
             if (invitedToGig) {
                 const invitationMessage = await getMostRecentMessage(conversationId, 'invitation');
-                await updateDeclinedApplicationMessage(
-                    conversationId,
-                    invitationMessage.id,
-                    user.uid,
-                    'musician',
-                );
-                await sendCounterOfferMessage(
-                    conversationId,
-                    invitationMessage.id,
-                    user.uid,
-                    newOffer,
-                    gigData.budget,
-                    'musician',
-                )
+                updateDeclinedApplicationMessage({ conversationId, originalMessageId: invitationMessage.id, senderId: user.uid, userRole: 'musician' });
+                await sendCounterOfferMessage({ conversationId, messageId: invitationMessage.id, senderId: user.uid, newFee: newOffer, oldFee: gigData.budget, userRole: 'musician' });
                 await sendCounterOfferEmail({
                     userRole: 'musician',
                     musicianProfile: musicianProfile,
@@ -549,7 +534,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           });
         if (!valid) return;
         try {
-            const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'message');
+            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData, venueProfile, type: 'message' });
             navigate(`/messages?conversationId=${conversationId}`);
         } catch (error) {
             console.error('Error while creating or fetching conversation:', error);
@@ -567,14 +552,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM(gigData, musicianId, 'musician');
+                const { updatedApplicants } = await acceptGigOfferOM({ gigData, musicianProfileId: musicianId, role: 'musician' });
                 setGigData((prevGigData) => ({
                     ...prevGigData,
                     applicants: updatedApplicants,
                     paid: true,
                 }));
             } else {
-                const { updatedApplicants, agreedFee } = await acceptGigOffer(gigData, musicianId, nonPayableGig, 'musician');
+                const { updatedApplicants, agreedFee } = await acceptGigOffer({ gigData, musicianProfileId: musicianId, nonPayableGig, role: 'musician' });
                 setGigData((prevGigData) => ({
                     ...prevGigData,
                     applicants: updatedApplicants,
@@ -585,9 +570,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             }
             const musicianProfile = selectedProfile;
             const venueProfile = await getVenueProfileById(gigData.venueId);
-            const conversationId = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'application');
+            const { conversationId } = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'application');
             const applicationMessage = await getMostRecentMessage(conversationId, 'invitation');
-            await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigData.budget, 'musician', nonPayableGig);
+            await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: gigData.budget, userRole: 'musician', nonPayableGig });
             const venueEmail = venueProfile.email;
             const musicianName = musicianProfile.name;
             await sendInvitationAcceptedEmailToVenue({

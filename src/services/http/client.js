@@ -61,7 +61,7 @@ export async function request(method, path, options = {}) {
       const token = await getAuthToken();
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
-
+    console.log('calling', buildUrl(path, query));
     const res = await fetch(buildUrl(path, query), {
       method: method.toUpperCase(),
       headers,

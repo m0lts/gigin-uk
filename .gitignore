@@ -28,3 +28,8 @@ dist-ssr
 .env.development
 functions/service-account.json
 scripts/
+gigin-api/node_modules
+gigin-api/dist
+gigin-api/dist-ssr
+gigin-api/*.local
+gigin-api/.env

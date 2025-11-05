@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CopyIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { updateBandMemberPermissions, removeBandMember, updateBandAdmin } from '@services/function-calls/bands';
+import { updateBandMemberPermissions, removeBandMember, updateBandAdmin, createBandInvite } from '@services/api/bands';
 import { AddMember, KeyIcon, PasswordIcon, PeopleGroupIconSolid, PlusIconSolid, RemoveMemberIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
@@ -9,7 +9,6 @@ import { useMusicianDashboard } from '../../../context/MusicianDashboardContext'
 import Portal from '@features/shared/components/Portal'
 import { sendBandInviteEmail } from '../../../services/client-side/emails';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
-import { createBandInvite } from '../../../services/function-calls/bands';
 
 export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, viewing = false, bandAdmin }) => {
 
@@ -44,7 +43,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
     }
 
     const generateInviteLink = async () => {
-        const inviteId = await createBandInvite(band.id, band.bandInfo.admin.musicianId);
+        const inviteId = await createBandInvite({ bandId: band.id, invitedBy: band.bandInfo.admin.musicianId });
         return `${window.location.origin}/dashboard/bands/join?invite=${inviteId}`;
     };
 
@@ -154,17 +153,17 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
             if (!newAdminCandidate) {
                 const updatePromises = Object.entries(permissionEdits).map(
                     ([musicianProfileId, updates]) =>
-                    updateBandMemberPermissions(band.id, musicianProfileId, updates)
+                    updateBandMemberPermissions({ bandId: band.id, musicianProfileId, updates })
                 );
                 updatedMembers = await Promise.all(updatePromises);
             } else {
-                updatedMembers = await updateBandAdmin(band.id, newAdminCandidate, permissionEdits);
+                updatedMembers = await updateBandAdmin({ bandId: band.id, newAdminData: newAdminCandidate, roleUpdates: permissionEdits });
             }
             setIsEditingPermissions(false);
             setPermissionEdits({});
             setNewAdminCandidate(null);
             setError('');
-            await refreshSingleBand(band.id)
+            await refreshSingleBand({ bandId: band.id })
             toast.success('Band permissions edited.')
         } catch (err) {
             console.error('Failed to update permissions:', err);
@@ -417,7 +416,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
                             try {
                                 setLoading(true);
                                 if (bandMembers.length < 1) return;
-                                const updated = await removeBandMember(band.id, memberToRemove.musicianProfileId, memberToRemove.memberUserId);
+                                const updated = await removeBandMember({ bandId: band.id, musicianProfileId: memberToRemove.musicianProfileId, userId: memberToRemove.memberUserId });
                                 setBandMembers(updated);
                                 setShowRemoveModal(false);
                                 setMemberToRemove(null);

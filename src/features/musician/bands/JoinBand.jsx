@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { acceptBandInvite } from '@services/function-calls/bands';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { joinBandByPassword, getBandByPassword } from '@services/function-calls/bands';
+import { joinBandByPassword, getBandByPassword, acceptBandInvite } from '@services/api/bands';
 import { toast } from 'sonner';
 import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';
@@ -39,7 +38,7 @@ export const JoinBand = () => {
         }
         setStatus('loading');
         try {
-          await acceptBandInvite(inviteId, user.musicianProfile);
+          await acceptBandInvite({ inviteId, musicianProfile: user.musicianProfile });
           setStatus('success');
           setMessage('You’ve successfully joined the band!');
           toast.success('Joined Band!')
@@ -62,7 +61,7 @@ export const JoinBand = () => {
       }
       setStatus('loading');
       try {
-        const band = await getBandByPassword(code.trim().toLowerCase());
+        const band = await getBandByPassword({ password: code.trim().toLowerCase() });
         if (band.members.includes(user.musicianProfile.musicianId)) {
           toast.error("You're already a member of this band.");
           setStatus('idle')
@@ -80,7 +79,7 @@ export const JoinBand = () => {
       if (!user?.musicianProfile || !band?.id) return;
       try {
         setLoading(true);
-        await joinBandByPassword(band.id, user.musicianProfile);
+        await joinBandByPassword({ bandId: band.id, musicianProfile: user.musicianProfile });
         await refreshMusicianProfile();
         setTimeout(() => {
           navigate(`/dashboard/bands/${band.id}`, { replace: true });

@@ -3,7 +3,7 @@ import { getGigsByVenueIds } from '@services/client-side/gigs';
 import { getTemplatesByVenueIds } from '@services/client-side/venues';
 import { subscribeToUpcomingOrRecentGigs } from '@services/client-side/gigs';
 import { fetchMyVenueMembership, getVenueRequestsByVenueIds } from '../services/client-side/venues';
-import { fetchCustomerData } from '../services/function-calls/payments';
+import { fetchCustomerData } from '@services/api/payments';
 
 const VenueDashboardContext = createContext();
 
@@ -80,7 +80,7 @@ export const VenueDashboardProvider = ({ user, children }) => {
         null,
         ...financeCustomerIds,
       ];
-      const bundles = await Promise.all(customerIds.map(id => fetchCustomerData(id)));
+      const bundles = await Promise.all(customerIds.map(id => fetchCustomerData({ customerId: id })));
       const userBundle = bundles[0];
       const venueBundles = bundles.slice(1);
 
@@ -164,7 +164,7 @@ const refreshStripe = async () => {
     ]));
 
     const customerIds = [null, ...financeCustomerIds];
-    const bundles = await Promise.all(customerIds.map(id => fetchCustomerData(id)));
+    const bundles = await Promise.all(customerIds.map(id => fetchCustomerData({ customerId: id })));
 
     const userBundle   = bundles[0];
     const venueBundles = bundles.slice(1);

@@ -106,7 +106,7 @@ export const FindMusicians = ({ user }) => {
         if (!user?.uid || !musician?.id) return;
         setSaving(musician?.id);
         try {
-            await updateUserArrayField('savedMusicians', 'add', musician.id);
+            await updateUserArrayField({ field: 'savedMusicians', op: 'add', value: musician.id });
           toast.success(`Saved ${musician.name} to your list`);
         } catch (error) {
           console.error('Error toggling saved musician:', error);
@@ -120,7 +120,7 @@ export const FindMusicians = ({ user }) => {
         if (!user?.uid || !musician?.id) return;
         setSaving(musician?.id);
         try {
-          await updateUserArrayField('savedMusicians', 'remove', musician.id);
+          await updateUserArrayField({ field: 'savedMusicians', op: 'remove', value: musician.id });
           toast.success(`Removed ${musician.name} from your saved musicians`);
         } catch (error) {
           console.error('Error unsaving musician:', error);

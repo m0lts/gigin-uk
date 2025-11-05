@@ -17,15 +17,16 @@ import { RequestCard } from '../components/RequestCard';
 import { getVenueProfileById, removeVenueRequest } from '../../../services/client-side/venues';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
-import { cancelGigAndRefund } from '@services/function-calls/tasks';
+import { cancelGigAndRefund } from '@services/api/payments';
 import { getOrCreateConversation } from '@services/api/conversations';
-import { postCancellationMessage } from '../../../services/function-calls/messages';
+import { postCancellationMessage } from '@services/api/messages';
 import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
 import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
-import { duplicateGig, handleCloseGig, handleOpenGig, logGigCancellation, saveGigTemplate, updateGigDocument, revertGigAfterCancellationVenue } from '../../../services/function-calls/gigs';
-import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
+import { duplicateGig, updateGigDocument } from '@services/api/gigs';
+import { saveGigTemplate } from '@services/api/venues';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 
@@ -188,21 +189,22 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           setLoading(true);
           const newGigIds = [];
           for (const gigId of selectedGigs) {
-            const newId = await duplicateGig(gigId);
+            const newId = await duplicateGig({ gigId });
             newGigIds.push(newId);
           }
-          toast.success('Gigs Duplicated');
+          toast.success('Gig Duplicated');
           setConfirmModal(false);
           setSelectedGigs([]);
           setConfirmType(null);
           setConfirmMessage(null);
+          refreshGigs();
         } catch (error) {
           console.error('Failed to duplicate gigs:', error);
           toast.error('Failed to duplicate gigs. Please try again.');
           setConfirmModal(false);
         } finally {
           setLoading(false);
-          }
+        }
       };
 
       const formatCancellationReason = (reason) => {
@@ -240,22 +242,21 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
               await cancelGigAndRefund({
                 taskNames,
                 transactionId: nextGig.paymentIntentId,
+                gigId: nextGig.gigId,
+                venueId: nextGig.venueId,
               });
             }
             const handleMusicianCancellation = async (musician) => {
-              const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
+              const { conversationId } = await getOrCreateConversation({ musicianProfile: musician, gigData: nextGig, venueProfile, type: 'cancellation' });
               await postCancellationMessage(
-                conversationId,
-                user.uid,
-                `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                { conversationId, senderId: user.uid, message: `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
                   cancellationReason
-                )}. We apologise for any inconvenience caused.`,
-                'venue'
+                )}. We apologise for any inconvenience caused.`, cancellingParty: 'venue' }
               );
-              await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
-              await updateMusicianCancelledGig(musician.musicianId, gigId);
+              await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId: musician.musicianId, cancellationReason });
+              await cancelledGigMusicianProfileUpdate({ musicianId: musician.musicianId, gigId });
               const cancellingParty = 'venue';
-              await logGigCancellation(gigId, musician.musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
+              await logGigCancellation({ gigId, musicianId: musician.musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
             };
         
             if (isOpenMic) {
@@ -304,7 +305,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         };
       
         try {
-          await saveGigTemplate(templateData);
+          await saveGigTemplate({ templateData: templateData });
           toast.success('Template Saved');
         } catch (error) {
           console.error('Failed to save template:', error);
@@ -666,16 +667,14 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                       onClick={async () => {
                                           if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
                                             toast.error('You do not have permission to edit this gig.');
+                                            return;
                                           }
                                           closeOptionsMenu();
                                           const newStatus = (gig.status === 'open' || gig.status === 'upcoming') ? 'closed' : 'open';
                                           try {
-                                            if (newStatus === 'closed') {
-                                              await handleCloseGig(gig.gigId);
-                                            } else {
-                                              await handleOpenGig(gig.gigId);
-                                            }
-                                              toast.success(`Gig ${(newStatus === 'open' || newStatus === 'upcoming') ? 'Opened for Applications' : 'Closed from Applications'}`);
+                                              await updateGigDocument({ gigId: gig.gigId, action: 'gigs.applications.manage', updates: { status: newStatus } });
+                                              toast.success(`Gig ${newStatus === 'open' ? 'Opened for Applications' : 'Closed from Applications'}`);
+                                              refreshGigs();
                                           } catch (error) {
                                               console.error('Error updating status:', error);
                                               toast.error('Failed to update gig status.');
@@ -698,7 +697,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           closeOptionsMenu();
                                           const newStatus = gig.openMicApplications ? false : true;
                                           try {
-                                              await updateGigDocument(gig.gigId, 'gigs.update', { openMicApplications: newStatus, limitApplications: false });
+                                              await updateGigDocument({ gigId: gig.gigId, action: 'gigs.update', updates: { openMicApplications: newStatus, limitApplications: false } });
                                               toast.success(`Open mic night ${(newStatus) ? 'opened for applications.' : 'changed to turn up and play.'}`);
                                           } catch (error) {
                                               console.error('Error updating status:', error);

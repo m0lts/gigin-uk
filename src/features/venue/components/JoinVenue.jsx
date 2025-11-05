@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Timestamp } from 'firebase/firestore';
-// import { getVenueProfileById } from '@/services/client-side/venues'; // <-- adjust to your path
-import { getVenueProfileById } from '@services/client-side/venues'; // example path
+import { getVenueProfileById } from '@services/client-side/venues';
 import { getVenueInviteById } from '../../../services/client-side/venues';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { TextLogoLink } from '../../shared/ui/logos/Logos';

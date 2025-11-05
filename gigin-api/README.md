@@ -42,6 +42,9 @@ gcloud auth application-default login
    GCLOUD_PROJECT=giginltd-dev
    NODE_ENV=development
    PORT=8080
+   STRIPE_TEST_KEY=sk_test_your_stripe_test_key_here
+   # For production:
+   # STRIPE_PRODUCTION_KEY=sk_live_your_stripe_production_key_here
    ```
 
 4. Run the server:

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { EditIcon, CopyIcon } from '@features/shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { ExclamationIcon, NewTabIcon } from '../../shared/ui/extras/Icons';
-import { saveGigTemplate } from '../../../services/function-calls/gigs';
+import { saveGigTemplate } from '../../../services/api/venues';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const GigReview = ({ formData, handleInputChange, setStage, buildingForMusician, buildingForMusicianData, extraSlots }) => {
@@ -205,7 +205,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
         };
       
         try {
-          await saveGigTemplate(templateDataPacket);
+          await saveGigTemplate({ templateData: templateDataPacket });
           setSaving(false);
           setSavedTemplate(true);
           toast.success("Template Saved.");

@@ -8,15 +8,15 @@ import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { postCancellationMessage } from '@services/function-calls/messages';
-import { cancelGigAndRefund } from '@services/function-calls/tasks';
+import { postCancellationMessage } from '@services/api/messages';
+import { cancelGigAndRefund } from '@services/api/payments';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '../../../services/utils/misc';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
-import { logGigCancellation, revertGigAfterCancellation } from '../../../services/function-calls/gigs';
-import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
+import { logGigCancellation, revertGigAfterCancellation } from '@services/api/gigs';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
 
 
 export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation }) => {
@@ -121,12 +121,14 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                 await cancelGigAndRefund({
                     taskNames,
                     transactionId: gigForHandbook.paymentIntentId,
+                    gigId: gigForHandbook.gigId,
+                    venueId: gigForHandbook.venueId,
                 });
             }
             const gigId = gigForHandbook.gigId;
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(gigForHandbook.venueId);
-            const conversationId = await  getOrCreateConversation(musicianProfile, gigForHandbook, venueProfile, 'cancellation');
+            const conversationId = await  getOrCreateConversation({ musicianProfile, gigData: gigForHandbook, venueProfile, type: 'cancellation' });
             let messageText;
             if (gigForHandbook.kind === 'Ticketed Gig') {
                 messageText = `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(cancellationReason)}. The gig has been re-posted for musicians to apply to.`
@@ -135,16 +137,11 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
             } else {
                 messageText = `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(cancellationReason)}. You have been refunded the gig fee - refunds can take 3–10 business days to appear in your account. The gig has been re-posted for musicians to apply to.`
             }
-            await postCancellationMessage(
-                conversationId,
-                user.uid,
-                messageText,
-                'Musician',
-            );
-            await revertGigAfterCancellation(gigForHandbook, musicianId, cancellationReason);
-            await updateMusicianCancelledGig(musicianId, gigId);
+            await postCancellationMessage({ conversationId, senderId: user.uid, message: messageText, cancellingParty: 'musician' });
+            await revertGigAfterCancellation({ gigData: gigForHandbook, musicianId, cancellationReason });
+            await cancelledGigMusicianProfileUpdate({ musicianId, gigId });
             const cancellingParty = 'musician';
-            await logGigCancellation(gigId, musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
+            await logGigCancellation({ gigId, musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
             setLoading(false);
             setShowGigHandbook(false);
         } catch (error) {

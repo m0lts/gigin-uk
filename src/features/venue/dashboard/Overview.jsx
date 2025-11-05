@@ -16,7 +16,7 @@ import { FeedbackSection } from './FeedbackSection';
 import { toast } from 'sonner';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
-import { submitReview } from '../../../services/function-calls/reviews';
+import { submitReview } from '@services/api/reviews';
 
 export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gigsToReview, setGigsToReview, requests }) => {
 
@@ -128,7 +128,6 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                 gigId: gigData.gigId,
                 rating: ratingValue,
                 reviewText: reviewTextValue,
-                profile: gigData.musicianProfile,
             });
             toast.success('Review submitted. Thank you!');
             setGigsToReview((prev) => prev.filter(g => g.gigId !== gigData.gigId));

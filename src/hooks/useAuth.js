@@ -228,7 +228,7 @@ export const useAuth = () => {
 const resetPassword = async (rawEmail) => {
   try {
     const email = (rawEmail || "").trim().toLowerCase();
-    const userDoc = await getEmailAddress(email);
+    const userDoc = await getEmailAddress({ email });
     if (!userDoc) {
       return { sent: false, reason: 'no-account' };
     }

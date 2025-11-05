@@ -6,7 +6,7 @@ import { EditIcon } from '@features/shared/ui/extras/Icons';
 import { updateEmail, updatePassword, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '@lib/firebase';
 import '@styles/shared/account-page.styles.css';
-import { removeGigApplicant } from '@services/function-calls/gigs';
+import { removeGigApplicant } from '@services/api/gigs';
 import { getVenueProfilesByUserId } from '@services/client-side/venues';
 import { getMusicianProfileByUserId } from '@services/client-side/musicians';
 import { getGigsByVenueId, getGigsByVenueIds } from '@services/client-side/gigs';
@@ -25,9 +25,9 @@ import { firestore } from '@lib/firebase';
 import { uploadFileToStorage } from '../../services/storage';
 import { clearUserArrayField, deleteUserDocument, updateUserArrayField } from '@services/api/users';
 import { transferVenueOwnership } from '@services/api/venues';
-import { deleteReview } from '../../services/function-calls/reviews';
+import { deleteReview } from '@services/api/reviews';
 import { deleteGigsBatch } from '../../services/client-side/gigs';
-import { deleteConversation } from '../../services/function-calls/conversations';
+import { deleteConversation } from '@services/api/conversations';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 export const Account = () => {
@@ -192,22 +192,22 @@ export const Account = () => {
             await deleteGigsBatch(venueGigs.map(gig => gig.id));
             const venueReviews = await getReviewsByVenueIds(venueIds);
             for (const { id } of venueReviews) {
-                await deleteReview(id);
+                await deleteReview({ reviewId: id });
             }
             if (musicianId) {
                 const musicianReviews = await getReviewsByMusicianId(musicianId);
                 for (const { id } of musicianReviews) {
-                  await deleteReview(id);
+                  await deleteReview({ reviewId: id });
                 }
             }
             if (musicianProfile?.gigApplications?.length) {
                 for (const application of musicianProfile.gigApplications) {
-                    await removeGigApplicant(application.gigId, musicianProfile.musicianId);
+                    await removeGigApplicant({ gigId: application.gigId, musicianId: musicianProfile.musicianId });
                 }
             }
             const conversations = await getConversationsByParticipantId(userId);
             for (const { id } of conversations) {
-                await deleteConversation(id);
+                await deleteConversation({ conversationId: id });
             }
             for (const venueId of venueIds) {
                 await deleteFolderFromStorage(`venues/${venueId}`);
@@ -255,7 +255,7 @@ export const Account = () => {
     //             await deleteMusicianProfile(musicianId);
     //             const musicianReviews = await getReviewsByMusicianId(musicianId);
     //             for (const { id } of musicianReviews) {
-    //               await deleteReview(id);
+    //               await deleteReview({ reviewId: id });
     //             }
     //             const conversations = await getConversationsByParticipantId(musicianProfile.userId);
     //             for (const { id } of conversations) {
@@ -287,11 +287,11 @@ export const Account = () => {
     //             await deleteGigsBatch(gigs.map(gig => gig.id));
     //             const reviews = await getReviewsByVenueId(venueId);
     //             for (const { id } of reviews) {
-    //                 await deleteReview(id);
+    //                 await deleteReview({ reviewId: id });
     //             }
     //             const conversations = await getConversationsByParticipantId(user.uid);
     //             for (const { id } of conversations) {
-    //                 await deleteConversation(id);
+    //                 await deleteConversation({ conversationId: id });
     //             }
     //             await deleteFolderFromStorage(`venues/${venueId}`);
     //             await updateUserArrayField('venueProfiles', 'remove', venueId);

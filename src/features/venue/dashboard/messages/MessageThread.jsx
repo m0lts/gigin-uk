@@ -12,16 +12,16 @@ import { listenToMessages } from '@services/client-side/messages';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/client-side/emails';
-import { fetchSavedCards, confirmGigPayment } from '@services/function-calls/payments';
+import { fetchSavedCards, confirmGigPayment } from '@services/api/payments';
 import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
 import { toast } from 'sonner';
 import { formatDate, toJsDate } from '../../../../services/utils/dates';
 import Portal from '../../../shared/components/Portal';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { loadStripe } from '@stripe/stripe-js';
-import { notifyOtherApplicantsGigConfirmed } from '../../../../services/function-calls/conversations';
-import { acceptGigOffer, acceptGigOfferOM, declineGigApplication, updateGigWithCounterOffer  } from '../../../../services/function-calls/gigs';
-import { sendGigAcceptedMessage, sendMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '../../../../services/function-calls/messages';
+import { notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
+import { acceptGigOffer, acceptGigOfferOM, declineGigApplication, updateGigWithCounterOffer } from '@services/api/gigs';
+import { sendGigAcceptedMessage, sendMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/api/messages';
 import { hasVenuePerm } from '../../../../services/utils/permissions';
 import { PermissionsIcon } from '../../../shared/ui/extras/Icons';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -98,7 +98,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         setNewMessage('');
       
         try {
-          await sendMessage(conversationId, { senderId: user.uid, text });
+          await sendMessage({ conversationId, message: { senderId: user.uid, text } });
           setMessages(prev => prev.filter(m => m.id !== tempId));
         } catch (err) {
           console.error('Error sending message:', err);
@@ -111,7 +111,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         if (!msg) return;
         setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: true, failed: false } : m));
         try {
-          await sendMessage(conversationId, { senderId: user.uid, text: msg.text });
+          await sendMessage({ conversationId, message: { senderId: user.uid, text: msg.text } });
           setMessages(prev => prev.filter(m => m.id !== tempId));
         } catch (err) {
           setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: false, failed: true } : m));
@@ -148,8 +148,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
-                const { updatedApplicants } = assertOk(
-                    await acceptGigOfferOM(gigData, musicianProfileId, 'venue'),
+            const { updatedApplicants } = assertOk(
+                await acceptGigOfferOM({ gigData, musicianProfileId, role: 'venue' }),
                     'acceptGigOfferOM'
                 );
                 if (!Array.isArray(updatedApplicants)) {
@@ -163,7 +163,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 }));
             } else {
                 const { updatedApplicants, agreedFee } = assertOk(
-                    await acceptGigOffer(gigData, musicianProfileId, nonPayableGig, 'venue'),
+                    await acceptGigOffer({ gigData, musicianProfileId, nonPayableGig, role: 'venue' }),
                     'acceptGigOffer'
                   );
                 if (!Array.isArray(updatedApplicants)) {
@@ -182,7 +182,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 }));
                 globalAgreedFee = agreedFee;
             }
-            await sendGigAcceptedMessage(conversationId, messageId, user.uid, globalAgreedFee, userRole, nonPayableGig);
+            await sendGigAcceptedMessage({ conversationId, originalMessageId: messageId, senderId: user.uid, agreedFee: globalAgreedFee, userRole, nonPayableGig });
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigAcceptedEmail({
@@ -195,7 +195,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 nonPayableGig
             });
             if (gigData.kind === "Ticketed Gig" || (gigData.kind === 'Live Music' && (gigData.budget === '£' || gigData.budget === '£0'))) {
-                await notifyOtherApplicantsGigConfirmed(gigData, musicianProfileId);
+                await notifyOtherApplicantsGigConfirmed({ gigData, acceptedMusicianId: musicianProfileId });
             }
         } catch (error) {
             console.error('Error updating gig document:', error);
@@ -213,7 +213,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             setEventLoading(true);
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
             const { updatedApplicants, agreedFee } = assertOk(
-                await acceptGigOffer(gigData, musicianProfileId, nonPayableGig, 'venue'),
+                await acceptGigOffer({ gigData, musicianProfileId, nonPayableGig, role: 'venue' }),
                 'acceptGigOffer'
               );
             if (!Array.isArray(updatedApplicants)) {
@@ -230,7 +230,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
               agreedFee: `${agreedFee}`,
               paid: false,
             }));
-            await sendGigAcceptedMessage(conversationId, messageId, user.uid, agreedFee, userRole);
+            await sendGigAcceptedMessage({ conversationId, originalMessageId: messageId, senderId: user.uid, agreedFee, userRole });
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigAcceptedEmail({
@@ -255,8 +255,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const updatedApplicants = assertOk(
-                await declineGigApplication(gigData, musicianProfileId, 'venue'),
+            const {updatedApplicants} = assertOk(
+                await declineGigApplication({ gigData, musicianProfileId, role: 'venue' }),
                 'declineGigApplication'
             );
             if (!Array.isArray(updatedApplicants)) {
@@ -267,13 +267,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 ...prev,
                 applicants: updatedApplicants,
             }));
-            await updateDeclinedApplicationMessage(
-                conversationId,
-                messageId,
-                user.uid,
-                userRole,
-                newFee
-            );
+            await updateDeclinedApplicationMessage({ conversationId, originalMessageId: messageId, senderId: user.uid, userRole, fee: newFee });
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigDeclinedEmail({
@@ -299,8 +293,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const updatedApplicants = assertOk(
-                await declineGigApplication(gigData, musicianProfileId, 'venue'),
+            const {updatedApplicants} = assertOk(
+                await declineGigApplication({ gigData, musicianProfileId, role: 'venue' }),
                 'declineGigApplication'
               );
             if (!Array.isArray(updatedApplicants)) {
@@ -311,12 +305,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 ...prevGigData,
                 applicants: updatedApplicants,
             }));
-            await updateDeclinedApplicationMessage(
-                conversationId,
-                messageId,
-                user.uid,
-                userRole,
-            );
+            await updateDeclinedApplicationMessage({ conversationId, originalMessageId: messageId, senderId: user.uid, userRole });
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigDeclinedEmail({
@@ -346,8 +335,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 toast.info('Please enter a valid value.');
                 return;
             }
-            const updatedApplicants = assertOk(
-                await updateGigWithCounterOffer(gigData, musicianProfileId, newFee, 'venue'),
+            const {updatedApplicants} = assertOk(
+                await updateGigWithCounterOffer({ gigData, musicianProfileId, newFee, sender: 'venue' }),
                 'updateGigWithCounterOffer'
             );
             if (!Array.isArray(updatedApplicants)) {
@@ -355,14 +344,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 throw new Error('updateGigWithCounterOffer: no updatedApplicants')
             };
             setGigData((prev) => ({ ...prev, applicants: updatedApplicants }));
-            await sendCounterOfferMessage(
-                conversationId,
-                messageId,
-                user.uid,
-                newFee,
-                gigData.budget,
-                userRole
-            );
+            await sendCounterOfferMessage({ conversationId, messageId, senderId: user.uid, newFee, oldFee: gigData.budget, userRole });
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendCounterOfferEmail({
@@ -456,7 +438,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
     const handleMessageReviewed = async () => {
         try {
-          const reviewedMessageId = await updateReviewMessageStatus(conversationId, messages, user.uid);
+          const { messageId: reviewedMessageId } = await updateReviewMessageStatus({ conversationId, messages, userId: user.uid });
           if (reviewedMessageId) {
             const updatedMessages = messages.map((msg) =>
               msg.id === reviewedMessageId ? { ...msg, status: 'closed' } : msg

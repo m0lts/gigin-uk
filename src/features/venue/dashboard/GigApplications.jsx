@@ -20,7 +20,7 @@ import { getConversationsByParticipantAndGigId } from '@services/client-side/con
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { getMostRecentMessage } from '@services/client-side/messages';
 import { removeGigFromVenue } from '@services/client-side/venues';
-import { confirmGigPayment, fetchSavedCards } from '@services/function-calls/payments';
+import { confirmGigPayment, fetchSavedCards } from '@services/api/payments';
 import { openInNewTab } from '../../../services/utils/misc';
 import { CloseIcon, LeftArrowIcon, NewTabIcon, PeopleGroupIconSolid, PermissionsIcon, PlayIcon, PreviousIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
@@ -30,16 +30,14 @@ import { sendGigAcceptedEmail, sendGigDeclinedEmail } from '../../../services/cl
 import Portal from '../../shared/components/Portal';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
-import { cancelGigAndRefund } from '@services/function-calls/tasks';
-import { acceptGigOffer, acceptGigOfferOM, logGigCancellation, markApplicantsViewed } from '../../../services/function-calls/gigs';
-import { postCancellationMessage } from '../../../services/function-calls/messages';
+import { cancelGigAndRefund } from '@services/api/payments';
+import { acceptGigOffer, acceptGigOfferOM, logGigCancellation, markApplicantsViewed, declineGigApplication, revertGigAfterCancellationVenue, deleteGigAndInformation, updateGigDocument } from '@services/api/gigs';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { toJsDate } from '../../../services/utils/dates';
-import { handleCloseGig, handleOpenGig, declineGigApplication, revertGigAfterCancellationVenue, deleteGigAndInformation } from '../../../services/function-calls/gigs';
-import { sendGigAcceptedMessage, updateDeclinedApplicationMessage } from '../../../services/function-calls/messages';
-import { updateMusicianCancelledGig } from '../../../services/function-calls/musicians';
+import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, postCancellationMessage } from '@services/api/messages';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -57,7 +55,7 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe, customerDetails }) => {
+export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe, customerDetails, refreshGigs }) => {
 
     const {isMdUp, isLgUp} = useBreakpoint();
     const location = useLocation();
@@ -116,7 +114,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     
       (async () => {
         try {
-          await markApplicantsViewed(gigInfo.venueId, gigInfo.gigId);
+          await markApplicantsViewed({ venueId: gigInfo.venueId, gigId: gigInfo.gigId });
           markedRef.current.add(gigInfo.gigId);
         } catch (err) {
           console.error("Error marking applicants viewed:", err);
@@ -196,7 +194,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             let globalAgreedFee;
             if (gigInfo.kind === 'Open Mic') {
                 const { updatedApplicants } = assertOk(
-                    await acceptGigOfferOM(gigInfo, musicianId, 'venue'),
+                    await acceptGigOfferOM({ gigData: gigInfo, musicianProfileId: musicianId, role: 'venue' }),
                     'acceptGigOfferOM'
                 );
                 if (!Array.isArray(updatedApplicants)) {
@@ -210,7 +208,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 }));
             } else {
                 const { updatedApplicants, agreedFee } = assertOk(
-                    await acceptGigOffer(gigInfo, musicianId, nonPayableGig, 'venue'),
+                    await acceptGigOffer({ gigData: gigInfo, musicianProfileId: musicianId, nonPayableGig, role: 'venue' }),
                     'acceptGigOffer'
                   );
                 if (!Array.isArray(updatedApplicants)) {
@@ -231,13 +229,13 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             }
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(gigInfo.venueId);
-            const conversationId = await getOrCreateConversation(musicianProfile, gigInfo, venueProfile, 'application');
+            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: gigInfo, venueProfile, type: 'application' });
             if (proposedFee === gigInfo.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
-                await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, gigInfo.budget, 'venue', nonPayableGig);
+                await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: gigInfo.budget, userRole: 'venue', nonPayableGig });
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
-                await sendGigAcceptedMessage(conversationId, applicationMessage.id, user.uid, globalAgreedFee, 'venue', nonPayableGig);
+                await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: globalAgreedFee, userRole: 'venue', nonPayableGig });
             }
             await sendGigAcceptedEmail({
                 userRole: 'venue',
@@ -249,7 +247,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 nonPayableGig,
             })
             if (nonPayableGig) {
-                await notifyOtherApplicantsGigConfirmed(gigInfo, musicianId);
+                await notifyOtherApplicantsGigConfirmed({ gigData: gigInfo, acceptedMusicianId: musicianId });
             }
         } catch (error) {
             toast.error('Error accepting gig application. Please try again.')
@@ -266,8 +264,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             if (!gigInfo) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const updatedApplicants = assertOk(
-                await declineGigApplication(gigInfo, musicianId, 'venue'),
+            const {updatedApplicants} = assertOk(
+                await declineGigApplication({ gigData: gigInfo, musicianProfileId: musicianId, role: 'venue' }),
                 'declineGigApplication'
             );
             if (!Array.isArray(updatedApplicants)) {
@@ -280,13 +278,13 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             }));
             const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
             const venueProfile = await getVenueProfileById(gigInfo.venueId);
-            const conversationId = await getOrCreateConversation(musicianProfile, gigInfo, venueProfile, 'application')
+            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: gigInfo, venueProfile, type: 'application' })
             if (proposedFee === gigInfo.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
-                await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, 'venue', gigInfo.budget);
+                await updateDeclinedApplicationMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, userRole: 'venue', fee: gigInfo.budget });
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
-                await updateDeclinedApplicationMessage(conversationId, applicationMessage.id, user.uid, 'venue', proposedFee);
+                await updateDeclinedApplicationMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, userRole: 'venue', fee: proposedFee });
             }
             await sendGigDeclinedEmail({
                 userRole: 'venue',
@@ -409,7 +407,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const handleDeleteGig = async () => {
         try {
             setModalLoading(true);
-            await deleteGigAndInformation(gigId);
+            await deleteGigAndInformation({ gigId });
             navigate('/venues/dashboard/gigs');
             toast.success('Gig Deleted');
             window.location.reload();
@@ -423,9 +421,10 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
 
     const handleCloseGigLocal = async () => {
         try {
-            await handleCloseGig(gigId);
+            await updateGigDocument({ gigId, action: 'gigs.applications.manage', updates: { status: 'closed' } });
             navigate('/venues/dashboard/gigs');
             toast.success(`Gig Closed`);
+            refreshGigs();
         } catch (error) {
             console.error('Error closing gig:', error);
             toast.error('Failed to update gig status.');
@@ -434,9 +433,10 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
 
     const handleReopenGig = async () => {
         try {
-            await handleOpenGig(gigId);
+            await updateGigDocument({ gigId, action: 'gigs.applications.manage', updates: { status: 'open' } });
             navigate('/venues/dashboard/gigs');
             toast.success(`Gig Opened`);
+            refreshGigs();
         } catch (error) {
             console.error('Error closing gig:', error);
             toast.error('Failed to update gig status.');
@@ -482,22 +482,21 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 await cancelGigAndRefund({
                     taskNames,
                     transactionId: nextGig.paymentIntentId,
+                    gigId: nextGig.gigId,
+                    venueId: nextGig.venueId,
                 });
             }
             const handleMusicianCancellation = async (musician) => {
-                const conversationId = await getOrCreateConversation(musician, nextGig, venueProfile, 'cancellation');
+                const { conversationId } = await getOrCreateConversation({ musicianProfile: musician, gigData: nextGig, venueProfile, type: 'cancellation' });
                 await postCancellationMessage(
-                  conversationId,
-                  user.uid,
-                  `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                  { conversationId, senderId: user.uid, message: `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
                     cancellationReason
-                  )}. We apologise for any inconvenience caused.`,
-                  'venue'
+                  )}. We apologise for any inconvenience caused.`, cancellingParty: 'venue' }
                 );
-                await revertGigAfterCancellationVenue(nextGig, musician.musicianId, cancellationReason);
-                await updateMusicianCancelledGig(musician.musicianId, gigId);
+                await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId: musician.musicianId, cancellationReason });
+                await cancelledGigMusicianProfileUpdate({ musicianId: musician.musicianId, gigId });
                 const cancellingParty = 'venue';
-                await logGigCancellation(gigId, musician.musicianId, cancellationReason, cancellingParty, venueProfile.venueId);
+                await logGigCancellation({ gigId, musicianId: musician.musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
               };
           
               if (isOpenMic) {

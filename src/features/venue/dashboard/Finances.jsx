@@ -8,11 +8,11 @@ import {
 import VisaIcon from '@assets/images/visa.png';
 import MastercardIcon from '@assets/images/mastercard.png';
 import AmexIcon from '@assets/images/amex.png';
-import { deleteSavedCard } from '@services/function-calls/payments';
+import { deleteSavedCard } from '@services/api/payments';
 import { openInNewTab } from '@services/utils/misc';
 import { CardIcon, CoinsIconSolid, DeleteGigIcon, HouseIconSolid, PeopleRoofIconSolid, PieChartIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
-import { changeDefaultCard } from '../../../services/function-calls/payments';
+import { changeDefaultCard } from '@services/api/payments';
 import { useAuth } from '@hooks/useAuth';
 import { updateUserDocument } from '../../../services/client-side/users';
 import Portal from '../../shared/components/Portal';
@@ -166,7 +166,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       toast.info('Deleting card...')
       setOpenMenuId(null);
       const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
-      const result = await deleteSavedCard(cardId, customerId);
+      const result = await deleteSavedCard({ cardId, customerId });
       if (result.success) {
         toast.success("Card deleted.");
         setStripe((prev) => ({
@@ -187,7 +187,7 @@ export const Finances = ({ savedCards, receipts, customerDetails, setStripe, ven
       setOpenMenuId(null);
       const targetCard = savedCards.find(c => c.id === cardId);
       const customerId = targetCard?.customer || null;
-      await changeDefaultCard(cardId, customerId);
+      await changeDefaultCard({ cardId, customerId });
       setStripe((prev) => ({
         ...prev,
         savedCards: prev.savedCards.map((c) => (

@@ -1,4 +1,5 @@
 /* eslint-disable */
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -11,6 +12,12 @@ import userRoutes from "./routes/users.js";
 import messageRoutes from "./routes/messages.js";
 import venueRoutes from "./routes/venues.js";
 import conversationRoutes from "./routes/conversations.js";
+import gigsRoutes from "./routes/gigs.js";
+import musiciansRoutes from "./routes/musicians.js";
+import reviewsRoutes from "./routes/reviews.js";
+import tasksRoutes from "./routes/tasks.js";
+import billingRoutes from "./routes/billing.js";
+import bandsRoutes from "./routes/bands.js";
 // Initialize Firebase Admin (must be done before importing routes that use it)
 initializeAdmin();
 
@@ -134,6 +141,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/venues", venueRoutes);
 app.use("/api/conversations", conversationRoutes);
+app.use("/api/gigs", gigsRoutes);
+app.use("/api/musicians", musiciansRoutes);
+app.use("/api/reviews", reviewsRoutes);
+app.use("/api/tasks", tasksRoutes);
+app.use("/api/billing", billingRoutes);
+app.use("/api/bands", bandsRoutes);
 
 // 404 handler (must come after all routes)
 app.use((req, res) => {

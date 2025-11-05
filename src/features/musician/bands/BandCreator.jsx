@@ -14,7 +14,7 @@ import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loadin
 import { createMusicianProfile } from '../../../services/client-side/musicians';
 import '@styles/musician/profile-creator.styles.css';
 import { updateUserArrayField } from '@services/api/users';
-import { createBandProfile } from '../../../services/function-calls/bands';
+import { createBandProfile } from '@services/api/bands';
 
 export const BandCreator = ({ musicianProfile, refreshData }) => {
     const { user } = useAuth();
@@ -93,8 +93,8 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
             }
           ]
         };
-        await createBandProfile(formData.bandId, updatedFormData, user.uid, musicianProfile);
-        await updateUserArrayField('bands', 'add', formData.bandId);
+        await createBandProfile({ bandId: formData.bandId, data: updatedFormData, userId: user.uid, musicianProfile });
+        await updateUserArrayField({ field: 'bands', op: 'add', value: formData.bandId });
         await updateMusicianProfile(musicianProfile.id, {
           bands: arrayUnion(formData.bandId)
         })

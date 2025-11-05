@@ -15,7 +15,7 @@ import {
   arrayRemove,
   limit
 } from 'firebase/firestore';
-import { fetchCustomerData } from '@services/function-calls/payments';
+import { fetchCustomerData } from '@services/api/payments';
 
 
 /*** READ OPERATIONS ***/

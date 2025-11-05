@@ -20,11 +20,10 @@ import {
   startAfter,
   arrayUnion
 } from 'firebase/firestore';
-import { getBandMembers } from './bands';
 import { getMostRecentMessage } from './messages';
-import { updateGigDocument } from '../function-calls/gigs';
-import { getOrCreateConversation, updateConversationDocument } from '../function-calls/conversations';
-import { updateMessage } from '../function-calls/messages';
+import { updateGigDocument } from '../api/gigs';
+import { getOrCreateConversation } from '../api/conversations';
+import { updateMessageDoc } from '../api/messages';
 
 
 /*** CREATE OPERATIONS ***/
@@ -276,7 +275,7 @@ export async function withdrawMusicianApplication(gigId, profile, userId) {
       a?.id === applicantId ? { ...a, status: 'withdrawn' } : a
     );
 
-    await updateGigDocument(gigId, 'musician.withdraw.application', { applicants: updatedApplicants });
+    await updateGigDocument({ gigId, action: 'musician.withdraw.application', updates: { applicants: updatedApplicants } });
 
     const batch = writeBatch(firestore);
     const pruneApps = (apps = []) =>
@@ -297,39 +296,39 @@ export async function withdrawMusicianApplication(gigId, profile, userId) {
     const venueSnap = await getDoc(venueRef);
     const venueProfile = venueSnap.exists() ? (venueSnap.data() || {}) : {};
 
-    const conversationId = await getOrCreateConversation(
+    const { conversationId } = await getOrCreateConversation({
       profile,
-      { ...gig, gigId },
+      gig: { ...gig, gigId },
       venueProfile,
-      'withdrawal'
-    );
+      type: 'withdrawal'
+    });
 
     const lastAppMsg = await getMostRecentMessage(conversationId, 'application');
     const lastNegMsg = await getMostRecentMessage(conversationId, 'negotiation');
 
     if (lastAppMsg?.id) {
-      await updateMessage(
+      await updateMessageDoc({
         conversationId,
-        lastAppMsg.id,
-        { status: "withdrawn" },
-        {
+        messageId: lastAppMsg.id,
+        updates: { status: "withdrawn" },
+        conversationUpdates: {
           lastMessage: `${profile.name} has withdrawn their application.`,
           lastMessageSenderId: "system",
         },
-      );
+      });
     }
     
     // Do the same for negotiation, if present
     if (lastNegMsg?.id) {
-      await updateMessage(
+      await updateMessageDoc({
         conversationId,
-        lastNegMsg.id,
-        { status: "withdrawn" },
-        {
+        messageId: lastNegMsg.id,
+        updates: { status: "withdrawn" },
+        conversationUpdates: {
           lastMessage: `${profile.name} has withdrawn their application.`,
           lastMessageSenderId: "system",
         },
-      );
+      });
     }
 
     return updatedApplicants;

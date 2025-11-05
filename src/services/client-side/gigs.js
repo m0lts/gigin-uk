@@ -22,11 +22,10 @@ import {
   writeBatch,
   startAfter
 } from 'firebase/firestore';
-import { v4 as uuidv4 } from 'uuid';
 import {
   distanceBetween,
 } from 'geofire-common';
-import { deleteGigAndInformation } from '../function-calls/gigs';
+import { deleteGigAndInformation } from '../api/gigs';
 
 /*** READ OPERATIONS ***/
 
@@ -274,7 +273,7 @@ export const getGigsByVenueIds = async (venueIds) => {
 export const deleteGigsBatch = async (gigIds) => {
   for (const gigId of gigIds) {
     try {
-      await deleteGigAndInformation(gigId);
+      await deleteGigAndInformation({ gigId });
     } catch (error) {
       console.error(`[CloudFn Error] deleteGigsBatch (gigId: ${gigId}):`, error);
     }
