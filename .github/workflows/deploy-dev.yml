@@ -8,6 +8,7 @@ on:
       - "gigin-api/**"
       - "src/**"
       - ".github/workflows/deploy-dev.yml"
+      - "package.json"
   workflow_dispatch:
 
 env:
