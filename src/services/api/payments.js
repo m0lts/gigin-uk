@@ -1,5 +1,6 @@
 import { post } from '../http';
 import { cancelTask } from './tasks';
+import { toJsDate } from '../utils/dates';
 
 export async function fetchSavedCards() {
   const data = await post('/billing/getSavedCards');
@@ -10,13 +11,15 @@ export async function confirmGigPayment({ cardId, gigData, musicianProfileId, cu
   if (!gigData?.agreedFee) throw new Error('Missing agreed fee');
   const amount = typeof gigData.agreedFee === 'string' ? parseFloat(gigData.agreedFee.replace('£', '')) : gigData.agreedFee;
   const amountToCharge = Math.round(amount * 100);
-  const gigDate = gigData.startDateTime.toDate();
+  const gigDate = toJsDate(gigData.startDateTime);
+  if (!gigDate) throw new Error('Invalid startDateTime');
   const payload = { paymentMethodId: cardId, amountToCharge, gigData, gigDate, musicianProfileId, customerId };
   return await post('/billing/confirmPayment', { body: payload });
 }
 
 export async function confirmPaymentIntent({ amountToCharge, gigData, musicianProfileId, customerId }) {
-  const gigDate = gigData.startDateTime.toDate();
+  const gigDate = toJsDate(gigData.startDateTime);
+  if (!gigDate) throw new Error('Invalid startDateTime');
   const payload = { amountToCharge, gigData, gigDate, musicianProfileId, customerId };
   return await post('/billing/createGigPaymentIntent', { body: payload });
 }
