@@ -110,7 +110,12 @@ export const fetchNearbyGigs = async ({
         const gp = gig.geopoint;
         if (!gp) return false;
 
-        const dist = distanceBetween(center, [gp.latitude, gp.longitude]);
+        // Handle Firestore GeoPoint (can have _latitude/_longitude or latitude/longitude)
+        const lat = gp.latitude ?? gp._latitude;
+        const lng = gp.longitude ?? gp._longitude;
+        if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+
+        const dist = distanceBetween(center, [lat, lng]);
         if (dist > radiusInKm) return false;
 
         // Manual genre filter

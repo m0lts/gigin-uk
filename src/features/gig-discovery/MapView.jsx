@@ -14,32 +14,56 @@ const labelFor = (g) =>
   ? g.kind
   : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
 
-const toFeatureCollection = (list) => ({
-  type: 'FeatureCollection',
-  features: (list || [])
+const toFeatureCollection = (list) => {
+  const features = (list || [])
     .map((gig) => {
       // Handle both coordinates array and geopoint object
       let coordinates = gig.coordinates;
+      
+      // If no coordinates array, try to get from geopoint
       if (!coordinates && gig.geopoint) {
-        // Convert geopoint {latitude, longitude} to [longitude, latitude] for GeoJSON
-        coordinates = [gig.geopoint.longitude, gig.geopoint.latitude];
+        const gp = gig.geopoint;
+        // Handle Firestore GeoPoint object (can have _latitude/_longitude or latitude/longitude)
+        const lat = gp.latitude ?? gp._latitude;
+        const lng = gp.longitude ?? gp._longitude;
+        if (typeof lat === 'number' && typeof lng === 'number') {
+          // GeoJSON format: [longitude, latitude]
+          coordinates = [lng, lat];
+        }
       }
+      
+      // Validate coordinates
       if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+        console.warn('Gig missing valid coordinates:', gig.gigId || gig.id, { coordinates, geopoint: gig.geopoint });
         return null; // Skip gigs without valid coordinates
       }
+      
+      // Ensure coordinates are numbers
+      const [lng, lat] = coordinates;
+      if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
+        console.warn('Gig has invalid coordinate values:', gig.gigId || gig.id, coordinates);
+        return null;
+      }
+      
       return {
         type: 'Feature',
         properties: {
-          gigId: gig.gigId,
+          gigId: gig.gigId || gig.id, // Handle both gigId and id
           budget: gig.budget,
           kind: gig.kind,
           label: labelFor(gig),
         },
-        geometry: { type: 'Point', coordinates },
+        geometry: { type: 'Point', coordinates: [lng, lat] },
       };
     })
-    .filter(Boolean),
-});
+    .filter(Boolean);
+  
+  console.log('toFeatureCollection:', { inputCount: list?.length || 0, outputCount: features.length });
+  return {
+    type: 'FeatureCollection',
+    features,
+  };
+};
 
 export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, gigMarkerDisplay, userLocation, onSearchArea, showFilters, toggleFilters }) => {
 
@@ -192,13 +216,13 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
           if (!features.length) return;
   
           const ids = new Set(features.map(f => f.properties?.gigId).filter(Boolean));
-          const gigsToAdd = (latestGigsRef.current || []).filter(g => ids.has(g.gigId)); // ✅ use ref
+          const gigsToAdd = (latestGigsRef.current || []).filter(g => ids.has(g.gigId || g.id)); // ✅ use ref, handle both gigId and id
   
-          setClickedGigs(prev => {
-            const byId = Object.fromEntries(prev.map(g => [g.gigId, g]));
-            gigsToAdd.forEach(g => { byId[g.gigId] = g; });
-            return Object.values(byId);
-          });
+            setClickedGigs(prev => {
+              const byId = Object.fromEntries(prev.map(g => [g.gigId || g.id, g]));
+              gigsToAdd.forEach(g => { byId[g.gigId || g.id] = g; });
+              return Object.values(byId);
+            });
         };
 
         map.on('click', 'unclustered-hit', handleUnclusteredClick);
@@ -218,7 +242,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             const newGigs = leaves
               .map(f => {
                 const gigId = f.properties.gigId;
-                return (latestGigsRef.current || []).find(g => g.gigId === gigId); // ✅ use ref
+                return (latestGigsRef.current || []).find(g => (g.gigId || g.id) === gigId); // ✅ use ref, handle both gigId and id
               })
               .filter(Boolean)
               .sort((a, b) => {
@@ -231,7 +255,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             setClickedGigs(prev => {
               const merged = [...prev, ...newGigs];
               const uniq = {};
-              merged.forEach(g => { uniq[g.gigId] = g; });
+              merged.forEach(g => { uniq[g.gigId || g.id] = g; });
               return Object.values(uniq);
             });
           });
@@ -257,7 +281,13 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
   useEffect(() => {
     if (!mapRef.current) return;
     const src = mapRef.current.getSource(sourceId);
-    if (src) src.setData(toFeatureCollection(upcomingGigs));
+    if (src) {
+      const featureCollection = toFeatureCollection(upcomingGigs);
+      console.log('Updating map source with:', featureCollection);
+      src.setData(featureCollection);
+    } else {
+      console.warn('Map source not found:', sourceId);
+    }
   }, [upcomingGigs]);
   
 
@@ -323,10 +353,10 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
               Clear All
             </button>
             {clickedGigs.map((gig, i) => (
-              <li key={i} className="preview-gig-item" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
+              <li key={i} className="preview-gig-item" onClick={(e) => openInNewTab(`/gig/${gig.gigId || gig.id}`, e)}>
                 <button className="btn danger" onClick={(e) => {
                   e.stopPropagation();
-                  setClickedGigs(prev => prev.filter(g => g.gigId !== gig.gigId));
+                  setClickedGigs(prev => prev.filter(g => (g.gigId || g.id) !== (gig.gigId || gig.id)));
                 }}>
                   <ErrorIcon />
                 </button>
