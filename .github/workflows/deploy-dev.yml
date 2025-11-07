@@ -9,6 +9,7 @@ on:
       - "src/**"
       - ".github/workflows/deploy-dev.yml"
       - "package.json"
+      - "functions/**"
   workflow_dispatch:
 
 env:

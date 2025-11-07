@@ -2,10 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { applyActionCode } from "firebase/auth";
-import { auth, functions } from "@lib/firebase";
+import { auth } from "@lib/firebase";
 import { LoadingSpinner } from "@features/shared/ui/loading/Loading";
 import { toast } from "sonner";
-import { httpsCallable } from "firebase/functions";
+import { sendVerificationEmail } from "@services/api/users";
 import '@styles/shared/legals.styles.css'
 
 export const EmailActionHandler = ({ user }) => {
@@ -89,8 +89,7 @@ export const EmailActionHandler = ({ user }) => {
         detail: "Please wait while we send a new verification email.",
       });
     try {
-      const fn = httpsCallable(functions, "sendVerificationEmail");
-      await fn({});
+      await sendVerificationEmail({ actionUrl: window.location.origin });
       toast.success("Verification email sent.");
     } catch (e) {
       const msg = e?.message || "Failed to send verification email.";

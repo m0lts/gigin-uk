@@ -4,8 +4,7 @@ import { toast } from "sonner";
 // Reuse your existing logo/icons if you like:
 import { NoTextLogo } from "@features/shared/ui/logos/Logos";
 import { LoadingSpinner } from "../ui/loading/Loading";
-import { httpsCallable } from "firebase/functions";
-import { functions } from '@lib/firebase';
+import { sendVerificationEmail } from "@services/api/users";
 
 export const  VerifyEmailModal = () => {
 
@@ -28,8 +27,7 @@ export const  VerifyEmailModal = () => {
     }
     setSending(true);
     try {
-      const fn = httpsCallable(functions, "sendVerificationEmail");
-      await fn({actionUrl: `${window.location.origin}`});
+      await sendVerificationEmail({ actionUrl: window.location.origin });
       toast.success("Verification email sent.");
       setCooldown(60);
     } catch (e) {
