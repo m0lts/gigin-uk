@@ -33,7 +33,7 @@ jobs:
       VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.DEV_STRIPE_PUBLISHABLE_KEY }}
       VITE_STRIPE_ACCOUNT_URL: ${{ secrets.DEV_STRIPE_ACCOUNT_URL }}
       VITE_STRIPE_ACCOUNT_SESSION_URL: ${{ secrets.DEV_STRIPE_ACCOUNT_SESSION_URL }}
-      VITE_API_URL: https://gigin-api-staging-gzpoy76paa-ey.a.run.app
+      VITE_API_URL: https://gigin-api-staging-gzpoy76paa-ey.a.run.app/api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
