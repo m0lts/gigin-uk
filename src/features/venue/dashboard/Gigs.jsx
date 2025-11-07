@@ -576,7 +576,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             <td>{gig.gigName}</td>
                           )}
                           <td className='time-and-date'>
-                            {!isXlUp && gig?.applicants && gig?.applicants?.length && gig?.applicants.some(app => !app.viewed && app.invited !== true) ? (
+                            {!isLgUp && gig?.applicants && gig?.applicants?.length && gig?.applicants.some(app => !app.viewed && app.invited !== true) ? (
                               <span className="notification-dot" />
                             ) : (
                               null

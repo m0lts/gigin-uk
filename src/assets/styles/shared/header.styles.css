@@ -305,6 +305,10 @@
     margin: 10px 0;
 }
 
+.mobile-menu .item.message {
+    position: relative;
+}
+
 .mobile-menu .item.message div {
     display: flex;
     align-items: center;

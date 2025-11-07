@@ -1,11 +1,39 @@
 /* eslint-disable */
 import express from "express";
+import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { db, admin, FieldValue, Timestamp } from "../config/admin.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 
 const router = express.Router();
+
+// Normalize various incoming representations (Date, ISO string, millis, {seconds,nanoseconds})
+// into a Firestore Admin Timestamp. Returns null if input is falsy/invalid.
+function toAdminTimestamp(input) {
+  try {
+    if (!input) return null;
+    // Already an Admin Timestamp-like object
+    if (input instanceof Date) return Timestamp.fromDate(input);
+    if (typeof input === "number") return Timestamp.fromDate(new Date(input));
+    if (typeof input === "string") return Timestamp.fromDate(new Date(input));
+    if (typeof input === "object") {
+      const seconds = input.seconds ?? input._seconds;
+      const nanoseconds = input.nanoseconds ?? input._nanoseconds;
+      if (typeof seconds === "number" && typeof nanoseconds === "number") {
+        return new Timestamp(seconds, nanoseconds);
+      }
+      // Fallback: if it looks like a date string property
+      if (input.toDate instanceof Function) {
+        // Firestore client Timestamp (when deserialized in some environments)
+        return Timestamp.fromDate(input.toDate());
+      }
+    }
+  } catch (_) {
+    // ignore and fall through
+  }
+  return null;
+}
 
 // POST /api/gigs/postMultipleGigs
 router.post("/postMultipleGigs", requireAuth, asyncHandler(async (req, res) => {
@@ -24,11 +52,24 @@ router.post("/postMultipleGigs", requireAuth, asyncHandler(async (req, res) => {
   const batch = db.batch();
   const gigIds = [];
   for (const raw of gigDocuments) {
+    // Coerce date-like fields to Firestore Timestamps to avoid storing plain maps
+    const normalized = { ...raw };
+    // Never persist a stray client-side id field; Firestore doc id is gigId
+    if (Object.prototype.hasOwnProperty.call(normalized, "id")) delete normalized.id;
+    const startTs = toAdminTimestamp(raw.startDateTime);
+    if (startTs) normalized.startDateTime = startTs;
+    const dateTs = toAdminTimestamp(raw.date);
+    if (dateTs) normalized.date = dateTs;
+    // Ensure createdAt exists and is a Timestamp
+    const createdAtTs = toAdminTimestamp(raw.createdAt) || Timestamp.fromDate(new Date());
+    normalized.createdAt = createdAtTs;
+
     const gigId = raw?.gigId;
     if (!gigId) return res.status(400).json({ error: "INVALID_GIG", message: "missing gigId" });
     const ref = db.collection("gigs").doc(gigId);
-    batch.set(ref, { ...raw, venueId }, { merge: false });
+    batch.set(ref, { ...normalized, venueId }, { merge: false });
     gigIds.push(gigId);
+    console.log(normalized);
   }
 
   const uniqueIds = Array.from(new Set(gigIds));
@@ -168,11 +209,26 @@ router.post("/duplicateGig", requireAuth, asyncHandler(async (req, res) => {
   const originalSnap = await originalRef.get();
   if (!originalSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "gig not found" });
   const originalData = originalSnap.data() || {};
-  const newGigRef = db.collection("gigs").doc();
-  const newGigId = newGigRef.id;
+  const newGigId = uuidv4();
+  const newGigRef = db.collection("gigs").doc(newGigId);
   const now = new Date();
-  const newGig = { ...originalData, gigId: newGigId, applicants: [], createdAt: now, updatedAt: now, status: "open" };
-  delete newGig.id;
+  const normalizedOriginal = { ...originalData };
+  // Drop any stray client-side id and normalize timestamps
+  if (Object.prototype.hasOwnProperty.call(normalizedOriginal, "id")) delete normalizedOriginal.id;
+  const normalizedDate = toAdminTimestamp(normalizedOriginal.date) || normalizedOriginal.date;
+  const normalizedStart = toAdminTimestamp(normalizedOriginal.startDateTime) || normalizedOriginal.startDateTime;
+  const createdAtTs = Timestamp.fromDate(now);
+  const updatedAtTs = Timestamp.fromDate(now);
+  const newGig = {
+    ...normalizedOriginal,
+    gigId: newGigId,
+    applicants: [],
+    createdAt: createdAtTs,
+    updatedAt: updatedAtTs,
+    status: "open",
+    ...(normalizedDate ? { date: normalizedDate } : {}),
+    ...(normalizedStart ? { startDateTime: normalizedStart } : {}),
+  };
   await newGigRef.set(newGig, { merge: false });
   if (originalData.venueId) {
     const venueRef = db.doc(`venueProfiles/${originalData.venueId}`);
