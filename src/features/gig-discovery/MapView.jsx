@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { ErrorIcon } from '@features/shared/ui/extras/Icons';
 import 'react-datepicker/dist/react-datepicker.css';
-import { formatDate } from '@services/utils/dates';
+import { formatDate, toJsDate } from '@services/utils/dates';
 import { LoadingSpinner, LoadingThreeDots } from '../shared/ui/loading/Loading';
 import { openInNewTab } from '../../services/utils/misc';
 import { CloseIcon, FilterIconEmpty, MapIcon, TelescopeIcon } from '../shared/ui/extras/Icons';
@@ -18,6 +18,15 @@ const toFeatureCollection = (list) => ({
   type: 'FeatureCollection',
   features: (list || [])
     .map((gig) => {
+      // Handle both coordinates array and geopoint object
+      let coordinates = gig.coordinates;
+      if (!coordinates && gig.geopoint) {
+        // Convert geopoint {latitude, longitude} to [longitude, latitude] for GeoJSON
+        coordinates = [gig.geopoint.longitude, gig.geopoint.latitude];
+      }
+      if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+        return null; // Skip gigs without valid coordinates
+      }
       return {
         type: 'Feature',
         properties: {
@@ -26,7 +35,7 @@ const toFeatureCollection = (list) => ({
           kind: gig.kind,
           label: labelFor(gig),
         },
-        geometry: { type: 'Point', coordinates: gig.coordinates },
+        geometry: { type: 'Point', coordinates },
       };
     })
     .filter(Boolean),
@@ -212,7 +221,12 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
                 return (latestGigsRef.current || []).find(g => g.gigId === gigId); // ✅ use ref
               })
               .filter(Boolean)
-              .sort((a, b) => a.startDateTime.toDate() - b.startDateTime.toDate());;
+              .sort((a, b) => {
+                const dateA = toJsDate(a.startDateTime);
+                const dateB = toJsDate(b.startDateTime);
+                if (!dateA || !dateB) return 0;
+                return dateA.getTime() - dateB.getTime();
+              });
   
             setClickedGigs(prev => {
               const merged = [...prev, ...newGigs];
