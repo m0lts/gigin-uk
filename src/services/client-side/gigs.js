@@ -48,6 +48,8 @@ export const fetchNearbyGigs = async ({
     const latDelta = radiusInKm / 111; // 1 degree latitude ≈ 111km
     const lngDelta = radiusInKm / (111 * Math.cos(lat * Math.PI / 180));
 
+
+
     const minLat = lat - latDelta;
     const maxLat = lat + latDelta;
     const minLng = lng - lngDelta;

@@ -3,7 +3,7 @@ import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
-import { db, admin, FieldValue, Timestamp } from "../config/admin.js";
+import { db, admin, FieldValue, Timestamp, GeoPoint } from "../config/admin.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 
 const router = express.Router();
@@ -27,6 +27,34 @@ function toAdminTimestamp(input) {
       if (input.toDate instanceof Function) {
         // Firestore client Timestamp (when deserialized in some environments)
         return Timestamp.fromDate(input.toDate());
+      }
+    }
+  } catch (_) {
+    // ignore and fall through
+  }
+  return null;
+}
+
+// Normalize various incoming representations of GeoPoint
+// into a Firestore Admin GeoPoint. Returns null if input is falsy/invalid.
+function toAdminGeoPoint(input) {
+  try {
+    if (!input) return null;
+    // Already an Admin GeoPoint
+    if (input instanceof GeoPoint) return input;
+    // Handle serialized GeoPoint object from client (e.g., {latitude, longitude, type})
+    if (typeof input === "object") {
+      const lat = input.latitude ?? input._latitude;
+      const lng = input.longitude ?? input._longitude;
+      if (typeof lat === "number" && typeof lng === "number") {
+        return new GeoPoint(lat, lng);
+      }
+    }
+    // Handle array format [longitude, latitude] (GeoJSON format)
+    if (Array.isArray(input) && input.length === 2) {
+      const [lng, lat] = input;
+      if (typeof lat === "number" && typeof lng === "number") {
+        return new GeoPoint(lat, lng);
       }
     }
   } catch (_) {
@@ -63,13 +91,15 @@ router.post("/postMultipleGigs", requireAuth, asyncHandler(async (req, res) => {
     // Ensure createdAt exists and is a Timestamp
     const createdAtTs = toAdminTimestamp(raw.createdAt) || Timestamp.fromDate(new Date());
     normalized.createdAt = createdAtTs;
+    // Normalize geopoint to Firestore Admin GeoPoint (handles serialized objects from client)
+    const geopoint = toAdminGeoPoint(raw.geopoint);
+    if (geopoint) normalized.geopoint = geopoint;
 
     const gigId = raw?.gigId;
     if (!gigId) return res.status(400).json({ error: "INVALID_GIG", message: "missing gigId" });
     const ref = db.collection("gigs").doc(gigId);
     batch.set(ref, { ...normalized, venueId }, { merge: false });
     gigIds.push(gigId);
-    console.log(normalized);
   }
 
   const uniqueIds = Array.from(new Set(gigIds));
@@ -121,7 +151,23 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
       return res.status(400).json({ error: "INVALID_ARGUMENT", message: `unsupported action "${action}"` });
   }
 
-  await gigRef.update(updates);
+  // Normalize any geopoint in updates (handles serialized objects from client)
+  const normalizedUpdates = { ...updates };
+  if (normalizedUpdates.geopoint) {
+    const geopoint = toAdminGeoPoint(normalizedUpdates.geopoint);
+    if (geopoint) normalizedUpdates.geopoint = geopoint;
+  }
+  // Also normalize timestamps if present
+  if (normalizedUpdates.startDateTime) {
+    const startTs = toAdminTimestamp(normalizedUpdates.startDateTime);
+    if (startTs) normalizedUpdates.startDateTime = startTs;
+  }
+  if (normalizedUpdates.date) {
+    const dateTs = toAdminTimestamp(normalizedUpdates.date);
+    if (dateTs) normalizedUpdates.date = dateTs;
+  }
+  
+  await gigRef.update(normalizedUpdates);
   return res.json({ data: { success: true } });
 }));
 
@@ -217,6 +263,8 @@ router.post("/duplicateGig", requireAuth, asyncHandler(async (req, res) => {
   if (Object.prototype.hasOwnProperty.call(normalizedOriginal, "id")) delete normalizedOriginal.id;
   const normalizedDate = toAdminTimestamp(normalizedOriginal.date) || normalizedOriginal.date;
   const normalizedStart = toAdminTimestamp(normalizedOriginal.startDateTime) || normalizedOriginal.startDateTime;
+  // Normalize geopoint (in case original was saved with serialized geopoint)
+  const normalizedGeopoint = toAdminGeoPoint(normalizedOriginal.geopoint) || normalizedOriginal.geopoint;
   const createdAtTs = Timestamp.fromDate(now);
   const updatedAtTs = Timestamp.fromDate(now);
   const newGig = {
@@ -228,6 +276,7 @@ router.post("/duplicateGig", requireAuth, asyncHandler(async (req, res) => {
     status: "open",
     ...(normalizedDate ? { date: normalizedDate } : {}),
     ...(normalizedStart ? { startDateTime: normalizedStart } : {}),
+    ...(normalizedGeopoint ? { geopoint: normalizedGeopoint } : {}),
   };
   await newGigRef.set(newGig, { merge: false });
   if (originalData.venueId) {
