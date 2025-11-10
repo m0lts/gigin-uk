@@ -297,14 +297,80 @@ router.post("/transferVenueOwnership", requireAuth, asyncHandler(async (req, res
     const toList   = Array.isArray((toSnap.data() || {}).venueProfiles) ? (toSnap.data() || {}).venueProfiles : [];
     const nextFrom = fromList.filter(id => id !== venueId);
     const nextTo   = toList.includes(venueId) ? toList : [...toList, venueId];
+    const newOwnerName = (toSnap.data() || {}).name || (toSnap.data() || {}).accountName || null;
+    const newOwnerPicture = (toSnap.data() || {}).picture || null;
     tx.update(venueRef, {
       createdBy: toUserId,
       userId: toUserId,
+      ...(newOwnerName ? { accountName: newOwnerName } : {}),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.update(fromUserRef, { venueProfiles: nextFrom });
     tx.update(toUserRef,   { venueProfiles: nextTo });
+
+    // Members subcollection updates
+    const membersCol = venueRef.collection("members");
+    // Remove old owner member doc
+    tx.delete(membersCol.doc(caller));
+    // Add/overwrite new owner member doc with full permissions true
+    const allTruePermissions = {
+      "gigs.read": true,
+      "gigs.create": true,
+      "gigs.update": true,
+      "gigs.applications.manage": true,
+      "gigs.invite": true,
+      "gigs.pay": true,
+      "reviews.create": true,
+      "finances.read": true,
+      "finances.update": true,
+      "venue.update": true,
+      "members.invite": true,
+      "members.update": true,
+    };
+    tx.set(membersCol.doc(toUserId), {
+      addedBy: caller,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      permissions: allTruePermissions,
+      role: "owner",
+      status: "active",
+    }, { merge: true });
   });
+  // Update conversations: replace old user with new in authorizedUserIds and accountNames
+  try {
+    const toUserSnap = await db.doc(`users/${toUserId}`).get();
+    const toUser = toUserSnap.data() || {};
+    const newName = toUser.name || toUser.accountName || "Owner";
+    const newImg = toUser.picture || null;
+    const convSnap = await db.collection("conversations")
+      .where("participants", "array-contains", venueId)
+      .get();
+    const batch = db.batch();
+    convSnap.docs.forEach((doc) => {
+      const data = doc.data() || {};
+      const authorizedUserIds = Array.isArray(data.authorizedUserIds) ? data.authorizedUserIds : [];
+      const accountNames = Array.isArray(data.accountNames) ? data.accountNames : [];
+      const nextAuth = Array.from(new Set(authorizedUserIds.filter(id => id !== caller).concat([toUserId])));
+      const nextAccountNames = accountNames
+        .filter(a => !(a && a.participantId === venueId && a.accountId === caller))
+        .concat([{
+          participantId: venueId,
+          accountName: newName,
+          accountId: toUserId,
+          role: "venue",
+          accountImg: newImg,
+        }]);
+      batch.update(doc.ref, {
+        authorizedUserIds: nextAuth,
+        accountNames: nextAccountNames,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+    await batch.commit();
+  } catch (e) {
+    // Non-fatal; log and continue
+    console.error("transferVenueOwnership conversation update error:", e);
+  }
   return res.json({ data: { success: true, venueId, fromUserId: caller, toUserId } });
 }));
 

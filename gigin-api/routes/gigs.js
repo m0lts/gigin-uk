@@ -244,7 +244,7 @@ router.post("/negotiateGigFee", requireAuth, asyncHandler(async (req, res) => {
   };
   const updatedApplicants = [ ...(Array.isArray(gig.applicants) ? gig.applicants : []), newApplication ];
   await gigRef.update({ applicants: updatedApplicants });
-  return res.json({ data: { applicants: updatedApplicants } });
+  return res.json({ data: { updatedApplicants } });
 }));
 
 // POST /api/gigs/duplicateGig

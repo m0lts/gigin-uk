@@ -28,6 +28,7 @@ import { duplicateGig, updateGigDocument } from '@services/api/gigs';
 import { saveGigTemplate } from '@services/api/venues';
 import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
 
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user, refreshGigs }) => {
@@ -289,8 +290,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
             setConfirmMessage(null)
         } catch (error) {
             console.error('Error cancelling task:', error.message);
-            setLoading(false);
             toast.error('Failed to cancel gig.')
+        } finally {
+          setLoading(false);
         }
     };
 

@@ -132,7 +132,6 @@ export const useAuth = () => {
         return;
       } else if (redirect === 'do-not-redirect') {
         sessionStorage.removeItem('redirect');
-
       } else if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
@@ -175,13 +174,13 @@ export const useAuth = () => {
         }
       }
       const redirect = sessionStorage.getItem('redirect');
+      console.log('redirect', redirect);
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
         window.location.reload()
         return;
       } else if (redirect === 'do-not-redirect') {
         sessionStorage.removeItem('redirect');
-
       } else if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
@@ -213,6 +212,12 @@ export const useAuth = () => {
         marketingConsent: !!marketingConsent,
       }, { merge: true });
       const redirect = sessionStorage.getItem('redirect');
+      if (redirect) {
+        sessionStorage.removeItem('redirect');
+        navigate(redirect);
+      } else {
+        navigate('/');
+      }
       sessionStorage.setItem('newUser', true);
       return { needsEmailVerify: true, redirect };
     } catch (error) {

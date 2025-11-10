@@ -301,7 +301,62 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
               </div>
           </div>
         );
-      }
+    }
+
+    const checkRequestModal = () => {
+        if (musicianId) {
+            setLoadingRequest(true);
+            setShowRequestModal(true);
+            handleFetchMusicianProfiles();
+        } else if (!musicianId && user) {
+            const musicianProfile = user?.musicianProfile;
+            const venueProfile = user?.venueProfiles?.[0];
+            const isVenueOwner = venueId === venueProfile?.venueId;
+            if (musicianProfile) {
+                const isMusician = !!user?.musicianProfile?.id;
+                const shouldHideVenueView = !user || isMusician;
+                if (!shouldHideVenueView) return;
+                const params = new URLSearchParams(searchParams);
+                params.delete('venueViewing');
+                if (isMusician) {
+                  params.set('musicianId', user.musicianProfile.id);
+                } else {
+                  params.delete('musicianId');
+                }
+                navigate(
+                    {
+                      pathname: `/venues/${venueId}`,
+                      search: params.toString() ? `?${params.toString()}` : '',
+                    },
+                    { replace: true }
+                );
+                setLoadingRequest(true);
+                setShowRequestModal(true);
+                handleFetchMusicianProfiles();
+            } else if (venueProfile && isVenueOwner) {
+                const params = new URLSearchParams(searchParams);
+                params.set('venueViewing', true);
+                navigate(
+                    {
+                      pathname: `/venues/${venueId}`,
+                      search: params.toString() ? `?${params.toString()}` : '',
+                    },
+                    { replace: true }
+                );
+                return;
+            } else {
+                toast.info('You are signed in as a venue owner. Please sign in as a musician to request a gig.');
+                return;
+            }
+        } else if (!user) {
+            sessionStorage.setItem('redirect', `venues/${venueId}`);
+            setAuthModal(true);
+            setAuthType('login');
+            return;
+        } else {
+            return;
+        }
+    }
 
 
     return (
@@ -357,9 +412,9 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     <h4 className="number-of-gigs">
                                         {venueData?.gigs?.length} Gigs Posted
                                     </h4>
-                                    {(musicianId && !venueViewing) ? (
+                                    {!venueViewing ? (
                                         <div className="action-buttons">
-                                            <button className="btn quaternary" onClick={() => {setLoadingRequest(true); setShowRequestModal(true); handleFetchMusicianProfiles()}}>
+                                            <button className="btn quaternary" onClick={() => checkRequestModal()}>
                                                 Request a Gig
                                             </button>
                                         </div>
