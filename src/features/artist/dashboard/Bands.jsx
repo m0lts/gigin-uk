@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { PlusIcon, PeopleGroupIcon } from "@features/shared/ui/extras/Icons"
-import '@styles/musician/bands.styles.css'
+import '@styles/artists/bands.styles.css'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PeopleGroupIconSolid, PlusIconSolid, RightChevronIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';

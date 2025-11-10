@@ -15,7 +15,7 @@ import { useAuth } from '@hooks/useAuth';
 import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { getMostRecentMessage } from '@services/client-side/messages';
@@ -37,7 +37,7 @@ import { hasVenuePerm } from '../../../services/utils/permissions';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { toJsDate } from '../../../services/utils/dates';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, postCancellationMessage } from '@services/api/messages';
-import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 

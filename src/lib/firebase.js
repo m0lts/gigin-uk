@@ -1,9 +1,9 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
-import { getFirestore, setLogLevel } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
+import { getFirestore, connectFirestoreEmulator, setLogLevel } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator, GoogleAuthProvider } from 'firebase/auth';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // TODO: Add SDKs for Firebase products that you want to use
@@ -45,7 +45,27 @@ const functions = getFunctions(app, 'europe-west3');
 
 // setLogLevel("debug");
 
-// Emulator (optional)
-// if (import.meta.env.DEV) connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+// Connect to emulators in development mode
+// Check for emulator environment variable or dev mode
+const useEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS !== 'false';
+
+if (useEmulators && typeof window !== 'undefined') {
+  // Use a flag to prevent multiple connection attempts
+  if (!window.__firebaseEmulatorsConnected) {
+    try {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+      connectFirestoreEmulator(firestore, '127.0.0.1', 8081);
+      connectStorageEmulator(storage, '127.0.0.1', 9199);
+      connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+      window.__firebaseEmulatorsConnected = true;
+      console.log('🔥 Connected to Firebase Emulators');
+    } catch (error) {
+      // Ignore errors if already connected (e.g., hot reload)
+      if (!error.message?.includes('already been called')) {
+        console.warn('Failed to connect to emulators:', error);
+      }
+    }
+  }
+}
 
 export { app, firestore, auth, storage, functions, googleProvider };

@@ -7,13 +7,13 @@ import {
   ConnectAccountManagement,
 } from '@stripe/react-connect-js';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { updateMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { payoutToBankAccount, transferStripeFunds, deleteStripeConnectAccount, getConnectAccountStatus } from '@services/api/payments';
 import { openInNewTab } from '@services/utils/misc';
 import { formatFeeDate } from '@services/utils/dates';
 import { toast } from 'sonner';
 import { BankAccountIcon, CoinsIconSolid, CopyIcon, DeleteGigIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, MoreInformationIcon, PaymentSystemIcon, PieChartIcon, StripeIcon, SuccessIcon, TickIcon, WarningIcon } from '../../shared/ui/extras/Icons';
-import { getMusicianFees } from '../../../services/client-side/musicians';
+import { getMusicianFees } from '../../../services/client-side/artists';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';

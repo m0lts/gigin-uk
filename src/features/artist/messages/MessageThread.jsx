@@ -4,12 +4,12 @@ import {
     RejectedIcon,
     SendMessageIcon,
     TickIcon } from '@features/shared/ui/extras/Icons';
-import '@styles/musician/messages.styles.css';
+import '@styles/artists/messages.styles.css';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useNavigate } from 'react-router-dom';
 import { listenToMessages } from '@services/client-side/messages';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/client-side/emails';
 import { toast } from 'sonner';
 import { formatDate, toJsDate } from '../../../services/utils/dates';

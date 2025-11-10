@@ -4,14 +4,14 @@ import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, NoImageIcon, StarIcon, V
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { deleteBand, leaveBand } from '@services/api/bands';
-import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
+import { useArtistDashboard } from '../../../context/ArtistDashboardContext';
 import { ProfileForm } from '../dashboard/profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
 import Portal from '../../shared/components/Portal';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
-  const { refreshMusicianProfile, loading, setLoading } = useMusicianDashboard();
+  const { refreshMusicianProfile, loading, setLoading } = useArtistDashboard();
   const { bandId } = useParams();
   const {isMdUp} = useBreakpoint();
   const location = useLocation();

@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import '@styles/musician/musician-profile.styles.css'
-import { OverviewTab } from '@features/musician/profile/OverviewTab';
+import '@styles/artists/artist-profile.styles.css'
+import { OverviewTab } from '@features/artist/profile/OverviewTab';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { EmptyIcon, InviteIconSolid, NoImageIcon, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
 import { AboutTab } from '../profile/AboutTab';
 import { getGigsByIds, } from '../../../services/client-side/gigs';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
-import { Header as MusicianHeader } from '@features/musician/components/Header';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/artists';
+import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '../../../services/client-side/messages';

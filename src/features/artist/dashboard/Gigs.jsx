@@ -8,14 +8,14 @@ import {
     TickIcon,
     CalendarIconSolid,
     RejectedIcon } from '@features/shared/ui/extras/Icons';
-import { GigHandbook } from '@features/musician/components/GigHandbook';
+import { GigHandbook } from '@features/artist/components/GigHandbook';
 import { openInNewTab } from '../../../services/utils/misc';
 import { CancelIcon, CloseIcon, DuplicateGigIcon, EditIcon, ExclamationIcon, FilterIconEmpty, MailboxFullIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SaveIcon, SavedIcon, SearchIcon, ShieldIcon } from '../../shared/ui/extras/Icons';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { getVenueProfileById } from '../../../services/client-side/venues';
-import { getMusicianProfileByMusicianId, withdrawMusicianApplication } from '../../../services/client-side/musicians';
+import { getMusicianProfileByMusicianId, withdrawMusicianApplication } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
-import { markInviteAsViewed } from '@services/api/musicians';
+import { markInviteAsViewed } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 

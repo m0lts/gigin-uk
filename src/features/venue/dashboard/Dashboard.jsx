@@ -13,7 +13,7 @@ import { Finances } from './Finances';
 import { SavedMusicians } from './SavedMusicians';
 import { FindMusicians } from './FindMusicians';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
-import { WelcomeModal } from '@features/musician/components/WelcomeModal';
+import { WelcomeModal } from '@features/artist/components/WelcomeModal';
 import { mergeAndSortConversations } from '@services/utils/filtering';
 import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { getPendingGigsToReview } from '@services/utils/filtering';

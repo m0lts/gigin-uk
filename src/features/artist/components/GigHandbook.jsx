@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import '@styles/shared/modals.styles.css'
-import '@styles/musician/gig-handbook.styles.css'
+import '@styles/artists/gig-handbook.styles.css'
 import { NewTabIcon, PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useAuth } from '@hooks/useAuth';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { postCancellationMessage } from '@services/api/messages';
@@ -16,7 +16,7 @@ import { formatDurationSpan } from '@services/utils/misc';
 import { openInNewTab } from '../../../services/utils/misc';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { logGigCancellation, revertGigAfterCancellation } from '@services/api/gigs';
-import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 
 
 export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation }) => {

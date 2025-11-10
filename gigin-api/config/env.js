@@ -27,8 +27,10 @@ export const IS_DEV = PROJECT_ID === DEV_PROJECT_ID || (!IS_PROD && PROJECT_ID !
 
 // Emulator detection
 export const IS_EMULATOR =
+  process.env.USE_EMULATORS === "true" ||
   process.env.FUNCTIONS_EMULATOR === "true" ||
   process.env.FIRESTORE_EMULATOR_HOST ||
+  process.env.FIREBASE_AUTH_EMULATOR_HOST ||
   process.env.PUBSUB_EMULATOR_HOST;
 
 // Node environment

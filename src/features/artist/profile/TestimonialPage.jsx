@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import '@styles/musician/testimonial-page.styles.css';
+import '@styles/artists/testimonial-page.styles.css';
 import '@styles/forms/forms.styles.css';
 import { TextLogo } from '@features/shared/ui/logos/Logos';
 import { submitTestimonial } from '@services/client-side/reviews';

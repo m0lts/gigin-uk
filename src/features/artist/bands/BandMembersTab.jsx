@@ -5,7 +5,7 @@ import { updateBandMemberPermissions, removeBandMember, updateBandAdmin, createB
 import { AddMember, KeyIcon, PasswordIcon, PeopleGroupIconSolid, PlusIconSolid, RemoveMemberIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
-import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
+import { useArtistDashboard } from '../../../context/ArtistDashboardContext';
 import Portal from '@features/shared/components/Portal'
 import { sendBandInviteEmail } from '../../../services/client-side/emails';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
@@ -14,7 +14,7 @@ export const BandMembersTab = ({ band, bandMembers, setBandMembers, musicianId, 
 
     const {
         refreshSingleBand
-      } = useMusicianDashboard();
+      } = useArtistDashboard();
 
     const [loading, setLoading] = useState(false);
     const [inviteLink, setInviteLink] = useState('');

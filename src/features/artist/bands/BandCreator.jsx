@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { NameStage } from '@features/musician/profile-creator/NameStage';
-import { ProfilePictureStage } from '@features/musician/profile-creator/ProfilePictureStage';
-import { ProgressBar } from '@features/musician/profile-creator/ProgressBar';
+import { NameStage } from '@features/artist/profile-creator/NameStage';
+import { ProfilePictureStage } from '@features/artist/profile-creator/ProfilePictureStage';
+import { ProgressBar } from '@features/artist/profile-creator/ProgressBar';
 import { useAuth } from '@hooks/useAuth';
 import { uploadFileToStorage } from '@services/storage';
-import { updateMusicianProfile } from '@services/client-side/musicians';
+import { updateMusicianProfile } from '@services/client-side/artists';
 import { generateBandPassword } from '@services/utils/validation';
 import { Timestamp, arrayUnion } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
-import { createMusicianProfile } from '../../../services/client-side/musicians';
-import '@styles/musician/profile-creator.styles.css';
+import { createMusicianProfile } from '../../../services/client-side/artists';
+import '@styles/artists/profile-creator.styles.css';
 import { updateUserArrayField } from '@services/api/users';
 import { createBandProfile } from '@services/api/bands';
 

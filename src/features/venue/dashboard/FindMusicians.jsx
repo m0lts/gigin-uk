@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { openInNewTab } from '@services/utils/misc';
 import { NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, SearchIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
-import { fetchMusiciansPaginated } from '../../../services/client-side/musicians';
+import { fetchMusiciansPaginated } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
 import { updateUserArrayField } from '@services/api/users';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';

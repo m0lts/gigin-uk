@@ -5,7 +5,7 @@ import { NewTabIcon, PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useAuth } from '@hooks/useAuth';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { postCancellationMessage } from '@services/api/messages';
@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '@services/api/gigs';
-import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 
 
 export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {

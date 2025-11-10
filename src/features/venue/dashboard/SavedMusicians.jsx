@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
 import { firestore } from '@lib/firebase';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getMusicianProfilesByIds } from '@services/client-side/musicians';
+import { getMusicianProfilesByIds } from '@services/client-side/artists';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
 import { ErrorIcon, NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';

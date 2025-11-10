@@ -20,7 +20,7 @@ import { TicketedGig } from './TicketedGig';
 import { GeoPoint, Timestamp } from 'firebase/firestore';
 import { geohashForLocation } from 'geofire-common';
 import { validateGigTimings } from '../../../services/utils/validation';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/artists';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '../../../services/client-side/messages';
 import { formatDate } from '../../../services/utils/dates';

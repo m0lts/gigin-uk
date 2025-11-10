@@ -5,9 +5,9 @@ import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth'
 import { useState, useEffect } from 'react'
 import { listenToUserConversations } from '@services/client-side/conversations';
-import { ProfileCreator } from '../../musician/profile-creator/ProfileCreator';
+import { ProfileCreator } from '../../artist/profile-creator/ProfileCreator';
 import { CloseIcon, ExitIcon, FeedbackIcon, HamburgerMenuIcon, MapIcon } from '../ui/extras/Icons';
-import { NoProfileModal } from '../../musician/components/NoProfileModal';
+import { NoProfileModal } from '../../artist/components/NoProfileModal';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { MobileMenu } from './MobileMenu';
 import { submitUserFeedback } from '../../../services/client-side/reports';

@@ -1,4 +1,4 @@
-import '@styles/musician/messages.styles.css'
+import '@styles/artists/messages.styles.css'
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@hooks/useAuth';
 import { 

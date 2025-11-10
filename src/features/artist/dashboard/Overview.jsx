@@ -6,7 +6,7 @@ import {
     SortIcon,
     HouseIconLight,
     PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
-import { GigHandbook } from '@features/musician/components/GigHandbook';
+import { GigHandbook } from '@features/artist/components/GigHandbook';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { MapIcon, NextGigIcon, NoImageIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { formatDate } from '../../../services/utils/dates';

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import '@styles/musician/musician-profile.styles.css'
+import '@styles/artists/artist-profile.styles.css'
 import { BackgroundMusicIcon, CameraIcon, CloseIcon, DownChevronIcon, EditIcon, ErrorIcon, FacebookIcon, InstagramIcon, MediaIcon, MicrophoneIconSolid, MicrophoneLinesIcon, MoreInformationIcon, Mp3Icon, Mp4Icon, MusicianIconSolid, PeopleGroupIconSolid, ProfileIconSolid, SocialMediaIcon, SoundcloudIcon, SpotifyIcon, StarIcon, TickIcon, TwitterIcon, UpChevronIcon, VideoIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
 import { v4 as uuidv4 } from 'uuid';
-import { createMusicianProfile } from '@services/client-side/musicians';
+import { createMusicianProfile } from '@services/client-side/artists';
 import { uploadProfilePicture, uploadTracks, uploadVideosWithThumbnails } from '@services/storage';
-import { useMusicianDashboard } from '../../../../context/MusicianDashboardContext';
+import { useArtistDashboard } from '../../../../context/ArtistDashboardContext';
 import { arrayUnion } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { deleteFileFromStorage, uploadFileToStorage, uploadFileWithProgress } from '../../../../services/storage';
@@ -177,7 +177,7 @@ const equipmentMapping = {
 };
 
 export const ProfileForm = ({ user, musicianProfile, band = false, expand, setShowPreview, bandAdmin = true }) => {
-    const { setMusicianProfile, refreshSingleBand } = useMusicianDashboard();
+    const { setMusicianProfile, refreshSingleBand } = useArtistDashboard();
     const {isMdUp} = useBreakpoint();
     const sessionUploadsRef = useRef({
         videos: new Set(),

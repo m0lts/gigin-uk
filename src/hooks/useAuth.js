@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion, query, collecti
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { createMusicianProfile } from '../services/client-side/musicians';
+import { createMusicianProfile } from '../services/client-side/artists';
 import { getEmailAddress } from '@services/api/users';
 import { sendVerificationEmail as sendVerificationEmailApi } from '../services/api/users';
 

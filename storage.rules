@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+// For emulator development, these rules are permissive
+// In production, you should implement proper authentication and authorization
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to read any file
+    match /{allPaths=**} {
+      allow read: if request.auth != null;
+      
+      // Allow authenticated users to write to their own paths
+      // This is permissive for emulator - tighten in production
+      allow write: if request.auth != null;
+    }
+  }
+}
+

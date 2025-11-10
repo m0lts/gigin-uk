@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Header as MusicianHeader } from '@features/musician/components/Header';
+import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
-import '@styles/musician/gig-page.styles.css';
+import '@styles/artists/gig-page.styles.css';
 import { 
     BackgroundMusicIcon,
     ClubIcon,
@@ -20,7 +20,7 @@ import {
     WeddingIcon } from '@features/shared/ui/extras/Icons';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { updateMusicianGigApplications } from '@services/client-side/musicians';
+import { updateMusicianGigApplications } from '@services/client-side/artists';
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/client-side/messages';
 import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
@@ -28,7 +28,7 @@ import { validateMusicianUser } from '@services/utils/validation';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
-import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/client-side/musicians';
+import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/client-side/artists';
 import { getBandMembers } from '../../services/client-side/bands';
 import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
 import { getMostRecentMessage } from '../../services/client-side/messages';
@@ -37,8 +37,8 @@ import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../..
 import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
-import { ProfileCreator } from '../musician/profile-creator/ProfileCreator';
-import { NoProfileModal } from '../musician/components/NoProfileModal';
+import { ProfileCreator } from '../artist/profile-creator/ProfileCreator';
+import { NoProfileModal } from '../artist/components/NoProfileModal';
 import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';

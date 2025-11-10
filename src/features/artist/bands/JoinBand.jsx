@@ -4,7 +4,7 @@ import { useAuth } from '@hooks/useAuth';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { joinBandByPassword, getBandByPassword, acceptBandInvite } from '@services/api/bands';
 import { toast } from 'sonner';
-import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
+import { useArtistDashboard } from '../../../context/ArtistDashboardContext';
 import { ProfileCreator } from '../profile-creator/ProfileCreator';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
@@ -23,7 +23,7 @@ export const JoinBand = () => {
 
     const {
       refreshMusicianProfile
-    } = useMusicianDashboard();
+    } = useArtistDashboard();
   
     useEffect(() => {
       if (!inviteId || user === undefined) return;

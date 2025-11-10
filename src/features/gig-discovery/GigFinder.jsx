@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { MapOutput } from './MapView';
 import { ListView } from './ListView';
-import { Header as MusicianHeader } from '@features/musician/components/Header';
+import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as CommonHeader } from '@features/shared/components/Header';
-import '@styles/musician/gig-finder.styles.css';
+import '@styles/artists/gig-finder.styles.css';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { WelcomeModal } from '@features/musician/components/WelcomeModal';
+import { WelcomeModal } from '@features/artist/components/WelcomeModal';
 import { useUpcomingGigs } from '@hooks/useUpcomingGigs';
 import { useUserLocation } from '@hooks/useUserLocation';
 import { fetchNearbyGigs } from '../../services/client-side/gigs';

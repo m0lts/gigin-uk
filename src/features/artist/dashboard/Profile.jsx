@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import '@styles/musician/musician-profile.styles.css'
+import '@styles/artists/artist-profile.styles.css'
 import { ProfileForm } from './profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
 import { NoImageIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';

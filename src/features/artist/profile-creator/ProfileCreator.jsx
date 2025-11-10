@@ -4,14 +4,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { ProgressBar } from './ProgressBar';
 import { Timestamp, arrayUnion } from 'firebase/firestore';
 
-import '@styles/musician/profile-creator.styles.css';
+import '@styles/artists/profile-creator.styles.css';
 
 import { NameStage } from './NameStage';
 import { ProfilePictureStage } from './ProfilePictureStage';
 
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { createMusicianProfile } from '@services/client-side/musicians';
+import { createMusicianProfile } from '@services/client-side/artists';
 import { uploadProfilePicture } from '@services/storage';
 import { ProfileIconSolid, SuccessIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';

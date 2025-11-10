@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Header as MusicianHeader } from '@features/musician/components/Header';
+import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import '@styles/host/venue-page.styles.css';
 import { 
@@ -17,7 +17,7 @@ import { getVenueProfileById } from '@services/client-side/venues';
 import { getGigsByVenueId } from '../../../services/client-side/gigs';
 import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/client-side/musicians';
+import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
 import { AmpIcon, BassIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';

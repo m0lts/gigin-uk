@@ -2,7 +2,7 @@ import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import React, { useState, useEffect, useCallback } from 'react'
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
-import '@styles/musician/musician-dashboard.styles.css'
+import '@styles/artists/artist-dashboard.styles.css'
 import { Profile } from './Profile';
 import { Gigs } from './Gigs';
 import { Bands } from './Bands';
@@ -12,7 +12,7 @@ import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { BandCreator } from '../bands/BandCreator';
 import { JoinBand } from '../bands/JoinBand';
 import { BandDashboard } from '../bands/BandDashboard';
-import { useMusicianDashboard } from '../../../context/MusicianDashboardContext';
+import { useArtistDashboard } from '../../../context/ArtistDashboardContext';
 import { listenToUserConversations } from '../../../services/client-side/conversations';
 import { mergeAndSortConversations } from '@services/utils/filtering';
 import { RightChevronIcon } from '../../shared/ui/extras/Icons';
@@ -41,7 +41,7 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
     refreshMusicianProfile,
     savedGigs,
     setSavedGigs
-  } = useMusicianDashboard();
+  } = useArtistDashboard();
   const { isMdUp } = useBreakpoint();
 
   const [newMessages, setNewMessages] = useState(false);

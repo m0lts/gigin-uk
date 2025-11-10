@@ -9,18 +9,18 @@ import { Timestamp, arrayUnion } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
 // Your service functions (assumed to exist as per your spec)
-import { updateMusicianProfile } from '@services/client-side/musicians';
-import { createMusicianProfile } from '@services/client-side/musicians';
+import { updateMusicianProfile } from '@services/client-side/artists';
+import { createMusicianProfile } from '@services/client-side/artists';
 import { uploadFileToStorage } from '@services/storage';
 import { generateBandPassword } from '@services/utils/validation';
 import { toast } from 'sonner';
 import { useAuth } from '../../../hooks/useAuth';
 import { uploadProfilePicture } from '../../../services/storage';
-import '@styles/musician/no-profile.styles.css'
+import '@styles/artists/no-profile.styles.css'
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useNavigate } from 'react-router-dom';
 import { getUserById } from '../../../services/client-side/users';
-import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '../../../services/client-side/artists';
 import { updateUserArrayField } from '@services/api/users';
 import { createBandProfile } from '@services/api/bands';
 

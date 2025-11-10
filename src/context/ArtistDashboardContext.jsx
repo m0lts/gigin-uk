@@ -1,13 +1,13 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { subscribeToMusicianProfile, getMusicianProfilesByIds } from '@services/client-side/musicians';
+import { subscribeToMusicianProfile, getMusicianProfilesByIds } from '@services/client-side/artists';
 import { getGigsByIds } from '@services/client-side/gigs';
 import { getBandMembers } from '@services/client-side/bands';
 import { getBandDataOnly } from '../services/client-side/bands';
-import { getMusicianProfileByMusicianId } from '../services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '../services/client-side/artists';
 
-const MusicianDashboardContext = createContext();
+const ArtistDashboardContext = createContext();
 
-export const MusicianDashboardProvider = ({ user, children }) => {
+export const ArtistDashboardProvider = ({ user, children }) => {
   const [loading, setLoading] = useState(true);
   const [musicianProfile, setMusicianProfile] = useState(null);
   const [gigApplications, setGigApplications] = useState([]);
@@ -215,7 +215,7 @@ export const MusicianDashboardProvider = ({ user, children }) => {
   };
 
   return (
-    <MusicianDashboardContext.Provider
+    <ArtistDashboardContext.Provider
       value={{
         loading,
         setLoading,
@@ -239,14 +239,14 @@ export const MusicianDashboardProvider = ({ user, children }) => {
       }}
     >
       {children}
-    </MusicianDashboardContext.Provider>
+    </ArtistDashboardContext.Provider>
   );
 };
 
-export const useMusicianDashboard = () => {
-  const ctx = useContext(MusicianDashboardContext);
+export const useArtistDashboard = () => {
+  const ctx = useContext(ArtistDashboardContext);
   if (!ctx) {
-    throw new Error('useMusicianDashboard must be used within <MusicianDashboardProvider>.');
+    throw new Error('useArtistDashboard must be used within <ArtistDashboardProvider>.');
   }
   return ctx;
 };

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { MapOutput } from './MapView';
-import { Header as MusicianHeader } from '@features/musician/components/Header';
+import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as CommonHeader } from '@features/shared/components/Header';
-import '@styles/musician/gig-finder.styles.css';
-import { WelcomeModal } from '@features/musician/components/WelcomeModal';
+import '@styles/artists/gig-finder.styles.css';
+import { WelcomeModal } from '@features/artist/components/WelcomeModal';
 import { useUserLocation } from '@hooks/useUserLocation';
 import { TopBanner } from './TopBanner';
 import { fetchNearbyVenues } from '../../services/client-side/venues';
