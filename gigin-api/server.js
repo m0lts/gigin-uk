@@ -25,8 +25,10 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Trust proxy - required for Cloud Run (behind Google's load balancer)
+// Cloud Run is behind 1 proxy (Google's load balancer), so we trust 1 hop
 // This allows Express to correctly handle X-Forwarded-For headers for rate limiting
-app.set('trust proxy', true);
+// Using a number instead of true prevents IP spoofing attacks
+app.set('trust proxy', 1);
 
 // Security: Helmet sets various HTTP headers to help protect the app
 app.use(helmet({
@@ -115,8 +117,9 @@ const limiter = rateLimit({
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   message: "Too many requests from this IP, please try again later.",
-  // Trust proxy for accurate IP (Cloud Run is behind a proxy)
-  trustProxy: true,
+  // Trust 1 proxy (Google's load balancer) for accurate IP
+  // This matches the Express trust proxy setting
+  trustProxy: 1,
 });
 
 // Apply rate limiting to all requests except health check and OPTIONS (preflight)
