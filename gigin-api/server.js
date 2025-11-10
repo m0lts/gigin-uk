@@ -83,11 +83,13 @@ app.use(cors({
       return;
     }
     
-    // Production: restrict to Firebase Hosting domains
+    // Production: restrict to Firebase Hosting domains and custom domains
     const allowedOrigins = [
       /^https:\/\/.*\.web\.app$/,
       /^https:\/\/.*\.firebaseapp\.com$/,
-      process.env.ALLOWED_ORIGIN, // Custom domain
+      process.env.ALLOWED_ORIGIN, // Custom domain from env
+      "https://giginmusic.com", // Production domain (without www)
+      "https://www.giginmusic.com", // Production domain (with www)
     ].filter(Boolean);
     
     const isAllowed = allowedOrigins.some(pattern => {
