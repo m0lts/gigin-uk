@@ -37,6 +37,7 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
 // CORS configuration
@@ -54,7 +55,16 @@ app.use(cors({
       /^https:\/\/.*\.firebaseapp\.com$/,
     ];
     
-    if (firebaseHostingPatterns.some(pattern => pattern.test(origin))) {
+    // Check if origin matches Firebase Hosting patterns
+    const matchesFirebaseHosting = firebaseHostingPatterns.some(pattern => {
+      const matches = pattern.test(origin);
+      if (IS_PROD && matches) {
+        console.log(`CORS: Allowing Firebase Hosting origin: ${origin}`);
+      }
+      return matches;
+    });
+    
+    if (matchesFirebaseHosting) {
       callback(null, true);
       return;
     }
@@ -78,13 +88,16 @@ app.use(cors({
       process.env.ALLOWED_ORIGIN, // Custom domain
     ].filter(Boolean);
     
-    if (allowedOrigins.some(pattern => {
+    const isAllowed = allowedOrigins.some(pattern => {
       if (typeof pattern === "string") return origin === pattern;
       return pattern.test(origin);
-    })) {
+    });
+    
+    if (isAllowed) {
+      console.log(`CORS: Allowing origin: ${origin}`);
       callback(null, true);
     } else {
-      console.warn(`CORS: Blocked origin: ${origin}`);
+      console.warn(`CORS: Blocked origin: ${origin} (IS_PROD: ${IS_PROD}, NODE_ENV: ${NODE_ENV})`);
       callback(new Error("Not allowed by CORS"));
     }
   },
