@@ -1,10 +1,24 @@
-name: Deploy to Firebase Hosting (prod)
+name: Deploy to Firebase Hosting and Cloud Run (prod)
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "gigin-api/**"
+      - "src/**"
+      - ".github/workflows/deploy-prod.yml"
+      - "package.json"
+      - "functions/**"
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: giginltd-16772
+  REGION: europe-west3
+  SERVICE_NAME: gigin-api-prod
+
 jobs:
-  build_and_deploy:
+  deploy_hosting:
     runs-on: ubuntu-latest
+    needs: deploy_cloud_run
     env:
       FONTAWESOME_NPM_AUTH_TOKEN: ${{ secrets.FONTAWESOME_NPM_AUTH_TOKEN }}
       VITE_FIREBASE_API_KEY: ${{ secrets.PROD_FIREBASE_API_KEY }}
@@ -19,6 +33,7 @@ jobs:
       VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_STRIPE_PUBLISHABLE_KEY }}
       VITE_STRIPE_ACCOUNT_URL: ${{ secrets.PROD_STRIPE_ACCOUNT_URL }}
       VITE_STRIPE_ACCOUNT_SESSION_URL: ${{ secrets.PROD_STRIPE_ACCOUNT_SESSION_URL }}
+      VITE_API_URL: https://gigin-api-prod-gxujnzd2uq-ey.a.run.app/api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,3 +44,48 @@ jobs:
       - run: firebase deploy --only hosting:prod --project giginltd-16772
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+  deploy_cloud_run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Build and Deploy to Cloud Run
+        working-directory: gigin-api
+        run: |
+          gcloud builds submit \
+            --config cloudbuild-prod.yaml \
+            --project ${{ env.PROJECT_ID }}
+
+      - name: Get Cloud Run URL
+        id: url
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --format 'value(status.url)')
+          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "Service deployed to: $SERVICE_URL"
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Cloud Run Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ steps.url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ env.REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Project:** ${{ env.PROJECT_ID }}" >> $GITHUB_STEP_SUMMARY
