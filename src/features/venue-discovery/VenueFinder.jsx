@@ -5,7 +5,6 @@ import { Header as CommonHeader } from '@features/shared/components/Header';
 import '@styles/artists/gig-finder.styles.css';
 import { WelcomeModal } from '@features/artist/components/WelcomeModal';
 import { useUserLocation } from '@hooks/useUserLocation';
-import { TopBanner } from './TopBanner';
 import { fetchNearbyVenues } from '../../services/client-side/venues';
 import Portal from '../shared/components/Portal';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -63,9 +62,6 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal
         <MusicianHeader setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} />
       )}
       <div className="body">
-        {isMdUp && (
-          <TopBanner venueCount={venues.length} />
-        )}
         <div className="content-grid">
           <div className="output-container map-view">
             <MapOutput

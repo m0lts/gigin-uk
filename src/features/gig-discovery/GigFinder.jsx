@@ -10,9 +10,9 @@ import { useUpcomingGigs } from '@hooks/useUpcomingGigs';
 import { useUserLocation } from '@hooks/useUserLocation';
 import { fetchNearbyGigs } from '../../services/client-side/gigs';
 import { FilterPanel } from './FilterPanel';
-import { TopBanner } from './TopBanner';
 import Portal from '../shared/components/Portal';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { CloseIcon, FilterIconEmpty, FilterIconFull } from '../shared/ui/extras/Icons';
 
 export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, noProfileModal, setNoProfileModalClosable }) => {
 
@@ -44,20 +44,7 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
 
     const { location: userLocation, error: locationError } = useUserLocation();
 
-    useEffect(() => {
-        const hasActiveFilters =
-          (filters.genres && filters.genres.length > 0) ||
-          filters.kind ||
-          filters.musicianType ||
-          filters.minBudget !== null ||
-          filters.maxBudget !== null ||
-          filters.startDate !== null ||
-          filters.endDate !== null;
-      
-        if (hasActiveFilters) {
-          setShowFilters(true);
-        }
-      }, [filters]);
+    // Note: Removed auto-show filters when active - user can toggle manually
 
     useEffect(() => {
       if (locationError) {
@@ -83,6 +70,7 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
         newFilters.genres.forEach((g) => updatedParams.append('genre', g));
       
         setSearchParams(updatedParams);
+        setShowFilters(false);
       };
 
     useEffect(() => {
@@ -154,19 +142,31 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
                 />
             )}
             <div className="body">
-                {isMdUp && (
-                  <TopBanner
-                      showFilters={showFilters}
-                      setShowFilters={setShowFilters}
-                      gigCount={gigs.length}
-                      gigMarkerDisplay={gigMarkerDisplay}
-                      setGigMarkerDisplay={setGigMarkerDisplay}
-                      viewType={viewType}
-                      setViewType={setViewType}
-                      toggleFilters={toggleFilters}
-                  />
-                )}
-                <div className={`content-grid ${showFilters ? 'with-filters' : ''}`}>
+                <button 
+                    className="btn secondary filter-toggle-btn" 
+                    onClick={toggleFilters}
+                    aria-label={showFilters ? 'Close filters' : 'Open filters'}
+                >
+                    {showFilters ? (
+                      <>
+                        <CloseIcon />
+                        <span>Hide Filters</span>
+                      </>
+                    ) : (
+                      filters.genres.length > 0 || filters.kind || filters.musicianType || filters.minBudget !== null || filters.maxBudget !== null || filters.startDate !== null || filters.endDate !== null ? (
+                        <>
+                          <FilterIconFull />
+                          <span>Show Filters</span>
+                        </>
+                      ) : (
+                        <>
+                          <FilterIconEmpty />
+                          <span>Show Filters</span>
+                        </>
+                      )
+                    )}
+                </button>
+                <div className="content-grid">
                     {showFilters && (
                         <FilterPanel
                           filters={pendingFilters}

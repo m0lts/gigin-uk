@@ -4,8 +4,7 @@
     min-height: 100vh;
     height:100vh;
     max-height: 100vh;
-    display: grid;
-    grid-template-rows: 60px auto;
+    display: block;
     overflow: hidden;
 }
 
@@ -16,8 +15,7 @@
     height: 100%;
     max-height: 100%;
     min-height: 100%;
-    padding: 0 2.5%;
-    padding-bottom: 1rem;
+    padding: 0;
     overflow: hidden;
 }
 
@@ -74,17 +72,26 @@
 }
   
 .gig-finder .body .content-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    height: 90%;
-    min-height: 90%;
-    max-height: 90%;
+    display: block;
+    height: 100%;
+    min-height: 100%;
+    max-height: 100%;
     width: 100%;
-    transition: grid-template-columns 0.3s ease;
+    position: relative;
 }
-  
-.gig-finder .body .content-grid.with-filters {
-    grid-template-columns: 300px auto;
+
+.gig-finder .body .filter-toggle-btn {
+    position: fixed;
+    top: calc(60px + 1rem + 1rem); /* header height + top margin + spacing */
+    left: 2.5%;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0.5rem;
+    min-width: 40px;
+    min-height: 40px;
 }
 
 @media (--bp-md) {
@@ -97,17 +104,23 @@
 }
   
 .gig-finder .filters-container {
+    position: fixed;
+    top: calc(60px + 1rem + 1rem + 40px + 1rem); /* header height + top margin + spacing + button height + spacing */
+    left: 2.5%;
+    width: 300px;
+    max-height: calc(100vh - 60px - 1rem - 1rem - 40px - 1rem - 1rem); /* viewport - header - margins - button - spacing - bottom margin */
     background: white;
-    padding-right: 1rem;
-    height:100%;
+    padding: 1rem;
+    border-radius: var(--gn-border-radius);
+    box-shadow: 0 0 10px var(--gn-shadow);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    overflow-y: scroll;
+    overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    position: relative;
-  }
+    z-index: 9;
+}
   
 .gig-finder .filters-container::-webkit-scrollbar {
     display: none;
@@ -213,8 +226,15 @@
 }
 
 @media (--bp-md) {
+    .gig-finder .body .filter-toggle-btn {
+        top: calc(60px + 1rem + 0.5rem); /* Adjust spacing for mobile */
+    }
+
     .gig-finder .filters-container {
-        padding:1rem;
+        top: calc(60px + 1rem + 0.5rem + 40px + 0.5rem); /* Adjust for mobile */
+        left: 1rem; /* Match mobile header padding */
+        max-height: calc(100vh - 60px - 1rem - 0.5rem - 40px - 0.5rem - 1rem);
+        width: calc(100% - 2rem); /* Full width minus padding */
     }
 
     .gig-finder .filters-container .select option {
@@ -232,7 +252,6 @@
 }
   
 .gig-finder .output-container .map {
-    border-radius: 1rem;
     width: 100%;
     flex-grow: 1;
     position: relative;
@@ -242,7 +261,7 @@
 
 .gig-finder .output-container .map .btn.primary {
     position: absolute;
-    bottom: 10px;
+    bottom: 2.5%;
     left: 50%;
     transform: translateX(-50%);
     z-index: 2;
@@ -282,7 +301,7 @@
 
 .gig-finder .output-container .map .map-loading {
     position: absolute;
-    top:1rem;
+    top:2.5%;
     left: 50%;
     transform: translateX(-50%);
     width:fit-content;
@@ -305,7 +324,7 @@
   
 .gig-finder .preview-gig-container {
     width: 100%;
-    padding: 1rem 0;
+    padding: 1rem;
     background: var(--gn-white);
     overflow-x: auto;
     overflow-y: hidden;

@@ -5,8 +5,8 @@ import Portal from "./Portal";
 import { useState } from "react";
 
 export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable, setShowFeedbackModal, showFeedbackModal, feedback, setFeedback }) => {
-    const { isLgUp, isXlUp, isMdUp } = useBreakpoint();
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const { isLgUp, isXlUp, isMdUp } = useBreakpoint();
     const location = useLocation();
     
     return (
@@ -37,17 +37,13 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                     </>
                 ) : user && !user?.musicianProfile && !user.venueProfiles ? (
                     <>
-                        <Link className='link item no-margin' to={'/find-a-gig'}>
-                            Find a Gig
-                            <MapIcon />
-                        </Link>
-                        <button className={`btn inline item no-margin ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(!noProfileModalClosable)}}>
-                            Create a Musician Profile
-                            <GuitarsIcon />
-                        </button>
-                        <Link className='link item no-margin' to={'/venues/add-venue'}>
-                            I'm a Venue
-                            <VenueIconLight />
+                        <div className='item name-and-email no-margin'>
+                            <h6>{user.name}</h6>
+                            <p>{user.email}</p>
+                        </div>
+                        <Link to={'/account'} className='item no-margin link settings'>
+                            Settings
+                            <SettingsIcon />
                         </Link>
                         <button className='btn logout no-margin' onClick={handleLogout}>
                             Log Out
@@ -153,8 +149,8 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             </Link>
                         )}
                         {!user.musicianProfile && !isLgUp && (
-                            <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
-                                Create Musician Profile
+                            <Link className='link item no-margin' onClick={() => navigate('/artist-profile')}>
+                                Create Artist Profile
                                 <GuitarsIcon />
                             </Link>
                         )}

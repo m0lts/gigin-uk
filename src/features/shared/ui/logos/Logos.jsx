@@ -48,12 +48,12 @@ export const MusicianLogoLink = () => {
 }
 export const NoTextLogo = () => {
     return (
-        <h1 className='logo' style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>g<span className='orange-txt'>.</span></h1>
+        <h1 className='logo no-text' style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>g<span className='orange-txt'>.</span></h1>
     )
 }
 export const NoTextLogoLink = () => {
     return (
-        <h1 className='logo'>
+        <h1 className='logo no-text'>
             <Link className='link' to={'/'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
                 g<span className='orange-txt'>.</span>
             </Link>
@@ -62,7 +62,7 @@ export const NoTextLogoLink = () => {
 }
 export const NoTextMusicianLogoLink = () => {
     return (
-        <h1 className='logo'>
+        <h1 className='logo no-text'>
             <Link className='link' to={'/find-a-gig'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
                 g<span className='orange-txt'>.</span>
             </Link>
@@ -71,7 +71,7 @@ export const NoTextMusicianLogoLink = () => {
 }
 export const NoTextVenueLogoLink = () => {
     return (
-        <h1 className='logo'>
+        <h1 className='logo no-text'>
             <Link className='link' to={'/venues/dashboard/gigs'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
                 g<span className='orange-txt'>.</span>
             </Link>

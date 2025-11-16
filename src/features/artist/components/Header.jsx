@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModal, setNoProfileModal, setNoProfileModalClosable, noProfileModalClosable = false }) => {
+  const navigate = useNavigate();
     
     const { logout } = useAuth();
     const { isMdUp, isLgUp } = useBreakpoint();
@@ -139,9 +140,9 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                                 </button>
                                             </Link>
                                     ) : isLgUp && (
-                                        <button className='btn secondary' onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(noProfileModalClosable)}}>
+                                        <button className='btn secondary' onClick={() => navigate('/artist-profile')}>
                                             <GuitarsIcon />
-                                            Create Musician Profile
+                                            Create Artist Profile
                                         </button>
                                     )}
                                     {user.musicianProfile && (

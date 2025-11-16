@@ -16,7 +16,6 @@ import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import { isBlockedEmail } from '../../services/utils/validation';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
-
   const { signup, continueWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordInfo, setShowPasswordInfo] = useState(false);
@@ -147,7 +146,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                     if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
-                      setNoProfileModal(true);
+                      navigate('/artist-profile');
                     } else {        
                       setAuthModal(false);
                       setAuthClosable(true);

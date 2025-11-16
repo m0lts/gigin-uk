@@ -97,6 +97,32 @@ button {
     background-color: transparent;
 }
 
+/* SECONDARY BUTTONS */
+
+.btn.secondary-alt {
+    background-color: var(--gn-white);
+    border:1px solid transparent;
+    padding: 0.5rem 1rem;
+    border-radius: var(--gn-btn-border-radius);
+    font-weight: 500;
+    color: var(--gn-off-black);
+    transition: all 200ms linear;
+}
+
+.btn.secondary-alt.disabled {
+    background-color: var(--gn-white);
+    box-shadow: none;
+    color: var(--gn-grey-500);
+}
+
+.btn.secondary-alt:hover {
+    color: var(--gn-grey-500);
+}
+
+.btn.secondary-alt.logout:hover {
+    background-color: transparent;
+}
+
 
 /* TERTIARY BUTTONS */
 
@@ -343,4 +369,38 @@ button {
     display: flex;
     align-items: center;
     gap:5px;
+}
+
+/* ARTIST PROFILE BUTTON */
+.btn.artist-profile {
+    background: linear-gradient(90deg, var(--gn-orange), var(--gn-red), var(--gn-orange));
+    background-size: 200% 100%;
+    border:1px solid transparent;
+    padding: 0.5rem 1rem;
+    border-radius: var(--gn-btn-border-radius);
+    font-weight: 500;
+    color: var(--gn-white);
+    transition: all 200ms linear;
+    animation: gradientMove 3s ease infinite;
+}
+
+@keyframes gradientMove {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.btn.artist-profile.disabled {
+    opacity: 0.8;
+    animation: none;
+}
+
+.btn.artist-profile:hover {
+    opacity: 0.7;
 }

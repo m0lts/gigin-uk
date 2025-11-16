@@ -41,18 +41,27 @@ export function initializeAdmin() {
         console.log(`   Auth: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
       }
 
+      // Determine the project ID to use
+      // When using emulators without a project ID, default to dev project
+      // This ensures token verification works correctly with emulator tokens
+      let projectIdToUse = PROJECT_ID;
+      if (!projectIdToUse && useEmulators) {
+        projectIdToUse = DEV_PROJECT_ID;
+        console.log(`Using dev project ID (${DEV_PROJECT_ID}) for emulator mode`);
+      }
+
       // Validate project ID is detected
-      if (!PROJECT_ID) {
+      if (!projectIdToUse) {
         console.warn(
           "WARNING: No project ID detected. Using Application Default Credentials.\n" +
           "Set GCLOUD_PROJECT or GOOGLE_CLOUD_PROJECT environment variable."
         );
       } else {
         // Verify project ID matches expected values
-        const isValidProject = PROJECT_ID === PROD_PROJECT_ID || PROJECT_ID === DEV_PROJECT_ID;
+        const isValidProject = projectIdToUse === PROD_PROJECT_ID || projectIdToUse === DEV_PROJECT_ID;
         if (!isValidProject) {
           console.warn(
-            `WARNING: Project ID '${PROJECT_ID}' doesn't match expected projects.\n` +
+            `WARNING: Project ID '${projectIdToUse}' doesn't match expected projects.\n` +
             `Expected: ${DEV_PROJECT_ID} (dev) or ${PROD_PROJECT_ID} (prod)`
           );
         }
@@ -62,9 +71,10 @@ export function initializeAdmin() {
       // In Cloud Run, this automatically uses the service account of the deployed project
       // Locally, it uses Application Default Credentials (from gcloud auth application-default login)
       // When emulator env vars are set, Admin SDK automatically connects to emulators
-      const appOptions = PROJECT_ID
+      // When using emulators, we explicitly set the project ID to match token audience
+      const appOptions = projectIdToUse
         ? {
-            projectId: PROJECT_ID,
+            projectId: projectIdToUse,
             credential: admin.credential.applicationDefault(),
           }
         : {
@@ -74,7 +84,7 @@ export function initializeAdmin() {
       admin.initializeApp(appOptions);
 
       // Log initialization success with project info
-      const firebaseProject = admin.app().options.projectId || PROJECT_ID || "auto-detected";
+      const firebaseProject = admin.app().options.projectId || projectIdToUse || PROJECT_ID || "auto-detected";
       console.log("Firebase Admin initialized successfully", {
         projectId: firebaseProject,
         isProduction: IS_PROD,

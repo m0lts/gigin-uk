@@ -5,8 +5,9 @@
  * @param {object} params.user - The current user object.
  * @param {function} params.setAuthModal
  * @param {function} params.setAuthType
- * @param {function} params.setNoProfileModal
+ * @param {function} params.setNoProfileModal - DEPRECATED: Use navigate instead
  * @param {function} params.setIncompleteMusicianProfile
+ * @param {function} params.navigate - Function to navigate to artist profile page
  * @param {object} [params.profile] - Optional: a specific musician or band profile to validate.
  * @returns {{ valid: boolean, musicianProfile?: object }}
  */
@@ -17,12 +18,13 @@ export const validateMusicianUser = ({
   setNoProfileModal,
   setIncompleteMusicianProfile,
   setNoProfileModalClosable,
+  navigate,
   profile,
 }) => {
   if (!user) {
     setAuthModal?.(true);
     setAuthType?.('login');
-    setNoProfileModalClosable(true);
+    setNoProfileModalClosable?.(true);
     sessionStorage.setItem('redirect', 'do-not-redirect');
     return { valid: false };
   }
@@ -32,9 +34,15 @@ export const validateMusicianUser = ({
   null;
   const { canApply, reasons } = getMusicianEligibility(p);
   if (!canApply) {
-    setNoProfileModal?.(true);
+    // Navigate to artist profile page instead of showing modal
+    if (navigate) {
+      navigate('/artist-profile');
+    } else {
+      // Fallback to old modal behavior if navigate not provided
+      setNoProfileModal?.(true);
+      setNoProfileModalClosable?.(true);
+    }
     setIncompleteMusicianProfile?.(p || null);
-    setNoProfileModalClosable(true);
     return { valid: false, reasons };
   }
   return { valid: true, musicianProfile: p };

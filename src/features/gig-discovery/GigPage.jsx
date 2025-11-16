@@ -373,6 +373,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setNoProfileModal,
             setIncompleteMusicianProfile,
             setNoProfileModalClosable,
+            navigate,
             profile: selectedProfile,
           });
           if (!valid || userAppliedToGig) return;
@@ -440,6 +441,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setNoProfileModal,
             setIncompleteMusicianProfile,
             setNoProfileModalClosable,
+            navigate,
             profile: selectedProfile,
           });
       
@@ -459,6 +461,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setNoProfileModal,
             setIncompleteMusicianProfile,
             setNoProfileModalClosable,
+            navigate,
             profile: selectedProfile,
           });
         if (!valid) return;
@@ -531,6 +534,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setNoProfileModal,
             setIncompleteMusicianProfile,
             setNoProfileModalClosable,
+            navigate,
             profile: selectedProfile,
           });
         if (!valid) return;

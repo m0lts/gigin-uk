@@ -1,5 +1,6 @@
 // Dependencies
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Components
 import { SeeIcon, ErrorIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
@@ -13,6 +14,7 @@ import { Link } from 'react-router-dom';
 
 
 export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, continueWithGoogle, noProfileModal, setNoProfileModal }) => {
+  const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -54,7 +56,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
       if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
         setAuthModal(false);
         setAuthClosable(true);
-        setNoProfileModal(true);
+        navigate('/artist-profile');
       } else {        
         setAuthModal(false);
         setAuthClosable(true);
@@ -110,7 +112,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                     if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
-                      setNoProfileModal(true);
+                      navigate('/artist-profile');
                     } else {        
                       setAuthModal(false);
                       setAuthClosable(true);
