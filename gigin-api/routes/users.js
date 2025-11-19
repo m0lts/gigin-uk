@@ -141,7 +141,7 @@ router.post("/sendVerificationEmail", requireAuth, asyncHandler(async (req, res)
   return res.json({ data: { success: true } });
 }));
 
-const ALLOWED_ARRAY_FIELDS = ["venueProfiles", "savedMusicians", "bands", "musicianProfile"];
+const ALLOWED_ARRAY_FIELDS = ["venueProfiles", "savedMusicians", "bands", "artistProfiles"];
 
 // POST /api/users/updateUserArrayField (auth required)
 router.post("/updateUserArrayField", requireAuth, asyncHandler(async (req, res) => {

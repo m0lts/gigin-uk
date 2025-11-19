@@ -2,7 +2,7 @@ import { useMemo, useEffect } from 'react';
 import { Bio } from './Bio';
 import { VideosTracks } from './VideosTracks';
 import { DarkModeToggle } from './DarkModeToggle';
-import { ProfileCreationBox } from './ProfileCreationBox';
+import { ProfileCreationBox, CREATION_STEP_ORDER } from './ProfileCreationBox';
 
 /**
  * ProfileView Component
@@ -82,7 +82,25 @@ const EXAMPLE_PROFILES = [
   }
 ];
 
-export const ProfileView = ({ profileData, onBeginCreation, isExample = false, isDarkMode, setIsDarkMode, onExampleProfileSelected }) => {
+export const ProfileView = ({
+  profileData,
+  onBeginCreation,
+  isExample = false,
+  isDarkMode,
+  setIsDarkMode,
+  onExampleProfileSelected,
+  isCreationLoading = false,
+  isCreatingProfile = false,
+  creationStep = CREATION_STEP_ORDER[0],
+  onCreationStepChange,
+  onCompleteCreation,
+  onHeroImageUpdate,
+  initialHeroImage,
+  heroBrightness = 100,
+  onHeroBrightnessChange,
+  initialArtistName = "",
+  onArtistNameChange,
+}) => {
   // Randomly select an example profile once when component mounts (only for example profiles)
   const exampleData = useMemo(() => {
     if (!isExample) return null;
@@ -99,44 +117,63 @@ export const ProfileView = ({ profileData, onBeginCreation, isExample = false, i
 
   const data = isExample ? exampleData : profileData;
 
+  const profileContentClassNames = [
+    'profile-state-content',
+    isDarkMode ? 'dark-mode' : '',
+    isCreatingProfile ? 'creating-transition' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const sectionsStackClassNames = [
+    'profile-sections-stack',
+    isCreatingProfile ? 'fade-out' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className={`profile-state-content ${isDarkMode ? 'dark-mode' : ''}`}>
-      {/* Bio card */}
-      <div className="bio-card-container">
-        <Bio 
-          bio={data?.bio || 'No bio available'} 
-        />
+    <div className={profileContentClassNames}>
+      <div className={sectionsStackClassNames}>
+        <div className="bio-card-container">
+          <Bio 
+            bio={data?.bio || 'No bio available'} 
+          />
+        </div>
+
+        <div className="videos-tracks-card-container">
+          <VideosTracks 
+            videos={data?.videos || []}
+            tracks={data?.tracks || []}
+          />
+        </div>
+
+        <div className="dark-mode-toggle-container">
+          <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+        </div>
+
       </div>
 
-      {/* Videos/Tracks card */}
-      <div className="videos-tracks-card-container">
-        <VideosTracks 
-          videos={data?.videos || []}
-          tracks={data?.tracks || []}
-        />
-      </div>
-
-      {/* Dark/Light mode toggle */}
-      <div className="dark-mode-toggle-container">
-        <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
-      </div>
-
-      {/* Profile creation box - only show if example */}
-      {isExample && (
+      {/* Profile creation box */}
+      {(isExample || isCreatingProfile) && (
         <div className="creation-box-container">
-          <ProfileCreationBox onStartJourney={onBeginCreation} />
+          <ProfileCreationBox
+            onStartJourney={onBeginCreation}
+            isLoading={isCreationLoading}
+            isCreating={isCreatingProfile}
+            creationStep={creationStep}
+            onCreationStepChange={onCreationStepChange}
+            onCompleteCreation={onCompleteCreation}
+            onHeroImageUpdate={onHeroImageUpdate}
+            initialHeroImage={initialHeroImage}
+            heroBrightness={heroBrightness}
+            onHeroBrightnessChange={onHeroBrightnessChange}
+            initialArtistName={initialArtistName}
+            onArtistNameChange={onArtistNameChange}
+          />
         </div>
       )}
 
-      {/* Three toggle buttons for other sub-components */}
-      {!isExample && (
-        <div className="toggle-buttons-container">
-          {/* These will toggle other sub-component boxes */}
-          <button className="btn toggle-button">Button 1</button>
-          <button className="btn toggle-button">Button 2</button>
-          <button className="btn toggle-button">Button 3</button>
-        </div>
-      )}
     </div>
   );
 };

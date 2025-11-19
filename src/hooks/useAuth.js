@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, Timestamp, arrayUnion, query, collection, getDocs, where, limit, serverTimestamp, updateDoc, FieldValue } from 'firebase/firestore';
-import { v4 as uuidv4 } from 'uuid';
+import { doc, getDoc, setDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { createMusicianProfile } from '../services/client-side/artists';
 import { getEmailAddress } from '@services/api/users';
 import { sendVerificationEmail as sendVerificationEmailApi } from '../services/api/users';
 
@@ -15,17 +13,82 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const musicianUnsubRef = useRef(null);
-  const currentMusicianIdRef = useRef(null);
   const userUnsubRef = useRef(null);
   const authUnsubRef = useRef(null);
+  const artistProfileUnsubsRef = useRef(new Map());
+  const currentArtistProfileIdsRef = useRef([]);
+  const artistProfilesDataRef = useRef({});
+
+  const cleanupArtistProfileSubscriptions = () => {
+    artistProfileUnsubsRef.current.forEach((unsub) => unsub?.());
+    artistProfileUnsubsRef.current.clear();
+    currentArtistProfileIdsRef.current = [];
+    artistProfilesDataRef.current = {};
+    setUser((prev) => {
+      if (!prev) return prev;
+      return { ...prev, artistProfiles: [] };
+    });
+  };
+
+  const publishArtistProfiles = () => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        artistProfiles: Object.values(artistProfilesDataRef.current),
+      };
+    });
+  };
+
+  const syncArtistProfileSubscriptions = (profileIds = []) => {
+    const normalizedIds = Array.from(
+      new Set(
+        (profileIds || [])
+          .map((entry) => (typeof entry === 'string' ? entry : entry?.id))
+          .filter(Boolean)
+      )
+    );
+
+    const prevIds = currentArtistProfileIdsRef.current || [];
+
+    // Unsubscribe removed profiles
+    prevIds.forEach((profileId) => {
+      if (!normalizedIds.includes(profileId)) {
+        const unsub = artistProfileUnsubsRef.current.get(profileId);
+        unsub?.();
+        artistProfileUnsubsRef.current.delete(profileId);
+        delete artistProfilesDataRef.current[profileId];
+      }
+    });
+
+    // Subscribe to new profiles
+    normalizedIds.forEach((profileId) => {
+      if (artistProfileUnsubsRef.current.has(profileId)) return;
+      const profileRef = doc(firestore, 'artistProfiles', profileId);
+      const unsub = onSnapshot(
+        profileRef,
+        (profileSnap) => {
+          if (profileSnap.exists()) {
+            artistProfilesDataRef.current[profileId] = { id: profileId, ...profileSnap.data() };
+          } else {
+            delete artistProfilesDataRef.current[profileId];
+          }
+          publishArtistProfiles();
+        },
+        (err) => console.error(`Artist profile snapshot error (${profileId}):`, err)
+      );
+      artistProfileUnsubsRef.current.set(profileId, unsub);
+    });
+
+    currentArtistProfileIdsRef.current = normalizedIds;
+    publishArtistProfiles();
+  };
 
   useEffect(() => {
     setLoading(true);
     authUnsubRef.current = onAuthStateChanged(auth, async (firebaseUser) => {
       if (userUnsubRef.current) { userUnsubRef.current(); userUnsubRef.current = null; }
-      if (musicianUnsubRef.current) { musicianUnsubRef.current(); musicianUnsubRef.current = null; }
-      currentMusicianIdRef.current = null;
+      cleanupArtistProfileSubscriptions();
       if (!firebaseUser) {
         setUser(null);
         setLoading(false);
@@ -39,10 +102,11 @@ export const useAuth = () => {
           return;
         }
         const rawUser = userSnap.data() || {};
+        const { artistProfiles: rawArtistProfiles, ...restUserFields } = rawUser;
         const userData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          ...rawUser,
+          ...restUserFields,
         };
         if (Array.isArray(rawUser.venueProfiles) && rawUser.venueProfiles.length) {
           const venueProfiles = await Promise.all(
@@ -54,49 +118,21 @@ export const useAuth = () => {
           );
           userData.venueProfiles = venueProfiles.filter(Boolean);
         }
-        const musicianId =
-          Array.isArray(rawUser.musicianProfile) && rawUser.musicianProfile.length
-            ? rawUser.musicianProfile[0]
-            : null;
-        if (musicianId !== currentMusicianIdRef.current) {
-          if (musicianUnsubRef.current) {
-            musicianUnsubRef.current();
-            musicianUnsubRef.current = null;
-          }
-          currentMusicianIdRef.current = musicianId;
-          if (musicianId) {
-            const musicianRef = doc(firestore, 'musicianProfiles', musicianId);
-            musicianUnsubRef.current = onSnapshot(musicianRef, (musSnap) => {
-              const musicianData = musSnap.exists() ? { id: musicianId, ...musSnap.data() } : null;
-              setUser((prev) => {
-                const base = prev ?? userData;
-                const next = { ...base };
-                if (musicianData) {
-                  next.musicianProfile = musicianData;
-                } else {
-                  delete next.musicianProfile;
-                }
-                return next;
-              });
-              setLoading(false);
-            }, (err) => {
-              console.error('Musician snapshot error:', err);
-            });
-          } else {
-            setUser((prev) => {
-              const merged = { ...(prev || {}), ...userData };
-              const { musicianProfile, ...rest } = merged;
-              return rest;
-            });
-            setLoading(false);
-          }
-        } else {
-          setUser((prev) => ({
-            ...(prev || {}),
-            ...userData,
-          }));
-          setLoading(false);
-        }
+        const artistProfileIds = Array.isArray(rawArtistProfiles)
+          ? rawArtistProfiles
+              .map((entry) => (typeof entry === 'string' ? entry : entry?.id))
+              .filter(Boolean)
+          : [];
+
+        setUser((prev) => ({
+          ...(prev || {}),
+          ...userData,
+          artistProfileIds,
+          artistProfiles: prev?.artistProfiles || [],
+        }));
+
+        syncArtistProfileSubscriptions(artistProfileIds);
+        setLoading(false);
       }, (err) => {
         console.error('User snapshot error:', err);
         setLoading(false);
@@ -106,7 +142,7 @@ export const useAuth = () => {
     return () => {
       if (authUnsubRef.current) authUnsubRef.current();
       if (userUnsubRef.current) userUnsubRef.current();
-      if (musicianUnsubRef.current) musicianUnsubRef.current();
+      cleanupArtistProfileSubscriptions();
     };
   }, []);
   

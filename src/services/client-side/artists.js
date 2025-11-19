@@ -24,9 +24,66 @@ import { getMostRecentMessage } from './messages';
 import { updateGigDocument } from '../api/gigs';
 import { getOrCreateConversation } from '../api/conversations';
 import { updateMessageDoc } from '../api/messages';
+import { v4 as uuidv4 } from 'uuid';
 
 
 /*** CREATE OPERATIONS ***/
+
+/**
+ * Generates a new Firestore document reference ID for the artistProfiles collection.
+ */
+export const generateArtistProfileId = () => uuidv4();
+
+/**
+ * Creates (or overwrites) an artist profile document with the provided data.
+ *
+ * @param {Object} params
+ * @param {string} params.profileId - The Firestore document ID to use.
+ * @param {string} params.userId - The UID of the user who owns the profile.
+ * @param {Object} [params.initialData={}] - Optional overrides for the default payload.
+ * @returns {Promise<string>} - The profile ID that was written.
+ */
+export const createArtistProfileDocument = async ({ profileId, userId, initialData = {}, darkMode = false }) => {
+  if (!profileId) throw new Error('[createArtistProfileDocument] profileId is required');
+  if (!userId) throw new Error('[createArtistProfileDocument] userId is required');
+
+  const now = Timestamp.now();
+  const defaultData = {
+    userId,
+    status: 'draft',
+    onboardingStep: 'hero-image',
+    isComplete: false,
+    darkMode,
+    name: '',
+    bio: '',
+    location: null,
+    genres: [],
+    socials: [],
+    videos: [],
+    tracks: [],
+    heroMedia: null,
+    heroBrightness: 100,
+    avatar: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const payload = { ...defaultData, ...initialData };
+  const docRef = doc(firestore, 'artistProfiles', profileId);
+  await setDoc(docRef, payload, { merge: false });
+  return profileId;
+};
+
+export const updateArtistProfileDocument = async (profileId, updates = {}) => {
+  if (!profileId) throw new Error('[updateArtistProfileDocument] profileId is required');
+  try {
+    const docRef = doc(firestore, 'artistProfiles', profileId);
+    await updateDoc(docRef, { ...updates, updatedAt: Timestamp.now() });
+  } catch (error) {
+    console.error('[Firestore Error] updateArtistProfileDocument:', error);
+  }
+};
+
 
 /**
  * Creates or updates a musician profile in Firestore.

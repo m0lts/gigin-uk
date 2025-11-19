@@ -8,9 +8,19 @@
   overflow-x: hidden;
 }
 
-/* Background Image */
-.artist-profile-background {
+/* Background Layers */
+.artist-profile-background-wrapper {
   position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.artist-profile-background {
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
@@ -18,8 +28,57 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  z-index: 0;
-  opacity: 0.3;
+  opacity: 1;
+  transition: opacity 400ms ease;
+}
+
+.artist-profile-background.image-layer {
+  z-index: 1;
+}
+
+.artist-profile-background.image-layer.fade-out {
+  opacity: 0;
+}
+
+.artist-profile-background.placeholder-layer {
+  z-index: 2;
+  background-color: var(--gn-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.artist-profile-background.placeholder-layer.fade-in {
+  opacity: 1;
+}
+
+.artist-profile-background-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px dashed var(--gn-grey-300);
+  color: var(--gn-grey-500);
+}
+
+.artist-profile-background-placeholder .icon {
+  font-size: 3rem;
+  color: var(--gn-grey-500);
+}
+
+.artist-profile-background.brightness-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 200ms ease;
 }
 
 /* Content Overlay */
@@ -35,6 +94,15 @@
   position: relative;
   width: 100%;
   min-height: 100vh;
+}
+
+.artist-profile-constants .artist-name {
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+
+.artist-profile-constants.creation-transition .artist-name {
+  opacity: 0;
+  transform: translateY(16px);
 }
 
 /* Exit Button - Top Right */
@@ -98,6 +166,26 @@
   gap: 1rem;
   align-items: stretch;
   transition: gap 0.3s ease;
+}
+
+.profile-state-content.creating-transition {
+  gap: 0.5rem;
+}
+
+.profile-sections-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: opacity 400ms ease, max-height 350ms ease, transform 400ms ease;
+  max-height: 5000px;
+}
+
+.profile-sections-stack.fade-out {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+  overflow: hidden;
 }
 
 /* Common Sub-Component Box Styling */
@@ -474,9 +562,396 @@
 }
 
 /* Profile Creation Box */
-.artist-profile-creation-box .btn.artist-profile {
+.artist-profile-creation-box {
+  height: fit-content;
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: height;
+  overflow: hidden;
+}
+
+.artist-profile-creation-box .creation-box-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .creation-box-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.artist-profile-creation-box .creation-progress-dots {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+  padding-top: 0.5rem;
+}
+
+.artist-profile-creation-box .progress-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gn-grey-500);
+  opacity: 0.35;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.artist-profile-creation-box .progress-dot.filled {
+  opacity: 1;
+  background: var(--gn-black);
+}
+
+.artist-profile-creation-box .creation-box-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.artist-profile-creation-box .creation-box-actions.single {
+  flex-direction: column;
+}
+
+.artist-profile-creation-box .creation-box-actions.hidden {
+  display: none;
+}
+
+.artist-profile-creation-box .creation-box-actions .creation-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background-color: var(--gn-white);
+  transition: color 200ms ease;
+}
+
+.artist-profile-creation-box .creation-box-actions .creation-back-btn:hover {
+  color: var(--gn-grey-600);
+}
+
+.artist-profile-creation-box .creation-box-actions .creation-back-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.artist-profile-creation-box .creation-box-actions .creation-back-btn:disabled:hover {
+  color: var(--gn-grey-400);
+}
+
+.artist-profile-creation-box .creation-step-panels {
+  position: relative;
+  overflow: hidden;
+  height:fit-content;
+  transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.artist-profile-creation-box .creation-step-panel {
   width: 100%;
-  margin-top: 1rem;
+}
+
+.artist-profile-creation-box .creation-step-panel.exit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.artist-profile-creation-box .creation-step-panel.enter.animating {
+  position: relative;
+}
+
+.artist-profile-creation-box .creation-step-panel.enter.forward.animating {
+  animation: creation-step-slide-in-right 320ms ease forwards;
+}
+
+.artist-profile-creation-box .creation-step-panel.exit.forward {
+  animation: creation-step-slide-out-left 320ms ease forwards;
+}
+
+.artist-profile-creation-box .creation-step-panel.enter.backward.animating {
+  animation: creation-step-slide-in-left 320ms ease forwards;
+}
+
+.artist-profile-creation-box .creation-step-panel.exit.backward {
+  animation: creation-step-slide-out-right 320ms ease forwards;
+}
+
+.artist-profile-creation-box .creation-step-panel.enter:not(.animating) {
+  animation: none;
+}
+
+.artist-profile-creation-box .creation-step-question {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.artist-profile-creation-box .creation-hero-upload {
+  width: 100%;
+  min-height: 220px;
+  border: 1px solid var(--gn-grey-350);
+  background-color: var(--gn-grey-200);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: var(--gn-grey-800);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border 200ms ease, transform 200ms ease;
+  padding: 1rem;
+}
+
+.artist-profile-creation-box .creation-hero-upload .icon {
+  font-size: 1.5rem;
+}
+
+.artist-profile-creation-box .creation-hero-upload.change-upload {
+  min-height: 120px;
+}
+
+.artist-profile-creation-box .creation-hero-upload .upload-icon {
+  font-size: 1.8rem;
+  color: inherit;
+}
+
+.artist-profile-creation-box .creation-hero-upload:hover {
+  border: 2px solid var(--gn-off-black);
+  transform: translateY(-2px);
+}
+
+.artist-profile-creation-box .creation-hero-upload.has-image {
+  padding: 0;
+}
+
+.artist-profile-creation-box .creation-hero-upload.has-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 1rem;
+}
+
+.artist-profile-creation-box .creation-hero-adjust {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .hero-brightness-control {
+  border: 1px solid var(--gn-grey-200);
+  border-radius: 1rem;
+  background: var(--gn-white);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .hero-brightness-control .brightness-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-grey-800);
+}
+
+.artist-profile-creation-box .hero-brightness-control .brightness-header .icon {
+  font-size: 1.5rem;
+}
+
+.artist-profile-creation-box .hero-brightness-slider {
+  width: 100%;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--gn-grey-300);
+  border-radius: 0px;
+  accent-color: var(--gn-black);
+}
+
+.artist-profile-creation-box .hero-brightness-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--gn-black);
+  border: 2px solid var(--gn-white);
+}
+
+.artist-profile-creation-box .creation-stage-name-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.artist-profile-creation-box .creation-stage-name-input {
+  width: 100%;
+  max-width: 600px;
+  border: none;
+  font-size: 3.5rem;
+  font-weight: 600;
+  padding: 0;
+  margin: 0;
+  color: var(--gn-black);
+  background: transparent;
+  text-align: center;
+  outline: none;
+}
+
+.artist-profile-creation-box .creation-stage-name-input::placeholder {
+  color: var(--gn-grey-300);
+}
+
+.artist-profile-creation-box .creation-field-hint {
+  font-size: 0.85rem;
+  color: var(--gn-grey-500);
+  margin-top: 0.35rem;
+  display: inline-block;
+}
+
+.artist-profile-creation-box .creation-tip-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--gn-grey-600);
+  line-height: 1.4;
+}
+
+.artist-profile-creation-box .creation-summary {
+  background: var(--gn-grey-100);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  margin-top: 0.75rem;
+  color: var(--gn-grey-800);
+}
+
+.artist-profile-creation-box .creation-placeholder-card {
+  background: var(--gn-grey-100);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  font-size: 0.95rem;
+  color: var(--gn-grey-700);
+  line-height: 1.4;
+}
+
+@keyframes creation-step-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes creation-step-slide-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+}
+
+@keyframes creation-step-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes creation-step-slide-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+.dark-mode .artist-profile-creation-box .creation-step-pill {
+  background: var(--gn-grey-800);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-stage-name-input {
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-stage-name-input::placeholder {
+  color: var(--gn-grey-500);
+}
+
+.dark-mode .artist-profile-creation-box .progress-dot {
+  background: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-creation-box .progress-dot.filled {
+  background: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-hero-upload {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-creation-box .creation-hero-upload:hover {
+  border-color: var(--gn-orange);
+}
+
+.dark-mode .artist-profile-creation-box .creation-hero-upload.has-image img {
+  border-radius: 1rem;
+}
+
+.dark-mode .artist-profile-creation-box .hero-change-tile {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-creation-box .hero-brightness-control {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-grey-100);
+}
+
+.dark-mode .artist-profile-creation-box .hero-brightness-slider {
+  accent-color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-step-question {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-summary {
+  background: var(--gn-grey-900);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-placeholder-card {
+  background: var(--gn-grey-900);
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-creation-box .creation-field-hint {
+  color: var(--gn-grey-400);
 }
 
 /* Toggle Buttons Container */
