@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FilmIcon, PlayIcon, VinylIcon } from '../../../shared/ui/extras/Icons';
+import { FilmIcon, PlayIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon } from '../../../shared/ui/extras/Icons';
 
 /**
  * VideosTracks Component
@@ -7,8 +7,38 @@ import { FilmIcon, PlayIcon, VinylIcon } from '../../../shared/ui/extras/Icons';
  * Clicking brings the selected section to the front with WeTransfer-style animation
  */
 
-export const VideosTracks = ({ videos = [], tracks = [] }) => {
-  const [activeSection, setActiveSection] = useState('videos'); // 'videos' or 'tracks'
+// Helper function to normalize URLs and prepend https:// if needed
+const normalizeUrl = (url) => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  // If it already starts with http:// or https://, return as is
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  // Otherwise prepend https://
+  return `https://${trimmed}`;
+};
+
+const handleLinkClick = (e, url) => {
+  e.preventDefault();
+  const normalizedUrl = normalizeUrl(url);
+  if (normalizedUrl) {
+    window.open(normalizedUrl, '_blank', 'noopener,noreferrer');
+  }
+};
+
+export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, spotifyUrl = "", soundcloudUrl = "" }) => {
+  // Determine initial active section: use defaultActiveSection if provided,
+  // otherwise default to 'tracks' if there are tracks but no videos,
+  // otherwise default to 'videos'
+  const getInitialActiveSection = () => {
+    if (defaultActiveSection) return defaultActiveSection;
+    if (tracks.length > 0 && videos.length === 0) return 'tracks';
+    return 'videos';
+  };
+  
+  const [activeSection, setActiveSection] = useState(getInitialActiveSection);
   const containerRef = useRef(null);
   const videosRef = useRef(null);
   const tracksRef = useRef(null);
@@ -51,28 +81,41 @@ export const VideosTracks = ({ videos = [], tracks = [] }) => {
     });
   }, [activeSection, videos, tracks]);
 
+  // Switch to tracks if videos section becomes empty and we're on videos
+  useEffect(() => {
+    if (activeSection === 'videos' && videos.length === 0 && tracks.length > 0) {
+      setActiveSection('tracks');
+    }
+  }, [activeSection, videos.length, tracks.length]);
+
+  // Hide videos section if there are no videos
+  const hasVideos = videos.length > 0;
+
+  console.log('tracks', tracks);
+  
   return (
     <div ref={containerRef} className="videos-tracks-inner">
       {/* Videos Section */}
-      <div 
-        ref={videosRef}
-        className={`videos-section ${activeSection === 'videos' ? 'active' : 'inactive'}`}
-      >
-        {activeSection === 'videos' ? (
-          <div 
-            className="section-header"           >
-            <FilmIcon />
-            <h3>Videos</h3>
-          </div>
-        ) : (
-          <div 
-            className="section-header" 
-            onClick={() => setActiveSection('videos')}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <h4>Show Videos</h4>
-          </div>
-        )}
+      {hasVideos && (
+        <div 
+          ref={videosRef}
+          className={`videos-section ${activeSection === 'videos' ? 'active' : 'inactive'}`}
+        >
+          {activeSection === 'videos' ? (
+            <div 
+              className="section-header"           >
+              <FilmIcon />
+              <h3>Videos</h3>
+            </div>
+          ) : (
+            <div 
+              className="section-header" 
+              onClick={() => setActiveSection('videos')}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <h4>Show Videos</h4>
+            </div>
+          )}
         <div className="section-content">
           <div className="videos-grid">
             {videos.map((video, index) => (
@@ -87,7 +130,8 @@ export const VideosTracks = ({ videos = [], tracks = [] }) => {
             ))}
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Tracks Section */}
       <div 
@@ -95,10 +139,35 @@ export const VideosTracks = ({ videos = [], tracks = [] }) => {
         className={`tracks-section ${activeSection === 'tracks' ? 'active' : 'inactive'}`}
       >
         {activeSection === 'tracks' ? (
-          <div 
-            className="section-header">
-            <VinylIcon />
-            <h3>Tracks</h3>
+          <div className="section-header">
+            <div className="title">
+              <VinylIcon />
+              <h3>Tracks</h3>
+            </div>
+            <div className="external-links">
+              {spotifyUrl && (
+                <a 
+                  href={spotifyUrl} 
+                  onClick={(e) => handleLinkClick(e, spotifyUrl)}
+                  className="external-link spotify"
+                  aria-label="Open Spotify profile"
+                >
+                  <SpotifyIcon />
+                  Spotify
+                </a>
+              )}
+              {soundcloudUrl && (
+                <a 
+                  href={soundcloudUrl} 
+                  onClick={(e) => handleLinkClick(e, soundcloudUrl)}
+                  className="external-link soundcloud"
+                  aria-label="Open SoundCloud profile"
+                >
+                  <SoundcloudIcon />
+                  SoundCloud
+                </a>
+              )}
+            </div>
           </div>
         ) : (
           <div 
@@ -113,11 +182,15 @@ export const VideosTracks = ({ videos = [], tracks = [] }) => {
           <div className="tracks-list">
             {tracks.map((track, index) => (
               <div key={index} className="track-item">
-                {track.thumbnail && (
-                  <div className="track-thumbnail">
+                <div className="track-thumbnail">
+                  {track.thumbnail ? (
                     <img src={track.thumbnail} alt={track.title || 'Track'} />
-                  </div>
-                )}
+                  ) : (
+                    <div className="track-thumbnail-placeholder">
+                      <TrackIcon />
+                    </div>
+                  )}
+                </div>
                 <div className="track-info">
                   <h4>{track.title}</h4>
                   {track.artist && <p>{track.artist}</p>}

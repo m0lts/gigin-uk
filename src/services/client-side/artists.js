@@ -63,6 +63,7 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
     tracks: [],
     heroMedia: null,
     heroBrightness: 100,
+    heroPositionY: 50,
     avatar: null,
     createdAt: now,
     updatedAt: now,

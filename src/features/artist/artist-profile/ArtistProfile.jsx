@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '@hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProfileView } from './components/ProfileView';
@@ -6,14 +6,22 @@ import '@styles/artists/artist-profile-new.styles.css';
 // Hardcoded background image for example profile
 import artistProfileBackground from '@assets/images/arctic-monkeys.jpeg';
 import { generateArtistProfileId, createArtistProfileDocument, updateArtistProfileDocument } from '@services/client-side/artists';
-import { uploadFileToStorage } from '@services/storage';
+import { uploadFileToStorage, uploadFileWithProgress, deleteStoragePath } from '@services/storage';
 import { updateUserArrayField } from '@services/api/users';
 import { toast } from 'sonner';
 import { NoImageIcon } from '@features/shared/ui/extras/Icons';
 import { CREATION_STEP_ORDER } from './components/ProfileCreationBox';
+import { LoadingModal } from '@features/shared/ui/loading/LoadingModal';
 
 const BRIGHTNESS_DEFAULT = 100;
 const BRIGHTNESS_RANGE = 40; // slider distance from neutral
+
+const HERO_POSITION_DEFAULT = 50;
+const HERO_POSITION_MIN = 0;
+const HERO_POSITION_MAX = 100;
+
+const clampHeroPosition = (value = HERO_POSITION_DEFAULT) =>
+  Math.min(HERO_POSITION_MAX, Math.max(HERO_POSITION_MIN, value));
 
 const getBrightnessOverlayStyle = (value = BRIGHTNESS_DEFAULT) => {
   if (!value || value === BRIGHTNESS_DEFAULT) {
@@ -83,16 +91,48 @@ export const ArtistProfile = ({
   const [creationProfileId, setCreationProfileId] = useState(null);
   const [creationHeroImage, setCreationHeroImage] = useState(null);
   const [creationHeroBrightness, setCreationHeroBrightness] = useState(BRIGHTNESS_DEFAULT);
+  const [creationHeroPosition, setCreationHeroPosition] = useState(HERO_POSITION_DEFAULT);
   const [creationArtistName, setCreationArtistName] = useState("");
+  const [creationArtistBio, setCreationArtistBio] = useState("");
+  const [creationSpotifyUrl, setCreationSpotifyUrl] = useState("");
+  const [creationSoundcloudUrl, setCreationSoundcloudUrl] = useState("");
+  const [creationTracks, setCreationTracks] = useState([]);
+  const [heroUploadStatus, setHeroUploadStatus] = useState('idle');
+  const [heroUploadProgress, setHeroUploadProgress] = useState(0);
+  const [tracksUploadStatus, setTracksUploadStatus] = useState('idle');
+  const [tracksUploadProgress, setTracksUploadProgress] = useState(0);
+  const [showTracksUploadModal, setShowTracksUploadModal] = useState(false);
+  const [isRepositioningHero, setIsRepositioningHero] = useState(false);
+  const [isHeroDragging, setIsHeroDragging] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
-  
+  const [creationWebsiteUrl, setCreationWebsiteUrl] = useState("");
+  const [creationInstagramUrl, setCreationInstagramUrl] = useState("");
   // Dashboard sub-state (which view to show: Profile, Gigs, Messages, Finances)
   const [dashboardView, setDashboardView] = useState(DashboardView.PROFILE);
   
   // Track previous profile state to detect completion
   const previousProfileRef = useRef(null);
   const heroBrightnessUpdateTimeoutRef = useRef(null);
+  const heroPositionUpdateTimeoutRef = useRef(null);
   const artistNameUpdateTimeoutRef = useRef(null);
+  const artistBioUpdateTimeoutRef = useRef(null);
+  const spotifyUrlUpdateTimeoutRef = useRef(null);
+  const soundcloudUrlUpdateTimeoutRef = useRef(null);
+  const websiteUrlUpdateTimeoutRef = useRef(null);
+  const instagramUrlUpdateTimeoutRef = useRef(null);
+  const heroDragStateRef = useRef({
+    isDragging: false,
+    startY: 0,
+    startPosition: HERO_POSITION_DEFAULT,
+  });
+  const backgroundImageRef = useRef(null);
+  const heroStoragePathRef = useRef(null);
+  const heroUploadTokenRef = useRef(null);
+  const tracksUploadTokenRef = useRef(null);
+  const tracksStoragePathsRef = useRef({}); // Track storage paths: { trackId: { audioPath, coverPath } }
+  const tracksUploadInProgressRef = useRef(false); // Track if upload is in progress to prevent re-runs
+  const previousTracksStepRef = useRef(creationStep); // Track previous step to detect when moving away from tracks
+  const latestTracksRef = useRef([]); // Store the most up-to-date tracks data (including uploaded URLs)
 
   const artistProfiles = user?.artistProfiles || [];
   const completedProfile = useMemo(
@@ -105,6 +145,7 @@ export const ArtistProfile = ({
   );
   const activeProfileData = completedProfile || draftProfile || null;
   const hasCompleteProfile = !!completedProfile;
+  const isCreationState = currentState === ArtistProfileState.CREATING;
 
   const displayName = useMemo(() => {
     if (currentState === ArtistProfileState.EXAMPLE_PROFILE) {
@@ -129,9 +170,29 @@ export const ArtistProfile = ({
       if (heroBrightnessUpdateTimeoutRef.current) {
         clearTimeout(heroBrightnessUpdateTimeoutRef.current);
       }
+      if (heroPositionUpdateTimeoutRef.current) {
+        clearTimeout(heroPositionUpdateTimeoutRef.current);
+      }
       if (artistNameUpdateTimeoutRef.current) {
         clearTimeout(artistNameUpdateTimeoutRef.current);
       }
+      if (artistBioUpdateTimeoutRef.current) {
+        clearTimeout(artistBioUpdateTimeoutRef.current);
+      }
+      if (spotifyUrlUpdateTimeoutRef.current) {
+        clearTimeout(spotifyUrlUpdateTimeoutRef.current);
+      }
+      if (soundcloudUrlUpdateTimeoutRef.current) {
+        clearTimeout(soundcloudUrlUpdateTimeoutRef.current);
+      }
+      if (websiteUrlUpdateTimeoutRef.current) {
+        clearTimeout(websiteUrlUpdateTimeoutRef.current);
+      }
+      if (instagramUrlUpdateTimeoutRef.current) {
+        clearTimeout(instagramUrlUpdateTimeoutRef.current);
+      }
+      heroUploadTokenRef.current = null;
+      tracksUploadTokenRef.current = null;
     };
   }, []);
 
@@ -206,16 +267,49 @@ export const ArtistProfile = ({
     setIsCreatingProfile(false);
     setCreationProfileId(null);
     setCreationHeroImage(null);
+    heroStoragePathRef.current = null;
     setCreationHasHeroImage(false);
     setCreationHeroBrightness(BRIGHTNESS_DEFAULT);
+    setCreationHeroPosition(HERO_POSITION_DEFAULT);
     setCreationArtistName("");
+    setCreationArtistBio("");
+    setCreationSpotifyUrl("");
+    setCreationSoundcloudUrl("");
+    setCreationWebsiteUrl("");
+    setCreationInstagramUrl("");
+    setCreationTracks([]);
     setCreationStep(CREATION_STEP_ORDER[0]);
+    setHeroUploadStatus('idle');
+    setHeroUploadProgress(0);
+    setTracksUploadStatus('idle');
+    setTracksUploadProgress(0);
+    setShowTracksUploadModal(false);
+    heroUploadTokenRef.current = null;
+    tracksUploadTokenRef.current = null;
+    tracksStoragePathsRef.current = {};
+    tracksUploadInProgressRef.current = false;
+    latestTracksRef.current = [];
     if (heroBrightnessUpdateTimeoutRef.current) {
       clearTimeout(heroBrightnessUpdateTimeoutRef.current);
+    }
+    if (heroPositionUpdateTimeoutRef.current) {
+      clearTimeout(heroPositionUpdateTimeoutRef.current);
     }
     if (artistNameUpdateTimeoutRef.current) {
       clearTimeout(artistNameUpdateTimeoutRef.current);
     }
+    if (artistBioUpdateTimeoutRef.current) {
+      clearTimeout(artistBioUpdateTimeoutRef.current);
+    }
+    if (websiteUrlUpdateTimeoutRef.current) {
+      clearTimeout(websiteUrlUpdateTimeoutRef.current);
+    }
+    if (instagramUrlUpdateTimeoutRef.current) {
+      clearTimeout(instagramUrlUpdateTimeoutRef.current);
+    }
+    setIsRepositioningHero(false);
+    setIsHeroDragging(false);
+    heroDragStateRef.current.isDragging = false;
     setSearchParams({});
   };
 
@@ -232,7 +326,50 @@ export const ArtistProfile = ({
     setCreationStep(draftProfile.onboardingStep || CREATION_STEP_ORDER[0]);
     const savedBrightness = draftProfile.heroBrightness ?? BRIGHTNESS_DEFAULT;
     setCreationHeroBrightness(savedBrightness);
+    const savedPosition = clampHeroPosition(draftProfile.heroPositionY ?? HERO_POSITION_DEFAULT);
+    setCreationHeroPosition(savedPosition);
     setCreationArtistName(draftProfile.name || "");
+    setCreationArtistBio(draftProfile.bio || "");
+    setCreationSpotifyUrl(draftProfile.spotifyUrl || "");
+    setCreationSoundcloudUrl(draftProfile.soundcloudUrl || "");
+    setCreationWebsiteUrl(draftProfile.websiteUrl || "");
+    setCreationInstagramUrl(draftProfile.instagramUrl || "");
+
+    // Load tracks from draft profile
+    if (draftProfile.tracks && Array.isArray(draftProfile.tracks) && draftProfile.tracks.length > 0) {
+      console.log('Loading tracks from draft profile:', draftProfile.tracks);
+      const loadedTracks = draftProfile.tracks.map(track => ({
+        id: track.id,
+        title: track.title || `Track ${track.id}`,
+        artist: track.artist || "",
+        audioFile: null,
+        audioPreviewUrl: track.audioUrl || null,
+        coverFile: null,
+        coverPreviewUrl: track.coverUrl || null,
+        // Preserve both uploadedAudioUrl and audioUrl for fallback
+        uploadedAudioUrl: track.audioUrl || null,
+        audioUrl: track.audioUrl || null, // Preserve original for fallback
+        coverUploadedUrl: track.coverUrl || null,
+        coverUrl: track.coverUrl || null, // Preserve original for fallback
+        audioStoragePath: track.audioStoragePath || null,
+        coverStoragePath: track.coverStoragePath || null,
+      }));
+      console.log('Loaded tracks:', loadedTracks);
+      setCreationTracks(loadedTracks);
+      latestTracksRef.current = loadedTracks; // Update ref with loaded tracks
+
+      // Update storage paths ref
+      loadedTracks.forEach(track => {
+        if (track.audioStoragePath || track.coverStoragePath) {
+          tracksStoragePathsRef.current[track.id] = {
+            audioPath: track.audioStoragePath || null,
+            coverPath: track.coverStoragePath || null,
+          };
+        }
+      });
+    } else {
+      setCreationTracks([]);
+    }
 
     if (draftProfile.heroMedia?.url) {
       setCreationHeroImage({
@@ -242,8 +379,10 @@ export const ArtistProfile = ({
       });
       setCreationHasHeroImage(true);
       setBackgroundImage(draftProfile.heroMedia.url);
+      heroStoragePathRef.current = draftProfile.heroMedia.storagePath || null;
     } else {
       setCreationHeroImage(null);
+      heroStoragePathRef.current = null;
       setCreationHasHeroImage(false);
     }
   }, [draftProfile, creationProfileId, isCreatingProfile, hasCompleteProfile]);
@@ -266,6 +405,50 @@ export const ArtistProfile = ({
       setCreationStep(draftProfile.onboardingStep || CREATION_STEP_ORDER[0]);
       const savedBrightness = draftProfile.heroBrightness ?? BRIGHTNESS_DEFAULT;
       setCreationHeroBrightness(savedBrightness);
+      const savedPosition = clampHeroPosition(draftProfile.heroPositionY ?? HERO_POSITION_DEFAULT);
+      setCreationHeroPosition(savedPosition);
+      setCreationArtistBio(draftProfile.bio || "");
+      setCreationSpotifyUrl(draftProfile.spotifyUrl || "");
+      setCreationSoundcloudUrl(draftProfile.soundcloudUrl || "");
+      setCreationWebsiteUrl(draftProfile.websiteUrl || "");
+      setCreationInstagramUrl(draftProfile.instagramUrl || "");
+
+      // Load tracks from draft profile
+      if (draftProfile.tracks && Array.isArray(draftProfile.tracks) && draftProfile.tracks.length > 0) {
+        console.log('Loading tracks in handleBeginCreation:', draftProfile.tracks);
+        const loadedTracks = draftProfile.tracks.map(track => ({
+          id: track.id,
+          title: track.title || `Track ${track.id}`,
+          artist: track.artist || "",
+          audioFile: null,
+          audioPreviewUrl: track.audioUrl || null,
+          coverFile: null,
+          coverPreviewUrl: track.coverUrl || null,
+          // Preserve both uploadedAudioUrl and audioUrl for fallback
+          uploadedAudioUrl: track.audioUrl || null,
+          audioUrl: track.audioUrl || null, // Preserve original for fallback
+          coverUploadedUrl: track.coverUrl || null,
+          coverUrl: track.coverUrl || null, // Preserve original for fallback
+          audioStoragePath: track.audioStoragePath || null,
+          coverStoragePath: track.coverStoragePath || null,
+        }));
+        console.log('Loaded tracks in handleBeginCreation:', loadedTracks);
+        setCreationTracks(loadedTracks);
+        latestTracksRef.current = loadedTracks; // Update ref with loaded tracks
+
+        // Update storage paths ref
+        loadedTracks.forEach(track => {
+          if (track.audioStoragePath || track.coverStoragePath) {
+            tracksStoragePathsRef.current[track.id] = {
+              audioPath: track.audioStoragePath || null,
+              coverPath: track.coverStoragePath || null,
+            };
+          }
+        });
+      } else {
+        setCreationTracks([]);
+      }
+
       if (draftProfile.heroMedia?.url) {
         setCreationHeroImage({
           file: null,
@@ -274,8 +457,10 @@ export const ArtistProfile = ({
         });
         setCreationHasHeroImage(true);
         setBackgroundImage(draftProfile.heroMedia.url);
+        heroStoragePathRef.current = draftProfile.heroMedia.storagePath || null;
       } else {
         setCreationHeroImage(null);
+        heroStoragePathRef.current = null;
         setCreationHasHeroImage(false);
       }
       setSearchParams({ state: ArtistProfileState.CREATING, profileId: draftProfile.id });
@@ -300,10 +485,16 @@ export const ArtistProfile = ({
       setIsCreatingProfile(true);
       setCreationProfileId(newProfileId);
       setCreationHeroImage(null);
+      heroStoragePathRef.current = null;
       setCreationHeroBrightness(BRIGHTNESS_DEFAULT);
+      setCreationHeroPosition(HERO_POSITION_DEFAULT);
+      setCreationArtistBio("");
       setCreationHasHeroImage(false);
       if (heroBrightnessUpdateTimeoutRef.current) {
         clearTimeout(heroBrightnessUpdateTimeoutRef.current);
+      }
+      if (heroPositionUpdateTimeoutRef.current) {
+        clearTimeout(heroPositionUpdateTimeoutRef.current);
       }
       setCreationStep(CREATION_STEP_ORDER[0]);
       setCurrentState(ArtistProfileState.CREATING);
@@ -332,20 +523,498 @@ export const ArtistProfile = ({
     // State will automatically transition to DASHBOARD via useEffect
   };
 
+  const handleHeroPositionChange = useCallback(
+    (value) => {
+      const clamped = clampHeroPosition(value);
+      setCreationHeroPosition(clamped);
+      if (!creationProfileId) return;
+
+      if (heroPositionUpdateTimeoutRef.current) {
+        clearTimeout(heroPositionUpdateTimeoutRef.current);
+      }
+
+      heroPositionUpdateTimeoutRef.current = setTimeout(async () => {
+        try {
+          await updateArtistProfileDocument(creationProfileId, { heroPositionY: clamped });
+        } catch (error) {
+          console.error('Failed to update hero position:', error);
+        }
+      }, 400);
+    },
+    [creationProfileId]
+  );
+
+  const handleHeroPointerMove = useCallback(
+    (event) => {
+      if (!heroDragStateRef.current.isDragging) return;
+      event.preventDefault();
+      const viewportHeight = window.innerHeight || backgroundImageRef.current?.offsetHeight || 1;
+      const deltaY = event.clientY - heroDragStateRef.current.startY;
+      const percentDelta = (deltaY / viewportHeight) * 100;
+      const nextPosition = clampHeroPosition(heroDragStateRef.current.startPosition - percentDelta);
+      handleHeroPositionChange(nextPosition);
+    },
+    [handleHeroPositionChange]
+  );
+
+  const handleHeroPointerUp = useCallback(() => {
+    if (!heroDragStateRef.current.isDragging) return;
+    heroDragStateRef.current.isDragging = false;
+    setIsHeroDragging(false);
+    window.removeEventListener('pointermove', handleHeroPointerMove);
+    window.removeEventListener('pointerup', handleHeroPointerUp);
+  }, [handleHeroPointerMove]);
+
+  const handleHeroPointerDown = useCallback(
+    (event) => {
+      if (!isRepositioningHero || !isCreationState || !creationHasHeroImage) return;
+      event.preventDefault();
+      heroDragStateRef.current.isDragging = true;
+      heroDragStateRef.current.startY = event.clientY;
+      heroDragStateRef.current.startPosition = creationHeroPosition;
+      setIsHeroDragging(true);
+      window.addEventListener('pointermove', handleHeroPointerMove);
+      window.addEventListener('pointerup', handleHeroPointerUp);
+    },
+    [
+      isRepositioningHero,
+      isCreationState,
+      creationHasHeroImage,
+      creationHeroPosition,
+      handleHeroPointerMove,
+      handleHeroPointerUp,
+    ]
+  );
+
+  const handleHeroRepositionToggle = useCallback(
+    (active) => {
+      setIsRepositioningHero(active);
+      if (!active && heroDragStateRef.current.isDragging) {
+        heroDragStateRef.current.isDragging = false;
+        setIsHeroDragging(false);
+        window.removeEventListener('pointermove', handleHeroPointerMove);
+        window.removeEventListener('pointerup', handleHeroPointerUp);
+      }
+    },
+    [handleHeroPointerMove, handleHeroPointerUp]
+  );
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('pointermove', handleHeroPointerMove);
+      window.removeEventListener('pointerup', handleHeroPointerUp);
+    };
+  }, [handleHeroPointerMove, handleHeroPointerUp]);
+
+  useEffect(() => {
+    if (!creationHasHeroImage && isRepositioningHero) {
+      handleHeroRepositionToggle(false);
+    }
+  }, [creationHasHeroImage, isRepositioningHero, handleHeroRepositionToggle]);
+
+  useEffect(() => {
+    if (!isCreationState && isRepositioningHero) {
+      handleHeroRepositionToggle(false);
+    }
+  }, [isCreationState, isRepositioningHero, handleHeroRepositionToggle]);
+
+  useEffect(() => {
+    const isHeroStep = creationStep === CREATION_STEP_ORDER[0];
+    const shouldUpload =
+      creationProfileId &&
+      !isHeroStep &&
+      creationHeroImage?.file;
+
+    if (!shouldUpload) return;
+
+    let isSubscribed = true;
+    const uploadToken = Symbol('hero-upload');
+    heroUploadTokenRef.current = uploadToken;
+    setHeroUploadStatus('uploading');
+    setHeroUploadProgress(0);
+
+    const file = creationHeroImage.file;
+    const extension = file.name?.split('.').pop() || 'jpg';
+    const filename = `background-${Date.now()}.${extension}`;
+    const storagePath = `artistProfiles/${creationProfileId}/hero/${filename}`;
+    const previousStoragePath = heroStoragePathRef.current;
+    const currentPreviewUrl = creationHeroImage?.previewUrl;
+
+    uploadFileWithProgress(file, storagePath, (progress) => {
+      if (!isSubscribed) return;
+      if (heroUploadTokenRef.current !== uploadToken) return;
+      setHeroUploadProgress(progress);
+    })
+      .then(async (heroUrl) => {
+        if (!isSubscribed) return;
+        if (heroUploadTokenRef.current !== uploadToken) return;
+        setCreationHeroImage({
+          file: null,
+          previewUrl: currentPreviewUrl || heroUrl,
+          storagePath,
+          uploadedUrl: heroUrl,
+        });
+        setCreationHasHeroImage(true);
+        setHeroUploadStatus('complete');
+        setHeroUploadProgress(100);
+        heroStoragePathRef.current = storagePath;
+        if (previousStoragePath && previousStoragePath !== storagePath) {
+          deleteStoragePath(previousStoragePath);
+        }
+
+        const preload = new Image();
+        preload.onload = () => {
+          if (!isSubscribed) return;
+          if (heroUploadTokenRef.current !== uploadToken) return;
+          setBackgroundImage(heroUrl);
+        };
+        preload.onerror = () => {
+          if (!isSubscribed) return;
+          if (heroUploadTokenRef.current !== uploadToken) return;
+          setBackgroundImage(heroUrl);
+        };
+        preload.src = heroUrl;
+
+        if (creationProfileId) {
+          try {
+            await updateArtistProfileDocument(creationProfileId, {
+              heroMedia: { url: heroUrl, storagePath },
+            });
+          } catch (error) {
+            console.error('Failed to persist hero media after upload:', error);
+          }
+        }
+      })
+      .catch((error) => {
+        if (!isSubscribed) return;
+        if (heroUploadTokenRef.current !== uploadToken) return;
+        console.error('Hero image async upload failed:', error);
+        setHeroUploadStatus('error');
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [creationStep, creationHeroImage?.file, creationProfileId]);
+
+  // Async upload tracks when user moves away from tracks step
+  useEffect(() => {
+    const previousStep = previousTracksStepRef.current;
+    const currentStep = creationStep;
+    previousTracksStepRef.current = currentStep;
+
+    // Only trigger upload if we're moving FROM tracks step TO a different step
+    const movedAwayFromTracks = previousStep === 'tracks' && currentStep !== 'tracks';
+
+    // Prevent re-running if upload is already in progress
+    if (tracksUploadInProgressRef.current) {
+      return;
+    }
+
+    const hasTracksToUpload = creationTracks.some(
+      track => track.audioFile || track.coverFile
+    );
+
+    const shouldUpload =
+      creationProfileId &&
+      movedAwayFromTracks &&
+      hasTracksToUpload;
+
+    if (!shouldUpload) {
+      // Reset upload status if there's nothing to upload
+      if (tracksUploadStatus === 'uploading') {
+        setTracksUploadStatus('idle');
+        setTracksUploadProgress(0);
+      }
+      return;
+    }
+
+    // Mark upload as in progress
+    tracksUploadInProgressRef.current = true;
+
+    let isSubscribed = true;
+    const uploadToken = Symbol('tracks-upload');
+    tracksUploadTokenRef.current = uploadToken;
+    setTracksUploadStatus('uploading');
+    setTracksUploadProgress(0);
+
+    const uploadPromises = [];
+    // Create a deep copy of tracks to update, preserving all existing properties including uploaded URLs
+    const tracksToUpdate = creationTracks.map(track => ({
+      ...track,
+      // Preserve existing uploaded URLs if they exist
+      uploadedAudioUrl: track.uploadedAudioUrl || track.audioUrl || null,
+      coverUploadedUrl: track.coverUploadedUrl || track.coverUrl || null,
+      audioStoragePath: track.audioStoragePath || null,
+      coverStoragePath: track.coverStoragePath || null,
+    }));
+    let completedUploads = 0;
+    const totalUploads = creationTracks.reduce((count, track) => {
+      return count + (track.audioFile ? 1 : 0) + (track.coverFile ? 1 : 0);
+    }, 0);
+
+    console.log('Starting track uploads. Total uploads:', totalUploads);
+
+
+    // If there are no uploads to do, exit early
+    if (totalUploads === 0) {
+      console.log('No files to upload, skipping upload process');
+      return;
+    }
+
+    creationTracks.forEach((track, index) => {
+      console.log('uploading track', track.title);
+      const trackId = track.id;
+      const previousPaths = tracksStoragePathsRef.current[trackId] || {};
+
+      // Upload audio file if present
+      if (track.audioFile) {
+        const extension = track.audioFile.name?.split('.').pop() || 'mp3';
+        const filename = `track-${trackId}-${Date.now()}.${extension}`;
+        const storagePath = `artistProfiles/${creationProfileId}/tracks/${filename}`;
+        const previousAudioPath = previousPaths.audioPath;
+
+        const audioUploadPromise = uploadFileWithProgress(
+          track.audioFile,
+          storagePath,
+          (progress) => {
+            if (!isSubscribed) return;
+            if (tracksUploadTokenRef.current !== uploadToken) return;
+            // Update progress based on completed uploads + current progress
+            const baseProgress = (completedUploads / totalUploads) * 100;
+            const currentProgress = (progress / totalUploads) * 100;
+            setTracksUploadProgress(baseProgress + currentProgress);
+          }
+        )
+          .then(async (audioUrl) => {
+            if (!isSubscribed) return;
+            if (tracksUploadTokenRef.current !== uploadToken) return;
+
+            console.log(`Audio upload complete for track ${trackId}:`, audioUrl, storagePath);
+
+            // Update track with uploaded URL and storage path
+            const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
+            if (trackIndex !== -1) {
+              tracksToUpdate[trackIndex] = {
+                ...tracksToUpdate[trackIndex],
+                uploadedAudioUrl: audioUrl,
+                audioStoragePath: storagePath,
+                audioFile: null, // Clear file reference after upload
+                // Preserve preview URL if uploaded URL exists
+                audioPreviewUrl: tracksToUpdate[trackIndex].audioPreviewUrl || audioUrl,
+              };
+              console.log(`Updated track ${trackId} with audio URL:`, tracksToUpdate[trackIndex]);
+            }
+
+            // Update storage paths ref
+            tracksStoragePathsRef.current[trackId] = {
+              ...tracksStoragePathsRef.current[trackId],
+              audioPath: storagePath,
+            };
+
+            // Delete previous audio file if it exists and is different
+            if (previousAudioPath && previousAudioPath !== storagePath) {
+              try {
+                await deleteStoragePath(previousAudioPath);
+              } catch (error) {
+                console.error(`Failed to delete previous audio file ${previousAudioPath}:`, error);
+              }
+            }
+
+            completedUploads++;
+            const progress = (completedUploads / totalUploads) * 100;
+            console.log('audio upload progress', progress);
+            if (tracksUploadTokenRef.current === uploadToken) {
+              setTracksUploadProgress(progress);
+            }
+          })
+          .catch((error) => {
+            if (!isSubscribed) return;
+            if (tracksUploadTokenRef.current !== uploadToken) return;
+            console.error(`Failed to upload audio for track ${trackId}:`, error);
+            completedUploads++;
+          });
+
+        uploadPromises.push(audioUploadPromise);
+      }
+
+      // Upload cover image if present
+      if (track.coverFile) {
+        const extension = track.coverFile.name?.split('.').pop() || 'jpg';
+        const filename = `cover-${trackId}-${Date.now()}.${extension}`;
+        const storagePath = `artistProfiles/${creationProfileId}/tracks/covers/${filename}`;
+        const previousCoverPath = previousPaths.coverPath;
+
+        const coverUploadPromise = uploadFileWithProgress(
+          track.coverFile,
+          storagePath,
+          (progress) => {
+            if (!isSubscribed) return;
+            if (tracksUploadTokenRef.current !== uploadToken) return;
+            // Update progress based on completed uploads + current progress
+            const baseProgress = (completedUploads / totalUploads) * 100;
+            const currentProgress = (progress / totalUploads) * 100;
+            setTracksUploadProgress(baseProgress + currentProgress);
+          }
+        )
+          .then(async (coverUrl) => {
+            if (!isSubscribed) return;
+            if (tracksUploadTokenRef.current !== uploadToken) return;
+
+            console.log(`Cover upload complete for track ${trackId}:`, coverUrl, storagePath);
+
+            // Update track with uploaded URL and storage path
+            const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
+            if (trackIndex !== -1) {
+              tracksToUpdate[trackIndex] = {
+                ...tracksToUpdate[trackIndex],
+                coverUploadedUrl: coverUrl,
+                coverStoragePath: storagePath,
+                coverFile: null, // Clear file reference after upload
+                // Preserve preview URL if uploaded URL exists
+                coverPreviewUrl: tracksToUpdate[trackIndex].coverPreviewUrl || coverUrl,
+              };
+              console.log(`Updated track ${trackId} with cover URL:`, tracksToUpdate[trackIndex]);
+            }
+
+            // Update storage paths ref
+            tracksStoragePathsRef.current[trackId] = {
+              ...tracksStoragePathsRef.current[trackId],
+              coverPath: storagePath,
+            };
+
+            // Delete previous cover file if it exists and is different
+            if (previousCoverPath && previousCoverPath !== storagePath) {
+              try {
+                await deleteStoragePath(previousCoverPath);
+              } catch (error) {
+                console.error(`Failed to delete previous cover file ${previousCoverPath}:`, error);
+              }
+            }
+
+            completedUploads++;
+            const progress = (completedUploads / totalUploads) * 100;
+            if (tracksUploadTokenRef.current === uploadToken) {
+              setTracksUploadProgress(progress);
+            }
+          })
+          .catch((error) => {
+            if (!isSubscribed) return;
+            if (tracksUploadTokenRef.current !== uploadToken) return;
+            console.error(`Failed to upload cover for track ${trackId}:`, error);
+            completedUploads++;
+          });
+
+        uploadPromises.push(coverUploadPromise);
+      }
+    });
+
+    // Wait for all uploads to complete
+    Promise.all(uploadPromises)
+      .then(async () => {
+        if (!isSubscribed) return;
+        if (tracksUploadTokenRef.current !== uploadToken) return;
+
+        console.log('All uploads complete. Final tracksToUpdate:', tracksToUpdate);
+
+        // Update the ref with the latest tracks data (for use in handleSaveAndExit)
+        latestTracksRef.current = tracksToUpdate;
+
+        // Persist tracks to Firestore BEFORE updating state
+        if (creationProfileId) {
+          try {
+            const tracksForFirestore = tracksToUpdate.map(track => {
+              // Use uploaded URL if available (from new upload), otherwise keep existing
+              const audioUrl = track.uploadedAudioUrl || null;
+              const audioStoragePath = track.audioStoragePath || null;
+              const coverUrl = track.coverUploadedUrl || null;
+              const coverStoragePath = track.coverStoragePath || null;
+
+              return {
+                id: track.id,
+                title: track.title,
+                artist: track.artist,
+                audioUrl,
+                audioStoragePath,
+                coverUrl,
+                coverStoragePath,
+              };
+            });
+
+            console.log('Persisting tracks to Firestore:', tracksForFirestore);
+            await updateArtistProfileDocument(creationProfileId, {
+              tracks: tracksForFirestore,
+            });
+            console.log('Successfully persisted tracks to Firestore');
+          } catch (error) {
+            console.error('Failed to persist tracks after upload:', error);
+            console.error('Error details:', error.message, error.stack);
+          }
+        }
+
+        // Update tracks state with uploaded URLs AFTER Firestore update
+        setCreationTracks(tracksToUpdate);
+        setTracksUploadStatus('complete');
+        setTracksUploadProgress(100);
+        setShowTracksUploadModal(false); // Hide modal when upload completes
+        tracksUploadInProgressRef.current = false; // Mark upload as complete
+        console.log('tracks upload complete');
+      })
+      .catch((error) => {
+        if (!isSubscribed) return;
+        if (tracksUploadTokenRef.current !== uploadToken) return;
+        console.error('Tracks async upload failed:', error);
+        setTracksUploadStatus('error');
+        setShowTracksUploadModal(false); // Hide modal on error
+        tracksUploadInProgressRef.current = false; // Mark upload as complete even on error
+      });
+
+    return () => {
+      isSubscribed = false;
+      // Don't reset tracksUploadInProgressRef here - let it complete naturally
+    };
+  }, [creationStep, creationProfileId]); // Removed creationTracks from dependencies to prevent re-runs
+
+  // Hide modal when upload status changes away from 'uploading'
+  useEffect(() => {
+    if (tracksUploadStatus !== 'uploading' && showTracksUploadModal) {
+      setShowTracksUploadModal(false);
+    }
+  }, [tracksUploadStatus, showTracksUploadModal]);
+
   const handleHeroImageUpdate = (payload) => {
     if (!payload) {
       setCreationHeroImage(null);
+      heroStoragePathRef.current = null;
       setCreationHasHeroImage(false);
+      setHeroUploadStatus('idle');
+      setHeroUploadProgress(0);
+      heroUploadTokenRef.current = null;
+      heroStoragePathRef.current = null;
       return;
     }
 
     const { previewUrl, file, storagePath } = payload;
+    const previousStoragePath = heroStoragePathRef.current;
     setCreationHeroImage({
       file: file || null,
       previewUrl,
       storagePath: storagePath || null,
     });
     setCreationHasHeroImage(true);
+    handleHeroPositionChange(HERO_POSITION_DEFAULT);
+    if (file) {
+      setHeroUploadStatus('idle');
+      setHeroUploadProgress(0);
+      heroUploadTokenRef.current = null;
+    } else if (storagePath) {
+      heroStoragePathRef.current = storagePath;
+      setHeroUploadStatus('complete');
+      setHeroUploadProgress(100);
+      if (previousStoragePath && previousStoragePath !== storagePath) {
+        deleteStoragePath(previousStoragePath);
+      }
+    }
     if (previewUrl) {
       setBackgroundImage(previewUrl);
     }
@@ -385,6 +1054,90 @@ export const ArtistProfile = ({
     }, 400);
   };
 
+  const handleArtistBioChange = (newBio) => {
+    setCreationArtistBio(newBio);
+    if (!creationProfileId) return;
+
+    if (artistBioUpdateTimeoutRef.current) {
+      clearTimeout(artistBioUpdateTimeoutRef.current);
+    }
+
+    artistBioUpdateTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateArtistProfileDocument(creationProfileId, { bio: newBio });
+      } catch (error) {
+        console.error('Failed to update artist bio:', error);
+      }
+    }, 500);
+  };
+
+  const handleWebsiteUrlChange = (newUrl) => {
+    setCreationWebsiteUrl(newUrl);
+    if (!creationProfileId) return;
+    if (websiteUrlUpdateTimeoutRef.current) {
+      clearTimeout(websiteUrlUpdateTimeoutRef.current);
+    }
+    websiteUrlUpdateTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateArtistProfileDocument(creationProfileId, { websiteUrl: newUrl });
+      } catch (error) {
+      console.error('Failed to update Website URL:', error);
+    }
+  }, 500);
+};
+  const handleInstagramUrlChange = (newUrl) => {
+    setCreationInstagramUrl(newUrl);
+    if (!creationProfileId) return;
+    if (instagramUrlUpdateTimeoutRef.current) {
+      clearTimeout(instagramUrlUpdateTimeoutRef.current);
+    }
+    instagramUrlUpdateTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateArtistProfileDocument(creationProfileId, { instagramUrl: newUrl });
+      } catch (error) {
+        console.error('Failed to update Instagram URL:', error);
+      }
+  }, 500);
+  };
+  const handleSpotifyUrlChange = (newUrl) => {
+    setCreationSpotifyUrl(newUrl);
+    if (!creationProfileId) return;
+
+    if (spotifyUrlUpdateTimeoutRef.current) {
+      clearTimeout(spotifyUrlUpdateTimeoutRef.current);
+    }
+
+    spotifyUrlUpdateTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateArtistProfileDocument(creationProfileId, { spotifyUrl: newUrl });
+      } catch (error) {
+        console.error('Failed to update Spotify URL:', error);
+      }
+    }, 500);
+  };
+
+  const handleSoundcloudUrlChange = (newUrl) => {
+    setCreationSoundcloudUrl(newUrl);
+    if (!creationProfileId) return;
+    
+    if (soundcloudUrlUpdateTimeoutRef.current) {
+      clearTimeout(soundcloudUrlUpdateTimeoutRef.current);
+    }
+
+    soundcloudUrlUpdateTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateArtistProfileDocument(creationProfileId, { soundcloudUrl: newUrl });
+      } catch (error) {
+        console.error('Failed to update SoundCloud URL:', error);
+      }
+    }, 500);
+  };
+
+  const handleTracksChange = (newTracks) => {
+    setCreationTracks(newTracks);
+    latestTracksRef.current = newTracks; // Keep ref in sync with state
+  };
+
   const handleSaveAndExit = async () => {
     if (!creationProfileId) {
       resetCreationState();
@@ -395,6 +1148,13 @@ export const ArtistProfile = ({
     if (!creationHasHeroImage || !creationHeroImage) {
       resetCreationState();
       navigate('/find-a-gig');
+      return;
+    }
+
+    // Check if tracks are still uploading
+    if (tracksUploadStatus === 'uploading') {
+      // Show loading modal and prevent save
+      setShowTracksUploadModal(true);
       return;
     }
 
@@ -411,9 +1171,57 @@ export const ArtistProfile = ({
         heroUrl = await uploadFileToStorage(creationHeroImage.file, storagePath);
       }
 
+      // Prepare tracks for Firestore
+      // Only update title, artist, and id - preserve URL/storage path fields from database
+      // (URL/storage paths are handled by the async upload process, which already persists them)
+      const tracksToSave = latestTracksRef.current.length > 0 ? latestTracksRef.current : creationTracks;
+      
+      // Get existing tracks from database to preserve URL/storage path fields
+      const existingTracks = draftProfile?.tracks || [];
+      const existingTracksMap = new Map(existingTracks.map(track => [track.id, track]));
+      
+      const tracksForFirestore = tracksToSave.map(track => {
+        // Get existing track data from database (preserves URLs/storage paths set by async upload)
+        const existingTrack = existingTracksMap.get(track.id);
+        
+        if (existingTrack) {
+          // Track exists in database - only update metadata, preserve URL/storage paths
+          return {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            // Preserve URL/storage paths from database (set by async upload process)
+            audioUrl: existingTrack.audioUrl,
+            audioStoragePath: existingTrack.audioStoragePath,
+            coverUrl: existingTrack.coverUrl,
+            coverStoragePath: existingTrack.coverStoragePath,
+          };
+        } else {
+          // New track (not yet uploaded) - include uploaded URLs if available
+          return {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            audioUrl: track.uploadedAudioUrl || null,
+            audioStoragePath: track.audioStoragePath || null,
+            coverUrl: track.coverUploadedUrl || null,
+            coverStoragePath: track.coverStoragePath || null,
+          };
+        }
+      });
+
+      console.log('Tracks for Firestore in handleSaveAndExit:', tracksForFirestore);
+
       const updates = {
         name: creationArtistName,
+        bio: creationArtistBio,
+        websiteUrl: creationWebsiteUrl,
+        instagramUrl: creationInstagramUrl,
+        spotifyUrl: creationSpotifyUrl,
+        soundcloudUrl: creationSoundcloudUrl,
+        tracks: tracksForFirestore,
         heroBrightness: creationHeroBrightness,
+        heroPositionY: creationHeroPosition,
         onboardingStep: creationStep,
         status: 'draft',
         isComplete: false,
@@ -464,8 +1272,28 @@ export const ArtistProfile = ({
             initialHeroImage={creationHeroImage}
             heroBrightness={creationHeroBrightness}
             onHeroBrightnessChange={handleHeroBrightnessChange}
+            heroPosition={creationHeroPosition}
+            onHeroPositionChange={handleHeroPositionChange}
+            isRepositioningHero={isRepositioningHero}
+            onHeroRepositionToggle={handleHeroRepositionToggle}
             initialArtistName={creationArtistName}
             onArtistNameChange={handleArtistNameChange}
+            creationArtistBio={creationArtistBio}
+            onArtistBioChange={handleArtistBioChange}
+            creationWebsiteUrl={creationWebsiteUrl}
+            onWebsiteUrlChange={handleWebsiteUrlChange}
+            creationInstagramUrl={creationInstagramUrl}
+            onInstagramUrlChange={handleInstagramUrlChange}
+            creationSpotifyUrl={creationSpotifyUrl}
+            onSpotifyUrlChange={handleSpotifyUrlChange}
+            creationSoundcloudUrl={creationSoundcloudUrl}
+            onSoundcloudUrlChange={handleSoundcloudUrlChange}
+            heroUploadStatus={heroUploadStatus}
+            heroUploadProgress={heroUploadProgress}
+            creationTracks={creationTracks}
+            onTracksChange={handleTracksChange}
+            tracksUploadStatus={tracksUploadStatus}
+            tracksUploadProgress={tracksUploadProgress}
           />
         );
       case DashboardView.GIGS:
@@ -501,8 +1329,28 @@ export const ArtistProfile = ({
             initialHeroImage={creationHeroImage}
             heroBrightness={creationHeroBrightness}
             onHeroBrightnessChange={handleHeroBrightnessChange}
+            heroPosition={creationHeroPosition}
+            onHeroPositionChange={handleHeroPositionChange}
+            isRepositioningHero={isRepositioningHero}
+            onHeroRepositionToggle={handleHeroRepositionToggle}
             initialArtistName={creationArtistName}
             onArtistNameChange={handleArtistNameChange}
+            creationArtistBio={creationArtistBio}
+            onArtistBioChange={handleArtistBioChange}
+            creationWebsiteUrl={creationWebsiteUrl}
+            onWebsiteUrlChange={handleWebsiteUrlChange}
+            creationInstagramUrl={creationInstagramUrl}
+            onInstagramUrlChange={handleInstagramUrlChange}
+            creationSpotifyUrl={creationSpotifyUrl}
+            onSpotifyUrlChange={handleSpotifyUrlChange}
+            creationSoundcloudUrl={creationSoundcloudUrl}
+            onSoundcloudUrlChange={handleSoundcloudUrlChange}
+            heroUploadStatus={heroUploadStatus}
+            heroUploadProgress={heroUploadProgress}
+            creationTracks={creationTracks}
+            onTracksChange={handleTracksChange}
+            tracksUploadStatus={tracksUploadStatus}
+            tracksUploadProgress={tracksUploadProgress}
           />
         );
       
@@ -523,8 +1371,28 @@ export const ArtistProfile = ({
             initialHeroImage={creationHeroImage}
             heroBrightness={creationHeroBrightness}
             onHeroBrightnessChange={handleHeroBrightnessChange}
+            heroPosition={creationHeroPosition}
+            onHeroPositionChange={handleHeroPositionChange}
+            isRepositioningHero={isRepositioningHero}
+            onHeroRepositionToggle={handleHeroRepositionToggle}
             initialArtistName={creationArtistName}
             onArtistNameChange={handleArtistNameChange}
+            creationArtistBio={creationArtistBio}
+            onArtistBioChange={handleArtistBioChange}
+            creationWebsiteUrl={creationWebsiteUrl}
+            onWebsiteUrlChange={handleWebsiteUrlChange}
+            creationInstagramUrl={creationInstagramUrl}
+            onInstagramUrlChange={handleInstagramUrlChange}
+            creationSpotifyUrl={creationSpotifyUrl}
+            onSpotifyUrlChange={handleSpotifyUrlChange}
+            creationSoundcloudUrl={creationSoundcloudUrl}
+            onSoundcloudUrlChange={handleSoundcloudUrlChange}
+            heroUploadStatus={heroUploadStatus}
+            heroUploadProgress={heroUploadProgress}
+            creationTracks={creationTracks}
+            onTracksChange={handleTracksChange}
+            tracksUploadStatus={tracksUploadStatus}
+            tracksUploadProgress={tracksUploadProgress}
           />
         );
       
@@ -546,17 +1414,25 @@ export const ArtistProfile = ({
     );
   }
 
-  const isCreationState = currentState === ArtistProfileState.CREATING;
   const showCreationPlaceholder = isCreationState && !creationHasHeroImage;
   const persistedHeroBrightness = activeProfileData?.heroBrightness ?? BRIGHTNESS_DEFAULT;
   const effectiveHeroBrightness = isCreationState ? creationHeroBrightness : persistedHeroBrightness;
+  const persistedHeroPosition = clampHeroPosition(activeProfileData?.heroPositionY ?? HERO_POSITION_DEFAULT);
+  const effectiveHeroPosition = isCreationState ? creationHeroPosition : persistedHeroPosition;
   const brightnessOverlayStyle = getBrightnessOverlayStyle(effectiveHeroBrightness);
   const showBrightnessOverlay = !showCreationPlaceholder && brightnessOverlayStyle.opacity > 0;
   const canSaveProgress = isCreationState && creationHasHeroImage;
 
+  const containerClasses = [
+    'artist-profile-container',
+    isRepositioningHero ? 'repositioning-mode' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div 
-      className="artist-profile-container"
+      className={containerClasses}
       style={{
         position: 'relative',
         minHeight: '100vh',
@@ -564,11 +1440,20 @@ export const ArtistProfile = ({
       }}
     >
       {/* Background layers */}
-      <div className="artist-profile-background-wrapper">
+      <div
+        className="artist-profile-background-wrapper"
+        style={{ pointerEvents: isRepositioningHero ? 'auto' : 'none' }}
+      >
         <div
-          className={`artist-profile-background image-layer ${showCreationPlaceholder ? 'fade-out' : ''}`}
+          ref={backgroundImageRef}
+          onPointerDown={handleHeroPointerDown}
+          className={`artist-profile-background image-layer ${showCreationPlaceholder ? 'fade-out' : ''} ${
+            isRepositioningHero ? 'repositioning' : ''
+          } ${isHeroDragging ? 'dragging' : ''}`}
           style={{
             backgroundImage: `url(${backgroundImage || artistProfileBackground})`,
+            backgroundPosition: `center ${effectiveHeroPosition}%`,
+            cursor: isRepositioningHero ? (isHeroDragging ? 'grabbing' : 'grab') : undefined,
           }}
         />
         {showCreationPlaceholder && (
@@ -620,6 +1505,14 @@ export const ArtistProfile = ({
           {renderStateContent()}
         </div>
       </div>
+
+      {/* Show loading modal when user tries to save while tracks are uploading */}
+      {showTracksUploadModal && tracksUploadStatus === 'uploading' && (
+        <LoadingModal 
+          title="Please wait" 
+          text="We are uploading your media" 
+        />
+      )}
     </div>
   );
 };

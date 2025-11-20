@@ -1,18 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon } from "../../../shared/ui/extras/Icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon } from "../../../shared/ui/extras/Icons";
 import { LoadingSpinner } from "../../../shared/ui/loading/Loading";
 
-export const CREATION_STEP_ORDER = ["hero-image", "stage-name", "profile-details", "media", "ready"];
-
-const STEP_COMPONENTS = {
-  "hero-image": HeroImageStep,
-  "stage-name": StageNameStep,
-  "profile-details": ProfileDetailsStep,
-  media: MediaStep,
-  ready: ReviewStep,
-};
+export const CREATION_STEP_ORDER = ["hero-image", "stage-name", "bio", "tracks", "videos", "ready"];
 
 const DEFAULT_STEP = CREATION_STEP_ORDER[0];
+const STAGE_NAME_FONT_MAX = 40;
+const STAGE_NAME_FONT_MIN = 20;
+const STAGE_NAME_HORIZONTAL_PADDING = 32; // matches input horizontal padding
+const HERO_POSITION_DEFAULT = 50;
 
 export const ProfileCreationBox = ({
   onStartJourney,
@@ -25,12 +21,43 @@ export const ProfileCreationBox = ({
   initialHeroImage = null,
   heroBrightness = 100,
   onHeroBrightnessChange,
+  heroPosition = 50,
+  onHeroPositionChange,
+  isRepositioningHero = false,
+  onHeroRepositionToggle,
   initialArtistName = "",
   onArtistNameChange,
+  artistBio = "",
+  onArtistBioChange,
+  creationWebsiteUrl = "",
+  onWebsiteUrlChange,
+  creationInstagramUrl = "",
+  onInstagramUrlChange,
+  spotifyUrl = "",
+  onSpotifyUrlChange,
+  soundcloudUrl = "",
+  onSoundcloudUrlChange,
+  heroUploadStatus = 'idle',
+  heroUploadProgress = 0,
+  onTracksChange,
+  tracksUploadStatus = 'idle',
+  tracksUploadProgress = 0,
+  initialTracks = [],
 }) => {
   const [artistName, setArtistName] = useState(initialArtistName);
   const [heroImage, setHeroImage] = useState(null);
   const [heroFlowStage, setHeroFlowStage] = useState("upload");
+  const [tracks, setTracks] = useState(initialTracks);
+  const createTrackId = () =>
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `track-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const revokeObjectUrl = (url) => {
+    if (url && url.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
+    }
+  };
   const [displayedStep, setDisplayedStep] = useState(() =>
     CREATION_STEP_ORDER.includes(creationStep) ? creationStep : DEFAULT_STEP
   );
@@ -38,9 +65,60 @@ export const ProfileCreationBox = ({
   const [transitionDirection, setTransitionDirection] = useState("forward");
   const transitionTimeoutRef = useRef(null);
   const heroFileInputRef = useRef(null);
+  const trackFileInputRef = useRef(null);
+  const trackCoverInputRef = useRef(null);
+  const pendingCoverTrackIdRef = useRef(null);
   const containerRef = useRef(null);
+  const tracksSyncedRef = useRef(false);
   const contentWrapperRef = useRef(null);
+  const stageNameWrapperRef = useRef(null);
+  const textMeasureContextRef = useRef(null);
   const [containerHeight, setContainerHeight] = useState("auto");
+  const [stageNameFontSize, setStageNameFontSize] = useState(STAGE_NAME_FONT_MAX);
+  const ensureMeasureContext = () => {
+    if (textMeasureContextRef.current) return textMeasureContextRef.current;
+    const canvas = document.createElement("canvas");
+    textMeasureContextRef.current = canvas.getContext("2d");
+    return textMeasureContextRef.current;
+  };
+
+  const recalculateStageNameFontSize = useCallback(() => {
+    const wrapper = stageNameWrapperRef.current;
+    const context = ensureMeasureContext();
+    if (!wrapper || !context) return;
+
+    const availableWidth = wrapper.clientWidth - STAGE_NAME_HORIZONTAL_PADDING;
+    if (availableWidth <= 0) {
+      setStageNameFontSize(STAGE_NAME_FONT_MIN);
+      return;
+    }
+
+    const displayValue = artistName?.trim()?.length ? artistName : "Stage Name";
+    let fontSize = STAGE_NAME_FONT_MAX;
+
+    while (fontSize > STAGE_NAME_FONT_MIN) {
+      context.font = `600 ${fontSize}px "Inter", "Clash Display", sans-serif`;
+      const metrics = context.measureText(displayValue);
+      if (metrics.width <= availableWidth) break;
+      fontSize -= 1;
+    }
+
+    setStageNameFontSize(Math.max(fontSize, STAGE_NAME_FONT_MIN));
+  }, [artistName]);
+
+  useEffect(() => {
+    recalculateStageNameFontSize();
+  }, [artistName, recalculateStageNameFontSize]);
+
+  useEffect(() => {
+    const wrapper = stageNameWrapperRef.current;
+    if (!wrapper) return;
+    const observer = new ResizeObserver(() => {
+      recalculateStageNameFontSize();
+    });
+    observer.observe(wrapper);
+    return () => observer.disconnect();
+  }, [recalculateStageNameFontSize]);
 
   const normalizedStep = useMemo(
     () => (CREATION_STEP_ORDER.includes(creationStep) ? creationStep : DEFAULT_STEP),
@@ -77,7 +155,7 @@ export const ProfileCreationBox = ({
   useEffect(() => {
     if (isCreating) return;
     if (heroImage?.file && heroImage.previewUrl) {
-      URL.revokeObjectURL(heroImage.previewUrl);
+      revokeObjectUrl(heroImage.previewUrl);
     }
     if (initialHeroImage) {
       setHeroImage(initialHeroImage);
@@ -86,12 +164,12 @@ export const ProfileCreationBox = ({
       setHeroImage(null);
       setHeroFlowStage("upload");
     }
-  }, [isCreating, initialHeroImage]);
+  }, [isCreating, initialHeroImage, heroImage]);
 
   useEffect(() => {
     if (!isCreating) {
       if (heroImage?.previewUrl) {
-        URL.revokeObjectURL(heroImage.previewUrl);
+        revokeObjectUrl(heroImage.previewUrl);
       }
       setHeroImage(null);
       setHeroFlowStage("upload");
@@ -99,6 +177,11 @@ export const ProfileCreationBox = ({
       setArtistName("");
       setPreviousStep(null);
       setDisplayedStep(DEFAULT_STEP);
+      tracks.forEach((track) => {
+        revokeObjectUrl(track.audioPreviewUrl);
+        revokeObjectUrl(track.coverPreviewUrl);
+      });
+      setTracks([]);
       return;
     }
 
@@ -119,7 +202,7 @@ export const ProfileCreationBox = ({
     transitionTimeoutRef.current = setTimeout(() => {
       setPreviousStep(null);
     }, 350);
-  }, [isCreating, normalizedStep, displayedStep, heroImage]);
+  }, [isCreating, normalizedStep, displayedStep, heroImage, tracks]);
 
   useEffect(() => {
     return () => {
@@ -128,10 +211,15 @@ export const ProfileCreationBox = ({
       }
 
       if (heroImage?.previewUrl) {
-        URL.revokeObjectURL(heroImage.previewUrl);
+        revokeObjectUrl(heroImage.previewUrl);
       }
+      tracks.forEach((track) => {
+        revokeObjectUrl(track.audioPreviewUrl);
+        revokeObjectUrl(track.coverPreviewUrl);
+      });
     };
-  }, [heroImage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Measure and update container height for smooth transitions
   useEffect(() => {
@@ -168,7 +256,34 @@ export const ProfileCreationBox = ({
       clearTimeout(initialTimeout);
       resizeObserver.disconnect();
     };
-  }, [displayedStep, heroFlowStage, isCreating, artistName, heroImage, previousStep]);
+  }, [displayedStep, heroFlowStage, isCreating, artistName, heroImage, tracks, previousStep]);
+
+  // Sync local tracks with parent's initialTracks when they're loaded from database
+  // This handles both initial load and when navigating back to tracks step
+  useEffect(() => {
+    if (!initialTracks || initialTracks.length === 0) {
+      tracksSyncedRef.current = false;
+      return;
+    }
+
+    // Check if tracks need to be synced
+    // Sync if: local tracks are empty, OR parent tracks have different IDs (loaded from DB)
+    const localTrackIds = tracks.map(t => t.id).sort().join(',');
+    const parentTrackIds = initialTracks.map(t => t.id).sort().join(',');
+    
+    if (tracks.length === 0 || localTrackIds !== parentTrackIds) {
+      // Parent has tracks that should be displayed (either initial load or DB load)
+      setTracks(initialTracks);
+      tracksSyncedRef.current = true;
+    }
+  }, [initialTracks]); // Only depend on initialTracks to avoid loops
+
+  // Notify parent when tracks change
+  useEffect(() => {
+    if (onTracksChange) {
+      onTracksChange(tracks);
+    }
+  }, [tracks, onTracksChange]);
 
   const goToStep = (stepId) => {
     if (!CREATION_STEP_ORDER.includes(stepId)) return;
@@ -176,6 +291,7 @@ export const ProfileCreationBox = ({
   };
 
   const heroStepReady = !!heroImage && heroFlowStage === "adjust";
+  const trackStepReady = tracks.length > 0;
 
   const handleAdvance = () => {
     if (!isCreating) {
@@ -184,6 +300,10 @@ export const ProfileCreationBox = ({
     }
 
     if (displayedStep === "hero-image" && !heroStepReady) {
+      return;
+    }
+
+    if (displayedStep === "tracks" && !trackStepReady) {
       return;
     }
 
@@ -224,24 +344,155 @@ export const ProfileCreationBox = ({
     handleHeroImagePicked(file);
   };
 
+  const handleTrackPicked = (file) => {
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    const newTrack = {
+      id: createTrackId(),
+      title: `Track ${tracks.length + 1}`,
+      artist: artistName || "",
+      audioFile: file,
+      audioPreviewUrl: previewUrl,
+      coverFile: null,
+      coverPreviewUrl: null,
+      uploadedAudioUrl: null,
+      coverUploadedUrl: null,
+    };
+    setTracks((prev) => [...prev, newTrack]);
+  };
+
+  const handleTrackFileInputChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    handleTrackPicked(file);
+    event.target.value = "";
+  };
+
+  const handleTrackCoverUploadClick = (trackId) => {
+    pendingCoverTrackIdRef.current = trackId;
+    trackCoverInputRef.current?.click();
+  };
+
+  const handleTrackCoverFileChange = (event) => {
+    const file = event.target.files?.[0];
+    const trackId = pendingCoverTrackIdRef.current;
+    if (!file || !trackId) return;
+    const previewUrl = URL.createObjectURL(file);
+    setTracks((prev) =>
+      prev.map((track) => {
+        if (track.id !== trackId) return track;
+        revokeObjectUrl(track.coverPreviewUrl);
+        return {
+          ...track,
+          coverFile: file,
+          coverPreviewUrl: previewUrl,
+        };
+      })
+    );
+    pendingCoverTrackIdRef.current = null;
+    event.target.value = "";
+  };
+
+  const handleTrackRemove = (trackId) => {
+    setTracks((prev) => {
+      const target = prev.find((track) => track.id === trackId);
+      if (target) {
+        revokeObjectUrl(target.audioPreviewUrl);
+        revokeObjectUrl(target.coverPreviewUrl);
+      }
+      return prev.filter((track) => track.id !== trackId);
+    });
+    if (pendingCoverTrackIdRef.current === trackId) {
+      pendingCoverTrackIdRef.current = null;
+    }
+  };
+
+  const handleTrackTitleChange = (trackId, newTitle) => {
+    setTracks((prev) =>
+      prev.map((track) => (track.id === trackId ? { ...track, title: newTitle } : track))
+    );
+  };
+
+  const handleTrackArtistChange = (trackId, newArtist) => {
+    setTracks((prev) =>
+      prev.map((track) => (track.id === trackId ? { ...track, artist: newArtist } : track))
+    );
+  };
+
+  const handleTrackMove = (trackId, direction) => {
+    setTracks((prev) => {
+      const index = prev.findIndex((track) => track.id === trackId);
+      if (index === -1) return prev;
+      const newIndex = direction === "up" ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= prev.length) return prev;
+      const updated = [...prev];
+      const [item] = updated.splice(index, 1);
+      updated.splice(newIndex, 0, item);
+      return updated;
+    });
+  };
+
   const handleArtistNameChange = (newName) => {
     setArtistName(newName);
     onArtistNameChange?.(newName);
   };
 
   const renderStepPanel = (stepKey) => {
-    const Component = STEP_COMPONENTS[stepKey] || PlaceholderStep;
-    return (
-      <Component
-        artistName={artistName}
-        onArtistNameChange={handleArtistNameChange}
-        heroImage={heroImage}
-        heroMode={heroFlowStage}
-        heroBrightness={heroBrightness}
-        onHeroImageSelect={() => heroFileInputRef.current?.click()}
-        onHeroBrightnessChange={onHeroBrightnessChange}
-      />
-    );
+    switch (stepKey) {
+      case "hero-image":
+        return (
+          <HeroImageStep
+            heroImage={heroImage}
+            heroMode={heroFlowStage}
+            heroBrightness={heroBrightness}
+            heroPosition={heroPosition}
+            onHeroPositionChange={onHeroPositionChange}
+            onHeroImageSelect={() => heroFileInputRef.current?.click()}
+            onHeroBrightnessChange={onHeroBrightnessChange}
+            isRepositioningHero={isRepositioningHero}
+            onHeroRepositionToggle={onHeroRepositionToggle}
+            heroUploadStatus={heroUploadStatus}
+            heroUploadProgress={heroUploadProgress}
+          />
+        );
+      case "stage-name":
+        return (
+          <StageNameStep
+            artistName={artistName}
+            onArtistNameChange={handleArtistNameChange}
+            stageNameFontSize={stageNameFontSize}
+            stageNameWrapperRef={stageNameWrapperRef}
+          />
+        );
+      case "bio":
+        return <BioStep artistBio={artistBio} onArtistBioChange={onArtistBioChange} websiteUrl={creationWebsiteUrl} onWebsiteUrlChange={onWebsiteUrlChange} instagramUrl={creationInstagramUrl} onInstagramUrlChange={onInstagramUrlChange} />;
+      case "tracks":
+        return (
+          <TracksStep
+            tracks={tracks}
+            onPrimaryUploadClick={() => trackFileInputRef.current?.click()}
+            onTrackCoverUpload={handleTrackCoverUploadClick}
+            onTrackTitleChange={handleTrackTitleChange}
+            onTrackArtistChange={handleTrackArtistChange}
+            onTrackRemove={handleTrackRemove}
+            onTrackMove={handleTrackMove}
+            disableReorder={tracks.length < 2}
+            artistName={artistName}
+            spotifyUrl={spotifyUrl}
+            onSpotifyUrlChange={onSpotifyUrlChange}
+            soundcloudUrl={soundcloudUrl}
+            onSoundcloudUrlChange={onSoundcloudUrlChange}
+            tracksUploadStatus={tracksUploadStatus}
+            tracksUploadProgress={tracksUploadProgress}
+          />
+        );
+      case "videos":
+        return <VideosStep />;
+      case "ready":
+        return <ReviewStep artistName={artistName} />;
+      default:
+        return <PlaceholderStep />;
+    }
   };
 
   const creationPanelsClass = [
@@ -269,7 +520,13 @@ export const ProfileCreationBox = ({
   const actionsClassName = [
     "creation-box-actions",
     isCreating ? "" : "single",
-    isCreating && displayedStep === "hero-image" && !heroStepReady ? "hidden" : "",
+    isCreating &&
+    (
+      (displayedStep === "hero-image" && !heroStepReady) ||
+      (displayedStep === "tracks" && !trackStepReady)
+    )
+      ? "hidden"
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -320,6 +577,22 @@ export const ProfileCreationBox = ({
         onChange={handleHeroFileInputChange}
       />
 
+      <input
+        type="file"
+        accept="audio/*"
+        ref={trackFileInputRef}
+        style={{ display: "none" }}
+        onChange={handleTrackFileInputChange}
+      />
+
+      <input
+        type="file"
+        accept="image/*"
+        ref={trackCoverInputRef}
+        style={{ display: "none" }}
+        onChange={handleTrackCoverFileChange}
+      />
+
       <div className={actionsClassName}>
         {isCreating ? (
           <>
@@ -368,8 +641,14 @@ function HeroImageStep({
   heroImage,
   heroMode,
   heroBrightness,
+  heroPosition,
+  onHeroPositionChange,
   onHeroImageSelect,
   onHeroBrightnessChange,
+  isRepositioningHero,
+  onHeroRepositionToggle,
+  heroUploadStatus,
+  heroUploadProgress,
 }) {
   if (!heroImage || heroMode === "upload") {
     return (
@@ -389,10 +668,18 @@ function HeroImageStep({
         How does it look? Adjust the brightness of the image to your liking.
       </p>
       <div className="creation-hero-adjust">
-        <button type="button" className="creation-hero-upload change-upload" onClick={onHeroImageSelect}>
-          <NoImageIcon className="upload-icon" />
-          <span>Try Another Image</span>
-        </button>
+        <div className="hero-image-actions">
+          <button type="button" className="hero-edit-button" onClick={onHeroImageSelect}>
+            <span>Change Image</span>
+          </button>
+          <button
+            type="button"
+            className={`hero-edit-button ${isRepositioningHero ? "active" : ""}`}
+            onClick={() => onHeroRepositionToggle?.(!isRepositioningHero)}
+          >
+            <span>{isRepositioningHero ? "Save Position" : "Reposition Image"}</span>
+          </button>
+        </div>
         <div className="hero-brightness-control">
           <div className="brightness-header">
             <LightModeIcon />
@@ -412,11 +699,16 @@ function HeroImageStep({
   );
 }
 
-function StageNameStep({ artistName, onArtistNameChange }) {
+function StageNameStep({
+  artistName,
+  onArtistNameChange,
+  stageNameFontSize,
+  stageNameWrapperRef,
+}) {
   return (
     <>
       <p className="creation-step-question">What's your stage name?</p>
-      <div className="creation-stage-name-wrapper">
+      <div className="creation-stage-name-wrapper" ref={stageNameWrapperRef}>
         <input
           id="artist-name-input"
           type="text"
@@ -424,24 +716,220 @@ function StageNameStep({ artistName, onArtistNameChange }) {
           onChange={(e) => onArtistNameChange(e.target.value)}
           placeholder="Stage Name"
           className="creation-stage-name-input"
+          style={{ fontSize: `${stageNameFontSize}px` }}
         />
       </div>
     </>
   );
 }
 
-function ProfileDetailsStep() {
+function BioStep({ artistBio, onArtistBioChange, websiteUrl, onWebsiteUrlChange, instagramUrl, onInstagramUrlChange }) {
   return (
     <>
-      <p className="creation-step-question">Add a quick intro so venues know your vibe.</p>
-      <div className="creation-placeholder-card">
-        Bio, location and hero imagery inputs are coming in the next update.
+      <p className="creation-step-question">Write a bio for your profile.</p>
+      <textarea
+        className="creation-bio-textarea"
+        value={artistBio}
+        onChange={(e) => onArtistBioChange?.(e.target.value)}
+        placeholder="Enter your profile bio here..."
+        maxLength={150}
+      />
+      <div className="link-entries-container">
+        <div className="link-entry-container website">
+          <WebsiteIcon />
+          <input 
+            type="text" 
+            placeholder="Your Website URL"
+            value={websiteUrl}
+            onChange={(e) => onWebsiteUrlChange?.(e.target.value)}
+          />
+        </div>
+        <div className="link-entry-container instagram">
+          <InstagramIcon />
+          <input 
+            type="text" 
+            placeholder="Instagram URL" 
+            value={instagramUrl}
+            onChange={(e) => onInstagramUrlChange?.(e.target.value)}
+          />
+        </div>
       </div>
     </>
   );
 }
 
-function MediaStep() {
+function TracksStep({
+  tracks,
+  onPrimaryUploadClick,
+  onTrackCoverUpload,
+  onTrackTitleChange,
+  onTrackArtistChange,
+  onTrackRemove,
+  onTrackMove,
+  disableReorder,
+  artistName,
+  spotifyUrl = "",
+  onSpotifyUrlChange,
+  soundcloudUrl = "",
+  onSoundcloudUrlChange,
+  tracksUploadStatus = 'idle',
+  tracksUploadProgress = 0,
+}) {
+  // Show loading message if tracks are uploading
+  if (tracksUploadStatus === 'uploading') {
+    return (
+      <>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          gap: '1rem',
+          padding: '2rem 0'
+        }}>
+          <LoadingSpinner />
+          <p style={{ color: 'var(--gn-grey-600)', fontSize: '0.9rem' }}>
+            {Math.round(tracksUploadProgress)}% Complete
+          </p>
+          <p style={{ color: 'var(--gn-grey-500)', fontSize: '0.85rem', textAlign: 'center', maxWidth: '400px' }}>
+            Please wait while we upload your tracks and cover images. You can continue once the upload is complete.
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  if (!tracks?.length) {
+    return (
+      <>
+        <p className="creation-step-question">
+          Upload tracks that best represent your live sound.
+        </p>
+        <button type="button" className="creation-hero-upload track" onClick={onPrimaryUploadClick}>
+          <VinylIcon />
+          <span>Upload Track</span>
+          <small>MP3 or WAV up to 20MB</small>
+        </button>
+        <div className="link-entries-container">
+          <div className="link-entry-container spotify">
+            <SpotifyIcon />
+            <input 
+              type="text" 
+              placeholder="Spotify URL" 
+              value={spotifyUrl}
+              onChange={(e) => onSpotifyUrlChange?.(e.target.value)}
+            />
+          </div>
+          <div className="link-entry-container soundcloud">
+            <SoundcloudIcon />
+            <input 
+              type="text" 
+              placeholder="Soundcloud URL" 
+              value={soundcloudUrl}
+              onChange={(e) => onSoundcloudUrlChange?.(e.target.value)}
+            />
+          </div>
+        </div>
+        </>
+    );
+  }
+
+  return (
+    <>
+      <p className="creation-step-question">Give them a listen and keep building your setlist.</p>
+      <div className="tracks-list">
+        {tracks.map((track, index) => (
+          <div className="track-preview-card" key={track.id}>
+            <button
+              type="button"
+              className="track-cover-button"
+              onClick={() => onTrackCoverUpload(track.id)}
+            >
+              {track.coverUploadedUrl || track.coverPreviewUrl ? (
+                <img
+                  src={track.coverUploadedUrl || track.coverPreviewUrl}
+                  alt={`${track.title} cover art`}
+                />
+              ) : (
+                <>
+                  <NoImageIcon className="upload-icon" />
+                  <span>Add Image</span>
+                </>
+              )}
+            </button>
+            <div className="track-meta">
+              <div className="track-name-input-container">
+                <input
+                  type="text"
+                  value={track.title}
+                  onChange={(e) => onTrackTitleChange(track.id, e.target.value)}
+                  placeholder="Track title"
+                />
+                <EditIcon />
+              </div>
+              <p>{artistName}</p>
+            </div>
+            <div className="track-actions">
+              <div className="track-reorder-buttons">
+                <button
+                  type="button"
+                  onClick={() => onTrackMove(track.id, "up")}
+                  disabled={disableReorder || index === 0}
+                  aria-label="Move track up"
+                >
+                  <UpArrowIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onTrackMove(track.id, "down")}
+                  disabled={disableReorder || index === tracks.length - 1}
+                  aria-label="Move track down"
+                >
+                  <DownArrowIcon />
+                </button>
+              </div>
+              <button
+                type="button"
+                className="btn danger small"
+                onClick={() => onTrackRemove(track.id)}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="add-track-button"
+        onClick={onPrimaryUploadClick}
+      >
+        <VinylIcon /> Add Another Track
+      </button>
+      <div className="link-entries-container">
+        <div className="link-entry-container spotify">
+          <SpotifyIcon />
+          <input 
+            type="text" 
+            placeholder="Spotify URL" 
+            value={spotifyUrl}
+            onChange={(e) => onSpotifyUrlChange?.(e.target.value)}
+          />
+        </div>
+        <div className="link-entry-container soundcloud">
+          <SoundcloudIcon />
+          <input 
+            type="text" 
+            placeholder="Soundcloud URL" 
+            value={soundcloudUrl}
+            onChange={(e) => onSoundcloudUrlChange?.(e.target.value)}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function VideosStep() {
   return (
     <>
       <p className="creation-step-question">Upload or link two standout videos.</p>

@@ -98,8 +98,28 @@ export const ProfileView = ({
   initialHeroImage,
   heroBrightness = 100,
   onHeroBrightnessChange,
+  heroPosition = 50,
+  onHeroPositionChange,
+  isRepositioningHero = false,
+  onHeroRepositionToggle,
   initialArtistName = "",
   onArtistNameChange,
+  creationArtistBio = "",
+  onArtistBioChange,
+  creationWebsiteUrl = "",
+  onWebsiteUrlChange,
+  creationInstagramUrl = "",
+  onInstagramUrlChange,
+  creationSpotifyUrl = "",
+  onSpotifyUrlChange,
+  creationSoundcloudUrl = "",
+  onSoundcloudUrlChange,
+  heroUploadStatus = 'idle',
+  heroUploadProgress = 0,
+  creationTracks = [],
+  onTracksChange,
+  tracksUploadStatus = 'idle',
+  tracksUploadProgress = 0,
 }) => {
   // Randomly select an example profile once when component mounts (only for example profiles)
   const exampleData = useMemo(() => {
@@ -125,9 +145,48 @@ export const ProfileView = ({
     .filter(Boolean)
     .join(' ');
 
-  const sectionsStackClassNames = [
-    'profile-sections-stack',
-    isCreatingProfile ? 'fade-out' : '',
+  const sectionsStackClassNames = 'profile-sections-stack';
+
+  const liveBioContent = (isCreatingProfile && creationArtistBio?.trim())
+    ? creationArtistBio
+    : data?.bio;
+
+  const shouldShowBio = Boolean(liveBioContent);
+  const videos = data?.videos || [];
+  const tracks = data?.tracks || [];
+  
+  // Use creation tracks if available, otherwise use profile data tracks
+  // Transform tracks to ensure they have the expected format (thumbnail field)
+  const displayTracks = isCreatingProfile && creationTracks.length > 0
+    ? creationTracks.map(track => ({
+        title: track.title,
+        artist: track.artist,
+        thumbnail: track.coverUploadedUrl || track.coverPreviewUrl || null,
+      }))
+    : tracks.map(track => ({
+        title: track.title,
+        artist: track.artist,
+        thumbnail: track.coverUrl || track.thumbnail || null,
+      }));
+  
+  const shouldShowVideosTracks = videos.length > 0 || displayTracks.length > 0;
+  
+  // Use creation URLs if in creation mode, otherwise use profile data URLs
+  const spotifyUrl = isCreatingProfile ? creationSpotifyUrl : (data?.spotifyUrl || "");
+  const soundcloudUrl = isCreatingProfile ? creationSoundcloudUrl : (data?.soundcloudUrl || "");
+  const websiteUrl = isCreatingProfile ? creationWebsiteUrl : (data?.websiteUrl || "");
+  const instagramUrl = isCreatingProfile ? creationInstagramUrl : (data?.instagramUrl || "");
+
+  const bioCardClassNames = [
+    'bio-card-container',
+    shouldShowBio ? 'is-visible' : 'is-hidden',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const mediaCardClassNames = [
+    'videos-tracks-card-container',
+    shouldShowVideosTracks ? 'is-visible' : 'is-hidden',
   ]
     .filter(Boolean)
     .join(' ');
@@ -135,23 +194,29 @@ export const ProfileView = ({
   return (
     <div className={profileContentClassNames}>
       <div className={sectionsStackClassNames}>
-        <div className="bio-card-container">
+        <div className={bioCardClassNames} aria-hidden={!shouldShowBio}>
           <Bio 
-            bio={data?.bio || 'No bio available'} 
+            bio={liveBioContent}
+            websiteUrl={websiteUrl}
+            instagramUrl={instagramUrl}
           />
         </div>
 
-        <div className="videos-tracks-card-container">
-          <VideosTracks 
-            videos={data?.videos || []}
-            tracks={data?.tracks || []}
-          />
+        <div className={mediaCardClassNames} aria-hidden={!shouldShowVideosTracks}>
+          {shouldShowVideosTracks && (
+            <VideosTracks 
+              videos={videos}
+              tracks={displayTracks}
+              defaultActiveSection={isCreatingProfile && creationTracks.length > 0 ? 'tracks' : undefined}
+              spotifyUrl={spotifyUrl}
+              soundcloudUrl={soundcloudUrl}
+            />
+          )}
         </div>
+      </div>
 
-        <div className="dark-mode-toggle-container">
-          <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
-        </div>
-
+      <div className="dark-mode-toggle-container">
+        <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
       </div>
 
       {/* Profile creation box */}
@@ -168,8 +233,28 @@ export const ProfileView = ({
             initialHeroImage={initialHeroImage}
             heroBrightness={heroBrightness}
             onHeroBrightnessChange={onHeroBrightnessChange}
+            heroPosition={heroPosition}
+            onHeroPositionChange={onHeroPositionChange}
+            isRepositioningHero={isRepositioningHero}
+            onHeroRepositionToggle={onHeroRepositionToggle}
             initialArtistName={initialArtistName}
             onArtistNameChange={onArtistNameChange}
+            artistBio={creationArtistBio}
+            onArtistBioChange={onArtistBioChange}
+            spotifyUrl={creationSpotifyUrl}
+            onSpotifyUrlChange={onSpotifyUrlChange}
+            soundcloudUrl={creationSoundcloudUrl}
+            onSoundcloudUrlChange={onSoundcloudUrlChange}
+            heroUploadStatus={heroUploadStatus}
+            heroUploadProgress={heroUploadProgress}
+            onTracksChange={onTracksChange}
+            tracksUploadStatus={tracksUploadStatus}
+            tracksUploadProgress={tracksUploadProgress}
+            initialTracks={creationTracks}
+            creationWebsiteUrl={creationWebsiteUrl}
+            onWebsiteUrlChange={onWebsiteUrlChange}
+            creationInstagramUrl={creationInstagramUrl}
+            onInstagramUrlChange={onInstagramUrlChange}
           />
         </div>
       )}
