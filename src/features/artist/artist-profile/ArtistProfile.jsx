@@ -20,6 +20,11 @@ const HERO_POSITION_DEFAULT = 50;
 const HERO_POSITION_MIN = 0;
 const HERO_POSITION_MAX = 100;
 
+const generateCreationId = (prefix = 'item') =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
 const clampHeroPosition = (value = HERO_POSITION_DEFAULT) =>
   Math.min(HERO_POSITION_MAX, Math.max(HERO_POSITION_MIN, value));
 
@@ -96,12 +101,17 @@ export const ArtistProfile = ({
   const [creationArtistBio, setCreationArtistBio] = useState("");
   const [creationSpotifyUrl, setCreationSpotifyUrl] = useState("");
   const [creationSoundcloudUrl, setCreationSoundcloudUrl] = useState("");
+  const [creationYoutubeUrl, setCreationYoutubeUrl] = useState("");
+  const [creationVideos, setCreationVideos] = useState([]);
   const [creationTracks, setCreationTracks] = useState([]);
   const [heroUploadStatus, setHeroUploadStatus] = useState('idle');
   const [heroUploadProgress, setHeroUploadProgress] = useState(0);
   const [tracksUploadStatus, setTracksUploadStatus] = useState('idle');
   const [tracksUploadProgress, setTracksUploadProgress] = useState(0);
   const [showTracksUploadModal, setShowTracksUploadModal] = useState(false);
+  const [videoUploadStatus, setVideoUploadStatus] = useState('idle');
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [showVideoUploadModal, setShowVideoUploadModal] = useState(false);
   const [isRepositioningHero, setIsRepositioningHero] = useState(false);
   const [isHeroDragging, setIsHeroDragging] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -120,19 +130,27 @@ export const ArtistProfile = ({
   const soundcloudUrlUpdateTimeoutRef = useRef(null);
   const websiteUrlUpdateTimeoutRef = useRef(null);
   const instagramUrlUpdateTimeoutRef = useRef(null);
+  const youtubeUrlUpdateTimeoutRef = useRef(null);
   const heroDragStateRef = useRef({
     isDragging: false,
     startY: 0,
     startPosition: HERO_POSITION_DEFAULT,
   });
   const backgroundImageRef = useRef(null);
+  const stateBoxRef = useRef(null);
   const heroStoragePathRef = useRef(null);
   const heroUploadTokenRef = useRef(null);
   const tracksUploadTokenRef = useRef(null);
+  const videosUploadTokenRef = useRef(null);
   const tracksStoragePathsRef = useRef({}); // Track storage paths: { trackId: { audioPath, coverPath } }
+  const videosStoragePathsRef = useRef({}); // Track storage paths for videos: { videoId: { videoPath, thumbnailPath } }
   const tracksUploadInProgressRef = useRef(false); // Track if upload is in progress to prevent re-runs
+  const videosUploadInProgressRef = useRef(false);
   const previousTracksStepRef = useRef(creationStep); // Track previous step to detect when moving away from tracks
+  const previousVideosStepRef = useRef(creationStep); // Track previous step to detect when moving away from videos
   const latestTracksRef = useRef([]); // Store the most up-to-date tracks data (including uploaded URLs)
+  const latestVideosRef = useRef([]); // Store the most up-to-date videos data (including generated thumbnails)
+  const isMountedRef = useRef(true);
 
   const artistProfiles = user?.artistProfiles || [];
   const completedProfile = useMemo(
@@ -167,6 +185,7 @@ export const ArtistProfile = ({
 
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       if (heroBrightnessUpdateTimeoutRef.current) {
         clearTimeout(heroBrightnessUpdateTimeoutRef.current);
       }
@@ -193,6 +212,7 @@ export const ArtistProfile = ({
       }
       heroUploadTokenRef.current = null;
       tracksUploadTokenRef.current = null;
+      videosUploadTokenRef.current = null;
     };
   }, []);
 
@@ -275,20 +295,29 @@ export const ArtistProfile = ({
     setCreationArtistBio("");
     setCreationSpotifyUrl("");
     setCreationSoundcloudUrl("");
+    setCreationYoutubeUrl("");
     setCreationWebsiteUrl("");
     setCreationInstagramUrl("");
+    setCreationVideos([]);
     setCreationTracks([]);
     setCreationStep(CREATION_STEP_ORDER[0]);
     setHeroUploadStatus('idle');
     setHeroUploadProgress(0);
     setTracksUploadStatus('idle');
     setTracksUploadProgress(0);
+    setVideoUploadStatus('idle');
+    setVideoUploadProgress(0);
     setShowTracksUploadModal(false);
+    setShowVideoUploadModal(false);
     heroUploadTokenRef.current = null;
     tracksUploadTokenRef.current = null;
+    videosUploadTokenRef.current = null;
     tracksStoragePathsRef.current = {};
+    videosStoragePathsRef.current = {};
     tracksUploadInProgressRef.current = false;
+    videosUploadInProgressRef.current = false;
     latestTracksRef.current = [];
+    latestVideosRef.current = [];
     if (heroBrightnessUpdateTimeoutRef.current) {
       clearTimeout(heroBrightnessUpdateTimeoutRef.current);
     }
@@ -306,6 +335,9 @@ export const ArtistProfile = ({
     }
     if (instagramUrlUpdateTimeoutRef.current) {
       clearTimeout(instagramUrlUpdateTimeoutRef.current);
+    }
+    if (youtubeUrlUpdateTimeoutRef.current) {
+      clearTimeout(youtubeUrlUpdateTimeoutRef.current);
     }
     setIsRepositioningHero(false);
     setIsHeroDragging(false);
@@ -332,12 +364,12 @@ export const ArtistProfile = ({
     setCreationArtistBio(draftProfile.bio || "");
     setCreationSpotifyUrl(draftProfile.spotifyUrl || "");
     setCreationSoundcloudUrl(draftProfile.soundcloudUrl || "");
+    setCreationYoutubeUrl(draftProfile.youtubeUrl || "");
     setCreationWebsiteUrl(draftProfile.websiteUrl || "");
     setCreationInstagramUrl(draftProfile.instagramUrl || "");
 
     // Load tracks from draft profile
     if (draftProfile.tracks && Array.isArray(draftProfile.tracks) && draftProfile.tracks.length > 0) {
-      console.log('Loading tracks from draft profile:', draftProfile.tracks);
       const loadedTracks = draftProfile.tracks.map(track => ({
         id: track.id,
         title: track.title || `Track ${track.id}`,
@@ -354,7 +386,6 @@ export const ArtistProfile = ({
         audioStoragePath: track.audioStoragePath || null,
         coverStoragePath: track.coverStoragePath || null,
       }));
-      console.log('Loaded tracks:', loadedTracks);
       setCreationTracks(loadedTracks);
       latestTracksRef.current = loadedTracks; // Update ref with loaded tracks
 
@@ -369,6 +400,41 @@ export const ArtistProfile = ({
       });
     } else {
       setCreationTracks([]);
+    }
+
+    // Load videos from draft profile
+    if (draftProfile.videos && Array.isArray(draftProfile.videos) && draftProfile.videos.length > 0) {
+      const loadedVideos = draftProfile.videos.map((video, index) => {
+        const resolvedId = video.id || generateCreationId('video');
+        const resolvedTitle = video.title || `Video ${index + 1}`;
+        const storedVideoUrl = video.videoUrl || video.file || null;
+        const storedThumbnailUrl = video.thumbnail || null;
+        return {
+          id: resolvedId,
+          title: resolvedTitle,
+          videoFile: null,
+          videoPreviewUrl: storedVideoUrl,
+          thumbnailFile: null,
+          thumbnailPreviewUrl: storedThumbnailUrl,
+          uploadedVideoUrl: storedVideoUrl,
+          thumbnailUploadedUrl: storedThumbnailUrl,
+          videoStoragePath: video.videoStoragePath || null,
+          thumbnailStoragePath: video.thumbnailStoragePath || null,
+        };
+      });
+      setCreationVideos(loadedVideos);
+      latestVideosRef.current = loadedVideos;
+        loadedVideos.forEach((video) => {
+          if (video.videoStoragePath || video.thumbnailStoragePath) {
+            videosStoragePathsRef.current[video.id] = {
+              videoPath: video.videoStoragePath || null,
+              thumbnailPath: video.thumbnailStoragePath || null,
+            };
+          }
+        });
+    } else {
+      setCreationVideos([]);
+      latestVideosRef.current = [];
     }
 
     if (draftProfile.heroMedia?.url) {
@@ -410,12 +476,12 @@ export const ArtistProfile = ({
       setCreationArtistBio(draftProfile.bio || "");
       setCreationSpotifyUrl(draftProfile.spotifyUrl || "");
       setCreationSoundcloudUrl(draftProfile.soundcloudUrl || "");
+      setCreationYoutubeUrl(draftProfile.youtubeUrl || "");
       setCreationWebsiteUrl(draftProfile.websiteUrl || "");
       setCreationInstagramUrl(draftProfile.instagramUrl || "");
 
       // Load tracks from draft profile
       if (draftProfile.tracks && Array.isArray(draftProfile.tracks) && draftProfile.tracks.length > 0) {
-        console.log('Loading tracks in handleBeginCreation:', draftProfile.tracks);
         const loadedTracks = draftProfile.tracks.map(track => ({
           id: track.id,
           title: track.title || `Track ${track.id}`,
@@ -432,7 +498,6 @@ export const ArtistProfile = ({
           audioStoragePath: track.audioStoragePath || null,
           coverStoragePath: track.coverStoragePath || null,
         }));
-        console.log('Loaded tracks in handleBeginCreation:', loadedTracks);
         setCreationTracks(loadedTracks);
         latestTracksRef.current = loadedTracks; // Update ref with loaded tracks
 
@@ -447,6 +512,40 @@ export const ArtistProfile = ({
         });
       } else {
         setCreationTracks([]);
+      }
+
+      if (draftProfile.videos && Array.isArray(draftProfile.videos) && draftProfile.videos.length > 0) {
+        const loadedVideos = draftProfile.videos.map((video, index) => {
+          const resolvedId = video.id || generateCreationId('video');
+          const resolvedTitle = video.title || `Video ${index + 1}`;
+          const storedVideoUrl = video.videoUrl || video.file || null;
+          const storedThumbnailUrl = video.thumbnail || null;
+          return {
+            id: resolvedId,
+            title: resolvedTitle,
+            videoFile: null,
+            videoPreviewUrl: storedVideoUrl,
+            thumbnailFile: null,
+            thumbnailPreviewUrl: storedThumbnailUrl,
+            uploadedVideoUrl: storedVideoUrl,
+            thumbnailUploadedUrl: storedThumbnailUrl,
+            videoStoragePath: video.videoStoragePath || null,
+            thumbnailStoragePath: video.thumbnailStoragePath || null,
+          };
+        });
+        setCreationVideos(loadedVideos);
+        latestVideosRef.current = loadedVideos;
+        loadedVideos.forEach((video) => {
+          if (video.videoStoragePath || video.thumbnailStoragePath) {
+            videosStoragePathsRef.current[video.id] = {
+              videoPath: video.videoStoragePath || null,
+              thumbnailPath: video.thumbnailStoragePath || null,
+            };
+          }
+        });
+      } else {
+        setCreationVideos([]);
+        latestVideosRef.current = [];
       }
 
       if (draftProfile.heroMedia?.url) {
@@ -489,6 +588,11 @@ export const ArtistProfile = ({
       setCreationHeroBrightness(BRIGHTNESS_DEFAULT);
       setCreationHeroPosition(HERO_POSITION_DEFAULT);
       setCreationArtistBio("");
+      setCreationSpotifyUrl("");
+      setCreationSoundcloudUrl("");
+      setCreationYoutubeUrl("");
+      setCreationWebsiteUrl("");
+      setCreationInstagramUrl("");
       setCreationHasHeroImage(false);
       if (heroBrightnessUpdateTimeoutRef.current) {
         clearTimeout(heroBrightnessUpdateTimeoutRef.current);
@@ -627,7 +731,6 @@ export const ArtistProfile = ({
 
     if (!shouldUpload) return;
 
-    let isSubscribed = true;
     const uploadToken = Symbol('hero-upload');
     heroUploadTokenRef.current = uploadToken;
     setHeroUploadStatus('uploading');
@@ -641,13 +744,13 @@ export const ArtistProfile = ({
     const currentPreviewUrl = creationHeroImage?.previewUrl;
 
     uploadFileWithProgress(file, storagePath, (progress) => {
-      if (!isSubscribed) return;
       if (heroUploadTokenRef.current !== uploadToken) return;
+      if (!isMountedRef.current) return;
       setHeroUploadProgress(progress);
     })
       .then(async (heroUrl) => {
-        if (!isSubscribed) return;
         if (heroUploadTokenRef.current !== uploadToken) return;
+        if (!isMountedRef.current) return;
         setCreationHeroImage({
           file: null,
           previewUrl: currentPreviewUrl || heroUrl,
@@ -664,13 +767,13 @@ export const ArtistProfile = ({
 
         const preload = new Image();
         preload.onload = () => {
-          if (!isSubscribed) return;
           if (heroUploadTokenRef.current !== uploadToken) return;
+          if (!isMountedRef.current) return;
           setBackgroundImage(heroUrl);
         };
         preload.onerror = () => {
-          if (!isSubscribed) return;
           if (heroUploadTokenRef.current !== uploadToken) return;
+          if (!isMountedRef.current) return;
           setBackgroundImage(heroUrl);
         };
         preload.src = heroUrl;
@@ -686,15 +789,11 @@ export const ArtistProfile = ({
         }
       })
       .catch((error) => {
-        if (!isSubscribed) return;
         if (heroUploadTokenRef.current !== uploadToken) return;
+        if (!isMountedRef.current) return;
         console.error('Hero image async upload failed:', error);
         setHeroUploadStatus('error');
       });
-
-    return () => {
-      isSubscribed = false;
-    };
   }, [creationStep, creationHeroImage?.file, creationProfileId]);
 
   // Async upload tracks when user moves away from tracks step
@@ -732,7 +831,6 @@ export const ArtistProfile = ({
     // Mark upload as in progress
     tracksUploadInProgressRef.current = true;
 
-    let isSubscribed = true;
     const uploadToken = Symbol('tracks-upload');
     tracksUploadTokenRef.current = uploadToken;
     setTracksUploadStatus('uploading');
@@ -753,17 +851,14 @@ export const ArtistProfile = ({
       return count + (track.audioFile ? 1 : 0) + (track.coverFile ? 1 : 0);
     }, 0);
 
-    console.log('Starting track uploads. Total uploads:', totalUploads);
 
 
     // If there are no uploads to do, exit early
     if (totalUploads === 0) {
-      console.log('No files to upload, skipping upload process');
       return;
     }
 
     creationTracks.forEach((track, index) => {
-      console.log('uploading track', track.title);
       const trackId = track.id;
       const previousPaths = tracksStoragePathsRef.current[trackId] || {};
 
@@ -778,8 +873,8 @@ export const ArtistProfile = ({
           track.audioFile,
           storagePath,
           (progress) => {
-            if (!isSubscribed) return;
             if (tracksUploadTokenRef.current !== uploadToken) return;
+            if (!isMountedRef.current) return;
             // Update progress based on completed uploads + current progress
             const baseProgress = (completedUploads / totalUploads) * 100;
             const currentProgress = (progress / totalUploads) * 100;
@@ -787,10 +882,9 @@ export const ArtistProfile = ({
           }
         )
           .then(async (audioUrl) => {
-            if (!isSubscribed) return;
             if (tracksUploadTokenRef.current !== uploadToken) return;
+            if (!isMountedRef.current) return;
 
-            console.log(`Audio upload complete for track ${trackId}:`, audioUrl, storagePath);
 
             // Update track with uploaded URL and storage path
             const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
@@ -803,7 +897,6 @@ export const ArtistProfile = ({
                 // Preserve preview URL if uploaded URL exists
                 audioPreviewUrl: tracksToUpdate[trackIndex].audioPreviewUrl || audioUrl,
               };
-              console.log(`Updated track ${trackId} with audio URL:`, tracksToUpdate[trackIndex]);
             }
 
             // Update storage paths ref
@@ -823,13 +916,12 @@ export const ArtistProfile = ({
 
             completedUploads++;
             const progress = (completedUploads / totalUploads) * 100;
-            console.log('audio upload progress', progress);
             if (tracksUploadTokenRef.current === uploadToken) {
+              if (!isMountedRef.current) return;
               setTracksUploadProgress(progress);
             }
           })
           .catch((error) => {
-            if (!isSubscribed) return;
             if (tracksUploadTokenRef.current !== uploadToken) return;
             console.error(`Failed to upload audio for track ${trackId}:`, error);
             completedUploads++;
@@ -849,8 +941,8 @@ export const ArtistProfile = ({
           track.coverFile,
           storagePath,
           (progress) => {
-            if (!isSubscribed) return;
             if (tracksUploadTokenRef.current !== uploadToken) return;
+            if (!isMountedRef.current) return;
             // Update progress based on completed uploads + current progress
             const baseProgress = (completedUploads / totalUploads) * 100;
             const currentProgress = (progress / totalUploads) * 100;
@@ -858,10 +950,9 @@ export const ArtistProfile = ({
           }
         )
           .then(async (coverUrl) => {
-            if (!isSubscribed) return;
             if (tracksUploadTokenRef.current !== uploadToken) return;
+            if (!isMountedRef.current) return;
 
-            console.log(`Cover upload complete for track ${trackId}:`, coverUrl, storagePath);
 
             // Update track with uploaded URL and storage path
             const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
@@ -874,7 +965,6 @@ export const ArtistProfile = ({
                 // Preserve preview URL if uploaded URL exists
                 coverPreviewUrl: tracksToUpdate[trackIndex].coverPreviewUrl || coverUrl,
               };
-              console.log(`Updated track ${trackId} with cover URL:`, tracksToUpdate[trackIndex]);
             }
 
             // Update storage paths ref
@@ -895,11 +985,11 @@ export const ArtistProfile = ({
             completedUploads++;
             const progress = (completedUploads / totalUploads) * 100;
             if (tracksUploadTokenRef.current === uploadToken) {
+              if (!isMountedRef.current) return;
               setTracksUploadProgress(progress);
             }
           })
           .catch((error) => {
-            if (!isSubscribed) return;
             if (tracksUploadTokenRef.current !== uploadToken) return;
             console.error(`Failed to upload cover for track ${trackId}:`, error);
             completedUploads++;
@@ -912,10 +1002,9 @@ export const ArtistProfile = ({
     // Wait for all uploads to complete
     Promise.all(uploadPromises)
       .then(async () => {
-        if (!isSubscribed) return;
         if (tracksUploadTokenRef.current !== uploadToken) return;
+        if (!isMountedRef.current) return;
 
-        console.log('All uploads complete. Final tracksToUpdate:', tracksToUpdate);
 
         // Update the ref with the latest tracks data (for use in handleSaveAndExit)
         latestTracksRef.current = tracksToUpdate;
@@ -941,11 +1030,9 @@ export const ArtistProfile = ({
               };
             });
 
-            console.log('Persisting tracks to Firestore:', tracksForFirestore);
             await updateArtistProfileDocument(creationProfileId, {
               tracks: tracksForFirestore,
             });
-            console.log('Successfully persisted tracks to Firestore');
           } catch (error) {
             console.error('Failed to persist tracks after upload:', error);
             console.error('Error details:', error.message, error.stack);
@@ -958,21 +1045,16 @@ export const ArtistProfile = ({
         setTracksUploadProgress(100);
         setShowTracksUploadModal(false); // Hide modal when upload completes
         tracksUploadInProgressRef.current = false; // Mark upload as complete
-        console.log('tracks upload complete');
       })
       .catch((error) => {
-        if (!isSubscribed) return;
         if (tracksUploadTokenRef.current !== uploadToken) return;
+        if (!isMountedRef.current) return;
         console.error('Tracks async upload failed:', error);
         setTracksUploadStatus('error');
         setShowTracksUploadModal(false); // Hide modal on error
         tracksUploadInProgressRef.current = false; // Mark upload as complete even on error
       });
-
-    return () => {
-      isSubscribed = false;
-      // Don't reset tracksUploadInProgressRef here - let it complete naturally
-    };
+    // Don't reset tracksUploadInProgressRef here - let it complete naturally
   }, [creationStep, creationProfileId]); // Removed creationTracks from dependencies to prevent re-runs
 
   // Hide modal when upload status changes away from 'uploading'
@@ -981,6 +1063,288 @@ export const ArtistProfile = ({
       setShowTracksUploadModal(false);
     }
   }, [tracksUploadStatus, showTracksUploadModal]);
+
+  // Async upload videos when user leaves videos step
+  useEffect(() => {
+    const previousStep = previousVideosStepRef.current;
+    const currentStep = creationStep;
+    previousVideosStepRef.current = currentStep;
+
+    const movedAwayFromVideos = previousStep === 'videos' && currentStep !== 'videos';
+
+    if (videosUploadInProgressRef.current) {
+      return;
+    }
+
+    const hasVideosToUpload = creationVideos.some(
+      (video) => video.videoFile || video.thumbnailFile
+    );
+
+    const shouldUpload =
+      creationProfileId &&
+      movedAwayFromVideos &&
+      hasVideosToUpload;
+
+    if (!shouldUpload) {
+      if (videoUploadStatus === 'uploading') {
+        setVideoUploadStatus('idle');
+        setVideoUploadProgress(0);
+      }
+      return;
+    }
+
+    videosUploadInProgressRef.current = true;
+
+    const uploadToken = Symbol('videos-upload');
+    videosUploadTokenRef.current = uploadToken;
+    setVideoUploadStatus('uploading');
+    setVideoUploadProgress(0);
+
+    const videosToUpdate = creationVideos.map((video) => ({
+      ...video,
+      uploadedVideoUrl: video.uploadedVideoUrl || video.videoUrl || null,
+      thumbnailUploadedUrl: video.thumbnailUploadedUrl || video.thumbnail || video.thumbnailUrl || null,
+      videoStoragePath: video.videoStoragePath || null,
+      thumbnailStoragePath: video.thumbnailStoragePath || null,
+    }));
+
+    let completedUploads = 0;
+    const totalUploads = creationVideos.reduce((count, video) => {
+      return count + (video.videoFile ? 1 : 0) + (video.thumbnailFile ? 1 : 0);
+    }, 0);
+
+    if (totalUploads === 0) {
+      videosUploadInProgressRef.current = false;
+      setVideoUploadStatus('complete');
+      setVideoUploadProgress(100);
+      return;
+    }
+
+    const uploadPromises = [];
+
+    creationVideos.forEach((video) => {
+      const videoId = video.id;
+      const previousPaths = videosStoragePathsRef.current[videoId] || {};
+
+      if (video.videoFile) {
+        const extension = video.videoFile.name?.split('.').pop() || 'mp4';
+        const filename = `video-${videoId}-${Date.now()}.${extension}`;
+        const storagePath = `artistProfiles/${creationProfileId}/videos/${filename}`;
+        const previousVideoPath = previousPaths.videoPath;
+
+        const videoUploadPromise = uploadFileWithProgress(
+          video.videoFile,
+          storagePath,
+          (progress) => {
+            if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+            const baseProgress = (completedUploads / totalUploads) * 100;
+            const currentProgress = (progress / totalUploads) * 100;
+            setVideoUploadProgress(baseProgress + currentProgress);
+          }
+        )
+          .then(async (videoUrl) => {
+            if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+
+            const videoIndex = videosToUpdate.findIndex((v) => v.id === videoId);
+            if (videoIndex !== -1) {
+              videosToUpdate[videoIndex] = {
+                ...videosToUpdate[videoIndex],
+                uploadedVideoUrl: videoUrl,
+                videoStoragePath: storagePath,
+                videoFile: null,
+                videoPreviewUrl: videosToUpdate[videoIndex].videoPreviewUrl || videoUrl,
+              };
+            }
+
+            videosStoragePathsRef.current[videoId] = {
+              ...videosStoragePathsRef.current[videoId],
+              videoPath: storagePath,
+            };
+
+            if (previousVideoPath && previousVideoPath !== storagePath) {
+              try {
+                await deleteStoragePath(previousVideoPath);
+              } catch (error) {
+                console.error(`Failed to delete previous video file ${previousVideoPath}:`, error);
+              }
+            }
+
+            completedUploads++;
+            const progress = (completedUploads / totalUploads) * 100;
+            if (videosUploadTokenRef.current === uploadToken && isMountedRef.current) {
+              setVideoUploadProgress(progress);
+            }
+          })
+          .catch((error) => {
+            if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+            console.error(`Failed to upload video for id ${videoId}:`, error);
+            completedUploads++;
+          });
+
+        uploadPromises.push(videoUploadPromise);
+      }
+
+      if (video.thumbnailFile) {
+        const extension = video.thumbnailFile.name?.split('.').pop() || 'png';
+        const filename = `thumbnail-${videoId}-${Date.now()}.${extension}`;
+        const storagePath = `artistProfiles/${creationProfileId}/videos/thumbnails/${filename}`;
+        const previousThumbnailPath = previousPaths.thumbnailPath;
+
+        const thumbnailUploadPromise = uploadFileWithProgress(
+          video.thumbnailFile,
+          storagePath,
+          (progress) => {
+            if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+            const baseProgress = (completedUploads / totalUploads) * 100;
+            const currentProgress = (progress / totalUploads) * 100;
+            setVideoUploadProgress(baseProgress + currentProgress);
+          }
+        )
+          .then(async (thumbnailUrl) => {
+            if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+
+            const videoIndex = videosToUpdate.findIndex((v) => v.id === videoId);
+            if (videoIndex !== -1) {
+              videosToUpdate[videoIndex] = {
+                ...videosToUpdate[videoIndex],
+                thumbnailUploadedUrl: thumbnailUrl,
+                thumbnailStoragePath: storagePath,
+                thumbnailFile: null,
+                thumbnailPreviewUrl: videosToUpdate[videoIndex].thumbnailPreviewUrl || thumbnailUrl,
+                thumbnailGenerationError: null,
+                isThumbnailGenerating: false,
+              };
+            }
+
+            videosStoragePathsRef.current[videoId] = {
+              ...videosStoragePathsRef.current[videoId],
+              thumbnailPath: storagePath,
+            };
+
+            if (previousThumbnailPath && previousThumbnailPath !== storagePath) {
+              try {
+                await deleteStoragePath(previousThumbnailPath);
+              } catch (error) {
+                console.error(`Failed to delete previous thumbnail file ${previousThumbnailPath}:`, error);
+              }
+            }
+
+            completedUploads++;
+            const progress = (completedUploads / totalUploads) * 100;
+            if (videosUploadTokenRef.current === uploadToken && isMountedRef.current) {
+              setVideoUploadProgress(progress);
+            }
+          })
+          .catch((error) => {
+            if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+            console.error(`Failed to upload thumbnail for video ${videoId}:`, error);
+            completedUploads++;
+          });
+
+        uploadPromises.push(thumbnailUploadPromise);
+      }
+    });
+
+    Promise.all(uploadPromises)
+      .then(async () => {
+        if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+
+        latestVideosRef.current = videosToUpdate;
+
+        if (creationProfileId) {
+          try {
+            const videosForFirestore = videosToUpdate.map((video) => ({
+              id: video.id,
+              title: video.title,
+              videoUrl: video.uploadedVideoUrl || null,
+              videoStoragePath: video.videoStoragePath || null,
+              thumbnail: video.thumbnailUploadedUrl || null,
+              thumbnailUrl: video.thumbnailUploadedUrl || null,
+              thumbnailStoragePath: video.thumbnailStoragePath || null,
+            }));
+
+            await updateArtistProfileDocument(creationProfileId, {
+              videos: videosForFirestore,
+            });
+          } catch (error) {
+            console.error('Failed to persist videos after upload:', error);
+            console.error('Error details:', error.message, error.stack);
+          }
+        }
+
+        setCreationVideos(videosToUpdate);
+        setVideoUploadStatus('complete');
+        setVideoUploadProgress(100);
+        setShowVideoUploadModal(false);
+        videosUploadInProgressRef.current = false;
+      })
+      .catch((error) => {
+        if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+        console.error('Videos async upload failed:', error);
+        setVideoUploadStatus('error');
+        setShowVideoUploadModal(false);
+        videosUploadInProgressRef.current = false;
+      });
+  }, [creationStep, creationProfileId]); // Removed creationVideos from dependencies to prevent re-runs
+
+  useEffect(() => {
+    if (videoUploadStatus !== 'uploading' && showVideoUploadModal) {
+      setShowVideoUploadModal(false);
+    }
+  }, [videoUploadStatus, showVideoUploadModal]);
+
+  // Scroll state box to bottom when step changes, content updates, or container height changes
+  useEffect(() => {
+    if (!stateBoxRef.current) return;
+
+    const scrollToBottom = () => {
+      if (stateBoxRef.current) {
+        stateBoxRef.current.scrollTo({
+          top: stateBoxRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    };
+
+    // Initial scroll - use RAF for immediate response
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scrollToBottom);
+    });
+
+    // Watch for height changes in the state box - scroll immediately on resize
+    const stateBoxObserver = new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(scrollToBottom);
+      });
+    });
+
+    stateBoxObserver.observe(stateBoxRef.current);
+
+    // Also observe the creation box container if it exists (has 0.5s height transition)
+    // Start scrolling immediately and let smooth behavior follow the transition
+    const creationBoxContainer = stateBoxRef.current.querySelector('.creation-box-container');
+    let creationBoxObserver = null;
+    if (creationBoxContainer) {
+      creationBoxObserver = new ResizeObserver(() => {
+        // Start scrolling immediately - smooth behavior will follow the transition
+        requestAnimationFrame(() => {
+          requestAnimationFrame(scrollToBottom);
+        });
+        // Also scroll again near the end of transition to ensure we're at bottom
+        setTimeout(() => {
+          scrollToBottom();
+        }, 500);
+      });
+      creationBoxObserver.observe(creationBoxContainer);
+    }
+
+    return () => {
+      stateBoxObserver.disconnect();
+      if (creationBoxObserver) {
+        creationBoxObserver.disconnect();
+      }
+    };
+  }, [creationStep, isCreatingProfile, creationTracks.length, creationVideos.length]);
 
   const handleHeroImageUpdate = (payload) => {
     if (!payload) {
@@ -1099,6 +1463,23 @@ export const ArtistProfile = ({
       }
   }, 500);
   };
+
+  const handleYoutubeUrlChange = (newUrl) => {
+    setCreationYoutubeUrl(newUrl);
+    if (!creationProfileId) return;
+
+    if (youtubeUrlUpdateTimeoutRef.current) {
+      clearTimeout(youtubeUrlUpdateTimeoutRef.current);
+    }
+
+    youtubeUrlUpdateTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateArtistProfileDocument(creationProfileId, { youtubeUrl: newUrl });
+      } catch (error) {
+        console.error('Failed to update YouTube URL:', error);
+      }
+    }, 500);
+  };
   const handleSpotifyUrlChange = (newUrl) => {
     setCreationSpotifyUrl(newUrl);
     if (!creationProfileId) return;
@@ -1138,6 +1519,11 @@ export const ArtistProfile = ({
     latestTracksRef.current = newTracks; // Keep ref in sync with state
   };
 
+  const handleVideosChange = (newVideos) => {
+    setCreationVideos(newVideos);
+    latestVideosRef.current = newVideos;
+  };
+
   const handleSaveAndExit = async () => {
     if (!creationProfileId) {
       resetCreationState();
@@ -1151,10 +1537,15 @@ export const ArtistProfile = ({
       return;
     }
 
-    // Check if tracks are still uploading
+    // Check if media uploads are still running
     if (tracksUploadStatus === 'uploading') {
       // Show loading modal and prevent save
       setShowTracksUploadModal(true);
+      return;
+    }
+
+    if (videoUploadStatus === 'uploading') {
+      setShowVideoUploadModal(true);
       return;
     }
 
@@ -1210,16 +1601,46 @@ export const ArtistProfile = ({
         }
       });
 
-      console.log('Tracks for Firestore in handleSaveAndExit:', tracksForFirestore);
+      const videosToSave = latestVideosRef.current.length > 0 ? latestVideosRef.current : creationVideos;
+      const existingVideos = draftProfile?.videos || [];
+      const existingVideosMap = new Map(existingVideos.map(video => [video.id, video]));
+
+      const videosForFirestore = videosToSave.map(video => {
+        const existingVideo = existingVideosMap.get(video.id);
+        if (existingVideo) {
+          return {
+            id: video.id,
+            title: video.title,
+            videoUrl: existingVideo.videoUrl || existingVideo.file || null,
+            videoStoragePath: existingVideo.videoStoragePath || null,
+            thumbnail: existingVideo.thumbnail || existingVideo.thumbnailUrl || null,
+            thumbnailUrl: existingVideo.thumbnailUrl || existingVideo.thumbnail || null,
+            thumbnailStoragePath: existingVideo.thumbnailStoragePath || null,
+          };
+        }
+
+        return {
+          id: video.id,
+          title: video.title,
+          videoUrl: video.uploadedVideoUrl || null,
+          videoStoragePath: video.videoStoragePath || null,
+          thumbnail: video.thumbnailUploadedUrl || null,
+          thumbnailUrl: video.thumbnailUploadedUrl || null,
+          thumbnailStoragePath: video.thumbnailStoragePath || null,
+        };
+      });
+
 
       const updates = {
         name: creationArtistName,
         bio: creationArtistBio,
         websiteUrl: creationWebsiteUrl,
         instagramUrl: creationInstagramUrl,
+        youtubeUrl: creationYoutubeUrl,
         spotifyUrl: creationSpotifyUrl,
         soundcloudUrl: creationSoundcloudUrl,
         tracks: tracksForFirestore,
+        videos: videosForFirestore,
         heroBrightness: creationHeroBrightness,
         heroPositionY: creationHeroPosition,
         onboardingStep: creationStep,
@@ -1288,12 +1709,19 @@ export const ArtistProfile = ({
             onSpotifyUrlChange={handleSpotifyUrlChange}
             creationSoundcloudUrl={creationSoundcloudUrl}
             onSoundcloudUrlChange={handleSoundcloudUrlChange}
+            creationYoutubeUrl={creationYoutubeUrl}
+            onYoutubeUrlChange={handleYoutubeUrlChange}
             heroUploadStatus={heroUploadStatus}
             heroUploadProgress={heroUploadProgress}
             creationTracks={creationTracks}
             onTracksChange={handleTracksChange}
+            creationVideos={creationVideos}
+            onVideosChange={handleVideosChange}
             tracksUploadStatus={tracksUploadStatus}
             tracksUploadProgress={tracksUploadProgress}
+            videoUploadStatus={videoUploadStatus}
+            videoUploadProgress={videoUploadProgress}
+            scrollContainerRef={stateBoxRef}
           />
         );
       case DashboardView.GIGS:
@@ -1345,12 +1773,18 @@ export const ArtistProfile = ({
             onSpotifyUrlChange={handleSpotifyUrlChange}
             creationSoundcloudUrl={creationSoundcloudUrl}
             onSoundcloudUrlChange={handleSoundcloudUrlChange}
+            creationYoutubeUrl={creationYoutubeUrl}
+            onYoutubeUrlChange={handleYoutubeUrlChange}
             heroUploadStatus={heroUploadStatus}
             heroUploadProgress={heroUploadProgress}
             creationTracks={creationTracks}
             onTracksChange={handleTracksChange}
+            creationVideos={creationVideos}
+            onVideosChange={handleVideosChange}
             tracksUploadStatus={tracksUploadStatus}
             tracksUploadProgress={tracksUploadProgress}
+            videoUploadStatus={videoUploadStatus}
+            videoUploadProgress={videoUploadProgress}
           />
         );
       
@@ -1387,12 +1821,19 @@ export const ArtistProfile = ({
             onSpotifyUrlChange={handleSpotifyUrlChange}
             creationSoundcloudUrl={creationSoundcloudUrl}
             onSoundcloudUrlChange={handleSoundcloudUrlChange}
+            creationYoutubeUrl={creationYoutubeUrl}
+            onYoutubeUrlChange={handleYoutubeUrlChange}
             heroUploadStatus={heroUploadStatus}
             heroUploadProgress={heroUploadProgress}
             creationTracks={creationTracks}
             onTracksChange={handleTracksChange}
+            creationVideos={creationVideos}
+            onVideosChange={handleVideosChange}
             tracksUploadStatus={tracksUploadStatus}
             tracksUploadProgress={tracksUploadProgress}
+            videoUploadStatus={videoUploadStatus}
+            videoUploadProgress={videoUploadProgress}
+            scrollContainerRef={stateBoxRef}
           />
         );
       
@@ -1501,13 +1942,14 @@ export const ArtistProfile = ({
         </div>
 
         {/* State box - right side, 30vw, changes based on state */}
-        <div className={`artist-profile-state-box ${isDarkMode ? 'dark-mode' : ''}`}>
+        <div ref={stateBoxRef} className={`artist-profile-state-box ${isDarkMode ? 'dark-mode' : ''}`}>
           {renderStateContent()}
         </div>
       </div>
 
-      {/* Show loading modal when user tries to save while tracks are uploading */}
-      {showTracksUploadModal && tracksUploadStatus === 'uploading' && (
+      {/* Show loading modal when user tries to save while media is uploading */}
+      {((showTracksUploadModal && tracksUploadStatus === 'uploading') ||
+        (showVideoUploadModal && videoUploadStatus === 'uploading')) && (
         <LoadingModal 
           title="Please wait" 
           text="We are uploading your media" 

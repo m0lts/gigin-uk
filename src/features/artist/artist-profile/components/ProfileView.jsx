@@ -1,8 +1,9 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { Bio } from './Bio';
 import { VideosTracks } from './VideosTracks';
 import { DarkModeToggle } from './DarkModeToggle';
 import { ProfileCreationBox, CREATION_STEP_ORDER } from './ProfileCreationBox';
+import { useScrollFade } from '@hooks/useScrollFade';
 
 /**
  * ProfileView Component
@@ -114,12 +115,19 @@ export const ProfileView = ({
   onSpotifyUrlChange,
   creationSoundcloudUrl = "",
   onSoundcloudUrlChange,
+  creationYoutubeUrl = "",
+  onYoutubeUrlChange,
   heroUploadStatus = 'idle',
   heroUploadProgress = 0,
   creationTracks = [],
   onTracksChange,
   tracksUploadStatus = 'idle',
   tracksUploadProgress = 0,
+  videoUploadStatus = 'idle',
+  videoUploadProgress = 0,
+  creationVideos = [],
+  onVideosChange,
+  scrollContainerRef,
 }) => {
   // Randomly select an example profile once when component mounts (only for example profiles)
   const exampleData = useMemo(() => {
@@ -152,7 +160,7 @@ export const ProfileView = ({
     : data?.bio;
 
   const shouldShowBio = Boolean(liveBioContent);
-  const videos = data?.videos || [];
+  const persistedVideos = data?.videos || [];
   const tracks = data?.tracks || [];
   
   // Use creation tracks if available, otherwise use profile data tracks
@@ -168,12 +176,23 @@ export const ProfileView = ({
         artist: track.artist,
         thumbnail: track.coverUrl || track.thumbnail || null,
       }));
+
+  const displayVideos = isCreatingProfile && creationVideos.length > 0
+    ? creationVideos.map(video => ({
+        title: video.title,
+        thumbnail: video.thumbnailUploadedUrl || video.thumbnailPreviewUrl || null,
+      }))
+    : persistedVideos.map(video => ({
+        title: video.title,
+        thumbnail: video.thumbnail || video.thumbnailUrl || null,
+      }));
   
-  const shouldShowVideosTracks = videos.length > 0 || displayTracks.length > 0;
+  const shouldShowVideosTracks = displayVideos.length > 0 || displayTracks.length > 0;
   
   // Use creation URLs if in creation mode, otherwise use profile data URLs
   const spotifyUrl = isCreatingProfile ? creationSpotifyUrl : (data?.spotifyUrl || "");
   const soundcloudUrl = isCreatingProfile ? creationSoundcloudUrl : (data?.soundcloudUrl || "");
+  const youtubeUrl = isCreatingProfile ? creationYoutubeUrl : (data?.youtubeUrl || "");
   const websiteUrl = isCreatingProfile ? creationWebsiteUrl : (data?.websiteUrl || "");
   const instagramUrl = isCreatingProfile ? creationInstagramUrl : (data?.instagramUrl || "");
 
@@ -191,10 +210,26 @@ export const ProfileView = ({
     .filter(Boolean)
     .join(' ');
 
+  // Refs for containers to apply scroll fade effect
+  const bioContainerRef = useRef(null);
+  const mediaContainerRef = useRef(null);
+  const { opacity: bioOpacity, scale: bioScale } = useScrollFade(bioContainerRef, scrollContainerRef, 30);
+  const { opacity: mediaOpacity, scale: mediaScale } = useScrollFade(mediaContainerRef, scrollContainerRef, 30);
+
   return (
     <div className={profileContentClassNames}>
       <div className={sectionsStackClassNames}>
-        <div className={bioCardClassNames} aria-hidden={!shouldShowBio}>
+        <div 
+          ref={bioContainerRef}
+          className={bioCardClassNames} 
+          aria-hidden={!shouldShowBio}
+          style={{ 
+            opacity: bioOpacity,
+            transform: `scale(${bioScale})`,
+            transformOrigin: 'top center',
+            transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+          }}
+        >
           <Bio 
             bio={liveBioContent}
             websiteUrl={websiteUrl}
@@ -202,14 +237,25 @@ export const ProfileView = ({
           />
         </div>
 
-        <div className={mediaCardClassNames} aria-hidden={!shouldShowVideosTracks}>
+        <div 
+          ref={mediaContainerRef}
+          className={mediaCardClassNames} 
+          aria-hidden={!shouldShowVideosTracks}
+          style={{ 
+            opacity: mediaOpacity,
+            transform: `scale(${mediaScale})`,
+            transformOrigin: 'top center',
+            transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+          }}
+        >
           {shouldShowVideosTracks && (
             <VideosTracks 
-              videos={videos}
+              videos={displayVideos}
               tracks={displayTracks}
               defaultActiveSection={isCreatingProfile && creationTracks.length > 0 ? 'tracks' : undefined}
               spotifyUrl={spotifyUrl}
               soundcloudUrl={soundcloudUrl}
+              youtubeUrl={youtubeUrl}
             />
           )}
         </div>
@@ -251,6 +297,12 @@ export const ProfileView = ({
             tracksUploadStatus={tracksUploadStatus}
             tracksUploadProgress={tracksUploadProgress}
             initialTracks={creationTracks}
+            initialVideos={creationVideos}
+            onVideosChange={onVideosChange}
+            videosUploadStatus={videoUploadStatus}
+            videosUploadProgress={videoUploadProgress}
+            youtubeUrl={youtubeUrl}
+            onYoutubeUrlChange={onYoutubeUrlChange}
             creationWebsiteUrl={creationWebsiteUrl}
             onWebsiteUrlChange={onWebsiteUrlChange}
             creationInstagramUrl={creationInstagramUrl}

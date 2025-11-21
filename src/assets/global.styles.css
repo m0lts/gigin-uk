@@ -37,6 +37,21 @@
     --gn-overlay-dark: #80808096;
     --gn-shadow: #0000001a;
     --gn-disabled: rgba(255, 255, 255, 0.5);
+    --gn-spotify-green: #1DB954;
+    --gn-spotify-green-offset: #1DB9541a;
+    --gn-spotify-green-placeholder: #1db95480;
+    --gn-soundcloud-red: #ff3300;
+    --gn-soundcloud-red-offset: #ff33001a;
+    --gn-soundcloud-red-placeholder: #ff330080;
+    --gn-instagram-orange: #ffc273;
+    --gn-instagram-orange-offset: #ffc2731a;
+    --gn-instagram-orange-placeholder: #ffc273a9;
+    --gn-instagram-pink: #e56969;
+    --gn-instagram-pink-offset: #e569691a;
+    --gn-instagram-pink-placeholder: #e5696980;
+    --gn-youtube-red: #ff0033;
+    --gn-youtube-red-offset: #ff00331a;
+    --gn-youtube-red-placeholder: #ff003380;
 
     /* Common spacing */
     --gn-btn-padding-x: 14px;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon } from "../../../shared/ui/extras/Icons";
+import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon, FilmIcon, PlayIcon, YoutubeIcon } from "../../../shared/ui/extras/Icons";
 import { LoadingSpinner } from "../../../shared/ui/loading/Loading";
 
 export const CREATION_STEP_ORDER = ["hero-image", "stage-name", "bio", "tracks", "videos", "ready"];
@@ -9,6 +9,80 @@ const STAGE_NAME_FONT_MAX = 40;
 const STAGE_NAME_FONT_MIN = 20;
 const STAGE_NAME_HORIZONTAL_PADDING = 32; // matches input horizontal padding
 const HERO_POSITION_DEFAULT = 50;
+
+const generateVideoThumbnail = (file) => {
+  if (typeof document === "undefined") {
+    return Promise.resolve({ file: null, previewUrl: null });
+  }
+
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    const objectUrl = URL.createObjectURL(file);
+    video.src = objectUrl;
+
+    const cleanup = () => {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    const handleError = (err) => {
+      cleanup();
+      if (err instanceof Error) {
+        reject(err);
+      } else {
+        reject(new Error("Unable to generate video thumbnail"));
+      }
+    };
+
+    video.addEventListener("error", handleError);
+    video.addEventListener("loadeddata", () => {
+      try {
+        const targetTime = Math.min(1, video.duration ? Math.max(0, video.duration * 0.1) : 0.5);
+        video.currentTime = targetTime || 0;
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+    video.addEventListener("seeked", () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const width = video.videoWidth || 1280;
+        const height = video.videoHeight || 720;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              cleanup();
+              reject(new Error("Failed to capture video frame"));
+              return;
+            }
+            const thumbnailFile = new File([blob], `${file.name.replace(/\.[^/.]+$/, "") || "video"}-thumbnail.png`, {
+              type: "image/png",
+              lastModified: Date.now(),
+            });
+            const previewUrl = URL.createObjectURL(blob);
+            cleanup();
+            resolve({ file: thumbnailFile, previewUrl });
+          },
+          "image/png",
+          0.92
+        );
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
+    });
+  });
+};
 
 export const ProfileCreationBox = ({
   onStartJourney,
@@ -33,6 +107,8 @@ export const ProfileCreationBox = ({
   onWebsiteUrlChange,
   creationInstagramUrl = "",
   onInstagramUrlChange,
+  youtubeUrl = "",
+  onYoutubeUrlChange,
   spotifyUrl = "",
   onSpotifyUrlChange,
   soundcloudUrl = "",
@@ -43,15 +119,22 @@ export const ProfileCreationBox = ({
   tracksUploadStatus = 'idle',
   tracksUploadProgress = 0,
   initialTracks = [],
+  onVideosChange,
+  initialVideos = [],
+  videosUploadStatus = 'idle',
+  videosUploadProgress = 0,
 }) => {
   const [artistName, setArtistName] = useState(initialArtistName);
   const [heroImage, setHeroImage] = useState(null);
   const [heroFlowStage, setHeroFlowStage] = useState("upload");
   const [tracks, setTracks] = useState(initialTracks);
-  const createTrackId = () =>
+  const [videos, setVideos] = useState(initialVideos);
+  const createEntityId = (prefix) =>
     typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
-      : `track-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const createTrackId = () => createEntityId("track");
+  const createVideoId = () => createEntityId("video");
 
   const revokeObjectUrl = (url) => {
     if (url && url.startsWith("blob:")) {
@@ -68,8 +151,10 @@ export const ProfileCreationBox = ({
   const trackFileInputRef = useRef(null);
   const trackCoverInputRef = useRef(null);
   const pendingCoverTrackIdRef = useRef(null);
+  const videoFileInputRef = useRef(null);
   const containerRef = useRef(null);
   const tracksSyncedRef = useRef(false);
+  const videosSyncedRef = useRef(false);
   const contentWrapperRef = useRef(null);
   const stageNameWrapperRef = useRef(null);
   const textMeasureContextRef = useRef(null);
@@ -171,17 +256,32 @@ export const ProfileCreationBox = ({
       if (heroImage?.previewUrl) {
         revokeObjectUrl(heroImage.previewUrl);
       }
-      setHeroImage(null);
+      if (heroImage) {
+        setHeroImage(null);
+      }
       setHeroFlowStage("upload");
       onHeroBrightnessChange?.(100);
-      setArtistName("");
+      if (artistName) {
+        setArtistName("");
+      }
       setPreviousStep(null);
-      setDisplayedStep(DEFAULT_STEP);
-      tracks.forEach((track) => {
-        revokeObjectUrl(track.audioPreviewUrl);
-        revokeObjectUrl(track.coverPreviewUrl);
-      });
-      setTracks([]);
+      if (displayedStep !== DEFAULT_STEP) {
+        setDisplayedStep(DEFAULT_STEP);
+      }
+      if (tracks.length) {
+        tracks.forEach((track) => {
+          revokeObjectUrl(track.audioPreviewUrl);
+          revokeObjectUrl(track.coverPreviewUrl);
+        });
+        setTracks([]);
+      }
+      if (videos.length) {
+        videos.forEach((video) => {
+          revokeObjectUrl(video.videoPreviewUrl);
+          revokeObjectUrl(video.thumbnailPreviewUrl);
+        });
+        setVideos([]);
+      }
       return;
     }
 
@@ -202,7 +302,7 @@ export const ProfileCreationBox = ({
     transitionTimeoutRef.current = setTimeout(() => {
       setPreviousStep(null);
     }, 350);
-  }, [isCreating, normalizedStep, displayedStep, heroImage, tracks]);
+  }, [isCreating, normalizedStep, displayedStep, heroImage, tracks, videos, artistName]);
 
   useEffect(() => {
     return () => {
@@ -216,6 +316,10 @@ export const ProfileCreationBox = ({
       tracks.forEach((track) => {
         revokeObjectUrl(track.audioPreviewUrl);
         revokeObjectUrl(track.coverPreviewUrl);
+      });
+      videos.forEach((video) => {
+        revokeObjectUrl(video.videoPreviewUrl);
+        revokeObjectUrl(video.thumbnailPreviewUrl);
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -256,7 +360,7 @@ export const ProfileCreationBox = ({
       clearTimeout(initialTimeout);
       resizeObserver.disconnect();
     };
-  }, [displayedStep, heroFlowStage, isCreating, artistName, heroImage, tracks, previousStep]);
+  }, [displayedStep, heroFlowStage, isCreating, artistName, heroImage, tracks, videos, previousStep]);
 
   // Sync local tracks with parent's initialTracks when they're loaded from database
   // This handles both initial load and when navigating back to tracks step
@@ -278,12 +382,33 @@ export const ProfileCreationBox = ({
     }
   }, [initialTracks]); // Only depend on initialTracks to avoid loops
 
+  useEffect(() => {
+    if (!initialVideos || initialVideos.length === 0) {
+      videosSyncedRef.current = false;
+      return;
+    }
+
+    const localVideoIds = videos.map((v) => v.id).sort().join(",");
+    const parentVideoIds = initialVideos.map((v) => v.id).sort().join(",");
+
+    if (videos.length === 0 || localVideoIds !== parentVideoIds) {
+      setVideos(initialVideos);
+      videosSyncedRef.current = true;
+    }
+  }, [initialVideos]);
+
   // Notify parent when tracks change
   useEffect(() => {
     if (onTracksChange) {
       onTracksChange(tracks);
     }
   }, [tracks, onTracksChange]);
+
+  useEffect(() => {
+    if (onVideosChange) {
+      onVideosChange(videos);
+    }
+  }, [videos, onVideosChange]);
 
   const goToStep = (stepId) => {
     if (!CREATION_STEP_ORDER.includes(stepId)) return;
@@ -292,6 +417,7 @@ export const ProfileCreationBox = ({
 
   const heroStepReady = !!heroImage && heroFlowStage === "adjust";
   const trackStepReady = tracks.length > 0;
+  const videoStepReady = videos.length > 0;
 
   const handleAdvance = () => {
     if (!isCreating) {
@@ -304,6 +430,9 @@ export const ProfileCreationBox = ({
     }
 
     if (displayedStep === "tracks" && !trackStepReady) {
+      return;
+    }
+    if (displayedStep === "videos" && !videoStepReady) {
       return;
     }
 
@@ -432,6 +561,108 @@ export const ProfileCreationBox = ({
     });
   };
 
+  const handleVideoPicked = async (file) => {
+    if (!file) return;
+    const videoId = createVideoId();
+    const previewUrl = URL.createObjectURL(file);
+    setVideos((prev) => [
+      ...prev,
+      {
+        id: videoId,
+        title: `Video ${prev.length + 1}`,
+        videoFile: file,
+        videoPreviewUrl: previewUrl,
+        thumbnailFile: null,
+        thumbnailPreviewUrl: null,
+        uploadedVideoUrl: null,
+        thumbnailUploadedUrl: null,
+        videoStoragePath: null,
+        thumbnailStoragePath: null,
+        isThumbnailGenerating: true,
+        thumbnailGenerationError: null,
+      },
+    ]);
+
+    try {
+      const result = await generateVideoThumbnail(file);
+      setVideos((prev) => {
+        let found = false;
+        const updated = prev.map((video) => {
+          if (video.id !== videoId) return video;
+          found = true;
+
+          if (video.thumbnailPreviewUrl && video.thumbnailPreviewUrl !== result?.previewUrl) {
+            revokeObjectUrl(video.thumbnailPreviewUrl);
+          }
+
+          return {
+            ...video,
+            thumbnailFile: result?.file || null,
+            thumbnailPreviewUrl: result?.previewUrl || null,
+            isThumbnailGenerating: false,
+            thumbnailGenerationError: result?.previewUrl ? null : "Failed to generate thumbnail",
+          };
+        });
+
+        if (!found && result?.previewUrl) {
+          revokeObjectUrl(result.previewUrl);
+        }
+
+        return updated;
+      });
+    } catch (error) {
+      console.error("Failed to generate video thumbnail:", error);
+      setVideos((prev) =>
+        prev.map((video) =>
+          video.id === videoId
+            ? {
+                ...video,
+                isThumbnailGenerating: false,
+                thumbnailGenerationError: "Failed to generate thumbnail",
+              }
+            : video
+        )
+      );
+    }
+  };
+
+  const handleVideoFileInputChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handleVideoPicked(file);
+    event.target.value = "";
+  };
+
+  const handleVideoRemove = (videoId) => {
+    setVideos((prev) => {
+      const target = prev.find((video) => video.id === videoId);
+      if (target) {
+        revokeObjectUrl(target.videoPreviewUrl);
+        revokeObjectUrl(target.thumbnailPreviewUrl);
+      }
+      return prev.filter((video) => video.id !== videoId);
+    });
+  };
+
+  const handleVideoTitleChange = (videoId, newTitle) => {
+    setVideos((prev) =>
+      prev.map((video) => (video.id === videoId ? { ...video, title: newTitle } : video))
+    );
+  };
+
+  const handleVideoMove = (videoId, direction) => {
+    setVideos((prev) => {
+      const index = prev.findIndex((video) => video.id === videoId);
+      if (index === -1) return prev;
+      const newIndex = direction === "up" ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= prev.length) return prev;
+      const updated = [...prev];
+      const [item] = updated.splice(index, 1);
+      updated.splice(newIndex, 0, item);
+      return updated;
+    });
+  };
+
   const handleArtistNameChange = (newName) => {
     setArtistName(newName);
     onArtistNameChange?.(newName);
@@ -487,7 +718,21 @@ export const ProfileCreationBox = ({
           />
         );
       case "videos":
-        return <VideosStep />;
+        return (
+          <VideosStep
+            videos={videos}
+            onPrimaryUploadClick={() => videoFileInputRef.current?.click()}
+            onVideoTitleChange={handleVideoTitleChange}
+            onVideoRemove={handleVideoRemove}
+            onVideoMove={handleVideoMove}
+            disableReorder={videos.length < 2}
+            artistName={artistName}
+            youtubeUrl={youtubeUrl}
+            onYoutubeUrlChange={onYoutubeUrlChange}
+            videosUploadStatus={videosUploadStatus}
+            videosUploadProgress={videosUploadProgress}
+          />
+        );
       case "ready":
         return <ReviewStep artistName={artistName} />;
       default:
@@ -523,7 +768,8 @@ export const ProfileCreationBox = ({
     isCreating &&
     (
       (displayedStep === "hero-image" && !heroStepReady) ||
-      (displayedStep === "tracks" && !trackStepReady)
+      (displayedStep === "tracks" && !trackStepReady) ||
+      (displayedStep === "videos" && !videoStepReady)
     )
       ? "hidden"
       : "",
@@ -583,6 +829,14 @@ export const ProfileCreationBox = ({
         ref={trackFileInputRef}
         style={{ display: "none" }}
         onChange={handleTrackFileInputChange}
+      />
+
+      <input
+        type="file"
+        accept="video/*"
+        ref={videoFileInputRef}
+        style={{ display: "none" }}
+        onChange={handleVideoFileInputChange}
       />
 
       <input
@@ -715,6 +969,7 @@ function StageNameStep({
           value={artistName}
           onChange={(e) => onArtistNameChange(e.target.value)}
           placeholder="Stage Name"
+          autoComplete="off"
           className="creation-stage-name-input"
           style={{ fontSize: `${stageNameFontSize}px` }}
         />
@@ -726,14 +981,17 @@ function StageNameStep({
 function BioStep({ artistBio, onArtistBioChange, websiteUrl, onWebsiteUrlChange, instagramUrl, onInstagramUrlChange }) {
   return (
     <>
-      <p className="creation-step-question">Write a bio for your profile.</p>
-      <textarea
-        className="creation-bio-textarea"
-        value={artistBio}
-        onChange={(e) => onArtistBioChange?.(e.target.value)}
-        placeholder="Enter your profile bio here..."
-        maxLength={150}
-      />
+      <p className="creation-step-question bio">Write a bio for your profile.</p>
+      <div className="creation-bio-textarea-container">
+        <textarea
+          className="creation-bio-textarea"
+          value={artistBio}
+          onChange={(e) => onArtistBioChange?.(e.target.value)}
+          placeholder="Enter your profile bio here..."
+          maxLength={150}
+        />
+        <h6 className={`creation-bio-textarea-length ${artistBio.length >= 125 ? "red" : ""}`}>{artistBio.length}/150 MAX</h6>
+      </div>
       <div className="link-entries-container">
         <div className="link-entry-container website">
           <WebsiteIcon />
@@ -784,12 +1042,13 @@ function TracksStep({
           flexDirection: 'column', 
           alignItems: 'center', 
           gap: '1rem',
-          padding: '2rem 0'
+          padding: '2rem 0',
+          paddingBottom: '0',
         }}>
           <LoadingSpinner />
-          <p style={{ color: 'var(--gn-grey-600)', fontSize: '0.9rem' }}>
+          <h4>
             {Math.round(tracksUploadProgress)}% Complete
-          </p>
+          </h4>
           <p style={{ color: 'var(--gn-grey-500)', fontSize: '0.85rem', textAlign: 'center', maxWidth: '400px' }}>
             Please wait while we upload your tracks and cover images. You can continue once the upload is complete.
           </p>
@@ -929,15 +1188,153 @@ function TracksStep({
   );
 }
 
-function VideosStep() {
+function VideosStep({
+  videos,
+  onPrimaryUploadClick,
+  onVideoTitleChange,
+  onVideoRemove,
+  onVideoMove,
+  disableReorder,
+  artistName,
+  youtubeUrl = "",
+  onYoutubeUrlChange,
+  videosUploadStatus = 'idle',
+  videosUploadProgress = 0,
+}) {
+  if (videosUploadStatus === 'uploading') {
+    return (
+      <>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+            padding: '2rem 0',
+            paddingBottom: '0',
+          }}
+        >
+          <LoadingSpinner />
+          <h4>{Math.round(videosUploadProgress)}% Complete</h4>
+          <p style={{ color: 'var(--gn-grey-500)', fontSize: '0.85rem', textAlign: 'center', maxWidth: '400px' }}>
+            Please wait while we upload your videos and thumbnails. You can continue once the upload is complete.
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  if (!videos?.length) {
+    return (
+      <>
+        <p className="creation-step-question">
+          Upload short clips that capture the energy of your live show.
+        </p>
+        <button type="button" className="creation-hero-upload track" onClick={onPrimaryUploadClick}>
+          <FilmIcon />
+          <span>Upload Video</span>
+          <small>MP4, MOV or WEBM up to 200MB</small>
+        </button>
+        <div className="link-entries-container">
+          <div className="link-entry-container youtube">
+            <YoutubeIcon />
+            <input 
+              type="text" 
+              placeholder="Youtube URL"
+              value={youtubeUrl}
+              onChange={(e) => onYoutubeUrlChange?.(e.target.value)}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <p className="creation-step-question">Upload or link two standout videos.</p>
-      <ul className="creation-tip-list">
-        <li>Short clips (under 60s) keep venues engaged.</li>
-        <li>Use Vimeo, YouTube or direct MP4 links.</li>
-        <li>You can reorder media later.</li>
-      </ul>
+      <p className="creation-step-question">Give venues a feel for your live presence.</p>
+      <div className="tracks-list videos">
+        {videos.map((video, index) => {
+          const thumbnailSrc = video.thumbnailUploadedUrl || video.thumbnailPreviewUrl || null;
+          const statusMessage = video.isThumbnailGenerating
+            ? "Generating thumbnail..."
+            : video.thumbnailGenerationError || null;
+          return (
+            <div className="track-preview-card" key={video.id}>
+              <div className="track-cover-button video" aria-label="Video thumbnail">
+                {thumbnailSrc ? (
+                  <img src={thumbnailSrc} alt={`${video.title} thumbnail`} />
+                ) : (
+                  <div className="track-thumbnail-placeholder">
+                    <LoadingSpinner />
+                  </div>
+                )}
+                <div className="video-play-icon">
+                  <PlayIcon />
+                </div>
+              </div>
+              <div className="track-meta">
+                <div className="track-name-input-container">
+                  <input
+                    type="text"
+                    value={video.title}
+                    onChange={(e) => onVideoTitleChange(video.id, e.target.value)}
+                    placeholder="Video title"
+                  />
+                  <EditIcon />
+                </div>
+                <p>{artistName || "Your Artist Name"}</p>
+                {statusMessage && (
+                  <p className={`video-thumbnail-status ${video.thumbnailGenerationError ? "error" : ""}`}>
+                    {statusMessage}
+                  </p>
+                )}
+              </div>
+              <div className="track-actions">
+                <div className="track-reorder-buttons">
+                  <button
+                    type="button"
+                    onClick={() => onVideoMove(video.id, "up")}
+                    disabled={disableReorder || index === 0}
+                    aria-label="Move video up"
+                  >
+                    <UpArrowIcon />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onVideoMove(video.id, "down")}
+                    disabled={disableReorder || index === videos.length - 1}
+                    aria-label="Move video down"
+                  >
+                    <DownArrowIcon />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="btn danger small"
+                  onClick={() => onVideoRemove(video.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <button type="button" className="add-track-button" onClick={onPrimaryUploadClick}>
+        <FilmIcon /> Add Another Video
+      </button>
+      <div className="link-entries-container">
+        <div className="link-entry-container youtube">
+          <YoutubeIcon />
+          <input 
+            type="text" 
+            placeholder="Youtube URL" 
+            value={youtubeUrl}
+            onChange={(e) => onYoutubeUrlChange?.(e.target.value)}
+          />
+        </div>
+      </div>
     </>
   );
 }

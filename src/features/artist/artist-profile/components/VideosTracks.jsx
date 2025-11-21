@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FilmIcon, PlayIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon } from '../../../shared/ui/extras/Icons';
+import { FilmIcon, PlayIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon, YoutubeIcon } from '../../../shared/ui/extras/Icons';
 
 /**
  * VideosTracks Component
@@ -28,7 +28,7 @@ const handleLinkClick = (e, url) => {
   }
 };
 
-export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, spotifyUrl = "", soundcloudUrl = "" }) => {
+export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, spotifyUrl = "", soundcloudUrl = "", youtubeUrl = "" }) => {
   // Determine initial active section: use defaultActiveSection if provided,
   // otherwise default to 'tracks' if there are tracks but no videos,
   // otherwise default to 'videos'
@@ -91,8 +91,6 @@ export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, s
   // Hide videos section if there are no videos
   const hasVideos = videos.length > 0;
 
-  console.log('tracks', tracks);
-  
   return (
     <div ref={containerRef} className="videos-tracks-inner">
       {/* Videos Section */}
@@ -102,10 +100,24 @@ export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, s
           className={`videos-section ${activeSection === 'videos' ? 'active' : 'inactive'}`}
         >
           {activeSection === 'videos' ? (
-            <div 
-              className="section-header"           >
-              <FilmIcon />
-              <h3>Videos</h3>
+            <div className="section-header">
+              <div className="title">
+                <FilmIcon />
+                <h3>Videos</h3>
+              </div>
+              <div className="external-links">
+                {youtubeUrl && (
+                  <a
+                    href={youtubeUrl}
+                    onClick={(e) => handleLinkClick(e, youtubeUrl)}
+                    className="external-link youtube"
+                    aria-label="Open YouTube channel"
+                  >
+                    <YoutubeIcon />
+                    YouTube
+                  </a>
+                )}
+              </div>
             </div>
           ) : (
             <div 
