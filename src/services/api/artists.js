@@ -16,4 +16,7 @@ export function markInviteAsViewed({ gigId, applicantId }) {
   return post('/artists/markInviteAsViewed', { body: { gigId, applicantId } });
 }
 
+export function createArtistInvite({ artistProfileId, email, permissionsInput, invitedByName, ttlDays = 7 }) {
+  return post('/artists/createArtistInvite', { body: { artistProfileId, email, permissionsInput, invitedByName, ttlDays } });
+}
 

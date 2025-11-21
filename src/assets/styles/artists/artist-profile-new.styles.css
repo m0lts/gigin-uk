@@ -238,10 +238,15 @@
 .videos-tracks-card-container {
   opacity: 0;
   max-height: 0;
+  padding: 0;
   overflow: hidden;
   transform: translateY(-12px);
   pointer-events: none;
-  transition: opacity 350ms ease, max-height 350ms ease, transform 350ms ease;
+  transition: opacity 350ms ease, max-height 350ms ease, transform 350ms ease, padding 350ms ease;
+}
+
+.bio-card-container {
+  margin-bottom: 0.5rem;
 }
 
 .bio-card-container.is-visible,
@@ -250,6 +255,10 @@
   max-height: 2500px;
   transform: translateY(0);
   pointer-events: auto;
+}
+
+.bio-card-container.is-visible {
+  padding: 1rem;
 }
 
 .bio-card-container.is-hidden,
@@ -741,6 +750,10 @@
   gap: 0.5rem;
 }
 
+.artist-profile-creation-box .creation-step-question {
+  margin-bottom: 0.5rem;
+}
+
 .artist-profile-creation-box .creation-progress-dots {
   display: flex;
   gap: 0.4rem;
@@ -777,7 +790,7 @@
   display: none;
 }
 
-.artist-profile-creation-box .creation-box-actions .creation-back-btn {
+.artist-profile-creation-box .creation-back-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -787,24 +800,26 @@
   transition: color 200ms ease;
 }
 
-.dark-mode .artist-profile-creation-box .creation-box-actions .creation-back-btn {
+.dark-mode .artist-profile-creation-box .creation-back-btn {
   color: var(--gn-white);
 }
 
-.artist-profile-creation-box .creation-box-actions .creation-back-btn:hover {
+.artist-profile-creation-box .creation-back-btn:hover {
   color: var(--gn-grey-600);
+  background-color: transparent;
 }
 
-.dark-mode .artist-profile-creation-box .creation-box-actions .creation-back-btn:hover {
+.dark-mode .artist-profile-creation-box .creation-back-btn:hover {
   color: var(--gn-grey-400);
+  background-color: transparent;
 }
 
-.artist-profile-creation-box .creation-box-actions .creation-back-btn:disabled {
+.artist-profile-creation-box .creation-back-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
-.artist-profile-creation-box .creation-box-actions .creation-back-btn:disabled:hover {
+.artist-profile-creation-box .creation-back-btn:disabled:hover {
   color: var(--gn-grey-400);
 }
 
@@ -848,11 +863,6 @@
 
 .artist-profile-creation-box .creation-step-panel.enter:not(.animating) {
   animation: none;
-}
-
-.artist-profile-creation-box .creation-step-question {
-  margin-top: 0.5rem;
-  margin-bottom: 1rem;
 }
 
 .artist-profile-creation-box .creation-hero-upload {
@@ -1561,6 +1571,65 @@
   line-height: 1.4;
 }
 
+.artist-profile-creation-box .additional-info-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .additional-info-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem;
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 1rem;
+  cursor: pointer;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.artist-profile-creation-box .additional-info-option:hover {
+  border-color: var(--gn-black);
+  outline: 1px solid var(--gn-black);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+.artist-profile-creation-box .additional-info-option .option-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.artist-profile-creation-box .additional-info-option:hover .option-content {
+  transform: translateX(2px);
+}
+
+.artist-profile-creation-box .additional-info-option .option-content .icon {
+  font-size: 1.25rem;
+}
+
+.artist-profile-creation-box .additional-info-option h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-creation-box .additional-info-option p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gn-grey-600);
+}
+
+
 @keyframes creation-step-slide-in-right {
   from {
     opacity: 0;
@@ -1686,6 +1755,28 @@
   color: var(--gn-grey-200);
 }
 
+.dark-mode .artist-profile-creation-box .additional-info-option {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option:hover {
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option h4 {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option p {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option .icon {
+  color: var(--gn-white);
+}
+
 .dark-mode .artist-profile-creation-box .creation-field-hint {
   color: var(--gn-grey-400);
 }
@@ -1711,6 +1802,226 @@
 .toggle-button:hover {
   background: var(--gn-grey-100);
   border-color: var(--gn-orange);
+}
+
+/* Selection Cards for About Step */
+.artist-profile-creation-box .selection-container {
+  margin-top: 1.5rem;
+}
+
+.artist-profile-creation-box .selection-container .label,
+.artist-profile-creation-box .selection-container h6.label {
+  text-transform: uppercase;
+  color: var(--gn-grey-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.artist-profile-creation-box .selections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.artist-profile-creation-box .selection-card {
+  border: 1px solid var(--gn-grey-400);
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  transition: outline-color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+  background: var(--gn-white);
+}
+
+.artist-profile-creation-box .selection-card:hover {
+  border-color: var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-creation-box .selection-card.selected {
+  border-color: var(--gn-off-black);
+  outline-color: var(--gn-off-black);
+  background: var(--gn-off-black);
+  color: var(--gn-white);
+}
+
+.artist-profile-creation-box .selection-card h4.text {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.artist-profile-creation-box .input-container {
+  margin-top: 1.5rem;
+}
+
+.artist-profile-creation-box .input-container .label {
+  text-transform: uppercase;
+  color: var(--gn-grey-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.artist-profile-creation-box .input-container .input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 0.5rem;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  font-size: 1rem;
+  transition: border-color 200ms ease, outline-color 200ms ease;
+  font-family: inherit;
+}
+
+.artist-profile-creation-box .input-container .input:focus {
+  outline: 1px solid var(--gn-off-black);
+  border-color: var(--gn-off-black);
+}
+
+.artist-profile-creation-box .input-container select.input {
+  cursor: pointer;
+  background-color: var(--gn-white);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 12px;
+  padding-right: 2.5rem;
+}
+
+.dark-mode .artist-profile-creation-box .input-container select.input {
+  background-color: var(--gn-black);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+
+/* Dark mode for selection cards */
+.dark-mode .artist-profile-creation-box .selection-container .label,
+.dark-mode .artist-profile-creation-box .selection-container h6.label {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .selection-card {
+  border-color: var(--gn-grey-700);
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .selection-card:hover {
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .selection-card.selected {
+  border-color: var(--gn-white);
+  outline-color: var(--gn-white);
+  background: var(--gn-white);
+  color: var(--gn-black);
+}
+
+.dark-mode .artist-profile-creation-box .input-container .label {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .input-container .input {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .input-container .input:focus {
+  outline-color: var(--gn-white);
+  border-color: var(--gn-white);
+}
+
+/* Members Step Styles */
+.members-step-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.members-permissions-section,
+.members-email-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.members-step-container .section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.permission-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.permission-checkbox input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--gn-black);
+}
+
+.permission-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.permission-checkbox span {
+  font-size: 0.9rem;
+  color: var(--gn-off-black);
+  user-select: none;
+}
+
+.email-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.email-input-container .input {
+  flex: 1;
+}
+
+.email-input-container .send-button {
+  white-space: nowrap;
+  min-width: auto;
+}
+
+/* Dark mode for Members Step */
+.dark-mode .members-step-container .section-title {
+  color: var(--gn-white);
+}
+
+.dark-mode .permission-checkbox {
+  color: var(--gn-white);
+}
+
+.dark-mode .permission-checkbox:hover {
+  background-color: var(--gn-grey-800);
+}
+
+.dark-mode .permission-checkbox span {
+  color: var(--gn-white);
+}
+
+.dark-mode .permission-checkbox input[type="checkbox"] {
+  accent-color: var(--gn-white);
 }
 
 /* Responsive Design */

@@ -43,7 +43,7 @@ export const generateArtistProfileId = () => uuidv4();
  * @param {Object} [params.initialData={}] - Optional overrides for the default payload.
  * @returns {Promise<string>} - The profile ID that was written.
  */
-export const createArtistProfileDocument = async ({ profileId, userId, initialData = {}, darkMode = false }) => {
+export const createArtistProfileDocument = async ({ profileId, userId, initialData = {}, darkMode = false, userData = null }) => {
   if (!profileId) throw new Error('[createArtistProfileDocument] profileId is required');
   if (!userId) throw new Error('[createArtistProfileDocument] userId is required');
 
@@ -58,13 +58,11 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
     bio: '',
     location: null,
     genres: [],
-    socials: [],
     videos: [],
     tracks: [],
     heroMedia: null,
     heroBrightness: 100,
     heroPositionY: 50,
-    avatar: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -72,6 +70,28 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
   const payload = { ...defaultData, ...initialData };
   const docRef = doc(firestore, 'artistProfiles', profileId);
   await setDoc(docRef, payload, { merge: false });
+
+  // Initialize members sub-collection with creator as owner
+  const memberRef = doc(firestore, 'artistProfiles', profileId, 'members', userId);
+  const ownerPermissions = {
+    'profile.viewer': true,
+    'profile.edit': true,
+    'gigs.book': true,
+    'finances.edit': true,
+  };
+  
+  await setDoc(memberRef, {
+    status: 'active',
+    role: 'owner',
+    permissions: ownerPermissions,
+    addedBy: userId,
+    userId: userId,
+    userName: userData?.name || null,
+    userEmail: userData?.email || null,
+    createdAt: now,
+    updatedAt: now,
+  }, { merge: false });
+
   return profileId;
 };
 

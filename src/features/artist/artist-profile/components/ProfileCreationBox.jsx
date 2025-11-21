@@ -1,8 +1,59 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon, FilmIcon, PlayIcon, YoutubeIcon } from "../../../shared/ui/extras/Icons";
+import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon, FilmIcon, PlayIcon, YoutubeIcon, TechRiderIcon, AddMember, MoreInformationIcon, TickIcon } from "../../../shared/ui/extras/Icons";
 import { LoadingSpinner } from "../../../shared/ui/loading/Loading";
+import { updateArtistProfileDocument } from "@services/client-side/artists";
+import { toast } from 'sonner';
+import { useAuth } from '@hooks/useAuth';
+import { ARTIST_PERM_KEYS, ARTIST_PERMS_DISPLAY, ARTIST_PERM_DEFAULTS, sanitizeArtistPermissions } from "@services/utils/permissions";
+import { createArtistInvite } from "@services/api/artists";
 
-export const CREATION_STEP_ORDER = ["hero-image", "stage-name", "bio", "tracks", "videos", "ready"];
+// Genres for About step
+const genres = {
+  'Musician/Band': [
+    'Rock', 'Pop', 'Jazz', 'Classical', 'Hip Hop', 'Country', 'Blues', 'Reggae', 'Folk', 'Metal', 'R&B', 'Latin', 'World', 'Electronic'
+  ],
+  'DJ': [
+    'EDM', 'House', 'Techno', 'Trance', 'Drum and Bass', 'Dubstep', 'Trap', 'Hip Hop', 'R&B', 'Pop', 'Reggae', 'Latin', 'World', 'Ambient', 'Experimental', 'Funk'
+  ]
+};
+
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+
+const UK_CITIES = [
+  'Aberdeen', 'Ayr', 'Bath', 'Belfast', 'Birmingham', 'Blackburn', 'Blackpool', 'Bolton', 'Bournemouth', 'Bradford',
+  'Brighton', 'Bristol', 'Burnley', 'Cambridge', 'Canterbury', 'Cardiff', 'Carlisle', 'Chester', 'Coventry', 'Derby',
+  'Dumfries', 'Dundee', 'Durham', 'Edinburgh', 'Ely', 'Exeter', 'Falkirk', 'Glasgow', 'Gloucester', 'Greenock',
+  'Hereford', 'Inverness', 'Ipswich', 'Kilmarnock', 'Kingston upon Hull', 'Lancaster', 'Leeds', 'Leicester', 'Lincoln',
+  'Liverpool', 'Livingston', 'London', 'Luton', 'Manchester', 'Middlesbrough', 'Newcastle upon Tyne', 'Northampton',
+  'Norwich', 'Nottingham', 'Oxford', 'Paisley', 'Perth', 'Peterborough', 'Portsmouth', 'Preston', 'Reading', 'Sheffield',
+  'Slough', 'Southampton', 'Southend-on-Sea', 'Stirling', 'Stoke-on-Trent', 'Swindon', 'Truro', 'Wolverhampton',
+  'Worcester', 'York'
+];
+
+async function geocodeCity(city) {
+  if (!city || city.trim().length < 2) return null;
+  try {
+    const url = new URL(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(city)}.json`);
+    url.searchParams.set('access_token', MAPBOX_TOKEN);
+    url.searchParams.set('types', 'place');
+    url.searchParams.set('limit', '1');
+    url.searchParams.set('country', 'gb'); // Limit to UK
+    
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error(`Geocode failed: ${res.status}`);
+    const data = await res.json();
+    const match = data.features?.[0];
+    if (!match) return null;
+    const [lng, lat] = match.center || [];
+    const canonicalCity = match.text || city;
+    return { city: canonicalCity, coordinates: [lng, lat] };
+  } catch (e) {
+    console.warn('Mapbox geocode error:', e);
+    return null;
+  }
+}
+
+export const CREATION_STEP_ORDER = ["hero-image", "stage-name", "bio", "videos", "tracks", "additional-info", "about", "members", "tech-rider"];
 
 const DEFAULT_STEP = CREATION_STEP_ORDER[0];
 const STAGE_NAME_FONT_MAX = 40;
@@ -123,6 +174,11 @@ export const ProfileCreationBox = ({
   initialVideos = [],
   videosUploadStatus = 'idle',
   videosUploadProgress = 0,
+  creationProfileId = null,
+  aboutComplete = false,
+  onAboutCompleteChange,
+  profileData = null,
+  onSaveAndExit = null,
 }) => {
   const [artistName, setArtistName] = useState(initialArtistName);
   const [heroImage, setHeroImage] = useState(null);
@@ -402,13 +458,15 @@ export const ProfileCreationBox = ({
     if (onTracksChange) {
       onTracksChange(tracks);
     }
-  }, [tracks, onTracksChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracks]); // Only depend on tracks, not onTracksChange to avoid infinite loops
 
   useEffect(() => {
     if (onVideosChange) {
       onVideosChange(videos);
     }
-  }, [videos, onVideosChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videos]); // Only depend on videos, not onVideosChange to avoid infinite loops
 
   const goToStep = (stepId) => {
     if (!CREATION_STEP_ORDER.includes(stepId)) return;
@@ -433,6 +491,12 @@ export const ProfileCreationBox = ({
       return;
     }
     if (displayedStep === "videos" && !videoStepReady) {
+      return;
+    }
+
+    if (displayedStep === "additional-info") {
+      // Handle save and exit for additional-info step
+      onSaveAndExit?.();
       return;
     }
 
@@ -733,10 +797,30 @@ export const ProfileCreationBox = ({
             videosUploadProgress={videosUploadProgress}
           />
         );
-      case "ready":
-        return <ReviewStep artistName={artistName} />;
-      default:
-        return <PlaceholderStep />;
+      case "additional-info":
+        return <AdditionalInfoStep onOptionClick={goToStep} aboutComplete={aboutComplete} profileData={profileData} />;
+      case "about":
+        return (
+          <AboutStep
+            onBackToAdditionalInfo={() => goToStep("additional-info")}
+            creationProfileId={creationProfileId}
+            onAboutCompleteChange={onAboutCompleteChange}
+          />
+        );
+      case "members":
+        return (
+          <MembersStep
+            onBackToAdditionalInfo={() => goToStep("additional-info")}
+            creationProfileId={creationProfileId}
+          />
+        );
+      case "tech-rider":
+        return (
+          <TechRiderStep
+            onBackToAdditionalInfo={() => goToStep("additional-info")}
+            creationProfileId={creationProfileId}
+          />
+        );
     }
   };
 
@@ -747,20 +831,31 @@ export const ProfileCreationBox = ({
     .filter(Boolean)
     .join(" ");
 
-  const renderProgressDots = () => (
-    <div className="creation-progress-dots">
-      {CREATION_STEP_ORDER.map((stepId, index) => {
-        const completed = index < currentStepIndex;
-        const active = index === currentStepIndex;
-        return (
-          <span
-            key={stepId}
-            className={`progress-dot ${completed ? "filled" : ""} ${active ? "active" : ""}`}
-          />
-        );
-      })}
-    </div>
-  );
+  const renderProgressDots = () => {
+    // Show only 5 progress dots (first 5 steps)
+    const stepsToShow = CREATION_STEP_ORDER.slice(0, 5);
+    // Map additional-info step to the 5th dot
+    const getDotIndex = (stepIndex) => {
+      if (stepIndex >= 5) return 4; // additional-info maps to 5th dot (index 4)
+      return stepIndex;
+    };
+    const activeDotIndex = getDotIndex(currentStepIndex);
+    
+    return (
+      <div className="creation-progress-dots">
+        {stepsToShow.map((stepId, index) => {
+          const completed = index < activeDotIndex;
+          const active = index === activeDotIndex;
+          return (
+            <span
+              key={stepId}
+              className={`progress-dot ${completed ? "filled" : ""} ${active ? "active" : ""}`}
+            />
+          );
+        })}
+      </div>
+    );
+  };
 
   const actionsClassName = [
     "creation-box-actions",
@@ -847,45 +942,57 @@ export const ProfileCreationBox = ({
         onChange={handleTrackCoverFileChange}
       />
 
-      <div className={actionsClassName}>
-        {isCreating ? (
-          <>
-            <button
-              className="btn tertiary creation-back-btn"
-              type="button"
-              onClick={handleBack}
-              disabled={currentStepIndex === 0}
-            >
-              <LeftArrowIcon />
-              Back
-            </button>
-            <button
-              className="btn artist-profile"
-              type="button"
-              onClick={handleAdvance}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <LoadingSpinner width={15} height={15} marginTop={0} marginBottom={0} color="white" />
-              ) : (
+      {displayedStep !== "about" && displayedStep !== "members" && displayedStep !== "tech-rider" && (
+        <div className={actionsClassName}>
+          {isCreating ? (
+            <>
+              <button
+                className="btn tertiary creation-back-btn"
+                type="button"
+                onClick={handleBack}
+                disabled={currentStepIndex === 0}
+              >
+                <LeftArrowIcon />
+                Back
+              </button>
+              <button
+                className="btn artist-profile"
+                type="button"
+                onClick={handleAdvance}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <LoadingSpinner width={15} height={15} marginTop={0} marginBottom={0} color="white" />
+                ) : (
+                  displayedStep === "additional-info" ? (
+                    <>
+                      Save
+                    </>
+                  ) : isFinalStep ? (
+                    <>
+                      Save
+                    </>
+                  ) : (
+                    <>
+                      Next <RightArrowIcon />
+                    </>
+                  )
+                )}
+              </button>
+            </>
+          ) : (
+            <button className="btn artist-profile" onClick={handleAdvance} disabled={isLoading}>
+              {!isLoading ? (
                 <>
-                  {isFinalStep ? "Finish Profile" : "Next"} <RightArrowIcon />
+                  Create Your Artist Profile <RightArrowIcon />
                 </>
+              ) : (
+                <LoadingSpinner width={15} height={15} marginTop={0} marginBottom={0} color="white" />
               )}
             </button>
-          </>
-        ) : (
-          <button className="btn artist-profile" onClick={handleAdvance} disabled={isLoading}>
-            {!isLoading ? (
-              <>
-                Create Your Artist Profile <RightArrowIcon />
-              </>
-            ) : (
-              <LoadingSpinner width={15} height={15} marginTop={0} marginBottom={0} color="white" />
-            )}
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       </div>
     </div>
   );
@@ -1339,22 +1446,470 @@ function VideosStep({
   );
 }
 
-function ReviewStep({ artistName }) {
+function AdditionalInfoStep({ onOptionClick, aboutComplete = false, profileData = null }) {
+  // Check if all about fields are filled
+  const hasAllAboutFields = profileData && 
+    profileData.artistType && 
+    profileData.genres && 
+    Array.isArray(profileData.genres) && 
+    profileData.genres.length > 0 &&
+    profileData.location && 
+    profileData.location.city && 
+    profileData.location.coordinates && 
+    Array.isArray(profileData.location.coordinates) && 
+    profileData.location.coordinates.length > 0;
+  
+  const shouldHideAboutButton = hasAllAboutFields;
   return (
     <>
-      <p className="creation-step-question">Nice! Give everything a quick review before publishing.</p>
-      <div className="creation-summary">
-        <p><strong>Artist name:</strong> {artistName || "Not set yet"}</p>
-        <p><strong>Media:</strong> Add videos & tracks next.</p>
+      <p className="creation-step-question">
+        Add optional information to help venues get to know you better.
+      </p>
+      <div className="additional-info-options">
+        <button
+          type="button"
+          className="additional-info-option"
+          onClick={() => onOptionClick("tech-rider")}
+        >
+          <div className="option-content">
+            <TechRiderIcon />
+            <div className="option-content-text">
+              <h4>Tech Rider</h4>
+              <p>Share your technical requirements.</p>
+            </div>
+          </div>
+          <RightArrowIcon />
+        </button>
+        <button
+          type="button"
+          className="additional-info-option"
+          onClick={() => onOptionClick("members")}
+        >
+          <div className="option-content">
+            <AddMember />
+            <div className="option-content-text">
+              <h4>Members</h4>
+              <p>Add band members and their roles.</p>
+            </div>
+          </div>
+          <RightArrowIcon />
+        </button>
+        {!shouldHideAboutButton && (
+          <button
+            type="button"
+            className="additional-info-option"
+            onClick={() => onOptionClick("about")}
+          >
+            <div className="option-content">
+              <MoreInformationIcon />
+              <div className="option-content-text">
+                <h4>About</h4>
+                <p>Tell venues more about your story</p>
+              </div>
+            </div>
+            {aboutComplete ? <TickIcon /> : <RightArrowIcon />}
+          </button>
+        )}
       </div>
     </>
   );
 }
 
-function PlaceholderStep() {
+function AboutStep({ onBackToAdditionalInfo, creationProfileId, onAboutCompleteChange }) {
+  const [subStep, setSubStep] = useState(1);
+  const [artistType, setArtistType] = useState('');
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [city, setCity] = useState('');
+  const [cityCoordinates, setCityCoordinates] = useState(null);
+  const [travelDistance, setTravelDistance] = useState('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleArtistTypeSelect = (type) => {
+    setArtistType(type);
+    setSelectedGenres([]); // Reset genres when type changes
+    setTimeout(() => setSubStep(2), 300); // Small delay for smooth transition
+  };
+
+  const handleGenreToggle = (genre) => {
+    setSelectedGenres(prev => 
+      prev.includes(genre) 
+        ? prev.filter(g => g !== genre)
+        : [...prev, genre]
+    );
+  };
+
+  const handleCityChange = async (value) => {
+    if (!value) {
+      setCity('');
+      setCityCoordinates(null);
+      return;
+    }
+    
+    setCity(value);
+    setIsGeocoding(true);
+    
+    try {
+      const result = await geocodeCity(value);
+      if (result) {
+        setCity(result.city);
+        setCityCoordinates(result.coordinates);
+      } else {
+        setCityCoordinates(null);
+      }
+    } catch (error) {
+      console.error('Failed to geocode city:', error);
+      setCityCoordinates(null);
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const handleTravelDistanceSelect = (distance) => {
+    setTravelDistance(distance);
+  };
+
+  const handleNext = () => {
+    if (subStep === 1 && artistType) {
+      setSubStep(2);
+    } else if (subStep === 2 && selectedGenres.length > 0) {
+      setSubStep(3);
+    }
+  };
+
+  const handleSubStepBack = () => {
+    if (subStep === 1) {
+      onBackToAdditionalInfo?.();
+    } else {
+      setSubStep(subStep - 1);
+    }
+  };
+
+  const canAdvance = () => {
+    if (subStep === 1) return !!artistType;
+    if (subStep === 2) return selectedGenres.length > 0;
+    if (subStep === 3) return !!city && !!travelDistance;
+    return false;
+  };
+
+  const handleSave = async () => {
+    if (!canAdvance() || !creationProfileId || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      const updates = {
+        artistType: artistType || null,
+        genres: selectedGenres,
+        location: city && cityCoordinates ? {
+          city,
+          coordinates: cityCoordinates,
+          travelDistance: travelDistance || null,
+        } : null,
+      };
+
+      await updateArtistProfileDocument(creationProfileId, updates);
+      onAboutCompleteChange?.(true);
+      onBackToAdditionalInfo();
+    } catch (error) {
+      console.error('Failed to save about information:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className="creation-placeholder-card">
-      This step is on its way. Sit tight!
+    <>
+      {/* Step 1: Musician/Band or DJ */}
+      {subStep === 1 && (
+        <>
+          <p className="creation-step-question">What type of performer are you?</p>
+          <div className="selection-container">
+            <div className="selections">
+              <div 
+                className={`selection-card ${artistType === 'Musician/Band' ? 'selected' : ''}`}
+                onClick={() => handleArtistTypeSelect('Musician/Band')}
+              >
+                <h4 className='text'>Musician/Band</h4>
+              </div>
+              <div 
+                className={`selection-card ${artistType === 'DJ' ? 'selected' : ''}`}
+                onClick={() => handleArtistTypeSelect('DJ')}
+              >
+                <h4 className='text'>DJ</h4>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Step 2: Genres */}
+      {subStep === 2 && (
+        <>
+          <p className="creation-step-question">What genres do you play?</p>
+          <div className="selection-container">
+            <div className="selections">
+              {genres[artistType || 'Musician/Band'].map((genre) => (
+                <div
+                  key={genre}
+                  className={`selection-card ${selectedGenres.includes(genre) ? 'selected' : ''}`}
+                  onClick={() => handleGenreToggle(genre)}
+                >
+                  {genre}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Step 3: Location */}
+      {subStep === 3 && (
+        <>
+          <p className="creation-step-question">Where are you based?</p>
+          <div className="input-container">
+            <label htmlFor="location" className='label'>City</label>
+            <select
+              className='input'
+              id="location"
+              value={city}
+              onChange={(e) => handleCityChange(e.target.value)}
+            >
+              <option value="">Select a city</option>
+              {UK_CITIES.map((cityName) => (
+                <option key={cityName} value={cityName}>
+                  {cityName}
+                </option>
+              ))}
+            </select>
+            {isGeocoding && <p style={{ fontSize: '0.85rem', color: 'var(--gn-grey-500)', marginTop: '0.5rem' }}>Finding your location...</p>}
+          </div>
+          <div className="selection-container">
+            <h6 className='label'>How far are you willing to travel?</h6>
+            <div className="selections">
+              {['5 miles', '25 miles', '50 miles', '100 miles', 'Nationwide'].map((distance) => (
+                <div
+                  key={distance}
+                  className={`selection-card ${travelDistance === distance ? 'selected' : ''}`}
+                  onClick={() => handleTravelDistanceSelect(distance)}
+                >
+                  <h4 className='text'>{distance}</h4>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+       {/* Navigation buttons for sub-steps */}
+       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>
+        <button
+          type="button"
+          className="btn tertiary creation-back-btn"
+          onClick={handleSubStepBack}
+        >
+          <LeftArrowIcon />
+          Back
+        </button>
+        {subStep === 3 && (
+          <button
+            type="button"
+            className="btn artist-profile"
+            onClick={handleSave}
+            disabled={!canAdvance() || isSaving}
+          >
+            {isSaving ? (
+              <LoadingSpinner width={15} height={15} marginTop={0} marginBottom={0} color="white" />
+            ) : (
+              'Save'
+            )}
+          </button>
+        )}
+        {subStep < 3 && (
+          <button
+            type="button"
+            className="btn artist-profile"
+            onClick={handleNext}
+            disabled={!canAdvance()}
+          >
+            Next <RightArrowIcon />
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+function MembersStep({ onBackToAdditionalInfo, creationProfileId }) {
+  const { user } = useAuth();
+  const [permissions, setPermissions] = useState({ ...ARTIST_PERM_DEFAULTS });
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handlePermissionToggle = (permissionKey) => {
+    // profile.viewer can't be unselected
+    if (permissionKey === 'profile.viewer') return;
+    
+    setPermissions(prev => ({
+      ...prev,
+      [permissionKey]: !prev[permissionKey],
+    }));
+  };
+
+  const handleSend = async () => {
+    const trimmedEmail = email.trim();
+    
+    if (!trimmedEmail) return;
+
+    // Validate email format
+    if (!validateEmail(trimmedEmail)) {
+      toast.error('Please enter a valid email address');
+      setEmail('');
+      return;
+    }
+
+    // Check if email matches current user's email
+    if (user?.email && trimmedEmail.toLowerCase() === user.email.toLowerCase()) {
+      toast.error('You cannot invite yourself');
+      setEmail('');
+      return;
+    }
+
+    if (!creationProfileId) {
+      toast.error('Profile ID is missing');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Sanitize permissions before sending
+      const sanitizedPermissions = sanitizeArtistPermissions(permissions);
+      
+      // Create the invite via backend
+      const invite = await createArtistInvite({
+        artistProfileId: creationProfileId,
+        email: trimmedEmail,
+        permissionsInput: sanitizedPermissions,
+        invitedByName: user?.name || null,
+      });
+      
+      const inviteId = invite?.inviteId || null;
+      if (!inviteId) {
+        toast.error("Failed to create invite");
+        return;
+      }
+
+      // Generate invite link
+      const link = `${window.location.origin}/join-artist?invite=${inviteId}`;
+      
+      // TODO: Implement sendArtistInviteEmail function similar to sendVenueInviteEmail
+      // For now, just show success
+      toast.success(`Invitation sent to ${trimmedEmail}`);
+      
+      // Reset permissions to default and clear email
+      setPermissions({ ...ARTIST_PERM_DEFAULTS });
+      setEmail('');
+    } catch (error) {
+      console.error('Error sending invite:', error);
+      toast.error('Failed to send invite. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <p className="creation-step-question">
+        Invite band members and assign permissions.
+      </p>
+      <div className="members-step-container">
+        <div className="members-permissions-section">
+          <h4 className="section-title">Permissions</h4>
+          <div className="permissions-list">
+            {ARTIST_PERM_KEYS.map((permissionKey) => (
+              <label key={permissionKey} className="permission-checkbox">
+                <input
+                  type="checkbox"
+                  checked={!!permissions[permissionKey]}
+                  onChange={() => handlePermissionToggle(permissionKey)}
+                  disabled={permissionKey === 'profile.viewer'}
+                />
+                <span>{ARTIST_PERMS_DISPLAY[permissionKey]}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="members-email-section">
+          <h4 className="section-title">Invite Member</h4>
+          <div className="email-input-container">
+            <input
+              type="email"
+              className="input"
+              placeholder="Enter email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleSend();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="btn artist-profile send-button"
+              onClick={handleSend}
+              disabled={!email.trim()}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>
+        <button
+          type="button"
+          className="btn tertiary creation-back-btn"
+          onClick={onBackToAdditionalInfo}
+        >
+          <LeftArrowIcon />
+          Back
+        </button>
+      </div>
+    </>
+  );
+}
+
+function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ flex: 1 }}>
+        <p className="creation-step-question">
+          Share your technical requirements with venues.
+        </p>
+        <div style={{ 
+          padding: '2rem', 
+          textAlign: 'center', 
+          color: 'var(--gn-grey-600)',
+          fontSize: '0.95rem'
+        }}>
+          <p>Tech Rider functionality coming soon...</p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 'auto', paddingTop: '1.5rem' }}>
+        <button
+          type="button"
+          className="btn tertiary creation-back-btn"
+          onClick={onBackToAdditionalInfo}
+        >
+          <LeftArrowIcon />
+          Back
+        </button>
+      </div>
     </div>
   );
 }

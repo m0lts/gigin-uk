@@ -30,11 +30,11 @@ const handleLinkClick = (e, url) => {
 
 export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, spotifyUrl = "", soundcloudUrl = "", youtubeUrl = "" }) => {
   // Determine initial active section: use defaultActiveSection if provided,
-  // otherwise default to 'tracks' if there are tracks but no videos,
+  // otherwise default to 'tracks' if there are tracks,
   // otherwise default to 'videos'
   const getInitialActiveSection = () => {
     if (defaultActiveSection) return defaultActiveSection;
-    if (tracks.length > 0 && videos.length === 0) return 'tracks';
+    if (tracks.length > 0) return 'tracks';
     return 'videos';
   };
   
@@ -55,7 +55,8 @@ export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, s
         // Account for the top offset (2rem = 32px) from CSS for active card position
         const topOffset = 32;
         // Account for margin-top (2rem = 32px) on .videos-tracks-inner
-        const marginTop = 24;
+        
+        const marginTop = 26;
         // Account for inactive header space (60px) that extends above
         const inactiveHeaderSpace = 0;
         
@@ -81,12 +82,26 @@ export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, s
     });
   }, [activeSection, videos, tracks]);
 
-  // Switch to tracks if videos section becomes empty and we're on videos
+  // Track previous tracks length to detect when tracks are added/removed
+  const prevTracksLengthRef = useRef(tracks.length);
+  
+  // Switch to tracks when tracks are first uploaded, switch back to videos when all tracks are removed
   useEffect(() => {
-    if (activeSection === 'videos' && videos.length === 0 && tracks.length > 0) {
+    const prevLength = prevTracksLengthRef.current;
+    const currentLength = tracks.length;
+    
+    // Only auto-switch to tracks when tracks go from 0 to > 0 (first track added)
+    if (prevLength === 0 && currentLength > 0) {
       setActiveSection('tracks');
+    } 
+    // Switch back to videos if tracks become empty and we're currently on tracks
+    else if (currentLength === 0 && activeSection === 'tracks') {
+      setActiveSection('videos');
     }
-  }, [activeSection, videos.length, tracks.length]);
+    
+    // Update the ref for next comparison
+    prevTracksLengthRef.current = currentLength;
+  }, [tracks.length, activeSection]);
 
   // Hide videos section if there are no videos
   const hasVideos = videos.length > 0;
@@ -182,13 +197,15 @@ export const VideosTracks = ({ videos = [], tracks = [], defaultActiveSection, s
             </div>
           </div>
         ) : (
-          <div 
-            className="section-header" 
-            onClick={() => setActiveSection('tracks')}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <h4>Show Tracks</h4>
-          </div>
+          tracks.length > 0 && (
+            <div 
+              className="section-header" 
+              onClick={() => setActiveSection('tracks')}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <h4>Show Tracks</h4>
+            </div>
+          )
         )}
         <div className="section-content">
           <div className="tracks-list">

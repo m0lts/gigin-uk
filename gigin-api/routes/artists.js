@@ -2,8 +2,9 @@
 import express from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
-import { db, FieldValue } from "../config/admin.js";
-import { assertVenuePerm } from "../utils/permissions.js";
+import { admin, db, FieldValue } from "../config/admin.js";
+import { v4 as uuidv4 } from "uuid";
+import { assertVenuePerm, assertArtistPerm, sanitizeArtistPermissions } from "../utils/permissions.js";
 
 const router = express.Router();
 
@@ -92,6 +93,53 @@ router.post("/markInviteAsViewed", requireAuth, asyncHandler(async (req, res) =>
   const updatedApplicants = applicants.map((a) => a?.id === applicantId ? { ...a, viewed: true } : a);
   await gigRef.update({ applicants: updatedApplicants });
   return res.json({ data: { success: true } });
+}));
+
+// POST /api/artists/createArtistInvite (auth)
+router.post("/createArtistInvite", requireAuth, asyncHandler(async (req, res) => {
+  const inviterUid = req.auth.uid;
+  const { artistProfileId, email, permissionsInput = {}, invitedByName = null, ttlDays = 7 } = req.body || {};
+  if (!artistProfileId || !email) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "artistProfileId and email required" });
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "email format invalid" });
+  }
+  await assertArtistPerm(db, inviterUid, artistProfileId, "profile.edit"); // Using profile.edit as permission to invite members
+
+  const nowMs = Date.now();
+  const existingQ = await db.collection("artistInvites")
+    .where("artistProfileId", "==", artistProfileId)
+    .where("email", "==", normalizedEmail)
+    .where("status", "==", "pending")
+    .limit(1)
+    .get();
+  
+  if (!existingQ.empty) {
+    const doc = existingQ.docs[0];
+    const d = doc.data() || {};
+    const exp = d.expiresAt?.toMillis?.() ? d.expiresAt.toMillis() : (d.expiresAt instanceof Date ? d.expiresAt.getTime() : 0);
+    if (exp > nowMs) {
+      return res.json({ data: { inviteId: doc.id, reused: true } });
+    }
+  }
+  
+  const safePermissions = sanitizeArtistPermissions(permissionsInput || {});
+  const boundedDays = Math.max(1, Math.min(30, Number(ttlDays) || 7));
+  const inviteId = uuidv4();
+  
+  const inviteDoc = {
+    inviteId,
+    artistProfileId,
+    invitedBy: inviterUid,
+    invitedByName: invitedByName || null,
+    email: normalizedEmail,
+    permissions: safePermissions,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: admin.firestore.Timestamp.fromMillis(nowMs + boundedDays * 24 * 60 * 60 * 1000),
+    status: "pending",
+  };
+  await db.collection("artistInvites").doc(inviteId).set(inviteDoc);
+  return res.json({ data: { inviteId, reused: false } });
 }));
 
 export default router;

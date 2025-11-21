@@ -7,6 +7,8 @@ import '@styles/artists/artist-profile-new.styles.css';
 import artistProfileBackground from '@assets/images/arctic-monkeys.jpeg';
 import { generateArtistProfileId, createArtistProfileDocument, updateArtistProfileDocument } from '@services/client-side/artists';
 import { uploadFileToStorage, uploadFileWithProgress, deleteStoragePath } from '@services/storage';
+import { getDownloadURL, ref } from 'firebase/storage';
+import { storage } from '@lib/firebase';
 import { updateUserArrayField } from '@services/api/users';
 import { toast } from 'sonner';
 import { NoImageIcon } from '@features/shared/ui/extras/Icons';
@@ -94,6 +96,7 @@ export const ArtistProfile = ({
   const [creationStep, setCreationStep] = useState(CREATION_STEP_ORDER[0]);
   const [creationHasHeroImage, setCreationHasHeroImage] = useState(false);
   const [creationProfileId, setCreationProfileId] = useState(null);
+  const [aboutComplete, setAboutComplete] = useState(false);
   const [creationHeroImage, setCreationHeroImage] = useState(null);
   const [creationHeroBrightness, setCreationHeroBrightness] = useState(BRIGHTNESS_DEFAULT);
   const [creationHeroPosition, setCreationHeroPosition] = useState(HERO_POSITION_DEFAULT);
@@ -438,13 +441,53 @@ export const ArtistProfile = ({
     }
 
     if (draftProfile.heroMedia?.url) {
-      setCreationHeroImage({
-        file: null,
-        previewUrl: draftProfile.heroMedia.url,
-        storagePath: draftProfile.heroMedia.storagePath || null,
-      });
-      setCreationHasHeroImage(true);
-      setBackgroundImage(draftProfile.heroMedia.url);
+      const heroUrl = draftProfile.heroMedia.url;
+      const heroStoragePath = draftProfile.heroMedia.storagePath || null;
+      
+      // If the URL is a blob URL, we need to get the actual URL from storage
+      let actualUrl = heroUrl;
+      if (heroUrl && heroUrl.startsWith('blob:') && heroStoragePath) {
+        // Get the actual download URL from storage
+        const storageRef = ref(storage, heroStoragePath);
+        getDownloadURL(storageRef)
+          .then((downloadUrl) => {
+            setCreationHeroImage({
+              file: null,
+              previewUrl: downloadUrl,
+              storagePath: heroStoragePath,
+              uploadedUrl: downloadUrl,
+            });
+            setCreationHasHeroImage(true);
+            setBackgroundImage(downloadUrl);
+            // Update Firestore with the correct URL (use draftProfile.id since creationProfileId might not be updated yet)
+            updateArtistProfileDocument(draftProfile.id, {
+              heroMedia: { url: downloadUrl, storagePath: heroStoragePath },
+            }).catch((error) => {
+              console.error('Failed to update hero media URL:', error);
+            });
+          })
+          .catch((error) => {
+            console.error('Failed to get download URL from storage:', error);
+            // Fallback to using the blob URL for preview (but it won't work on reload)
+            setCreationHeroImage({
+              file: null,
+              previewUrl: heroUrl,
+              storagePath: heroStoragePath,
+            });
+            setCreationHasHeroImage(true);
+            setBackgroundImage(heroUrl);
+          });
+      } else {
+        // Not a blob URL, use it directly
+        setCreationHeroImage({
+          file: null,
+          previewUrl: actualUrl,
+          storagePath: heroStoragePath,
+          uploadedUrl: actualUrl,
+        });
+        setCreationHasHeroImage(true);
+        setBackgroundImage(actualUrl);
+      }
       heroStoragePathRef.current = draftProfile.heroMedia.storagePath || null;
     } else {
       setCreationHeroImage(null);
@@ -579,6 +622,10 @@ export const ArtistProfile = ({
         profileId: newProfileId,
         userId: user.uid,
         darkMode: isDarkMode,
+        userData: {
+          name: user.name || null,
+          email: user.email || null,
+        },
       });
 
       setIsCreatingProfile(true);
@@ -1552,8 +1599,21 @@ export const ArtistProfile = ({
     setSavingDraft(true);
 
     try {
-      let heroUrl = creationHeroImage.previewUrl;
+      let heroUrl = creationHeroImage.uploadedUrl || creationHeroImage.previewUrl;
       let storagePath = creationHeroImage.storagePath;
+
+      // Check if heroUrl is a blob URL - if so, we need to get the actual URL from storage
+      if (heroUrl && heroUrl.startsWith('blob:')) {
+        if (storagePath) {
+          // Get the actual download URL from storage
+          const storageRef = ref(storage, storagePath);
+          heroUrl = await getDownloadURL(storageRef);
+        } else {
+          // If we have a blob URL but no storage path, we can't save it
+          console.error('Cannot save blob URL without storage path');
+          heroUrl = null;
+        }
+      }
 
       if (creationHeroImage.file) {
         const extension = creationHeroImage.file.name?.split('.').pop() || 'jpg';
@@ -1673,6 +1733,48 @@ export const ArtistProfile = ({
     }
   };
 
+  const handleSaveAndExitFromAdditionalInfo = async () => {
+    // Check for ongoing uploads - if media is still uploading, show modal
+    if (heroUploadStatus === 'uploading') {
+      toast.error('Please wait for hero image upload to complete');
+      return;
+    }
+
+    if (tracksUploadStatus === 'uploading') {
+      setShowTracksUploadModal(true);
+      return;
+    }
+
+    if (videoUploadStatus === 'uploading') {
+      setShowVideoUploadModal(true);
+      return;
+    }
+
+    // All uploads are complete - mark profile as complete
+    // Tracks/videos/hero are already saved by the async upload processes
+    setSavingDraft(true);
+
+    try {
+      // Only update the profile to mark it as complete
+      // All media and data has already been saved by the async upload processes
+      await updateArtistProfileDocument(creationProfileId, {
+        status: 'complete',
+        isComplete: true,
+      });
+      
+      toast.success('Profile completed!');
+      
+      // The useEffect at line 235 will automatically detect isComplete: true
+      // and transition to dashboard - no need to manually set state
+      setIsCreatingProfile(false);
+    } catch (error) {
+      console.error('Failed to complete profile:', error);
+      toast.error('Failed to complete your profile. Please try again.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
   // Render dashboard sub-views
   const renderDashboardView = () => {
     switch (dashboardView) {
@@ -1705,6 +1807,9 @@ export const ArtistProfile = ({
             onWebsiteUrlChange={handleWebsiteUrlChange}
             creationInstagramUrl={creationInstagramUrl}
             onInstagramUrlChange={handleInstagramUrlChange}
+            creationProfileId={creationProfileId}
+            aboutComplete={aboutComplete}
+            onAboutCompleteChange={setAboutComplete}
             creationSpotifyUrl={creationSpotifyUrl}
             onSpotifyUrlChange={handleSpotifyUrlChange}
             creationSoundcloudUrl={creationSoundcloudUrl}
@@ -1722,6 +1827,7 @@ export const ArtistProfile = ({
             videoUploadStatus={videoUploadStatus}
             videoUploadProgress={videoUploadProgress}
             scrollContainerRef={stateBoxRef}
+            onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
           />
         );
       case DashboardView.GIGS:
@@ -1769,6 +1875,7 @@ export const ArtistProfile = ({
             onWebsiteUrlChange={handleWebsiteUrlChange}
             creationInstagramUrl={creationInstagramUrl}
             onInstagramUrlChange={handleInstagramUrlChange}
+            creationProfileId={creationProfileId}
             creationSpotifyUrl={creationSpotifyUrl}
             onSpotifyUrlChange={handleSpotifyUrlChange}
             creationSoundcloudUrl={creationSoundcloudUrl}
@@ -1785,6 +1892,7 @@ export const ArtistProfile = ({
             tracksUploadProgress={tracksUploadProgress}
             videoUploadStatus={videoUploadStatus}
             videoUploadProgress={videoUploadProgress}
+            onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
           />
         );
       
@@ -1817,6 +1925,7 @@ export const ArtistProfile = ({
             onWebsiteUrlChange={handleWebsiteUrlChange}
             creationInstagramUrl={creationInstagramUrl}
             onInstagramUrlChange={handleInstagramUrlChange}
+            creationProfileId={creationProfileId}
             creationSpotifyUrl={creationSpotifyUrl}
             onSpotifyUrlChange={handleSpotifyUrlChange}
             creationSoundcloudUrl={creationSoundcloudUrl}
@@ -1834,6 +1943,7 @@ export const ArtistProfile = ({
             videoUploadStatus={videoUploadStatus}
             videoUploadProgress={videoUploadProgress}
             scrollContainerRef={stateBoxRef}
+            onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
           />
         );
       
@@ -1948,11 +2058,16 @@ export const ArtistProfile = ({
       </div>
 
       {/* Show loading modal when user tries to save while media is uploading */}
-      {((showTracksUploadModal && tracksUploadStatus === 'uploading') ||
-        (showVideoUploadModal && videoUploadStatus === 'uploading')) && (
+      {showTracksUploadModal && tracksUploadStatus === 'uploading' && (
         <LoadingModal 
-          title="Please wait" 
-          text="We are uploading your media" 
+          title={`${Math.round(tracksUploadProgress)}%`}
+          text="Please wait, we are uploading your media. Don't close or refresh this window." 
+        />
+      )}
+      {showVideoUploadModal && videoUploadStatus === 'uploading' && (
+        <LoadingModal 
+          title={`${Math.round(videoUploadProgress)}%`}
+          text="Please wait, we are uploading your media. Don't close or refresh this window." 
         />
       )}
     </div>

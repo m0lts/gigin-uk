@@ -128,6 +128,10 @@ export const ProfileView = ({
   creationVideos = [],
   onVideosChange,
   scrollContainerRef,
+  creationProfileId = null,
+  aboutComplete = false,
+  onAboutCompleteChange,
+  onSaveAndExit = null,
 }) => {
   // Randomly select an example profile once when component mounts (only for example profiles)
   const exampleData = useMemo(() => {
@@ -159,7 +163,18 @@ export const ProfileView = ({
     ? creationArtistBio
     : data?.bio;
 
-  const shouldShowBio = Boolean(liveBioContent);
+  // Only show bio if:
+  // 1. Not in creation mode (show if data exists), OR
+  // 2. In creation mode AND we've reached bio step AND there's a bio value entered
+  // When in creation mode, never show bio from example/existing data until bio step is reached
+  let shouldShowBio = false;
+  if (isCreatingProfile) {
+    // In creation mode: only show if we've reached bio step AND user has entered a bio
+    shouldShowBio = Boolean(creationArtistBio?.trim());
+  } else {
+    // Not in creation mode: show if bio data exists
+    shouldShowBio = Boolean(data?.bio);
+  }
   const persistedVideos = data?.videos || [];
   const tracks = data?.tracks || [];
   
@@ -307,6 +322,11 @@ export const ProfileView = ({
             onWebsiteUrlChange={onWebsiteUrlChange}
             creationInstagramUrl={creationInstagramUrl}
             onInstagramUrlChange={onInstagramUrlChange}
+            creationProfileId={creationProfileId}
+            aboutComplete={aboutComplete}
+            onAboutCompleteChange={onAboutCompleteChange}
+            profileData={data}
+            onSaveAndExit={onSaveAndExit}
           />
         </div>
       )}
