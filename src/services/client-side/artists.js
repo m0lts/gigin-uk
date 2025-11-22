@@ -105,6 +105,85 @@ export const updateArtistProfileDocument = async (profileId, updates = {}) => {
   }
 };
 
+/**
+ * Fetches all members of an artist profile.
+ * @param {string} profileId - The artist profile ID
+ * @returns {Promise<Array>} Array of member objects
+ */
+export const getArtistProfileMembers = async (profileId) => {
+  if (!profileId) throw new Error('[getArtistProfileMembers] profileId is required');
+  try {
+    const membersRef = collection(firestore, 'artistProfiles', profileId, 'members');
+    const snapshot = await getDocs(membersRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('[Firestore Error] getArtistProfileMembers:', error);
+    throw error;
+  }
+};
+
+/**
+ * Updates a member's permissions in an artist profile.
+ * @param {string} profileId - The artist profile ID
+ * @param {string} memberId - The member's user ID
+ * @param {Object} permissions - The permissions object
+ * @returns {Promise<void>}
+ */
+export const updateArtistProfileMemberPermissions = async (profileId, memberId, permissions) => {
+  if (!profileId) throw new Error('[updateArtistProfileMemberPermissions] profileId is required');
+  if (!memberId) throw new Error('[updateArtistProfileMemberPermissions] memberId is required');
+  try {
+    const memberRef = doc(firestore, 'artistProfiles', profileId, 'members', memberId);
+    await updateDoc(memberRef, { 
+      permissions,
+      updatedAt: Timestamp.now() 
+    });
+  } catch (error) {
+    console.error('[Firestore Error] updateArtistProfileMemberPermissions:', error);
+    throw error;
+  }
+};
+
+/**
+ * Removes a member from an artist profile.
+ * @param {string} profileId - The artist profile ID
+ * @param {string} memberId - The member's user ID
+ * @returns {Promise<void>}
+ */
+export const removeArtistProfileMember = async (profileId, memberId) => {
+  if (!profileId) throw new Error('[removeArtistProfileMember] profileId is required');
+  if (!memberId) throw new Error('[removeArtistProfileMember] memberId is required');
+  try {
+    const memberRef = doc(firestore, 'artistProfiles', profileId, 'members', memberId);
+    await deleteDoc(memberRef);
+  } catch (error) {
+    console.error('[Firestore Error] removeArtistProfileMember:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches all pending invites for an artist profile.
+ * @param {string} profileId - The artist profile ID
+ * @returns {Promise<Array>} Array of pending invite objects
+ */
+export const getArtistProfilePendingInvites = async (profileId) => {
+  if (!profileId) throw new Error('[getArtistProfilePendingInvites] profileId is required');
+  try {
+    const invitesRef = collection(firestore, 'artistInvites');
+    const q = query(
+      invitesRef,
+      where('artistProfileId', '==', profileId),
+      where('status', '==', 'pending')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('[Firestore Error] getArtistProfilePendingInvites:', error);
+    throw error;
+  }
+};
+
 
 /**
  * Creates or updates a musician profile in Firestore.

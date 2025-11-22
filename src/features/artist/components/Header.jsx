@@ -30,6 +30,7 @@ import Portal from '../../shared/components/Portal';
 import { submitUserFeedback } from '../../../services/client-side/reports';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { NoTextLogoLink } from '../../shared/ui/logos/Logos';
 
 export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModal, setNoProfileModal, setNoProfileModalClosable, noProfileModalClosable = false }) => {
   const navigate = useNavigate();
@@ -101,69 +102,46 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
         }
     }
 
-    const headerStyle = {
-        padding: (location.pathname.includes('dashboard') || location.pathname.includes('venues')) ? '0 1rem' : location.pathname.startsWith('/gig/') 
-        ? `0 ${padding}` 
-        : '0 1rem',
-      };
-
     return (
         <>
-            <header className='header default' style={headerStyle}>
+            <header className='header musician'>
                 {isMdUp ? (
                     user ? (
                         <>
-                            <div className='left musician'>
-                                <MusicianLogoLink />
-                            </div>
-                            <div className='right'>
-                                <div className='buttons'>
-                                    <Link className='link no-margin' to={'/find-a-gig'}>
-                                        <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                                            <MapIcon />
-                                            Find a Gig
-                                        </button>
+                            <div className='left-block'>
+                                <NoTextLogoLink />
+                                <Link className={`link ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`} to={'/find-a-gig'}>
+                                    Find a Gig
+                                </Link>
+                                {isLgUp && (
+                                    <Link className={`link ${location.pathname === '/find-venues' ? 'disabled' : ''}`} to={'/find-venues'}>
+                                        Find a Venue
                                     </Link>
-                                    {isLgUp && (
-                                        <Link className='link no-margin' to={'/find-venues'}>
-                                            <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
-                                                <TelescopeIcon />
-                                                Find a Venue
-                                            </button>
+                                )}
+                            </div>
+                            <div className='right-block'>
+                                {user.artistProfiles && user.artistProfiles.length > 0 && (
+                                    <>
+                                        <Link className={`link ${location.pathname === '/artist-profile' ? 'disabled' : ''}`} to={'/artist-profile'}>
+                                            Profile
                                         </Link>
-                                    )}
-                                    {user.musicianProfile && isLgUp ? (
-                                            <Link className='link' to={'/dashboard'}>
-                                                <button className={`btn secondary ${location.pathname.includes('dashboard') ? 'disabled' : ''}`}>
-                                                    <DashboardIconLight />
-                                                    Dashboard
-                                                </button>
-                                            </Link>
-                                    ) : isLgUp && (
-                                        <button className='btn secondary' onClick={() => navigate('/artist-profile')}>
-                                            <GuitarsIcon />
-                                            Create Artist Profile
-                                        </button>
-                                    )}
-                                    {user.musicianProfile && (
-                                        newMessages ? (
-                                            <Link className='link' to={'/messages'}>
-                                                <button className={`btn secondary messages ${location.pathname === '/messages' ? 'disabled' : ''}`}>
-                                                    <span className='notification-dot'><DotIcon /></span>
-                                                    <MailboxFullIcon />
-                                                    Messages
-                                                </button>
+                                        <Link className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} to={'/artist-profile/gigs'}>
+                                            Gigs
+                                        </Link>
+                                        {newMessages ? (
+                                            <Link className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`} to={'/artist-profile/messages'}>
+                                                Messages
                                             </Link>
                                         ) : (
-                                            <Link className='link' to={'/messages'}>
-                                                <button className={`btn secondary ${location.pathname === '/messages' ? 'disabled' : ''}`}>
-                                                    <MailboxEmptyIcon />
-                                                    Messages
-                                                </button>
+                                            <Link className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`} to={'/artist-profile/messages'}>
+                                                Messages
                                             </Link>
-                                        )
-                                    )}
-                                </div>
+                                        )}
+                                        <Link className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} to={'/artist-profile/finances'}>
+                                            Finances
+                                        </Link>
+                                    </>
+                                )}
                                 <button
                                     className='btn icon hamburger-menu-btn'
                                     onClick={(e) => {e.stopPropagation(); setAccountMenu(!accountMenu)}}
@@ -171,26 +149,6 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                     {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
                                 </button>
                             </div>
-                            {accountMenu && (
-                                <MobileMenu
-                                    setMobileOpen={setAccountMenu}
-                                    user={user}
-                                    showAuthModal={showAuthModal}
-                                    setAuthType={setAuthType}
-                                    handleLogout={handleLogout}
-                                    newMessages={newMessages}
-                                    isMobile={!isMdUp}
-                                    menuStyle={{right: '1rem'}}
-                                    setNoProfileModal={setNoProfileModal}
-                                    setNoProfileModalClosable={setNoProfileModalClosable}
-                                    noProfileModal={noProfileModal}
-                                    noProfileModalClosable={noProfileModalClosable}
-                                    setShowFeedbackModal={setShowFeedbackModal}
-                                    feedback={feedback}
-                                    setFeedback={setFeedback}
-                                    showFeedbackModal={showFeedbackModal}
-                                />
-                            )}
                         </>
                     ) : (
                         <>
@@ -229,7 +187,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                     handleLogout={handleLogout}
                     newMessages={newMessages}
                     isMobile={!isMdUp}
-                    menuStyle={{right: '1rem'}}
+                    menuStyle={{right: '2rem'}}
                     setNoProfileModal={setNoProfileModal}
                     setNoProfileModalClosable={setNoProfileModalClosable}
                     noProfileModal={noProfileModal}

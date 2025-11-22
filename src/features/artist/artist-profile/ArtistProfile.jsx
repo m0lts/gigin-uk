@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '@hooks/useAuth';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ProfileView } from './components/ProfileView';
 import '@styles/artists/artist-profile-new.styles.css';
 // Hardcoded background image for example profile
-import artistProfileBackground from '@assets/images/arctic-monkeys.jpeg';
 import { generateArtistProfileId, createArtistProfileDocument, updateArtistProfileDocument } from '@services/client-side/artists';
 import { uploadFileToStorage, uploadFileWithProgress, deleteStoragePath } from '@services/storage';
 import { getDownloadURL, ref } from 'firebase/storage';
@@ -14,6 +13,7 @@ import { toast } from 'sonner';
 import { NoImageIcon } from '@features/shared/ui/extras/Icons';
 import { CREATION_STEP_ORDER } from './components/ProfileCreationBox';
 import { LoadingModal } from '@features/shared/ui/loading/LoadingModal';
+import { Header } from '../components/Header';
 
 const BRIGHTNESS_DEFAULT = 100;
 const BRIGHTNESS_RANGE = 40; // slider distance from neutral
@@ -81,6 +81,7 @@ export const ArtistProfile = ({
 }) => {
   const { user: authUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedExampleProfile, setSelectedExampleProfile] = useState(null);
@@ -120,8 +121,31 @@ export const ArtistProfile = ({
   const [savingDraft, setSavingDraft] = useState(false);
   const [creationWebsiteUrl, setCreationWebsiteUrl] = useState("");
   const [creationInstagramUrl, setCreationInstagramUrl] = useState("");
+  const [editingName, setEditingName] = useState(null); // Track name being edited for real-time display
+  const [editingHeroImage, setEditingHeroImage] = useState(null); // Track background image being edited
+  const [editingHeroBrightness, setEditingHeroBrightness] = useState(null); // Track brightness being edited
+  const [editingHeroPosition, setEditingHeroPosition] = useState(null); // Track position being edited
   // Dashboard sub-state (which view to show: Profile, Gigs, Messages, Finances)
-  const [dashboardView, setDashboardView] = useState(DashboardView.PROFILE);
+  // Initialize from URL path
+  const getDashboardViewFromPath = (pathname) => {
+    // Only match paths that start with /artist-profile
+    if (!pathname.startsWith('/artist-profile')) {
+      return DashboardView.PROFILE;
+    }
+    // Check for sub-routes (must come before the base path check)
+    if (pathname === '/artist-profile/gigs' || pathname.startsWith('/artist-profile/gigs/')) {
+      return DashboardView.GIGS;
+    }
+    if (pathname === '/artist-profile/messages' || pathname.startsWith('/artist-profile/messages/')) {
+      return DashboardView.MESSAGES;
+    }
+    if (pathname === '/artist-profile/finances' || pathname.startsWith('/artist-profile/finances/')) {
+      return DashboardView.FINANCES;
+    }
+    // Default to PROFILE for /artist-profile or any other /artist-profile/* path
+    return DashboardView.PROFILE;
+  };
+  const [dashboardView, setDashboardView] = useState(() => getDashboardViewFromPath(location.pathname));
   
   // Track previous profile state to detect completion
   const previousProfileRef = useRef(null);
@@ -169,6 +193,10 @@ export const ArtistProfile = ({
   const isCreationState = currentState === ArtistProfileState.CREATING;
 
   const displayName = useMemo(() => {
+    // If name is being edited, show the editing value in real-time
+    if (editingName !== null) {
+      return editingName;
+    }
     if (currentState === ArtistProfileState.EXAMPLE_PROFILE) {
       return selectedExampleProfile?.name || 'Example Artist';
     }
@@ -176,7 +204,7 @@ export const ArtistProfile = ({
       return creationArtistName;
     }
     return activeProfileData?.name;
-  }, [currentState, selectedExampleProfile, activeProfileData?.name, creationArtistName]);
+  }, [currentState, selectedExampleProfile, activeProfileData?.name, creationArtistName, editingName]);
 
   // Handle authentication - redirect to auth if not logged in
   useEffect(() => {
@@ -243,6 +271,20 @@ export const ArtistProfile = ({
       if (previousProfileRef.current !== hasCompleteProfile) {
         setIsCreatingProfile(false);
         setCurrentState(ArtistProfileState.DASHBOARD);
+        // Set dashboard view to match current URL, or default to PROFILE
+        const viewFromPath = getDashboardViewFromPath(location.pathname);
+        setDashboardView(viewFromPath);
+        // Navigate to correct path if not already there
+        const pathMap = {
+          [DashboardView.PROFILE]: '/artist-profile',
+          [DashboardView.GIGS]: '/artist-profile/gigs',
+          [DashboardView.MESSAGES]: '/artist-profile/messages',
+          [DashboardView.FINANCES]: '/artist-profile/finances',
+        };
+        const targetPath = pathMap[viewFromPath] || '/artist-profile';
+        if (location.pathname !== targetPath) {
+          navigate(targetPath, { replace: true });
+        }
         // Clear URL state when transitioning to dashboard
         setSearchParams({});
       }
@@ -258,20 +300,84 @@ export const ArtistProfile = ({
     }
 
     previousProfileRef.current = hasCompleteProfile;
-  }, [hasCompleteProfile, isCreatingProfile, searchParams]);
+  }, [hasCompleteProfile, isCreatingProfile, searchParams, location.pathname, navigate]);
 
+  // Sync dashboard view with URL pathname (for browser back/forward support)
+  const isNavigatingFromUrlRef = useRef(false);
+  useEffect(() => {
+    if (currentState === ArtistProfileState.DASHBOARD) {
+      const viewFromPath = getDashboardViewFromPath(location.pathname);
+      if (viewFromPath !== dashboardView) {
+        isNavigatingFromUrlRef.current = true;
+        setDashboardView(viewFromPath);
+      }
+    }
+  }, [location.pathname, currentState]);
+
+  // Update URL when dashboard view changes (only when in dashboard state)
+  useEffect(() => {
+    if (currentState === ArtistProfileState.DASHBOARD && !isNavigatingFromUrlRef.current) {
+      const pathMap = {
+        [DashboardView.PROFILE]: '/artist-profile',
+        [DashboardView.GIGS]: '/artist-profile/gigs',
+        [DashboardView.MESSAGES]: '/artist-profile/messages',
+        [DashboardView.FINANCES]: '/artist-profile/finances',
+      };
+      const targetPath = pathMap[dashboardView] || '/artist-profile';
+      if (location.pathname !== targetPath) {
+        navigate(targetPath, { replace: true });
+      }
+    }
+    isNavigatingFromUrlRef.current = false;
+  }, [dashboardView, currentState, navigate, location.pathname]);
+
+  // Track previous editing image to detect cancellation
+  const previousEditingHeroImageRef = useRef(null);
+  
   // Keep hero image in sync with current state
   useEffect(() => {
+    // If editing, use the editing image preview (highest priority)
+    if (editingHeroImage) {
+      setBackgroundImage(editingHeroImage);
+      previousEditingHeroImageRef.current = editingHeroImage;
+      return;
+    }
+
+    // If editingHeroImage is null but it was previously set (user canceled), revert to original
+    const wasEditing = previousEditingHeroImageRef.current !== null;
+    if (wasEditing && editingHeroImage === null) {
+      // User canceled - revert to original image
+      previousEditingHeroImageRef.current = null;
+      const originalImage = activeProfileData?.heroMedia?.url;
+      if (originalImage && originalImage !== backgroundImage) {
+        setBackgroundImage(originalImage);
+      }
+      return;
+    }
+
+    // Don't update background image if we're in edit mode but editingHeroImage is null
+    // (this prevents reverting to old image while user is selecting new one)
+    const isInEditMode = activeProfileData?.heroMedia?.url && currentState === ArtistProfileState.DASHBOARD;
+    if (isInEditMode && !wasEditing) {
+      // In edit mode, keep current image until new one is selected
+      return;
+    }
+
     let targetImage;
 
-    if (currentState === ArtistProfileState.EXAMPLE_PROFILE) {
-      targetImage = selectedExampleProfile?.backgroundImage || artistProfileBackground;
-    } else if (creationHasHeroImage && creationHeroImage?.previewUrl) {
-      targetImage = creationHeroImage.previewUrl;
-    } else if (activeProfileData?.heroMedia?.url) {
+    // Priority order:
+    // 1. User's profile image (if they have one, regardless of currentState)
+    // 2. Creation hero image (if in creation flow)
+    // 3. Example profile image (only if no user profile exists)
+    if (activeProfileData?.heroMedia?.url) {
+      // User has a profile with an image - use it (highest priority)
       targetImage = activeProfileData.heroMedia.url;
-    } else {
-      targetImage = artistProfileBackground;
+    } else if (creationHasHeroImage && creationHeroImage?.previewUrl) {
+      // In creation flow with hero image
+      targetImage = creationHeroImage.previewUrl;
+    } else if (currentState === ArtistProfileState.EXAMPLE_PROFILE) {
+      // Only show example profile if user has no profile
+      targetImage = selectedExampleProfile?.backgroundImage;
     }
 
     if (targetImage && targetImage !== backgroundImage) {
@@ -284,6 +390,7 @@ export const ArtistProfile = ({
     creationHeroImage?.previewUrl,
     activeProfileData?.heroMedia?.url,
     backgroundImage,
+    editingHeroImage,
   ]);
 
   const resetCreationState = () => {
@@ -677,6 +784,19 @@ export const ArtistProfile = ({
   const handleHeroPositionChange = useCallback(
     (value) => {
       const clamped = clampHeroPosition(value);
+      
+      // Check if we're in edit mode (dashboard with profile data)
+      const isInEditMode = activeProfileData?.heroMedia?.url && currentState === ArtistProfileState.DASHBOARD;
+      
+      // If in edit mode, always update editing state (even if it was null initially)
+      if (isInEditMode) {
+        console.log('Updating editing position:', clamped, 'effectiveHeroPosition will be:', clampHeroPosition(clamped));
+        setEditingHeroPosition(clamped);
+        // Force a re-render by updating a dummy state if needed
+        return;
+      }
+      
+      // Otherwise, update creation state
       setCreationHeroPosition(clamped);
       if (!creationProfileId) return;
 
@@ -692,17 +812,21 @@ export const ArtistProfile = ({
         }
       }, 400);
     },
-    [creationProfileId]
+    [creationProfileId, activeProfileData?.heroMedia?.url, currentState]
   );
 
   const handleHeroPointerMove = useCallback(
     (event) => {
-      if (!heroDragStateRef.current.isDragging) return;
+      if (!heroDragStateRef.current.isDragging) {
+        console.log('Not dragging, ignoring move');
+        return;
+      }
       event.preventDefault();
       const viewportHeight = window.innerHeight || backgroundImageRef.current?.offsetHeight || 1;
       const deltaY = event.clientY - heroDragStateRef.current.startY;
       const percentDelta = (deltaY / viewportHeight) * 100;
       const nextPosition = clampHeroPosition(heroDragStateRef.current.startPosition - percentDelta);
+      console.log('Moving to position:', nextPosition, { deltaY, percentDelta, startPosition: heroDragStateRef.current.startPosition });
       handleHeroPositionChange(nextPosition);
     },
     [handleHeroPositionChange]
@@ -718,11 +842,42 @@ export const ArtistProfile = ({
 
   const handleHeroPointerDown = useCallback(
     (event) => {
-      if (!isRepositioningHero || !isCreationState || !creationHasHeroImage) return;
+      if (!isRepositioningHero) return;
+      
+      // Check if we're in edit mode (dashboard with profile data)
+      const isInEditMode = activeProfileData?.heroMedia?.url && currentState === ArtistProfileState.DASHBOARD;
+      
+      // Allow repositioning if:
+      // 1. In creation state with hero image, OR
+      // 2. In edit mode (dashboard with profile data)
+      const canReposition = isCreationState 
+        ? creationHasHeroImage 
+        : isInEditMode;
+      
+      if (!canReposition) {
+        console.log('Cannot reposition:', { isRepositioningHero, isCreationState, creationHasHeroImage, isInEditMode, currentState });
+        return;
+      }
+      
+      console.log('Starting drag:', { isInEditMode, editingHeroPosition, heroPositionY: activeProfileData?.heroPositionY });
       event.preventDefault();
       heroDragStateRef.current.isDragging = true;
       heroDragStateRef.current.startY = event.clientY;
-      heroDragStateRef.current.startPosition = creationHeroPosition;
+      
+      // Determine current position:
+      // - If in edit mode, use editingHeroPosition if set, otherwise use activeProfileData position
+      // - Otherwise use creation position
+      let currentPosition;
+      if (isInEditMode) {
+        currentPosition = editingHeroPosition !== null 
+          ? editingHeroPosition 
+          : clampHeroPosition(activeProfileData?.heroPositionY ?? HERO_POSITION_DEFAULT);
+      } else {
+        currentPosition = creationHeroPosition;
+      }
+      
+      heroDragStateRef.current.startPosition = currentPosition;
+      console.log('Drag started with position:', currentPosition);
       setIsHeroDragging(true);
       window.addEventListener('pointermove', handleHeroPointerMove);
       window.addEventListener('pointerup', handleHeroPointerUp);
@@ -734,6 +889,10 @@ export const ArtistProfile = ({
       creationHeroPosition,
       handleHeroPointerMove,
       handleHeroPointerUp,
+      editingHeroPosition,
+      activeProfileData?.heroMedia?.url,
+      activeProfileData?.heroPositionY,
+      currentState,
     ]
   );
 
@@ -758,16 +917,33 @@ export const ArtistProfile = ({
   }, [handleHeroPointerMove, handleHeroPointerUp]);
 
   useEffect(() => {
+    // Only disable if we're in creation state and don't have hero image
+    // In edit mode (dashboard), we have activeProfileData, so allow repositioning
+    const isInEditMode = activeProfileData?.heroMedia?.url && currentState === ArtistProfileState.DASHBOARD;
+    if (!isCreationState || isInEditMode) {
+      return; // Allow repositioning in edit mode or when not in creation
+    }
+    
     if (!creationHasHeroImage && isRepositioningHero) {
       handleHeroRepositionToggle(false);
     }
-  }, [creationHasHeroImage, isRepositioningHero, handleHeroRepositionToggle]);
+  }, [creationHasHeroImage, isRepositioningHero, handleHeroRepositionToggle, isCreationState, activeProfileData?.heroMedia?.url, currentState]);
 
   useEffect(() => {
-    if (!isCreationState && isRepositioningHero) {
+    // Only disable repositioning if we're NOT in creation state AND NOT in edit mode (dashboard with profile)
+    // If we're in edit mode (dashboard with active profile), always allow repositioning
+    const isInEditMode = activeProfileData?.heroMedia?.url && currentState === ArtistProfileState.DASHBOARD;
+    
+    // Don't disable if we're in edit mode - allow repositioning to work
+    if (isInEditMode) {
+      return;
+    }
+    
+    // Only disable if we're not in creation state, repositioning is active, and position is null
+    if (!isCreationState && isRepositioningHero && editingHeroPosition === null) {
       handleHeroRepositionToggle(false);
     }
-  }, [isCreationState, isRepositioningHero, handleHeroRepositionToggle]);
+  }, [isCreationState, isRepositioningHero, handleHeroRepositionToggle, editingHeroPosition, activeProfileData?.heroMedia?.url, currentState]);
 
   useEffect(() => {
     const isHeroStep = creationStep === CREATION_STEP_ORDER[0];
@@ -1155,10 +1331,18 @@ export const ArtistProfile = ({
       thumbnailStoragePath: video.thumbnailStoragePath || null,
     }));
 
-    let completedUploads = 0;
+    // Use a ref to track completed uploads so all progress callbacks see the current value
+    const completedUploadsRef = { current: 0 };
     const totalUploads = creationVideos.reduce((count, video) => {
-      return count + (video.videoFile ? 1 : 0) + (video.thumbnailFile ? 1 : 0);
+      let videoCount = 0;
+      if (video.videoFile) videoCount++;
+      if (video.thumbnailFile && (video.thumbnailFile instanceof File || video.thumbnailFile instanceof Blob)) {
+        videoCount++;
+      }
+      return count + videoCount;
     }, 0);
+
+    console.log('Video upload starting:', { totalUploads, videos: creationVideos.map(v => ({ id: v.id, hasVideo: !!v.videoFile, hasThumbnail: !!v.thumbnailFile })) });
 
     if (totalUploads === 0) {
       videosUploadInProgressRef.current = false;
@@ -1168,6 +1352,14 @@ export const ArtistProfile = ({
     }
 
     const uploadPromises = [];
+
+    // Helper function to update progress
+    const updateProgress = () => {
+      if (videosUploadTokenRef.current === uploadToken && isMountedRef.current) {
+        const progress = (completedUploadsRef.current / totalUploads) * 100;
+        setVideoUploadProgress(progress);
+      }
+    };
 
     creationVideos.forEach((video) => {
       const videoId = video.id;
@@ -1184,13 +1376,15 @@ export const ArtistProfile = ({
           storagePath,
           (progress) => {
             if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
-            const baseProgress = (completedUploads / totalUploads) * 100;
+            const baseProgress = (completedUploadsRef.current / totalUploads) * 100;
             const currentProgress = (progress / totalUploads) * 100;
             setVideoUploadProgress(baseProgress + currentProgress);
           }
         )
           .then(async (videoUrl) => {
             if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+
+            console.log(`Video upload completed for ${videoId}:`, videoUrl);
 
             const videoIndex = videosToUpdate.findIndex((v) => v.id === videoId);
             if (videoIndex !== -1) {
@@ -1216,39 +1410,46 @@ export const ArtistProfile = ({
               }
             }
 
-            completedUploads++;
-            const progress = (completedUploads / totalUploads) * 100;
-            if (videosUploadTokenRef.current === uploadToken && isMountedRef.current) {
-              setVideoUploadProgress(progress);
-            }
+            completedUploadsRef.current++;
+            updateProgress();
           })
           .catch((error) => {
             if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
             console.error(`Failed to upload video for id ${videoId}:`, error);
-            completedUploads++;
+            completedUploadsRef.current++;
+            updateProgress();
           });
 
         uploadPromises.push(videoUploadPromise);
       }
 
       if (video.thumbnailFile) {
-        const extension = video.thumbnailFile.name?.split('.').pop() || 'png';
-        const filename = `thumbnail-${videoId}-${Date.now()}.${extension}`;
-        const storagePath = `artistProfiles/${creationProfileId}/videos/thumbnails/${filename}`;
-        const previousThumbnailPath = previousPaths.thumbnailPath;
+        // Validate thumbnail file
+        if (!(video.thumbnailFile instanceof File) && !(video.thumbnailFile instanceof Blob)) {
+          console.error(`Invalid thumbnail file for video ${videoId}, skipping upload:`, video.thumbnailFile);
+          // Don't increment counter or update progress - invalid files aren't counted in totalUploads
+        } else {
+          const extension = video.thumbnailFile.name?.split('.').pop() || 'png';
+          const filename = `thumbnail-${videoId}-${Date.now()}.${extension}`;
+          const storagePath = `artistProfiles/${creationProfileId}/videos/thumbnails/${filename}`;
+          const previousThumbnailPath = previousPaths.thumbnailPath;
 
-        const thumbnailUploadPromise = uploadFileWithProgress(
-          video.thumbnailFile,
-          storagePath,
-          (progress) => {
-            if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
-            const baseProgress = (completedUploads / totalUploads) * 100;
-            const currentProgress = (progress / totalUploads) * 100;
-            setVideoUploadProgress(baseProgress + currentProgress);
-          }
-        )
+          console.log(`Starting thumbnail upload for ${videoId}:`, { filename, size: video.thumbnailFile.size });
+
+          const thumbnailUploadPromise = uploadFileWithProgress(
+            video.thumbnailFile,
+            storagePath,
+            (progress) => {
+              if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+              const baseProgress = (completedUploadsRef.current / totalUploads) * 100;
+              const currentProgress = (progress / totalUploads) * 100;
+              setVideoUploadProgress(baseProgress + currentProgress);
+            }
+          )
           .then(async (thumbnailUrl) => {
             if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+
+            console.log(`Thumbnail upload completed for ${videoId}:`, thumbnailUrl);
 
             const videoIndex = videosToUpdate.findIndex((v) => v.id === videoId);
             if (videoIndex !== -1) {
@@ -1276,19 +1477,18 @@ export const ArtistProfile = ({
               }
             }
 
-            completedUploads++;
-            const progress = (completedUploads / totalUploads) * 100;
-            if (videosUploadTokenRef.current === uploadToken && isMountedRef.current) {
-              setVideoUploadProgress(progress);
-            }
+            completedUploadsRef.current++;
+            updateProgress();
           })
           .catch((error) => {
             if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
             console.error(`Failed to upload thumbnail for video ${videoId}:`, error);
-            completedUploads++;
+            completedUploadsRef.current++;
+            updateProgress();
           });
 
-        uploadPromises.push(thumbnailUploadPromise);
+          uploadPromises.push(thumbnailUploadPromise);
+        }
       }
     });
 
@@ -1463,6 +1663,474 @@ export const ArtistProfile = ({
         console.error('Failed to update artist name:', error);
       }
     }, 400);
+  };
+
+  // Handler for editing hero image from profile view
+  const handleHeroImageEdit = async ({ file, previewUrl, brightness, position, onProgress }) => {
+    const profileId = activeProfileData?.profileId || activeProfileData?.id;
+    if (!profileId) {
+      throw new Error('Profile ID not found');
+    }
+
+    let heroUrl = null;
+    let storagePath = null;
+
+    if (file) {
+      // Upload new file
+      const extension = file.name?.split('.').pop() || 'jpg';
+      const filename = `background-${Date.now()}.${extension}`;
+      storagePath = `artistProfiles/${profileId}/hero/${filename}`;
+      
+      heroUrl = await uploadFileWithProgress(file, storagePath, (progress) => {
+        if (onProgress) onProgress(progress);
+      });
+
+      // Delete old image if it exists
+      const oldStoragePath = activeProfileData?.heroMedia?.storagePath;
+      if (oldStoragePath && oldStoragePath !== storagePath) {
+        deleteStoragePath(oldStoragePath).catch(err => {
+          console.error('Failed to delete old hero image:', err);
+        });
+      }
+    }
+
+    // Update Firestore
+    const updates = {
+      heroBrightness: brightness || activeProfileData?.heroBrightness || BRIGHTNESS_DEFAULT,
+      heroPositionY: position || activeProfileData?.heroPositionY || HERO_POSITION_DEFAULT,
+    };
+
+    if (heroUrl && storagePath) {
+      updates.heroMedia = { url: heroUrl, storagePath };
+      setBackgroundImage(heroUrl);
+    }
+
+    await updateArtistProfileDocument(profileId, updates);
+    
+    // Clear editing states after save
+    setEditingHeroImage(null);
+    setEditingHeroBrightness(null);
+    setEditingHeroPosition(null);
+  };
+
+  // Handler for editing name from profile view
+  const handleNameEdit = async (newName) => {
+    const profileId = activeProfileData?.profileId || activeProfileData?.id;
+    if (!profileId) {
+      throw new Error('Profile ID not found');
+    }
+
+    await updateArtistProfileDocument(profileId, { name: newName });
+    
+    // Clear editing state - the user data will refresh automatically from Firestore
+    setEditingName(null);
+  };
+
+  // Handler for editing bio from profile view
+  const handleBioEdit = async (newBio) => {
+    const profileId = activeProfileData?.profileId || activeProfileData?.id;
+    if (!profileId) {
+      throw new Error('Profile ID not found');
+    }
+
+    try {
+      await updateArtistProfileDocument(profileId, { bio: newBio });
+      toast.success('Bio updated successfully');
+    } catch (error) {
+      console.error('Failed to update bio:', error);
+      toast.error('Failed to update bio');
+      throw error;
+    }
+  };
+
+  // Handler for editing website URL from profile view
+  const handleWebsiteUrlEdit = async (newUrl) => {
+    const profileId = activeProfileData?.profileId || activeProfileData?.id;
+    if (!profileId) {
+      throw new Error('Profile ID not found');
+    }
+
+    try {
+      await updateArtistProfileDocument(profileId, { websiteUrl: newUrl });
+      // Don't show toast for website URL - it's saved along with bio
+    } catch (error) {
+      console.error('Failed to update website URL:', error);
+      throw error;
+    }
+  };
+
+  // Handler for editing Instagram URL from profile view
+  const handleInstagramUrlEdit = async (newUrl) => {
+    const profileId = activeProfileData?.profileId || activeProfileData?.id;
+    if (!profileId) {
+      throw new Error('Profile ID not found');
+    }
+
+    try {
+      await updateArtistProfileDocument(profileId, { instagramUrl: newUrl });
+      // Don't show toast for Instagram URL - it's saved along with bio
+    } catch (error) {
+      console.error('Failed to update Instagram URL:', error);
+      throw error;
+    }
+  };
+
+  // Handler for saving tracks from profile view
+  const handleTracksSave = async ({ tracks: tracksToSave, spotifyUrl: newSpotifyUrl, soundcloudUrl: newSoundcloudUrl }) => {
+    const profileId = activeProfileData?.profileId || activeProfileData?.id;
+    if (!profileId) {
+      throw new Error('Profile ID not found');
+    }
+
+    try {
+      // Get existing tracks from database to preserve URL/storage path fields
+      const existingTracks = activeProfileData?.tracks || [];
+      const existingTracksMap = new Map(existingTracks.map(track => [track.id, track]));
+
+      // Upload any new files
+      const uploadPromises = [];
+      const tracksToUpdate = tracksToSave.map(track => ({ ...track }));
+
+      tracksToSave.forEach((track) => {
+        const trackId = track.id;
+        const previousPaths = tracksStoragePathsRef.current[trackId] || {};
+
+        // Upload audio file if present
+        if (track.audioFile) {
+          const extension = track.audioFile.name?.split('.').pop() || 'mp3';
+          const filename = `track-${trackId}-${Date.now()}.${extension}`;
+          const storagePath = `artistProfiles/${profileId}/tracks/${filename}`;
+          const previousAudioPath = previousPaths.audioPath;
+
+          const audioUploadPromise = uploadFileWithProgress(
+            track.audioFile,
+            storagePath,
+            () => {} // No progress tracking for edit mode
+          )
+            .then(async (audioUrl) => {
+              // Update track with uploaded URL and storage path
+              const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
+              if (trackIndex !== -1) {
+                tracksToUpdate[trackIndex] = {
+                  ...tracksToUpdate[trackIndex],
+                  uploadedAudioUrl: audioUrl,
+                  audioStoragePath: storagePath,
+                };
+              }
+
+              // Delete previous audio file if it exists and is different
+              if (previousAudioPath && previousAudioPath !== storagePath) {
+                try {
+                  await deleteStoragePath(previousAudioPath);
+                } catch (error) {
+                  console.error('Failed to delete previous audio file:', error);
+                }
+              }
+
+              // Update storage paths ref
+              if (!tracksStoragePathsRef.current[trackId]) {
+                tracksStoragePathsRef.current[trackId] = {};
+              }
+              tracksStoragePathsRef.current[trackId].audioPath = storagePath;
+            })
+            .catch((error) => {
+              console.error(`Failed to upload audio for track ${trackId}:`, error);
+              throw error;
+            });
+
+          uploadPromises.push(audioUploadPromise);
+        }
+
+        // Upload cover file if present
+        if (track.coverFile) {
+          const extension = track.coverFile.name?.split('.').pop() || 'jpg';
+          const filename = `cover-${trackId}-${Date.now()}.${extension}`;
+          const storagePath = `artistProfiles/${profileId}/tracks/${filename}`;
+          const previousCoverPath = previousPaths.coverPath;
+
+          const coverUploadPromise = uploadFileWithProgress(
+            track.coverFile,
+            storagePath,
+            () => {} // No progress tracking for edit mode
+          )
+            .then(async (coverUrl) => {
+              // Update track with uploaded URL and storage path
+              const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
+              if (trackIndex !== -1) {
+                tracksToUpdate[trackIndex] = {
+                  ...tracksToUpdate[trackIndex],
+                  coverUploadedUrl: coverUrl,
+                  coverStoragePath: storagePath,
+                };
+              }
+
+              // Delete previous cover file if it exists and is different
+              if (previousCoverPath && previousCoverPath !== storagePath) {
+                try {
+                  await deleteStoragePath(previousCoverPath);
+                } catch (error) {
+                  console.error('Failed to delete previous cover file:', error);
+                }
+              }
+
+              // Update storage paths ref
+              if (!tracksStoragePathsRef.current[trackId]) {
+                tracksStoragePathsRef.current[trackId] = {};
+              }
+              tracksStoragePathsRef.current[trackId].coverPath = storagePath;
+            })
+            .catch((error) => {
+              console.error(`Failed to upload cover for track ${trackId}:`, error);
+              throw error;
+            });
+
+          uploadPromises.push(coverUploadPromise);
+        }
+      });
+
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+
+      // Prepare tracks for Firestore
+      const tracksForFirestore = tracksToUpdate.map(track => {
+        const existingTrack = existingTracksMap.get(track.id);
+
+        if (existingTrack) {
+          // Track exists - update metadata, preserve or update URLs/storage paths
+          return {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            audioUrl: track.uploadedAudioUrl || existingTrack.audioUrl,
+            audioStoragePath: track.audioStoragePath || existingTrack.audioStoragePath,
+            coverUrl: track.coverUploadedUrl || existingTrack.coverUrl,
+            coverStoragePath: track.coverStoragePath || existingTrack.coverStoragePath,
+          };
+        } else {
+          // New track
+          return {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            audioUrl: track.uploadedAudioUrl || null,
+            audioStoragePath: track.audioStoragePath || null,
+            coverUrl: track.coverUploadedUrl || null,
+            coverStoragePath: track.coverStoragePath || null,
+          };
+        }
+      });
+
+      // Update Firestore with tracks and URLs
+      const updates = {
+        tracks: tracksForFirestore,
+      };
+
+      if (newSpotifyUrl !== undefined) {
+        updates.spotifyUrl = newSpotifyUrl;
+      }
+      if (newSoundcloudUrl !== undefined) {
+        updates.soundcloudUrl = newSoundcloudUrl;
+      }
+
+      await updateArtistProfileDocument(profileId, updates);
+      toast.success('Tracks updated successfully');
+    } catch (error) {
+      console.error('Failed to save tracks:', error);
+      toast.error('Failed to save tracks');
+      throw error;
+    }
+  };
+
+  // Handler for saving videos from profile view
+  const handleVideosSave = async ({ videos: videosToSave, youtubeUrl: newYoutubeUrl }) => {
+    const profileId = activeProfileData?.profileId || activeProfileData?.id;
+    if (!profileId) {
+      throw new Error('Profile ID not found');
+    }
+
+    try {
+      // Get existing videos from database to preserve URL/storage path fields
+      const existingVideos = activeProfileData?.videos || [];
+      const existingVideosMap = new Map(existingVideos.map(video => [video.id, video]));
+
+      // Upload any new files
+      const uploadPromises = [];
+      const videosToUpdate = videosToSave.map(video => ({ ...video }));
+
+      videosToSave.forEach((video) => {
+        const videoId = video.id;
+        const previousPaths = videosStoragePathsRef.current[videoId] || {};
+
+        // Upload video file if present
+        if (video.videoFile) {
+          const extension = video.videoFile.name?.split('.').pop() || 'mp4';
+          const filename = `video-${videoId}-${Date.now()}.${extension}`;
+          const storagePath = `artistProfiles/${profileId}/videos/${filename}`;
+          const previousVideoPath = previousPaths.videoPath;
+
+          const videoUploadPromise = uploadFileWithProgress(
+            video.videoFile,
+            storagePath,
+            () => {} // No progress tracking for edit mode
+          )
+            .then(async (videoUrl) => {
+              // Update video with uploaded URL and storage path
+              const videoIndex = videosToUpdate.findIndex(v => v.id === videoId);
+              if (videoIndex !== -1) {
+                videosToUpdate[videoIndex] = {
+                  ...videosToUpdate[videoIndex],
+                  uploadedVideoUrl: videoUrl,
+                  videoStoragePath: storagePath,
+                };
+              }
+
+              // Delete previous video file if it exists and is different
+              if (previousVideoPath && previousVideoPath !== storagePath) {
+                try {
+                  await deleteStoragePath(previousVideoPath);
+                } catch (error) {
+                  console.error('Failed to delete previous video file:', error);
+                }
+              }
+
+              // Update storage paths ref
+              if (!videosStoragePathsRef.current[videoId]) {
+                videosStoragePathsRef.current[videoId] = {};
+              }
+              videosStoragePathsRef.current[videoId].videoPath = storagePath;
+            })
+            .catch((error) => {
+              console.error(`Failed to upload video for video ${videoId}:`, error);
+              throw error;
+            });
+
+          uploadPromises.push(videoUploadPromise);
+        }
+
+        // Upload thumbnail file if present
+        if (video.thumbnailFile) {
+          const extension = video.thumbnailFile.name?.split('.').pop() || 'jpg';
+          const filename = `thumbnail-${videoId}-${Date.now()}.${extension}`;
+          const storagePath = `artistProfiles/${profileId}/videos/${filename}`;
+          const previousThumbnailPath = previousPaths.thumbnailPath;
+
+          const thumbnailUploadPromise = uploadFileWithProgress(
+            video.thumbnailFile,
+            storagePath,
+            () => {} // No progress tracking for edit mode
+          )
+            .then(async (thumbnailUrl) => {
+              // Update video with uploaded URL and storage path
+              const videoIndex = videosToUpdate.findIndex(v => v.id === videoId);
+              if (videoIndex !== -1) {
+                videosToUpdate[videoIndex] = {
+                  ...videosToUpdate[videoIndex],
+                  thumbnailUploadedUrl: thumbnailUrl,
+                  thumbnailStoragePath: storagePath,
+                };
+              }
+
+              // Delete previous thumbnail file if it exists and is different
+              if (previousThumbnailPath && previousThumbnailPath !== storagePath) {
+                try {
+                  await deleteStoragePath(previousThumbnailPath);
+                } catch (error) {
+                  console.error('Failed to delete previous thumbnail file:', error);
+                }
+              }
+
+              // Update storage paths ref
+              if (!videosStoragePathsRef.current[videoId]) {
+                videosStoragePathsRef.current[videoId] = {};
+              }
+              videosStoragePathsRef.current[videoId].thumbnailPath = storagePath;
+            })
+            .catch((error) => {
+              console.error(`Failed to upload thumbnail for video ${videoId}:`, error);
+              throw error;
+            });
+
+          uploadPromises.push(thumbnailUploadPromise);
+        }
+      });
+
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+
+      // Prepare videos for Firestore
+      const videosForFirestore = videosToUpdate.map(video => {
+        const existingVideo = existingVideosMap.get(video.id);
+
+        if (existingVideo) {
+          // Video exists - update metadata, preserve or update URLs/storage paths
+          return {
+            id: video.id,
+            title: video.title,
+            videoUrl: video.uploadedVideoUrl || existingVideo.videoUrl,
+            videoStoragePath: video.videoStoragePath || existingVideo.videoStoragePath,
+            thumbnail: video.thumbnailUploadedUrl || existingVideo.thumbnail || existingVideo.thumbnailUrl,
+            thumbnailUrl: video.thumbnailUploadedUrl || existingVideo.thumbnailUrl || existingVideo.thumbnail,
+            thumbnailStoragePath: video.thumbnailStoragePath || existingVideo.thumbnailStoragePath,
+          };
+        } else {
+          // New video
+          return {
+            id: video.id,
+            title: video.title,
+            videoUrl: video.uploadedVideoUrl || null,
+            videoStoragePath: video.videoStoragePath || null,
+            thumbnail: video.thumbnailUploadedUrl || null,
+            thumbnailUrl: video.thumbnailUploadedUrl || null,
+            thumbnailStoragePath: video.thumbnailStoragePath || null,
+          };
+        }
+      });
+
+      // Update Firestore with videos and URL
+      const updates = {
+        videos: videosForFirestore,
+      };
+
+      if (newYoutubeUrl !== undefined) {
+        updates.youtubeUrl = newYoutubeUrl;
+      }
+
+      await updateArtistProfileDocument(profileId, updates);
+      toast.success('Videos updated successfully');
+    } catch (error) {
+      console.error('Failed to save videos:', error);
+      toast.error('Failed to save videos');
+      throw error;
+    }
+  };
+
+  // Handler for real-time name editing updates
+  const handleEditingNameChange = (newName) => {
+    // If newName is null, clear editing state
+    // Otherwise, update with the new editing value
+    setEditingName(newName === null ? null : newName);
+  };
+
+  // Handler for real-time background image editing updates
+  const handleEditingHeroImageChange = (previewUrl) => {
+    console.log('handleEditingHeroImageChange called with:', previewUrl);
+    if (previewUrl === null) {
+      setEditingHeroImage(null);
+    } else {
+      setEditingHeroImage(previewUrl);
+      // Force immediate background update
+      setBackgroundImage(previewUrl);
+    }
+  };
+
+  // Handler for real-time brightness editing updates
+  const handleEditingHeroBrightnessChange = (brightness) => {
+    setEditingHeroBrightness(brightness === null ? null : brightness);
+  };
+
+  // Handler for real-time position editing updates
+  const handleEditingHeroPositionChange = (position) => {
+    setEditingHeroPosition(position === null ? null : position);
   };
 
   const handleArtistBioChange = (newBio) => {
@@ -1828,16 +2496,36 @@ export const ArtistProfile = ({
             videoUploadProgress={videoUploadProgress}
             scrollContainerRef={stateBoxRef}
             onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
+            profileId={activeProfileData?.profileId || activeProfileData?.id}
+            onHeroImageEdit={handleHeroImageEdit}
+            onNameEdit={handleNameEdit}
+            onBioEdit={handleBioEdit}
+            onWebsiteUrlEdit={handleWebsiteUrlEdit}
+            onInstagramUrlEdit={handleInstagramUrlEdit}
+            currentHeroImage={activeProfileData?.heroMedia?.url}
+            currentHeroBrightness={activeProfileData?.heroBrightness || BRIGHTNESS_DEFAULT}
+            currentHeroPosition={activeProfileData?.heroPositionY || HERO_POSITION_DEFAULT}
+            currentArtistName={activeProfileData?.name || ""}
+            isEditingHero={isRepositioningHero}
+            onHeroRepositionToggleEdit={handleHeroRepositionToggle}
+            onEditingNameChange={handleEditingNameChange}
+            onEditingHeroImageChange={handleEditingHeroImageChange}
+            onEditingHeroBrightnessChange={handleEditingHeroBrightnessChange}
+            onEditingHeroPositionChange={handleEditingHeroPositionChange}
+            editingHeroPosition={editingHeroPosition}
+            editingHeroBrightness={editingHeroBrightness}
+            onTracksSave={handleTracksSave}
+            onVideosSave={handleVideosSave}
           />
         );
       case DashboardView.GIGS:
-        return <div>Gigs View (to be implemented)</div>;
+        return <div><h1>Gigs View (to be implemented)</h1></div>;
       case DashboardView.MESSAGES:
-        return <div>Messages View (to be implemented)</div>;
+        return <div><h1>Messages View (to be implemented)</h1></div>;
       case DashboardView.FINANCES:
-        return <div>Finances View (to be implemented)</div>;
+        return <div><h1>Finances View (to be implemented)</h1></div>;
       default:
-        return <div>Loading...</div>;
+        return <div><h1>Loading...</h1></div>;
     }
   };
 
@@ -1967,9 +2655,18 @@ export const ArtistProfile = ({
 
   const showCreationPlaceholder = isCreationState && !creationHasHeroImage;
   const persistedHeroBrightness = activeProfileData?.heroBrightness ?? BRIGHTNESS_DEFAULT;
-  const effectiveHeroBrightness = isCreationState ? creationHeroBrightness : persistedHeroBrightness;
+  const effectiveHeroBrightness = editingHeroBrightness !== null 
+    ? editingHeroBrightness 
+    : (isCreationState ? creationHeroBrightness : persistedHeroBrightness);
   const persistedHeroPosition = clampHeroPosition(activeProfileData?.heroPositionY ?? HERO_POSITION_DEFAULT);
-  const effectiveHeroPosition = isCreationState ? creationHeroPosition : persistedHeroPosition;
+  const effectiveHeroPosition = editingHeroPosition !== null
+    ? clampHeroPosition(editingHeroPosition)
+    : (isCreationState ? creationHeroPosition : persistedHeroPosition);
+  
+  // Debug: Log effectiveHeroPosition when it changes (only during drag to avoid spam)
+  if (isHeroDragging && editingHeroPosition !== null) {
+    console.log('RENDER: effectiveHeroPosition =', effectiveHeroPosition, 'editingHeroPosition =', editingHeroPosition);
+  }
   const brightnessOverlayStyle = getBrightnessOverlayStyle(effectiveHeroBrightness);
   const showBrightnessOverlay = !showCreationPlaceholder && brightnessOverlayStyle.opacity > 0;
   const canSaveProgress = isCreationState && creationHasHeroImage;
@@ -2002,10 +2699,12 @@ export const ArtistProfile = ({
             isRepositioningHero ? 'repositioning' : ''
           } ${isHeroDragging ? 'dragging' : ''}`}
           style={{
-            backgroundImage: `url(${backgroundImage || artistProfileBackground})`,
+            backgroundImage: `url(${backgroundImage})`,
             backgroundPosition: `center ${effectiveHeroPosition}%`,
             cursor: isRepositioningHero ? (isHeroDragging ? 'grabbing' : 'grab') : undefined,
           }}
+          data-position={effectiveHeroPosition}
+          data-editing-position={editingHeroPosition}
         />
         {showCreationPlaceholder && (
           <div className="artist-profile-background placeholder-layer fade-in">
@@ -2032,17 +2731,28 @@ export const ArtistProfile = ({
           minHeight: '100vh',
         }}
       >
+
+        {/* Header - shown when not in creation state */}
+        {!isCreationState && (
+          <Header 
+            setAuthModal={setAuthModal} 
+            setAuthType={setAuthType} 
+            user={user} 
+          />
+        )}
+
         {/* Constant elements - always visible */}
         <div className={`artist-profile-constants ${(isCreationState && !creationHasHeroImage) ? 'creation-transition' : ''}`}>
           {/* Exit button - top right */}
-          <button 
-            className="btn exit-button"
-            onClick={handleExitClick}
-            disabled={savingDraft}
-          >
-            {canSaveProgress ? (savingDraft ? 'Saving...' : 'Save & Exit') : 'Exit'}
-          </button>
-
+          {isCreationState && (
+            <button 
+              className="btn exit-button"
+              onClick={handleExitClick}
+              disabled={savingDraft}
+            >
+              {canSaveProgress ? (savingDraft ? 'Saving...' : 'Save & Exit') : 'Exit'}
+            </button>
+          )}
           {/* Artist name - bottom left */}
           <div className="artist-name">
             <h1>

@@ -358,3 +358,57 @@
 .mobile-menu .title {
     padding: 5px 10px;
 }
+
+/* MUSICIAN */
+
+.header.musician {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 2rem;
+}
+
+.header.musician .left-block,
+.header.musician .right-block {
+    display: flex;
+    align-items: center;
+    background-color: var(--gn-white);
+    box-shadow: 0 0 5px var(--gn-shadow);
+    padding:0.5rem 0.5rem;
+    border-radius: var(--gn-border-radius);
+    overflow: hidden;
+}
+
+.header.musician .right-block {
+    width: calc(35vw - 4rem);
+    min-width: calc(400px - 4rem);
+    max-width: calc(600px - 4rem);
+    justify-content: space-around;
+}
+
+.header.musician .link {
+    font-weight: 500;
+    padding:0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 200ms linear;
+}
+
+@media (--bp-xl) {
+    .header.musician .link {
+        padding:0.5rem 0.75rem;
+    }
+}
+
+.header.musician .logo .link {
+    padding:none !important;
+    background-color: transparent !important;
+}
+
+.header.musician .link:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.header.musician .link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

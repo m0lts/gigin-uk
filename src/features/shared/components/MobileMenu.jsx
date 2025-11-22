@@ -35,7 +35,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             </button>
                         </div>
                     </>
-                ) : user && !user?.musicianProfile && !user.venueProfiles ? (
+                ) : user && !user?.artistProfiles && !user.venueProfiles ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
@@ -50,7 +50,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <LogOutIcon />
                         </button>
                     </>
-                ) : user && !user?.musicianProfile && user?.venueProfiles ? (
+                ) : user && !user?.artistProfiles && user?.venueProfiles ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
@@ -130,7 +130,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <LogOutIcon />
                         </button>
                     </>
-                ) : user && user?.musicianProfile && !user?.venueProfiles && (
+                ) : user && user?.artistProfiles && !user?.venueProfiles ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
@@ -148,15 +148,29 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 <TelescopeIcon />
                             </Link>
                         )}
-                        {!user.musicianProfile && !isLgUp && (
-                            <Link className='link item no-margin' onClick={() => navigate('/artist-profile')}>
-                                Create Artist Profile
-                                <GuitarsIcon />
-                            </Link>
+                        {isMobile && (
+                            <>
+                                <Link className='link item no-margin' to={'/artist-profile'}>
+                                    Profile
+                                    <ProfileIcon />
+                                </Link>
+                                <Link className='link item no-margin' to={'/artist-profile/gigs'}>
+                                    Gigs
+                                    <AllGigsIcon />
+                                </Link>
+                                <Link className='link item no-margin' to={'/artist-profile/messages'}>
+                                    Messages
+                                    {newMessages ? <MailboxFullIcon /> : <MailboxEmptyIcon />}
+                                </Link>
+                                <Link className='link item no-margin' to={'/artist-profile/finances'}>
+                                    Finances
+                                    <CoinsIcon />
+                                </Link>
+                            </>
                         )}
-                        {!isLgUp && (
+                        {!isLgUp && !isMobile && (
                             newMessages ? (
-                                <Link className='link item no-margin message' to={'/messages'}>
+                                <Link className='link item no-margin message' to={'/artist-profile/messages'}>
                                     <div>
                                         Messages
                                         <MailboxFullIcon />
@@ -164,31 +178,11 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                     <span className="notification-dot" />
                                 </Link>
                             ) : (
-                                <Link className='link item no-margin' to={'/messages'}>
+                                <Link className='link item no-margin' to={'/artist-profile/messages'}>
                                     Messages
                                     <MailboxEmptyIcon />
                                 </Link>
                             )
-                        )}
-                        {isMobile && (
-                            <>
-                                <Link className='link item no-margin' to={'/dashboard/profile'}>
-                                    My Profile
-                                    <ProfileIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/dashboard/gigs'}>
-                                    Gigs
-                                    <AllGigsIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/dashboard/bands'}>
-                                    My Band(s)
-                                    <PeopleGroupIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/dashboard/finances'}>
-                                    Finances
-                                    <CoinsIcon />
-                                </Link>
-                            </>
                         )}
 
                         {!isXlUp && (
@@ -211,7 +205,45 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <LogOutIcon />
                         </button>
                     </>
-                )}
+                ) : user && user?.artistProfiles && user?.venueProfiles ? (
+                    <>
+                        <div className='item name-and-email no-margin'>
+                            <h6>{user.name}</h6>
+                            <p>{user.email}</p>
+                        </div>
+                        {isMobile && (
+                            <>
+                                <Link className='link item no-margin' to={'/artist-profile'}>
+                                    Artist Profile
+                                    <GuitarsIcon />
+                                </Link>
+                                <Link className='link item no-margin' to={'/venues/dashboard/gigs'}>
+                                    Venue Dashboard
+                                    <VenueIconLight />
+                                </Link>
+                            </>
+                        )}
+                        {!isXlUp && (
+                            <div className='break' />
+                        )}
+                        <a className='link item no-margin' href='mailto:hq.gigin@gmail.com'>
+                            Contact Us
+                            <TicketIcon />
+                        </a>
+                        <button className="btn inline item no-margin" style={{ color: 'var(--gn-black)'}} onClick={() => setShowFeedbackModal(!showFeedbackModal)}>
+                            Feedback
+                            <FeedbackIcon />
+                        </button>
+                        <Link to={'/account'} className='item no-margin link'>
+                            Settings
+                            <SettingsIcon />
+                        </Link>
+                        <button className='btn logout no-margin' onClick={handleLogout}>
+                            Log Out
+                            <LogOutIcon />
+                        </button>
+                    </>
+                ) : null}
             </nav>
         </>
     )

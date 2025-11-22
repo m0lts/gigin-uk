@@ -143,6 +143,11 @@ button {
     background-color: var(--gn-grey-350);
 }
 
+.btn.tertiary.small {
+    padding:2px 5px;
+    font-size: 0.9rem;
+}
+
 /* QUATERNARY BUTTONS */
 
 .btn.quaternary {
@@ -266,6 +271,7 @@ button {
 
 .btn.danger.small {
     padding:2px 5px;
+    font-size: 0.9rem;
 }
 
 .btn.danger:hover {
