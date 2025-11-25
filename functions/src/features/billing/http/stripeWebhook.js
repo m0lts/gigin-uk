@@ -67,12 +67,19 @@ export const stripeWebhook = httpRaw(
         case "account.updated":
           if (event.data.object.capabilities.transfers === "active") {
             const musicianId = event.data.object.metadata.musicianId;
-            const musicianRef =
-              admin.firestore().collection("musicianProfiles").doc(musicianId);
-            const musicianDoc = await musicianRef.get();
-            if (musicianDoc.exists) {
-              const musicianData = musicianDoc.data();
-              const withdrawableEarnings = musicianData.withdrawableEarnings || 0;
+            // Try artistProfiles first, then fall back to musicianProfiles
+            let profileRef = admin.firestore().collection("artistProfiles").doc(musicianId);
+            let profileDoc = await profileRef.get();
+            let isArtistProfile = profileDoc.exists;
+            
+            if (!isArtistProfile) {
+              profileRef = admin.firestore().collection("musicianProfiles").doc(musicianId);
+              profileDoc = await profileRef.get();
+            }
+            
+            if (profileDoc.exists) {
+              const profileData = profileDoc.data();
+              const withdrawableEarnings = profileData.withdrawableEarnings || 0;
               if (withdrawableEarnings > 0) {
                 console.log(
                   `Transferring £${withdrawableEarnings} to account ${event.data.object.id}`,
@@ -89,7 +96,7 @@ export const stripeWebhook = httpRaw(
                 console.log(`Successfully transferred £${withdrawableEarnings}.`);
               }
             } else {
-              console.warn(`Musician profile not found for: ${musicianId}`);
+              console.warn(`Profile not found for: ${musicianId} (checked artistProfiles and musicianProfiles)`);
             }
           }
           break;

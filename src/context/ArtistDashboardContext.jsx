@@ -5,7 +5,7 @@ import { getBandMembers } from '@services/client-side/bands';
 import { getBandDataOnly } from '../services/client-side/bands';
 import { getMusicianProfileByMusicianId } from '../services/client-side/artists';
 
-const ArtistDashboardContext = createContext();
+export const ArtistDashboardContext = createContext();
 
 export const ArtistDashboardProvider = ({ user, children }) => {
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,15 @@ export const ArtistDashboardProvider = ({ user, children }) => {
   const [gigsToReview, setGigsToReview] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [bandProfiles, setBandProfiles] = useState([]);
+
+  // Artist dashboard specific state
+  const [artistProfilesState, setArtistProfilesState] = useState([]);
+  const [activeArtistProfile, setActiveArtistProfile] = useState(null);
+  const [artistGigApplications, setArtistGigApplications] = useState([]);
+  const [artistGigs, setArtistGigs] = useState([]);
+  const [artistSavedGigs, setArtistSavedGigs] = useState([]);
+  const [artistDataLoading, setArtistDataLoading] = useState(false);
+  const [artistRefreshNonce, setArtistRefreshNonce] = useState(0);
 
   // NEW: trigger re-subscribe after refresh
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -30,7 +39,21 @@ export const ArtistDashboardProvider = ({ user, children }) => {
     (typeof u?.musicianProfile === 'string' ? u.musicianProfile : null) ||
     (Array.isArray(u?.musicianProfile) ? u.musicianProfile[0] : null);
 
+  const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
+
   useEffect(() => {
+    if (hasArtistProfiles) {
+      // Artist profiles already handled via auth listener – skip musician subscriptions
+      unsubRef.current?.();
+      cleanupBandSubscriptions();
+      setMusicianProfile(null);
+      setGigApplications([]);
+      setGigs([]);
+      setSavedGigs([]);
+      setLoading(false);
+      return;
+    }
+
     const baseId = resolveMusicianId(user);
 
     // no user or no id → stop loading so UI can render empty state
@@ -70,7 +93,7 @@ export const ArtistDashboardProvider = ({ user, children }) => {
 
     unsubRef.current = unsub;
     return () => unsub?.();
-  }, [user, refreshNonce]);
+  }, [user, refreshNonce, hasArtistProfiles]);
 
   const subscribeToBands = (bandIds = []) => {
     cleanupBandSubscriptions();
@@ -161,6 +184,109 @@ export const ArtistDashboardProvider = ({ user, children }) => {
     run();
   }, [musicianProfile, bandProfiles]);
 
+  // ---------- Artist profile data handling ----------
+  useEffect(() => {
+    if (!hasArtistProfiles) {
+      setArtistProfilesState([]);
+      setActiveArtistProfile(null);
+      return;
+    }
+
+    const profiles = (user?.artistProfiles || []).filter(Boolean);
+    setArtistProfilesState(profiles);
+
+    setActiveArtistProfile((prev) => {
+      if (!profiles.length) return null;
+      const completed = profiles.find((profile) => profile?.isComplete);
+      if (completed) return completed;
+      if (prev && profiles.some((profile) => profile.id === prev.id)) {
+        return prev;
+      }
+      return profiles[0];
+    });
+  }, [hasArtistProfiles, user?.artistProfiles]);
+
+  useEffect(() => {
+    if (!hasArtistProfiles) {
+      setArtistGigApplications([]);
+      setArtistGigs([]);
+      setArtistSavedGigs([]);
+      setArtistDataLoading(false);
+      return;
+    }
+
+    const profiles = artistProfilesState;
+    if (!profiles.length) {
+      setArtistGigApplications([]);
+      setArtistGigs([]);
+      setArtistSavedGigs([]);
+      setArtistDataLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchArtistGigs = async () => {
+      setArtistDataLoading(true);
+      try {
+        const aggregatedApplications = profiles.flatMap((profile) => {
+          if (!profile) return [];
+          const profileId = profile.id || profile.profileId || profile.musicianId;
+          const applications = Array.isArray(profile.gigApplications) ? profile.gigApplications : [];
+          return applications.map((app) => ({
+            ...app,
+            profileId: app.profileId || profileId,
+            profileName: app.profileName || profile.name,
+            submittedBy: 'artist',
+            profileType: 'artist',
+          }));
+        });
+
+        const uniqKey = (a) => `${a.gigId}:${a.profileId}`;
+        const dedupedApplications = Array.from(
+          aggregatedApplications.reduce((map, app) => map.set(uniqKey(app), app), new Map()).values()
+        );
+        if (!cancelled) {
+          setArtistGigApplications(dedupedApplications);
+        }
+
+        const applicationGigIds = [...new Set(dedupedApplications.map((app) => app.gigId).filter(Boolean))];
+        const savedGigIds = [
+          ...new Set(
+            profiles
+              .flatMap((profile) => (Array.isArray(profile.savedGigs) ? profile.savedGigs : []))
+              .filter(Boolean)
+          ),
+        ];
+
+        const [appliedDocs, savedDocs] = await Promise.all([
+          applicationGigIds.length ? getGigsByIds(applicationGigIds) : [],
+          savedGigIds.length ? getGigsByIds(savedGigIds) : [],
+        ]);
+
+        const normalizeGigDoc = (gig) => (!gig ? gig : (gig.gigId ? gig : { ...gig, gigId: gig.gigId || gig.id }));
+
+        if (!cancelled) {
+          setArtistGigs(appliedDocs.map(normalizeGigDoc));
+          setArtistSavedGigs(savedDocs.map(normalizeGigDoc));
+          setArtistDataLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to load artist gigs:', err);
+        if (!cancelled) {
+          setArtistGigApplications([]);
+          setArtistGigs([]);
+          setArtistSavedGigs([]);
+          setArtistDataLoading(false);
+        }
+      }
+    };
+
+    fetchArtistGigs();
+    return () => {
+      cancelled = true;
+    };
+  }, [artistProfilesState, artistRefreshNonce, hasArtistProfiles]);
+
   const checkGigsForReview = (gigs, musicianIds = []) => {
     const now = new Date();
     const eligible = gigs.filter((gig) => {
@@ -214,6 +340,10 @@ export const ArtistDashboardProvider = ({ user, children }) => {
     setRefreshNonce((n) => n + 1); // <- drives the effect to resubscribe
   };
 
+  const refreshArtistDashboard = () => {
+    setArtistRefreshNonce((n) => n + 1);
+  };
+
   return (
     <ArtistDashboardContext.Provider
       value={{
@@ -236,6 +366,17 @@ export const ArtistDashboardProvider = ({ user, children }) => {
         refreshSingleBand,
         savedGigs,
         setSavedGigs,
+        artistProfiles: artistProfilesState,
+        activeArtistProfile,
+        setActiveArtistProfile,
+        artistGigApplications,
+        setArtistGigApplications,
+        artistGigs,
+        setArtistGigs,
+        artistSavedGigs,
+        setArtistSavedGigs,
+        artistDataLoading,
+        refreshArtistDashboard,
       }}
     >
       {children}

@@ -61,12 +61,44 @@ export const handlePaymentSuccess = async (paymentIntent) => {
       a.id === applicantId ? {...a, status: "confirmed"} : {...a},
     );
     const venueName = gigData.venue.venueName;
-    const musicianProfileRef = admin.firestore()
-        .collection("musicianProfiles").doc(recipientMusicianId);
-    const musicianProfileSnap = await musicianProfileRef.get();
-    const musicianProfile = musicianProfileSnap.data();
+    
+    // Try to fetch from artistProfiles first, then fall back to musicianProfiles
+    let musicianProfileRef = admin.firestore()
+        .collection("artistProfiles").doc(recipientMusicianId);
+    let musicianProfileSnap = await musicianProfileRef.get();
+    let musicianProfile = musicianProfileSnap.exists ? musicianProfileSnap.data() : null;
+    let isArtistProfile = !!musicianProfile;
+    
+    if (!musicianProfile) {
+      musicianProfileRef = admin.firestore()
+          .collection("musicianProfiles").doc(recipientMusicianId);
+      musicianProfileSnap = await musicianProfileRef.get();
+      musicianProfile = musicianProfileSnap.exists ? musicianProfileSnap.data() : null;
+    }
+    
+    if (!musicianProfile) {
+      throw new Error(`Profile with ID ${recipientMusicianId} not found in artistProfiles or musicianProfiles`);
+    }
+    
+    // For artist profiles, fetch email from user document if not present
+    let musicianEmail = musicianProfile.email;
+    if (isArtistProfile && !musicianEmail && musicianProfile.userId) {
+      try {
+        const userRef = admin.firestore().collection("users").doc(musicianProfile.userId);
+        const userSnap = await userRef.get();
+        if (userSnap.exists) {
+          musicianEmail = userSnap.data().email;
+        }
+      } catch (error) {
+        console.error("Error fetching user email:", error);
+      }
+    }
+    
+    if (!musicianEmail) {
+      throw new Error(`Email not found for profile ${recipientMusicianId}`);
+    }
+    
     const musicianName = musicianProfile.name;
-    const musicianEmail = musicianProfile.email;
     const venueProfileRef = admin.firestore()
         .collection("venueProfiles").doc(venueId);
     const venueProfileSnap = await venueProfileRef.get();
@@ -164,9 +196,10 @@ export const handlePaymentSuccess = async (paymentIntent) => {
       clearPendingFeeTaskName: feeTaskName,
       automaticMessageTaskName: messageTaskName,
     });
+    const collectionName = isArtistProfile ? "artistProfiles" : "musicianProfiles";
     const pendingFeeDocRef = admin
         .firestore()
-        .collection("musicianProfiles")
+        .collection(collectionName)
         .doc(recipientMusicianId)
         .collection("pendingFees")
         .doc(paymentIntentId);

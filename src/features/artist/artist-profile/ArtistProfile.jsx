@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, useContext } from 'react';
 import { useAuth } from '@hooks/useAuth';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ProfileView } from './profile-components/ProfileView';
 import '@styles/artists/artist-profile-new.styles.css';
 // Hardcoded background image for example profile
 import { generateArtistProfileId, createArtistProfileDocument, updateArtistProfileDocument } from '@services/client-side/artists';
+import { ArtistDashboardContext, ArtistDashboardProvider } from '../../../context/ArtistDashboardContext';
 import { uploadFileToStorage, uploadFileWithProgress, deleteStoragePath } from '@services/storage';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '@lib/firebase';
@@ -14,6 +15,7 @@ import { NoImageIcon } from '@features/shared/ui/extras/Icons';
 import { CREATION_STEP_ORDER } from './profile-components/ProfileCreationBox';
 import { LoadingModal } from '@features/shared/ui/loading/LoadingModal';
 import { Header } from '../components/Header';
+import { ArtistProfileGigs } from './gigs-components/GigsView';
 
 const BRIGHTNESS_DEFAULT = 100;
 const BRIGHTNESS_RANGE = 40; // slider distance from neutral
@@ -103,7 +105,7 @@ export const DashboardView = {
   FINANCES: 'finances',
 };
 
-export const ArtistProfile = ({ 
+const ArtistProfileComponent = ({ 
   user: userProp,
   setAuthModal,
   setAuthType,
@@ -115,7 +117,7 @@ export const ArtistProfile = ({
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedExampleProfile, setSelectedExampleProfile] = useState(null);
   const darkModeInitializedRef = useRef(false);
-  
+  console.log('authUser', authUser);
   // Use prop user if provided, otherwise use auth user
   const user = userProp || authUser;
 
@@ -176,6 +178,7 @@ export const ArtistProfile = ({
     return DashboardView.PROFILE;
   };
   const [dashboardView, setDashboardView] = useState(() => getDashboardViewFromPath(location.pathname));
+  const isGigsDashboard = dashboardView === DashboardView.GIGS;
   
   // Track previous profile state to detect completion
   const previousProfileRef = useRef(null);
@@ -2749,7 +2752,7 @@ export const ArtistProfile = ({
           />
         );
       case DashboardView.GIGS:
-        return <div><h1>Gigs View (to be implemented)</h1></div>;
+        return <ArtistProfileGigs />;
       case DashboardView.MESSAGES:
         return <div><h1>Messages View (to be implemented)</h1></div>;
       case DashboardView.FINANCES:
@@ -2991,7 +2994,16 @@ export const ArtistProfile = ({
         </div>
 
         {/* State box - right side, 30vw, changes based on state */}
-        <div ref={stateBoxRef} className={`artist-profile-state-box ${isDarkMode ? 'dark-mode' : ''}`}>
+        <div
+          ref={stateBoxRef}
+          className={[
+            'artist-profile-state-box',
+            isDarkMode ? 'dark-mode' : '',
+            isGigsDashboard ? 'gigs-view' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
           {renderStateContent()}
         </div>
       </div>
@@ -3011,5 +3023,17 @@ export const ArtistProfile = ({
       )}
     </div>
   );
+};
+
+export const ArtistProfile = (props) => {
+  const ctx = useContext(ArtistDashboardContext);
+  if (!ctx) {
+    return (
+      <ArtistDashboardProvider user={props.user}>
+        <ArtistProfileComponent {...props} />
+      </ArtistDashboardProvider>
+    );
+  }
+  return <ArtistProfileComponent {...props} />;
 };
 

@@ -60,19 +60,27 @@ export const clearPendingFee = httpRaw(
         return res.status(400).send("Invalid payload.");
       }
 
-      const musicianRef = db.collection("musicianProfiles").doc(musicianId);
+      // Try to fetch from artistProfiles first, then fall back to musicianProfiles
+      let musicianRef = db.collection("artistProfiles").doc(musicianId);
+      let musicianSnap = await musicianRef.get();
+      let isArtistProfile = musicianSnap.exists;
+      
+      if (!isArtistProfile) {
+        musicianRef = db.collection("musicianProfiles").doc(musicianId);
+        musicianSnap = await musicianRef.get();
+      }
+      
+      if (!musicianSnap.exists) {
+        console.error(`Profile doc ${musicianId} not found in artistProfiles or musicianProfiles.`);
+        return res.status(400).send(`Profile doc ${musicianId} not found.`);
+      }
+      
       const pendingDocRef = musicianRef.collection("pendingFees").doc(paymentIntentId);
 
-      const [musicianSnap, gigSnap, pendingDocSnap] = await Promise.all([
-        musicianRef.get(),
+      const [gigSnap, pendingDocSnap] = await Promise.all([
         db.collection("gigs").doc(gigId).get(),
         pendingDocRef.get(),
       ]);
-
-      if (!musicianSnap.exists) {
-        console.error(`Musician doc ${musicianId} not found.`);
-        return res.status(400).send(`Musician doc ${musicianId} not found.`);
-      }
       if (!gigSnap.exists) {
         console.error(`Gig ${gigId} not found.`);
         return res.status(400).send(`Gig ${gigId} not found.`);
@@ -124,7 +132,7 @@ export const clearPendingFee = httpRaw(
         } catch (error) {
           console.error(
             `Stripe transfer skipped for ${stripeAccountId}:`,
-            err?.message || err
+            error?.message || error
           );
         }
       } else {
@@ -179,16 +187,28 @@ export const clearPendingFee = httpRaw(
         }
         await musicianRef.set({ gigsPerformed: clearedCount }, { merge: true });
       } else {
-        const performerRef = db.collection("musicianProfiles").doc(applicantId);
-        let clearedCount = 0;
-        try {
-          const agg = await performerRef.collection("clearedFees").count().get();
-          clearedCount = agg.data().count || 0;
-        } catch (err) {
-          const snap = await performerRef.collection("clearedFees").get();
-          clearedCount = snap.size;
+        // Try to fetch performer from artistProfiles first, then fall back to musicianProfiles
+        let performerRef = db.collection("artistProfiles").doc(applicantId);
+        let performerSnap = await performerRef.get();
+        
+        if (!performerSnap.exists) {
+          performerRef = db.collection("musicianProfiles").doc(applicantId);
+          performerSnap = await performerRef.get();
         }
-        await performerRef.set({ gigsPerformed: clearedCount }, { merge: true });
+        
+        if (performerSnap.exists) {
+          let clearedCount = 0;
+          try {
+            const agg = await performerRef.collection("clearedFees").count().get();
+            clearedCount = agg.data().count || 0;
+          } catch (err) {
+            const snap = await performerRef.collection("clearedFees").get();
+            clearedCount = snap.size;
+          }
+          await performerRef.set({ gigsPerformed: clearedCount }, { merge: true });
+        } else {
+          console.warn(`Performer profile ${applicantId} not found in artistProfiles or musicianProfiles.`);
+        }
       }
 
       const mailRef = db.collection("mail");

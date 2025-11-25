@@ -194,6 +194,11 @@
   scroll-behavior: smooth;
 }
 
+.artist-profile-state-box.gigs-view {
+  min-height: calc(95vh - 1rem);
+  height:100%;
+}
+
 .artist-profile-state-box::-webkit-scrollbar {
   display: none;
 }
@@ -278,6 +283,542 @@
 .bio-card-container.is-visible,
 .additional-info-card-container.is-visible {
   padding: 1rem;
+}
+
+.artist-profile-gigs-card {
+  height: 100%;
+  background: var(--gn-white);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden; /* Prevent the card itself from scrolling */
+}
+
+.artist-profile-gigs-card .head.gigs {
+  display: flex;
+  align-items: center;
+  gap:0.5rem;
+}
+
+.artist-profile-gigs-card .filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.artist-profile-gigs-card .status-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background-color: var(--gn-grey-300);
+  padding: 3px;
+  border-radius: 0.5rem;
+}
+
+.artist-profile-gigs-card .status-buttons .btn {
+  background-color: transparent;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-weight: 500;
+  color: var(--gn-grey-700);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.artist-profile-gigs-card .status-buttons .btn.active {
+  background-color: var(--gn-white);
+  color: var(--gn-black);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.artist-profile-gigs-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0; /* Allow flex children to shrink */
+  overflow: hidden; /* Prevent content from scrolling */
+}
+
+.artist-profile-gigs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-shrink: 0; /* Prevent sections from shrinking */
+}
+
+.artist-profile-gigs-section.all-gigs {
+  flex: 1;
+  min-height: 0; /* Allow flex child to shrink */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent section from scrolling */
+}
+
+.artist-profile-gigs-section.invitations {
+  flex-shrink: 0; /* Keep invitations section at bottom, don't shrink */
+}
+
+.artist-profile-gigs-section .section-header {
+  margin-bottom: 0;
+}
+
+.next-gig-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--gn-grey-300);
+  border-radius: 0.85rem;
+  background: var(--gn-grey-200);
+}
+
+.next-gig-card .next-gig-primary .gig-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.next-gig-card .next-gig-primary .gig-venue,
+.next-gig-card .next-gig-primary .gig-date {
+  margin: 0.2rem 0;
+  color: var(--gn-grey-700);
+}
+
+.next-gig-card .next-gig-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.next-gig-card .status {
+  font-size: 0.85rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.next-gig-card .status.confirmed {
+  background-color: rgba(0, 239, 0, 0.1);
+  color: rgb(0, 219, 0);
+}
+
+.artist-profile-gigs-section.invitations .invites-row {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.artist-profile-gigs-section.invitations .invite-card {
+  min-width: 200px;
+  border: 1px solid var(--gn-grey-300);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  background: var(--gn-white);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.artist-profile-gigs-section.invitations .invite-card:hover {
+  transform: translateY(-2px);
+}
+
+.artist-profile-gigs-section.invitations .invite-card .gig-name {
+  margin: 0;
+  font-weight: 600;
+}
+
+.artist-profile-gigs-section.invitations .invite-card .gig-venue,
+.artist-profile-gigs-section.invitations .invite-card .gig-date {
+  margin: 0.15rem 0;
+  color: var(--gn-grey-700);
+}
+
+.artist-profile-gigs-section.invitations .invite-card .invite-chip {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.4rem;
+  background: var(--gn-offset-orange);
+  color: var(--gn-orange);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.artist-profile-gigs-section.invitations .invites-empty {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px dashed var(--gn-grey-400);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+}
+
+.artist-profile-gigs-card .body.gigs {
+  width: 100%;
+  flex: 1;
+  min-height: 0; /* Allow flex child to shrink */
+  overflow-x: auto;
+  overflow-y: auto; /* Make only the table scrollable */
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.artist-profile-gigs-card .body.gigs::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.artist-profile-gigs-card .body.gigs table {
+  width: 100%;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  border-top: 1px solid var(--gn-grey-350);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.artist-profile-gigs-card .body.gigs table thead tr {
+  text-align: left;
+}
+
+.artist-profile-gigs-card .body.gigs table th {
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid var(--gn-grey-350);
+  font-weight: 400;
+  color: var(--gn-grey-700);
+}
+
+.artist-profile-gigs-card .body.gigs table td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--gn-grey-350);
+  font-size: 0.95rem;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs table tbody tr {
+  background-color: transparent;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.artist-profile-gigs-card .body.gigs table tbody tr:hover {
+  background-color: var(--gn-grey-300);
+}
+
+.artist-profile-gigs-card .body.gigs table .notification-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gn-orange);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.artist-profile-gigs-card .body.gigs table #date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.artist-profile-gigs-card .body.gigs table .centre {
+  text-align: center;
+}
+
+.artist-profile-gigs-card .body.gigs table .status {
+  font-size: 0.85rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.confirmed {
+  background-color: rgba(0, 239, 0, 0.1);
+  color: rgb(0, 219, 0);
+}
+
+.artist-profile-gigs-card .body.gigs table .status.upcoming {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.closed {
+  background-color: rgba(255, 0, 0, 0.1);
+  color: red;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.pending {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.past {
+  background-color: rgba(128, 128, 128, 0.1);
+  color: gray;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.declined {
+  background-color: var(--gn-offset-red);
+  color: var(--gn-red);
+}
+
+.artist-profile-gigs-card .body.gigs table .status.withdrawn {
+  background-color: var(--gn-offset-red);
+  color: var(--gn-red);
+}
+
+.artist-profile-gigs-card .body.gigs table .status.not-applied {
+  background-color: rgba(128, 128, 128, 0.1);
+  color: gray;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.awaiting-venue-payment {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.respond {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.select-profile {
+  background-color: rgba(128, 128, 128, 0.1);
+  color: gray;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.dispute-logged {
+  background-color: var(--gn-offset-red);
+  color: var(--gn-red);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell {
+  text-align: center;
+  vertical-align: middle;
+  position: relative;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon {
+  background-color: var(--gn-white);
+  border: 1px solid var(--gn-grey-350);
+  box-shadow: 0 0 4px var(--gn-shadow);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 5px;
+  transition: all 200ms linear;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon .icon {
+  font-size: 1rem;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon:focus {
+  outline-color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon.active {
+  background-color: var(--gn-grey-350);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon:hover {
+  background-color: var(--gn-grey-350);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 1rem;
+  background-color: var(--gn-white);
+  border: 1px solid var(--gn-grey-300);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  padding: 0.5rem 0;
+  min-width: 250px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 0.5rem;
+  width: 95%;
+  margin: 0 auto;
+  border-radius: 0.5rem;
+  font-weight: 400;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.15s ease;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button:hover {
+  background-color: var(--gn-grey-300);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button.danger {
+  color: var(--gn-red);
+}
+
+/* Portal dropdown - rendered outside table to avoid overflow clipping */
+.options-dropdown.portal-dropdown {
+  position: fixed !important;
+  background-color: var(--gn-white) !important;
+  border: 1px solid var(--gn-grey-300) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
+  padding: 0.5rem 0 !important;
+  min-width: 250px !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.options-dropdown.portal-dropdown button {
+  background: transparent !important;
+  border: none !important;
+  text-align: left !important;
+  padding: 0.5rem !important;
+  width: 95% !important;
+  margin: 0 auto !important;
+  border-radius: 0.5rem !important;
+  font-weight: 400 !important;
+  color: var(--gn-off-black) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: background-color 0.15s ease !important;
+  font-size: 0.9rem !important;
+}
+
+.options-dropdown.portal-dropdown button:hover {
+  background-color: var(--gn-grey-300) !important;
+}
+
+.options-dropdown.portal-dropdown button.danger {
+  color: var(--gn-red) !important;
+}
+
+.dark-mode .options-dropdown.portal-dropdown {
+  background-color: var(--gn-black) !important;
+  border-color: var(--gn-grey-700) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark-mode .options-dropdown.portal-dropdown button {
+  color: var(--gn-white) !important;
+}
+
+.dark-mode .options-dropdown.portal-dropdown button:hover {
+  background-color: var(--gn-grey-800) !important;
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .btn.icon {
+  background-color: var(--gn-black);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .btn.icon.active,
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .btn.icon:hover {
+  background-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown {
+  background-color: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button:hover {
+  background-color: var(--gn-grey-800);
+}
+
+.artist-profile-gigs-empty {
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+}
+
+.dark-mode .artist-profile-gigs-card {
+  background: var(--gn-black);
+  color: var(--gn-white);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.dark-mode .artist-profile-gigs-card .status-buttons {
+  background-color: var(--gn-grey-800);
+}
+
+.dark-mode .artist-profile-gigs-card .status-buttons .btn {
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-gigs-card .status-buttons .btn.active {
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table th,
+.dark-mode .artist-profile-gigs-card .body.gigs table td {
+  color: var(--gn-white);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table tbody tr:hover {
+  background-color: var(--gn-grey-800);
+}
+
+.dark-mode .next-gig-card {
+  background: var(--gn-grey-900);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .next-gig-card .gig-venue,
+.dark-mode .next-gig-card .gig-date {
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-gigs-section.invitations .invite-card {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-750);
+}
+
+.dark-mode .artist-profile-gigs-section.invitations .invite-card .gig-venue,
+.dark-mode .artist-profile-gigs-section.invitations .invite-card .gig-date {
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-gigs-section.invitations .invites-empty {
+  border-color: var(--gn-grey-700);
+  color: var(--gn-grey-200);
 }
 
 .bio-card-container.is-hidden,
@@ -982,12 +1523,6 @@
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
-}
-
-.section-header .title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .section-header .external-links {

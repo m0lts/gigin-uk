@@ -20,7 +20,7 @@ import {
     WeddingIcon } from '@features/shared/ui/extras/Icons';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { updateMusicianGigApplications } from '@services/client-side/artists';
+import { updateMusicianGigApplications, updateArtistGigApplications } from '@services/client-side/artists';
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/client-side/messages';
 import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
@@ -28,7 +28,7 @@ import { validateMusicianUser } from '@services/utils/validation';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
-import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication } from '../../services/client-side/artists';
+import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication, withdrawArtistApplication } from '../../services/client-side/artists';
 import { getBandMembers } from '../../services/client-side/bands';
 import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
 import { getMostRecentMessage } from '../../services/client-side/messages';
@@ -36,7 +36,6 @@ import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
 import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
-import { useMusicianEligibility } from '@hooks/useMusicianEligibility';
 import { ProfileCreator } from '../artist/profile-creator/ProfileCreator';
 import { NoProfileModal } from '../artist/components/NoProfileModal';
 import { formatFeeDate } from '../../services/utils/dates';
@@ -71,7 +70,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const [newOffer, setNewOffer] = useState('');
     const [width, setWidth] = useState('100%');
     const [validProfiles, setValidProfiles] = useState();
-    const [selectedProfile, setSelectedProfile] = useState(user?.musicianProfile);
+    const [selectedProfile, setSelectedProfile] = useState(null);
     const [hasAccessToPrivateGig, setHasAccessToPrivateGig] = useState(true);
     const [accessTokenIsMusicianProfile, setAccessTokenIsMusicianProfile] = useState(false);
     const [invitedToGig, setInvitedToGig] = useState(false);
@@ -99,7 +98,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     });
     
     const computeStatusForProfile = (gig, profile) => {
-        const applicant = gig?.applicants?.find(a => a?.id === profile?.musicianId);
+        const profileId = profile?.id || profile?.profileId || profile?.musicianId;
+        const applicant = gig?.applicants?.find(a => a?.id === profileId);
         const invited = !!(applicant && applicant.invited === true) || (gig?.privateApplications && gig.privateApplicationToken === inviteToken);
         const applied = !!(applicant && applicant.invited !== true && applicant.status !== 'withdrawn');
         const accepted = !!(
@@ -124,58 +124,49 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 if (cancelled) return;
                 setOtherSlots(otherGigs.filter(g => (g.status || '').toLowerCase() !== 'closed'));
             }
-            const baseMusician = user?.musicianProfile ? [user.musicianProfile] : [];
-            let bandProfiles = [];
-            if (user?.musicianProfile?.bands?.length) {
-              const rawBands = await getMusicianProfilesByIds(user.musicianProfile.bands);
-
-              if (cancelled) return;
-              if (Array.isArray(rawBands)) {
-                const keep = [];
-                for (const band of rawBands) {
-                  try {
-                    const members = await getBandMembers(band.musicianId);
-
-                    const me = members.find(m => m.musicianProfileId === user.musicianProfile.musicianId);
-                    if (me?.role === 'Band Leader' || me?.role === 'Admin') {
-                      keep.push(stripFirestoreRefs(band));
-                    }
-                  } catch (e) {
-                    console.error('getBandMembers failed for', band.musicianId, e);
-                  }
-                }
-                bandProfiles = keep;
-              } else {
-                console.error('getMusicianProfilesByIds did not return array:', rawBands);
-              }
-            }
-            const profiles = [...baseMusician, ...bandProfiles];
+            // Get artist profiles and normalize them for compatibility
+            const rawArtistProfiles = Array.isArray(user?.artistProfiles) ? user.artistProfiles : [];
+            const profiles = rawArtistProfiles
+              .map(profile => ({
+                ...profile,
+                musicianId: profile.id || profile.profileId, // Add musicianId for API compatibility
+                profileId: profile.id || profile.profileId,
+              }))
+              .sort((a, b) => {
+                // Sort by createdAt, oldest first
+                const aTime = a.createdAt?.seconds || a.createdAt || 0;
+                const bTime = b.createdAt?.seconds || b.createdAt || 0;
+                return aTime - bTime;
+              });
+            
             let nextHasAccess = true;
             let nextInvitedToGig = false;
-            let defaultSelected = profiles[0] || null;
+            const defaultSelected = profiles[0] || null; // Oldest profile by createdAt
+            
             if (enrichedGig?.privateApplications) {
               const savedToken = enrichedGig.privateApplicationToken;
               const tokenMatches = !!inviteToken && inviteToken === savedToken;
-              const tokenProfile = profiles.find(p => p.musicianId === inviteToken) || null;
+              const profileId = (p) => p.id || p.profileId || p.musicianId;
+              const tokenProfile = profiles.find(p => profileId(p) === inviteToken) || null;
               if (!tokenMatches && !tokenProfile) {
                 nextHasAccess = false;
               } else {
                 nextHasAccess = true;
                 nextInvitedToGig = true;
-                if (tokenProfile) {
-                  defaultSelected = tokenProfile;
-                }
               }
             }
+            
+            const profileId = (p) => p.id || p.profileId || p.musicianId;
             const preferredProfile = appliedProfile
-                ? profiles.find(p => p.musicianId === appliedProfile || p.id === appliedProfile)
+                ? profiles.find(p => profileId(p) === appliedProfile)
                 : null;
 
             const finalSelected =
                 preferredProfile ||
-                (selectedProfile && profiles.find(p => p.musicianId === selectedProfile.musicianId)) ||
+                (selectedProfile && profiles.find(p => profileId(p) === profileId(selectedProfile))) ||
                 defaultSelected ||
                 null;
+            
             setGigData(enrichedGig);
             setValidProfiles(profiles);
             setSelectedProfile(finalSelected);
@@ -185,10 +176,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             } else {
                 setInvitedToGig(nextInvitedToGig);
             }
-            const myIds = [
-              user?.musicianProfile?.savedGigs || [],
-              ...bandProfiles.map(b => b.savedGigs || []),
-            ].flat();
+            
+            // Check saved gigs across all artist profiles
+            const myIds = profiles.flatMap(p => p.savedGigs || []);
             if (myIds.includes(enrichedGig.gigId)) setGigSaved(true);
             if (enrichedGig?.venueId) {
               const venue = await getVenueProfileById(enrichedGig.venueId);
@@ -235,7 +225,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     if (!gigData && !loading) {
         return (
             <div className='gig-page'>
-                {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
+                {user?.venueProfiles?.length > 0 && (!user.artistProfiles?.length) ? (
                     <VenueHeader
                         user={user}
                         setAuthModal={setAuthModal}
@@ -380,30 +370,40 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           setApplyingToGig(true);
           try {
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' || gigData.budget === '£' || gigData.budget === '£0';
-            const { updatedApplicants } = await applyToGig({ gigId, musicianProfile });
+            // Normalize profile for API compatibility
+            const normalizedProfile = {
+              ...musicianProfile,
+              musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
+              profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
+            };
+            const { updatedApplicants } = await applyToGig({ gigId, musicianProfile: normalizedProfile });
             setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
-            if (musicianProfile.bandProfile) {
-                await updateBandMembersGigApplications(musicianProfile, gigId);
+            
+            // Use artist profile update if this is an artist profile
+            const isArtistProfile = user?.artistProfiles?.some(p => (p.id || p.profileId) === normalizedProfile.id);
+            if (isArtistProfile) {
+              await updateArtistGigApplications(normalizedProfile, gigId);
             } else {
-                await updateMusicianGigApplications(musicianProfile, gigId);
+              // Fallback to musician profile update for backward compatibility
+              await updateMusicianGigApplications(normalizedProfile, gigId);
             }
+            
             const { conversationId } = await getOrCreateConversation(
-                { musicianProfile, gigData: { ...gigData, gigId }, venueProfile, type: 'application' }
+                { musicianProfile: normalizedProfile, gigData: { ...gigData, gigId }, venueProfile, type: 'application' }
             );
             await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
-                text: musicianProfile.bandProfile
-                ? `${musicianProfile.name} have applied to your gig on ${formatDate(gigData.startDateTime)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`
-                : `${musicianProfile.name} has applied to your gig on ${formatDate(gigData.startDateTime)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`,                profileId: musicianProfile.musicianId,
-                profileType: musicianProfile.bandProfile ? 'band' : 'musician',
+                text: `${normalizedProfile.name} has applied to your gig on ${formatDate(gigData.startDateTime)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`,
+                profileId: normalizedProfile.musicianId,
+                profileType: 'artist',
             });
             await sendGigApplicationEmail({
                 to: venueProfile.email,
-                musicianName: musicianProfile.name,
+                musicianName: normalizedProfile.name,
                 venueName: gigData.venue.venueName,
                 date: formatDate(gigData.startDateTime),
                 budget: gigData.budget,
-                profileType: musicianProfile.bandProfile ? 'band' : 'musician',
+                profileType: 'artist',
                 nonPayableGig,
             });
             setUserAppliedToGig(true);
@@ -419,7 +419,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const handleWithdrawApplication = async () => {
         setApplyingToGig(true);
         try {
-            const { updatedApplicants } = await withdrawMusicianApplication(gigId, selectedProfile);
+            // Check if this is an artist profile
+            const isArtistProfile = user?.artistProfiles?.some(p => (p.id || p.profileId) === (selectedProfile?.id || selectedProfile?.profileId));
+            let updatedApplicants;
+            if (isArtistProfile) {
+              updatedApplicants = await withdrawArtistApplication(gigId, selectedProfile);
+            } else {
+              updatedApplicants = await withdrawMusicianApplication(gigId, selectedProfile);
+            }
             if (updatedApplicants) {
               setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
             }
@@ -474,17 +481,32 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
         setApplyingToGig(true);
         try {
-            const { updatedApplicants } = await negotiateGigFee({ gigId, musicianProfile, newFee: newOffer, sender: 'musician' });
+            // Normalize profile for API compatibility
+            const normalizedProfile = {
+              ...musicianProfile,
+              musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
+              profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
+            };
+            const { updatedApplicants } = await negotiateGigFee({ gigId, musicianProfile: normalizedProfile, newFee: newOffer, sender: 'musician' });
             console.log('updatedApplicants', updatedApplicants);
             setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
-            if (musicianProfile.bandProfile) {
-                await updateBandMembersGigApplications(musicianProfile, gigId);
+            
+            // Use artist profile update if this is an artist profile
+            const isArtistProfile = user?.artistProfiles?.some(p => (p.id || p.profileId) === normalizedProfile.id);
+            if (isArtistProfile) {
+              await updateArtistGigApplications(normalizedProfile, gigId);
             } else {
-                await updateMusicianGigApplications(musicianProfile, gigId);
+              // Fallback to musician profile update for backward compatibility
+              if (musicianProfile.bandProfile) {
+                await updateBandMembersGigApplications(normalizedProfile, gigId);
+              } else {
+                await updateMusicianGigApplications(normalizedProfile, gigId);
+              }
             }
-            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData, venueProfile, type: 'negotiation' });
-            const profileType = musicianProfile.bandProfile ? 'band' : 'musician';
-            const senderName = musicianProfile.name;
+            
+            const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData, venueProfile, type: 'negotiation' });
+            const profileType = isArtistProfile ? 'artist' : (musicianProfile.bandProfile ? 'band' : 'musician');
+            const senderName = normalizedProfile.name;
             const venueName = gigData.venue?.venueName || 'the venue';
             if (invitedToGig) {
                 const invitationMessage = await getMostRecentMessage(conversationId, 'invitation');
@@ -492,7 +514,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 await sendCounterOfferMessage({ conversationId, messageId: invitationMessage.id, senderId: user.uid, newFee: newOffer, oldFee: gigData.budget, userRole: 'musician' });
                 await sendCounterOfferEmail({
                     userRole: 'musician',
-                    musicianProfile: musicianProfile,
+                    musicianProfile: normalizedProfile,
                     venueProfile: venueProfile,
                     gigData,
                     newOffer,
@@ -502,8 +524,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     senderId: user.uid,
                     oldFee: gigData.budget,
                     newFee: newOffer,
-                    text: `${senderName} want${musicianProfile.bandProfile ? '' : 's'} to negotiate the fee for the gig on ${formatDate(gigData.startDateTime)} at ${venueName}`,
-                    profileId: musicianProfile.musicianId,
+                    text: `${senderName} wants to negotiate the fee for the gig on ${formatDate(gigData.startDateTime)} at ${venueName}`,
+                    profileId: normalizedProfile.musicianId,
                     profileType
                 });
                 await sendNegotiationEmail({
@@ -539,7 +561,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           });
         if (!valid) return;
         try {
-            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData, venueProfile, type: 'message' });
+            // Normalize profile for API compatibility
+            const normalizedProfile = {
+              ...musicianProfile,
+              musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
+              profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
+            };
+            const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData, venueProfile, type: 'message' });
             navigate(`/messages?conversationId=${conversationId}`);
         } catch (error) {
             console.error('Error while creating or fetching conversation:', error);
@@ -550,7 +578,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const handleAccept = async (event, proposedFee) => {
         event.stopPropagation();
         setApplyingToGig(true);
-        const musicianId = selectedProfile.id;
+        const musicianId = selectedProfile?.id || selectedProfile?.profileId || selectedProfile?.musicianId;
         try {
             if (!gigData) return console.error('Gig data is missing');
             if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
@@ -573,13 +601,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 }));
                 globalAgreedFee = agreedFee;
             }
-            const musicianProfile = selectedProfile;
+            // Normalize profile for API compatibility
+            const normalizedProfile = {
+              ...selectedProfile,
+              musicianId: musicianId,
+              profileId: musicianId,
+            };
             const venueProfile = await getVenueProfileById(gigData.venueId);
-            const { conversationId } = await getOrCreateConversation(musicianProfile, gigData, venueProfile, 'application');
+            const { conversationId } = await getOrCreateConversation(normalizedProfile, gigData, venueProfile, 'application');
             const applicationMessage = await getMostRecentMessage(conversationId, 'invitation');
             await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: gigData.budget, userRole: 'musician', nonPayableGig });
             const venueEmail = venueProfile.email;
-            const musicianName = musicianProfile.name;
+            const musicianName = normalizedProfile.name;
             await sendInvitationAcceptedEmailToVenue({
                 venueEmail: venueEmail,
                 musicianName: musicianName,
@@ -714,7 +747,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     
     return (
         <div className='gig-page'>
-            {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
+            {user?.venueProfiles?.length > 0 && (!user.artistProfiles?.length) ? (
                 <VenueHeader
                     user={user}
                     setAuthModal={setAuthModal}
@@ -997,7 +1030,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </div>
                                             </div>
                                         )} */}
-                                        {!(user?.venueProfiles?.length > 0 && !user.musicianProfile) && !venueVisiting && (
+                                        {!(user?.venueProfiles?.length > 0 && !user.artistProfiles?.length) && !venueVisiting && (
                                             <>
                                                 {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && !applyingToGig && (
                                                     <div className="profile-select-wrapper">
@@ -1005,17 +1038,21 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         <select
                                                             id="profileSelect"
                                                             className="input"
-                                                            value={selectedProfile?.musicianId}
+                                                            value={selectedProfile?.id || selectedProfile?.profileId || selectedProfile?.musicianId}
                                                             onChange={(e) => {
-                                                                const selected = validProfiles.find(profile => profile.musicianId === e.target.value);
+                                                                const profileId = (p) => p.id || p.profileId || p.musicianId;
+                                                                const selected = validProfiles.find(profile => profileId(profile) === e.target.value);
                                                                 setSelectedProfile(selected);
                                                             }}
                                                         >
-                                                        {validProfiles.map((profile) => (
-                                                            <option key={profile.musicianId} value={profile.musicianId}>
-                                                            {profile.name} {profile.bandProfile ? '(Band)' : '(Solo)'}
-                                                            </option>
-                                                        ))}
+                                                        {validProfiles.map((profile) => {
+                                                            const profileId = profile.id || profile.profileId || profile.musicianId;
+                                                            return (
+                                                                <option key={profileId} value={profileId}>
+                                                                    {profile.name} (Artist)
+                                                                </option>
+                                                            );
+                                                        })}
                                                         </select>
                                                     </div>
                                                 )}
@@ -1419,7 +1456,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </div>
                                             </div>
                                         )} */}
-                                        {!(user?.venueProfiles?.length > 0 && !user.musicianProfile) && !venueVisiting && (
+                                        {!(user?.venueProfiles?.length > 0 && !user.artistProfiles?.length) && !venueVisiting && (
                                             <>
                                                 {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && !applyingToGig && (
                                                     <div className="profile-select-wrapper">
@@ -1427,17 +1464,21 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         <select
                                                             id="profileSelect"
                                                             className="input"
-                                                            value={selectedProfile?.musicianId}
+                                                            value={selectedProfile?.id || selectedProfile?.profileId || selectedProfile?.musicianId}
                                                             onChange={(e) => {
-                                                                const selected = validProfiles.find(profile => profile.musicianId === e.target.value);
+                                                                const profileId = (p) => p.id || p.profileId || p.musicianId;
+                                                                const selected = validProfiles.find(profile => profileId(profile) === e.target.value);
                                                                 setSelectedProfile(selected);
                                                             }}
                                                         >
-                                                        {validProfiles.map((profile) => (
-                                                            <option key={profile.musicianId} value={profile.musicianId}>
-                                                            {profile.name} {profile.bandProfile ? '(Band)' : '(Solo)'}
-                                                            </option>
-                                                        ))}
+                                                        {validProfiles.map((profile) => {
+                                                            const profileId = profile.id || profile.profileId || profile.musicianId;
+                                                            return (
+                                                                <option key={profileId} value={profileId}>
+                                                                    {profile.name} (Artist)
+                                                                </option>
+                                                            );
+                                                        })}
                                                         </select>
                                                     </div>
                                                 )}

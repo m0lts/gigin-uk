@@ -126,10 +126,90 @@ If you see port conflicts:
 4. **Make changes** - they'll be reflected immediately
 5. **View data** - open Emulator UI at http://localhost:4000
 
+## Stripe Webhooks (Local Development)
+
+To test Stripe payments locally, you need to forward Stripe webhooks to your local Functions emulator.
+
+### 1. Install Stripe CLI
+
+If you haven't already, install the Stripe CLI:
+```bash
+# macOS
+brew install stripe/stripe-cli/stripe
+
+# Or download from: https://stripe.com/docs/stripe-cli
+```
+
+### 2. Login to Stripe CLI
+
+```bash
+stripe login
+```
+
+This will open your browser to authenticate with your Stripe account.
+
+### 3. Forward Webhooks to Local Functions Emulator
+
+In a **new terminal** (while your emulators are running), run:
+
+```bash
+stripe listen --forward-to http://localhost:5001/giginltd-dev/us-central1/stripeWebhook
+```
+
+**Finding the exact endpoint**:
+- When you start the Functions emulator (`npm run emulators`), it will display the URLs for all functions in the console
+- Look for a line like: `✔  functions[stripeWebhook(us-central1)]: http function initialized (http://localhost:5001/giginltd-dev/us-central1/stripeWebhook)`
+- Use that exact URL in the `stripe listen` command
+
+**Important**: When you run `stripe listen`, it will output a webhook signing secret that looks like:
+```
+> Ready! Your webhook signing secret is whsec_xxxxxxxxxxxxx
+```
+
+### 4. Set the Webhook Secret for Emulator
+
+Copy the webhook secret from `stripe listen` output (starts with `whsec_...`), then:
+
+**Option A: Set as environment variable before starting emulators** (Recommended):
+```bash
+export STRIPE_WEBHOOK_SECRET_LOCAL=whsec_your_secret_here
+npm run emulators
+```
+
+**Option B: Set inline when starting emulators**:
+```bash
+STRIPE_WEBHOOK_SECRET_LOCAL=whsec_your_secret_here npm run emulators
+```
+
+**Note**: 
+- Replace `giginltd-dev` with your project ID if different (check `.firebaserc`)
+- The region should match what's shown in the emulator logs (typically `us-central1` for the stripeWebhook function)
+- The webhook secret from `stripe listen` is different each time you run it, so you'll need to update the environment variable if you restart `stripe listen`
+
+This command will:
+- Forward all Stripe webhook events to your local Functions emulator
+- Display a webhook signing secret (starts with `whsec_...`)
+- Show all webhook events in real-time
+
+### 5. Test Payments
+
+Once the webhook forwarding is active:
+1. Make a test payment in your local app
+2. The Stripe CLI will show the webhook event being received
+3. Your Functions emulator will process the webhook
+4. Check the Functions emulator logs to see the webhook being handled
+
+### Troubleshooting Stripe Webhooks
+
+- **Webhooks not reaching emulator**: Ensure the Functions emulator is running on port `5001`
+- **Signature verification failed**: Make sure you're using the webhook secret from `stripe listen`
+- **Function not found**: Verify the function name is `stripeWebhook` and the region is `us-central1`
+
 ## Notes
 
 - Emulator data is in-memory by default (lost when emulators stop)
 - Use export/import to persist data between sessions
 - The emulators use a separate project ID (usually `demo-test` or similar)
 - Production data is never affected when using emulators
+- **Stripe webhooks must be forwarded manually** - they don't automatically connect to emulators
 

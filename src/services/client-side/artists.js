@@ -264,6 +264,19 @@ export const getMusicianProfileByMusicianId = async (musicianId) => {
 };
 
 /**
+ * Fetches an artist profile by its Firestore document ID.
+ */
+export const getArtistProfileById = async (artistId) => {
+  try {
+    const ref = doc(firestore, 'artistProfiles', artistId);
+    const snap = await getDoc(ref);
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch (error) {
+    console.error('[Firestore Error] getArtistProfileById:', error);
+  }
+};
+
+/**
  * Fetches multiple musician profiles by their Firestore document IDs.
  */
 export const getMusicianProfilesByIds = async (musicianIds) => {
@@ -364,6 +377,24 @@ export const updateMusicianGigApplications = async (profile, gigId) => {
     await updateDoc(musicianRef, { gigApplications: arrayUnion(entry) });
   } catch (error) {
     console.error('[Firestore Error] updateMusicianGigApplications:', error);
+  }
+};
+
+/**
+ * Adds an application record to an artist profile.
+ */
+export const updateArtistGigApplications = async (profile, gigId) => {
+  try {
+    const artistId = profile?.id || profile?.profileId || profile?.musicianId;
+    if (!artistId) {
+      console.error('[Firestore Error] updateArtistGigApplications: missing profile.id');
+      return;
+    }
+    const artistRef = doc(firestore, 'artistProfiles', artistId);
+    const entry = { gigId, profileId: artistId, name: profile.name };
+    await updateDoc(artistRef, { gigApplications: arrayUnion(entry) });
+  } catch (error) {
+    console.error('[Firestore Error] updateArtistGigApplications:', error);
   }
 };
 
@@ -491,5 +522,102 @@ export async function withdrawMusicianApplication(gigId, profile, userId) {
     return updatedApplicants;
   } catch (error) {
     console.error('[Firestore Error] withdrawMusicianApplication:', error);
+  }
+}
+
+export async function withdrawArtistApplication(gigId, profile) {
+  try {
+    const applicantId = profile?.id || profile?.profileId || profile?.musicianId;
+    if (!gigId || !applicantId) {
+      console.error('[Firestore Error] withdrawArtistApplication: missing gigId or profile.id');
+      return null;
+    }
+
+    const gigRef = doc(firestore, 'gigs', gigId);
+    const gigSnap = await getDoc(gigRef);
+    if (!gigSnap.exists()) return null;
+
+    const gig = gigSnap.data() || {};
+    const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+    const hasApplied = applicants.some((a) => a?.id === applicantId);
+    if (!hasApplied) return applicants;
+
+    const target = applicants.find((a) => a?.id === applicantId);
+    if (target?.status === 'accepted' || target?.status === 'confirmed') {
+      console.error('[Firestore Error] withdrawArtistApplication: cannot withdraw accepted/confirmed application');
+      return applicants;
+    }
+
+    const updatedApplicants = applicants.map((a) =>
+      a?.id === applicantId ? { ...a, status: 'withdrawn' } : a
+    );
+
+    await updateGigDocument({
+      gigId,
+      action: 'artist.withdraw.application',
+      updates: { applicants: updatedApplicants },
+    });
+
+    const batch = writeBatch(firestore);
+    const pruneApps = (entries = []) =>
+      entries.filter((entry) => !(entry?.gigId === gigId && (entry?.profileId === applicantId || !entry?.profileId)));
+
+    const artistRef = doc(firestore, 'artistProfiles', applicantId);
+    let apps = Array.isArray(profile?.gigApplications) ? profile.gigApplications : null;
+    if (!apps) {
+      const artistSnap = await getDoc(artistRef);
+      apps = Array.isArray(artistSnap.data()?.gigApplications) ? artistSnap.data().gigApplications : [];
+    }
+    batch.update(artistRef, { gigApplications: pruneApps(apps) });
+    await batch.commit();
+
+    const venueRef = doc(firestore, 'venueProfiles', gig.venueId);
+    const venueSnap = await getDoc(venueRef);
+    const venueProfile = venueSnap.exists() ? (venueSnap.data() || {}) : {};
+
+    const conversationProfile = {
+      ...profile,
+      musicianId: applicantId,
+      profileId: applicantId,
+    };
+
+    const { conversationId } = await getOrCreateConversation({
+      musicianProfile: conversationProfile,
+      gigData: { ...gig, gigId },
+      venueProfile,
+      type: 'withdrawal',
+    });
+
+    const lastAppMsg = await getMostRecentMessage(conversationId, 'application');
+    const lastNegMsg = await getMostRecentMessage(conversationId, 'negotiation');
+
+    if (lastAppMsg?.id) {
+      await updateMessageDoc({
+        conversationId,
+        messageId: lastAppMsg.id,
+        updates: { status: 'withdrawn' },
+        conversationUpdates: {
+          lastMessage: `${profile.name} has withdrawn their application.`,
+          lastMessageSenderId: 'system',
+        },
+      });
+    }
+
+    if (lastNegMsg?.id) {
+      await updateMessageDoc({
+        conversationId,
+        messageId: lastNegMsg.id,
+        updates: { status: 'withdrawn' },
+        conversationUpdates: {
+          lastMessage: `${profile.name} has withdrawn their application.`,
+          lastMessageSenderId: 'system',
+        },
+      });
+    }
+
+    return updatedApplicants;
+  } catch (error) {
+    console.error('[Firestore Error] withdrawArtistApplication:', error);
+    throw error;
   }
 }
