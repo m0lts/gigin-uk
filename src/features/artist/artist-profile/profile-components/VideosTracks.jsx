@@ -123,6 +123,7 @@ export const VideosTracks = ({
   onVideosCancel,
   videosUploadStatus = 'idle',
   videosUploadProgress = 0,
+  allowPlayback = true,
 }) => {
   // Determine initial active section: use defaultActiveSection if provided,
   // otherwise default to 'videos' if there are videos,
@@ -328,6 +329,16 @@ export const VideosTracks = ({
   const getVideoIdentifier = (video, index) => video.id || `video-${index}`;
   const getTrackIdentifier = (track, index) => track.id || `track-${index}`;
 
+  const handleVideoPlayRequest = (videoKey) => {
+    if (!allowPlayback) return;
+    setActiveVideoId(videoKey);
+  };
+
+  const handleTrackPlayRequest = (trackKey) => {
+    if (!allowPlayback) return;
+    setActiveTrackId(trackKey);
+  };
+
   const scrubTrackToClientX = (clientX) => {
     if (!trackAudioRef.current || !trackProgressBarRef.current) return;
     const rect = trackProgressBarRef.current.getBoundingClientRect();
@@ -418,6 +429,19 @@ export const VideosTracks = ({
       }
     }
   }, [activeTrackData]);
+
+  useEffect(() => {
+    if (!allowPlayback) {
+      setActiveVideoId(null);
+      setActiveTrackId(null);
+      setIsTrackPlaying(false);
+      setTrackProgress({ currentTime: 0, duration: 0 });
+      if (trackAudioRef.current) {
+        trackAudioRef.current.pause();
+        trackAudioRef.current.currentTime = 0;
+      }
+    }
+  }, [allowPlayback]);
 
   // Sync edit URLs with props
   useEffect(() => {
@@ -604,7 +628,6 @@ export const VideosTracks = ({
                   >
                     <FilmIcon />
                     <span>Upload Video</span>
-                    <small>MP4, MOV or WEBM up to 200MB</small>
                   </button>
                   <div className="link-entries-container">
                     <div className="link-entry-container youtube">
@@ -777,7 +800,8 @@ export const VideosTracks = ({
                         <button
                           type="button"
                           className="play-icon-button"
-                          onClick={() => setActiveVideoId(videoKey)}
+                          onClick={() => handleVideoPlayRequest(videoKey)}
+                          disabled={!allowPlayback}
                           aria-label={`Play ${video.title || `video ${index + 1}`}`}
                         >
                           <PlayIcon />
@@ -899,7 +923,6 @@ export const VideosTracks = ({
                   >
                     <VinylIcon />
                     <span>Upload Track</span>
-                    <small>MP3 or WAV up to 20MB</small>
                   </button>
                   <div className="link-entries-container">
                     <div className="link-entry-container spotify">
@@ -1162,7 +1185,8 @@ export const VideosTracks = ({
                         <button
                           type="button"
                           className="btn icon play-track"
-                          onClick={() => setActiveTrackId(trackKey)}
+                          onClick={() => handleTrackPlayRequest(trackKey)}
+                          disabled={!allowPlayback}
                           aria-label={`Play ${track.title || `track ${index + 1}`}`}
                         >
                           <PlayIcon />

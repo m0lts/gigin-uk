@@ -982,6 +982,7 @@ export const ProfileView = ({
               onVideosCancel={handleVideosCancel}
               videosUploadStatus={videoUploadStatus}
               videosUploadProgress={videoUploadProgress}
+              allowPlayback={!isExample}
             />
           )}
           {/* Hidden file inputs for track and video editing */}

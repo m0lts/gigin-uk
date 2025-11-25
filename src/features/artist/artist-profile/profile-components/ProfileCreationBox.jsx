@@ -1278,7 +1278,6 @@ function TracksStep({
         <button type="button" className="creation-hero-upload track" onClick={onPrimaryUploadClick}>
           <VinylIcon />
           <span>Upload Track</span>
-          <small>MP3 or WAV up to 20MB</small>
         </button>
         <div className="link-entries-container">
           <div className="link-entry-container spotify">
@@ -1462,7 +1461,6 @@ function VideosStep({
         <button type="button" className="creation-hero-upload track" onClick={onPrimaryUploadClick}>
           <FilmIcon />
           <span>Upload Video</span>
-          <small>MP4, MOV or WEBM up to 200MB</small>
         </button>
         <div className="link-entries-container">
           <div className="link-entry-container youtube">

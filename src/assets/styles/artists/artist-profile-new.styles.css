@@ -231,6 +231,10 @@
 }
 
 /* Common Sub-Component Box Styling */
+.creation-box-container {
+  margin-top: 1rem;
+}
+
 .bio-card-container,
 .creation-box-container,
 .additional-info-card-container {

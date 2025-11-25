@@ -1125,7 +1125,8 @@ export const ArtistProfile = ({
         totalSizeBytes: track.totalSizeBytes ?? audioSizeBytes + coverSizeBytes,
       };
     });
-    let completedUploads = 0;
+    // Use a ref to track completed uploads so all progress callbacks see the current value
+    const completedUploadsRef = { current: 0 };
     const totalUploads = creationTracks.reduce((count, track) => {
       return count + (track.audioFile ? 1 : 0) + (track.coverFile ? 1 : 0);
     }, 0);
@@ -1136,6 +1137,14 @@ export const ArtistProfile = ({
     if (totalUploads === 0) {
       return;
     }
+
+    // Helper function to update progress
+    const updateProgress = () => {
+      if (tracksUploadTokenRef.current === uploadToken && isMountedRef.current) {
+        const progress = (completedUploadsRef.current / totalUploads) * 100;
+        setTracksUploadProgress(progress);
+      }
+    };
 
     creationTracks.forEach((track, index) => {
       const trackId = track.id;
@@ -1152,10 +1161,9 @@ export const ArtistProfile = ({
           track.audioFile,
           storagePath,
           (progress) => {
-            if (tracksUploadTokenRef.current !== uploadToken) return;
-            if (!isMountedRef.current) return;
+            if (tracksUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
             // Update progress based on completed uploads + current progress
-            const baseProgress = (completedUploads / totalUploads) * 100;
+            const baseProgress = (completedUploadsRef.current / totalUploads) * 100;
             const currentProgress = (progress / totalUploads) * 100;
             setTracksUploadProgress(baseProgress + currentProgress);
           }
@@ -1200,17 +1208,14 @@ export const ArtistProfile = ({
               }
             }
 
-            completedUploads++;
-            const progress = (completedUploads / totalUploads) * 100;
-            if (tracksUploadTokenRef.current === uploadToken) {
-              if (!isMountedRef.current) return;
-              setTracksUploadProgress(progress);
-            }
+            completedUploadsRef.current++;
+            updateProgress();
           })
           .catch((error) => {
-            if (tracksUploadTokenRef.current !== uploadToken) return;
+            if (tracksUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
             console.error(`Failed to upload audio for track ${trackId}:`, error);
-            completedUploads++;
+            completedUploadsRef.current++;
+            updateProgress();
           });
 
         uploadPromises.push(audioUploadPromise);
@@ -1227,10 +1232,9 @@ export const ArtistProfile = ({
           track.coverFile,
           storagePath,
           (progress) => {
-            if (tracksUploadTokenRef.current !== uploadToken) return;
-            if (!isMountedRef.current) return;
+            if (tracksUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
             // Update progress based on completed uploads + current progress
-            const baseProgress = (completedUploads / totalUploads) * 100;
+            const baseProgress = (completedUploadsRef.current / totalUploads) * 100;
             const currentProgress = (progress / totalUploads) * 100;
             setTracksUploadProgress(baseProgress + currentProgress);
           }
@@ -1275,17 +1279,14 @@ export const ArtistProfile = ({
               }
             }
 
-            completedUploads++;
-            const progress = (completedUploads / totalUploads) * 100;
-            if (tracksUploadTokenRef.current === uploadToken) {
-              if (!isMountedRef.current) return;
-              setTracksUploadProgress(progress);
-            }
+            completedUploadsRef.current++;
+            updateProgress();
           })
           .catch((error) => {
-            if (tracksUploadTokenRef.current !== uploadToken) return;
+            if (tracksUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
             console.error(`Failed to upload cover for track ${trackId}:`, error);
-            completedUploads++;
+            completedUploadsRef.current++;
+            updateProgress();
           });
 
         uploadPromises.push(coverUploadPromise);
@@ -2769,7 +2770,7 @@ export const ArtistProfile = ({
             onBeginCreation={handleBeginCreation}
             isExample={true}
             isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
+            setIsDarkMode={handleDarkModeChange}
             onExampleProfileSelected={setSelectedExampleProfile}
             isCreationLoading={initializingArtistProfile}
             isCreatingProfile={isCreatingProfile}
@@ -2820,7 +2821,7 @@ export const ArtistProfile = ({
             onBeginCreation={handleBeginCreation}
             isExample={false}
             isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
+            setIsDarkMode={handleDarkModeChange}
             isCreationLoading={initializingArtistProfile}
             isCreatingProfile={true}
             creationStep={creationStep}

@@ -386,6 +386,12 @@
     justify-content: space-around;
 }
 
+.header.musician .right-block.empty {
+    width: auto;
+    min-width: auto;
+    max-width: auto;
+}
+
 .header.musician .link {
     font-weight: 500;
     padding:0.5rem 1rem;

@@ -119,7 +119,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                     </Link>
                                 )}
                             </div>
-                            <div className='right-block'>
+                            <div className={`right-block ${user.artistProfiles && user.artistProfiles.length > 0 ? '' : 'empty'}`}>
                                 {user.artistProfiles && user.artistProfiles.length > 0 && (
                                     <>
                                         <Link className={`link ${location.pathname === '/artist-profile' ? 'disabled' : ''}`} to={'/artist-profile'}>
