@@ -185,6 +185,20 @@ button {
     color: var(--gn-grey-600);
 }
 
+.btn.text-no-underline {
+    text-decoration: none;
+    background-color: transparent;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: background-color 200ms linear, color 200ms linear;
+}
+
+.btn.text-no-underline:hover {
+    color: var(--gn-grey-700);
+    background-color: var(--gn-grey-300);
+}
+
 
 /* ICONS AS BUTTONS */
 

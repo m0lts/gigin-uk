@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { FilmIcon, PlayIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon, YoutubeIcon, EditIcon, NoImageIcon, UpArrowIcon, DownArrowIcon } from '../../../shared/ui/extras/Icons';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { FilmIcon, PlayIcon, PauseIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon, YoutubeIcon, EditIcon, NoImageIcon, UpArrowIcon, DownArrowIcon, ExitIcon, CloseIcon } from '../../../shared/ui/extras/Icons';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
 /**
@@ -29,6 +29,61 @@ const handleLinkClick = (e, url) => {
   }
 };
 
+const MEDIA_STORAGE_LIMIT_BYTES = 3 * 1024 * 1024 * 1024; // 3GB
+
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes <= 0) return '0B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, index);
+  const formatted = value >= 10 ? value.toFixed(0) : value.toFixed(1);
+  return `${formatted}${units[index]}`;
+};
+
+const getTrackMediaBytes = (track = {}) => {
+  if (!track) return 0;
+  if (typeof track.totalSizeBytes === 'number') return track.totalSizeBytes;
+  const audioBytes = track.audioFile?.size ?? track.audioSizeBytes ?? 0;
+  const coverBytes = track.coverFile?.size ?? track.coverSizeBytes ?? 0;
+  return audioBytes + coverBytes;
+};
+
+const getVideoMediaBytes = (video = {}) => {
+  if (!video) return 0;
+  if (typeof video.totalSizeBytes === 'number') return video.totalSizeBytes;
+  const videoBytes = video.videoFile?.size ?? video.videoSizeBytes ?? 0;
+  const thumbnailBytes =
+    video.thumbnailFile instanceof Blob
+      ? video.thumbnailFile.size ?? 0
+      : video.thumbnailSizeBytes ?? 0;
+  return videoBytes + thumbnailBytes;
+};
+
+const StorageUsageBar = ({
+  usedBytes = 0,
+  totalBytes = MEDIA_STORAGE_LIMIT_BYTES,
+  label = 'Storage Usage',
+}) => {
+  const limit = totalBytes || MEDIA_STORAGE_LIMIT_BYTES;
+  const clampedUsed = Math.max(0, usedBytes);
+  const percent = limit ? Math.min(100, (clampedUsed / limit) * 100) : 0;
+  const isOverLimit = clampedUsed > limit;
+
+  return (
+    <div className={`storage-usage ${isOverLimit ? 'over-limit' : ''}`}>
+      <div className="storage-usage-header">
+        <span>{label}</span>
+        <span>
+          {formatFileSize(clampedUsed)} / {formatFileSize(limit)}
+        </span>
+      </div>
+      <div className="storage-usage-bar">
+        <div className="storage-usage-bar-fill" style={{ width: `${Math.min(percent, 100)}%` }} />
+      </div>
+    </div>
+  );
+};
+
 export const VideosTracks = ({ 
   videos = [], 
   tracks = [], 
@@ -36,9 +91,12 @@ export const VideosTracks = ({
   spotifyUrl = "", 
   soundcloudUrl = "", 
   youtubeUrl = "",
+  mediaUsageBytes = 0,
   // Editing props
   isEditable = false,
   editingTracks = [],
+  tracksSource = [],
+  videosSource = [],
   artistName = "",
   onTracksEdit,
   onTrackPrimaryUpload,
@@ -81,9 +139,285 @@ export const VideosTracks = ({
   const [editSpotifyUrl, setEditSpotifyUrl] = useState(spotifyUrl);
   const [editSoundcloudUrl, setEditSoundcloudUrl] = useState(soundcloudUrl);
   const [editYoutubeUrl, setEditYoutubeUrl] = useState(youtubeUrl);
+  const [activeVideoId, setActiveVideoId] = useState(null);
   const containerRef = useRef(null);
   const videosRef = useRef(null);
   const tracksRef = useRef(null);
+  const [remoteTrackSizes, setRemoteTrackSizes] = useState({});
+  const [remoteVideoSizes, setRemoteVideoSizes] = useState({});
+  const [activeTrackId, setActiveTrackId] = useState(null);
+  const [trackProgress, setTrackProgress] = useState({ currentTime: 0, duration: 0 });
+  const [isTrackPlaying, setIsTrackPlaying] = useState(false);
+  const [isTrackScrubbing, setIsTrackScrubbing] = useState(false);
+  const trackAudioRef = useRef(null);
+  const trackProgressBarRef = useRef(null);
+  const trackSizeFetchRef = useRef(new Set());
+  const videoSizeFetchRef = useRef(new Set());
+  const tracksForUsage = isEditingTracks
+    ? editingTracks
+    : (tracksSource.length ? tracksSource : tracks);
+  const videosForUsage = isEditingVideos
+    ? editingVideos
+    : (videosSource.length ? videosSource : videos);
+  const needsTrackUsage = isEditingTracks || isEditingVideos;
+  const needsVideoUsage = isEditingTracks || isEditingVideos;
+
+  const trackDataset = tracksSource.length ? tracksSource : tracks;
+
+  const getTrackSizeEstimate = (track) => {
+    const directSize = getTrackMediaBytes(track);
+    if (directSize > 0) return directSize;
+    return remoteTrackSizes[track.id] || 0;
+  };
+
+  const getVideoSizeEstimate = (video) => {
+    const directSize = getVideoMediaBytes(video);
+    if (directSize > 0) return directSize;
+    return remoteVideoSizes[video.id] || 0;
+  };
+
+  const resolveVideoSource = (video) =>
+    video.uploadedVideoUrl ||
+    video.videoPreviewUrl ||
+    video.videoUrl ||
+    '';
+
+  const resolveVideoPoster = (video) =>
+    video.thumbnailUploadedUrl ||
+    video.thumbnailPreviewUrl ||
+    video.thumbnail ||
+    video.thumbnailUrl ||
+    null;
+
+  const resolveTrackCover = (track) =>
+    track.coverUploadedUrl ||
+    track.coverPreviewUrl ||
+    track.coverUrl ||
+    track.thumbnail ||
+    null;
+
+  const resolveTrackAudio = (track) =>
+    track.uploadedAudioUrl ||
+    track.audioUploadedUrl ||
+    track.audioPreviewUrl ||
+    track.audioUrl ||
+    '';
+
+  const videoDataset = videosSource.length ? videosSource : videos;
+
+  const trackUsageBytes = useMemo(
+    () => tracksForUsage.reduce((total, track) => total + getTrackSizeEstimate(track), 0),
+    [tracksForUsage, remoteTrackSizes]
+  );
+  const videoUsageBytes = useMemo(
+    () => videosForUsage.reduce((total, video) => total + getVideoSizeEstimate(video), 0),
+    [videosForUsage, remoteVideoSizes]
+  );
+  const derivedUsageBytes = trackUsageBytes + videoUsageBytes;
+  const combinedUsageBytes = Math.max(mediaUsageBytes || 0, derivedUsageBytes);
+  const trackUsageBar = isEditingTracks ? (
+    <StorageUsageBar usedBytes={combinedUsageBytes} totalBytes={MEDIA_STORAGE_LIMIT_BYTES} />
+  ) : null;
+  const videoUsageBar = isEditingVideos ? (
+    <StorageUsageBar usedBytes={combinedUsageBytes} totalBytes={MEDIA_STORAGE_LIMIT_BYTES} />
+  ) : null;
+
+  const fetchFileSize = async (url) => {
+    if (!url) return 0;
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      const header = response.headers.get('content-length');
+      const size = header ? parseInt(header, 10) : 0;
+      return Number.isFinite(size) ? size : 0;
+    } catch (error) {
+      console.error('Failed to fetch file size', error);
+      return 0;
+    }
+  };
+
+  useEffect(() => {
+    if (!needsTrackUsage) return;
+    let cancelled = false;
+
+    tracksForUsage.forEach((track) => {
+      if (!track || !track.id) return;
+      const existingSize = getTrackMediaBytes(track);
+      if (existingSize > 0 || remoteTrackSizes[track.id]) return;
+      if (trackSizeFetchRef.current.has(track.id)) return;
+
+      const audioUrl = track.uploadedAudioUrl || track.audioUrl;
+      const coverUrl = track.coverUploadedUrl || track.coverUrl;
+      if (!track.audioFile && !audioUrl && !track.coverFile && !coverUrl) return;
+      trackSizeFetchRef.current.add(track.id);
+
+      (async () => {
+        const audioSize =
+          track.audioFile?.size ??
+          track.audioSizeBytes ??
+          (audioUrl ? await fetchFileSize(audioUrl) : 0);
+        const coverSize =
+          track.coverFile?.size ??
+          track.coverSizeBytes ??
+          (coverUrl ? await fetchFileSize(coverUrl) : 0);
+        const total = audioSize + coverSize;
+        if (!cancelled) {
+          setRemoteTrackSizes((prev) => ({
+            ...prev,
+            [track.id]: total,
+          }));
+        }
+      })()
+        .catch((error) => {
+          console.error('Failed to resolve track size', error);
+        })
+        .finally(() => {
+          trackSizeFetchRef.current.delete(track.id);
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [needsTrackUsage, tracksForUsage, remoteTrackSizes]);
+
+  useEffect(() => {
+    if (!needsVideoUsage) return;
+    let cancelled = false;
+
+    videosForUsage.forEach((video) => {
+      if (!video || !video.id) return;
+      const existingSize = getVideoMediaBytes(video);
+      if (existingSize > 0 || remoteVideoSizes[video.id]) return;
+      if (videoSizeFetchRef.current.has(video.id)) return;
+
+      const videoUrl = video.uploadedVideoUrl || video.videoUrl;
+      const thumbnailUrl = video.thumbnailUploadedUrl || video.thumbnailUrl || video.thumbnail;
+      if (!video.videoFile && !videoUrl && !video.thumbnailFile && !thumbnailUrl) return;
+      videoSizeFetchRef.current.add(video.id);
+
+      (async () => {
+        const mainSize =
+          video.videoFile?.size ??
+          video.videoSizeBytes ??
+          (videoUrl ? await fetchFileSize(videoUrl) : 0);
+        const thumbSize =
+          video.thumbnailFile?.size ??
+          video.thumbnailSizeBytes ??
+          (thumbnailUrl ? await fetchFileSize(thumbnailUrl) : 0);
+        const total = mainSize + thumbSize;
+        if (!cancelled) {
+          setRemoteVideoSizes((prev) => ({
+            ...prev,
+            [video.id]: total,
+          }));
+        }
+      })()
+        .catch((error) => {
+          console.error('Failed to resolve video size', error);
+        })
+        .finally(() => {
+          videoSizeFetchRef.current.delete(video.id);
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [needsVideoUsage, videosForUsage, remoteVideoSizes]);
+
+  const getVideoIdentifier = (video, index) => video.id || `video-${index}`;
+  const getTrackIdentifier = (track, index) => track.id || `track-${index}`;
+
+  const scrubTrackToClientX = (clientX) => {
+    if (!trackAudioRef.current || !trackProgressBarRef.current) return;
+    const rect = trackProgressBarRef.current.getBoundingClientRect();
+    const percent = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
+    const duration = trackAudioRef.current.duration || trackProgress.duration || 0;
+    const newTime = percent * duration;
+    trackAudioRef.current.currentTime = newTime;
+    setTrackProgress({
+      currentTime: newTime,
+      duration,
+    });
+  };
+
+  const handleTrackProgressPointerDown = (event) => {
+    if (!trackAudioRef.current || !trackProgressBarRef.current) return;
+    event.preventDefault();
+    setIsTrackScrubbing(true);
+    scrubTrackToClientX(event.clientX);
+
+    const handlePointerMove = (moveEvent) => {
+      moveEvent.preventDefault();
+      scrubTrackToClientX(moveEvent.clientX);
+    };
+
+    const handlePointerUp = () => {
+      setIsTrackScrubbing(false);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+    };
+
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+  };
+
+  const activeVideoData = useMemo(() => {
+    if (!activeVideoId) return null;
+    const sourceList = videoDataset.length ? videoDataset : videos;
+    return (
+      sourceList.find((video, index) => getVideoIdentifier(video, index) === activeVideoId) || null
+    );
+  }, [activeVideoId, videoDataset, videos]);
+
+  const activeTrackData = useMemo(() => {
+    if (!activeTrackId) return null;
+    const sourceList = trackDataset.length ? trackDataset : tracks;
+    return (
+      sourceList.find((track, index) => getTrackIdentifier(track, index) === activeTrackId) || null
+    );
+  }, [activeTrackId, trackDataset, tracks]);
+
+  useEffect(() => {
+    if (activeVideoId && !activeVideoData) {
+      setActiveVideoId(null);
+    }
+  }, [activeVideoId, activeVideoData]);
+
+  useEffect(() => {
+    if (isEditingVideos) {
+      setActiveVideoId(null);
+    }
+  }, [isEditingVideos]);
+
+  useEffect(() => {
+    if (activeTrackId && !activeTrackData) {
+      setActiveTrackId(null);
+    }
+  }, [activeTrackId, activeTrackData]);
+
+  useEffect(() => {
+    if (isEditingTracks) {
+      setActiveTrackId(null);
+      setIsTrackPlaying(false);
+      setTrackProgress({ currentTime: 0, duration: 0 });
+      if (trackAudioRef.current) {
+        trackAudioRef.current.pause();
+        trackAudioRef.current.currentTime = 0;
+      }
+    }
+  }, [isEditingTracks]);
+
+  useEffect(() => {
+    if (!activeTrackData) {
+      setIsTrackPlaying(false);
+      setTrackProgress({ currentTime: 0, duration: 0 });
+      if (trackAudioRef.current) {
+        trackAudioRef.current.pause();
+        trackAudioRef.current.currentTime = 0;
+      }
+    }
+  }, [activeTrackData]);
 
   // Sync edit URLs with props
   useEffect(() => {
@@ -134,28 +468,43 @@ export const VideosTracks = ({
     requestAnimationFrame(() => {
       requestAnimationFrame(updateHeight);
     });
-  }, [activeSection, videos, tracks, isEditingTracks, editingTracks, isEditingVideos, editingVideos]);
+  }, [
+    activeSection,
+    videos,
+    tracks,
+    isEditingTracks,
+    editingTracks,
+    isEditingVideos,
+    editingVideos,
+    activeVideoId,
+    activeTrackId,
+  ]);
 
-  // Track previous tracks length to detect when tracks are added/removed
   const prevTracksLengthRef = useRef(tracks.length);
-  
+
   // Switch to tracks when tracks are first uploaded, switch back to videos when all tracks are removed
   useEffect(() => {
     const prevLength = prevTracksLengthRef.current;
     const currentLength = tracks.length;
-    
-    // Only auto-switch to tracks when tracks go from 0 to > 0 (first track added)
+
     if (prevLength === 0 && currentLength > 0) {
       setActiveSection('tracks');
-    } 
-    // Switch back to videos if tracks become empty and we're currently on tracks
-    else if (currentLength === 0 && activeSection === 'tracks') {
+    } else if (currentLength === 0 && activeSection === 'tracks') {
       setActiveSection('videos');
     }
-    
-    // Update the ref for next comparison
+
     prevTracksLengthRef.current = currentLength;
   }, [tracks.length, activeSection]);
+
+  useEffect(() => {
+    if (activeSection === 'videos') {
+      setIsEditingVideos(false);
+      setActiveVideoId(null);
+    } else if (activeSection === 'tracks') {
+      setIsEditingTracks(false);
+      setActiveTrackId(null);
+    }
+  }, [activeSection]);
 
   // Hide videos section if there are no videos
   const hasVideos = videos.length > 0;
@@ -227,18 +576,22 @@ export const VideosTracks = ({
           )}
         <div className="section-content">
           {videosUploadStatus === 'uploading' ? (
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              gap: '1rem',
-              padding: '2rem 0',
-            }}>
-              <LoadingSpinner />
-              <h4>Uploading Videos...</h4>
-            </div>
+            <>
+              {isEditingVideos && videoUsageBar}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                gap: '1rem',
+                padding: '2rem 0',
+              }}>
+                <LoadingSpinner />
+                <h4>Uploading Videos...</h4>
+              </div>
+            </>
           ) : isEditingVideos ? (
             <>
+              {videoUsageBar}
               {displayVideosForEdit.length === 0 ? (
                 <>
                   <p className="creation-step-question">
@@ -301,6 +654,9 @@ export const VideosTracks = ({
                               <EditIcon />
                             </div>
                             <p>{artistName || "Your Artist Name"}</p>
+                            <p className="media-size-label">
+                              {formatFileSize(getVideoSizeEstimate(video))}
+                            </p>
                             {statusMessage && (
                               <p className={`video-thumbnail-status ${video.thumbnailGenerationError ? "error" : ""}`}>
                                 {statusMessage}
@@ -376,18 +732,62 @@ export const VideosTracks = ({
               )}
             </>
           ) : (
-            <div className="videos-grid">
-              {videos.map((video, index) => (
-                <div key={index} className="video-thumbnail">
-                  {video.thumbnail ? (
-                    <img src={video.thumbnail} alt={video.title || 'Video'} />
-                  ) : (
-                    <div className="video-placeholder">Video {index + 1}</div>
-                  )}
-                  <div className="play-icon"><PlayIcon /></div>
+            <>
+              {activeVideoData ? (
+                <div className="video-expanded-wrapper">
+                  <div className="video-expanded-header">
+                    <h4>{activeVideoData.title || 'Video'}</h4>
+                    <button
+                      type="button"
+                      className="btn icon"
+                      onClick={() => setActiveVideoId(null)}
+                    >
+                      <CloseIcon />
+                    </button>
+                  </div>
+                  <div className="video-expanded-player">
+                    {resolveVideoSource(activeVideoData) ? (
+                      <video
+                        controls
+                        poster={resolveVideoPoster(activeVideoData) || undefined}
+                        src={resolveVideoSource(activeVideoData)}
+                      />
+                    ) : (
+                      <div className="video-placeholder large">Video unavailable</div>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="videos-grid">
+                  {videoDataset.map((video, index) => {
+                    const videoKey = getVideoIdentifier(video, index);
+                    const thumbnail =
+                      video.thumbnailUploadedUrl ||
+                      video.thumbnailPreviewUrl ||
+                      video.thumbnail ||
+                      video.thumbnailUrl ||
+                      null;
+                    return (
+                      <div key={videoKey} className="video-thumbnail">
+                        {thumbnail ? (
+                          <img src={thumbnail} alt={video.title || `Video ${index + 1}`} />
+                        ) : (
+                          <div className="video-placeholder">Video {index + 1}</div>
+                        )}
+                        <button
+                          type="button"
+                          className="play-icon-button"
+                          onClick={() => setActiveVideoId(videoKey)}
+                          aria-label={`Play ${video.title || `video ${index + 1}`}`}
+                        >
+                          <PlayIcon />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
         </div>
@@ -471,18 +871,22 @@ export const VideosTracks = ({
         )}
         <div className="section-content">
           {tracksUploadStatus === 'uploading' ? (
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              gap: '1rem',
-              padding: '2rem 0',
-            }}>
-              <LoadingSpinner />
-              <h4>Uploading Tracks...</h4>
-            </div>
+            <>
+              {isEditingTracks && trackUsageBar}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                gap: '1rem',
+                padding: '2rem 0',
+              }}>
+                <LoadingSpinner />
+                <h4>Uploading Tracks...</h4>
+              </div>
+            </>
           ) : isEditingTracks ? (
             <>
+              {trackUsageBar}
               {displayTracksForEdit.length === 0 ? (
                 <>
                   <p className="creation-step-question">
@@ -557,6 +961,9 @@ export const VideosTracks = ({
                             <EditIcon />
                           </div>
                           <p>{artistName || track.artist || ''}</p>
+                          <p className="media-size-label">
+                            Size: {formatFileSize(getTrackSizeEstimate(track))}
+                          </p>
                         </div>
                         <div className="track-actions">
                           <div className="track-reorder-buttons">
@@ -639,28 +1046,133 @@ export const VideosTracks = ({
               )}
             </>
           ) : (
-            <div className="tracks-list">
-              {tracks.map((track, index) => (
-                <div key={index} className="track-item">
-                  <div className="track-thumbnail">
-                    {track.thumbnail ? (
-                      <img src={track.thumbnail} alt={track.title || 'Track'} />
+            <>
+              {activeTrackData ? (
+                <div className="track-expanded-wrapper">
+                  <div className="track-expanded-header">
+                    <h4>{activeTrackData.title || 'Track'}</h4>
+                    <button
+                      type="button"
+                      className="btn icon close"
+                      onClick={() => setActiveTrackId(null)}
+                    >
+                      <CloseIcon />
+                    </button>
+                  </div>
+                  <div className="track-expanded-cover">
+                    {resolveTrackCover(activeTrackData) ? (
+                      <img
+                        src={resolveTrackCover(activeTrackData)}
+                        alt={activeTrackData.title || 'Track cover art'}
+                      />
                     ) : (
-                      <div className="track-thumbnail-placeholder">
-                        <TrackIcon />
-                      </div>
+                      <div className="track-placeholder large">No cover</div>
                     )}
                   </div>
-                  <div className="track-info">
-                    <h4>{track.title}</h4>
-                    {track.artist && <p>{track.artist}</p>}
+                  <div className="track-player">
+                    <button
+                      type="button"
+                      className="btn icon track-player-toggle"
+                      onClick={() => {
+                        if (!trackAudioRef.current) return;
+                        if (isTrackPlaying) {
+                          trackAudioRef.current.pause();
+                        } else {
+                          trackAudioRef.current.play().catch(() => {});
+                        }
+                      }}
+                      aria-label={isTrackPlaying ? 'Pause track' : 'Play track'}
+                      disabled={!resolveTrackAudio(activeTrackData)}
+                    >
+                      {isTrackPlaying ? <PauseIcon /> : <PlayIcon />}
+                    </button>
+                    <div
+                      className="track-progress-bar"
+                      ref={trackProgressBarRef}
+                      onPointerDown={handleTrackProgressPointerDown}
+                    >
+                      <div
+                        className="track-progress-fill"
+                        style={{
+                          width:
+                            trackProgress.duration > 0
+                              ? `${(trackProgress.currentTime / trackProgress.duration) * 100}%`
+                              : '0%',
+                        }}
+                      />
+                      <div
+                        className={`track-progress-handle ${isTrackScrubbing ? 'scrubbing' : ''}`}
+                        style={{
+                          left:
+                            trackProgress.duration > 0
+                              ? `${(trackProgress.currentTime / trackProgress.duration) * 100}%`
+                              : '0%',
+                        }}
+                      />
+                    </div>
+                    {resolveTrackAudio(activeTrackData) ? (
+                      <audio
+                        ref={trackAudioRef}
+                        src={resolveTrackAudio(activeTrackData)}
+                        onTimeUpdate={(e) =>
+                          setTrackProgress({
+                            currentTime: e.target.currentTime,
+                            duration: e.target.duration || 0,
+                          })
+                        }
+                        onLoadedMetadata={(e) =>
+                          setTrackProgress({
+                            currentTime: e.target.currentTime,
+                            duration: e.target.duration || 0,
+                          })
+                        }
+                        onPlay={() => setIsTrackPlaying(true)}
+                        onPause={() => setIsTrackPlaying(false)}
+                        onEnded={() => {
+                          setIsTrackPlaying(false);
+                          setTrackProgress((prev) => ({ ...prev, currentTime: prev.duration }));
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                    ) : (
+                      <div className="audio-placeholder">Audio unavailable</div>
+                    )}
                   </div>
-                  <button className="btn icon play-track">
-                    <PlayIcon />
-                  </button>
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="tracks-list playable">
+                  {trackDataset.map((track, index) => {
+                    const trackKey = getTrackIdentifier(track, index);
+                    const cover = resolveTrackCover(track);
+                    return (
+                      <div key={trackKey} className="track-item playable">
+                        <div className="track-thumbnail">
+                          {cover ? (
+                            <img src={cover} alt={track.title || 'Track'} />
+                          ) : (
+                            <div className="track-thumbnail-placeholder">
+                              <TrackIcon />
+                            </div>
+                          )}
+                        </div>
+                        <div className="track-info">
+                          <h4>{track.title || `Track ${index + 1}`}</h4>
+                          {track.artist && <p>{track.artist}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn icon play-track"
+                          onClick={() => setActiveTrackId(trackKey)}
+                          aria-label={`Play ${track.title || `track ${index + 1}`}`}
+                        >
+                          <PlayIcon />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

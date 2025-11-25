@@ -60,6 +60,37 @@ const STAGE_NAME_FONT_MAX = 40;
 const STAGE_NAME_FONT_MIN = 20;
 const STAGE_NAME_HORIZONTAL_PADDING = 32; // matches input horizontal padding
 const HERO_POSITION_DEFAULT = 50;
+const MEDIA_STORAGE_LIMIT_BYTES = 3 * 1024 * 1024 * 1024; // 3GB
+
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, index);
+  const formatted = value >= 10 ? value.toFixed(0) : value.toFixed(1);
+  return `${formatted}${units[index]}`;
+};
+
+const getTrackMediaBytes = (track = {}) => {
+  if (!track) return 0;
+  if (typeof track.totalSizeBytes === "number") return track.totalSizeBytes;
+  const audioBytes = track.audioFile?.size ?? track.audioSizeBytes ?? 0;
+  const coverBytes = track.coverFile?.size ?? track.coverSizeBytes ?? 0;
+  return audioBytes + coverBytes;
+};
+
+const getVideoMediaBytes = (video = {}) => {
+  if (!video) return 0;
+  if (typeof video.totalSizeBytes === "number") return video.totalSizeBytes;
+  const videoBytes = video.videoFile?.size ?? video.videoSizeBytes ?? 0;
+  let thumbnailBytes = 0;
+  if (video.thumbnailFile instanceof Blob) {
+    thumbnailBytes = video.thumbnailFile.size ?? 0;
+  } else {
+    thumbnailBytes = video.thumbnailSizeBytes ?? 0;
+  }
+  return videoBytes + thumbnailBytes;
+};
 
 const generateVideoThumbnail = (file) => {
   if (typeof document === "undefined") {
@@ -216,6 +247,15 @@ export const ProfileCreationBox = ({
   const textMeasureContextRef = useRef(null);
   const [containerHeight, setContainerHeight] = useState("auto");
   const [stageNameFontSize, setStageNameFontSize] = useState(STAGE_NAME_FONT_MAX);
+  const trackUsageBytes = useMemo(
+    () => tracks.reduce((total, track) => total + getTrackMediaBytes(track), 0),
+    [tracks]
+  );
+  const videoUsageBytes = useMemo(
+    () => videos.reduce((total, video) => total + getVideoMediaBytes(video), 0),
+    [videos]
+  );
+  const totalMediaUsageBytes = trackUsageBytes + videoUsageBytes;
   const ensureMeasureContext = () => {
     if (textMeasureContextRef.current) return textMeasureContextRef.current;
     const canvas = document.createElement("canvas");
@@ -540,6 +580,7 @@ export const ProfileCreationBox = ({
   const handleTrackPicked = (file) => {
     if (!file) return;
     const previewUrl = URL.createObjectURL(file);
+    const audioSizeBytes = file.size ?? 0;
     const newTrack = {
       id: createTrackId(),
       title: `Track ${tracks.length + 1}`,
@@ -550,6 +591,9 @@ export const ProfileCreationBox = ({
       coverPreviewUrl: null,
       uploadedAudioUrl: null,
       coverUploadedUrl: null,
+       audioSizeBytes,
+       coverSizeBytes: 0,
+       totalSizeBytes: audioSizeBytes,
     };
     setTracks((prev) => [...prev, newTrack]);
   };
@@ -575,10 +619,18 @@ export const ProfileCreationBox = ({
       prev.map((track) => {
         if (track.id !== trackId) return track;
         revokeObjectUrl(track.coverPreviewUrl);
-        return {
+        const updatedTrack = {
           ...track,
           coverFile: file,
           coverPreviewUrl: previewUrl,
+          coverSizeBytes: file.size ?? 0,
+        };
+        const updatedTotal =
+          (updatedTrack.audioFile?.size ?? updatedTrack.audioSizeBytes ?? 0) +
+          (updatedTrack.coverFile?.size ?? updatedTrack.coverSizeBytes ?? 0);
+        return {
+          ...updatedTrack,
+          totalSizeBytes: updatedTotal,
         };
       })
     );
@@ -629,6 +681,7 @@ export const ProfileCreationBox = ({
     if (!file) return;
     const videoId = createVideoId();
     const previewUrl = URL.createObjectURL(file);
+    const videoSizeBytes = file.size ?? 0;
     setVideos((prev) => [
       ...prev,
       {
@@ -644,6 +697,9 @@ export const ProfileCreationBox = ({
         thumbnailStoragePath: null,
         isThumbnailGenerating: true,
         thumbnailGenerationError: null,
+        videoSizeBytes,
+        thumbnailSizeBytes: 0,
+        totalSizeBytes: videoSizeBytes,
       },
     ]);
 
@@ -659,12 +715,17 @@ export const ProfileCreationBox = ({
             revokeObjectUrl(video.thumbnailPreviewUrl);
           }
 
+          const thumbnailFile = result?.file || null;
+          const thumbnailSizeBytes = thumbnailFile ? thumbnailFile.size ?? 0 : 0;
+          const baseVideoBytes = video.videoFile?.size ?? video.videoSizeBytes ?? 0;
           return {
             ...video,
-            thumbnailFile: result?.file || null,
+            thumbnailFile,
             thumbnailPreviewUrl: result?.previewUrl || null,
             isThumbnailGenerating: false,
             thumbnailGenerationError: result?.previewUrl ? null : "Failed to generate thumbnail",
+            thumbnailSizeBytes: thumbnailSizeBytes || video.thumbnailSizeBytes || 0,
+            totalSizeBytes: baseVideoBytes + (thumbnailSizeBytes || video.thumbnailSizeBytes || 0),
           };
         });
 
@@ -779,6 +840,9 @@ export const ProfileCreationBox = ({
             onSoundcloudUrlChange={onSoundcloudUrlChange}
             tracksUploadStatus={tracksUploadStatus}
             tracksUploadProgress={tracksUploadProgress}
+          trackUsageBytes={trackUsageBytes}
+          totalUsageBytes={totalMediaUsageBytes}
+          storageLimitBytes={MEDIA_STORAGE_LIMIT_BYTES}
           />
         );
       case "videos":
@@ -795,6 +859,9 @@ export const ProfileCreationBox = ({
             onYoutubeUrlChange={onYoutubeUrlChange}
             videosUploadStatus={videosUploadStatus}
             videosUploadProgress={videosUploadProgress}
+          videoUsageBytes={videoUsageBytes}
+          totalUsageBytes={totalMediaUsageBytes}
+          storageLimitBytes={MEDIA_STORAGE_LIMIT_BYTES}
           />
         );
       case "additional-info":
@@ -1123,6 +1190,31 @@ function BioStep({ artistBio, onArtistBioChange, websiteUrl, onWebsiteUrlChange,
   );
 }
 
+function StorageUsageBar({
+  usedBytes = 0,
+  totalBytes = MEDIA_STORAGE_LIMIT_BYTES,
+  label = "Storage Usage",
+}) {
+  const limit = totalBytes || MEDIA_STORAGE_LIMIT_BYTES;
+  const clampedUsed = Math.max(0, usedBytes);
+  const percent = limit ? Math.min(100, (clampedUsed / limit) * 100) : 0;
+  const isOverLimit = clampedUsed > limit;
+
+  return (
+    <div className={`storage-usage ${isOverLimit ? "over-limit" : ""}`}>
+      <div className="storage-usage-header">
+        <span>{label}</span>
+        <span>
+          {formatFileSize(clampedUsed)} / {formatFileSize(limit)}
+        </span>
+      </div>
+      <div className="storage-usage-bar">
+        <div className="storage-usage-bar-fill" style={{ width: `${Math.min(percent, 100)}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function TracksStep({
   tracks,
   onPrimaryUploadClick,
@@ -1139,11 +1231,23 @@ function TracksStep({
   onSoundcloudUrlChange,
   tracksUploadStatus = 'idle',
   tracksUploadProgress = 0,
+  trackUsageBytes = 0,
+  totalUsageBytes = 0,
+  storageLimitBytes = MEDIA_STORAGE_LIMIT_BYTES,
 }) {
+  const usageBar = (
+    <StorageUsageBar
+      usedBytes={totalUsageBytes}
+      totalBytes={storageLimitBytes}
+      breakdownLabel={`Tracks are using ${formatFileSize(trackUsageBytes)}`}
+    />
+  );
+
   // Show loading message if tracks are uploading
   if (tracksUploadStatus === 'uploading') {
     return (
       <>
+        {usageBar}
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column', 
@@ -1167,6 +1271,7 @@ function TracksStep({
   if (!tracks?.length) {
     return (
       <>
+        {usageBar}
         <p className="creation-step-question">
           Upload tracks that best represent your live sound.
         </p>
@@ -1201,6 +1306,7 @@ function TracksStep({
 
   return (
     <>
+      {usageBar}
       <p className="creation-step-question">Give them a listen and keep building your setlist.</p>
       <div className="tracks-list">
         {tracks.map((track, index) => (
@@ -1233,6 +1339,9 @@ function TracksStep({
                 <EditIcon />
               </div>
               <p>{artistName}</p>
+              <p className="media-size-label">
+                Size: {formatFileSize(getTrackMediaBytes(track))}
+              </p>
             </div>
             <div className="track-actions">
               <div className="track-reorder-buttons">
@@ -1307,10 +1416,22 @@ function VideosStep({
   onYoutubeUrlChange,
   videosUploadStatus = 'idle',
   videosUploadProgress = 0,
+  videoUsageBytes = 0,
+  totalUsageBytes = 0,
+  storageLimitBytes = MEDIA_STORAGE_LIMIT_BYTES,
 }) {
+  const usageBar = (
+    <StorageUsageBar
+      usedBytes={totalUsageBytes}
+      totalBytes={storageLimitBytes}
+      breakdownLabel={`Videos are using ${formatFileSize(videoUsageBytes)}`}
+    />
+  );
+
   if (videosUploadStatus === 'uploading') {
     return (
       <>
+        {usageBar}
         <div
           style={{
             display: 'flex',
@@ -1334,6 +1455,7 @@ function VideosStep({
   if (!videos?.length) {
     return (
       <>
+        {usageBar}
         <p className="creation-step-question">
           Upload short clips that capture the energy of your live show.
         </p>
@@ -1359,6 +1481,7 @@ function VideosStep({
 
   return (
     <>
+      {usageBar}
       <p className="creation-step-question">Give venues a feel for your live presence.</p>
       <div className="tracks-list videos">
         {videos.map((video, index) => {
@@ -1391,6 +1514,9 @@ function VideosStep({
                   <EditIcon />
                 </div>
                 <p>{artistName || "Your Artist Name"}</p>
+              <p className="media-size-label">
+                {formatFileSize(getVideoMediaBytes(video))}
+              </p>
                 {statusMessage && (
                   <p className={`video-thumbnail-status ${video.thumbnailGenerationError ? "error" : ""}`}>
                     {statusMessage}

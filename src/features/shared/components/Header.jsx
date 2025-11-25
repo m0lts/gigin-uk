@@ -107,7 +107,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                             </div>
                             <div className='right'>
                                 <Link className='link' to={'/venues/add-venue'}>
-                                    <button className='btn text'>
+                                    <button className='btn text-no-underline'>
                                         I'm a Venue
                                     </button>
                                 </Link>

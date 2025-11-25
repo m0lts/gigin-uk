@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '@hooks/useAuth';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { ProfileView } from './components/ProfileView';
+import { ProfileView } from './profile-components/ProfileView';
 import '@styles/artists/artist-profile-new.styles.css';
 // Hardcoded background image for example profile
 import { generateArtistProfileId, createArtistProfileDocument, updateArtistProfileDocument } from '@services/client-side/artists';
@@ -11,7 +11,7 @@ import { storage } from '@lib/firebase';
 import { updateUserArrayField } from '@services/api/users';
 import { toast } from 'sonner';
 import { NoImageIcon } from '@features/shared/ui/extras/Icons';
-import { CREATION_STEP_ORDER } from './components/ProfileCreationBox';
+import { CREATION_STEP_ORDER } from './profile-components/ProfileCreationBox';
 import { LoadingModal } from '@features/shared/ui/loading/LoadingModal';
 import { Header } from '../components/Header';
 
@@ -40,6 +40,35 @@ const getBrightnessOverlayStyle = (value = BRIGHTNESS_DEFAULT) => {
   const opacity = Math.min(intensity * 0.65, 0.65);
   const backgroundColor = delta > 0 ? 'rgba(0,0,0,1)' : 'rgba(255,255,255,1)';
   return { opacity, backgroundColor };
+};
+
+const MEDIA_STORAGE_LIMIT_BYTES = 3 * 1024 * 1024 * 1024; // 3GB cap for basic tier
+
+const getTrackMediaBytes = (track = {}) => {
+  if (!track) return 0;
+  if (typeof track.totalSizeBytes === 'number') return track.totalSizeBytes;
+  const audioBytes = track.audioFile?.size ?? track.audioSizeBytes ?? 0;
+  const coverBytes = track.coverFile?.size ?? track.coverSizeBytes ?? 0;
+  return audioBytes + coverBytes;
+};
+
+const getVideoMediaBytes = (video = {}) => {
+  if (!video) return 0;
+  if (typeof video.totalSizeBytes === 'number') return video.totalSizeBytes;
+  const videoBytes = video.videoFile?.size ?? video.videoSizeBytes ?? 0;
+  let thumbnailBytes = 0;
+  if (video.thumbnailFile instanceof Blob) {
+    thumbnailBytes = video.thumbnailFile.size ?? 0;
+  } else {
+    thumbnailBytes = video.thumbnailSizeBytes ?? 0;
+  }
+  return videoBytes + thumbnailBytes;
+};
+
+const calculateMediaUsageBytes = (tracks = [], videos = []) => {
+  const tracksTotal = tracks.reduce((sum, track) => sum + getTrackMediaBytes(track), 0);
+  const videosTotal = videos.reduce((sum, video) => sum + getVideoMediaBytes(video), 0);
+  return tracksTotal + videosTotal;
 };
 
 /**
@@ -85,6 +114,7 @@ export const ArtistProfile = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedExampleProfile, setSelectedExampleProfile] = useState(null);
+  const darkModeInitializedRef = useRef(false);
   
   // Use prop user if provided, otherwise use auth user
   const user = userProp || authUser;
@@ -302,6 +332,19 @@ export const ArtistProfile = ({
     previousProfileRef.current = hasCompleteProfile;
   }, [hasCompleteProfile, isCreatingProfile, searchParams, location.pathname, navigate]);
 
+  // Initialize and sync dark mode from Firestore when profile loads or updates
+  useEffect(() => {
+    if (activeProfileData?.darkMode !== undefined) {
+      // Only update if it's different from current state to avoid unnecessary updates
+      if (activeProfileData.darkMode !== isDarkMode) {
+        setIsDarkMode(activeProfileData.darkMode);
+      }
+      if (!darkModeInitializedRef.current) {
+        darkModeInitializedRef.current = true;
+      }
+    }
+  }, [activeProfileData?.darkMode, isDarkMode]);
+
   // Sync dashboard view with URL pathname (for browser back/forward support)
   const isNavigatingFromUrlRef = useRef(false);
   useEffect(() => {
@@ -495,6 +538,12 @@ export const ArtistProfile = ({
         coverUrl: track.coverUrl || null, // Preserve original for fallback
         audioStoragePath: track.audioStoragePath || null,
         coverStoragePath: track.coverStoragePath || null,
+        audioSizeBytes: track.audioSizeBytes ?? track.audioBytes ?? 0,
+        coverSizeBytes: track.coverSizeBytes ?? 0,
+        totalSizeBytes:
+          track.totalSizeBytes ??
+          (track.audioSizeBytes ?? track.audioBytes ?? 0) +
+            (track.coverSizeBytes ?? 0),
       }));
       setCreationTracks(loadedTracks);
       latestTracksRef.current = loadedTracks; // Update ref with loaded tracks
@@ -530,6 +579,12 @@ export const ArtistProfile = ({
           thumbnailUploadedUrl: storedThumbnailUrl,
           videoStoragePath: video.videoStoragePath || null,
           thumbnailStoragePath: video.thumbnailStoragePath || null,
+          videoSizeBytes: video.videoSizeBytes ?? video.fileSize ?? 0,
+          thumbnailSizeBytes: video.thumbnailSizeBytes ?? 0,
+          totalSizeBytes:
+            video.totalSizeBytes ??
+            (video.videoSizeBytes ?? video.fileSize ?? 0) +
+              (video.thumbnailSizeBytes ?? 0),
         };
       });
       setCreationVideos(loadedVideos);
@@ -790,7 +845,6 @@ export const ArtistProfile = ({
       
       // If in edit mode, always update editing state (even if it was null initially)
       if (isInEditMode) {
-        console.log('Updating editing position:', clamped, 'effectiveHeroPosition will be:', clampHeroPosition(clamped));
         setEditingHeroPosition(clamped);
         // Force a re-render by updating a dummy state if needed
         return;
@@ -818,7 +872,6 @@ export const ArtistProfile = ({
   const handleHeroPointerMove = useCallback(
     (event) => {
       if (!heroDragStateRef.current.isDragging) {
-        console.log('Not dragging, ignoring move');
         return;
       }
       event.preventDefault();
@@ -826,7 +879,6 @@ export const ArtistProfile = ({
       const deltaY = event.clientY - heroDragStateRef.current.startY;
       const percentDelta = (deltaY / viewportHeight) * 100;
       const nextPosition = clampHeroPosition(heroDragStateRef.current.startPosition - percentDelta);
-      console.log('Moving to position:', nextPosition, { deltaY, percentDelta, startPosition: heroDragStateRef.current.startPosition });
       handleHeroPositionChange(nextPosition);
     },
     [handleHeroPositionChange]
@@ -855,11 +907,9 @@ export const ArtistProfile = ({
         : isInEditMode;
       
       if (!canReposition) {
-        console.log('Cannot reposition:', { isRepositioningHero, isCreationState, creationHasHeroImage, isInEditMode, currentState });
         return;
       }
       
-      console.log('Starting drag:', { isInEditMode, editingHeroPosition, heroPositionY: activeProfileData?.heroPositionY });
       event.preventDefault();
       heroDragStateRef.current.isDragging = true;
       heroDragStateRef.current.startY = event.clientY;
@@ -877,7 +927,6 @@ export const ArtistProfile = ({
       }
       
       heroDragStateRef.current.startPosition = currentPosition;
-      console.log('Drag started with position:', currentPosition);
       setIsHeroDragging(true);
       window.addEventListener('pointermove', handleHeroPointerMove);
       window.addEventListener('pointerup', handleHeroPointerUp);
@@ -1061,14 +1110,21 @@ export const ArtistProfile = ({
 
     const uploadPromises = [];
     // Create a deep copy of tracks to update, preserving all existing properties including uploaded URLs
-    const tracksToUpdate = creationTracks.map(track => ({
-      ...track,
-      // Preserve existing uploaded URLs if they exist
-      uploadedAudioUrl: track.uploadedAudioUrl || track.audioUrl || null,
-      coverUploadedUrl: track.coverUploadedUrl || track.coverUrl || null,
-      audioStoragePath: track.audioStoragePath || null,
-      coverStoragePath: track.coverStoragePath || null,
-    }));
+    const tracksToUpdate = creationTracks.map(track => {
+      const audioSizeBytes = track.audioSizeBytes ?? track.audioFile?.size ?? 0;
+      const coverSizeBytes = track.coverSizeBytes ?? track.coverFile?.size ?? 0;
+      return {
+        ...track,
+        // Preserve existing uploaded URLs if they exist
+        uploadedAudioUrl: track.uploadedAudioUrl || track.audioUrl || null,
+        coverUploadedUrl: track.coverUploadedUrl || track.coverUrl || null,
+        audioStoragePath: track.audioStoragePath || null,
+        coverStoragePath: track.coverStoragePath || null,
+        audioSizeBytes,
+        coverSizeBytes,
+        totalSizeBytes: track.totalSizeBytes ?? audioSizeBytes + coverSizeBytes,
+      };
+    });
     let completedUploads = 0;
     const totalUploads = creationTracks.reduce((count, track) => {
       return count + (track.audioFile ? 1 : 0) + (track.coverFile ? 1 : 0);
@@ -1112,6 +1168,11 @@ export const ArtistProfile = ({
             // Update track with uploaded URL and storage path
             const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
             if (trackIndex !== -1) {
+              const audioSizeBytes =
+                track.audioFile?.size ??
+                tracksToUpdate[trackIndex].audioSizeBytes ??
+                0;
+              const coverSizeBytes = tracksToUpdate[trackIndex].coverSizeBytes ?? 0;
               tracksToUpdate[trackIndex] = {
                 ...tracksToUpdate[trackIndex],
                 uploadedAudioUrl: audioUrl,
@@ -1119,6 +1180,8 @@ export const ArtistProfile = ({
                 audioFile: null, // Clear file reference after upload
                 // Preserve preview URL if uploaded URL exists
                 audioPreviewUrl: tracksToUpdate[trackIndex].audioPreviewUrl || audioUrl,
+                audioSizeBytes,
+                totalSizeBytes: audioSizeBytes + coverSizeBytes,
               };
             }
 
@@ -1180,6 +1243,11 @@ export const ArtistProfile = ({
             // Update track with uploaded URL and storage path
             const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
             if (trackIndex !== -1) {
+              const coverSizeBytes =
+                track.coverFile?.size ??
+                tracksToUpdate[trackIndex].coverSizeBytes ??
+                0;
+              const audioSizeBytes = tracksToUpdate[trackIndex].audioSizeBytes ?? 0;
               tracksToUpdate[trackIndex] = {
                 ...tracksToUpdate[trackIndex],
                 coverUploadedUrl: coverUrl,
@@ -1187,6 +1255,8 @@ export const ArtistProfile = ({
                 coverFile: null, // Clear file reference after upload
                 // Preserve preview URL if uploaded URL exists
                 coverPreviewUrl: tracksToUpdate[trackIndex].coverPreviewUrl || coverUrl,
+                coverSizeBytes,
+                totalSizeBytes: audioSizeBytes + coverSizeBytes,
               };
             }
 
@@ -1250,11 +1320,22 @@ export const ArtistProfile = ({
                 audioStoragePath,
                 coverUrl,
                 coverStoragePath,
+                audioSizeBytes: track.audioSizeBytes ?? 0,
+                coverSizeBytes: track.coverSizeBytes ?? 0,
+                totalSizeBytes:
+                  track.totalSizeBytes ??
+                  (track.audioSizeBytes ?? 0) + (track.coverSizeBytes ?? 0),
               };
             });
 
+            const mediaUsageBytes = calculateMediaUsageBytes(
+              tracksToUpdate,
+              latestVideosRef.current || []
+            );
+
             await updateArtistProfileDocument(creationProfileId, {
               tracks: tracksForFirestore,
+              mediaUsageBytes,
             });
           } catch (error) {
             console.error('Failed to persist tracks after upload:', error);
@@ -1323,13 +1404,22 @@ export const ArtistProfile = ({
     setVideoUploadStatus('uploading');
     setVideoUploadProgress(0);
 
-    const videosToUpdate = creationVideos.map((video) => ({
-      ...video,
-      uploadedVideoUrl: video.uploadedVideoUrl || video.videoUrl || null,
-      thumbnailUploadedUrl: video.thumbnailUploadedUrl || video.thumbnail || video.thumbnailUrl || null,
-      videoStoragePath: video.videoStoragePath || null,
-      thumbnailStoragePath: video.thumbnailStoragePath || null,
-    }));
+    const videosToUpdate = creationVideos.map((video) => {
+      const videoSizeBytes = video.videoSizeBytes ?? video.videoFile?.size ?? 0;
+      const thumbnailSizeBytes =
+        video.thumbnailSizeBytes ??
+        (video.thumbnailFile instanceof Blob ? video.thumbnailFile.size ?? 0 : 0);
+      return {
+        ...video,
+        uploadedVideoUrl: video.uploadedVideoUrl || video.videoUrl || null,
+        thumbnailUploadedUrl: video.thumbnailUploadedUrl || video.thumbnail || video.thumbnailUrl || null,
+        videoStoragePath: video.videoStoragePath || null,
+        thumbnailStoragePath: video.thumbnailStoragePath || null,
+        videoSizeBytes,
+        thumbnailSizeBytes,
+        totalSizeBytes: video.totalSizeBytes ?? videoSizeBytes + thumbnailSizeBytes,
+      };
+    });
 
     // Use a ref to track completed uploads so all progress callbacks see the current value
     const completedUploadsRef = { current: 0 };
@@ -1341,8 +1431,6 @@ export const ArtistProfile = ({
       }
       return count + videoCount;
     }, 0);
-
-    console.log('Video upload starting:', { totalUploads, videos: creationVideos.map(v => ({ id: v.id, hasVideo: !!v.videoFile, hasThumbnail: !!v.thumbnailFile })) });
 
     if (totalUploads === 0) {
       videosUploadInProgressRef.current = false;
@@ -1383,8 +1471,6 @@ export const ArtistProfile = ({
         )
           .then(async (videoUrl) => {
             if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
-
-            console.log(`Video upload completed for ${videoId}:`, videoUrl);
 
             const videoIndex = videosToUpdate.findIndex((v) => v.id === videoId);
             if (videoIndex !== -1) {
@@ -1434,8 +1520,6 @@ export const ArtistProfile = ({
           const storagePath = `artistProfiles/${creationProfileId}/videos/thumbnails/${filename}`;
           const previousThumbnailPath = previousPaths.thumbnailPath;
 
-          console.log(`Starting thumbnail upload for ${videoId}:`, { filename, size: video.thumbnailFile.size });
-
           const thumbnailUploadPromise = uploadFileWithProgress(
             video.thumbnailFile,
             storagePath,
@@ -1448,8 +1532,6 @@ export const ArtistProfile = ({
           )
           .then(async (thumbnailUrl) => {
             if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
-
-            console.log(`Thumbnail upload completed for ${videoId}:`, thumbnailUrl);
 
             const videoIndex = videosToUpdate.findIndex((v) => v.id === videoId);
             if (videoIndex !== -1) {
@@ -1508,10 +1590,21 @@ export const ArtistProfile = ({
               thumbnail: video.thumbnailUploadedUrl || null,
               thumbnailUrl: video.thumbnailUploadedUrl || null,
               thumbnailStoragePath: video.thumbnailStoragePath || null,
+              videoSizeBytes: video.videoSizeBytes ?? 0,
+              thumbnailSizeBytes: video.thumbnailSizeBytes ?? 0,
+              totalSizeBytes:
+                video.totalSizeBytes ??
+                (video.videoSizeBytes ?? 0) + (video.thumbnailSizeBytes ?? 0),
             }));
+
+            const mediaUsageBytes = calculateMediaUsageBytes(
+              latestTracksRef.current || [],
+              videosToUpdate
+            );
 
             await updateArtistProfileDocument(creationProfileId, {
               videos: videosForFirestore,
+              mediaUsageBytes,
             });
           } catch (error) {
             console.error('Failed to persist videos after upload:', error);
@@ -1775,6 +1868,24 @@ export const ArtistProfile = ({
     }
   };
 
+  // Handler for dark mode changes - updates Firestore
+  const handleDarkModeChange = async (newDarkMode) => {
+    // Only update Firestore if user has a profile (not in example or creation mode)
+    if (currentState === ArtistProfileState.DASHBOARD && activeProfileData) {
+      const profileId = activeProfileData?.profileId || activeProfileData?.id;
+      if (profileId) {
+        try {
+          await updateArtistProfileDocument(profileId, { darkMode: newDarkMode });
+        } catch (error) {
+          console.error('Failed to update dark mode:', error);
+          // Still update local state even if Firestore update fails
+        }
+      }
+    }
+    // Always update local state
+    setIsDarkMode(newDarkMode);
+  };
+
   // Handler for saving tracks from profile view
   const handleTracksSave = async ({ tracks: tracksToSave, spotifyUrl: newSpotifyUrl, soundcloudUrl: newSoundcloudUrl }) => {
     const profileId = activeProfileData?.profileId || activeProfileData?.id;
@@ -1789,7 +1900,16 @@ export const ArtistProfile = ({
 
       // Upload any new files
       const uploadPromises = [];
-      const tracksToUpdate = tracksToSave.map(track => ({ ...track }));
+      const tracksToUpdate = tracksToSave.map(track => {
+        const audioSizeBytes = track.audioSizeBytes ?? track.audioFile?.size ?? 0;
+        const coverSizeBytes = track.coverSizeBytes ?? track.coverFile?.size ?? 0;
+        return {
+          ...track,
+          audioSizeBytes,
+          coverSizeBytes,
+          totalSizeBytes: track.totalSizeBytes ?? audioSizeBytes + coverSizeBytes,
+        };
+      });
 
       tracksToSave.forEach((track) => {
         const trackId = track.id;
@@ -1811,10 +1931,19 @@ export const ArtistProfile = ({
               // Update track with uploaded URL and storage path
               const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
               if (trackIndex !== -1) {
+                const audioSizeBytes =
+                  track.audioFile?.size ??
+                  tracksToUpdate[trackIndex].audioSizeBytes ??
+                  0;
+                const coverSizeBytes = tracksToUpdate[trackIndex].coverSizeBytes ?? 0;
                 tracksToUpdate[trackIndex] = {
                   ...tracksToUpdate[trackIndex],
                   uploadedAudioUrl: audioUrl,
                   audioStoragePath: storagePath,
+                  audioFile: null,
+                  audioPreviewUrl: tracksToUpdate[trackIndex].audioPreviewUrl || audioUrl,
+                  audioSizeBytes,
+                  totalSizeBytes: audioSizeBytes + coverSizeBytes,
                 };
               }
 
@@ -1857,10 +1986,19 @@ export const ArtistProfile = ({
               // Update track with uploaded URL and storage path
               const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
               if (trackIndex !== -1) {
+                const coverSizeBytes =
+                  track.coverFile?.size ??
+                  tracksToUpdate[trackIndex].coverSizeBytes ??
+                  0;
+                const audioSizeBytes = tracksToUpdate[trackIndex].audioSizeBytes ?? 0;
                 tracksToUpdate[trackIndex] = {
                   ...tracksToUpdate[trackIndex],
                   coverUploadedUrl: coverUrl,
                   coverStoragePath: storagePath,
+                  coverFile: null,
+                  coverPreviewUrl: tracksToUpdate[trackIndex].coverPreviewUrl || coverUrl,
+                  coverSizeBytes,
+                  totalSizeBytes: audioSizeBytes + coverSizeBytes,
                 };
               }
 
@@ -1905,6 +2043,12 @@ export const ArtistProfile = ({
             audioStoragePath: track.audioStoragePath || existingTrack.audioStoragePath,
             coverUrl: track.coverUploadedUrl || existingTrack.coverUrl,
             coverStoragePath: track.coverStoragePath || existingTrack.coverStoragePath,
+            audioSizeBytes: track.audioSizeBytes ?? existingTrack.audioSizeBytes ?? 0,
+            coverSizeBytes: track.coverSizeBytes ?? existingTrack.coverSizeBytes ?? 0,
+            totalSizeBytes:
+              track.totalSizeBytes ??
+              (track.audioSizeBytes ?? existingTrack.audioSizeBytes ?? 0) +
+                (track.coverSizeBytes ?? existingTrack.coverSizeBytes ?? 0),
           };
         } else {
           // New track
@@ -1916,6 +2060,11 @@ export const ArtistProfile = ({
             audioStoragePath: track.audioStoragePath || null,
             coverUrl: track.coverUploadedUrl || null,
             coverStoragePath: track.coverStoragePath || null,
+            audioSizeBytes: track.audioSizeBytes ?? 0,
+            coverSizeBytes: track.coverSizeBytes ?? 0,
+            totalSizeBytes:
+              track.totalSizeBytes ??
+              (track.audioSizeBytes ?? 0) + (track.coverSizeBytes ?? 0),
           };
         }
       });
@@ -1932,7 +2081,15 @@ export const ArtistProfile = ({
         updates.soundcloudUrl = newSoundcloudUrl;
       }
 
-      await updateArtistProfileDocument(profileId, updates);
+      const mediaUsageBytes = calculateMediaUsageBytes(
+        tracksForFirestore,
+        activeProfileData?.videos || []
+      );
+
+      await updateArtistProfileDocument(profileId, {
+        ...updates,
+        mediaUsageBytes,
+      });
       toast.success('Tracks updated successfully');
     } catch (error) {
       console.error('Failed to save tracks:', error);
@@ -1955,7 +2112,18 @@ export const ArtistProfile = ({
 
       // Upload any new files
       const uploadPromises = [];
-      const videosToUpdate = videosToSave.map(video => ({ ...video }));
+      const videosToUpdate = videosToSave.map(video => {
+        const videoSizeBytes = video.videoSizeBytes ?? video.videoFile?.size ?? 0;
+        const thumbnailSizeBytes =
+          video.thumbnailSizeBytes ??
+          (video.thumbnailFile instanceof Blob ? video.thumbnailFile.size ?? 0 : 0);
+        return {
+          ...video,
+          videoSizeBytes,
+          thumbnailSizeBytes,
+          totalSizeBytes: video.totalSizeBytes ?? videoSizeBytes + thumbnailSizeBytes,
+        };
+      });
 
       videosToSave.forEach((video) => {
         const videoId = video.id;
@@ -1977,10 +2145,19 @@ export const ArtistProfile = ({
               // Update video with uploaded URL and storage path
               const videoIndex = videosToUpdate.findIndex(v => v.id === videoId);
               if (videoIndex !== -1) {
+                const videoSizeBytes =
+                  video.videoFile?.size ??
+                  videosToUpdate[videoIndex].videoSizeBytes ??
+                  0;
+                const thumbnailSizeBytes = videosToUpdate[videoIndex].thumbnailSizeBytes ?? 0;
                 videosToUpdate[videoIndex] = {
                   ...videosToUpdate[videoIndex],
                   uploadedVideoUrl: videoUrl,
                   videoStoragePath: storagePath,
+                  videoFile: null,
+                  videoPreviewUrl: videosToUpdate[videoIndex].videoPreviewUrl || videoUrl,
+                  videoSizeBytes,
+                  totalSizeBytes: videoSizeBytes + thumbnailSizeBytes,
                 };
               }
 
@@ -2023,10 +2200,19 @@ export const ArtistProfile = ({
               // Update video with uploaded URL and storage path
               const videoIndex = videosToUpdate.findIndex(v => v.id === videoId);
               if (videoIndex !== -1) {
+                const thumbnailSizeBytes =
+                  video.thumbnailFile?.size ??
+                  videosToUpdate[videoIndex].thumbnailSizeBytes ??
+                  0;
+                const videoSizeBytes = videosToUpdate[videoIndex].videoSizeBytes ?? 0;
                 videosToUpdate[videoIndex] = {
                   ...videosToUpdate[videoIndex],
                   thumbnailUploadedUrl: thumbnailUrl,
                   thumbnailStoragePath: storagePath,
+                  thumbnailFile: null,
+                  thumbnailPreviewUrl: videosToUpdate[videoIndex].thumbnailPreviewUrl || thumbnailUrl,
+                  thumbnailSizeBytes,
+                  totalSizeBytes: videoSizeBytes + thumbnailSizeBytes,
                 };
               }
 
@@ -2071,6 +2257,12 @@ export const ArtistProfile = ({
             thumbnail: video.thumbnailUploadedUrl || existingVideo.thumbnail || existingVideo.thumbnailUrl,
             thumbnailUrl: video.thumbnailUploadedUrl || existingVideo.thumbnailUrl || existingVideo.thumbnail,
             thumbnailStoragePath: video.thumbnailStoragePath || existingVideo.thumbnailStoragePath,
+            videoSizeBytes: video.videoSizeBytes ?? existingVideo.videoSizeBytes ?? 0,
+            thumbnailSizeBytes: video.thumbnailSizeBytes ?? existingVideo.thumbnailSizeBytes ?? 0,
+            totalSizeBytes:
+              video.totalSizeBytes ??
+              (video.videoSizeBytes ?? existingVideo.videoSizeBytes ?? 0) +
+                (video.thumbnailSizeBytes ?? existingVideo.thumbnailSizeBytes ?? 0),
           };
         } else {
           // New video
@@ -2082,6 +2274,11 @@ export const ArtistProfile = ({
             thumbnail: video.thumbnailUploadedUrl || null,
             thumbnailUrl: video.thumbnailUploadedUrl || null,
             thumbnailStoragePath: video.thumbnailStoragePath || null,
+            videoSizeBytes: video.videoSizeBytes ?? 0,
+            thumbnailSizeBytes: video.thumbnailSizeBytes ?? 0,
+            totalSizeBytes:
+              video.totalSizeBytes ??
+              (video.videoSizeBytes ?? 0) + (video.thumbnailSizeBytes ?? 0),
           };
         }
       });
@@ -2095,7 +2292,15 @@ export const ArtistProfile = ({
         updates.youtubeUrl = newYoutubeUrl;
       }
 
-      await updateArtistProfileDocument(profileId, updates);
+      const mediaUsageBytes = calculateMediaUsageBytes(
+        activeProfileData?.tracks || [],
+        videosForFirestore
+      );
+
+      await updateArtistProfileDocument(profileId, {
+        ...updates,
+        mediaUsageBytes,
+      });
       toast.success('Videos updated successfully');
     } catch (error) {
       console.error('Failed to save videos:', error);
@@ -2113,7 +2318,6 @@ export const ArtistProfile = ({
 
   // Handler for real-time background image editing updates
   const handleEditingHeroImageChange = (previewUrl) => {
-    console.log('handleEditingHeroImageChange called with:', previewUrl);
     if (previewUrl === null) {
       setEditingHeroImage(null);
     } else {
@@ -2314,6 +2518,12 @@ export const ArtistProfile = ({
             audioStoragePath: existingTrack.audioStoragePath,
             coverUrl: existingTrack.coverUrl,
             coverStoragePath: existingTrack.coverStoragePath,
+            audioSizeBytes: track.audioSizeBytes ?? existingTrack.audioSizeBytes ?? 0,
+            coverSizeBytes: track.coverSizeBytes ?? existingTrack.coverSizeBytes ?? 0,
+            totalSizeBytes:
+              track.totalSizeBytes ??
+              (track.audioSizeBytes ?? existingTrack.audioSizeBytes ?? 0) +
+                (track.coverSizeBytes ?? existingTrack.coverSizeBytes ?? 0),
           };
         } else {
           // New track (not yet uploaded) - include uploaded URLs if available
@@ -2325,6 +2535,11 @@ export const ArtistProfile = ({
             audioStoragePath: track.audioStoragePath || null,
             coverUrl: track.coverUploadedUrl || null,
             coverStoragePath: track.coverStoragePath || null,
+            audioSizeBytes: track.audioSizeBytes ?? 0,
+            coverSizeBytes: track.coverSizeBytes ?? 0,
+            totalSizeBytes:
+              track.totalSizeBytes ??
+              (track.audioSizeBytes ?? 0) + (track.coverSizeBytes ?? 0),
           };
         }
       });
@@ -2344,6 +2559,12 @@ export const ArtistProfile = ({
             thumbnail: existingVideo.thumbnail || existingVideo.thumbnailUrl || null,
             thumbnailUrl: existingVideo.thumbnailUrl || existingVideo.thumbnail || null,
             thumbnailStoragePath: existingVideo.thumbnailStoragePath || null,
+            videoSizeBytes: video.videoSizeBytes ?? existingVideo.videoSizeBytes ?? 0,
+            thumbnailSizeBytes: video.thumbnailSizeBytes ?? existingVideo.thumbnailSizeBytes ?? 0,
+            totalSizeBytes:
+              video.totalSizeBytes ??
+              (video.videoSizeBytes ?? existingVideo.videoSizeBytes ?? 0) +
+                (video.thumbnailSizeBytes ?? existingVideo.thumbnailSizeBytes ?? 0),
           };
         }
 
@@ -2355,9 +2576,16 @@ export const ArtistProfile = ({
           thumbnail: video.thumbnailUploadedUrl || null,
           thumbnailUrl: video.thumbnailUploadedUrl || null,
           thumbnailStoragePath: video.thumbnailStoragePath || null,
+          videoSizeBytes: video.videoSizeBytes ?? 0,
+          thumbnailSizeBytes: video.thumbnailSizeBytes ?? 0,
+          totalSizeBytes:
+            video.totalSizeBytes ??
+            (video.videoSizeBytes ?? 0) + (video.thumbnailSizeBytes ?? 0),
         };
       });
 
+
+      const mediaUsageBytes = calculateMediaUsageBytes(tracksForFirestore, videosForFirestore);
 
       const updates = {
         name: creationArtistName,
@@ -2374,6 +2602,7 @@ export const ArtistProfile = ({
         onboardingStep: creationStep,
         status: 'draft',
         isComplete: false,
+        mediaUsageBytes,
       };
 
       if (heroUrl) {
@@ -2453,7 +2682,7 @@ export const ArtistProfile = ({
             onBeginCreation={handleBeginCreation}
             isExample={false}
             isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
+            setIsDarkMode={handleDarkModeChange}
             isCreationLoading={initializingArtistProfile}
             isCreatingProfile={isCreatingProfile}
             creationStep={creationStep}
@@ -2665,7 +2894,6 @@ export const ArtistProfile = ({
   
   // Debug: Log effectiveHeroPosition when it changes (only during drag to avoid spam)
   if (isHeroDragging && editingHeroPosition !== null) {
-    console.log('RENDER: effectiveHeroPosition =', effectiveHeroPosition, 'editingHeroPosition =', editingHeroPosition);
   }
   const brightnessOverlayStyle = getBrightnessOverlayStyle(effectiveHeroBrightness);
   const showBrightnessOverlay = !showCreationPlaceholder && brightnessOverlayStyle.opacity > 0;

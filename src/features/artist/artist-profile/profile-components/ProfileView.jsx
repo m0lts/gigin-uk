@@ -220,36 +220,36 @@ export const ProfileView = ({
   // Use creation tracks if available, otherwise use profile data tracks
   // Transform tracks to ensure they have the expected format (thumbnail field)
   const displayTracks = isCreatingProfile && creationTracks.length > 0
-    ? creationTracks.map(track => ({
-        title: track.title,
-        artist: track.artist,
-        thumbnail: track.coverUploadedUrl || track.coverPreviewUrl || null,
-      }))
-    : tracks.map(track => ({
-        title: track.title,
-        artist: track.artist,
-        thumbnail: track.coverUrl || track.thumbnail || null,
-      }));
+    ? creationTracks
+    : tracks;
 
   // Initialize editing tracks when entering edit mode
   useEffect(() => {
     if (isEditingTracks && tracks.length > 0 && editingTracks.length === 0) {
       // Convert Firestore tracks to editing format
-      const tracksForEdit = tracks.map(track => ({
-        id: track.id || `track-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        title: track.title || '',
-        artist: track.artist || '',
-        audioFile: null,
-        audioPreviewUrl: track.audioUrl || null,
-        coverFile: null,
-        coverPreviewUrl: track.coverUrl || null,
-        uploadedAudioUrl: track.audioUrl || null,
-        audioUrl: track.audioUrl || null,
-        coverUploadedUrl: track.coverUrl || null,
-        coverUrl: track.coverUrl || null,
-        audioStoragePath: track.audioStoragePath || null,
-        coverStoragePath: track.coverStoragePath || null,
-      }));
+      const tracksForEdit = tracks.map(track => {
+        const audioSizeBytes = track.audioSizeBytes ?? track.audioBytes ?? 0;
+        const coverSizeBytes = track.coverSizeBytes ?? 0;
+        const totalSizeBytes = track.totalSizeBytes ?? audioSizeBytes + coverSizeBytes;
+        return {
+          id: track.id || `track-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          title: track.title || '',
+          artist: track.artist || '',
+          audioFile: null,
+          audioPreviewUrl: track.audioUrl || null,
+          coverFile: null,
+          coverPreviewUrl: track.coverUrl || null,
+          uploadedAudioUrl: track.audioUrl || null,
+          audioUrl: track.audioUrl || null,
+          coverUploadedUrl: track.coverUrl || null,
+          coverUrl: track.coverUrl || null,
+          audioStoragePath: track.audioStoragePath || null,
+          coverStoragePath: track.coverStoragePath || null,
+          audioSizeBytes,
+          coverSizeBytes,
+          totalSizeBytes,
+        };
+      });
       setEditingTracks(tracksForEdit);
     }
   }, [isEditingTracks, tracks, editingTracks.length]);
@@ -258,22 +258,30 @@ export const ProfileView = ({
   useEffect(() => {
     if (isEditingVideos && persistedVideos.length > 0 && editingVideos.length === 0) {
       // Convert Firestore videos to editing format
-      const videosForEdit = persistedVideos.map(video => ({
-        id: video.id || `video-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        title: video.title || '',
-        videoFile: null,
-        videoPreviewUrl: video.videoUrl || null,
-        thumbnailFile: null,
-        thumbnailPreviewUrl: video.thumbnail || video.thumbnailUrl || null,
-        uploadedVideoUrl: video.videoUrl || null,
-        videoUrl: video.videoUrl || null,
-        thumbnailUploadedUrl: video.thumbnail || video.thumbnailUrl || null,
-        thumbnail: video.thumbnail || video.thumbnailUrl || null,
-        videoStoragePath: video.videoStoragePath || null,
-        thumbnailStoragePath: video.thumbnailStoragePath || null,
-        isThumbnailGenerating: false,
-        thumbnailGenerationError: null,
-      }));
+      const videosForEdit = persistedVideos.map(video => {
+        const videoSizeBytes = video.videoSizeBytes ?? video.fileSize ?? 0;
+        const thumbnailSizeBytes = video.thumbnailSizeBytes ?? 0;
+        const totalSizeBytes = video.totalSizeBytes ?? videoSizeBytes + thumbnailSizeBytes;
+        return {
+          id: video.id || `video-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          title: video.title || '',
+          videoFile: null,
+          videoPreviewUrl: video.videoUrl || null,
+          thumbnailFile: null,
+          thumbnailPreviewUrl: video.thumbnail || video.thumbnailUrl || null,
+          uploadedVideoUrl: video.videoUrl || null,
+          videoUrl: video.videoUrl || null,
+          thumbnailUploadedUrl: video.thumbnail || video.thumbnailUrl || null,
+          thumbnail: video.thumbnail || video.thumbnailUrl || null,
+          videoStoragePath: video.videoStoragePath || null,
+          thumbnailStoragePath: video.thumbnailStoragePath || null,
+          isThumbnailGenerating: false,
+          thumbnailGenerationError: null,
+          videoSizeBytes,
+          thumbnailSizeBytes,
+          totalSizeBytes,
+        };
+      });
       setEditingVideos(videosForEdit);
     }
   }, [isEditingVideos, persistedVideos, editingVideos.length]);
@@ -299,6 +307,7 @@ export const ProfileView = ({
     const file = event.target.files?.[0];
     if (!file) return;
     const previewUrl = URL.createObjectURL(file);
+    const audioSizeBytes = file.size ?? 0;
     const newTrack = {
       id: createTrackId(),
       title: `Track ${editingTracks.length + 1}`,
@@ -309,6 +318,9 @@ export const ProfileView = ({
       coverPreviewUrl: null,
       uploadedAudioUrl: null,
       coverUploadedUrl: null,
+      audioSizeBytes,
+      coverSizeBytes: 0,
+      totalSizeBytes: audioSizeBytes,
     };
     setEditingTracks((prev) => [...prev, newTrack]);
     event.target.value = "";
@@ -328,10 +340,14 @@ export const ProfileView = ({
       prev.map((track) => {
         if (track.id !== trackId) return track;
         revokeObjectUrl(track.coverPreviewUrl);
+        const coverSizeBytes = file.size ?? 0;
+        const audioSizeBytes = track.audioFile?.size ?? track.audioSizeBytes ?? 0;
         return {
           ...track,
           coverFile: file,
           coverPreviewUrl: previewUrl,
+          coverSizeBytes,
+          totalSizeBytes: audioSizeBytes + coverSizeBytes,
         };
       })
     );
@@ -394,6 +410,7 @@ export const ProfileView = ({
     if (!file) return;
     const previewUrl = URL.createObjectURL(file);
     const videoId = createVideoId();
+    const videoSizeBytes = file.size ?? 0;
     const newVideo = {
       id: videoId,
       title: `Video ${editingVideos.length + 1}`,
@@ -407,6 +424,9 @@ export const ProfileView = ({
       thumbnailStoragePath: null,
       isThumbnailGenerating: true,
       thumbnailGenerationError: null,
+      videoSizeBytes,
+      thumbnailSizeBytes: 0,
+      totalSizeBytes: videoSizeBytes,
     };
     setEditingVideos((prev) => [...prev, newVideo]);
     event.target.value = "";
@@ -484,17 +504,21 @@ export const ProfileView = ({
 
       const result = await generateVideoThumbnail(file);
       setEditingVideos((prev) =>
-        prev.map((video) =>
-          video.id === videoId
-            ? {
-                ...video,
-                thumbnailFile: result?.file || null,
-                thumbnailPreviewUrl: result?.previewUrl || null,
-                isThumbnailGenerating: false,
-                thumbnailGenerationError: result?.previewUrl ? null : 'Failed to generate thumbnail',
-              }
-            : video
-        )
+        prev.map((video) => {
+          if (video.id !== videoId) return video;
+          const thumbnailFile = result?.file || null;
+          const thumbnailSizeBytes = thumbnailFile?.size ?? video.thumbnailSizeBytes ?? 0;
+          const videoSizeBytes = video.videoFile?.size ?? video.videoSizeBytes ?? 0;
+          return {
+            ...video,
+            thumbnailFile,
+            thumbnailPreviewUrl: result?.previewUrl || null,
+            isThumbnailGenerating: false,
+            thumbnailGenerationError: result?.previewUrl ? null : 'Failed to generate thumbnail',
+            thumbnailSizeBytes,
+            totalSizeBytes: videoSizeBytes + thumbnailSizeBytes,
+          };
+        })
       );
     } catch (error) {
       console.error('Failed to generate thumbnail:', error);
@@ -552,14 +576,8 @@ export const ProfileView = ({
   };
 
   const displayVideos = isCreatingProfile && creationVideos.length > 0
-    ? creationVideos.map(video => ({
-        title: video.title,
-        thumbnail: video.thumbnailUploadedUrl || video.thumbnailPreviewUrl || null,
-      }))
-    : persistedVideos.map(video => ({
-        title: video.title,
-        thumbnail: video.thumbnail || video.thumbnailUrl || null,
-      }));
+    ? creationVideos
+    : persistedVideos;
   
   const shouldShowVideosTracks = displayVideos.length > 0 || displayTracks.length > 0;
   
@@ -755,8 +773,6 @@ export const ProfileView = ({
     // This should immediately update the background image
     if (onEditingHeroImageChange) {
       onEditingHeroImageChange(previewUrl);
-    } else {
-      console.warn('onEditingHeroImageChange callback is not provided');
     }
     
     // Reset file input so same file can be selected again
@@ -765,7 +781,6 @@ export const ProfileView = ({
 
   const handleSaveBackgroundImage = async () => {
     if (!profileId || !onHeroImageEdit) {
-      console.log('Early return:', { profileId, onHeroImageEdit });
       return;
     }
     
@@ -774,21 +789,9 @@ export const ProfileView = ({
     const currentEditingPosition = editingHeroPosition !== null ? editingHeroPosition : editHeroPosition;
     const currentEditingBrightness = editingHeroBrightness !== null ? editingHeroBrightness : editHeroBrightness;
     
-    console.log('Save button clicked:', {
-      currentEditingPosition,
-      currentHeroPosition,
-      currentEditingBrightness,
-      currentHeroBrightness,
-      editHeroImage: editHeroImage?.file ? 'has file' : 'no file',
-      editingHeroPosition,
-      editHeroPosition
-    });
-    
     const hasChanges = editHeroImage?.file || 
       currentEditingBrightness !== currentHeroBrightness || 
       currentEditingPosition !== currentHeroPosition;
-    
-    console.log('hasChanges:', hasChanges);
     
     if (!hasChanges) {
       // Cancel repositioning if active
@@ -950,8 +953,11 @@ export const ProfileView = ({
               spotifyUrl={spotifyUrl}
               soundcloudUrl={soundcloudUrl}
               youtubeUrl={youtubeUrl}
+              mediaUsageBytes={data?.mediaUsageBytes || 0}
               isEditable={!isCreatingProfile && !isExample}
               editingTracks={editingTracks}
+              tracksSource={tracks}
+              videosSource={persistedVideos}
               artistName={currentArtistName}
               onTracksEdit={handleTracksEdit}
               onTrackPrimaryUpload={handleTrackPrimaryUpload}
