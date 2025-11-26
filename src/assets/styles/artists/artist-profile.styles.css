@@ -989,6 +989,54 @@
     border-radius: 8px;
     object-fit: cover;
 }
+
+/* Artist profile viewer – venue actions card */
+.venue-viewer-actions-card {
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+.venue-viewer-actions-card .venue-viewer-actions {
+  display: flex;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+.venue-viewer-actions-card .venue-viewer-actions .btn.quaternary {
+  flex: 1;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .venue-viewer-actions-card .venue-viewer-actions .btn.quaternary {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.venue-viewer-actions-card .venue-viewer-actions .btn.quaternary:hover {
+  background-color: var(--gn-grey-300);
+  border-color: transparent;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.dark-mode .venue-viewer-actions-card .venue-viewer-actions .btn.quaternary:hover {
+  border-color: var(--gn-white);
+}
   
 .musician-profile .musician-profile-home .video-thumb {
     position: relative;

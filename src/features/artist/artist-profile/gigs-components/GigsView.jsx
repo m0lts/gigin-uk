@@ -345,6 +345,7 @@ export const ArtistProfileGigs = () => {
         <div className='invites-row'>
           {gigInvitations.map((gig) => {
             const applicant = gig.applicants?.find((app) => app.id === focusProfileId);
+            const gigStatus = getGigStatus(gig);
             return (
               <div
                 className='invite-card'
@@ -364,7 +365,9 @@ export const ArtistProfileGigs = () => {
                     month: 'short',
                   })}
                 </p>
-                <div className='invite-chip'>Invitation</div>
+                <div className='status respond'>
+                  {gigStatus?.icon} Awaiting your response
+                </div>
               </div>
             );
           })}
@@ -501,11 +504,9 @@ export const ArtistProfileGigs = () => {
                             })}
                           </td>
                           <td className='centre'>
-                            {gig.applicants?.length
-                              ? gig.applicants.find(
-                                  (applicant) => applicant.id === focusProfileId
-                                )?.fee || gig.budget
-                              : gig.budget}
+                            {gig.kind === 'Ticketed Gig' ? 'Ticketed' : gig.kind === 'Open Mic' ? 'Open Mic' : (
+                              gig.applicants?.length ? gig.applicants.find((applicant) => applicant.id === focusProfileId)?.fee || gig.budget : gig.budget
+                            )}
                           </td>
                           <td className='centre'>
                             <div
@@ -572,6 +573,7 @@ export const ArtistProfileGigs = () => {
               const isSaved = artistSavedGigs?.some(
                 (savedGig) => savedGig.gigId === gig.gigId
               );
+              const isConfirmed = gigStatus.text === 'Confirmed';
               return (
                 <>
                   <button
@@ -590,16 +592,30 @@ export const ArtistProfileGigs = () => {
                   >
                     Contact Venue <MailboxFullIcon />
                   </button>
-                  {gigStatus.text !== 'Withdrawn' && !isSaved && (
+                  {isConfirmed ? (
                     <button
                       onClick={() => {
                         closeOptionsMenu();
-                        handleWithdrawApplication(gig, appliedProfile);
+                        setGigForHandbook(gig);
+                        setShowGigHandbook(true);
                       }}
                       className='danger'
                     >
-                      Withdraw Application <CancelIcon />
+                      Cancel Gig <CancelIcon />
                     </button>
+                  ) : (
+                    gigStatus.text !== 'Withdrawn' &&
+                    !isSaved && (
+                      <button
+                        onClick={() => {
+                          closeOptionsMenu();
+                          handleWithdrawApplication(gig, appliedProfile);
+                        }}
+                        className='danger'
+                      >
+                        Withdraw Application <CancelIcon />
+                      </button>
+                    )
                   )}
                 </>
               );
@@ -612,8 +628,6 @@ export const ArtistProfileGigs = () => {
           setShowGigHandbook={setShowGigHandbook}
           gigForHandbook={gigForHandbook}
           musicianId={focusProfileId}
-          showConfirmation={false}
-          setShowConfirmation={() => {}}
         />
       )}
     </div>

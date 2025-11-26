@@ -12,12 +12,23 @@ const router = express.Router();
 router.post("/cancelledGigMusicianProfileUpdate", requireAuth, asyncHandler(async (req, res) => {
   const { musicianId, gigId } = req.body || {};
   if (!musicianId || !gigId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "musicianId and gigId are required" });
-  const musicianRef = db.doc(`musicianProfiles/${musicianId}`);
-  const snapshot = await musicianRef.get();
-  if (!snapshot.exists) return res.status(404).json({ error: "NOT_FOUND", message: "musician profile not found" });
+  // Support both legacy musicianProfiles and new artistProfiles using the same identifier
+  let profileRef = db.doc(`musicianProfiles/${musicianId}`);
+  let snapshot = await profileRef.get();
+
+  if (!snapshot.exists) {
+    const artistRef = db.doc(`artistProfiles/${musicianId}`);
+    const artistSnap = await artistRef.get();
+    if (!artistSnap.exists) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "musician/artist profile not found" });
+    }
+    profileRef = artistRef;
+    snapshot = artistSnap;
+  }
+
   const data = snapshot.data() || {};
   const updatedGigApplications = Array.isArray(data.gigApplications) ? data.gigApplications.filter((app) => app?.gigId !== gigId) : [];
-  await musicianRef.update({ gigApplications: updatedGigApplications, confirmedGigs: FieldValue.arrayRemove(gigId) });
+  await profileRef.update({ gigApplications: updatedGigApplications, confirmedGigs: FieldValue.arrayRemove(gigId) });
   return res.json({ data: { success: true, musicianId, gigId } });
 }));
 

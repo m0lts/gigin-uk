@@ -59,7 +59,7 @@ async function geocodeCity(city) {
   }
 }
 
-export const AdditionalInfoSection = ({ type, onClose, profileData, profileId }) => {
+export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, canEdit = true }) => {
   // All hooks must be declared at the top, before any conditional returns
   
   // State for About section editing
@@ -279,6 +279,29 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
 
   // Render About section with editable fields
   if (type === 'about') {
+    const hasAboutContent =
+      !!artistType ||
+      (Array.isArray(selectedGenres) && selectedGenres.length > 0) ||
+      !!city ||
+      !!travelDistance;
+
+    // For viewers (canEdit === false) with no data, show a simple placeholder
+    if (!canEdit && !hasAboutContent) {
+      return (
+        <div className="additional-info-section">
+          <div className="section-header">
+            <div className="title">
+              {getIcon()}
+              <h3>{getTitle()}</h3>
+            </div>
+          </div>
+          <div className="section-content">
+            <p>The artist hasn&apos;t added any information here yet.</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="additional-info-section">
         <div className="section-header">
@@ -296,14 +319,14 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
             <div className="selection-container">
               <div className="selections">
                 <div 
-                  className={`selection-card ${artistType === 'Musician/Band' ? 'selected' : ''}`}
-                  onClick={() => handleArtistTypeSelect('Musician/Band')}
+                  className={`selection-card ${artistType === 'Musician/Band' ? 'selected' : ''} ${!canEdit ? 'read-only' : ''}`}
+                  onClick={canEdit ? () => handleArtistTypeSelect('Musician/Band') : undefined}
                 >
                   <h4 className='text'>Musician/Band</h4>
                 </div>
                 <div 
-                  className={`selection-card ${artistType === 'DJ' ? 'selected' : ''}`}
-                  onClick={() => handleArtistTypeSelect('DJ')}
+                  className={`selection-card ${artistType === 'DJ' ? 'selected' : ''} ${!canEdit ? 'read-only' : ''}`}
+                  onClick={canEdit ? () => handleArtistTypeSelect('DJ') : undefined}
                 >
                   <h4 className='text'>DJ</h4>
                 </div>
@@ -322,8 +345,8 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
                   {genres[artistType]?.map((genre) => (
                     <div
                       key={genre}
-                      className={`selection-card ${selectedGenres.includes(genre) ? 'selected' : ''}`}
-                      onClick={() => handleGenreToggle(genre)}
+                      className={`selection-card ${selectedGenres.includes(genre) ? 'selected' : ''} ${!canEdit ? 'read-only' : ''}`}
+                      onClick={canEdit ? () => handleGenreToggle(genre) : undefined}
                     >
                       {genre}
                     </div>
@@ -341,7 +364,8 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
                 className='input'
                 id="about-city"
                 value={city}
-                onChange={(e) => handleCityChange(e.target.value)}
+                onChange={canEdit ? (e) => handleCityChange(e.target.value) : undefined}
+                disabled={!canEdit}
               >
                 <option value="">Select a city</option>
                 {UK_CITIES.map((cityName) => (
@@ -358,8 +382,8 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
                 {['5 miles', '25 miles', '50 miles', '100 miles', 'Nationwide'].map((distance) => (
                   <div
                     key={distance}
-                    className={`selection-card ${travelDistance === distance ? 'selected' : ''}`}
-                    onClick={() => handleTravelDistanceSelect(distance)}
+                    className={`selection-card ${travelDistance === distance ? 'selected' : ''} ${!canEdit ? 'read-only' : ''}`}
+                    onClick={canEdit ? () => handleTravelDistanceSelect(distance) : undefined}
                   >
                     <h4 className='text'>{distance}</h4>
                   </div>
@@ -369,7 +393,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
           </div>
 
           {/* Save/Cancel Buttons */}
-          {hasChanges && (
+          {canEdit && hasChanges && (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.5rem' }}>
               <button
                 className="btn tertiary"
@@ -563,7 +587,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
   // Render Members section
   if (type === 'members') {
     // Render add member view
-    if (isAddingMember) {
+    if (canEdit && isAddingMember) {
       return (
         <div className="additional-info-section">
           <div className="section-header">
@@ -631,7 +655,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
     }
 
     // Render edit permissions view
-    if (editingMemberId) {
+    if (canEdit && editingMemberId) {
       const member = members.find(m => m.id === editingMemberId);
       return (
         <div className="additional-info-section">
@@ -679,7 +703,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
     }
 
     // Render remove confirmation view
-    if (removingMemberId) {
+    if (canEdit && removingMemberId) {
       const member = members.find(m => m.id === removingMemberId);
       return (
         <div className="additional-info-section">
@@ -720,13 +744,15 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
             {getIcon()}
             <h3>{getTitle()}</h3>
           </div>
-          <button
-            className="btn primary add-member-btn"
-            onClick={handleAddMemberClick}
-          >
-            <AddMember />
-            Add Member
-          </button>
+          {canEdit && (
+            <button
+              className="btn primary add-member-btn"
+              onClick={handleAddMemberClick}
+            >
+              <AddMember />
+              Add Member
+            </button>
+          )}
         </div>
         <div className="section-content">
           {loadingMembers ? (
@@ -744,7 +770,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId })
                       <span className="member-role"> (Owner)</span>
                     )}
                   </div>
-                  {member.role !== 'owner' && (
+                  {canEdit && member.role !== 'owner' && (
                     <div className="member-actions">
                         <button
                         className="btn tertiary small"

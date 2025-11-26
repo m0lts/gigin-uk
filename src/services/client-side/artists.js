@@ -301,6 +301,7 @@ export const getMusicianProfilesByIds = async (musicianIds) => {
 /**
  * Fetches musician profiles with simple pagination & filters.
  */
+// Legacy musicians search (kept for backwards compatibility)
 export const fetchMusiciansPaginated = async ({ lastDocId, limitCount = 50, type, genres, location, search }) => {
   try {
     let base = collection(firestore, 'musicianProfiles');
@@ -329,6 +330,47 @@ export const fetchMusiciansPaginated = async ({ lastDocId, limitCount = 50, type
     return { musicians, lastDocId: lastDoc };
   } catch (error) {
     console.error('[Firestore Error] fetchMusiciansPaginated:', error);
+  }
+};
+
+// New artists search for venue "Find Artists" using artistProfiles
+export const fetchArtistsPaginated = async ({ lastDocId, limitCount = 50, genres, search, type }) => {
+  try {
+    const base = collection(firestore, 'artistProfiles');
+    const constraints = [];
+
+    if (genres?.length) {
+      constraints.push(where('genres', 'array-contains-any', genres));
+    }
+
+    if (type === 'Musician/Band' || type === 'DJ') {
+      constraints.push(where('artistType', '==', type));
+    }
+
+    if (lastDocId) {
+      const lastDocSnap = await getDoc(doc(firestore, 'artistProfiles', lastDocId));
+      if (lastDocSnap.exists()) constraints.push(startAfter(lastDocSnap));
+    }
+
+    constraints.push(limit(limitCount));
+    const qy = query(base, ...constraints);
+    const snap = await getDocs(qy);
+
+    let artists = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Apply search filtering client-side on name to avoid requiring new indexes
+    if (search) {
+      const term = search.toLowerCase();
+      artists = artists.filter((artist) =>
+        (artist.name || '').toLowerCase().includes(term)
+      );
+    }
+
+    const last = snap.docs.at(-1)?.id || null;
+    return { artists, lastDocId: last };
+  } catch (error) {
+    console.error('[Firestore Error] fetchArtistsPaginated:', error);
+    return { artists: [], lastDocId: null };
   }
 };
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
 import { firestore } from '@lib/firebase';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getMusicianProfilesByIds } from '@services/client-side/artists';
+import { getArtistProfileById } from '@services/client-side/artists';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
 import { ErrorIcon, NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';
@@ -24,63 +24,68 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const SavedMusicians = ({ user }) => {
+export const SavedArtists = ({ user }) => {
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [video, setVideo] = useState(null);
-    const [savedMusicians, setSavedMusicians] = useState([]);
-    const [noSavedMusicians, setNoSavedMusicians] = useState(false);
+    const [savedArtists, setSavedArtists] = useState([]);
+    const [noSavedArtists, setNoSavedArtists] = useState(false);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(null);
 
     useEffect(() => {
-        const fetchSavedMusicians = async () => {
+        const fetchSavedArtists = async () => {
             setLoading(true);
-            if (!user?.savedMusicians || user.savedMusicians.length === 0) {
-                setNoSavedMusicians(true);
+            const savedIds = user?.savedArtists || [];
+            if (!Array.isArray(savedIds) || savedIds.length === 0) {
+                setNoSavedArtists(true);
+                setLoading(false);
+                return;
             };
             try {
-                const musiciansData = await getMusicianProfilesByIds(user.savedMusicians);
-                setSavedMusicians(musiciansData);
+                const artistsData = await Promise.all(
+                  savedIds.map((id) => getArtistProfileById(id))
+                );
+                setSavedArtists(artistsData.filter(Boolean));
                 setLoading(false);
             } catch (error) {
-                console.error('Error fetching saved musicians:', error);
-                toast.error('Error loading saved musicians. Please try again.')
+                console.error('Error fetching saved artists:', error);
+                toast.error('Error loading saved artists. Please try again.')
             }
         };
-        fetchSavedMusicians();
+        fetchSavedArtists();
       }, [user]);
 
-    if (noSavedMusicians) {
+    if (noSavedArtists) {
         return (
             <>
             <div className='head'>
-                <h1 className='title'>Saved Musicians</h1>
+                <h1 className='title'>Saved Artists</h1>
                 <button 
                     className='btn primary' 
-                    onClick={() => navigate('/venues/dashboard/musicians/find')}
+                    onClick={() => navigate('/venues/dashboard/artists/find')}
                 >
-                    Find Musicians
+                    Find Artists
                 </button>
             </div>
             <div className='body musicians no-saved'>
-                <h2>You have no saved musicians.</h2>
+                <h2>You have no saved artists.</h2>
                 <br />
-                <h4>When you save a musician, their profile will appear here.</h4>
+                <h4>When you save an artist, their profile will appear here.</h4>
             </div>
         </>
         )
     }
 
-    const handleMusicianUnsave = async (musician) => {
-        if (!user?.uid || !musician?.id) return;
-        setSaving(musician.id);
+    const handleArtistUnsave = async (artist) => {
+        if (!user?.uid || !artist?.id) return;
+        setSaving(artist.id);
         try {
-          await updateUserArrayField({ field: 'savedMusicians', op: 'remove', value: musician.id });
-          toast.success(`Removed ${musician.name} from your saved musicians`);
+          await updateUserArrayField({ field: 'savedArtists', op: 'remove', value: artist.id });
+          toast.success(`Removed ${artist.name} from your saved artists`);
         } catch (error) {
-          console.error('Error unsaving musician:', error);
-          toast.error('Failed to unsave musician. Please try again.');
+          console.error('Error unsaving artist:', error);
+          toast.error('Failed to unsave artist. Please try again.');
         } finally {
             setTimeout(() => {
                 setSaving(null);
@@ -110,48 +115,47 @@ export const SavedMusicians = ({ user }) => {
     return (
         <>
         <div className='head'>
-            <h1 className='title'>Saved Musicians</h1>
+            <h1 className='title'>Saved Artists</h1>
             <button 
                 className='btn primary' 
-                onClick={() => navigate('/venues/dashboard/musicians/find')}
+                onClick={() => navigate('/venues/dashboard/artists/find')}
             >
-                Find Musicians
+                Find Artists
             </button>
         </div>
         <div className='body musicians'>
             {!loading ? (
                 <div className='saved-musicians'>
-                    {savedMusicians.map((musician) => {
-                        if (!musician) return null;
+                    {savedArtists
+                      .filter((artist, index, arr) =>
+                        artist?.id ? arr.findIndex((a) => a?.id === artist.id) === index : false
+                      )
+                      .map((artist) => {
+                        if (!artist) return null;
 
                         const {
                             id,
                             name = 'Unnamed',
-                            picture,
                             genres = [],
-                            musicianType = '',
                             videos = [],
                             totalEarnings,
                             followers,
-                        } = musician;
+                        } = artist;
 
-                        const firstVideo = videos[0];
-                        const videoSrc =
-                        typeof firstVideo === 'string'
-                            ? firstVideo
-                            : firstVideo?.file || firstVideo?.url || null;
-                        const videoThumb =
-                        typeof firstVideo === 'object' ? firstVideo?.thumbnail : undefined;
-
-                        const completedMusician =
-                        !!videoSrc && genres.length > 0 && !!musicianType;
+                        const heroUrl = artist?.heroMedia?.url || null;
+                        const heroPositionY = typeof artist?.heroPositionY === 'number' ? artist.heroPositionY : 50;
+                        const imageSrc = heroUrl;
 
                         return (
                         <div className='musician-card' key={id}>
                             <div className={`media-container empty`}>
-                                {picture ? (
+                                {imageSrc ? (
                                     <figure className="profile-picture-only">
-                                        <img src={picture} alt={name} />
+                                        <img
+                                          src={imageSrc}
+                                          alt={name}
+                                          style={{ objectPosition: `50% ${heroPositionY}%` }}
+                                        />
                                     </figure>
                                 ) : (
                                     <div className="profile-picture-only empty">
@@ -166,8 +170,8 @@ export const SavedMusicians = ({ user }) => {
                                     <h2>{name}</h2>
                                     {/* <p>{musicianType}</p> */}
                                 </div>
-                                <button className="btn icon" onClick={() => handleMusicianUnsave(musician)}>
-                                    {saving === musician?.id ? <LoadingSpinner marginBottom={0} width={15} height={15} /> : <SavedIcon />}
+                                <button className="btn icon" onClick={() => handleArtistUnsave(artist)}>
+                                    {saving === artist?.id ? <LoadingSpinner marginBottom={0} width={15} height={15} /> : <SavedIcon />}
                                 </button>
                             </div>
 
@@ -209,7 +213,7 @@ export const SavedMusicians = ({ user }) => {
                             */}
                             <button
                                 className="btn tertiary"
-                                onClick={(e) => openInNewTab(`/${encodeURIComponent(id)}/null`, e)}
+                                onClick={(e) => openInNewTab(`/artist/${encodeURIComponent(id)}`, e)}
                                 disabled={!id}
                             >
                                 <span>Open Profile</span>
@@ -220,7 +224,7 @@ export const SavedMusicians = ({ user }) => {
                 </div>
             ) : (
                 <div className='saved-musicians'>
-                {Array.from({ length: user?.savedMusicians?.length || 0 }).map((_, index) => (
+                {Array.from({ length: user?.savedArtists?.length || 0 }).map((_, index) => (
                     <div className="musician-card-loading" key={index}>
                         <Skeleton width={'100%'} height={300} />
                     </div>

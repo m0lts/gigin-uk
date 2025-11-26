@@ -5,7 +5,7 @@ import { NewTabIcon, PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useAuth } from '@hooks/useAuth';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
+import { getArtistProfileById } from '@services/client-side/artists';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { postCancellationMessage } from '@services/api/messages';
@@ -19,7 +19,7 @@ import { logGigCancellation, revertGigAfterCancellation } from '@services/api/gi
 import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 
 
-export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, showConfirmation, setShowConfirmation }) => {
+export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) => {
 
     const { user } = useAuth();
 
@@ -27,6 +27,7 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
     const [showPromoteModal, setShowPromoteModal] = useState(false);
     const [askCancellationReason, setAskCancellationReason] = useState(false);
     const [cancellationReason, setCancellationReason] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
     const mapContainerRef = useRef(null);
 
     useMapbox({
@@ -125,17 +126,49 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId, sh
                     venueId: gigForHandbook.venueId,
                 });
             }
-            const gigId = gigForHandbook.gigId;
-            const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
+      const gigId = gigForHandbook.gigId;
+      // Fetch the artist profile for this gig cancellation
+      const artistProfile = await getArtistProfileById(musicianId);
+      const normalizedProfile = artistProfile
+        ? {
+            ...artistProfile,
+            musicianId: artistProfile.id || musicianId,
+            profileId: artistProfile.id || musicianId,
+          }
+        : {
+            musicianId,
+            profileId: musicianId,
+            name:
+              (user?.artistProfiles || []).find((p) => p.id === musicianId)?.name ||
+              user?.name ||
+              'The artist',
+          };
             const venueProfile = await getVenueProfileById(gigForHandbook.venueId);
-            const conversationId = await  getOrCreateConversation({ musicianProfile, gigData: gigForHandbook, venueProfile, type: 'cancellation' });
-            let messageText;
+      const { conversationId } = await getOrCreateConversation({
+        musicianProfile: normalizedProfile,
+        gigData: gigForHandbook,
+        venueProfile,
+        type: 'cancellation',
+      });
+
+      const artistFromUser =
+        (user?.artistProfiles || []).find((p) => p.id === musicianId) ||
+        (user?.artistProfiles || [])[0] ||
+        null;
+      const artistName = artistFromUser?.name || user?.name || 'The artist';
+      let messageText;
             if (gigForHandbook.kind === 'Ticketed Gig') {
-                messageText = `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(cancellationReason)}. The gig has been re-posted for musicians to apply to.`
+        messageText = `${artistName} has unfortunately had to cancel because ${formatCancellationReason(
+          cancellationReason
+        )}. The gig has been re-posted for musicians to apply to.`;
             } else if (gigForHandbook.kind === 'Open Mic') {
-                messageText = `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(cancellationReason)}.`
+        messageText = `${artistName} has unfortunately had to cancel because ${formatCancellationReason(
+          cancellationReason
+        )}.`;
             } else {
-                messageText = `${user.musicianProfile.name} has unfortunately had to cancel because ${formatCancellationReason(cancellationReason)}. You have been refunded the gig fee - refunds can take 3–10 business days to appear in your account. The gig has been re-posted for musicians to apply to.`
+        messageText = `${artistName} has unfortunately had to cancel because ${formatCancellationReason(
+          cancellationReason
+        )}. You have been refunded the gig fee - refunds can take 3–10 business days to appear in your account. The gig has been re-posted for musicians to apply to.`;
             }
             await postCancellationMessage({ conversationId, senderId: user.uid, message: messageText, cancellingParty: 'musician' });
             await revertGigAfterCancellation({ gigData: gigForHandbook, musicianId, cancellationReason });

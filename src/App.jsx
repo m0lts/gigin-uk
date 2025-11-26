@@ -21,6 +21,7 @@ import { MusicianDashboard } from '@features/artist/dashboard/Dashboard';
 import { ProfileCreator } from '@features/artist/profile-creator/ProfileCreator';
 import { MusicianProfile } from '@features/artist/components/MusicianProfile';
 import { ArtistProfile } from '@features/artist/artist-profile/ArtistProfile';
+import { ArtistProfileViewer } from '@features/artist/artist-profile/ArtistProfileViewer';
 import { MessagePage } from '@features/artist/messages/MessagePage';
 import { MessagesLayout } from '@layouts/MessagesLayout';
 import { VenueDashboardLayout } from '@layouts/VenueDashboardLayout';
@@ -136,6 +137,7 @@ export default function App() {
           <Route path='dashboard/*' element={<ArtistDashboardProvider user={user}><MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><MusicianDashboard user={user} /></MusicianDashboardLayout></ArtistDashboardProvider>} />
           <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
           <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+          <Route path='artist/:artistId' element={<ArtistProfileViewer user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
 
         {/* VENUES ROUTES */}

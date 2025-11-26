@@ -42,7 +42,7 @@ import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
-import { applyToGig, negotiateGigFee } from '@services/api/gigs';
+import { applyToGig, negotiateGigFee, acceptGigOffer, acceptGigOfferOM } from '@services/api/gigs';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '@services/api/messages';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { NoTextLogo } from '../shared/ui/logos/Logos';
@@ -604,13 +604,27 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             // Normalize profile for API compatibility
             const normalizedProfile = {
               ...selectedProfile,
-              musicianId: musicianId,
+              musicianId,
               profileId: musicianId,
             };
             const venueProfile = await getVenueProfileById(gigData.venueId);
-            const { conversationId } = await getOrCreateConversation(normalizedProfile, gigData, venueProfile, 'application');
+            const { conversationId } = await getOrCreateConversation({
+              musicianProfile: normalizedProfile,
+              gigData,
+              venueProfile,
+              type: 'invitation',
+            });
             const applicationMessage = await getMostRecentMessage(conversationId, 'invitation');
-            await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: gigData.budget, userRole: 'musician', nonPayableGig });
+            if (applicationMessage?.id) {
+              await sendGigAcceptedMessage({
+                conversationId,
+                originalMessageId: applicationMessage.id,
+                senderId: user.uid,
+                agreedFee: gigData.budget,
+                userRole: 'musician',
+                nonPayableGig,
+              });
+            }
             const venueEmail = venueProfile.email;
             const musicianName = normalizedProfile.name;
             await sendInvitationAcceptedEmailToVenue({

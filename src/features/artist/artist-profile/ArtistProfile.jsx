@@ -11,11 +11,22 @@ import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '@lib/firebase';
 import { updateUserArrayField } from '@services/api/users';
 import { toast } from 'sonner';
-import { NoImageIcon } from '@features/shared/ui/extras/Icons';
+import { NoImageIcon, InviteIconSolid } from '@features/shared/ui/extras/Icons';
 import { CREATION_STEP_ORDER } from './profile-components/ProfileCreationBox';
 import { LoadingModal } from '@features/shared/ui/loading/LoadingModal';
-import { Header } from '../components/Header';
+import { Header as MusicianHeader } from '../components/Header';
+import { Header as VenueHeader } from '@features/venue/components/Header';
+import { Header as SharedHeader } from '@features/shared/components/Header';
 import { ArtistProfileGigs } from './gigs-components/GigsView';
+import { inviteToGig } from '@services/api/gigs';
+import { getGigsByIds } from '@services/client-side/gigs';
+import { validateVenueUser } from '@services/utils/validation';
+import { filterInvitableGigsForMusician } from '@services/utils/filtering';
+import { fetchMyVenueMembership } from '@services/client-side/venues';
+import { getOrCreateConversation } from '@services/api/conversations';
+import { sendGigInvitationMessage } from '@services/client-side/messages';
+import { formatDate } from '@services/utils/dates';
+import Portal from '@features/shared/components/Portal';
 
 const BRIGHTNESS_DEFAULT = 100;
 const BRIGHTNESS_RANGE = 40; // slider distance from neutral
@@ -109,6 +120,7 @@ const ArtistProfileComponent = ({
   user: userProp,
   setAuthModal,
   setAuthType,
+  viewerMode = false,
 }) => {
   const { user: authUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -117,12 +129,13 @@ const ArtistProfileComponent = ({
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedExampleProfile, setSelectedExampleProfile] = useState(null);
   const darkModeInitializedRef = useRef(false);
-  console.log('authUser', authUser);
   // Use prop user if provided, otherwise use auth user
   const user = userProp || authUser;
 
   // Determine current state based on profile status
-  const [currentState, setCurrentState] = useState(ArtistProfileState.EXAMPLE_PROFILE);
+  const [currentState, setCurrentState] = useState(
+    viewerMode ? ArtistProfileState.DASHBOARD : ArtistProfileState.EXAMPLE_PROFILE
+  );
   const [backgroundImage, setBackgroundImage] = useState(null);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [initializingArtistProfile, setInitializingArtistProfile] = useState(false);
@@ -177,7 +190,9 @@ const ArtistProfileComponent = ({
     // Default to PROFILE for /artist-profile or any other /artist-profile/* path
     return DashboardView.PROFILE;
   };
-  const [dashboardView, setDashboardView] = useState(() => getDashboardViewFromPath(location.pathname));
+  const [dashboardView, setDashboardView] = useState(() =>
+    viewerMode ? DashboardView.PROFILE : getDashboardViewFromPath(location.pathname)
+  );
   const isGigsDashboard = dashboardView === DashboardView.GIGS;
   
   // Track previous profile state to detect completion
@@ -223,6 +238,156 @@ const ArtistProfileComponent = ({
   );
   const activeProfileData = completedProfile || draftProfile || null;
   const hasCompleteProfile = !!completedProfile;
+  const isOwner =
+    !!user && !!activeProfileData && user.uid && activeProfileData.userId
+      ? user.uid === activeProfileData.userId
+      : false;
+  const canEdit = !viewerMode && isOwner;
+  const viewerHasVenueProfiles = viewerMode && user?.venueProfiles && user.venueProfiles.length > 0;
+
+  // Venue viewer: track saved state for this artist
+  const [artistSaved, setArtistSaved] = useState(false);
+  const [savingArtist, setSavingArtist] = useState(false);
+  const [inviteArtistModal, setInviteArtistModal] = useState(false);
+  const [usersGigs, setUsersGigs] = useState([]);
+  const [selectedGig, setSelectedGig] = useState(null);
+  const [invitingArtist, setInvitingArtist] = useState(false);
+
+  useEffect(() => {
+    if (!viewerHasVenueProfiles || !activeProfileData?.id) {
+      setArtistSaved(false);
+      return;
+    }
+    const saved = Array.isArray(user?.savedArtists)
+      ? user.savedArtists.includes(activeProfileData.id)
+      : false;
+    setArtistSaved(saved);
+  }, [viewerHasVenueProfiles, user?.savedArtists, activeProfileData?.id]);
+
+  const handleToggleSaveArtist = async () => {
+    if (!viewerHasVenueProfiles || !activeProfileData?.id) return;
+    try {
+      setSavingArtist(true);
+      const field = 'savedArtists';
+      const op = artistSaved ? 'remove' : 'add';
+      await updateUserArrayField({ field, op, value: activeProfileData.id });
+      setArtistSaved(!artistSaved);
+      toast.success(artistSaved ? 'Artist removed from saved.' : 'Artist saved.');
+    } catch (err) {
+      console.error('Error toggling saved artist:', err);
+      toast.error('Failed to update saved artists. Please try again.');
+    } finally {
+      setSavingArtist(false);
+    }
+  };
+
+  const handleInviteArtist = async () => {
+    if (!viewerHasVenueProfiles || !activeProfileData?.id) return;
+
+    const { valid, venueProfiles } = validateVenueUser({
+      user,
+      setAuthModal,
+      setAuthType,
+      showAlert: (msg) => alert(msg),
+    });
+    if (!valid) return;
+
+    const gigIds = venueProfiles.flatMap((venueProfile) => venueProfile.gigs || []);
+    if (!gigIds.length) {
+      toast.error('You have no upcoming gigs to invite this artist to.');
+      return;
+    }
+
+    try {
+      const fetchedGigs = await getGigsByIds(gigIds);
+      const availableGigs = filterInvitableGigsForMusician(fetchedGigs, activeProfileData.id);
+      const venuesWithMembership = await Promise.all(
+        (venueProfiles || []).map((v) => fetchMyVenueMembership(v, user.uid))
+      );
+      const membershipByVenueId = Object.fromEntries(
+        venuesWithMembership
+          .filter(Boolean)
+          .map((v) => [v.venueId, v.myMembership || null])
+      );
+      const gigsWithMembership = availableGigs.map((gig) => ({
+        ...gig,
+        myMembership: membershipByVenueId[gig.venueId] || null,
+      }));
+      setUsersGigs(gigsWithMembership);
+      setInviteArtistModal(true);
+    } catch (error) {
+      console.error('Error fetching future gigs for artist invite:', error);
+      toast.error('We encountered an error. Please try again.');
+    }
+  };
+
+  const handleSendArtistInvite = async (gigData) => {
+    if (!viewerHasVenueProfiles || !activeProfileData?.id || !gigData) return;
+
+    const venueToSend = user.venueProfiles.find((venue) => venue.id === gigData.venueId);
+    if (!venueToSend) {
+      console.error('Venue not found in user profiles.');
+      return;
+    }
+
+    // Normalize artist profile to legacy "musicianProfile" shape for backend compatibility
+    const musicianProfilePayload = {
+      musicianId: activeProfileData.id,
+      id: activeProfileData.id,
+      name: activeProfileData.name,
+      genres: activeProfileData.genres || [],
+      musicianType: activeProfileData.artistType || 'Musician/Band',
+      musicType: activeProfileData.genres || [],
+      bandProfile: false,
+      userId: activeProfileData.userId,
+    };
+
+    try {
+      setInvitingArtist(true);
+      const res = await inviteToGig({ gigId: gigData.gigId, musicianProfile: musicianProfilePayload });
+      if (!res.success) {
+        if (res.code === 'permission-denied') {
+          toast.error('You don’t have permission to invite artists for this venue.');
+        } else if (res.code === 'failed-precondition') {
+          toast.error('This gig is missing required venue info.');
+        } else {
+          toast.error('Error inviting artist. Do you have permission to invite artists to gigs at this venue?');
+        }
+        return;
+      }
+
+      const { conversationId } = await getOrCreateConversation({
+        musicianProfile: musicianProfilePayload,
+        gigData,
+        venueProfile: venueToSend,
+        type: 'invitation',
+      });
+
+      if (gigData.kind === 'Ticketed Gig' || gigData.kind === 'Open Mic') {
+        await sendGigInvitationMessage(conversationId, {
+          senderId: user.uid,
+          text: `${venueToSend.accountName} invited ${activeProfileData.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(
+            gigData.date
+          )}.`,
+        });
+      } else {
+        await sendGigInvitationMessage(conversationId, {
+          senderId: user.uid,
+          text: `${venueToSend.accountName} invited ${activeProfileData.name} to play at their gig at ${gigData.venue.venueName} on the ${formatDate(
+            gigData.date
+          )} for ${gigData.budget}.`,
+        });
+      }
+
+      setInviteArtistModal(false);
+      toast.success(`Invite sent to ${activeProfileData.name}`);
+    } catch (error) {
+      console.error('Error while creating or fetching conversation:', error);
+      toast.error('Error inviting artist. Please try again.');
+    } finally {
+      setInvitingArtist(false);
+    }
+  };
   const isCreationState = currentState === ArtistProfileState.CREATING;
 
   const displayName = useMemo(() => {
@@ -282,6 +447,7 @@ const ArtistProfileComponent = ({
 
   // Support URL-based state (optional, for deep linking)
   useEffect(() => {
+    if (viewerMode) return; // viewer mode ignores URL-driven creation/dashboard state
     const urlState = searchParams.get('state');
     if (urlState && Object.values(ArtistProfileState).includes(urlState)) {
       // Only allow URL state if it makes sense (e.g., don't force dashboard if no profile)
@@ -294,6 +460,7 @@ const ArtistProfileComponent = ({
 
   // Determine state based on profile status
   useEffect(() => {
+    if (viewerMode) return; // viewer mode always stays in dashboard/profile
     // If we're in creating state, don't auto-switch until profile is complete
     if (isCreatingProfile && !hasCompleteProfile) {
       return;
@@ -351,6 +518,7 @@ const ArtistProfileComponent = ({
   // Sync dashboard view with URL pathname (for browser back/forward support)
   const isNavigatingFromUrlRef = useRef(false);
   useEffect(() => {
+    if (viewerMode) return; // viewer route is separate, don't sync to /artist-profile paths
     if (currentState === ArtistProfileState.DASHBOARD) {
       const viewFromPath = getDashboardViewFromPath(location.pathname);
       if (viewFromPath !== dashboardView) {
@@ -362,6 +530,7 @@ const ArtistProfileComponent = ({
 
   // Update URL when dashboard view changes (only when in dashboard state)
   useEffect(() => {
+    if (viewerMode) return; // don't push /artist-profile URLs when viewing as a guest/venue
     if (currentState === ArtistProfileState.DASHBOARD && !isNavigatingFromUrlRef.current) {
       const pathMap = {
         [DashboardView.PROFILE]: '/artist-profile',
@@ -403,9 +572,10 @@ const ArtistProfileComponent = ({
 
     // Don't update background image if we're in edit mode but editingHeroImage is null
     // (this prevents reverting to old image while user is selecting new one)
-    const isInEditMode = activeProfileData?.heroMedia?.url && currentState === ArtistProfileState.DASHBOARD;
-    if (isInEditMode && !wasEditing) {
-      // In edit mode, keep current image until new one is selected
+    const isInEditMode =
+      activeProfileData?.heroMedia?.url && currentState === ArtistProfileState.DASHBOARD;
+    if (!viewerMode && isInEditMode && !wasEditing) {
+      // In edit mode for the owner, keep current image until new one is selected
       return;
     }
 
@@ -437,6 +607,7 @@ const ArtistProfileComponent = ({
     activeProfileData?.heroMedia?.url,
     backgroundImage,
     editingHeroImage,
+    viewerMode,
   ]);
 
   const resetCreationState = () => {
@@ -2677,12 +2848,22 @@ const ArtistProfileComponent = ({
   };
 
   // Render dashboard sub-views
-  const renderDashboardView = () => {
+  const renderDashboardView = ({ canEdit }) => {
     switch (dashboardView) {
       case DashboardView.PROFILE:
         return (
           <ProfileView 
-            profileData={activeProfileData}
+            profileData={
+              viewerHasVenueProfiles && !canEdit
+                ? {
+                    ...activeProfileData,
+                    onInviteArtist: handleInviteArtist,
+                    onToggleSaveArtist: handleToggleSaveArtist,
+                    artistSaved,
+                    savingArtist,
+                  }
+                : activeProfileData
+            }
             onBeginCreation={handleBeginCreation}
             isExample={false}
             isDarkMode={isDarkMode}
@@ -2730,11 +2911,11 @@ const ArtistProfileComponent = ({
             scrollContainerRef={stateBoxRef}
             onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
             profileId={activeProfileData?.profileId || activeProfileData?.id}
-            onHeroImageEdit={handleHeroImageEdit}
-            onNameEdit={handleNameEdit}
-            onBioEdit={handleBioEdit}
-            onWebsiteUrlEdit={handleWebsiteUrlEdit}
-            onInstagramUrlEdit={handleInstagramUrlEdit}
+            onHeroImageEdit={canEdit ? handleHeroImageEdit : null}
+            onNameEdit={canEdit ? handleNameEdit : null}
+            onBioEdit={canEdit ? handleBioEdit : null}
+            onWebsiteUrlEdit={canEdit ? handleWebsiteUrlEdit : null}
+            onInstagramUrlEdit={canEdit ? handleInstagramUrlEdit : null}
             currentHeroImage={activeProfileData?.heroMedia?.url}
             currentHeroBrightness={activeProfileData?.heroBrightness || BRIGHTNESS_DEFAULT}
             currentHeroPosition={activeProfileData?.heroPositionY || HERO_POSITION_DEFAULT}
@@ -2747,8 +2928,9 @@ const ArtistProfileComponent = ({
             onEditingHeroPositionChange={handleEditingHeroPositionChange}
             editingHeroPosition={editingHeroPosition}
             editingHeroBrightness={editingHeroBrightness}
-            onTracksSave={handleTracksSave}
-            onVideosSave={handleVideosSave}
+            onTracksSave={canEdit ? handleTracksSave : null}
+            onVideosSave={canEdit ? handleVideosSave : null}
+            canEdit={canEdit}
           />
         );
       case DashboardView.GIGS:
@@ -2763,7 +2945,7 @@ const ArtistProfileComponent = ({
   };
 
   // Render based on current state
-  const renderStateContent = () => {
+  const renderStateContent = ({ canEdit }) => {
     switch (currentState) {
       case ArtistProfileState.EXAMPLE_PROFILE:
         // Show example profile with hardcoded data
@@ -2870,7 +3052,7 @@ const ArtistProfileComponent = ({
       
       case ArtistProfileState.DASHBOARD:
         // Render dashboard with sub-views
-        return renderDashboardView();
+        return renderDashboardView({ canEdit });
       
       default:
         return <div>Loading...</div>;
@@ -2966,17 +3148,43 @@ const ArtistProfileComponent = ({
 
         {/* Header - shown when not in creation state */}
         {!isCreationState && (
-          <Header 
-            setAuthModal={setAuthModal} 
-            setAuthType={setAuthType} 
-            user={user} 
-          />
+          <>
+            {viewerMode ? (
+              user?.venueProfiles && user.venueProfiles.length > 0 ? (
+                // Venue owner viewing an artist profile → venue header
+                <VenueHeader
+                  user={user}
+                  setAuthModal={setAuthModal}
+                  setAuthType={setAuthType}
+                />
+              ) : (
+                // Guest or non-venue viewer → shared default header
+                <SharedHeader
+                  user={user}
+                  setAuthModal={setAuthModal}
+                  setAuthType={setAuthType}
+                  // Provide safe no-op profile modal props for this context
+                  noProfileModal={false}
+                  setNoProfileModal={() => {}}
+                  noProfileModalClosable={false}
+                  setNoProfileModalClosable={() => {}}
+                />
+              )
+            ) : (
+              // Artist owner in their own dashboard/profile
+              <MusicianHeader
+                user={user}
+                setAuthModal={setAuthModal}
+                setAuthType={setAuthType}
+              />
+            )}
+          </>
         )}
 
         {/* Constant elements - always visible */}
         <div className={`artist-profile-constants ${(isCreationState && !creationHasHeroImage) ? 'creation-transition' : ''}`}>
           {/* Exit button - top right */}
-          {isCreationState && (
+          {!viewerMode && isCreationState && (
             <button 
               className="btn exit-button"
               onClick={handleExitClick}
@@ -3004,7 +3212,7 @@ const ArtistProfileComponent = ({
             .filter(Boolean)
             .join(' ')}
         >
-          {renderStateContent()}
+          {renderStateContent({ canEdit })}
         </div>
       </div>
 
@@ -3020,6 +3228,109 @@ const ArtistProfileComponent = ({
           title={`${Math.round(videoUploadProgress)}%`}
           text="Please wait, we are uploading your media. Don't close or refresh this window." 
         />
+      )}
+
+      {/* Venue-side invite artist modal (viewer mode) */}
+      {viewerMode && inviteArtistModal && !invitingArtist && (
+        <Portal>
+          <div className="modal invite-musician" onClick={() => setInviteArtistModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div className="modal-header-text">
+                  <InviteIconSolid />
+                  <h2>Invite {activeProfileData?.name} to one of your available gigs.</h2>
+                </div>
+                <div className="or-separator">
+                  <span />
+                  <h6>or</h6>
+                  <span />
+                </div>
+                <button
+                  className="btn secondary"
+                  onClick={() => {
+                    setInviteArtistModal(false);
+                    navigate('/venues/dashboard/gigs', {
+                      state: {
+                        musicianData: {
+                          id: activeProfileData?.id,
+                          name: activeProfileData?.name,
+                          genres: activeProfileData?.genres || [],
+                          type: activeProfileData?.artistType || 'Musician/Band',
+                          bandProfile: false,
+                          userId: activeProfileData?.userId,
+                        },
+                        buildingForMusician: true,
+                        showGigPostModal: true,
+                      },
+                    });
+                  }}
+                >
+                  Build New Gig For Artist
+                </button>
+              </div>
+              <div className="gig-selection">
+                {usersGigs.length > 0 &&
+                  usersGigs.map((gig, index) => {
+                    const role = gig?.myMembership?.role || 'member';
+                    const perms = gig?.myMembership?.permissions || {};
+                    const canInvite = role === 'owner' || perms['gigs.invite'] === true;
+
+                    if (canInvite) {
+                      return (
+                        <div
+                          className={`card ${selectedGig === gig ? 'selected' : ''}`}
+                          key={index}
+                          onClick={() => setSelectedGig(gig)}
+                        >
+                          <div className="gig-details">
+                            <h4 className="text">{gig.gigName}</h4>
+                            <h5>{gig.venue?.venueName}</h5>
+                          </div>
+                          <p className="sub-text">
+                            {formatDate(gig.date, 'short')} - {gig.startTime}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="card disabled" key={index}>
+                        <div className="gig-details">
+                          <h4 className="text">{gig.gigName}</h4>
+                          <h5 className="details-text">
+                            You don't have permission to invite artists to gigs at this venue.
+                          </h5>
+                        </div>
+                        <p className="sub-text">
+                          {formatDate(gig.date, 'short')} - {gig.startTime}
+                        </p>
+                      </div>
+                    );
+                  })}
+              </div>
+              <div className="two-buttons">
+                <button className="btn tertiary" onClick={() => setInviteArtistModal(false)}>
+                  Cancel
+                </button>
+                {selectedGig && (
+                  <button
+                    className="btn primary"
+                    disabled={!selectedGig}
+                    onClick={() => handleSendArtistInvite(selectedGig)}
+                  >
+                    Invite
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {viewerMode && inviteArtistModal && invitingArtist && (
+        <Portal>
+          <LoadingModal title="Sending Invite" />
+        </Portal>
       )}
     </div>
   );

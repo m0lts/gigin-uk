@@ -261,10 +261,28 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: gigInfo, venueProfile, type: 'application' });
             if (proposedFee === gigInfo.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
-                await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: gigInfo.budget, userRole: 'venue', nonPayableGig });
+                if (applicationMessage?.id) {
+                    await sendGigAcceptedMessage({
+                        conversationId,
+                        originalMessageId: applicationMessage.id,
+                        senderId: user.uid,
+                        agreedFee: gigInfo.budget,
+                        userRole: 'venue',
+                        nonPayableGig,
+                    });
+                }
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
-                await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: globalAgreedFee, userRole: 'venue', nonPayableGig });
+                if (applicationMessage?.id) {
+                    await sendGigAcceptedMessage({
+                        conversationId,
+                        originalMessageId: applicationMessage.id,
+                        senderId: user.uid,
+                        agreedFee: globalAgreedFee,
+                        userRole: 'venue',
+                        nonPayableGig,
+                    });
+                }
             }
             await sendGigAcceptedEmail({
                 userRole: 'venue',

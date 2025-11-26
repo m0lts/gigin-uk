@@ -147,6 +147,24 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
       if (!callerIsApplicant) return res.status(403).json({ error: "PERMISSION_DENIED", message: "caller is not an applicant on this gig" });
       break;
     }
+    case "artist.withdraw.application": {
+      // Validate caller is one of the applicants' linked artist profiles
+      const userSnap = await db.doc(`users/${caller}`).get();
+      const user = userSnap.data() || {};
+
+      const artistIdsField = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
+      const callerArtistIds = artistIdsField.map((id) => id).filter(Boolean);
+
+      const applicants = Array.isArray(gig?.applicants) ? gig.applicants : [];
+      const callerIsApplicant = applicants.some((a) => callerArtistIds.includes(a?.id));
+      if (!callerIsApplicant) {
+        return res.status(403).json({
+          error: "PERMISSION_DENIED",
+          message: "caller is not an applicant on this gig",
+        });
+      }
+      break;
+    }
     default:
       return res.status(400).json({ error: "INVALID_ARGUMENT", message: `unsupported action "${action}"` });
   }
@@ -215,14 +233,31 @@ router.post("/inviteToGig", requireAuth, asyncHandler(async (req, res) => {
   const alreadyIncluded = currentApplicants.some(a => a?.id === musicianId);
   const updatedApplicants = alreadyIncluded ? currentApplicants : currentApplicants.concat(applicant);
 
-  const musicianRef = db.doc(`musicianProfiles/${musicianId}`);
   await db.runTransaction(async (tx) => {
-    const freshGig = (await tx.get(gigRef)).data() || {};
+    const freshGigSnap = await tx.get(gigRef);
+    const freshGig = freshGigSnap.exists ? (freshGigSnap.data() || {}) : {};
     const freshApplicants = Array.isArray(freshGig.applicants) ? freshGig.applicants : [];
     const dup = freshApplicants.some(a => a?.id === musicianId);
     const nextApplicants = dup ? freshApplicants : freshApplicants.concat(applicant);
+
+    // Support both legacy musicianProfiles and new artistProfiles collections
+    const musicianRef = db.doc(`musicianProfiles/${musicianId}`);
+    const artistRef = db.doc(`artistProfiles/${musicianId}`);
+    const [musicianSnap, artistSnap] = await Promise.all([tx.get(musicianRef), tx.get(artistRef)]);
+
     tx.update(gigRef, { applicants: nextApplicants });
-    tx.update(musicianRef, { gigApplications: FieldValue.arrayUnion({ gigId, profileId: musicianId, ...(musicianName ? { name: musicianName } : {}) }) });
+
+    const gigApplicationEntry = {
+      gigId,
+      profileId: musicianId,
+      ...(musicianName ? { name: musicianName } : {}),
+    };
+
+    if (musicianSnap.exists) {
+      tx.update(musicianRef, { gigApplications: FieldValue.arrayUnion(gigApplicationEntry) });
+    } else if (artistSnap.exists) {
+      tx.update(artistRef, { gigApplications: FieldValue.arrayUnion(gigApplicationEntry) });
+    }
   });
   return res.json({ data: { applicants: updatedApplicants, success: true } });
 }));
@@ -328,8 +363,19 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   });
 
   if (nonPayableGig) {
+    // For legacy musician profiles, confirmed gigs were stored on musicianProfiles.
+    // For the new artistProfiles-based flow, use artistProfiles instead.
     const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);
-    await musicianRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+    const musicianSnap = await musicianRef.get();
+    if (musicianSnap.exists) {
+      await musicianRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+    } else {
+      const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+      const artistSnap = await artistRef.get();
+      if (artistSnap.exists) {
+        await artistRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+      }
+    }
   }
 
   return res.json({ data: { updatedApplicants, agreedFee } });
@@ -363,7 +409,16 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
   await gigRef.update({ applicants: updatedApplicants, paid: true, status: "open" });
   const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);
-  await musicianRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+  const musicianSnap = await musicianRef.get();
+  if (musicianSnap.exists) {
+    await musicianRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+  } else {
+    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+    const artistSnap = await artistRef.get();
+    if (artistSnap.exists) {
+      await artistRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+    }
+  }
   return res.json({ data: { updatedApplicants } });
 }));
 

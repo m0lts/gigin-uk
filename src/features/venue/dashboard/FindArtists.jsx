@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { openInNewTab } from '@services/utils/misc';
 import { NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, SearchIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
-import { fetchMusiciansPaginated } from '../../../services/client-side/artists';
+import { fetchArtistsPaginated } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
 import { updateUserArrayField } from '@services/api/users';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
@@ -22,11 +22,11 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const FindMusicians = ({ user }) => {
+export const FindArtists = ({ user }) => {
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [video, setVideo] = useState(null);
-    const [musicians, setMusicians] = useState([]);
+    const [artists, setArtists] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const searchQuery = searchParams.get('search') || '';
@@ -37,31 +37,33 @@ export const FindMusicians = ({ user }) => {
     const [hasMore, setHasMore] = useState(true);
     const [saving, setSaving] = useState(null);
     
-    const fetchMusicians = useCallback(async (reset = false) => {
+    const normalizedType = useMemo(() => {
+      if (selectedType === 'DJ') return 'DJ';
+      if (selectedType === 'Musician/Band') return 'Musician/Band';
+      return '';
+    }, [selectedType]);
+
+    const fetchArtists = useCallback(async (reset = false) => {
         if ((loading && !reset) || (!hasMore && !reset)) return;
         setLoading(true);
         try {
-            const { musicians: newMusicians, lastDocId: newLastId } =
-            await fetchMusiciansPaginated({
+            const { artists: newArtists, lastDocId: newLastId } =
+            await fetchArtistsPaginated({
               lastDocId: reset ? null : lastDocId,
               limitCount: 50,
-              type: selectedType,
               genres: selectedGenres,      // array ([]) when none
               search: searchQuery.trim(),  // trim for safety
+              type: normalizedType,
             });
-          setMusicians(prev => reset ? newMusicians : [...prev, ...newMusicians]);
+          setArtists(prev => reset ? newArtists : [...prev, ...newArtists]);
           setLastDocId(newLastId);
-          if (newMusicians.length < 50) setHasMore(false);
+          if (newArtists.length < 50) setHasMore(false);
         } catch (err) {
-          console.error('Error fetching musicians:', err);
+          console.error('Error fetching artists:', err);
         } finally {
           setLoading(false);
         }
-      }, [loading, hasMore, lastDocId, selectedType, selectedGenres, searchQuery]);
-    
-      useEffect(() => {
-        fetchMusicians();
-      }, [fetchMusicians]);
+      }, [loading, hasMore, lastDocId, selectedGenres, searchQuery, normalizedType]);
 
       useEffect(() => {
         const el = document.querySelector('.saved-musicians');
@@ -69,23 +71,22 @@ export const FindMusicians = ({ user }) => {
         const handleScroll = () => {
           const nearBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 100;
           if (nearBottom) {
-            fetchMusicians();
+            fetchArtists();
           }
         };
         el.addEventListener('scroll', handleScroll);
         return () => el.removeEventListener('scroll', handleScroll);
-      }, [fetchMusicians]);
+      }, [fetchArtists]);
 
       useEffect(() => {
         setLastDocId(null);
         setHasMore(true);
-        setMusicians([]);
-        const timeout = setTimeout(() => {
-            fetchMusicians(true);
-        }, 0);
-    
-        return () => clearTimeout(timeout);
-    }, [selectedType, selectedGenres, searchQuery]);
+        setArtists([]);
+        fetchArtists(true);
+      // We intentionally omit fetchArtists from deps to avoid loops; it already
+      // captures selectedGenres/searchQuery via its own dependencies.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [selectedType, selectedGenres, searchQuery]);
 
     const updateParam = (key, value) => {
         const newParams = new URLSearchParams(searchParams);
@@ -102,29 +103,29 @@ export const FindMusicians = ({ user }) => {
         setVideo(null);
     }
 
-    const handleMusicianSave = async (musician) => {
-        if (!user?.uid || !musician?.id) return;
-        setSaving(musician?.id);
+    const handleArtistSave = async (artist) => {
+        if (!user?.uid || !artist?.id) return;
+        setSaving(artist?.id);
         try {
-            await updateUserArrayField({ field: 'savedMusicians', op: 'add', value: musician.id });
-          toast.success(`Saved ${musician.name} to your list`);
+            await updateUserArrayField({ field: 'savedArtists', op: 'add', value: artist.id });
+          toast.success(`Saved ${artist.name} to your list`);
         } catch (error) {
-          console.error('Error toggling saved musician:', error);
+          console.error('Error toggling saved artist:', error);
           toast.error('Something went wrong. Please try again.');
         } finally {
           setSaving(null);
         }
       };
 
-    const handleMusicianUnsave = async (musician) => {
-        if (!user?.uid || !musician?.id) return;
-        setSaving(musician?.id);
+    const handleArtistUnsave = async (artist) => {
+        if (!user?.uid || !artist?.id) return;
+        setSaving(artist?.id);
         try {
-          await updateUserArrayField({ field: 'savedMusicians', op: 'remove', value: musician.id });
-          toast.success(`Removed ${musician.name} from your saved musicians`);
+          await updateUserArrayField({ field: 'savedArtists', op: 'remove', value: artist.id });
+          toast.success(`Removed ${artist.name} from your saved artists`);
         } catch (error) {
-          console.error('Error unsaving musician:', error);
-          toast.error('Failed to unsave musician. Please try again.');
+          console.error('Error unsaving artist:', error);
+          toast.error('Failed to unsave artist. Please try again.');
         } finally {
           setSaving(null);
         }
@@ -133,31 +134,45 @@ export const FindMusicians = ({ user }) => {
     return (
         <>
         <div className='head'>
-            <h1 className='title'>Find Musicians</h1>
+            <h1 className='title'>Find Artists</h1>
             <button 
                 className='btn primary' 
-                onClick={() => navigate('/venues/dashboard/musicians')}
+                onClick={() => navigate('/venues/dashboard/artists')}
             >
-                Saved Musicians
+                Saved Artists
             </button>
         </div>
         <div className='body musicians'>
             <div className='filters'>
                 <div className="status-buttons">
-                    <button className={`btn ${selectedType === '' ? 'active' : ''}`} onClick={() => updateParam('type', '')}>All</button>
-                    <button className={`btn ${selectedType === 'Musician' ? 'active' : ''}`} onClick={() => updateParam('type', 'Musician')}>Musician</button>
-                    <button className={`btn ${selectedType === 'Band' ? 'active' : ''}`} onClick={() => updateParam('type', 'Band')}>Band</button>
-                    <button className={`btn ${selectedType === 'DJ' ? 'active' : ''}`} onClick={() => updateParam('type', 'DJ')}>DJ</button>
+                    <button
+                      className={`btn ${selectedType === '' ? 'active' : ''}`}
+                      onClick={() => updateParam('type', '')}
+                    >
+                      All
+                    </button>
+                    <button
+                      className={`btn ${selectedType === 'Musician/Band' ? 'active' : ''}`}
+                      onClick={() => updateParam('type', 'Musician/Band')}
+                    >
+                      Musician/Band
+                    </button>
+                    <button
+                      className={`btn ${selectedType === 'DJ' ? 'active' : ''}`}
+                      onClick={() => updateParam('type', 'DJ')}
+                    >
+                      DJ
+                    </button>
                 </div>
 
                     <select
                         value={rawGenres}
                         onChange={(e) => {
                             const v = e.target.value;
-                            updateParam('genres', v === 'Any' ? '' : v);
+                            updateParam('genres', v === 'Genre' ? '' : v);
                         }}
                     >
-                    <option value="">Any</option>
+                    <option value="">Genre</option>
                     <option value="Rock">Rock</option>
                     <option value="Jazz">Jazz</option>
                     <option value="Pop">Pop</option>
@@ -169,40 +184,44 @@ export const FindMusicians = ({ user }) => {
                     <SearchIcon />
                     <input
                         type='text'
-                        placeholder='Search By Name...'
+                        placeholder='Search Artists By Name...'
                         value={searchQuery}
                         onChange={(e) => updateParam('search', e.target.value)} 
                         className='search-bar'
-                        aria-label='Search musicians'
+                        aria-label='Search artists'
                     />
                 </div>
             </div>
             {!loading ? (
                 <div className='saved-musicians'>
-                    {musicians.map((musician) => {
-                        if (!musician) return null;
+                    {artists
+                      .filter((artist, index, arr) =>
+                        artist?.id ? arr.findIndex((a) => a?.id === artist.id) === index : false
+                      )
+                      .map((artist) => {
+                        if (!artist) return null;
 
                         const {
                             id,
                             name = 'Unnamed',
-                            picture,
                             genres = [],
-                            musicianType = '',
                             videos = [],
-                        } = musician;
+                        } = artist;
 
-                        const firstVideo = videos[0];
-                        const videoSrc =
-                        typeof firstVideo === 'string'
-                            ? firstVideo
-                            : firstVideo?.file || firstVideo?.url || null;
+                        const heroUrl = artist?.heroMedia?.url || null;
+                        const heroPositionY = typeof artist?.heroPositionY === 'number' ? artist.heroPositionY : 50;
+                        const imageSrc = heroUrl;
 
                         return (
                         <div className='musician-card' key={id}>
                             <div className={`media-container empty`}>
-                                {picture ? (
+                                {imageSrc ? (
                                     <figure className="profile-picture-only">
-                                        <img src={picture} alt={name} />
+                                        <img
+                                          src={imageSrc}
+                                          alt={name}
+                                          style={{ objectPosition: `50% ${heroPositionY}%` }}
+                                        />
                                     </figure>
                                 ) : (
                                     <div className="profile-picture-only empty">
@@ -216,18 +235,18 @@ export const FindMusicians = ({ user }) => {
                                 <div className="musician-name-type">
                                     <h2>{name}</h2>
                                 </div>
-                                <button className="btn icon" onClick={() => user?.savedMusicians?.includes(id) ? handleMusicianUnsave(musician) : handleMusicianSave(musician)}>
+                                <button className="btn icon" onClick={() => user?.savedArtists?.includes(id) ? handleArtistUnsave(artist) : handleArtistSave(artist)}>
                                     {saving === id ? (
                                         <LoadingSpinner marginBottom={0} width={15} height={15} />
                                     ) : (
-                                        user?.savedMusicians?.includes(id) ? <SavedIcon /> : <SaveIcon />
+                                        user?.savedArtists?.includes(id) ? <SavedIcon /> : <SaveIcon />
                                     )}
                                 </button>
                             </div>
 
                             <button
                                 className="btn tertiary"
-                                onClick={(e) => openInNewTab(`/${encodeURIComponent(id)}/null`, e)}
+                                onClick={(e) => openInNewTab(`/artist/${encodeURIComponent(id)}`, e)}
                                 disabled={!id}
                             >
                                 <span>Open Profile</span>

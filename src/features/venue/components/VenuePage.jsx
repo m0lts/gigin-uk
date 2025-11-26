@@ -85,16 +85,24 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
 
     useEffect(() => {
         if (!venueViewing) return;
-        const isMusician = !!user?.musicianProfile?.id;
+        const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
+        const isMusician = !!user?.musicianProfile?.id || hasArtistProfiles;
         const shouldHideVenueView = !user || isMusician;
         if (!shouldHideVenueView) return;
+
         const params = new URLSearchParams(searchParams);
         params.delete('venueViewing');
+
         if (isMusician) {
-          params.set('musicianId', user.musicianProfile.id);
+          const primaryArtistId = hasArtistProfiles ? user.artistProfiles[0].id : null;
+          const idForParam = user?.musicianProfile?.id || primaryArtistId;
+          if (idForParam) {
+            params.set('musicianId', idForParam);
+          }
         } else {
           params.delete('musicianId');
         }
+
         navigate(
           {
             pathname: `/venues/${venueId}`,
@@ -199,18 +207,49 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const handleFetchMusicianProfiles = async () => {
         try {
             if (!user) return;
+
+            // Prefer new artistProfiles structure if present
+            const artistProfiles = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
+            if (artistProfiles.length > 0) {
+                const normalized = artistProfiles.map((p) => ({
+                    id: p.id,
+                    musicianId: p.id,
+                    name: p.name,
+                    picture: p.heroMedia?.url || '',
+                    genres: p.genres || [],
+                    musicianType: p.artistType || 'Musician/Band',
+                    musicType: p.genres || [],
+                    bandProfile: false,
+                    userId: p.userId,
+                }));
+                setMusicianProfiles(normalized);
+
+                const paramId = musicianId;
+                if (paramId) {
+                    const match = normalized.find(
+                        (profile) => profile.id === paramId || profile.musicianId === paramId
+                    );
+                    setSelectedProfile(match || normalized[0] || null);
+                } else {
+                    setSelectedProfile(normalized[0] || null);
+                }
+                setLoadingRequest(false);
+                return;
+            }
+
+            // Legacy musicianProfile / bands flow
             if (user?.bands && user.bands.length > 0 && musicianId) {
-                const allIds = [...user.bands, musicianId]
+                const allIds = [...user.bands, musicianId];
                 const profiles = await getMusicianProfilesByIds(allIds);
                 setMusicianProfiles(profiles);
                 setLoadingRequest(false);
             } else {
-                setSelectedProfile(user?.musicianProfile)
+                setSelectedProfile(user?.musicianProfile || null);
                 setLoadingRequest(false);
             }
         } catch (error) {
             console.error(error);
-            toast.error('Failed to request a gig.')
+            toast.error('Failed to request a gig.');
         }
     }
 
@@ -312,17 +351,24 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             const musicianProfile = user?.musicianProfile;
             const venueProfile = user?.venueProfiles?.[0];
             const isVenueOwner = venueId === venueProfile?.venueId;
-            if (musicianProfile) {
-                const isMusician = !!user?.musicianProfile?.id;
+            const hasArtistProfiles = Array.isArray(user.artistProfiles) && user.artistProfiles.length > 0;
+            const hasAnyMusicProfile = !!musicianProfile || hasArtistProfiles;
+
+            if (hasAnyMusicProfile) {
+                const isMusician = hasAnyMusicProfile;
                 const shouldHideVenueView = !user || isMusician;
                 if (!shouldHideVenueView) return;
+
                 const params = new URLSearchParams(searchParams);
                 params.delete('venueViewing');
-                if (isMusician) {
-                  params.set('musicianId', user.musicianProfile.id);
+                const primaryArtistId = hasArtistProfiles ? user.artistProfiles[0].id : null;
+                const idForParam = musicianProfile?.id || primaryArtistId;
+                if (idForParam) {
+                    params.set('musicianId', idForParam);
                 } else {
-                  params.delete('musicianId');
+                    params.delete('musicianId');
                 }
+
                 navigate(
                     {
                       pathname: `/venues/${venueId}`,

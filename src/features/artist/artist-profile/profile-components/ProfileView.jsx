@@ -5,7 +5,7 @@ import { DarkModeToggle } from './DarkModeToggle';
 import { ProfileCreationBox, CREATION_STEP_ORDER } from './ProfileCreationBox';
 import { AdditionalInfoSection } from './AdditionalInfoSection';
 import { useScrollFade } from '@hooks/useScrollFade';
-import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, NoImageIcon, LightModeIcon, EditIcon } from '../../../shared/ui/extras/Icons';
+import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, NoImageIcon, LightModeIcon, EditIcon, InviteIconSolid, SavedIcon, SaveIcon } from '../../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
@@ -156,6 +156,7 @@ export const ProfileView = ({
   editingHeroBrightness = null,
   onTracksSave = null,
   onVideosSave = null,
+  canEdit = true,
 }) => {
   // Randomly select an example profile once when component mounts (only for example profiles)
   const exampleData = useMemo(() => {
@@ -623,9 +624,11 @@ export const ProfileView = ({
   const pendingCoverTrackIdRef = useRef(null);
   const editHeroContainerRef = useRef(null);
   const editNameContainerRef = useRef(null);
+  const venueActionsContainerRef = useRef(null);
   const { opacity: editHeroOpacity, scale: editHeroScale } = useScrollFade(editHeroContainerRef, scrollContainerRef, 30);
   const { opacity: editNameOpacity, scale: editNameScale } = useScrollFade(editNameContainerRef, scrollContainerRef, 30);
-
+  const { opacity: venueActionsOpacity, scale: venueActionsScale } = useScrollFade(venueActionsContainerRef, scrollContainerRef, 30);
+  
   // Refs for containers to apply scroll fade effect
   const bioContainerRef = useRef(null);
   const mediaContainerRef = useRef(null);
@@ -912,6 +915,56 @@ export const ProfileView = ({
   return (
     <div className={profileContentClassNames}>
       <div className='profile-sections-stack'>
+        {/* Venue-side viewer actions (invite/save artist) as a separate card at top of stack */}
+        {!canEdit && !isCreatingProfile && !isExample && !!profileData && (
+          <div
+            ref={venueActionsContainerRef}
+            className="profile-card venue-viewer-actions-card"
+            aria-hidden={!shouldShowBio}
+            style={{
+              opacity: venueActionsOpacity,
+              transform: `scale(${venueActionsScale})`,
+              transformOrigin: 'top center',
+              transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+            }}
+          >
+            <div className="venue-viewer-actions">
+              <button
+                type="button"
+                className="btn quaternary"
+                onClick={profileData.onInviteArtist}
+                disabled={!profileData.onInviteArtist}
+              >
+                <InviteIconSolid />
+                Invite to Gig
+              </button>
+              <button
+                type="button"
+                className="btn quaternary"
+                onClick={profileData.onToggleSaveArtist}
+                disabled={!profileData.onToggleSaveArtist || profileData.savingArtist}
+              >
+                {profileData.savingArtist
+                  ? <LoadingSpinner width={10} height={10} />
+                  : profileData.artistSaved
+                  ? (
+                    <>
+                      <SavedIcon />
+                      Unsave Artist
+                    </>
+                  )
+                  : (
+                    <>
+                      <SaveIcon />
+                      Save Artist
+                    </>
+                  )
+                  }
+              </button>
+            </div>
+          </div>
+        )}
+
         <div 
           ref={bioContainerRef}
           className={bioCardClassNames} 
@@ -930,7 +983,7 @@ export const ProfileView = ({
             onBioEdit={onBioEdit}
             onWebsiteUrlEdit={onWebsiteUrlEdit}
             onInstagramUrlEdit={onInstagramUrlEdit}
-            isEditable={!isCreatingProfile && !isExample}
+            isEditable={canEdit && !isCreatingProfile && !isExample}
           />
         </div>
 
@@ -954,7 +1007,7 @@ export const ProfileView = ({
               soundcloudUrl={soundcloudUrl}
               youtubeUrl={youtubeUrl}
               mediaUsageBytes={data?.mediaUsageBytes || 0}
-              isEditable={!isCreatingProfile && !isExample}
+              isEditable={canEdit && !isCreatingProfile && !isExample}
               editingTracks={editingTracks}
               tracksSource={tracks}
               videosSource={persistedVideos}
@@ -986,7 +1039,7 @@ export const ProfileView = ({
             />
           )}
           {/* Hidden file inputs for track and video editing */}
-          {!isCreatingProfile && !isExample && (
+          {canEdit && !isCreatingProfile && !isExample && (
             <>
               <input
                 ref={trackFileInputRef}
@@ -1032,6 +1085,7 @@ export const ProfileView = ({
                 onClose={() => setSelectedAdditionalInfo(null)}
                 profileData={data}
                 profileId={!isExample && !isCreatingProfile ? (profileData?.profileId || profileData?.id) : null}
+                canEdit={canEdit}
               />
             )}
           </div>
@@ -1222,7 +1276,7 @@ export const ProfileView = ({
       )}
 
       {/* Edit Buttons and Dark Mode Toggle */}
-      {!isCreatingProfile && !isExample && (
+      {canEdit && !isCreatingProfile && !isExample && (
         <div className="bottom-buttons-container">
           <div className="edit-buttons-container">
             <button
@@ -1252,7 +1306,7 @@ export const ProfileView = ({
         </div>
       )}
 
-      {isCreatingProfile && (
+      {canEdit && isCreatingProfile && (
         <div className="dark-mode-toggle-container">
           <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
         </div>

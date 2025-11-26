@@ -417,6 +417,12 @@
   gap: 1rem;
   overflow-x: auto;
   padding-bottom: 0.25rem;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.artist-profile-gigs-section.invitations .invites-row::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
 }
 
 .artist-profile-gigs-section.invitations .invite-card {
@@ -425,8 +431,8 @@
   border-radius: 0.75rem;
   padding: 0.85rem;
   background: var(--gn-white);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
   cursor: pointer;
+  margin-top: 0.1rem;
   transition: transform 0.2s ease;
 }
 
@@ -548,6 +554,25 @@
   border-radius: 0.25rem;
   font-weight: 400;
   white-space: nowrap;
+}
+
+/* Reuse status pill styling for invitation cards */
+.artist-profile-gigs-section.invitations .status {
+  font-size: 0.85rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+  border-radius: 0.25rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.artist-profile-gigs-section.invitations .status.respond {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
 }
 
 .artist-profile-gigs-card .body.gigs table .status.confirmed {
@@ -1523,6 +1548,12 @@
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.section-header .title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .section-header .external-links {
