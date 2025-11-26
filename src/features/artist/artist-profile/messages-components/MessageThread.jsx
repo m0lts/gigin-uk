@@ -4,7 +4,6 @@ import {
     RejectedIcon,
     SendMessageIcon,
     TickIcon } from '@features/shared/ui/extras/Icons';
-import '@styles/artists/messages.styles.css';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useNavigate } from 'react-router-dom';
 import { listenToMessages } from '@services/client-side/messages';
@@ -12,11 +11,11 @@ import { getVenueProfileById } from '@services/client-side/venues';
 import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/client-side/emails';
 import { toast } from 'sonner';
-import { formatDate, toJsDate } from '../../../services/utils/dates';
-import Portal from '../../shared/components/Portal';
-import AddToCalendarButton from '../../shared/components/AddToCalendarButton';
+import { formatDate, toJsDate } from '../../../../services/utils/dates';
+import Portal from '../../../shared/components/Portal';
+import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
 import { notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
-import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { acceptGigOffer, acceptGigOfferOM, declineGigApplication, updateGigWithCounterOffer } from '@services/api/gigs';
 import { sendGigAcceptedMessage, sendMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/api/messages';
 
@@ -459,15 +458,6 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         {message.type === 'application' ? (
                                             <div className='accepted-group'>
                                                 Gig application sent.
-                                                {userRole !== 'venue' && activeConversation.bandConversation ? (
-                                                    <button className='btn primary' onClick={() => navigate(`/dashboard/bands/${activeConversation.accountNames.find(account => account.role === 'band')}`)}>
-                                                        Check Band Profile
-                                                    </button>
-                                                ) : userRole === 'musician' && (
-                                                    <button className='btn primary' onClick={() => navigate('/dashboard/profile')}>
-                                                        Check my Profile
-                                                    </button>
-                                                )}
                                             </div>
 
                                         ) : (

@@ -17,6 +17,33 @@
     padding: 2rem;
 }
 
+.account-page .payout-settings {
+    border-bottom:1px solid var(--gn-grey-350);
+    width:90%;
+    margin: 1rem auto;
+    padding: 2rem;
+}
+
+@media (--bp-md) {
+    .account-page .payout-settings {
+        width:100%;
+        border-bottom: none;
+        padding: 2rem 1rem;
+    }
+}
+
+@media (--bp-md-up) {
+    .account-page .payout-settings {
+        width:100%;
+    }
+}
+
+@media (--bp-lg-up) {
+    .account-page .payout-settings {
+        width:90%;
+    }
+}
+
 @media (--bp-md) {
     .account-page .account-settings {
         width:100%;
@@ -173,4 +200,172 @@
 .account-page .account-settings .img-settings .image-preview .icon {
     font-size: 2rem;
     color: var(--gn-grey-600);
+}
+
+/* Payouts / Stripe styling (match old finances connect card) */
+.account-page .payout-settings .payout-header-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.account-page .payout-settings .payout-header-section h2 {
+    margin: 0;
+}
+
+.account-page .payout-settings .account-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.account-page .payout-settings .account-status h6 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.account-page .payout-settings h2 {
+    margin-bottom: 1rem;
+}
+
+.account-page .payout-settings .data-highlight {
+    border:1px solid var(--gn-grey-350);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    background-color: var(--gn-grey-300);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.account-page .payout-settings .payout-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.account-page .payout-settings .status-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    background-color: var(--gn-grey-200);
+}
+
+.account-page .payout-settings .status-box.ok {
+    background-color: #e7f7ed;
+}
+
+.account-page .payout-settings .status-box.warn {
+    background-color: #fff5e5;
+}
+
+.account-page .payout-settings .status-box.urgent {
+    background-color: #ffe5e5;
+}
+
+.account-page .payout-settings .status-box.clickable {
+    cursor: pointer;
+}
+
+.account-page .payout-settings .payout-onboarding-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+}
+
+.account-page .payout-settings .payout-onboarding-intro .icon {
+    font-size: 2rem;
+}
+
+.account-page .payout-settings .payout-onboarding-intro p {
+    max-width: 480px;
+}
+
+.account-page .payout-settings .payout-onboarding-intro .btn.primary {
+    margin-top: 0.75rem;
+}
+
+/* Stripe Connect onboarding container */
+.account-page .payout-settings .stripe-onboarding-container {
+    width: 100%;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.account-page .payout-settings .stripe-onboarding-container > div {
+    width: 100%;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.account-page .payout-settings .stripe-onboarding-container [data-testid*="connect"],
+.account-page .payout-settings .stripe-onboarding-container iframe {
+    min-height: 500px;
+    width: 100%;
+    display: block;
+    border: none;
+}
+
+/* Information grid */
+.account-page .payout-settings .information-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 38% 38% auto;
+    gap: 2%;
+    margin-top: 1rem;
+}
+
+.account-page .payout-settings .information-item {
+    background-color: var(--gn-grey-300);
+    border-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s linear;
+}
+
+.account-page .payout-settings .information-item:hover {
+    background-color: var(--gn-grey-350);
+    box-shadow: 0 0 2px var(--gn-shadow);
+}
+
+.account-page .payout-settings .information-item .icon {
+    font-size: 2rem;
+}
+
+.account-page .payout-settings .information-item.actions {
+    background-color: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 5px;
+    padding: 0;
+    cursor: auto;
+}
+
+.account-page .payout-settings .information-item.actions:hover {
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.account-page .payout-settings .information-item.actions .btn {
+    width: 100%;
 }

@@ -393,14 +393,14 @@ router.post("/getConnectAccountStatus", requireAuth, asyncHandler(async (req, re
   const userSnap = await db.collection("users").doc(uid).get();
   if (!userSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "User not found" });
   const userData = userSnap.data() || {};
-  let musicianId = Array.isArray(userData.musicianProfile) && userData.musicianProfile.length ? userData.musicianProfile[0] : null;
-  if (!musicianId) return res.json({ data: { exists: false, status: "no_account", reason: "no_musician_profile" } });
-  const musicianSnap = await db.collection("musicianProfiles").doc(musicianId).get();
-  if (!musicianSnap.exists) return res.json({ data: { exists: false, status: "no_account", reason: "profile_not_found" } });
-  const musicianProfile = musicianSnap.data() || {};
-  if (!musicianProfile.stripeAccountId) return res.json({ data: { exists: false, status: "no_account" } });
+  
+  // Check for Stripe Connect account on user document (new structure)
+  if (!userData.stripeConnectId) {
+    return res.json({ data: { exists: false, status: "no_account", reason: "no_stripe_account" } });
+  }
+  
   const stripe = getStripe();
-  const accountId = musicianProfile.stripeAccountId;
+  const accountId = userData.stripeConnectId;
   const account = await stripe.accounts.retrieve(accountId);
   const reqs = account.requirements;
   const currentlyDueArr = reqs.currently_due;
@@ -418,7 +418,12 @@ router.post("/getConnectAccountStatus", requireAuth, asyncHandler(async (req, re
   const needsOnboarding = (currentlyDueArr.length > 0) || (pastDueArr.length > 0) || !account.details_submitted;
   let resolveUrl = null;
   if (status !== "all_good" || needsOnboarding) {
-    const link = await stripe.accountLinks.create({ account: accountId, refresh_url: "https://giginmusic.com/dashboard/finances?retry=true", return_url: "https://giginmusic.com/dashboard/finances?done=true", type: needsOnboarding ? "account_onboarding" : "account_update" });
+    const link = await stripe.accountLinks.create({ 
+      account: accountId, 
+      refresh_url: "https://giginmusic.com/account?show=payouts&retry=true", 
+      return_url: "https://giginmusic.com/account?show=payouts&done=true", 
+      type: needsOnboarding ? "account_onboarding" : "account_update" 
+    });
     resolveUrl = link.url;
   }
   return res.json({ data: { exists: true, status, counts: { currentlyDue: currentlyDueArr.length, pastDue: pastDueArr.length, eventuallyDue: eventuallyDueArr.length }, payoutsEnabled: !!account.payouts_enabled, disabledReason, actions, verification: { status: verificationStatus, details: verificationDetails, code: verificationCode }, resolveUrl, raw: { detailsSubmitted: account.details_submitted, capabilities: account.capabilities } } });

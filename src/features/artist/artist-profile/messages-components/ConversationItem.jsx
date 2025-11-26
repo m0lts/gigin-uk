@@ -1,5 +1,5 @@
 import React from "react";
-import { ArchiveIcon, InboxIcon } from "../../shared/ui/extras/Icons";
+import { ArchiveIcon, InboxIcon } from "../../../shared/ui/extras/Icons";
 
 export const ConversationItem = ({
   conversation,

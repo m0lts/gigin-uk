@@ -17,7 +17,9 @@ import { LoadingModal } from '@features/shared/ui/loading/LoadingModal';
 import { Header as MusicianHeader } from '../components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import { Header as SharedHeader } from '@features/shared/components/Header';
-import { ArtistProfileGigs } from './gigs-components/GigsView';
+import { ArtistProfileGigs } from './gigs-components/ArtistProfileGigs';
+import { ArtistProfileMessages } from './messages-components/ArtistProfileMessages';
+import { ArtistProfileFinances } from './finances-components/ArtistProfileFinances';
 import { inviteToGig } from '@services/api/gigs';
 import { getGigsByIds } from '@services/client-side/gigs';
 import { validateVenueUser } from '@services/utils/validation';
@@ -193,7 +195,10 @@ const ArtistProfileComponent = ({
   const [dashboardView, setDashboardView] = useState(() =>
     viewerMode ? DashboardView.PROFILE : getDashboardViewFromPath(location.pathname)
   );
-  const isGigsDashboard = dashboardView === DashboardView.GIGS;
+  const isTallDashboardView =
+    dashboardView === DashboardView.GIGS ||
+    dashboardView === DashboardView.MESSAGES ||
+    dashboardView === DashboardView.FINANCES;
   
   // Track previous profile state to detect completion
   const previousProfileRef = useRef(null);
@@ -2936,9 +2941,9 @@ const ArtistProfileComponent = ({
       case DashboardView.GIGS:
         return <ArtistProfileGigs />;
       case DashboardView.MESSAGES:
-        return <div><h1>Messages View (to be implemented)</h1></div>;
+        return <ArtistProfileMessages />;
       case DashboardView.FINANCES:
-        return <div><h1>Finances View (to be implemented)</h1></div>;
+        return <ArtistProfileFinances />;
       default:
         return <div><h1>Loading...</h1></div>;
     }
@@ -3207,7 +3212,7 @@ const ArtistProfileComponent = ({
           className={[
             'artist-profile-state-box',
             isDarkMode ? 'dark-mode' : '',
-            isGigsDashboard ? 'gigs-view' : '',
+            isTallDashboardView ? 'gigs-view' : '',
           ]
             .filter(Boolean)
             .join(' ')}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { EditIcon } from '@features/shared/ui/extras/Icons';
@@ -17,9 +17,26 @@ import { deleteFolderFromStorage } from '@services/storage';
 import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/client-side/venues';
 import { updateUserDocument } from '../../services/client-side/users';
 import { updateVenueProfileAccountNames } from '../../services/client-side/venues';
+import { getConnectAccountStatus, deleteStripeConnectAccount } from '@services/api/payments';
+import { useStripeConnect } from '@hooks/useStripeConnect';
 import { toast } from 'sonner';
 import Portal from '../shared/components/Portal';
-import { CameraIcon, DeleteGigIcon, InviteIconSolid, LogOutIcon, PasswordIcon, UserIcon } from '../shared/ui/extras/Icons';
+import {
+  CameraIcon,
+  DeleteGigIcon,
+  InviteIconSolid,
+  LogOutIcon,
+  PasswordIcon,
+  UserIcon,
+  BankAccountIcon,
+  CoinsIconSolid,
+  StripeIcon,
+  MoreInformationIcon,
+  SuccessIcon,
+  ExclamationIconSolid,
+  WarningIcon,
+  PaymentSystemIcon,
+} from '../shared/ui/extras/Icons';
 import { LoadingModal } from '../shared/ui/loading/LoadingModal';
 import { firestore } from '@lib/firebase';
 import { uploadFileToStorage } from '../../services/storage';
@@ -29,10 +46,17 @@ import { deleteReview } from '@services/api/reviews';
 import { deleteGigsBatch } from '../../services/client-side/gigs';
 import { deleteConversation } from '@services/api/conversations';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import {
+  ConnectAccountOnboarding,
+  ConnectComponentsProvider,
+  ConnectAccountManagement,
+} from '@stripe/react-connect-js';
 
 export const Account = () => {
     const { user,  } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const location = useLocation();
     const { isMdUp } = useBreakpoint();
     const [showNameModal, setShowNameModal] = useState(false);
     const [newName, setNewName] = useState('');
@@ -52,6 +76,24 @@ export const Account = () => {
     const [transferLoading, setTransferLoading] = useState(false);
     const [showEventLoadingModal, setShowEventLoadingModal] = useState(false);
 
+    // Stripe / payouts state (user-level)
+    const [connectedAccountId, setConnectedAccountId] = useState(user?.stripeConnectId || null);
+    const stripeConnectInstance = useStripeConnect(connectedAccountId);
+    const [acctStatus, setAcctStatus] = useState(null);
+    const [acctStatusLoading, setAcctStatusLoading] = useState(false);
+    const [showStripeManageModal, setShowStripeManageModal] = useState(false);
+    const [stripeCreatingAccount, setStripeCreatingAccount] = useState(false);
+    const [stripeError, setStripeError] = useState(false);
+    const [paymentSystemModal, setPaymentSystemModal] = useState(false);
+    const [stripeSystemModal, setStripeSystemModal] = useState(false);
+    const [showDeleteStripeModal, setShowDeleteStripeModal] = useState(false);
+    const [deletingStripe, setDeletingStripe] = useState(false);
+    const useEmulator = import.meta.env.VITE_USE_EMULATOR === 'true';
+    const stripeAccountUrl = useEmulator
+        ? import.meta.env.VITE_STRIPE_ACCOUNT_URL_EMULATOR
+        : import.meta.env.VITE_STRIPE_ACCOUNT_URL;
+    const payoutsRef = useRef(null);
+
     useEffect(() => {
         if (isMdUp) {
             setWidth('80%');
@@ -63,6 +105,61 @@ export const Account = () => {
     useEffect(() => {
         setVenueList(user?.venueProfiles || []);
     }, [user]);
+
+    // Keep connectedAccountId in sync with user doc
+    useEffect(() => {
+        if (user?.stripeConnectId && !connectedAccountId) {
+            setConnectedAccountId(user.stripeConnectId);
+        }
+    }, [user?.stripeConnectId, connectedAccountId]);
+
+    // Debug: Log when stripeConnectInstance changes
+    useEffect(() => {
+        if (connectedAccountId) {
+            console.log('[Account] connectedAccountId:', connectedAccountId);
+        }
+        if (stripeConnectInstance) {
+            console.log('[Account] stripeConnectInstance created');
+        }
+    }, [connectedAccountId, stripeConnectInstance]);
+
+    // Load Stripe Connect account status when we have a connected account
+    useEffect(() => {
+        let ignore = false;
+        const load = async () => {
+            if (!connectedAccountId) return;
+            setAcctStatusLoading(true);
+            try {
+                const data = await getConnectAccountStatus();
+                if (!ignore) setAcctStatus(data);
+            } catch (e) {
+                console.error('Failed to load Stripe account status', e);
+            } finally {
+                if (!ignore) setAcctStatusLoading(false);
+            }
+        };
+        load();
+        return () => {
+            ignore = true;
+        };
+    }, [connectedAccountId]);
+
+    // Auto-scroll to payouts section when arriving with intent flag or hash
+    useEffect(() => {
+        const intentFlag = searchParams.get('show') === 'payouts';
+        const hasHash = location.hash === '#payouts';
+        // inline recomputation to avoid temporal dead zone on showPayoutSection
+        const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
+        const hasStripeAccount = !!user?.stripeConnectId;
+        const shouldShowPayoutSection = hasArtistProfiles || hasStripeAccount || intentFlag;
+        if (!shouldShowPayoutSection) return;
+        if ((intentFlag || hasHash) && payoutsRef.current) {
+            // small timeout to ensure layout has rendered
+            setTimeout(() => {
+                payoutsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 250);
+        }
+    }, [searchParams, location.hash, user?.artistProfiles, user?.stripeConnectId]);
 
     const reauthenticateUser = async () => {
         try {
@@ -396,6 +493,100 @@ export const Account = () => {
     // cleanup on unmount
     useEffect(() => revokePreviewUrl, []);
 
+    // Determine whether to show payouts / Stripe section
+    const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
+    const hasStripeAccount = !!user?.stripeConnectId;
+    const intentFlag = searchParams.get('show') === 'payouts';
+    const showPayoutSection = hasArtistProfiles || hasStripeAccount || intentFlag;
+
+    const renderStripeStatusBox = () => {
+        if (acctStatusLoading) {
+            return (
+                <div className="status-box loading">
+                    <span>Checking account status…</span>
+                </div>
+            );
+        }
+        if (!acctStatus?.exists) return null;
+
+        const { status, actions } = acctStatus;
+        const classes =
+            status === 'all_good' ? 'ok' : status === 'warning' ? 'warn' : 'urgent';
+
+        const label =
+            status === 'all_good'
+                ? 'No Actions Required'
+                : status === 'warning' && actions.includes('individual.verification.document')
+                ? 'ID Verification Required.'
+                : status === 'warning'
+                ? `${actions.length} Action${actions.length === 1 ? '' : 's'} Required`
+                : status === 'urgent' && actions.includes('individual.verification.document')
+                ? 'ID Verification Required.'
+                : status === 'urgent'
+                ? 'Action Required'
+                : 'Account Status';
+
+        const icon =
+            status === 'all_good'
+                ? <SuccessIcon />
+                : status === 'warning'
+                ? <ExclamationIconSolid />
+                : <WarningIcon />;
+
+        return (
+            status !== 'all_good' ? (
+                <div
+                    className={`status-box ${classes} clickable`}
+                    onClick={() => setShowStripeManageModal(true)}
+                >
+                    {icon}
+                    <span>{label}</span>
+                </div>
+            ) : (
+                <div className={`status-box ${classes}`}>
+                    {icon}
+                    <span>{label}</span>
+                </div>
+            )
+        );
+    };
+
+    const handleDeleteStripeAccount = async () => {
+        if (!user?.uid || !user?.stripeConnectId) return;
+        setDeletingStripe(true);
+        try {
+            // For now, pass userId as musicianId for backward compatibility
+            // TODO: Update backend to accept userId
+            const res = await deleteStripeConnectAccount({ musicianId: user.uid });
+            if (res.success) {
+                setConnectedAccountId(null);
+                await updateUserDocument(user.uid, { stripeConnectId: null });
+                toast.success('Stripe account deleted.');
+                window.location.reload();
+            } else {
+                toast.error(res.message || 'Could not delete Stripe account.');
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error('Failed to delete Stripe account.');
+        } finally {
+            setDeletingStripe(false);
+        }
+    };
+
+    const handleAccountManagementClose = async () => {
+        setAcctStatusLoading(true);
+        setShowStripeManageModal(false);
+        try {
+            const fresh = await getConnectAccountStatus();
+            setAcctStatus(fresh);
+        } catch (e) {
+            console.error('Refresh Stripe account status failed', e);
+        } finally {
+            setAcctStatusLoading(false);
+        }
+    };
+
     if (!user) {
         return <LoadingScreen />;
     } else {
@@ -473,6 +664,137 @@ export const Account = () => {
                         </div>
                     </div>
                 </div>
+
+                {showPayoutSection && (
+                    <div className='payout-settings' ref={payoutsRef}>
+                        <div className='payout-header-section'>
+                            <h2>Payouts &amp; Stripe</h2>
+                            {user?.stripeConnectId && (
+                                <div className="account-status">
+                                    <h6>Account Status:</h6>
+                                    {renderStripeStatusBox()}
+                                </div>
+                            )}
+                        </div>
+                        <div className='data-highlight'>
+                            <div className='payout-header'>
+                                <h3>Payout account</h3>
+                                {renderStripeStatusBox()}
+                            </div>
+                            {!connectedAccountId && !stripeConnectInstance && (
+                                <div className="payout-onboarding-intro">
+                                    <BankAccountIcon />
+                                    <p>
+                                        Connect a payout account so you can receive money for gigs you perform as an artist or band.
+                                        This payout account is linked to your Gigin account (not a single artist profile).
+                                    </p>
+                                    <button
+                                        className='btn primary'
+                                        disabled={stripeCreatingAccount}
+                                        onClick={async () => {
+                                            if (!user?.uid || !stripeAccountUrl) return;
+                                            setStripeCreatingAccount(true);
+                                            setStripeError(false);
+                                            try {
+                                                const res = await fetch(stripeAccountUrl, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ userId: user.uid }),
+                                                });
+                                                const { account, error } = await res.json();
+                                                if (account) {
+                                                    setConnectedAccountId(account);
+                                                    // Don't save to user doc yet - wait until onboarding completes
+                                                    // This ensures the onboarding UI shows up
+                                                } else if (error) {
+                                                    setStripeError(true);
+                                                }
+                                            } catch (e) {
+                                                console.error('Error creating Stripe account', e);
+                                                setStripeError(true);
+                                            } finally {
+                                                setStripeCreatingAccount(false);
+                                            }
+                                        }}
+                                    >
+                                        {stripeCreatingAccount ? 'Connecting…' : 'Connect payout account'}
+                                    </button>
+                                    {stripeError && (
+                                        <p className='error-text'>Something went wrong while creating your Stripe account. Please try again.</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {stripeConnectInstance && connectedAccountId && !user?.stripeConnectId && (
+                                <div className="stripe-onboarding-container">
+                                    <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+                                        <ConnectAccountOnboarding
+                                            onExit={async () => {
+                                                try {
+                                                    if (user?.uid && connectedAccountId) {
+                                                        await updateUserDocument(user.uid, {
+                                                            stripeConnectId: connectedAccountId,
+                                                        });
+                                                    }
+                                                    toast.success('Payout account connected!');
+                                                } catch (error) {
+                                                    console.error('Error updating user with Stripe account ID:', error);
+                                                    toast.error('Error connecting payout account. Please try again.');
+                                                }
+                                            }}
+                                        />
+                                    </ConnectComponentsProvider>
+                                </div>
+                            )}
+
+                            {user?.stripeConnectId && isMdUp && (
+                                <div className="information-grid">
+                                    <div className="information-item" onClick={() => setPaymentSystemModal(true)}>
+                                        <PaymentSystemIcon />
+                                        <h3>How The Gigin Payment System Works</h3>
+                                        <p>Learn how the Gigin payment system works and how to withdraw your gig earnings!</p>
+                                    </div>
+                                    <div className="information-item" onClick={() => setStripeSystemModal(true)}>
+                                        <StripeIcon />
+                                        <h3>How Stripe Securely Manages Your Funds</h3>
+                                        <p>Learn how Gigin uses Stripe to handle your gig payments and how your information is securely stored.</p>
+                                    </div>
+                                    <div className="information-item actions">
+                                        {user.stripeConnectId && stripeConnectInstance && (
+                                            <button className="btn tertiary information-button" onClick={() => setShowStripeManageModal(true)}>
+                                                Edit Stripe Details
+                                            </button>
+                                        )}
+                                        <button
+                                            className="btn tertiary information-button"
+                                            onClick={() => setShowDeleteStripeModal(true)}
+                                            disabled={deletingStripe}
+                                        >
+                                            Delete Stripe Account
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {user?.stripeConnectId && !isMdUp && (
+                                <div className="information-item actions">
+                                    {user.stripeConnectId && stripeConnectInstance && (
+                                        <button className="btn tertiary information-button" onClick={() => setShowStripeManageModal(true)}>
+                                            Edit Stripe Details
+                                        </button>
+                                    )}
+                                    <button
+                                        className="btn tertiary information-button"
+                                        onClick={() => setShowDeleteStripeModal(true)}
+                                        disabled={deletingStripe}
+                                    >
+                                        Delete Stripe Account
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {isMdUp && (
                     <div className='profile-settings'>
@@ -811,6 +1133,253 @@ export const Account = () => {
                         </Portal>
                     )
                 )}
+                {showStripeManageModal && stripeConnectInstance && (
+                    <Portal>
+                        <div className="modal stripe-account" onClick={() => handleAccountManagementClose()}>
+                            <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <CoinsIconSolid />
+                                    <h2>Edit payout details</h2>
+                                    <p>Change your Stripe connect account details here.</p>
+                                    <div className="more-information">
+                                        <p><MoreInformationIcon /> If you require ID verification, click the edit text under the "Personal Details" title. Then click the 'Upload Document' button to upload an ID document.</p>
+                                    </div>
+                                    <button className="btn close tertiary" onClick={() => handleAccountManagementClose()}>Close</button>
+                                </div>
+                                <div className="modal-body">
+                                    <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+                                        <ConnectAccountManagement
+                                            onExit={async () => {
+                                                await handleAccountManagementClose();
+                                            }}
+                                        />
+                                    </ConnectComponentsProvider>
+                                </div>
+                            </div>
+                        </div>
+                    </Portal>
+                )}
+
+                {paymentSystemModal && (
+                    <Portal>
+                        <div className="modal more-information" onClick={() => setPaymentSystemModal(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <PaymentSystemIcon />
+                                    <h2>How The Gigin Payment System Works</h2>
+                                    <button className="btn close tertiary" onClick={() => setPaymentSystemModal(false)}>Close</button>
+                                </div>
+                                <div className="modal-body">
+                                    <p>
+                                        <strong>Note:</strong> The Gigin payment system applies only to gigs where a venue
+                                        is paying a fee to the musician or band. Open mic nights, charity events, and
+                                        ticketed gigs where payment comes from ticket sales do not use this process.
+                                    </p>
+                                    <hr />
+                                    <p>
+                                        Our goal is to make sure that musicians get paid fairly, on time, and securely —
+                                        and that venues have the peace of mind that funds are only released when the gig
+                                        has been performed as agreed. This is why all gig payments go through our
+                                        partnership with Stripe, one of the world's most trusted payment providers.
+                                    </p>
+                                    <hr />
+                                    <ol>
+                                        <li>
+                                            <strong>1. Gig Application Accepted</strong><br />
+                                            Once a venue accepts your gig application, we automatically prepare the secure
+                                            payment process in the background.
+                                            <br />
+                                            This ensures that as soon as both parties
+                                            agree to the gig, the financial side is ready to go.
+                                        </li>
+
+                                        <li>
+                                            <strong>2. Venue Pays the Gig Fee</strong><br />
+                                            The venue pays the agreed gig fee through Gigin. This payment is made before
+                                            the performance date, so you can be confident that the money is already set
+                                            aside and ready for release after the event.
+                                        </li>
+
+                                        <li>
+                                            <strong>3. Funds Held in Secure Escrow</strong><br />
+                                            Once the venue pays, the funds don't go straight to the musician immediately.
+                                            Instead, Stripe securely holds the payment in what's effectively an "escrow"
+                                            account. This protects both sides — the venue knows they won't pay for a gig
+                                            that doesn't happen, and the musician knows the money can't be pulled back once
+                                            the gig is complete.
+                                        </li>
+
+                                        <li>
+                                            <strong>4. Post-Gig Release</strong><br />
+                                            After the gig takes place, there's a 48-hour window where either the musician
+                                            or the venue can raise a dispute if something didn't go to plan (for example,
+                                            if the gig was cancelled last-minute or there was a serious issue with the
+                                            performance). If no dispute is raised during this period, Stripe automatically
+                                            releases the funds to your connected Stripe account.
+                                        </li>
+
+                                        <li>
+                                            <strong>5. Withdrawable Funds</strong><br />
+                                            Once Stripe releases the funds, they will appear in your Gigin finances under
+                                            <em>"Withdrawable Funds"</em>. This means the money is now yours to withdraw at
+                                            any time — you're not required to withdraw it immediately, so you can let
+                                            payments build up if you prefer.
+                                        </li>
+
+                                        <li>
+                                            <strong>6. Transfer to Your Bank</strong><br />
+                                            When you choose to withdraw your balance, Stripe transfers the funds directly
+                                            to the bank account you've set up in your Stripe Connect account. Bank
+                                            transfers usually arrive within 1–2 working days, depending on your bank.
+                                        </li>
+                                    </ol>
+                                    <hr />
+                                    <p>
+                                        This process has been designed to keep things fair, transparent, and secure for
+                                        both musicians and venues. With Stripe's trusted infrastructure handling all
+                                        transactions, you can focus on the music while we take care of the payments.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </Portal>
+                )}
+
+                {stripeSystemModal && (
+                    <Portal>
+                        <div className="modal more-information" onClick={() => setStripeSystemModal(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <StripeIcon />
+                                    <h2>How Stripe Securely Manages Your Funds</h2>
+                                    <button className="btn close tertiary" onClick={() => setStripeSystemModal(false)}>Close</button>
+                                </div>
+                                <div className="modal-body">
+                                    <p>
+                                        Your Gigin payments are processed and held by <strong>Stripe</strong>, one of the
+                                        world's most trusted online payment providers. Stripe handles payments for
+                                        millions of businesses — from small creators to large companies like Amazon,
+                                        Booking.com, and Shopify — and is authorised and regulated as a licensed payment
+                                        institution.
+                                    </p>
+                                    <br />
+                                    <p>
+                                        When you connect your bank account to Gigin, you're actually creating a{" "}
+                                        <strong>Stripe Connect account</strong> in your name.
+                                        This account is completely separate from Gigin's own finances and is owned and
+                                        controlled by you.
+                                    </p>
+                                    <hr />
+                                    <h3>How Stripe Protects Your Money</h3>
+                                    <ul>
+                                        <li>
+                                            <strong>Funds are ring-fenced:</strong> Money paid for your gigs never touches
+                                            Gigin's bank accounts. It is held securely by Stripe until it's ready to be
+                                            released to you.
+                                        </li>
+                                        <li>
+                                            <strong>Regulated & compliant:</strong> Stripe is regulated by the Financial
+                                            Conduct Authority (FCA) in the UK and must follow strict security and compliance
+                                            requirements.
+                                        </li>
+                                        <li>
+                                            <strong>Bank-level security:</strong> All data — including your personal details
+                                            and bank account — is encrypted. Stripe uses the same security protocols as
+                                            major banks.
+                                        </li>
+                                    </ul>
+                                    <hr />
+                                    <h3>How Your Funds Move</h3>
+                                    <ol>
+                                        <li>
+                                            <strong>1. </strong>
+                                            Gig payment is made by the venue and held in your Stripe Connect account balance.
+                                        </li>
+                                        <li>
+                                            <strong>2. </strong>
+                                            Funds are only released once the gig has been performed and the dispute period
+                                            has passed.
+                                        </li>
+                                        <li>
+                                            <strong>3. </strong>
+                                            Once released, you can withdraw your funds to your bank account at any time.
+                                        </li>
+                                    </ol>
+
+                                    <p>
+                                        This means you're always in control — Gigin never has the ability to block or
+                                        take your money. Stripe acts as the secure middle-man, ensuring that both sides
+                                        are protected.
+                                    </p>
+
+                                    <hr />
+
+                                    <h3>More About Stripe</h3>
+                                    <ul className='no-padding'>
+                                        <li>
+                                            Learn more about{" "}
+                                            <a
+                                                href="https://stripe.com/gb/connect"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                Stripe Connect
+                                            </a>
+                                        </li>
+                                        <li>
+                                            Read Stripe's{" "}
+                                            <a
+                                                href="https://stripe.com/docs/security/stripe"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                Security Overview
+                                            </a>
+                                        </li>
+                                        <li>
+                                            View Stripe's{" "}
+                                            <a
+                                                href="https://stripe.com/gb/privacy"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                Privacy Policy
+                                            </a>
+                                        </li>
+                                    </ul>
+
+                                    <p>
+                                        With Stripe managing your funds, you get bank-level security, global compliance,
+                                        and the peace of mind that your money is safe from the moment it's paid until it
+                                        arrives in your bank account.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </Portal>
+                )}
+
+                {showDeleteStripeModal && (
+                    <Portal>
+                        {!deletingStripe ? (
+                            <div className='modal confirm' onClick={() => setShowDeleteStripeModal(false)}>
+                                <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '300px'}}>
+                                    <div className="modal-header">
+                                        <DeleteGigIcon />
+                                        <h2>Are you sure you want to delete your stripe account?</h2>
+                                    </div>
+                                    <div className='two-buttons'>
+                                        <button className="btn tertiary" onClick={() => setShowDeleteStripeModal(false)}>Cancel</button>
+                                        <button className="btn danger" onClick={handleDeleteStripeAccount}>Delete</button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <LoadingModal title={'Deleting Stripe Account'} text={"Please don't close this window or refresh the page"} />
+                        )}
+                    </Portal>
+                )}
+
                 {showEventLoadingModal && (
                     <Portal>
                         <LoadingModal />

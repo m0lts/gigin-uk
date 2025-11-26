@@ -7,8 +7,8 @@ import {
     MicrophoneIcon,
     NewTabIcon,
 } from '@features/shared/ui/extras/Icons';
-import { MessageThread } from './MessageThread';
-import { GigInformation } from './GigInformation';
+// import { MessageThread } from './MessageThread';
+// import { GigInformation } from './GigInformation';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
     listenToUserConversations,
@@ -18,7 +18,7 @@ import { openInNewTab } from '@services/utils/misc';
 import { formatDate } from '@services/utils/dates';
 import { ArchiveIcon, InboxIcon, SaveIcon, SendMessageIcon } from '@features/shared/ui/extras/Icons';
 import { updateConversationDocument } from '@services/api/conversations';
-import { ConversationItem } from './ConversationItem';
+// import { ConversationItem } from './ConversationItem';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { LeftArrowIcon } from '../../shared/ui/extras/Icons';
 

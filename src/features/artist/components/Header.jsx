@@ -76,16 +76,38 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
 
     useEffect(() => {
         if (!user) return;
+
+        // Collect all artist profile ids for this user (new artist profile structure)
+        const artistProfileIds = Array.isArray(user.artistProfiles)
+          ? user.artistProfiles.map((p) => p.id).filter(Boolean)
+          : [];
+
         const unsubscribe = listenToUserConversations(user, (conversations) => {
           const hasUnread = conversations.some((conv) => {
             const lastViewed = conv.lastViewed?.[user.uid]?.seconds || 0;
             const lastMessage = conv.lastMessageTimestamp?.seconds || 0;
             const isNotSender = conv.lastMessageSenderId !== user.uid;
             const isDifferentPage = !location.pathname.includes(conv.id);
-            return lastMessage > lastViewed && isNotSender && isDifferentPage;
+
+            // Only consider conversations that involve one of the user's artist profiles
+            const involvesActiveArtistProfile =
+              artistProfileIds.length === 0
+                ? true
+                : Array.isArray(conv.participants)
+                  ? conv.participants.some((id) => artistProfileIds.includes(id))
+                  : false;
+
+            return (
+              involvesActiveArtistProfile &&
+              lastMessage > lastViewed &&
+              isNotSender &&
+              isDifferentPage
+            );
           });
+
           setNewMessages(hasUnread);
         });
+
         return () => unsubscribe();
     }, [user, location.pathname]);
 
@@ -128,15 +150,27 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                         <Link className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} to={'/artist-profile/gigs'}>
                                             Gigs
                                         </Link>
-                                        {newMessages ? (
-                                            <Link className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`} to={'/artist-profile/messages'}>
+                                        <Link
+                                            className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
+                                            to={'/artist-profile/messages'}
+                                        >
+                                            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                                 Messages
-                                            </Link>
-                                        ) : (
-                                            <Link className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`} to={'/artist-profile/messages'}>
-                                                Messages
-                                            </Link>
-                                        )}
+                                                {newMessages && (
+                                                    <span
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: -6,
+                                                            right: -12,
+                                                            width: 6,
+                                                            height: 6,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: 'var(--gn-orange)',
+                                                        }}
+                                                    />
+                                                )}
+                                            </span>
+                                        </Link>
                                         <Link className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} to={'/artist-profile/finances'}>
                                             Finances
                                         </Link>

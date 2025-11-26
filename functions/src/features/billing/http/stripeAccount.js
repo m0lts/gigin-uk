@@ -9,9 +9,10 @@ import {
 import { makeStripe } from "../../../lib/stripeClient.js";
 
 /**
- * HTTP: Create a new Stripe account for a musician.
+ * HTTP: Create a new Stripe Connect account for a user or musician.
  * - CORS enabled via http() wrapper
- * - Expects POST with `{ musicianId }` in JSON body
+ * - Expects POST with `{ userId }` (new model) or `{ musicianId }` (legacy) in JSON body
+ * - Supports both user-level (new) and musicianProfile-level (legacy) Stripe accounts
  *
  * Secrets:
  * - STRIPE_PRODUCTION_KEY
@@ -34,9 +35,11 @@ export const stripeAccount = http(
       return res.status(405).send("Method Not Allowed");
     }
     try {
-      const { musicianId } = req.body;
-      if (!musicianId) {
-        return res.status(400).send({ error: "Musician ID is required." });
+      const { userId, musicianId } = req.body;
+      // Support both new (userId) and legacy (musicianId) models
+      const ownerId = userId || musicianId;
+      if (!ownerId) {
+        return res.status(400).send({ error: "User ID or Musician ID is required." });
       }
 
       // ✅ use shared Stripe factory
@@ -47,7 +50,11 @@ export const stripeAccount = http(
           transfers: { requested: true },
         },
         country: "GB",
-        metadata: { musicianId },
+        metadata: { 
+          userId: userId || null,
+          musicianId: musicianId || null,
+          ownerId, // For backward compatibility
+        },
         controller: {
           stripe_dashboard: { type: "none" },
           fees: { payer: "application" },
