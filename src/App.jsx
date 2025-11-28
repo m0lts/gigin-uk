@@ -37,6 +37,7 @@ import { logClientError } from './services/client-side/errors';
 import { TermsAndConditions } from './features/legals/TermsAndConditions';
 import { PrivacyPolicy } from './features/legals/PrivacyPolicy';
 import { JoinVenuePage } from './features/venue/components/JoinVenue';
+import { JoinArtistPage } from './features/artist/components/JoinArtist';
 import { EmailActionHandler } from './features/shared/components/EmailActionHandler';
 import { VenueDashboardProvider } from './context/VenueDashboardContext';
 import { ArtistDashboardProvider } from './context/ArtistDashboardContext';
@@ -153,6 +154,7 @@ export default function App() {
         <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
         <Route path='/testimonials' element={<Testimonials />} />
         <Route path='/join-venue' element={<JoinVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+        <Route path='/join-artist' element={<JoinArtistPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
         <Route path="/auth/email-verified" element={<EmailActionHandler user={user} />} />

@@ -290,7 +290,7 @@
     margin-right: 0.5rem;
     margin-left: 0.5rem;
     position: relative;
-    max-width: 50%;
+    max-width: 60%;
     width:fit-content;
     border: 1px solid var(--gn-grey-350);
     box-shadow: 0 0 3px var(--gn-shadow);
@@ -379,7 +379,7 @@
 
 .message-page .message.announcement {
     max-width: 100%;
-    width:80%;
+    width:90%;
     margin: auto;
     padding: 2rem 1rem;
     border:none;

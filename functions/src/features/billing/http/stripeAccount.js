@@ -7,6 +7,7 @@ import {
   STRIPE_TEST_KEY as stripeTestKey,
 } from "../../../config/secrets.js";
 import { makeStripe } from "../../../lib/stripeClient.js";
+import { db } from "../../../lib/admin.js";
 
 /**
  * HTTP: Create a new Stripe Connect account for a user or musician.
@@ -42,6 +43,24 @@ export const stripeAccount = http(
         return res.status(400).send({ error: "User ID or Musician ID is required." });
       }
 
+      // Try to derive a default website URL for this account
+      let websiteUrl = "https://giginmusic.com";
+      if (userId) {
+        try {
+          const userSnap = await db.collection("users").doc(userId).get();
+          if (userSnap.exists) {
+            const userData = userSnap.data() || {};
+            const artistProfileIds = userData.artistProfileIds || userData.artistProfiles || [];
+            const firstArtistId = Array.isArray(artistProfileIds) ? artistProfileIds[0] : null;
+            if (firstArtistId) {
+              websiteUrl = `https://giginmusic.com/${firstArtistId}`;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to derive artist profile URL for Stripe account:", e);
+        }
+      }
+
       // ✅ use shared Stripe factory
       const stripe = makeStripe();
 
@@ -54,6 +73,9 @@ export const stripeAccount = http(
           userId: userId || null,
           musicianId: musicianId || null,
           ownerId, // For backward compatibility
+        },
+        business_profile: {
+          url: websiteUrl,
         },
         controller: {
           stripe_dashboard: { type: "none" },

@@ -33,8 +33,7 @@ import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { NoTextLogoLink } from '../../shared/ui/logos/Logos';
 
 export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModal, setNoProfileModal, setNoProfileModalClosable, noProfileModalClosable = false }) => {
-  const navigate = useNavigate();
-    
+   
     const { logout } = useAuth();
     const { isMdUp, isLgUp } = useBreakpoint();
     const location = useLocation();

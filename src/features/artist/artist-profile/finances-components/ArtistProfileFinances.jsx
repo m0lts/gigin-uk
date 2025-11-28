@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { useArtistDashboard } from '../../../../context/ArtistDashboardContext';
 import { useBreakpoint } from '@hooks/useBreakpoint';
-import { getMusicianFees } from '@services/client-side/artists'; // TEMP: reuse legacy fees by treating artistProfileId as musicianId
+import { getArtistProfileFees } from '@services/client-side/artists';
 import { formatFeeDate } from '@services/utils/dates';
 import { openInNewTab } from '@services/utils/misc';
 import {
@@ -17,14 +17,13 @@ import {
 } from '@features/shared/ui/extras/Icons';
 import { LoadingSpinner } from '@features/shared/ui/loading/Loading';
 import { getConnectAccountStatus } from '@services/api/payments';
+import { BankAccountIcon, RightArrowIcon } from '../../../shared/ui/extras/Icons';
 
 export const ArtistProfileFinances = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isMdUp, isLgUp } = useBreakpoint();
   const { activeArtistProfile } = useArtistDashboard();
 
-  const [sortOrder, setSortOrder] = useState('desc');
   const [feesToDisplay, setFeesToDisplay] = useState([]);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [totalEarnings, setTotalEarnings] = useState(0);
@@ -41,9 +40,8 @@ export const ArtistProfileFinances = () => {
     const fetchFees = async () => {
       setLoading(true);
       try {
-        // TEMP: reuse legacy musician fees API by passing artistProfileId as musicianId
         const { clearedFees = [], pendingFees = [] } =
-          (await getMusicianFees(artistProfileId)) || {};
+          (await getArtistProfileFees(artistProfileId)) || {};
 
         const combinedFees = [...pendingFees, ...clearedFees];
         const totalPending = pendingFees.reduce(
@@ -61,7 +59,7 @@ export const ArtistProfileFinances = () => {
         combinedFees.sort((a, b) => {
           const dateA = new Date(a.gigDate).getTime();
           const dateB = new Date(b.gigDate).getTime();
-          return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+          return dateB - dateA;
         });
 
         setFeesToDisplay(combinedFees);
@@ -73,11 +71,7 @@ export const ArtistProfileFinances = () => {
     };
 
     fetchFees();
-  }, [artistProfileId, sortOrder]);
-
-  const handleToggleSortOrder = () => {
-    setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
-  };
+  }, [artistProfileId]);
 
   const handleGoToPayoutSettings = () => {
     navigate('/account?show=payouts#payouts');
@@ -119,12 +113,16 @@ export const ArtistProfileFinances = () => {
 
     return (
       status !== 'all_good' ? (
-        <div className={`status-box ${classes}`}>
+        <div className={`status-box ${classes} clickable`} onClick={() => {
+          handleGoToPayoutSettings();
+        }}>
           {icon}
           <span>{label}</span>
         </div>
       ) : (
-        <div className={`status-box ${classes}`}>
+        <div className={`status-box ${classes} clickable`} onClick={() => {
+          handleGoToPayoutSettings();
+        }}>
           {icon}
           <span>{label}</span>
         </div>
@@ -150,8 +148,9 @@ export const ArtistProfileFinances = () => {
   }, [hasStripeAccount]);
 
   const withdrawableDisplay = useMemo(() => {
-    return (pendingTotal || 0).toFixed(2);
-  }, [pendingTotal]);
+    const amount = Number(activeArtistProfile?.withdrawableEarnings || 0);
+    return amount.toFixed(2);
+  }, [activeArtistProfile?.withdrawableEarnings]);
 
   const totalEarningsDisplay = useMemo(() => {
     return (totalEarnings || 0).toFixed(2);
@@ -164,12 +163,21 @@ export const ArtistProfileFinances = () => {
           <CoinsIconSolid />
           <h3 className="title">Finances</h3>
         </div>
-        {hasStripeAccount && (
-          <div className="account-status">
-            <h6>Account Status:</h6>
-            {renderStatusBox()}
-          </div>
-        )}
+        <div className="finances-actions">
+          {!hasStripeAccount && (
+            <button
+              className="btn secondary"
+              onClick={handleGoToPayoutSettings}
+            >
+              Manage Payout Account
+            </button>
+          )}
+          {hasStripeAccount && (
+            <div className="account-status">
+              {renderStatusBox()}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="artist-profile-gigs-content no-next-gig">
@@ -177,53 +185,55 @@ export const ArtistProfileFinances = () => {
           <div className="body gigs musician">
             <div className="top-section finances">
               <div className="expenditure-card">
-                <div className="expenditure-icon">
-                  <CoinsIconSolid />
-                </div>
                 <div className="expenditure-text">
-                  <h5>Withdrawable Funds (for this artist)</h5>
-                  <h2>£{withdrawableDisplay}</h2>
+                  <h6>Withdrawable Funds</h6>
+                  <h3>£{withdrawableDisplay}</h3>
                 </div>
-                <button
-                  className="btn secondary"
-                  onClick={handleGoToPayoutSettings}
-                >
-                  Manage payout account
-                </button>
               </div>
 
-              {isMdUp && (
-                <div className="venue-expenditure-container">
-                  <div className="expenditure-card other">
-                    <PieChartIcon />
-                    <div className="expenditure-text">
-                      <h5>Total Earnings (this artist)</h5>
-                      <h3>£{totalEarningsDisplay}</h3>
-                    </div>
+              <div className="venue-expenditure-container">
+                <div className="expenditure-card other">
+                  <PieChartIcon />
+                  <div className="expenditure-text">
+                    <h6>Total Artist Earnings</h6>
+                    <h3>£{totalEarningsDisplay}</h3>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
+            {Number(activeArtistProfile?.withdrawableEarnings || 0) > 0 && (
+              <div className="withdraw-funds-row">
+                <button
+                  className="btn artist-profile"
+                  style={{ width: '100%' }}
+                  onClick={handleGoToPayoutSettings}
+                >
+                  Withdraw Funds To Bank Account
+                </button>
+              </div>
+            )}
+
             {!hasStripeAccount && (
-              <div className="artist-profile-finances-banner">
-                <p>
-                  Payouts for this artist are sent to your Gigin account&apos;s
-                  payout details, not directly to this profile. Connect a payout
-                  account in your account settings to start receiving payments.
-                </p>
+                <div className="artist-profile-finances-banner">
+                 <BankAccountIcon />
+                 <h4>
+                   Your finances are managed at your main Gigin account level. If you have
+                   more than one Artist profile, all of your earnings are paid out to your
+                   Gigin account, not to each individual Artist profile.
+                 </h4>
                 <button
                   className="btn primary"
                   onClick={handleGoToPayoutSettings}
                 >
-                  Connect payout account
+                  Connect Payout Account
                 </button>
               </div>
             )}
 
 
             <div className="tile your-fees">
-              <h2>Your Fees for this Artist</h2>
+              <h3 style={{ marginBottom: '1rem' }}>Gig Fees for this Artist</h3>
 
               {loading ? (
                 <div className="loading-state">
@@ -233,21 +243,10 @@ export const ArtistProfileFinances = () => {
                 <table>
                   <thead>
                     <tr>
-                      {isLgUp && (
-                        <th id="date">
-                          Gig Date
-                          <button
-                            className="sort btn text"
-                            onClick={handleToggleSortOrder}
-                          >
-                            <SortIcon />
-                          </button>
-                        </th>
-                      )}
                       <th>Venue</th>
                       <th>Amount</th>
                       <th>Release Date</th>
-                      <th className="centre">Status</th>
+                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -257,16 +256,13 @@ export const ArtistProfileFinances = () => {
                           key={fee.id}
                           onClick={(e) => openInNewTab(`/gig/${fee.gigId}`, e)}
                         >
-                          {isLgUp && (
-                            <td>{formatFeeDate(fee.gigDate, 'short')}</td>
-                          )}
                           <td>{fee.venueName}</td>
                           <td>£{fee.amount.toFixed(2)}</td>
                           <td>{formatFeeDate(fee.disputeClearingTime)}</td>
                           <td className={`status-box ${fee.status}`}>
-                            <div className={`status ${fee.status}`}>
+                            <p className={`status ${fee.status}`}>
                               {fee.statusLabel || fee.status}
-                            </div>
+                            </p>
                           </td>
                         </tr>
                       ))

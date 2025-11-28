@@ -5,8 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, EditIcon, AddMember } from "../../../shared/ui/extras/Icons";
-import { updateArtistProfileDocument, getArtistProfileMembers, updateArtistProfileMemberPermissions, removeArtistProfileMember, getArtistProfilePendingInvites } from "@services/client-side/artists";
-import { createArtistInvite } from "@services/api/artists";
+import { updateArtistProfileDocument, getArtistProfileMembers, updateArtistProfileMemberPermissions, getArtistProfilePendingInvites } from "@services/client-side/artists";
+import { createArtistInvite, removeArtistMember } from "@services/api/artists";
+import { sendArtistInviteEmail } from "@services/client-side/emails";
 import { ARTIST_PERM_KEYS, ARTIST_PERMS_DISPLAY, ARTIST_PERM_DEFAULTS, sanitizeArtistPermissions } from "@services/utils/permissions";
 import { toast } from 'sonner';
 import { useAuth } from '@hooks/useAuth';
@@ -474,7 +475,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
 
     setIsRemovingMember(true);
     try {
-      await removeArtistProfileMember(profileId, removingMemberId);
+      await removeArtistMember({ artistProfileId: profileId, memberId: removingMemberId });
       
       // Update local state
       setMembers(prev => prev.filter(m => m.id !== removingMemberId));
@@ -553,15 +554,21 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
         permissionsInput: sanitizedPermissions,
         invitedByName: user?.name || null,
       });
-      
+
       const inviteId = invite?.inviteId || null;
       if (!inviteId) {
         toast.error("Failed to create invite");
         return;
       }
 
-      // TODO: Implement sendArtistInviteEmail function similar to sendVenueInviteEmail
-      // For now, just show success
+      const link = `${window.location.origin}/join-artist?invite=${inviteId}`;
+
+      await sendArtistInviteEmail({
+        to: trimmedEmail,
+        artistProfile: { name: profileData?.name || 'your artist profile' },
+        link,
+      });
+
       toast.success(`Invitation sent to ${trimmedEmail}`);
       
       // Reset permissions to default and clear email

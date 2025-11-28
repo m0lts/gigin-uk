@@ -56,7 +56,7 @@ export const VenueFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal
 
   return (
     <section className='gig-finder'>
-      {!user || !user.musicianProfile ? (
+      {!user || !user.artistProfiles || user.artistProfiles.length === 0 ? (
         <CommonHeader setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} />
       ) : (
         <MusicianHeader setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} />

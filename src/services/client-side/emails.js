@@ -376,8 +376,8 @@ export const sendGigAcceptedEmail = async ({
     year: 'numeric',
   });
 
-  const isBand = musicianProfile.bandProfile === true;
-  const musicianName = musicianProfile.name;
+  const isBand = musicianProfile?.bandProfile === true;
+  const musicianName = musicianProfile?.name || 'Artist';
   const verb = isBand ? 'have' : 'has';
 
   const subjectMap = {
@@ -1415,6 +1415,120 @@ export const sendVenueInviteEmail = async ({ to, venue, link, baseUrl }) => {
 
   // Queue the email for the Trigger Email extension
   const mailRef = collection(firestore, 'mail');
+  await addDoc(mailRef, {
+    to,
+    message: { subject, text, html },
+  });
+};
+
+/**
+ * Sends a styled artist profile invite email (for band members / collaborators).
+ *
+ * Uses the Firebase "Trigger Email" extension by writing a document to the `mail` collection.
+ *
+ * @async
+ * @function sendArtistInviteEmail
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address.
+ * @param {Object} params.artistProfile - Artist profile object (must include `name`).
+ * @param {string} params.link - Absolute URL to accept/join the artist profile.
+ * @returns {Promise<void>}
+ */
+export const sendArtistInviteEmail = async ({ to, artistProfile, link }) => {
+  const subject = `You're invited to join ${artistProfile.name} on Gigin`;
+  const text = `You've been invited to join ${artistProfile.name} on Gigin. Click the link below to join:\n\n${link}`;
+
+  const baseStyles = {
+    bodyBg: "#f9f9f9",
+    cardBg: "#ffffff",
+    text: "#333333",
+    muted: "#6b7280",
+    accent: "#111827",
+    border: "#e5e7eb",
+    btnBg: "#111827",
+    btnText: "#ffffff",
+    gnOrange: "#FF6C4B",
+    gnOffsetOrange: "#fff1ee",
+  };
+
+  const iconPath =
+    "M208 32c-11.7 0-21.3 8.4-23.3 19.9L167.1 160H64c-17.7 0-32 14.3-32 32c0 12 6.7 22.3 16.5 27.6L140.2 288l-37.4 112.3C100.8 411.7 96 422.4 96 434.3c0 21.4 17.3 38.7 38.7 38.7c8.4 0 16.4-2.7 23-7.7L256 400l98.3 65.3c6.6 5 14.6 7.7 23 7.7c21.4 0 38.7-17.3 38.7-38.7c0-11.9-4.8-22.6-12.8-30.1L365.8 288l91.7-68.4C467.3 214.3 474 204 474 192c0-17.7-14.3-32-32-32H344.9L327.3 51.9C325.3 40.4 315.7 32 304 32H208z";
+  const iconSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
+         width="28" height="28" role="img" aria-label="Icon"
+         style="display:block;">
+      <path d="${iconPath}" fill="#111827"></path>
+    </svg>
+  `;
+
+  const logoUrl =
+    "https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/gigin.png?alt=media&token=efd9ba79-f580-454c-98f6-b4a391e0d636";
+
+  const htmlBase = (title, inner) => `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="background:${baseStyles.bodyBg};padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;background:${baseStyles.cardBg};border:1px solid ${baseStyles.border};border-radius:16px;">
+            <tr>
+              <td style="padding:28px 28px 0 28px;" align="center">
+                <img src="${logoUrl}" width="120" height="36" alt="gigin."
+                     style="display:block;border:0;max-width:100%;height:auto;">
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 28px 0 28px;" align="center">
+                <div style="font-size:28px;line-height:1.2;color:${baseStyles.accent}">${iconSvg}</div>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 28px 0 28px;" align="center">
+                <h1 style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:20px;line-height:28px;color:${baseStyles.accent};font-weight:700;">
+                  ${title}
+                </h1>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:16px 28px 0 28px;">
+                ${inner}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:20px 28px 28px 28px;" align="center">
+                <a href="${link}"
+                   style="display:inline-block;background:${baseStyles.btnBg};color:${baseStyles.btnText};text-decoration:none;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;padding:12px 18px;border-radius:10px;">
+                  Join Artist Profile
+                </a>
+                <div style="font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:${baseStyles.muted};margin-top:10px;word-break:break-all;">
+                  Or paste this into your browser: ${link}
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div style="max-width:600px;margin-top:16px;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:${baseStyles.muted};">
+            You’re receiving this because someone invited you to join an artist profile on Gigin.
+          </div>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const inner = `
+    <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+      You've been invited to join <strong>${artistProfile.name}</strong> on Gigin.
+    </p>
+    <p style="margin:0 0 16px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+      <a href="${link}" style="color:#111827;text-decoration:underline;">Click here to join the artist profile</a>
+    </p>
+  `;
+
+  const html = htmlBase(`You're invited to join ${artistProfile.name} on Gigin`, inner);
+
+  const mailRef = collection(firestore, "mail");
   await addDoc(mailRef, {
     to,
     message: { subject, text, html },

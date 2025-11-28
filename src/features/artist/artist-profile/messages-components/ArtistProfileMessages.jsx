@@ -130,28 +130,32 @@ export const ArtistProfileMessages = () => {
     setShowArchived((prev) => !prev);
   };
 
-  if (conversations.length > 0 || archivedConversations.length > 0) {
-    const list = showArchived ? archivedConversations : conversations;
+  const hasAnyConversations =
+    conversations.length > 0 || archivedConversations.length > 0;
+  const list = showArchived ? archivedConversations : conversations;
 
-    return (
-      <div className="artist-profile-gigs-card">
-        {!activeConversation ? (
-          <>
-            <div className="head gigs">
-              <div className="title-container">
-                <MailboxFullIconSolid />
-                <h3 className="title">Messages</h3>
-              </div>
+  return (
+    <div className="artist-profile-gigs-card">
+      {!activeConversation ? (
+        <>
+          <div className="head gigs">
+            <div className="title-container">
+              <MailboxFullIconSolid />
+              <h3 className="title">Messages</h3>
+            </div>
+            {hasAnyConversations && (
               <div className="filters">
-                <button className="btn secondary" onClick={handleShowArchived}>
+                <button className="btn secondary" onClick={handleShowArchived} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {showArchived ? <InboxIcon /> : <ArchiveIcon />}
                   {showArchived ? 'Inbox' : 'Archive'}
                 </button>
               </div>
-            </div>
-            <div className="artist-profile-gigs-content no-next-gig">
-              <section className="artist-profile-gigs-section all-gigs">
-                <div className="body gigs musician">
+            )}
+          </div>
+          <div className="artist-profile-gigs-content no-next-gig">
+            <section className="artist-profile-gigs-section all-gigs">
+              <div className="body gigs musician">
+                {hasAnyConversations ? (
                   <ul className="conversations-list">
                     {list.length > 0 ? (
                       list.map((conversation) => {
@@ -177,117 +181,116 @@ export const ArtistProfileMessages = () => {
                       <h4>You have no messages.</h4>
                     )}
                   </ul>
-                </div>
-              </section>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="head gigs">
-              <div className="title-container">
-                <MailboxFullIconSolid />
-                <h3 className="title">Messages</h3>
-              </div>
-            </div>
-            <div className="artist-profile-gigs-content no-next-gig">
-              <section className="artist-profile-gigs-section all-gigs">
-                <div className="message-page">
-                  <div className="column message-thread">
-                    <button
-                      className="btn tertiary"
-                      onClick={() => navigate(-1)}
-                      style={{ marginBottom: '0.5rem' }}
-                    >
-                      <LeftArrowIcon /> Back
-                    </button>
-                    <div className="top-banner">
-                      <h3>
-                        {activeConversation.venueName ??
-                          activeConversation.accountNames.find(
-                            (a) => a.role === 'venue'
-                          )?.accountName ??
-                          'Venue'}
-                      </h3>
-                      <div
-                        className="buttons"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          flexDirection: 'row',
-                          justifyContent: 'flex-end',
-                          gap: 5,
-                        }}
-                      >
-                        <button
-                          className="btn secondary"
-                          onClick={(e) =>
-                            openInNewTab(
-                              `/venues/${
-                                activeConversation.accountNames.find(
-                                  (account) => account.role === 'venue'
-                                )?.participantId
-                              }`,
-                              e
-                            )
-                          }
-                        >
-                          Venue Profile
-                        </button>
-                        <button
-                          className="btn secondary"
-                          onClick={(e) =>
-                            openInNewTab(
-                              `/gig/${activeConversation.gigId}`,
-                              e
-                            )
-                          }
-                        >
-                          View Gig
-                        </button>
-                      </div>
-                    </div>
-                    {(() => {
-                      const isBand = activeConversation.bandConversation;
-                      const bandAccount = isBand
-                        ? activeConversation.accountNames.find(
-                            (account) => account.role === 'band'
-                          )
-                        : null;
-                      const musicianAccount =
-                        activeConversation.accountNames.find(
-                          (account) => account.role === 'musician'
-                        );
-
-                      return (
-                        <MessageThread
-                          activeConversation={activeConversation}
-                          conversationId={activeConversation.id}
-                          user={user}
-                          musicianProfileId={
-                            isBand
-                              ? bandAccount?.participantId
-                              : musicianAccount?.participantId
-                          }
-                          gigId={activeConversation.gigId}
-                          gigData={gigData}
-                          setGigData={setGigData}
-                        />
-                      );
-                    })()}
+                ) : (
+                  <div className="no-messages-empty-state">
+                    <MailboxEmptyIcon />
+                    <h4>You have no messages yet.</h4>
+                    <p>
+                      When you apply to gigs or venues contact you about gigs, your conversations will
+                      appear here.
+                    </p>
                   </div>
-                </div>
-              </section>
+                )}
+              </div>
+            </section>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="head gigs">
+            <div className="title-container">
+              <MailboxFullIconSolid />
+              <h3 className="title">Messages</h3>
             </div>
-          </>
-        )}
-      </div>
-    );
-  }
+          </div>
+          <div className="artist-profile-gigs-content no-next-gig">
+            <section className="artist-profile-gigs-section all-gigs">
+              <div className="message-page">
+                <div className="column message-thread">
+                  <button
+                    className="btn tertiary"
+                    onClick={() => navigate(-1)}
+                    style={{ marginBottom: '0.5rem' }}
+                  >
+                    <LeftArrowIcon /> Back
+                  </button>
+                  <div className="top-banner">
+                    <h3>
+                      {activeConversation.venueName ??
+                        activeConversation.accountNames.find(
+                          (a) => a.role === 'venue'
+                        )?.accountName ??
+                        'Venue'}
+                    </h3>
+                    <div
+                      className="buttons"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        justifyContent: 'flex-end',
+                        gap: 5,
+                      }}
+                    >
+                      <button
+                        className="btn secondary"
+                        onClick={(e) =>
+                          openInNewTab(
+                            `/venues/${
+                              activeConversation.accountNames.find(
+                                (account) => account.role === 'venue'
+                              )?.participantId
+                            }`,
+                            e
+                          )
+                        }
+                      >
+                        Venue Profile
+                      </button>
+                      <button
+                        className="btn secondary"
+                        onClick={(e) =>
+                          openInNewTab(`/gig/${activeConversation.gigId}`, e)
+                        }
+                      >
+                        View Gig
+                      </button>
+                    </div>
+                  </div>
+                  {(() => {
+                    const isBand = activeConversation.bandConversation;
+                    const bandAccount = isBand
+                      ? activeConversation.accountNames.find(
+                          (account) => account.role === 'band'
+                        )
+                      : null;
+                    const musicianAccount =
+                      activeConversation.accountNames.find(
+                        (account) => account.role === 'musician'
+                      );
 
-  return (
-    <div className="message-page no-messages">
-      <MailboxEmptyIcon />
-      <h3>You have no messages</h3>
+                    return (
+                      <MessageThread
+                        activeConversation={activeConversation}
+                        conversationId={activeConversation.id}
+                        user={user}
+                        musicianProfileId={
+                          isBand
+                            ? bandAccount?.participantId
+                            : musicianAccount?.participantId
+                        }
+                        gigId={activeConversation.gigId}
+                        gigData={gigData}
+                        setGigData={setGigData}
+                      />
+                    );
+                  })()}
+                </div>
+              </div>
+            </section>
+          </div>
+        </>
+      )}
     </div>
   );
 };

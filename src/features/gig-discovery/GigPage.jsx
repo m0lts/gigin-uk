@@ -780,7 +780,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     noProfileModalClosable={true}
                 />
             )}
-            <section className={`gig-page-body ${!isMdUp && 'mobile'}`} style={{ width: `${width}`}}>
+            <section className={`gig-page-body ${!isMdUp && 'mobile'}`} style={{ width: `${width}`, marginTop: `${user?.artistProfiles || user?.artistProfiles?.length > 0 ? '6rem' : '0'}`}}>
                 {loading ? (
                     <div className='loading-state'>
                         <LoadingSpinner />

@@ -210,7 +210,7 @@
 
 .sticky-right {
     position: sticky;
-    top: 1rem;
+    top: 7rem;
     align-self: start;
     display: flex;
     flex-direction: column;

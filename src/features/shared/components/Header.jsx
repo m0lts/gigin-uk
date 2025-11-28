@@ -105,6 +105,23 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                     </button>
                                 </Link>
                             </div>
+                            {user.artistProfiles && user.artistProfiles.length > 0 ? (
+                                <div className="right">
+                                    <button className={`btn text-no-underline ${noProfileModal ? 'disabled' : ''}`}  onClick={() => navigate(`/artist-profile`)}>
+                                        <GuitarsIcon />
+                                        Artist Dashboard
+                                    </button>
+                                    <button
+                                        className='btn icon hamburger-menu-btn'
+                                        aria-label='Open menu'
+                                        aria-expanded={mobileOpen}
+                                        aria-controls='mobile-menu'
+                                        onClick={(e) => {setMobileOpen(o => !o); e.stopPropagation();}}
+                                    >
+                                        <HamburgerMenuIcon />
+                                    </button>
+                                </div>
+                            ) : (
                             <div className='right'>
                                 <Link className='link' to={'/venues/add-venue'}>
                                     <button className='btn text-no-underline'>
@@ -122,6 +139,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                     {mobileOpen ? <CloseIcon /> : <HamburgerMenuIcon />}
                                 </button>
                             </div>
+                            )}
                         </>
                     ) : (
                         <>

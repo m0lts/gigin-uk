@@ -153,6 +153,137 @@ router.post("/createArtistInvite", requireAuth, asyncHandler(async (req, res) =>
   return res.json({ data: { inviteId, reused: false } });
 }));
 
+// POST /api/artists/removeArtistMember (auth)
+router.post("/removeArtistMember", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const { artistProfileId, memberId } = req.body || {};
+  if (!artistProfileId || !memberId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "artistProfileId and memberId are required" });
+  }
+
+  // Ensure caller has permission to manage members on this artist profile
+  await assertArtistPerm(db, uid, artistProfileId, "profile.edit");
+
+  const memberRef = db.doc(`artistProfiles/${artistProfileId}/members/${memberId}`);
+  const userRef = db.doc(`users/${memberId}`);
+
+  await db.runTransaction(async (tx) => {
+    tx.delete(memberRef);
+    // Remove artistProfileId from the user's artistProfiles array (new model)
+    tx.set(
+      userRef,
+      {
+        artistProfiles: FieldValue.arrayRemove(artistProfileId),
+      },
+      { merge: true }
+    );
+
+    tx.set(db.collection("auditLogs").doc(), {
+      type: "artistMemberRemoved",
+      artistProfileId,
+      memberUid: memberId,
+      removedBy: uid,
+      at: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return res.json({ data: { success: true } });
+}));
+
+// POST /api/artists/acceptArtistInvite (auth)
+router.post("/acceptArtistInvite", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const { inviteId } = req.body || {};
+  if (!inviteId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "inviteId is required" });
+  }
+
+  const inviteRef = db.doc(`artistInvites/${inviteId}`);
+  const inviteSnap = await inviteRef.get();
+  if (!inviteSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Invite not found" });
+  }
+
+  const invite = inviteSnap.data() || {};
+  const artistProfileId = invite.artistProfileId;
+  if (!artistProfileId) {
+    return res.status(400).json({ error: "INVALID_INVITE_DATA", message: "Missing artistProfileId in invite" });
+  }
+
+  const expiresAt = invite.expiresAt;
+  const nowMs = Date.now();
+  const expMs = expiresAt?.toMillis?.()
+    ? expiresAt.toMillis()
+    : (expiresAt instanceof Date ? expiresAt.getTime() : 0);
+  if (!expMs || expMs <= nowMs) {
+    return res.status(400).json({ error: "EXPIRED_INVITE", message: "Invite has expired" });
+  }
+
+  const memberRef = db.doc(`artistProfiles/${artistProfileId}/members/${uid}`);
+  const memberSnap = await memberRef.get();
+  if (memberSnap.exists && (memberSnap.data() || {}).status === "active") {
+    // Already an active member - delete invite and return ok
+    await inviteRef.delete();
+    return res.json({ data: { ok: true, message: "ALREADY_MEMBER", artistProfileId } });
+  }
+
+  const invitedPerms =
+    invite && typeof invite.permissions === "object"
+      ? invite.permissions
+      : {};
+  const permissions = sanitizeArtistPermissions(invitedPerms);
+
+  // Load user data to stamp onto the member document
+  const userSnap = await db.doc(`users/${uid}`).get();
+  const userData = userSnap.exists ? (userSnap.data() || {}) : {};
+  const userName = userData.name || null;
+  const userEmail = userData.email || null;
+
+  await db.runTransaction(async (tx) => {
+    tx.set(
+      memberRef,
+      {
+        status: "active",
+        permissions,
+        addedBy: invite.invitedBy || null,
+        userId: uid,
+        userName,
+        userEmail,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    const userRef = db.doc(`users/${uid}`);
+    // Support both legacy and new artist profile arrays
+    tx.set(
+      userRef,
+      {
+        artistProfiles: FieldValue.arrayUnion(artistProfileId),
+      },
+      { merge: true }
+    );
+
+    tx.update(inviteRef, {
+      status: "accepted",
+      acceptedBy: uid,
+      acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    tx.set(db.collection("auditLogs").doc(), {
+      type: "artistInviteAccepted",
+      artistProfileId,
+      inviteId,
+      invitedBy: invite.invitedBy || null,
+      memberUid: uid,
+      at: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return res.json({ data: { ok: true, artistProfileId } });
+}));
+
 export default router;
 
 

@@ -20,3 +20,10 @@ export function createArtistInvite({ artistProfileId, email, permissionsInput, i
   return post('/artists/createArtistInvite', { body: { artistProfileId, email, permissionsInput, invitedByName, ttlDays } });
 }
 
+export function removeArtistMember({ artistProfileId, memberId }) {
+  return post('/artists/removeArtistMember', { body: { artistProfileId, memberId } });
+}
+
+export function acceptArtistInvite({ inviteId }) {
+  return post('/artists/acceptArtistInvite', { body: { inviteId } });
+}

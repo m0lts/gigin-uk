@@ -29,6 +29,8 @@ import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '@services/client-side/messages';
 import { formatDate } from '@services/utils/dates';
 import Portal from '@features/shared/components/Portal';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 
 const BRIGHTNESS_DEFAULT = 100;
 const BRIGHTNESS_RANGE = 40; // slider distance from neutral
@@ -507,18 +509,16 @@ const ArtistProfileComponent = ({
     previousProfileRef.current = hasCompleteProfile;
   }, [hasCompleteProfile, isCreatingProfile, searchParams, location.pathname, navigate]);
 
-  // Initialize and sync dark mode from Firestore when profile loads or updates
+  // Initialize dark mode from Firestore when profile data first loads.
+  // After initialisation, local toggles control the value without being overwritten.
   useEffect(() => {
-    if (activeProfileData?.darkMode !== undefined) {
-      // Only update if it's different from current state to avoid unnecessary updates
-      if (activeProfileData.darkMode !== isDarkMode) {
-        setIsDarkMode(activeProfileData.darkMode);
-      }
-      if (!darkModeInitializedRef.current) {
-        darkModeInitializedRef.current = true;
-      }
+    if (activeProfileData?.darkMode === undefined) return;
+    // Only initialise once per profile load
+    if (!darkModeInitializedRef.current) {
+      setIsDarkMode(activeProfileData.darkMode);
+      darkModeInitializedRef.current = true;
     }
-  }, [activeProfileData?.darkMode, isDarkMode]);
+  }, [activeProfileData?.darkMode]);
 
   // Sync dashboard view with URL pathname (for browser back/forward support)
   const isNavigatingFromUrlRef = useRef(false);
@@ -2945,7 +2945,10 @@ const ArtistProfileComponent = ({
       case DashboardView.FINANCES:
         return <ArtistProfileFinances />;
       default:
-        return <div><h1>Loading...</h1></div>;
+        return <div className="artist-profile-loading">
+                <LoadingSpinner />
+                <h4>Loading artist profile...</h4>
+              </div>;
     }
   };
 
@@ -3060,7 +3063,10 @@ const ArtistProfileComponent = ({
         return renderDashboardView({ canEdit });
       
       default:
-        return <div>Loading...</div>;
+      return <div className="artist-profile-loading">
+          <LoadingSpinner />
+          <h4>Loading artist profile...</h4>
+        </div>;
     }
   };
 
@@ -3068,7 +3074,7 @@ const ArtistProfileComponent = ({
   if (authLoading) {
     return (
       <div className="artist-profile-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div>Loading...</div>
+        <LoadingScreen />
       </div>
     );
   }

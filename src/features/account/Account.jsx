@@ -36,6 +36,7 @@ import {
   ExclamationIconSolid,
   WarningIcon,
   PaymentSystemIcon,
+  CopyIcon,
 } from '../shared/ui/extras/Icons';
 import { LoadingModal } from '../shared/ui/loading/LoadingModal';
 import { firestore } from '@lib/firebase';
@@ -93,6 +94,17 @@ export const Account = () => {
         ? import.meta.env.VITE_STRIPE_ACCOUNT_URL_EMULATOR
         : import.meta.env.VITE_STRIPE_ACCOUNT_URL;
     const payoutsRef = useRef(null);
+
+    const [showPayoutHelp, setShowPayoutHelp] = useState(false);
+
+    const handleCopy = async (value) => {
+        try {
+            await navigator.clipboard.writeText(value);
+            toast.success('Copied to clipboard.');
+        } catch (e) {
+            console.error('Copy failed', e);
+        }
+    };
 
     useEffect(() => {
         if (isMdUp) {
@@ -669,25 +681,71 @@ export const Account = () => {
                     <div className='payout-settings' ref={payoutsRef}>
                         <div className='payout-header-section'>
                             <h2>Payouts &amp; Stripe</h2>
-                            {user?.stripeConnectId && (
-                                <div className="account-status">
-                                    <h6>Account Status:</h6>
-                                    {renderStripeStatusBox()}
-                                </div>
-                            )}
                         </div>
                         <div className='data-highlight'>
                             <div className='payout-header'>
-                                <h3>Payout account</h3>
-                                {renderStripeStatusBox()}
+                                <div className="text">
+                                    <BankAccountIcon />
+                                    <h3>Payout Account</h3>
+                                </div>
+                                <div className="payout-header-actions">
+                                    {user?.stripeConnectId && (
+                                        <div className="account-status">
+                                            <h6>Account Status:</h6>
+                                            {renderStripeStatusBox()}
+                                        </div>
+                                    )}
+                                    {!connectedAccountId && !stripeConnectInstance && (
+                                        <button
+                                            className="btn secondary"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowPayoutHelp((prev) => !prev);
+                                            }}
+                                        >
+                                            <MoreInformationIcon />
+                                            <h4>Help</h4>
+                                        </button>
+                                    )}
+                                    {showPayoutHelp && (
+                                        <div
+                                            className="payout-help-popover"
+                                            onClick={() => setShowPayoutHelp(false)}
+                                        >
+                                            <div className="text-information">
+                                                <p>
+                                                    Unless you are registered as a business, select{' '}
+                                                    <strong>Individual / Sole Trader</strong>.
+                                                </p>
+                                                <p>
+                                                    If Stripe asks for a website link, enter your artist profile
+                                                    link:
+                                                </p>
+                                                {user?.artistProfileIds?.length > 0 && (
+                                                    <p
+                                                        className="link"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCopy(
+                                                                `https://giginmusic.com/${user.artistProfileIds[0]}`
+                                                            );
+                                                        }}
+                                                    >
+                                                        {`https://giginmusic.com/${user.artistProfileIds[0]}`}{' '}
+                                                        <CopyIcon />
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             {!connectedAccountId && !stripeConnectInstance && (
                                 <div className="payout-onboarding-intro">
-                                    <BankAccountIcon />
-                                    <p>
+                                    <h4>
                                         Connect a payout account so you can receive money for gigs you perform as an artist or band.
                                         This payout account is linked to your Gigin account (not a single artist profile).
-                                    </p>
+                                    </h4>
                                     <button
                                         className='btn primary'
                                         disabled={stripeCreatingAccount}
@@ -749,24 +807,25 @@ export const Account = () => {
 
                             {user?.stripeConnectId && isMdUp && (
                                 <div className="information-grid">
-                                    <div className="information-item" onClick={() => setPaymentSystemModal(true)}>
+                                    <div className="information-item box" onClick={() => setPaymentSystemModal(true)}>
                                         <PaymentSystemIcon />
                                         <h3>How The Gigin Payment System Works</h3>
                                         <p>Learn how the Gigin payment system works and how to withdraw your gig earnings!</p>
                                     </div>
-                                    <div className="information-item" onClick={() => setStripeSystemModal(true)}>
+                                    <div className="information-item box" onClick={() => setStripeSystemModal(true)}>
                                         <StripeIcon />
                                         <h3>How Stripe Securely Manages Your Funds</h3>
                                         <p>Learn how Gigin uses Stripe to handle your gig payments and how your information is securely stored.</p>
                                     </div>
                                     <div className="information-item actions">
+                                        <button className="btn primary">Withdraw Funds</button>
                                         {user.stripeConnectId && stripeConnectInstance && (
-                                            <button className="btn tertiary information-button" onClick={() => setShowStripeManageModal(true)}>
+                                            <button className="btn secondary" onClick={() => setShowStripeManageModal(true)}>
                                                 Edit Stripe Details
                                             </button>
                                         )}
                                         <button
-                                            className="btn tertiary information-button"
+                                            className="btn danger"
                                             onClick={() => setShowDeleteStripeModal(true)}
                                             disabled={deletingStripe}
                                         >

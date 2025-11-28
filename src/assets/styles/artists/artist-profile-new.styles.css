@@ -194,6 +194,17 @@
   scroll-behavior: smooth;
 }
 
+.artist-profile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(--gn-white);
+  height:100%;
+  border-radius: 1rem;
+}
+
 .artist-profile-state-box.gigs-view {
   min-height: calc(95vh - 1rem);
   height:100%;
@@ -365,16 +376,10 @@
   gap: 0.5rem;
 }
 
-.artist-profile-gigs-card .head.finances .account-status {
+.artist-profile-gigs-card .head.finances .finances-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.artist-profile-gigs-card .head.finances .account-status h6 {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 500;
+  gap: 0.75rem;
 }
 
 .artist-profile-gigs-card .head.finances .account-status .status-box {
@@ -382,21 +387,43 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.75rem;
-  border-radius: 999px;
+  border-radius: 0.5rem;
+  background-color: var(--gn-grey-300);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box .icon {
+  font-size: 1rem;
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box span {
   font-size: 0.85rem;
-  background-color: var(--gn-grey-200);
 }
 
 .artist-profile-gigs-card .head.finances .account-status .status-box.ok {
-  background-color: #e7f7ed;
+  background-color: var(--gn-offset-green);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.ok .icon,
+.artist-profile-gigs-card .head.finances .account-status .status-box.ok span {
+  color: var(--gn-green);
 }
 
 .artist-profile-gigs-card .head.finances .account-status .status-box.warn {
-  background-color: #fff5e5;
+  background-color: rgba(255, 166, 0, 0.075);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.warn .icon,
+.artist-profile-gigs-card .head.finances .account-status .status-box.warn span {
+  color: orange;
 }
 
 .artist-profile-gigs-card .head.finances .account-status .status-box.urgent {
-  background-color: #ffe5e5;
+  background-color: var(--gn-offset-red);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.urgent .icon,
+.artist-profile-gigs-card .head.finances .account-status .status-box.urgent span {
+  color: var(--gn-red);
 }
 
 .artist-profile-gigs-card .head.finances .account-status .status-box.clickable {
@@ -413,10 +440,10 @@
 }
 
 .artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-card {
-  flex: 1;
+  flex: 3;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.75rem;
   padding: 1rem;
   border-radius: 1rem;
@@ -447,6 +474,7 @@
 
 .artist-profile-gigs-card .body.gigs .top-section.finances .venue-expenditure-container {
   min-width: 220px;
+  flex: 1;
 }
 
 .artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-card.other {
@@ -454,14 +482,28 @@
   gap: 0.75rem;
 }
 
+/* Slightly smaller amount text for artist earnings card */
+.artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-card.other .expenditure-text h3 {
+  font-size: 1.25rem;
+}
+
 .artist-profile-gigs-card .body.gigs .artist-profile-finances-banner {
   margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
+  padding: 1.5rem 1rem;
   border-radius: 0.75rem;
   background-color: var(--gn-grey-100);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
+}
+
+.artist-profile-gigs-card .body.gigs .artist-profile-finances-banner .icon {
+  align-self: flex-start;
+  font-size: 1.5rem;
+}
+
+.artist-profile-gigs-card .body.gigs .withdraw-funds-row {
+  margin-bottom: 1rem;
 }
 
 .artist-profile-gigs-card .body.gigs .information-grid {
@@ -546,11 +588,7 @@
 }
 
 .artist-profile-gigs-card .body.gigs .tile.your-fees .status-box {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   padding: 0.25rem 0.75rem;
-  border-radius: 999px;
   font-size: 0.8rem;
   background-color: var(--gn-grey-200);
 }
@@ -707,6 +745,22 @@
   height: 8px;
   border-radius: 50%;
   background-color: var(--gn-orange);
+}
+
+.artist-profile-gigs-card .body.gigs .no-messages-empty-state {
+  margin: auto 0;
+  padding:1.5rem 1rem;
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap:0.5rem;
+  text-align: center;
+}
+
+.artist-profile-gigs-card .body.gigs .no-messages-empty-state .icon {
+  font-size: 1.25rem;
 }
 
 .artist-profile-gigs-card .status-buttons {

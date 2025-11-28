@@ -394,6 +394,30 @@ export const getMusicianFees = async (musicianProfileId) => {
   }
 };
 
+/**
+ * Fetches the cleared and pending fees for a given artist profile.
+ * Uses the new artistProfiles collection (mirrors getMusicianFees for backwards compatibility).
+ */
+export const getArtistProfileFees = async (artistProfileId) => {
+  try {
+    if (!artistProfileId) {
+      console.error('[Firestore Error] getArtistProfileFees: missing artistProfileId');
+      return { clearedFees: [], pendingFees: [] };
+    }
+    const clearedFeesRef = collection(firestore, `artistProfiles/${artistProfileId}/clearedFees`);
+    const pendingFeesRef = collection(firestore, `artistProfiles/${artistProfileId}/pendingFees`);
+    const [clearedSnapshot, pendingSnapshot] = await Promise.all([
+      getDocs(clearedFeesRef),
+      getDocs(pendingFeesRef),
+    ]);
+    const clearedFees = clearedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const pendingFees = pendingSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    return { clearedFees, pendingFees };
+  } catch (error) {
+    console.error('[Firestore Error] getArtistProfileFees:', error);
+  }
+};
+
 
 /*** UPDATE OPERATIONS ***/
 
