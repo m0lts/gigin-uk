@@ -12,12 +12,12 @@ import { getMusicianProfileByUserId } from '@services/client-side/artists';
 import { getGigsByVenueId, getGigsByVenueIds } from '@services/client-side/gigs';
 import { getReviewsByMusicianId, getReviewsByVenueId, getReviewsByVenueIds } from '@services/client-side/reviews';
 import { getConversationsByParticipantId, getConversationsByParticipants } from '@services/client-side/conversations';
-import { deleteMusicianProfile, getMusicianProfileByMusicianId } from '@services/client-side/artists';
+import { deleteMusicianProfile, getMusicianProfileByMusicianId, updateUserPayoutsEnabledAcrossAllProfiles } from '@services/client-side/artists';
 import { deleteFolderFromStorage } from '@services/storage';
 import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/client-side/venues';
 import { updateUserDocument } from '../../services/client-side/users';
 import { updateVenueProfileAccountNames } from '../../services/client-side/venues';
-import { getConnectAccountStatus, deleteStripeConnectAccount } from '@services/api/payments';
+import { getConnectAccountStatus, deleteStripeConnectAccount, getStripeBalance, payoutToBankAccount } from '@services/api/payments';
 import { useStripeConnect } from '@hooks/useStripeConnect';
 import { toast } from 'sonner';
 import Portal from '../shared/components/Portal';
@@ -52,6 +52,7 @@ import {
   ConnectComponentsProvider,
   ConnectAccountManagement,
 } from '@stripe/react-connect-js';
+import { LoadingSpinner } from '../shared/ui/loading/Loading';
 
 export const Account = () => {
     const { user,  } = useAuth();
@@ -89,6 +90,9 @@ export const Account = () => {
     const [stripeSystemModal, setStripeSystemModal] = useState(false);
     const [showDeleteStripeModal, setShowDeleteStripeModal] = useState(false);
     const [deletingStripe, setDeletingStripe] = useState(false);
+    const [stripeBalance, setStripeBalance] = useState(null);
+    const [loadingStripeBalance, setLoadingStripeBalance] = useState(false);
+    const [payingOut, setPayingOut] = useState(false);
     const useEmulator = import.meta.env.VITE_USE_EMULATOR === 'true';
     const stripeAccountUrl = useEmulator
         ? import.meta.env.VITE_STRIPE_ACCOUNT_URL_EMULATOR
@@ -124,6 +128,66 @@ export const Account = () => {
             setConnectedAccountId(user.stripeConnectId);
         }
     }, [user?.stripeConnectId, connectedAccountId]);
+
+    // Fetch Stripe balance when user has Stripe Connect account
+    useEffect(() => {
+        if (user?.stripeConnectId) {
+            const fetchBalance = async () => {
+                setLoadingStripeBalance(true);
+                try {
+                    const result = await getStripeBalance();
+                    setStripeBalance(result?.withdrawableEarnings || 0);
+                } catch (e) {
+                    console.error('Failed to fetch Stripe balance:', e);
+                    // Fallback to user document value
+                    setStripeBalance(user?.withdrawableEarnings || 0);
+                } finally {
+                    setLoadingStripeBalance(false);
+                }
+            };
+            fetchBalance();
+        } else {
+            // If no Stripe account, use user document value
+            setStripeBalance(user?.withdrawableEarnings || 0);
+        }
+    }, [user?.stripeConnectId, user?.withdrawableEarnings]);
+
+    const handleWithdrawFunds = async () => {
+        setPayingOut(true);
+        // Use Stripe balance if available, otherwise use user document value
+        const amountToWithdraw = user?.stripeConnectId
+            ? (stripeBalance !== null ? stripeBalance : 0)
+            : (user?.withdrawableEarnings || 0);
+        
+        if (!amountToWithdraw || amountToWithdraw <= 0) {
+            toast.error('No funds available to withdraw.');
+            setPayingOut(false);
+            return;
+        }
+        
+        try {
+            // Pass user.uid as musicianId for backward compatibility (backend uses req.auth.uid anyway)
+            const result = await payoutToBankAccount({ musicianId: user.uid, amount: amountToWithdraw });
+            const success = result?.success;
+            if (success) {
+                toast.success('Payout successful!');
+                // Refresh balance after payout
+                if (user?.stripeConnectId) {
+                    const balanceResult = await getStripeBalance();
+                    setStripeBalance(balanceResult?.withdrawableEarnings || 0);
+                }
+            } else {
+                const errorMessage = result?.message || 'Payout failed. Please try again.';
+                toast.error(errorMessage);
+            }
+        } catch (error) {
+            console.error('Error processing payout:', error);
+            const errorMessage = error?.payload?.error?.message || error?.message || 'An error occurred while processing the payout. Please try again later.';
+            toast.error(errorMessage);
+        } finally {
+            setPayingOut(false);
+        }
+    };
 
     // Debug: Log when stripeConnectInstance changes
     useEffect(() => {
@@ -529,11 +593,11 @@ export const Account = () => {
             status === 'all_good'
                 ? 'No Actions Required'
                 : status === 'warning' && actions.includes('individual.verification.document')
-                ? 'ID Verification Required.'
+                ? 'ID Verification Required Soon'
                 : status === 'warning'
                 ? `${actions.length} Action${actions.length === 1 ? '' : 's'} Required`
                 : status === 'urgent' && actions.includes('individual.verification.document')
-                ? 'ID Verification Required.'
+                ? 'ID Verification Required'
                 : status === 'urgent'
                 ? 'Action Required'
                 : 'Account Status';
@@ -567,20 +631,25 @@ export const Account = () => {
         if (!user?.uid || !user?.stripeConnectId) return;
         setDeletingStripe(true);
         try {
-            // For now, pass userId as musicianId for backward compatibility
-            // TODO: Update backend to accept userId
+            // Pass userId as musicianId for backward compatibility (backend uses req.auth.uid anyway)
             const res = await deleteStripeConnectAccount({ musicianId: user.uid });
-            if (res.success) {
+            if (res?.success) {
                 setConnectedAccountId(null);
                 await updateUserDocument(user.uid, { stripeConnectId: null });
+                // Disable payouts across all artist profiles
+                await updateUserPayoutsEnabledAcrossAllProfiles(user.uid, false);
                 toast.success('Stripe account deleted.');
+                // Refresh balance after deletion
+                setStripeBalance(0);
                 window.location.reload();
             } else {
-                toast.error(res.message || 'Could not delete Stripe account.');
+                const errorMessage = res?.message || 'Could not delete Stripe account.';
+                toast.error(errorMessage);
             }
         } catch (e) {
-            console.error(e);
-            toast.error('Failed to delete Stripe account.');
+            console.error('Error deleting Stripe account:', e);
+            const errorMessage = e?.payload?.error?.message || e?.message || 'Failed to delete Stripe account.';
+            toast.error(errorMessage);
         } finally {
             setDeletingStripe(false);
         }
@@ -790,11 +859,14 @@ export const Account = () => {
                                             onExit={async () => {
                                                 try {
                                                     if (user?.uid && connectedAccountId) {
+                                                        // Update user document with Stripe Connect ID
                                                         await updateUserDocument(user.uid, {
                                                             stripeConnectId: connectedAccountId,
                                                         });
+                                                        // Update all artistProfile member documents to enable payouts
+                                                        await updateUserPayoutsEnabledAcrossAllProfiles(user.uid, true);
                                                     }
-                                                    toast.success('Payout account connected!');
+                                                    toast.success('Payout account connected! Funds will be transferred automatically once your account is verified.');
                                                 } catch (error) {
                                                     console.error('Error updating user with Stripe account ID:', error);
                                                     toast.error('Error connecting payout account. Please try again.');
@@ -818,7 +890,33 @@ export const Account = () => {
                                         <p>Learn how Gigin uses Stripe to handle your gig payments and how your information is securely stored.</p>
                                     </div>
                                     <div className="information-item actions">
-                                        <button className="btn primary">Withdraw Funds</button>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                            <h6>Available to Withdraw</h6>
+                                            {loadingStripeBalance ? (
+                                                <LoadingSpinner />
+                                            ) : (
+                                                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>
+                                                    £{(() => {
+                                                        const amount = user?.stripeConnectId
+                                                            ? (stripeBalance !== null ? parseFloat(stripeBalance) : 0)
+                                                            : (user?.withdrawableEarnings ? parseFloat(user.withdrawableEarnings) : 0);
+                                                        return amount.toFixed(2);
+                                                    })()}
+                                                </h3>
+                                            )}
+                                        </div>
+                                        <button 
+                                            className="btn primary" 
+                                            onClick={handleWithdrawFunds}
+                                            disabled={payingOut || (() => {
+                                                const withdrawableAmount = user?.stripeConnectId
+                                                    ? (stripeBalance !== null ? stripeBalance : 0)
+                                                    : (user?.withdrawableEarnings || 0);
+                                                return withdrawableAmount <= 0;
+                                            })()}
+                                        >
+                                            {payingOut ? 'Processing...' : 'Withdraw Funds'}
+                                        </button>
                                         {user.stripeConnectId && stripeConnectInstance && (
                                             <button className="btn secondary" onClick={() => setShowStripeManageModal(true)}>
                                                 Edit Stripe Details
@@ -827,7 +925,12 @@ export const Account = () => {
                                         <button
                                             className="btn danger"
                                             onClick={() => setShowDeleteStripeModal(true)}
-                                            disabled={deletingStripe}
+                                            disabled={deletingStripe || (() => {
+                                                const withdrawableAmount = user?.stripeConnectId
+                                                    ? (stripeBalance !== null ? stripeBalance : 0)
+                                                    : (user?.withdrawableEarnings || 0);
+                                                return withdrawableAmount > 0;
+                                            })()}
                                         >
                                             Delete Stripe Account
                                         </button>
@@ -837,6 +940,36 @@ export const Account = () => {
 
                             {user?.stripeConnectId && !isMdUp && (
                                 <div className="information-item actions">
+                                    <div style={{ marginBottom: '1rem', width: '100%' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                            <CoinsIconSolid />
+                                            <h4 style={{ margin: 0 }}>Available to Withdraw</h4>
+                                        </div>
+                                        {loadingStripeBalance ? (
+                                            <p>Loading...</p>
+                                        ) : (
+                                            <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>
+                                                £{(() => {
+                                                    const amount = user?.stripeConnectId
+                                                        ? (stripeBalance !== null ? parseFloat(stripeBalance) : 0)
+                                                        : (user?.withdrawableEarnings ? parseFloat(user.withdrawableEarnings) : 0);
+                                                    return amount.toFixed(2);
+                                                })()}
+                                            </h3>
+                                        )}
+                                    </div>
+                                    <button 
+                                        className="btn tertiary information-button" 
+                                        onClick={handleWithdrawFunds}
+                                        disabled={payingOut || (() => {
+                                            const withdrawableAmount = user?.stripeConnectId
+                                                ? (stripeBalance !== null ? stripeBalance : 0)
+                                                : (user?.withdrawableEarnings || 0);
+                                            return withdrawableAmount <= 0;
+                                        })()}
+                                    >
+                                        {payingOut ? 'Processing...' : 'Withdraw Funds'}
+                                    </button>
                                     {user.stripeConnectId && stripeConnectInstance && (
                                         <button className="btn tertiary information-button" onClick={() => setShowStripeManageModal(true)}>
                                             Edit Stripe Details
@@ -845,7 +978,12 @@ export const Account = () => {
                                     <button
                                         className="btn tertiary information-button"
                                         onClick={() => setShowDeleteStripeModal(true)}
-                                        disabled={deletingStripe}
+                                        disabled={deletingStripe || (() => {
+                                            const withdrawableAmount = user?.stripeConnectId
+                                                ? (stripeBalance !== null ? stripeBalance : 0)
+                                                : (user?.withdrawableEarnings || 0);
+                                            return withdrawableAmount > 0;
+                                        })()}
                                     >
                                         Delete Stripe Account
                                     </button>

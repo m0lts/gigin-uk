@@ -71,12 +71,38 @@ export const Finances = ({ user, musicianProfile }) => {
     const [stripeSystemModal, setStripeSystemModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [stripeBalance, setStripeBalance] = useState(null);
+    const [loadingStripeBalance, setLoadingStripeBalance] = useState(false);
+    const hasStripeAccount = !!user?.stripeConnectId;
 
     useEffect(() => {
         if (!connectedAccountId && musicianProfile?.stripeAccountId) {
           setConnectedAccountId(musicianProfile.stripeAccountId);
         }
       }, [musicianProfile?.stripeAccountId, connectedAccountId]);
+
+    useEffect(() => {
+        if (hasStripeAccount) {
+          const fetchBalance = async () => {
+            setLoadingStripeBalance(true);
+            try {
+              const { getStripeBalance } = await import('@services/api/payments');
+              const result = await getStripeBalance();
+              setStripeBalance(result?.data?.withdrawableEarnings || 0);
+            } catch (e) {
+              console.error('Failed to fetch Stripe balance:', e);
+              // Fallback to user document value
+              setStripeBalance(user?.withdrawableEarnings || 0);
+            } finally {
+              setLoadingStripeBalance(false);
+            }
+          };
+          fetchBalance();
+        } else {
+          // If no Stripe account, use user document value
+          setStripeBalance(user?.withdrawableEarnings || 0);
+        }
+      }, [hasStripeAccount, user?.withdrawableEarnings]);
 
     useEffect(() => {
         let ignore = false;
@@ -144,7 +170,10 @@ export const Finances = ({ user, musicianProfile }) => {
 
     const handlePayout = async () => {
         setPayingOut(true);
-        const amountToWithdraw = musicianProfile.withdrawableEarnings;
+        // Use Stripe balance if available, otherwise use user document value
+        const amountToWithdraw = hasStripeAccount 
+          ? (stripeBalance !== null ? stripeBalance : 0)
+          : (user?.withdrawableEarnings || 0);
         if (!amountToWithdraw || amountToWithdraw <= 0) {
           toast.error('No funds available to withdraw.');
           return;
@@ -153,7 +182,12 @@ export const Finances = ({ user, musicianProfile }) => {
             const success = await payoutToBankAccount({ musicianId: musicianProfile.musicianId, amount: amountToWithdraw });
             if (success) {
               toast.success('Payout successful!');
-              window.location.reload();
+              // Refresh balance after payout
+              if (hasStripeAccount) {
+                const { getStripeBalance } = await import('@services/api/payments');
+                const result = await getStripeBalance();
+                setStripeBalance(result?.data?.withdrawableEarnings || 0);
+              }
             } else {
               toast.error('Payout failed. Please try again.');
             }
@@ -268,21 +302,36 @@ export const Finances = ({ user, musicianProfile }) => {
                         </div>
                         <div className="expenditure-text">
                             <h5>Withdrawable Funds</h5>
-                            <h2>£{musicianProfile.withdrawableEarnings ? parseFloat(musicianProfile.withdrawableEarnings).toFixed(2) : '0.00'}</h2>
+                            <h2>£{(() => {
+                              const amount = hasStripeAccount 
+                                ? (stripeBalance !== null ? parseFloat(stripeBalance) : 0)
+                                : (user?.withdrawableEarnings ? parseFloat(user.withdrawableEarnings) : 0);
+                              return amount.toFixed(2);
+                            })()}</h2>
                         </div>
                         {musicianProfile.bankDetailsAdded ? (
                             payingOut ? (
                                 <LoadingSpinner />
-                            ) : musicianProfile.withdrawableEarnings > 0 && (
+                            ) : (() => {
+                              const withdrawableAmount = hasStripeAccount 
+                                ? (stripeBalance !== null ? stripeBalance : 0)
+                                : (user?.withdrawableEarnings || 0);
+                              return withdrawableAmount > 0 && (
                                 <button className='btn primary' onClick={handlePayout}>
                                     Withdraw Funds
                                 </button>
-                            )
-                        ) : musicianProfile.withdrawableEarnings > 0 && (
+                              );
+                            })()
+                        ) : (() => {
+                          const withdrawableAmount = hasStripeAccount 
+                            ? (stripeBalance !== null ? stripeBalance : 0)
+                            : (user?.withdrawableEarnings || 0);
+                          return withdrawableAmount > 0 && (
                             <h4 className='no-bank-details-added'>
                                 Add Bank Details Before Withdrawing
                             </h4>
-                        )}
+                          );
+                        })()}
                     </div>
                     {isSmUp && (
                         <div className="venue-expenditure-container">
@@ -290,7 +339,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                 <PieChartIcon />
                                 <div className="expenditure-text">
                                     <h5>Total Earnings</h5>
-                                    <h3>£{musicianProfile.totalEarnings ? parseFloat(musicianProfile.totalEarnings).toFixed(2) : '0.00'}</h3>
+                                    <h3>£{user?.totalEarnings ? parseFloat(user.totalEarnings).toFixed(2) : '0.00'}</h3>
                                 </div>
                             </div>
                         </div>
@@ -376,8 +425,7 @@ export const Finances = ({ user, musicianProfile }) => {
                                             setOnboardingExited(true);
                                             try {
                                                 await updateMusicianProfile({ musicianId: musicianProfile.musicianId, updates: {bankDetailsAdded: true} });
-                                                const musicianDoc = await getMusicianProfileByMusicianId(musicianProfile.musicianId);
-                                                const withdrawableFunds = musicianDoc.withdrawableEarnings;
+                                                const withdrawableFunds = user?.withdrawableEarnings || 0;
                                                 if (withdrawableFunds && withdrawableFunds > 1) {
                                                     const sanitisedWithdrawableFunds = Math.round(parseFloat(withdrawableFunds) * 100);
                                                     await transferStripeFunds({ connectedAccountId: musicianProfile.stripeAccountId, amount: sanitisedWithdrawableFunds });
@@ -414,7 +462,12 @@ export const Finances = ({ user, musicianProfile }) => {
                                     Edit Stripe Details
                                 </button>
                                 )}
-                                <button className={`btn tertiary information-button`}  onClick={() => setShowDeleteModal(true)} disabled={deleting || musicianProfile.withdrawableEarnings > 0}>
+                                <button className={`btn tertiary information-button`}  onClick={() => setShowDeleteModal(true)} disabled={deleting || (() => {
+                                  const withdrawableAmount = hasStripeAccount 
+                                    ? (stripeBalance !== null ? stripeBalance : 0)
+                                    : (user?.withdrawableEarnings || 0);
+                                  return withdrawableAmount > 0;
+                                })()}>
                                     Delete Stripe Account
                                 </button>
                             </div>
@@ -427,9 +480,9 @@ export const Finances = ({ user, musicianProfile }) => {
                                 Edit Stripe Details
                             </button>
                             )}
-                            <button className={`btn tertiary information-button`}  onClick={() => setShowDeleteModal(true)} disabled={deleting || musicianProfile.withdrawableEarnings > 0}>
-                                Delete Stripe Account
-                            </button>
+                            <button className={`btn tertiary information-button`}  onClick={() => setShowDeleteModal(true)} disabled={deleting || (user?.withdrawableEarnings || 0) > 0}>
+                                    Delete Stripe Account
+                                </button>
                             <button className="btn tertiary" onClick={() => setShowWelcomeModal(true)}>
                                 View Tutorial
                             </button>

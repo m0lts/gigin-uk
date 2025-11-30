@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { useArtistDashboard } from '../../../../context/ArtistDashboardContext';
 import { useBreakpoint } from '@hooks/useBreakpoint';
-import { getArtistProfileFees } from '@services/client-side/artists';
+import { getArtistProfileFees, getArtistProfileMembers } from '@services/client-side/artists';
 import { formatFeeDate } from '@services/utils/dates';
 import { openInNewTab } from '@services/utils/misc';
 import {
@@ -30,6 +30,10 @@ export const ArtistProfileFinances = () => {
   const [loading, setLoading] = useState(false);
   const [acctStatus, setAcctStatus] = useState(null);
   const [acctStatusLoading, setAcctStatusLoading] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [stripeBalance, setStripeBalance] = useState(null);
+  const [loadingStripeBalance, setLoadingStripeBalance] = useState(false);
 
   const hasStripeAccount = !!user?.stripeConnectId;
   const artistProfileId = activeArtistProfile?.id || null;
@@ -73,6 +77,24 @@ export const ArtistProfileFinances = () => {
     fetchFees();
   }, [artistProfileId]);
 
+  useEffect(() => {
+    if (!artistProfileId) return;
+
+    const fetchMembers = async () => {
+      setLoadingMembers(true);
+      try {
+        const membersList = await getArtistProfileMembers(artistProfileId);
+        setMembers(membersList || []);
+      } catch (error) {
+        console.error('Error fetching artist profile members:', error);
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+
+    fetchMembers();
+  }, [artistProfileId]);
+
   const handleGoToPayoutSettings = () => {
     navigate('/account?show=payouts#payouts');
   };
@@ -95,11 +117,11 @@ export const ArtistProfileFinances = () => {
       status === 'all_good'
         ? 'No Actions Required'
         : status === 'warning' && actions.includes('individual.verification.document')
-        ? 'ID Verification Required.'
+        ? 'ID Verification Required Soon'
         : status === 'warning'
         ? `${actions.length} Action${actions.length === 1 ? '' : 's'} Required`
         : status === 'urgent' && actions.includes('individual.verification.document')
-        ? 'ID Verification Required.'
+        ? 'ID Verification Required'
         : status === 'urgent'
         ? 'Action Required'
         : 'Account Status';
@@ -147,10 +169,37 @@ export const ArtistProfileFinances = () => {
     }
   }, [hasStripeAccount]);
 
+  useEffect(() => {
+    if (hasStripeAccount) {
+      const fetchBalance = async () => {
+        setLoadingStripeBalance(true);
+        try {
+          const { getStripeBalance } = await import('@services/api/payments');
+          const result = await getStripeBalance();
+          setStripeBalance(result?.withdrawableEarnings || 0);
+        } catch (e) {
+          console.error('Failed to fetch Stripe balance:', e);
+          // Fallback to user document value
+          setStripeBalance(user?.withdrawableEarnings || 0);
+        } finally {
+          setLoadingStripeBalance(false);
+        }
+      };
+      fetchBalance();
+    } else {
+      // If no Stripe account, use user document value
+      setStripeBalance(user?.withdrawableEarnings || 0);
+    }
+  }, [hasStripeAccount, user?.withdrawableEarnings]);
+
   const withdrawableDisplay = useMemo(() => {
-    const amount = Number(activeArtistProfile?.withdrawableEarnings || 0);
+    // If user has Stripe account, use Stripe balance (source of truth)
+    // Otherwise, use withdrawableEarnings from user document
+    const amount = hasStripeAccount 
+      ? (stripeBalance !== null ? Number(stripeBalance) : 0)
+      : Number(user?.withdrawableEarnings || 0);
     return amount.toFixed(2);
-  }, [activeArtistProfile?.withdrawableEarnings]);
+  }, [hasStripeAccount, stripeBalance, user?.withdrawableEarnings]);
 
   const totalEarningsDisplay = useMemo(() => {
     return (totalEarnings || 0).toFixed(2);
@@ -202,17 +251,22 @@ export const ArtistProfileFinances = () => {
               </div>
             </div>
 
-            {Number(activeArtistProfile?.withdrawableEarnings || 0) > 0 && (
-              <div className="withdraw-funds-row">
-                <button
-                  className="btn artist-profile"
-                  style={{ width: '100%' }}
-                  onClick={handleGoToPayoutSettings}
-                >
-                  Withdraw Funds To Bank Account
-                </button>
-              </div>
-            )}
+            {(() => {
+              const withdrawableAmount = hasStripeAccount 
+                ? (stripeBalance !== null ? Number(stripeBalance) : 0)
+                : Number(user?.withdrawableEarnings || 0);
+              return withdrawableAmount > 0 && (
+                <div className="withdraw-funds-row">
+                  <button
+                    className="btn artist-profile"
+                    style={{ width: '100%' }}
+                    onClick={handleGoToPayoutSettings}
+                  >
+                    Withdraw Funds To Bank Account
+                  </button>
+                </div>
+              );
+            })()}
 
             {!hasStripeAccount && (
                 <div className="artist-profile-finances-banner">
@@ -231,6 +285,49 @@ export const ArtistProfileFinances = () => {
               </div>
             )}
 
+            {/* Payout Recipients List */}
+            {members.length > 0 && (
+              <div className="payout-recipients-section">
+                <h3>Payout Recipients</h3>
+                {loadingMembers ? (
+                  <div className="loading-state">
+                    <LoadingSpinner />
+                  </div>
+                ) : (
+                  <div className="members-list">
+                    {members.map((member) => (
+                      <div key={member.id} className="member-item">
+                        <div className="member-name">
+                          {member.userName || member.userEmail || 'Unknown Member'}
+                          {member.role === 'owner' && (
+                            <span className="member-role"> (Owner)</span>
+                          )}
+                        </div>
+                        <div className="member-payout-info">
+                          <div className={`status-box ${member.payoutsEnabled ? 'ok' : 'warn'}`}>
+                            {member.payoutsEnabled ? (
+                              <>
+                                <SuccessIcon />
+                                <span>Payouts Enabled</span>
+                              </>
+                            ) : (
+                              <>
+                                <WarningIcon />
+                                <span>Payouts Not Enabled</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="payout-percentage">
+                            <h6>Split</h6>
+                            <h4>{member.payoutSharePercent !== undefined ? `${member.payoutSharePercent}%` : '0%'}</h4>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="tile your-fees">
               <h3 style={{ marginBottom: '1rem' }}>Gig Fees for this Artist</h3>

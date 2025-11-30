@@ -445,6 +445,28 @@ router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "templateId is required" });
   }
 
+  // Remove payment, applicant, and task-related fields from template - templates should be plain gig documents
+  const templateData = { ...payload };
+  const fieldsToRemove = [
+    "payoutConfig",
+    "agreedFee",
+    "paymentIntentId",
+    "paymentStatus",
+    "paid",
+    "musicianFeeStatus",
+    "disputeClearingTime",
+    "disputeLogged",
+    "clearPendingFeeTaskName",
+    "automaticMessageTaskName",
+    "applicants", // Templates shouldn't have applicants
+    "gigId", // Templates have templateId, not gigId
+  ];
+  fieldsToRemove.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(templateData, field)) {
+      delete templateData[field];
+    }
+  });
+
   const templateRef = db.doc(`templates/${templateId}`);
 
   await db.runTransaction(async (tx) => {
@@ -459,7 +481,7 @@ router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
       }
     }
 
-    tx.set(templateRef, payload, { merge: true });
+    tx.set(templateRef, templateData, { merge: true });
 
   });
 

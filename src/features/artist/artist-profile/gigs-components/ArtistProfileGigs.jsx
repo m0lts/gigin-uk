@@ -404,8 +404,10 @@ export const ArtistProfileGigs = () => {
   return (
     <div className='artist-profile-gigs-card'>
       <div className='head gigs'>
-        <CalendarIconSolid />
-        <h3 className='title'>Gigs</h3>
+        <div className='title-container'>
+          <CalendarIconSolid />
+          <h3>Gigs</h3>
+        </div>
       </div>
         <div
           className={`artist-profile-gigs-content ${

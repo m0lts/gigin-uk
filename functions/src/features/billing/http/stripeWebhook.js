@@ -65,38 +65,146 @@ export const stripeWebhook = httpRaw(
           }, {merge: true});
           break;
         case "account.updated":
-          if (event.data.object.capabilities.transfers === "active") {
-            const musicianId = event.data.object.metadata.musicianId;
-            // Try artistProfiles first, then fall back to musicianProfiles
-            let profileRef = admin.firestore().collection("artistProfiles").doc(musicianId);
-            let profileDoc = await profileRef.get();
-            let isArtistProfile = profileDoc.exists;
+          // Check if transfers are now active (account completed onboarding)
+          const account = event.data.object;
+          const canTransfer = account.capabilities?.transfers === "active" || account.payouts_enabled === true;
+          
+          if (canTransfer) {
+            // Get userId from metadata (new model) or fall back to musicianId (legacy)
+            const userId = account.metadata?.userId;
+            const musicianId = account.metadata?.musicianId;
+            const accountId = account.id;
             
-            if (!isArtistProfile) {
-              profileRef = admin.firestore().collection("musicianProfiles").doc(musicianId);
-              profileDoc = await profileRef.get();
-            }
-            
-            if (profileDoc.exists) {
-              const profileData = profileDoc.data();
-              const withdrawableEarnings = profileData.withdrawableEarnings || 0;
-              if (withdrawableEarnings > 0) {
-                console.log(
-                  `Transferring £${withdrawableEarnings} to account ${event.data.object.id}`,
-                );
-                await stripe.transfers.create({
-                  amount: Math.round(withdrawableEarnings * 100),
-                  currency: "gbp",
-                  destination: event.data.object.id,
-                  metadata: {
-                    musicianId,
-                    description: "Transfer of existing earnings to Stripe account",
-                  },
-                });
-                console.log(`Successfully transferred £${withdrawableEarnings}.`);
+            if (userId) {
+              // New model: use user document with transaction to prevent duplicate transfers
+              const userRef = admin.firestore().collection("users").doc(userId);
+              
+              // First, check if we've already transferred (idempotency check)
+              const userDoc = await userRef.get();
+              if (!userDoc.exists) {
+                console.warn(`User ${userId} not found.`);
+              } else {
+                const userData = userDoc.data();
+                const withdrawableEarnings = userData.withdrawableEarnings || 0;
+                const lastTransferAccountId = userData.lastEarningsTransferAccountId;
+                
+                // Skip if already transferred to this account
+                if (lastTransferAccountId === accountId) {
+                  console.log(`Funds already transferred for user ${userId} to account ${accountId}. Skipping.`);
+                } else if (withdrawableEarnings > 0) {
+                  try {
+                    console.log(
+                      `Transferring £${withdrawableEarnings} to user ${userId} account ${accountId}`,
+                    );
+                    
+                    // Create transfer first
+                    const transfer = await stripe.transfers.create({
+                      amount: Math.round(withdrawableEarnings * 100),
+                      currency: "gbp",
+                      destination: accountId,
+                      metadata: {
+                        userId,
+                        description: "Transfer of existing earnings to Stripe Connect account",
+                      },
+                    });
+                    
+                    // Then update user document atomically using transaction
+                    await admin.firestore().runTransaction(async (tx) => {
+                      const userDocSnap = await tx.get(userRef);
+                      if (!userDocSnap.exists) {
+                        throw new Error("User document no longer exists");
+                      }
+                      
+                      const currentData = userDocSnap.data();
+                      // Double-check we haven't transferred in the meantime
+                      if (currentData.lastEarningsTransferAccountId === accountId) {
+                        throw new Error("Transfer already completed by another process");
+                      }
+                      
+                      // Update atomically
+                      tx.update(userRef, {
+                        withdrawableEarnings: admin.firestore.FieldValue.increment(-withdrawableEarnings),
+                        lastEarningsTransferAccountId: accountId,
+                        lastEarningsTransferAmount: withdrawableEarnings,
+                        lastEarningsTransferAt: admin.firestore.FieldValue.serverTimestamp(),
+                        lastEarningsTransferId: transfer.id,
+                      });
+                    });
+                    
+                    console.log(`Successfully transferred £${withdrawableEarnings} (transfer ID: ${transfer.id}).`);
+                  } catch (error) {
+                    console.error(`Error transferring funds to user ${userId}:`, error?.message || error);
+                    // Don't throw - webhook should still return 200
+                  }
+                }
               }
-            } else {
-              console.warn(`Profile not found for: ${musicianId} (checked artistProfiles and musicianProfiles)`);
+            } else if (musicianId) {
+              // Legacy: try profile documents
+              let profileRef = admin.firestore().collection("artistProfiles").doc(musicianId);
+              let profileDoc = await profileRef.get();
+              
+              if (!profileDoc.exists) {
+                profileRef = admin.firestore().collection("musicianProfiles").doc(musicianId);
+                profileDoc = await profileRef.get();
+              }
+              
+              if (profileDoc.exists) {
+                const profileData = profileDoc.data();
+                const withdrawableEarnings = profileData.withdrawableEarnings || 0;
+                const lastTransferAccountId = profileData.lastEarningsTransferAccountId;
+                
+                // Skip if already transferred to this account
+                if (lastTransferAccountId === accountId) {
+                  console.log(`Funds already transferred for profile ${musicianId} to account ${accountId}. Skipping.`);
+                } else if (withdrawableEarnings > 0) {
+                  try {
+                    console.log(
+                      `Transferring £${withdrawableEarnings} to legacy profile ${musicianId} account ${accountId}`,
+                    );
+                    
+                    // Create transfer first
+                    const transfer = await stripe.transfers.create({
+                      amount: Math.round(withdrawableEarnings * 100),
+                      currency: "gbp",
+                      destination: accountId,
+                      metadata: {
+                        musicianId,
+                        description: "Transfer of existing earnings to Stripe account",
+                      },
+                    });
+                    
+                    // Then update profile document atomically using transaction
+                    await admin.firestore().runTransaction(async (tx) => {
+                      const profileDocSnap = await tx.get(profileRef);
+                      if (!profileDocSnap.exists) {
+                        throw new Error("Profile document no longer exists");
+                      }
+                      
+                      const currentData = profileDocSnap.data();
+                      // Double-check we haven't transferred in the meantime
+                      if (currentData.lastEarningsTransferAccountId === accountId) {
+                        throw new Error("Transfer already completed by another process");
+                      }
+                      
+                      // Update atomically
+                      tx.update(profileRef, {
+                        withdrawableEarnings: admin.firestore.FieldValue.increment(-withdrawableEarnings),
+                        lastEarningsTransferAccountId: accountId,
+                        lastEarningsTransferAmount: withdrawableEarnings,
+                        lastEarningsTransferAt: admin.firestore.FieldValue.serverTimestamp(),
+                        lastEarningsTransferId: transfer.id,
+                      });
+                    });
+                    
+                    console.log(`Successfully transferred £${withdrawableEarnings} (transfer ID: ${transfer.id}).`);
+                  } catch (error) {
+                    console.error(`Error transferring funds to profile ${musicianId}:`, error?.message || error);
+                    // Don't throw - webhook should still return 200
+                  }
+                }
+              } else {
+                console.warn(`Profile not found for: ${musicianId}`);
+              }
             }
           }
           break;

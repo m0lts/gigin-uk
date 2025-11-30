@@ -238,6 +238,7 @@ router.post("/acceptArtistInvite", requireAuth, asyncHandler(async (req, res) =>
   const userData = userSnap.exists ? (userSnap.data() || {}) : {};
   const userName = userData.name || null;
   const userEmail = userData.email || null;
+  const hasStripeConnect = !!userData.stripeConnectId;
 
   await db.runTransaction(async (tx) => {
     tx.set(
@@ -249,6 +250,8 @@ router.post("/acceptArtistInvite", requireAuth, asyncHandler(async (req, res) =>
         userId: uid,
         userName,
         userEmail,
+        payoutSharePercent: 0, // Default to 0%, can be updated later
+        payoutsEnabled: hasStripeConnect, // Enabled if user has Stripe Connect account
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },

@@ -296,6 +296,25 @@ router.post("/duplicateGig", requireAuth, asyncHandler(async (req, res) => {
   const normalizedOriginal = { ...originalData };
   // Drop any stray client-side id and normalize timestamps
   if (Object.prototype.hasOwnProperty.call(normalizedOriginal, "id")) delete normalizedOriginal.id;
+  
+  // Remove payment and applicant-related fields - should not be copied to duplicated gig
+  const fieldsToRemove = [
+    "payoutConfig",
+    "agreedFee",
+    "paymentIntentId",
+    "paymentStatus",
+    "paid",
+    "musicianFeeStatus",
+    "disputeClearingTime",
+    "disputeLogged",
+    "clearPendingFeeTaskName",
+    "automaticMessageTaskName",
+  ];
+  fieldsToRemove.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(normalizedOriginal, field)) {
+      delete normalizedOriginal[field];
+    }
+  });
   const normalizedDate = toAdminTimestamp(normalizedOriginal.date) || normalizedOriginal.date;
   const normalizedStart = toAdminTimestamp(normalizedOriginal.startDateTime) || normalizedOriginal.startDateTime;
   // Normalize geopoint (in case original was saved with serialized geopoint)
@@ -354,13 +373,67 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
     return nonPayableGig ? { ...applicant } : { ...applicant, status: "declined" };
   });
 
+  // Compute payout config for payable gigs with artistProfiles
+  let payoutConfig = null;
+  if (!nonPayableGig && agreedFee != null) {
+    // Check if this is an artistProfile (new model)
+    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+    const artistSnap = await artistRef.get();
+    
+    if (artistSnap.exists) {
+      // Fetch all members of the artist profile
+      const membersRef = artistRef.collection('members');
+      const membersSnap = await membersRef.get();
+      
+      if (!membersSnap.empty) {
+        const shares = [];
+        let totalPercent = 0;
+        
+        membersSnap.forEach((memberDoc) => {
+          const memberData = memberDoc.data();
+          // Only include members with payoutsEnabled: true
+          if (memberData.status === 'active') {
+            const percent = typeof memberData.payoutSharePercent === 'number' 
+              ? memberData.payoutSharePercent 
+              : 0;
+            
+            if (percent > 0) {
+              shares.push({
+                userId: memberData.userId || memberDoc.id,
+                percent: percent,
+              });
+              totalPercent += percent;
+            }
+          }
+        });
+        
+        // Only create payoutConfig if we have at least one share
+        // If total doesn't equal 100%, we'll still store it (can be normalized later if needed)
+        if (shares.length > 0) {
+          payoutConfig = {
+            artistProfileId: musicianProfileId,
+            totalFee: agreedFee,
+            shares: shares,
+          };
+        }
+      }
+    }
+  }
+
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
-  await gigRef.update({
+  const gigUpdate = {
     applicants: updatedApplicants,
     agreedFee: `${agreedFee}`,
     paid: !!nonPayableGig,
     status: nonPayableGig || gigData?.kind === "Ticketed Gig" ? "closed" : "open",
-  });
+  };
+  
+  // Add payoutConfig if computed
+  if (payoutConfig) {
+    gigUpdate.payoutConfig = payoutConfig;
+  }
+  
+  await gigRef.update(gigUpdate);
 
   if (nonPayableGig) {
     // For legacy musician profiles, confirmed gigs were stored on musicianProfiles.
@@ -475,8 +548,21 @@ router.post("/removeGigApplicant", requireAuth, asyncHandler(async (req, res) =>
   if (!snap.exists) return res.json({ data: { applicants: [] } });
   const gig = snap.data() || {};
   const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+  
+  // Check if the removed applicant was confirmed/accepted (would have payoutConfig)
+  const removedApplicant = applicants.find((a) => a?.id === musicianId);
+  const wasConfirmed = removedApplicant?.status === 'accepted' || removedApplicant?.status === 'confirmed';
+  
   const updatedApplicants = applicants.filter((a) => a?.id !== musicianId);
-  await gigRef.update({ applicants: updatedApplicants });
+  const updateData = { applicants: updatedApplicants };
+  
+  // Remove payoutConfig if the confirmed applicant was removed
+  if (wasConfirmed && gig.payoutConfig) {
+    updateData.payoutConfig = FieldValue.delete();
+    updateData.agreedFee = FieldValue.delete();
+  }
+  
+  await gigRef.update(updateData);
   return res.json({ data: { updatedApplicants } });
 }));
 
@@ -490,6 +576,7 @@ router.post("/revertGigAfterCancellation", requireAuth, asyncHandler(async (req,
   await gigRef.update({
     applicants: reopenedApplicants,
     agreedFee: FieldValue.delete(),
+    payoutConfig: FieldValue.delete(), // Remove payout config when gig is cancelled
     disputeClearingTime: FieldValue.delete(),
     disputeLogged: FieldValue.delete(),
     musicianFeeStatus: FieldValue.delete(),
@@ -535,6 +622,7 @@ router.post("/revertGigAfterCancellationVenue", requireAuth, asyncHandler(async 
   await gigRef.update({
     applicants: updatedApplicants,
     agreedFee: FieldValue.delete(),
+    payoutConfig: FieldValue.delete(), // Remove payout config when gig is cancelled
     disputeClearingTime: FieldValue.delete(),
     disputeLogged: FieldValue.delete(),
     musicianFeeStatus: FieldValue.delete(),

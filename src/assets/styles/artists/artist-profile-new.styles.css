@@ -520,8 +520,8 @@
   border-radius: 1rem;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   padding: 1rem;
   cursor: pointer;
@@ -541,8 +541,8 @@
   background-color: transparent;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   gap: 5px;
   padding: 0;
   cursor: auto;
@@ -562,8 +562,75 @@
   font-size: 0.9rem;
 }
 
+.artist-profile-gigs-card .body.gigs .payout-recipients-section {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-payout-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .payout-percentage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box .icon {
+  font-size: 0.85rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box span {
+  font-size: 0.85rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box.ok {
+  background-color: var(--gn-offset-green);
+  color: var(--gn-green);
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box.warn {
+  background-color: rgba(255, 166, 0, 0.075);
+  color: orange;
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs .payout-recipients-section h3 {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs .payout-recipients-section .payout-percentage {
+  color: var(--gn-white);
+}
+
 .artist-profile-gigs-card .body.gigs .tile.your-fees {
   margin-top: 0.5rem;
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
 }
 
 .artist-profile-gigs-card .body.gigs .tile.your-fees table {
@@ -587,10 +654,19 @@
   background-color: var(--gn-grey-100);
 }
 
-.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box {
+.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status {
   padding: 0.25rem 0.75rem;
   font-size: 0.8rem;
-  background-color: var(--gn-grey-200);
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status.cleared {
+  color: var(--gn-green);
+  background-color: var(--gn-offset-green);
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status.in-dispute {
+  color: red;
+  background-color: var(--gn-offset-red);
 }
 
 .artist-profile-gigs-card .body.gigs .tile.your-fees .no-receipts .flex {

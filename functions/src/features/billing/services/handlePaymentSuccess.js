@@ -4,7 +4,7 @@ import { admin, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { createCloudTask, getFunctionUrl } from "../../../lib/tasks.js";
 import { generateCalendarLink } from "../../../lib/utils/calendar.js";
 import { gigConfirmedEmail } from "../../../lib/utils/emails.js";
-import { IS_PROD } from "../../../config/env.js";
+import { IS_PROD, IS_EMULATOR } from "../../../config/env.js";
 
 /**
  * Handles post-payment success side effects:
@@ -31,7 +31,7 @@ export const handlePaymentSuccess = async (paymentIntent) => {
   formattedGigDate.setHours(hours);
   formattedGigDate.setMinutes(minutes);
   formattedGigDate.setSeconds(0);
-  const disputeHours = IS_PROD ? 48 : 1;
+  const disputeHours = IS_PROD ? 48 : 10 / 60; // 48 hours in prod, 10 minutes in dev/emulator
   const disputePeriodDate = new Date(
     formattedGigDate.getTime() + disputeHours * 60 * 60 * 1000
   );
@@ -61,6 +61,7 @@ export const handlePaymentSuccess = async (paymentIntent) => {
       a.id === applicantId ? {...a, status: "confirmed"} : {...a},
     );
     const venueName = gigData.venue.venueName;
+    const payoutConfig = gigData.payoutConfig || null;
     
     // Try to fetch from artistProfiles first, then fall back to musicianProfiles
     let musicianProfileRef = admin.firestore()
@@ -145,7 +146,14 @@ export const handlePaymentSuccess = async (paymentIntent) => {
     await getFunctionUrl("automaticReviewMessage");
     let feeTaskName;
     let messageTaskName;
-    if (disputePeriodDate > maxAllowedDate) {
+    
+    // In emulator mode, skip Cloud Tasks and call functions directly after delay
+    if (IS_EMULATOR) {
+      console.log(`[EMULATOR MODE] Skipping Cloud Tasks. Fee will clear after ${disputeHours} hour(s).`);
+      console.log(`[EMULATOR MODE] To test fee clearing, manually call clearPendingFee endpoint with payload:`, JSON.stringify(gigFeePayload, null, 2));
+      feeTaskName = "emulator-skip";
+      messageTaskName = "emulator-skip";
+    } else if (disputePeriodDate > maxAllowedDate) {
       feeTaskName = await createCloudTask(
           gigFeePayload,
           maxAllowedDate,
@@ -196,6 +204,7 @@ export const handlePaymentSuccess = async (paymentIntent) => {
       clearPendingFeeTaskName: feeTaskName,
       automaticMessageTaskName: messageTaskName,
     });
+    // Create pending fee document on artistProfile (stays artist-focused)
     const collectionName = isArtistProfile ? "artistProfiles" : "musicianProfiles";
     const pendingFeeDocRef = admin
         .firestore()
@@ -204,8 +213,12 @@ export const handlePaymentSuccess = async (paymentIntent) => {
         .collection("pendingFees")
         .doc(paymentIntentId);
     const existing = await pendingFeeDocRef.get();
+    
+    const batch = admin.firestore().batch();
+    
     if (!existing.exists) {
-      await pendingFeeDocRef.set({
+      // Create pending fee document on artistProfile
+      batch.set(pendingFeeDocRef, {
         paymentIntentId,
         gigId,
         venueId,
@@ -223,110 +236,128 @@ export const handlePaymentSuccess = async (paymentIntent) => {
         musicianEmail,
         venueName,
       });
-      await musicianProfileRef.set(
-          {
-            confirmedGigs: FieldValue.arrayUnion(gigId),
-            pendingFunds: FieldValue.increment(feeAmount),
-          },
-          {merge: true},
-      );
-    } else {
-      await musicianProfileRef.set(
-          {confirmedGigs: FieldValue.arrayUnion(gigId)},
-          {merge: true},
-      );
-    }
-    const conversationsRef =
-    admin.firestore().collection("conversations");
-    const conversationsSnapshot =
-    await conversationsRef.where("gigId", "==", gigId).get();
-    conversationsSnapshot.forEach(async (conversationDoc) => {
-      const conversationId = conversationDoc.id;
-      const conversationData = conversationDoc.data();
-      const isVenueAndMusicianConversation =
-        conversationData.participants.includes(venueId) &&
-        conversationData.participants.includes(applicantId);
-      const messagesRef = admin.firestore().collection("conversations")
-          .doc(conversationId).collection("messages");
-      if (isVenueAndMusicianConversation) {
-        const awaitingPaymentQuery =
-        messagesRef.where("status", "==", "awaiting payment");
-        const awaitingPaymentSnapshot = await awaitingPaymentQuery.get();
-        if (!awaitingPaymentSnapshot.empty) {
-          const awaitingMessageId = awaitingPaymentSnapshot.docs[0].id;
-          const awaitingMessageRef = messagesRef.doc(awaitingMessageId);
-          await awaitingMessageRef.update({
-            senderId: "system",
-            text:
-            `The fee of ${gigData.agreedFee} 
-            has been paid by the venue. 
-            The gig is now confirmed.`,
-            timestamp: timestamp,
-            type: "announcement",
-            status: "gig confirmed",
-          });
+      
+      // Update user documents with pendingFunds based on payoutConfig
+      if (payoutConfig && payoutConfig.shares && payoutConfig.shares.length > 0) {
+        // New model: split pendingFunds across users
+        const totalFee = payoutConfig.totalFee || feeAmount;
+        for (const share of payoutConfig.shares) {
+          const shareUserId = share.userId;
+          const sharePercent = share.percent || 0;
+          const shareAmount = Math.round((totalFee * sharePercent / 100) * 100) / 100;
+          
+          if (shareAmount > 0 && shareUserId) {
+            const userRef = admin.firestore().collection("users").doc(shareUserId);
+            batch.set(userRef, {
+              pendingFunds: FieldValue.increment(shareAmount),
+            }, { merge: true });
+          }
         }
-        await admin.firestore().collection("conversations")
-            .doc(conversationId).update({
-              lastMessage:
-              `The fee of ${gigData.agreedFee}
-               has been paid by the venue.
-               The gig is now confirmed.`,
-              lastMessageTimestamp: timestamp,
-              lastMessageSenderId: "system",
-              status: "closed",
-            });
       } else {
-        const pendingTypes = ["application", "invitation", "negotiation"];
-        const convRef =
-        admin.firestore().collection("conversations").doc(conversationId);
-        const messagesRef = convRef.collection("messages");
-        const batch = admin.firestore().batch();
-        const pendingMessagesSnapshot = await messagesRef
-            .where("type", "in", pendingTypes)
-            .get();
-        pendingMessagesSnapshot.forEach((docSnap) => {
-          batch.update(docSnap.ref, {status: "apps-closed"});
-        });
-        const announcementRef = messagesRef.doc();
-        batch.set(announcementRef, {
-          senderId: "system",
-          text: "The gig has been confirmed with " +
-          "another musician. Applications are now closed.",
-          timestamp,
-          type: "announcement",
-          status: "gig booked",
-        });
-        batch.update(convRef, {
-          lastMessage: "The gig has been confirmed with " +
-          "another musician. Applications are now closed.",
-          lastMessageTimestamp: timestamp,
-          lastMessageSenderId: "system",
-          status: "closed",
-        });
-        await batch.commit();
+        // Legacy model: single user
+        if (userId) {
+          const userRef = admin.firestore().collection("users").doc(userId);
+          batch.set(userRef, {
+            pendingFunds: FieldValue.increment(feeAmount),
+          }, { merge: true });
+        } else {
+          // Fallback: update profile document (legacy)
+          batch.set(musicianProfileRef, {
+            pendingFunds: FieldValue.increment(feeAmount),
+          }, { merge: true });
+        }
       }
-      const calendarLink = generateCalendarLink({
-        title: `Gig at ${gigData.venue.venueName}`,
-        startTime: formattedGigDate.toISOString(),
-        endTime:
-        new Date(formattedGigDate.getTime() +
-        gigData.duration * 60 * 1000).toISOString(),
-        description: `Gig confirmed with fee: ${gigData.agreedFee}`,
-        location: gigData.venue.address,
-      });
-      const mailRef = admin.firestore().collection("mail");
-      const mailMessage = gigConfirmedEmail({
-        musicianName,
-        gigData,
-        gigDate,
-        gigTime,
-        calendarLink,
-      });
-      await mailRef.add({
-        to: musicianEmail,
-        message: mailMessage,
-      });
+    }
+    
+    // Always update confirmedGigs
+    batch.set(musicianProfileRef, {
+      confirmedGigs: FieldValue.arrayUnion(gigId),
+    }, { merge: true });
+    
+    await batch.commit();
+    // Update conversations
+    const conversationsRef = admin.firestore().collection("conversations");
+    const conversationsSnapshot = await conversationsRef.where("gigId", "==", gigId).get();
+    
+    await Promise.all(
+      conversationsSnapshot.docs.map(async (conversationDoc) => {
+        const conversationId = conversationDoc.id;
+        const conversationData = conversationDoc.data();
+        const isVenueAndMusicianConversation =
+          conversationData.participants.includes(venueId) &&
+          conversationData.participants.includes(applicantId);
+        const messagesRef = admin.firestore().collection("conversations")
+            .doc(conversationId).collection("messages");
+        
+        if (isVenueAndMusicianConversation) {
+          const awaitingPaymentQuery = messagesRef.where("status", "==", "awaiting payment");
+          const awaitingPaymentSnapshot = await awaitingPaymentQuery.get();
+          if (!awaitingPaymentSnapshot.empty) {
+            const awaitingMessageId = awaitingPaymentSnapshot.docs[0].id;
+            const awaitingMessageRef = messagesRef.doc(awaitingMessageId);
+            await awaitingMessageRef.update({
+              senderId: "system",
+              text: `The fee of ${gigData.agreedFee} has been paid by the venue. The gig is now confirmed.`,
+              timestamp: timestamp,
+              type: "announcement",
+              status: "gig confirmed",
+            });
+          }
+          await admin.firestore().collection("conversations").doc(conversationId).update({
+            lastMessage: `The fee of ${gigData.agreedFee} has been paid by the venue. The gig is now confirmed.`,
+            lastMessageTimestamp: timestamp,
+            lastMessageSenderId: "system",
+            status: "closed",
+          });
+        } else {
+          const pendingTypes = ["application", "invitation", "negotiation"];
+          const convRef = admin.firestore().collection("conversations").doc(conversationId);
+          const messagesRef = convRef.collection("messages");
+          const batch = admin.firestore().batch();
+          const pendingMessagesSnapshot = await messagesRef
+              .where("type", "in", pendingTypes)
+              .get();
+          pendingMessagesSnapshot.forEach((docSnap) => {
+            batch.update(docSnap.ref, {status: "apps-closed"});
+          });
+          const announcementRef = messagesRef.doc();
+          batch.set(announcementRef, {
+            senderId: "system",
+            text: "The gig has been confirmed with another musician. Applications are now closed.",
+            timestamp,
+            type: "announcement",
+            status: "gig booked",
+          });
+          batch.update(convRef, {
+            lastMessage: "The gig has been confirmed with another musician. Applications are now closed.",
+            lastMessageTimestamp: timestamp,
+            lastMessageSenderId: "system",
+            status: "closed",
+          });
+          await batch.commit();
+        }
+      })
+    );
+
+    // Send confirmation email with calendar link
+    const calendarLink = generateCalendarLink({
+      title: `Gig at ${gigData.venue.venueName}`,
+      startTime: formattedGigDate.toISOString(),
+      endTime: new Date(formattedGigDate.getTime() + gigData.duration * 60 * 1000).toISOString(),
+      description: `Gig confirmed with fee: ${gigData.agreedFee}`,
+      location: gigData.venue.address,
+    });
+    const mailRef = admin.firestore().collection("mail");
+    const mailMessage = gigConfirmedEmail({
+      musicianName,
+      gigData,
+      gigDate,
+      gigTime,
+      calendarLink,
+    });
+    await mailRef.add({
+      to: musicianEmail,
+      message: mailMessage,
     });
     console.log(
         `Gig ${gigId} updated successfully after payment confirmation.`,

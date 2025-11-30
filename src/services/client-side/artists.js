@@ -71,6 +71,12 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
   const docRef = doc(firestore, 'artistProfiles', profileId);
   await setDoc(docRef, payload, { merge: false });
 
+  // Check if user has Stripe Connect account
+  const userRef = doc(firestore, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  const userDoc = userSnap.exists() ? userSnap.data() : {};
+  const hasStripeConnect = !!userDoc.stripeConnectId;
+
   // Initialize members sub-collection with creator as owner
   const memberRef = doc(firestore, 'artistProfiles', profileId, 'members', userId);
   const ownerPermissions = {
@@ -88,6 +94,8 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
     userId: userId,
     userName: userData?.name || null,
     userEmail: userData?.email || null,
+    payoutSharePercent: 100, // Owner gets 100% by default
+    payoutsEnabled: hasStripeConnect, // Enabled if user has Stripe Connect account
     createdAt: now,
     updatedAt: now,
   }, { merge: false });
@@ -140,6 +148,74 @@ export const updateArtistProfileMemberPermissions = async (profileId, memberId, 
     });
   } catch (error) {
     console.error('[Firestore Error] updateArtistProfileMemberPermissions:', error);
+    throw error;
+  }
+};
+
+/**
+ * Updates payout settings for a member in an artist profile.
+ * @param {string} profileId - The artist profile ID
+ * @param {string} memberId - The member's user ID
+ * @param {Object} payoutSettings - Object with payoutSharePercent and/or payoutsEnabled
+ * @returns {Promise<void>}
+ */
+export const updateArtistProfileMemberPayoutSettings = async (profileId, memberId, payoutSettings) => {
+  if (!profileId) throw new Error('[updateArtistProfileMemberPayoutSettings] profileId is required');
+  if (!memberId) throw new Error('[updateArtistProfileMemberPayoutSettings] memberId is required');
+  try {
+    const memberRef = doc(firestore, 'artistProfiles', profileId, 'members', memberId);
+    await updateDoc(memberRef, { 
+      ...payoutSettings,
+      updatedAt: Timestamp.now() 
+    });
+  } catch (error) {
+    console.error('[Firestore Error] updateArtistProfileMemberPayoutSettings:', error);
+    throw error;
+  }
+};
+
+/**
+ * Updates payoutsEnabled for a user across all artistProfiles they are a member of.
+ * This is called when a user completes Stripe Connect onboarding.
+ * @param {string} userId - The user ID
+ * @param {boolean} payoutsEnabled - Whether payouts are enabled
+ * @returns {Promise<void>}
+ */
+export const updateUserPayoutsEnabledAcrossAllProfiles = async (userId, payoutsEnabled) => {
+  if (!userId) throw new Error('[updateUserPayoutsEnabledAcrossAllProfiles] userId is required');
+  try {
+    // Get user document to find all artistProfiles they belong to
+    const userRef = doc(firestore, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      console.warn('[updateUserPayoutsEnabledAcrossAllProfiles] User document not found');
+      return;
+    }
+    
+    const userData = userSnap.data();
+    const artistProfileIds = Array.isArray(userData.artistProfiles) ? userData.artistProfiles : [];
+    
+    if (artistProfileIds.length === 0) {
+      return; // User is not a member of any artist profiles
+    }
+
+    // Update all member documents in parallel
+    const updatePromises = artistProfileIds.map(async (profileId) => {
+      try {
+        const memberRef = doc(firestore, 'artistProfiles', profileId, 'members', userId);
+        await updateDoc(memberRef, {
+          payoutsEnabled,
+          updatedAt: Timestamp.now(),
+        });
+      } catch (error) {
+        // Log error but continue with other updates
+        console.error(`[updateUserPayoutsEnabledAcrossAllProfiles] Failed to update member in profile ${profileId}:`, error);
+      }
+    });
+
+    await Promise.all(updatePromises);
+  } catch (error) {
+    console.error('[Firestore Error] updateUserPayoutsEnabledAcrossAllProfiles:', error);
     throw error;
   }
 };
