@@ -481,8 +481,8 @@ export const Finances = ({ user, musicianProfile }) => {
                             </button>
                             )}
                             <button className={`btn tertiary information-button`}  onClick={() => setShowDeleteModal(true)} disabled={deleting || (user?.withdrawableEarnings || 0) > 0}>
-                                    Delete Stripe Account
-                                </button>
+                                Delete Stripe Account
+                            </button>
                             <button className="btn tertiary" onClick={() => setShowWelcomeModal(true)}>
                                 View Tutorial
                             </button>

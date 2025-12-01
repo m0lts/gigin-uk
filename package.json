@@ -9,19 +9,18 @@
   "scripts": {
     "set:dev": "firebase use dev || echo 'firebase cli not found / already on dev'",
     "dev": "npm run set:dev && vite",
+    "dev:real": "VITE_USE_EMULATORS=false npm run set:dev && vite",
+    "dev:emulator": "npm run set:dev && vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "emulators": "firebase emulators:start --only auth,firestore,storage,functions",
     "emulators:export": "firebase emulators:export ./firebase-export",
     "emulators:import": "firebase emulators:start --only auth,firestore,storage,functions --import=./firebase-export",
-    "migrate:venues": "node --env-file=.env.development scripts/updateVenueGeo.mjs",
-    "check:db": "node scripts/checkFirebaseConnections.js",
-    "diff:schema": "node scripts/diffFirestoreSchema.js",
-    "migrate:prod:dry": "node scripts/migrate-prod-backfill.js",
-    "migrate:prod:apply": "node scripts/migrate-prod-backfill.js --apply",
-    "migrate:stripe:dry": "node scripts/backfillStripeCustomers.js",
-    "migrate:stripe:apply": "node scripts/backfillStripeCustomers.js --apply"
+    "buildLegacy:artistProfiles": "node scripts/buildLegacyArtistProfiles.js",
+    "migrate:artistProfiles": "node scripts/migrateArtistProfiles.js",
+    "backup:firestore": "node scripts/backupFirestore.js",
+    "restore:firestore": "node scripts/restoreFirestore.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.1",

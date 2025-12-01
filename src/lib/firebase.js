@@ -47,7 +47,17 @@ const functions = getFunctions(app, 'europe-west3');
 
 // Connect to emulators in development mode
 // Check for emulator environment variable or dev mode
+// VITE_USE_EMULATORS must be explicitly set to 'false' (string) to disable emulators
 const useEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS !== 'false';
+
+// Debug logging
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  console.log('Emulator check:', {
+    DEV: import.meta.env.DEV,
+    VITE_USE_EMULATORS: import.meta.env.VITE_USE_EMULATORS,
+    useEmulators,
+  });
+}
 
 if (useEmulators && typeof window !== 'undefined') {
   // Use a flag to prevent multiple connection attempts
@@ -66,6 +76,8 @@ if (useEmulators && typeof window !== 'undefined') {
       }
     }
   }
+} else if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  console.log('🔥 Using real Firebase project (emulators disabled)');
 }
 
 export { app, firestore, auth, storage, functions, googleProvider };

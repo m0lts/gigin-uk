@@ -334,9 +334,9 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
                             <PeopleGroupIcon /> Promote
                         </button>
                         {canCancelGigForProfile && (
-                            <button className='btn danger' onClick={() => handleGigCancelation()}>
-                                Cancel Gig
-                            </button>
+                        <button className='btn danger' onClick={() => handleGigCancelation()}>
+                            Cancel Gig
+                        </button>
                         )}
                     </div>
                 </div>

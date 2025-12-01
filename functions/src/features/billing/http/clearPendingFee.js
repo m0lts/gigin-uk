@@ -205,7 +205,7 @@ export const clearPendingFee = httpRaw(
 
       } else {
         // Legacy model: single recipient
-        let stripeTransferId = null;
+      let stripeTransferId = null;
         const userId = musician.userId;
         
         // Get Stripe account from user document (preferred) or profile (legacy)
@@ -222,50 +222,50 @@ export const clearPendingFee = httpRaw(
           stripeAccountId = musician.stripeAccountId;
         }
 
-        if (stripeAccountId) {
-          try {
-            const acct = await stripe.accounts.retrieve(stripeAccountId);
-            const canTransfer =
-              acct?.capabilities?.transfers === 'active' || acct?.payouts_enabled === true;
-
-            if (canTransfer) {
-              const transfer = await stripe.transfers.create({
-                amount: Math.round(Number(amount) * 100),
-                currency: "gbp",
-                destination: stripeAccountId,
-                metadata: {
-                  musicianId,
-                  applicantId,
-                  gigId,
-                  paymentIntentId,
-                  description: "Gig fee transferred after dispute period cleared",
-                },
-              });
-              console.log(`Stripe transfer successful: ${transfer.id}`);
-              stripeTransferId = transfer.id;
-            } else {
-              console.log(
+      if (stripeAccountId) {
+        try {
+          const acct = await stripe.accounts.retrieve(stripeAccountId);
+          const canTransfer =
+            acct?.capabilities?.transfers === 'active' || acct?.payouts_enabled === true;
+      
+          if (canTransfer) {
+            const transfer = await stripe.transfers.create({
+              amount: Math.round(Number(amount) * 100),
+              currency: "gbp",
+              destination: stripeAccountId,
+              metadata: {
+                musicianId,
+                applicantId,
+                gigId,
+                paymentIntentId,
+                description: "Gig fee transferred after dispute period cleared",
+              },
+            });
+            console.log(`Stripe transfer successful: ${transfer.id}`);
+            stripeTransferId = transfer.id;
+          } else {
+            console.log(
                 `Stripe account ${stripeAccountId} exists but transfers not active. Skipping transfer; marking funds withdrawable.`
-              );
-            }
-          } catch (error) {
-            console.error(
-              `Stripe transfer skipped for ${stripeAccountId}:`,
-              error?.message || error
             );
           }
+        } catch (error) {
+          console.error(
+            `Stripe transfer skipped for ${stripeAccountId}:`,
+            error?.message || error
+          );
         }
+      }
 
         // Move pending fee to cleared on artistProfile
-        const clearedDocRef = musicianRef.collection("clearedFees").doc(paymentIntentId);
+      const clearedDocRef = musicianRef.collection("clearedFees").doc(paymentIntentId);
         batch.set(clearedDocRef, {
-          ...pendingFee,
-          status: "cleared",
-          feeCleared: true,
-          stripeTransferId: stripeTransferId || null,
-          clearedAt: Timestamp.now(),
-          recipientMusicianId: musicianId,
-          applicantId,
+        ...pendingFee,
+        status: "cleared",
+        feeCleared: true,
+        stripeTransferId: stripeTransferId || null,
+        clearedAt: Timestamp.now(),
+        recipientMusicianId: musicianId,
+        applicantId,
         });
         batch.delete(pendingDocRef);
 
@@ -324,39 +324,39 @@ export const clearPendingFee = httpRaw(
 
       // Update gigsPerformed count (only for legacy model, not needed for payoutConfig)
       if (!payoutConfig) {
-        if (applicantId === musicianId) {
+      if (applicantId === musicianId) {
+        let clearedCount = 0;
+        try {
+          const agg = await musicianRef.collection("clearedFees").count().get();
+          clearedCount = agg.data().count || 0;
+        } catch (err) {
+          const snap = await musicianRef.collection("clearedFees").get();
+          clearedCount = snap.size;
+        }
+        await musicianRef.set({ gigsPerformed: clearedCount }, { merge: true });
+      } else {
+        // Try to fetch performer from artistProfiles first, then fall back to musicianProfiles
+        let performerRef = db.collection("artistProfiles").doc(applicantId);
+        let performerSnap = await performerRef.get();
+        
+        if (!performerSnap.exists) {
+          performerRef = db.collection("musicianProfiles").doc(applicantId);
+          performerSnap = await performerRef.get();
+        }
+        
+        if (performerSnap.exists) {
           let clearedCount = 0;
           try {
-            const agg = await musicianRef.collection("clearedFees").count().get();
+            const agg = await performerRef.collection("clearedFees").count().get();
             clearedCount = agg.data().count || 0;
           } catch (err) {
-            const snap = await musicianRef.collection("clearedFees").get();
+            const snap = await performerRef.collection("clearedFees").get();
             clearedCount = snap.size;
           }
-          await musicianRef.set({ gigsPerformed: clearedCount }, { merge: true });
+          await performerRef.set({ gigsPerformed: clearedCount }, { merge: true });
         } else {
-          // Try to fetch performer from artistProfiles first, then fall back to musicianProfiles
-          let performerRef = db.collection("artistProfiles").doc(applicantId);
-          let performerSnap = await performerRef.get();
-          
-          if (!performerSnap.exists) {
-            performerRef = db.collection("musicianProfiles").doc(applicantId);
-            performerSnap = await performerRef.get();
-          }
-          
-          if (performerSnap.exists) {
-            let clearedCount = 0;
-            try {
-              const agg = await performerRef.collection("clearedFees").count().get();
-              clearedCount = agg.data().count || 0;
-            } catch (err) {
-              const snap = await performerRef.collection("clearedFees").get();
-              clearedCount = snap.size;
-            }
-            await performerRef.set({ gigsPerformed: clearedCount }, { merge: true });
-          } else {
-            console.warn(`Performer profile ${applicantId} not found in artistProfiles or musicianProfiles.`);
-          }
+          console.warn(`Performer profile ${applicantId} not found in artistProfiles or musicianProfiles.`);
+        }
         }
       }
 

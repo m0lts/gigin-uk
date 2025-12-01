@@ -105,7 +105,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                     </button>
                                 </Link>
                             </div>
-                            {user.artistProfiles && user.artistProfiles.length > 0 ? (
+                            {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
                                 <div className="right">
                                     <button className={`btn text-no-underline ${noProfileModal ? 'disabled' : ''}`}  onClick={() => navigate(`/artist-profile`)}>
                                         <GuitarsIcon />

@@ -33,3 +33,10 @@ gigin-api/dist
 gigin-api/dist-ssr
 gigin-api/*.local
 gigin-api/.env
+MIGRATION_GUIDE.md
+scripts/service-account.dev.json
+scripts/service-account.prod.json
+scripts/firestore-backup-*.json
+scripts/firestore-backup-latest.json
+scripts/artistProfileMigrations.output.json
+scripts/legacyArtistProfiles.output.json

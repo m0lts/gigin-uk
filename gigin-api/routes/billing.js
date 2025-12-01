@@ -382,9 +382,9 @@ router.post("/deleteStripeConnectedAccount", requireAuth, asyncHandler(async (re
   // Legacy: check musicianProfile if no stripeConnectId on user
   let stripeAccountId = stripeConnectId;
   if (!stripeAccountId) {
-    const musicRef = db.collection("musicianProfiles").doc(musicianId);
-    const musicSnap = await musicRef.get();
-    if (!musicSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "Musician profile not found" });
+  const musicRef = db.collection("musicianProfiles").doc(musicianId);
+  const musicSnap = await musicRef.get();
+  if (!musicSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "Musician profile not found" });
     const { userId, stripeAccountId: legacyStripeAccountId } = musicSnap.data() || {};
     if (userId !== uid) return res.status(403).json({ error: "PERMISSION_DENIED" });
     stripeAccountId = legacyStripeAccountId;
@@ -518,9 +518,9 @@ router.post("/payoutToBankAccount", requireAuth, asyncHandler(async (req, res) =
   // Legacy: fallback to musicianProfile if no stripeConnectId on user
   let stripeAccountId = stripeConnectId;
   if (!stripeAccountId) {
-    const musicianDoc = await admin.firestore().collection("musicianProfiles").doc(musicianId).get();
-    if (!musicianDoc.exists) return res.status(404).json({ error: "NOT_FOUND", message: "Musician profile not found" });
-    const musicianData = musicianDoc.data() || {};
+  const musicianDoc = await admin.firestore().collection("musicianProfiles").doc(musicianId).get();
+  if (!musicianDoc.exists) return res.status(404).json({ error: "NOT_FOUND", message: "Musician profile not found" });
+  const musicianData = musicianDoc.data() || {};
     stripeAccountId = musicianData.stripeAccountId;
     if (!stripeAccountId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Stripe account ID not found" });
   }

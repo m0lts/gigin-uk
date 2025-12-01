@@ -140,17 +140,17 @@ export const stripeWebhook = httpRaw(
               }
             } else if (musicianId) {
               // Legacy: try profile documents
-              let profileRef = admin.firestore().collection("artistProfiles").doc(musicianId);
-              let profileDoc = await profileRef.get();
-              
+            let profileRef = admin.firestore().collection("artistProfiles").doc(musicianId);
+            let profileDoc = await profileRef.get();
+            
               if (!profileDoc.exists) {
-                profileRef = admin.firestore().collection("musicianProfiles").doc(musicianId);
-                profileDoc = await profileRef.get();
-              }
-              
-              if (profileDoc.exists) {
-                const profileData = profileDoc.data();
-                const withdrawableEarnings = profileData.withdrawableEarnings || 0;
+              profileRef = admin.firestore().collection("musicianProfiles").doc(musicianId);
+              profileDoc = await profileRef.get();
+            }
+            
+            if (profileDoc.exists) {
+              const profileData = profileDoc.data();
+              const withdrawableEarnings = profileData.withdrawableEarnings || 0;
                 const lastTransferAccountId = profileData.lastEarningsTransferAccountId;
                 
                 // Skip if already transferred to this account
@@ -158,20 +158,20 @@ export const stripeWebhook = httpRaw(
                   console.log(`Funds already transferred for profile ${musicianId} to account ${accountId}. Skipping.`);
                 } else if (withdrawableEarnings > 0) {
                   try {
-                    console.log(
+                console.log(
                       `Transferring £${withdrawableEarnings} to legacy profile ${musicianId} account ${accountId}`,
-                    );
+                );
                     
                     // Create transfer first
                     const transfer = await stripe.transfers.create({
-                      amount: Math.round(withdrawableEarnings * 100),
-                      currency: "gbp",
+                  amount: Math.round(withdrawableEarnings * 100),
+                  currency: "gbp",
                       destination: accountId,
-                      metadata: {
-                        musicianId,
-                        description: "Transfer of existing earnings to Stripe account",
-                      },
-                    });
+                  metadata: {
+                    musicianId,
+                    description: "Transfer of existing earnings to Stripe account",
+                  },
+                });
                     
                     // Then update profile document atomically using transaction
                     await admin.firestore().runTransaction(async (tx) => {
