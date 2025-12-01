@@ -153,21 +153,18 @@ export const MessagePage = () => {
                                         </div>
                                     </div>
                                     {(() => {
-                                        const isBand = activeConversation.bandConversation;
-                                        const bandAccount = isBand
-                                        ? activeConversation.accountNames.find(account => account.role === 'band')
-                                        : null;
-                                        const musicianAccount = activeConversation.accountNames.find(account => account.role === 'musician');
+                                        // Artist messages: treat all conversations as musician-side.
+                                        const artistAccount = activeConversation.accountNames.find(
+                                            account =>
+                                                account.role === 'musician' ||
+                                                account.role === 'band'
+                                        );
                                         return (
                                             <MessageThread 
                                                 activeConversation={activeConversation}
                                                 conversationId={activeConversation.id}
                                                 user={user}
-                                                musicianProfileId={
-                                                    isBand
-                                                    ? bandAccount?.participantId
-                                                    : musicianAccount?.participantId
-                                                }
+                                                musicianProfileId={artistAccount?.participantId}
                                                 gigId={activeConversation.gigId}
                                                 gigData={gigData}
                                                 setGigData={setGigData}
@@ -269,21 +266,17 @@ export const MessagePage = () => {
                                     </div>
                                 </div>
                                 {(() => {
-                                    const isBand = activeConversation.bandConversation;
-                                    const bandAccount = isBand
-                                    ? activeConversation.accountNames.find(account => account.role === 'band')
-                                    : null;
-                                    const musicianAccount = activeConversation.accountNames.find(account => account.role === 'musician');
+                                    const artistAccount = activeConversation.accountNames.find(
+                                        account =>
+                                            account.role === 'musician' ||
+                                            account.role === 'band'
+                                    );
                                     return (
                                         <MessageThread 
                                             activeConversation={activeConversation}
                                             conversationId={activeConversation.id}
                                             user={user}
-                                            musicianProfileId={
-                                                isBand
-                                                ? bandAccount?.participantId
-                                                : musicianAccount?.participantId
-                                            }
+                                            musicianProfileId={artistAccount?.participantId}
                                             gigId={activeConversation.gigId}
                                             gigData={gigData}
                                             setGigData={setGigData}

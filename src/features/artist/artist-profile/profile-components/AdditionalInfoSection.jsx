@@ -60,7 +60,7 @@ async function geocodeCity(city) {
   }
 }
 
-export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, canEdit = true }) => {
+export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, canEdit = true, isOwner = false }) => {
   // All hooks must be declared at the top, before any conditional returns
   
   // State for About section editing
@@ -594,7 +594,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
   // Render Members section
   if (type === 'members') {
     // Render add member view
-    if (canEdit && isAddingMember) {
+    if (canEdit && isOwner && isAddingMember) {
       return (
         <div className="additional-info-section">
           <div className="section-header">
@@ -662,7 +662,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
     }
 
     // Render edit permissions view
-    if (canEdit && editingMemberId) {
+    if (canEdit && isOwner && editingMemberId) {
       const member = members.find(m => m.id === editingMemberId);
       return (
         <div className="additional-info-section">
@@ -751,7 +751,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
             {getIcon()}
             <h3>{getTitle()}</h3>
           </div>
-          {canEdit && (
+          {canEdit && isOwner && (
             <button
               className="btn primary add-member-btn"
               onClick={handleAddMemberClick}
@@ -777,7 +777,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                       <span className="member-role"> (Owner)</span>
                     )}
                   </div>
-                  {canEdit && member.role !== 'owner' && (
+                  {canEdit && isOwner && member.role !== 'owner' && (
                     <div className="member-actions">
                         <button
                         className="btn tertiary small"

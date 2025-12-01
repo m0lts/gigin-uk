@@ -9,11 +9,9 @@ const router = express.Router();
 // POST /api/conversations/getOrCreateConversation
 router.post("/getOrCreateConversation", requireAuth, asyncHandler(async (req, res) => {
   const { musicianProfile = {}, gigData = {}, venueProfile = {}, type = "application" } = req.body || {};
-  const isBand = !!musicianProfile.bandProfile;
-
   const gigId = gigData.gigId || gigData.id;
   const venueId = gigData.venueId || venueProfile?.venueId || venueProfile?.id;
-  const bandOrMusicianId = musicianProfile.musicianId;
+  const bandOrMusicianId = musicianProfile.musicianId || musicianProfile.profileId || musicianProfile.artistId || musicianProfile.id;
   if (!gigId || !bandOrMusicianId || !venueId) {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId/venueId/musicianId required" });
   }
@@ -61,34 +59,49 @@ router.post("/getOrCreateConversation", requireAuth, asyncHandler(async (req, re
     // non-fatal
   }
 
-  if (isBand) {
-    // Band participants: band + members
-    const membersSnap = await db.collection(`bands/${bandOrMusicianId}/members`).get();
-    const memberIds = membersSnap.docs.map((d) => (d.data() || {}).musicianProfileId).filter(Boolean);
-    participants.push(...memberIds, bandOrMusicianId);
+  // 2b) Artist / musician side
+  // We now treat artistProfiles as the primary musician-side accounts.
+  // If an artistProfile exists for musicianId, we add ALL active members as participants.
+  let isArtistProfile = false;
+  try {
+    const artistSnap = await db.collection("artistProfiles").doc(bandOrMusicianId).get();
+    isArtistProfile = artistSnap.exists;
+  } catch (_) {
+    isArtistProfile = false;
+  }
 
-    // Band “header”
-    accountNames.push({
-      participantId: bandOrMusicianId,
-      accountName: musicianProfile.name,
-      accountId: musicianProfile.userId,
-      role: "band",
-      musicianImg: musicianProfile.picture || null,
-    });
+  if (isArtistProfile) {
+    // Artist profile: conversation participants include the artistProfile id,
+    // and accountNames include all active members as 'musician' role.
+    participants.push(bandOrMusicianId);
 
-    // Individual band members
-    membersSnap.docs.forEach((doc) => {
-      const m = doc.data() || {};
-      accountNames.push({
-        participantId: m.musicianProfileId,
-        accountName: m.memberName,
-        accountId: m.memberUserId,
-        role: m.role || "Band Member",
-        musicianImg: m.memberImg || null,
+    try {
+      const memSnap = await db
+        .collection("artistProfiles")
+        .doc(bandOrMusicianId)
+        .collection("members")
+        .where("status", "==", "active")
+        .get();
+
+      const existingIds = new Set(accountNames.map((a) => a.accountId).filter(Boolean));
+      memSnap.forEach((d) => {
+        const uid = d.id;
+        if (existingIds.has(uid)) return;
+        const m = d.data() || {};
+        accountNames.push({
+          participantId: bandOrMusicianId,
+          accountName: m.userName || musicianProfile.name || "Artist Member",
+          accountId: uid,
+          role: "musician",
+          accountImg: null,
+        });
+        existingIds.add(uid);
       });
-    });
+    } catch (_) {
+      // non-fatal
+    }
   } else {
-    // Solo musician
+    // Legacy solo musicianProfile
     participants.push(bandOrMusicianId);
     accountNames.push({
       participantId: bandOrMusicianId,
@@ -134,12 +147,12 @@ router.post("/getOrCreateConversation", requireAuth, asyncHandler(async (req, re
     authorizedUserIds,
     gigDate: gigData.date || null,
     gigId,
+    artistName: musicianProfile.name || null,
     lastMessage,
     lastMessageTimestamp: now,
     lastMessageSenderId: "system",
     status: "open",
     createdAt: now,
-    bandConversation: isBand ? true : false,
   };
 
   const docRef = await db.collection("conversations").add(payload);

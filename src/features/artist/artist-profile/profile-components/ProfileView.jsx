@@ -912,11 +912,17 @@ export const ProfileView = ({
     }
   };
 
+  // Venue-side viewer actions (invite/save artist) should only be visible
+  // when this component is being used in a true "viewer as venue" context.
+  // We detect this by the presence of the handler props injected via profileData.
+  const showVenueViewerActions =
+    !!profileData?.onInviteArtist || !!profileData?.onToggleSaveArtist;
+
   return (
     <div className={profileContentClassNames}>
       <div className='profile-sections-stack'>
         {/* Venue-side viewer actions (invite/save artist) as a separate card at top of stack */}
-        {!canEdit && !isCreatingProfile && !isExample && !!profileData && (
+        {showVenueViewerActions && !isCreatingProfile && !isExample && !!profileData && (
           <div
             ref={venueActionsContainerRef}
             className="profile-card venue-viewer-actions-card"
@@ -1086,6 +1092,7 @@ export const ProfileView = ({
                 profileData={data}
                 profileId={!isExample && !isCreatingProfile ? (profileData?.profileId || profileData?.id) : null}
                 canEdit={canEdit}
+                isOwner={!!profileData?.userId && !!profileData?.id && profileData.userId === (profileData?.userId)}
               />
             )}
           </div>

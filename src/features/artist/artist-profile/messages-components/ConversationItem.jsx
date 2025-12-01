@@ -9,13 +9,6 @@ export const ConversationItem = ({
   showArchived = false,
   handleArchiveConversation,
 }) => {
-  const isBandConversation = !!conversation.bandConversation;
-
-  const bandAccount = isBandConversation
-    ? conversation.accountNames.find(a => a.role === "band")
-    : null;
-
-  const musicianAccount = conversation.accountNames.find(a => a.role === "musician");
 
   // All of *my* participantIds in this conversation (could be multiple if I'm in a band)
   const yourParticipantIds = conversation.accountNames
@@ -32,11 +25,6 @@ export const ConversationItem = ({
         (a.role === "band" || a.role === "musician")
     );
 
-  // Who is the musician side id we pass around (band id for band convos, else musician id)
-  const musicianId = isBandConversation
-    ? bandAccount?.participantId
-    : musicianAccount?.participantId;
-
   // Unread indicator
   const hasUnreadMessages =
     (conversation.lastMessageTimestamp?.seconds || 0) >
@@ -47,7 +35,7 @@ export const ConversationItem = ({
   return (
     <li
       className={`conversation ${isActive ? "active" : ""}`}
-      onClick={() => onClick(conversation.id, musicianId, conversation.gigId)}
+      onClick={() => onClick(conversation.id, conversation.gigId)}
     >
         <div className="conversation-icon">
             {conversation.venueImg ? (

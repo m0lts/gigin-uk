@@ -3,11 +3,14 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useArtistDashboard } from '../../../../context/ArtistDashboardContext';
 import { useBreakpoint } from '../../../../hooks/useBreakpoint';
+import { useAuth } from '../../../../hooks/useAuth';
 import { openInNewTab } from '../../../../services/utils/misc';
 import { getVenueProfileById } from '../../../../services/client-side/venues';
 import { getOrCreateConversation } from '../../../../services/api/conversations';
 import { markInviteAsViewed } from '../../../../services/api/artists';
 import { withdrawArtistApplication } from '../../../../services/client-side/artists';
+import { getArtistProfileMembers } from '../../../../services/client-side/artists';
+import { sanitizeArtistPermissions } from '../../../../services/utils/permissions';
 import Portal from '../../../shared/components/Portal';
 import { GigHandbook } from '../../../artist/components/GigHandbook';
 import {
@@ -33,6 +36,7 @@ export const ArtistProfileGigs = () => {
     artistSavedGigs,
     artistDataLoading,
   } = useArtistDashboard();
+  const { user } = useAuth();
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -46,6 +50,10 @@ export const ArtistProfileGigs = () => {
   const [showGigHandbook, setShowGigHandbook] = useState(false);
   const [gigForHandbook, setGigForHandbook] = useState(null);
   const optionsButtonRefs = useRef({});
+
+  // Artist profile permissions for the focused profile
+  const [artistProfilePerms, setArtistProfilePerms] = useState(null);
+  const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
 
   const selectedStatus = searchParams.get('status') || 'all';
   const focusProfileId =
@@ -76,6 +84,66 @@ export const ArtistProfileGigs = () => {
   };
 
   const baseGigs = useMemo(() => artistGigs, [artistGigs]);
+
+  const now = useMemo(() => new Date(), []);
+
+  // Load artist profile permissions for the current focused profile (if it's an artistProfile)
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!user?.uid || !focusProfileId) {
+        if (!cancelled) setArtistProfilePerms(null);
+        return;
+      }
+
+      const isArtistProfile =
+        Array.isArray(user?.artistProfiles) &&
+        user.artistProfiles.some(
+          (p) => (p.id || p.profileId) === focusProfileId
+        );
+
+      if (!isArtistProfile) {
+        if (!cancelled) setArtistProfilePerms(null);
+        return;
+      }
+
+      try {
+        setLoadingArtistPerms(true);
+        const members = await getArtistProfileMembers(focusProfileId);
+        if (cancelled) return;
+        const me = members.find(
+          (m) => m.id === user.uid && (m.status || 'active') === 'active'
+        );
+        const perms = sanitizeArtistPermissions(me?.permissions || {});
+        setArtistProfilePerms(perms);
+      } catch (e) {
+        console.error(
+          'Failed to load artist profile permissions for dashboard gig actions:',
+          e
+        );
+        if (!cancelled) setArtistProfilePerms(null);
+      } finally {
+        if (!cancelled) setLoadingArtistPerms(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, user?.artistProfiles, focusProfileId]);
+
+  const canBookCurrentArtistProfile = (() => {
+    if (!focusProfileId) return true;
+    const isArtistProfile =
+      Array.isArray(user?.artistProfiles) &&
+      user.artistProfiles.some(
+        (p) => (p.id || p.profileId) === focusProfileId
+      );
+    if (!isArtistProfile) return true;
+    if (!artistProfilePerms) return true; // fallback: don't block if we couldn't load perms
+    return !!artistProfilePerms['gigs.book'];
+  })();
 
   const getGigStatus = (gig) => {
     if (!focusProfileId) {
@@ -153,15 +221,18 @@ export const ArtistProfileGigs = () => {
 
   const sortedGigs = useMemo(() => {
     return filteredGigs.slice().sort((a, b) => {
-      if (a.dateTime > b.dateTime) {
-        return sortOrder === 'desc' ? -1 : 1;
+      // Both future
+      if (a.dateTime > now && b.dateTime > now) {
+        return sortOrder === 'desc' ? b.dateTime - a.dateTime : a.dateTime - b.dateTime;
       }
-      if (a.dateTime < b.dateTime) {
-        return sortOrder === 'desc' ? 1 : -1;
+      // Both past
+      if (a.dateTime < now && b.dateTime < now) {
+        return sortOrder === 'desc' ? b.dateTime - a.dateTime : a.dateTime - b.dateTime;
       }
-      return 0;
+      // One past, one future – always push past gigs below future gigs
+      return a.dateTime < now ? 1 : -1;
     });
-  }, [filteredGigs, sortOrder]);
+  }, [filteredGigs, sortOrder, now]);
 
   const toggleOptionsMenu = (gigId, event, gig) => {
     if (openOptionsGigId === gigId) {
@@ -217,6 +288,13 @@ export const ArtistProfileGigs = () => {
 
   const handleWithdrawApplication = async (gig, appliedProfile) => {
     try {
+      if (!canBookCurrentArtistProfile) {
+        toast.error(
+          'You do not have permission to withdraw applications for this artist profile.'
+        );
+        return;
+      }
+
       const profileId = appliedProfile?.profileId || focusProfileId;
       const fullProfile = allProfiles.find((profile) => profile.id === profileId);
       if (!fullProfile) {
@@ -295,7 +373,7 @@ export const ArtistProfileGigs = () => {
     return (
       <section className='artist-profile-gigs-section next-gig'>
         <div className='section-header'>
-          <h3>Next Gig</h3>
+          <h3 className='sub-heading'>Next Gig</h3>
         </div>
         <div className='next-gig-card'>
           <div className='next-gig-primary'>
@@ -338,7 +416,7 @@ export const ArtistProfileGigs = () => {
     <section className='artist-profile-gigs-section invitations'>
       <div className='section-header'>
         <div className='title'>
-          <h3>Gig Invitations</h3>
+          <h3 className='sub-heading'>Gig Invitations</h3>
         </div>
       </div>
       {gigInvitations.length ? (
@@ -417,7 +495,7 @@ export const ArtistProfileGigs = () => {
         <NextGigSection />
         <section className='artist-profile-gigs-section all-gigs'>
           <div className='section-header'>
-            <h3>All Gigs</h3>
+            <h3 className='sub-heading'>All Gigs</h3>
             <div className='filters'>{statusButtons}</div>
           </div>
           <div className='body gigs musician'>
@@ -442,7 +520,11 @@ export const ArtistProfileGigs = () => {
                 </thead>
                 <tbody>
                   {sortedGigs.length > 0 ? (
-                    sortedGigs.map((gig) => {
+                    sortedGigs.map((gig, index) => {
+                      const isFirstPreviousGig =
+                        index > 0 &&
+                        gig.dateTime < now &&
+                        sortedGigs[index - 1].dateTime >= now;
                       const gigStatus = getGigStatus(gig);
                       const appliedProfile =
                         artistGigApplications?.find(
@@ -457,8 +539,17 @@ export const ArtistProfileGigs = () => {
                         (savedGig) => savedGig.gigId === gig.gigId
                       );
                       return (
-                        <tr
-                          key={gig.gigId}
+                        <React.Fragment key={gig.gigId}>
+                          {isFirstPreviousGig && (
+                            <tr className='filler-row' style={{ backgroundColor: 'var(--gn-grey-300)' }}>
+                              <td className='data' colSpan={4}>
+                                <div className='flex' >
+                                  <h4>Past Gigs</h4>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          <tr
                           onClick={(event) => {
                             openInNewTab(
                               `/gig/${gig.gigId}?appliedAs=${
@@ -534,6 +625,7 @@ export const ArtistProfileGigs = () => {
                             </button>
                           </td>
                         </tr>
+                        </React.Fragment>
                       );
                     })
                   ) : (
@@ -594,31 +686,32 @@ export const ArtistProfileGigs = () => {
                   >
                     Contact Venue <MailboxFullIcon />
                   </button>
-                  {isConfirmed ? (
-                    <button
-                      onClick={() => {
-                        closeOptionsMenu();
-                        setGigForHandbook(gig);
-                        setShowGigHandbook(true);
-                      }}
-                      className='danger'
-                    >
-                      Cancel Gig <CancelIcon />
-                    </button>
-                  ) : (
-                    gigStatus.text !== 'Withdrawn' &&
-                    !isSaved && (
+                  {canBookCurrentArtistProfile &&
+                    (isConfirmed ? (
                       <button
                         onClick={() => {
                           closeOptionsMenu();
-                          handleWithdrawApplication(gig, appliedProfile);
+                          setGigForHandbook(gig);
+                          setShowGigHandbook(true);
                         }}
                         className='danger'
                       >
-                        Withdraw Application <CancelIcon />
+                        Cancel Gig <CancelIcon />
                       </button>
-                    )
-                  )}
+                    ) : (
+                      gigStatus.text !== 'Withdrawn' &&
+                      !isSaved && (
+                        <button
+                          onClick={() => {
+                            closeOptionsMenu();
+                            handleWithdrawApplication(gig, appliedProfile);
+                          }}
+                          className='danger'
+                        >
+                          Withdraw Application <CancelIcon />
+                        </button>
+                      )
+                    ))}
                 </>
               );
             })()}

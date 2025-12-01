@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { db, admin, FieldValue, Timestamp, GeoPoint } from "../config/admin.js";
-import { assertVenuePerm } from "../utils/permissions.js";
+import { assertVenuePerm, assertArtistPerm } from "../utils/permissions.js";
 
 const router = express.Router();
 
@@ -156,12 +156,26 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
       const callerArtistIds = artistIdsField.map((id) => id).filter(Boolean);
 
       const applicants = Array.isArray(gig?.applicants) ? gig.applicants : [];
-      const callerIsApplicant = applicants.some((a) => callerArtistIds.includes(a?.id));
+      const applicantIdsOnGig = new Set(
+        applicants.map((a) => a?.id).filter(Boolean)
+      );
+      const callerArtistIdsOnGig = callerArtistIds.filter((id) =>
+        applicantIdsOnGig.has(id)
+      );
+      const callerIsApplicant = callerArtistIdsOnGig.length > 0;
       if (!callerIsApplicant) {
         return res.status(403).json({
           error: "PERMISSION_DENIED",
           message: "caller is not an applicant on this gig",
         });
+      }
+
+      // Enforce gigs.book permission for the matching artist profile
+      const artistIdForGig = callerArtistIdsOnGig[0];
+      const artistRef = db.doc(`artistProfiles/${artistIdForGig}`);
+      const artistSnap = await artistRef.get();
+      if (artistSnap.exists) {
+        await assertArtistPerm(db, caller, artistIdForGig, "gigs.book");
       }
       break;
     }
@@ -191,7 +205,20 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
 
 // POST /api/gigs/applyToGig
 router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
   const { gigId, musicianProfile } = req.body || {};
+  const musicianId = musicianProfile?.musicianId;
+  if (!gigId || !musicianId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId and musicianProfile.musicianId required" });
+  }
+
+  // If this is an artistProfile application, enforce gigs.book permission
+  const artistRef = db.doc(`artistProfiles/${musicianId}`);
+  const artistSnap = await artistRef.get();
+  if (artistSnap.exists) {
+    await assertArtistPerm(db, caller, musicianId, "gigs.book");
+  }
+
   const gigRef = db.doc(`gigs/${gigId}`);
   const gigSnap = await gigRef.get();
   if (!gigSnap.exists) return res.json({ data: { applicants: null } });
@@ -202,7 +229,7 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
     timestamp: now,
     fee: gig.budget || "£0",
     status: "pending",
-    type: musicianProfile?.bandProfile ? "band" : "musician",
+    type: artistSnap.exists ? "artist" : (musicianProfile?.bandProfile ? "band" : "musician"),
   };
   const updatedApplicants = [...(Array.isArray(gig.applicants) ? gig.applicants : []), newApplication];
   await gigRef.update({ applicants: updatedApplicants });
@@ -264,7 +291,20 @@ router.post("/inviteToGig", requireAuth, asyncHandler(async (req, res) => {
 
 // POST /api/gigs/negotiateGigFee
 router.post("/negotiateGigFee", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
   const { gigId, musicianProfile, newFee, sender } = req.body || {};
+  const musicianId = musicianProfile?.musicianId;
+  if (!gigId || !musicianId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId and musicianProfile.musicianId required" });
+  }
+
+  // If this is an artistProfile negotiation, enforce gigs.book permission
+  const artistRef = db.doc(`artistProfiles/${musicianId}`);
+  const artistSnap = await artistRef.get();
+  if (artistSnap.exists) {
+    await assertArtistPerm(db, caller, musicianId, "gigs.book");
+  }
+
   const gigRef = db.doc(`gigs/${gigId}`);
   const gigSnap = await gigRef.get();
   if (!gigSnap.exists) return res.json({ data: { applicants: [] } });
@@ -360,6 +400,15 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
       const perms = (memberData && memberData.permissions) ? memberData.permissions : {};
       const hasManage = !!perms['gigs.applications.manage'];
       if (!(isActiveMember && hasManage)) return res.status(403).json({ error: "PERMISSION_DENIED", message: "gigs.applications.manage required" });
+    }
+  }
+
+  if (role === 'musician') {
+    // If this is an artistProfile, enforce gigs.book permission for the caller
+    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+    const artistSnap = await artistRef.get();
+    if (artistSnap.exists) {
+      await assertArtistPerm(db, caller, musicianProfileId, "gigs.book");
     }
   }
 
@@ -477,6 +526,15 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
     }
   }
 
+  if (role === 'musician') {
+    // If this is an artistProfile, enforce gigs.book permission for the caller
+    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+    const artistSnap = await artistRef.get();
+    if (artistSnap.exists) {
+      await assertArtistPerm(db, caller, musicianProfileId, "gigs.book");
+    }
+  }
+
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
   const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "confirmed" } : { ...a });
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
@@ -518,6 +576,15 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
     }
   }
 
+  if (role === 'musician') {
+    // If this is an artistProfile, enforce gigs.book permission for the caller
+    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+    const artistSnap = await artistRef.get();
+    if (artistSnap.exists) {
+      await assertArtistPerm(db, caller, musicianProfileId, "gigs.book");
+    }
+  }
+
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
   const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "declined" } : { ...a });
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
@@ -528,6 +595,20 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
 // POST /api/gigs/updateGigWithCounterOffer
 router.post("/updateGigWithCounterOffer", requireAuth, asyncHandler(async (req, res) => {
   const { gigData, musicianProfileId, newFee, sender } = req.body || {};
+  const caller = req.auth.uid;
+  if (!gigData || !musicianProfileId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigData and musicianProfileId required" });
+  }
+
+  if (sender === 'musician') {
+    // If this is an artistProfile, enforce gigs.book permission for the caller
+    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+    const artistSnap = await artistRef.get();
+    if (artistSnap.exists) {
+      await assertArtistPerm(db, caller, musicianProfileId, "gigs.book");
+    }
+  }
+
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
   const now = new Date();
   const updatedApplicants = applicants.map((applicant) => (
@@ -569,6 +650,30 @@ router.post("/removeGigApplicant", requireAuth, asyncHandler(async (req, res) =>
 // POST /api/gigs/revertGigAfterCancellation
 router.post("/revertGigAfterCancellation", requireAuth, asyncHandler(async (req, res) => {
   const { gigData, musicianId, cancellationReason } = req.body || {};
+  const caller = req.auth.uid;
+
+  if (!gigData || !gigData.gigId || !musicianId) {
+    return res.status(400).json({
+      error: "INVALID_ARGUMENT",
+      message: "gigData.gigId and musicianId are required",
+    });
+  }
+
+  // Enforce that the caller is allowed to act on behalf of this applicant.
+  // For artistProfiles, require gigs.book permission.
+  const userSnap = await db.doc(`users/${caller}`).get();
+  const user = userSnap.data() || {};
+  const artistIdsField = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
+  const callerArtistIds = artistIdsField.map((id) => id).filter(Boolean);
+
+  if (callerArtistIds.includes(musicianId)) {
+    const artistRef = db.doc(`artistProfiles/${musicianId}`);
+    const artistSnap = await artistRef.get();
+    if (artistSnap.exists) {
+      await assertArtistPerm(db, caller, musicianId, "gigs.book");
+    }
+  }
+
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
   const remaining = applicants.filter((a) => a?.id !== musicianId);
   const reopenedApplicants = remaining.map((a) => ({ ...a, status: "pending" }));
@@ -616,6 +721,26 @@ router.post("/revertGigAfterCancellation", requireAuth, asyncHandler(async (req,
 // POST /api/gigs/revertGigAfterCancellationVenue
 router.post("/revertGigAfterCancellationVenue", requireAuth, asyncHandler(async (req, res) => {
   const { gigData, musicianId, cancellationReason } = req.body || {};
+  const caller = req.auth.uid;
+
+  if (!gigData || !gigData.gigId) {
+    return res.status(400).json({
+      error: "INVALID_ARGUMENT",
+      message: "gigData.gigId is required",
+    });
+  }
+
+  const venueId = gigData?.venueId;
+  if (!venueId) {
+    return res.status(400).json({
+      error: "FAILED_PRECONDITION",
+      message: "gig missing venueId",
+    });
+  }
+
+  // Venue-side cancellation: require gigs.applications.manage permission
+  await assertVenuePerm(db, caller, venueId, "gigs.applications.manage");
+
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
   const updatedApplicants = applicants.filter((a) => a?.id !== musicianId);
   const gigRef = db.doc(`gigs/${gigData.gigId}`);

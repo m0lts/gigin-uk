@@ -25,6 +25,7 @@ import { updateGigDocument } from '../api/gigs';
 import { getOrCreateConversation } from '../api/conversations';
 import { updateMessageDoc } from '../api/messages';
 import { v4 as uuidv4 } from 'uuid';
+import { updateArtistProfile, updateArtistMemberPermissions } from '../api/artists';
 
 
 /*** CREATE OPERATIONS ***/
@@ -106,10 +107,10 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
 export const updateArtistProfileDocument = async (profileId, updates = {}) => {
   if (!profileId) throw new Error('[updateArtistProfileDocument] profileId is required');
   try {
-    const docRef = doc(firestore, 'artistProfiles', profileId);
-    await updateDoc(docRef, { ...updates, updatedAt: Timestamp.now() });
+    await updateArtistProfile({ artistProfileId: profileId, updates });
   } catch (error) {
-    console.error('[Firestore Error] updateArtistProfileDocument:', error);
+    console.error('[API Error] updateArtistProfileDocument:', error);
+    throw error;
   }
 };
 
@@ -141,13 +142,13 @@ export const updateArtistProfileMemberPermissions = async (profileId, memberId, 
   if (!profileId) throw new Error('[updateArtistProfileMemberPermissions] profileId is required');
   if (!memberId) throw new Error('[updateArtistProfileMemberPermissions] memberId is required');
   try {
-    const memberRef = doc(firestore, 'artistProfiles', profileId, 'members', memberId);
-    await updateDoc(memberRef, { 
-      permissions,
-      updatedAt: Timestamp.now() 
+    await updateArtistMemberPermissions({
+      artistProfileId: profileId,
+      memberId,
+      permissionsInput: permissions,
     });
   } catch (error) {
-    console.error('[Firestore Error] updateArtistProfileMemberPermissions:', error);
+    console.error('[API Error] updateArtistProfileMemberPermissions:', error);
     throw error;
   }
 };
@@ -272,20 +273,6 @@ export const createMusicianProfile = async (musicianId, data, userId) => {
     console.error('[Firestore Error] createMusicianProfile:', error);
   }
 };
-
-/**
- * Creates a request for a musician to play at a venue.
- * @returns {Promise<string|null>} The new request ID or null on error.
- */
-export const createVenueRequest = async (requestData) => {
-  try {
-    const docRef = await addDoc(collection(firestore, 'venueRequests'), requestData);
-    return docRef.id;
-  } catch (error) {
-    console.error('[Firestore Error] createVenueRequest:', error);
-  }
-};
-
 
 /*** READ OPERATIONS ***/
 

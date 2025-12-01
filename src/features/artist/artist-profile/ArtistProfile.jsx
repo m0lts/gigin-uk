@@ -28,6 +28,8 @@ import { fetchMyVenueMembership } from '@services/client-side/venues';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '@services/client-side/messages';
 import { formatDate } from '@services/utils/dates';
+import { getArtistProfileMembers } from '@services/client-side/artists';
+import { sanitizeArtistPermissions } from '@services/utils/permissions';
 import Portal from '@features/shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
@@ -249,7 +251,70 @@ const ArtistProfileComponent = ({
     !!user && !!activeProfileData && user.uid && activeProfileData.userId
       ? user.uid === activeProfileData.userId
       : false;
-  const canEdit = !viewerMode && isOwner;
+  const [artistPerms, setArtistPerms] = useState(null);
+  const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
+
+  // Resolve artist member permissions for the current user on the active profile.
+  // Owners are always treated as having full profile.edit permissions.
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (viewerMode || !user?.uid || !activeProfileData?.id) {
+        if (!cancelled) {
+          setArtistPerms(null);
+          setLoadingArtistPerms(false);
+        }
+        return;
+      }
+
+      // Owners implicitly have full edit rights.
+      if (isOwner) {
+        if (!cancelled) {
+          setArtistPerms(
+            sanitizeArtistPermissions({
+              'profile.viewer': true,
+              'profile.edit': true,
+              'gigs.book': true,
+              'finances.edit': true,
+            })
+          );
+          setLoadingArtistPerms(false);
+        }
+        return;
+      }
+
+      try {
+        setLoadingArtistPerms(true);
+        const members = await getArtistProfileMembers(activeProfileData.id);
+        if (cancelled) return;
+        const me = members.find(
+          (m) => m.id === user.uid && (m.status || 'active') === 'active'
+        );
+        const perms = sanitizeArtistPermissions(me?.permissions || {});
+        setArtistPerms(perms);
+      } catch (err) {
+        console.error('Failed to load artist member permissions:', err);
+        if (!cancelled) {
+          setArtistPerms(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingArtistPerms(false);
+        }
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewerMode, user?.uid, activeProfileData?.id, isOwner]);
+
+  const hasProfileEditPerm =
+    !viewerMode &&
+    (isOwner || !!artistPerms?.['profile.edit']);
+  const canEdit = hasProfileEditPerm;
   const viewerHasVenueProfiles = viewerMode && user?.venueProfiles && user.venueProfiles.length > 0;
 
   // Venue viewer: track saved state for this artist

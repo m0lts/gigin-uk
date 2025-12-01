@@ -166,8 +166,6 @@ export const useAuth = () => {
         sessionStorage.removeItem('redirect');
         window.location.reload()
         return;
-      } else if (redirect === 'do-not-redirect') {
-        sessionStorage.removeItem('redirect');
       } else if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
@@ -210,13 +208,10 @@ export const useAuth = () => {
         }
       }
       const redirect = sessionStorage.getItem('redirect');
-      console.log('redirect', redirect);
       if (redirect === 'create-musician-profile') {
         sessionStorage.removeItem('redirect');
         window.location.reload()
         return;
-      } else if (redirect === 'do-not-redirect') {
-        sessionStorage.removeItem('redirect');
       } else if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');

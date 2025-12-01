@@ -16,7 +16,8 @@ import {
     TwitterIcon,
     WeddingIcon } from '@features/shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
-import { createVenueRequest, getMusicianProfileByMusicianId } from "../../../services/client-side/artists";
+import { getMusicianProfileByMusicianId } from "../../../services/client-side/artists";
+import { createVenueRequest } from "@services/api/artists";
 import { toast } from "sonner";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 

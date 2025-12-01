@@ -4,9 +4,76 @@ import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { admin, db, FieldValue } from "../config/admin.js";
 import { v4 as uuidv4 } from "uuid";
-import { assertVenuePerm, assertArtistPerm, sanitizeArtistPermissions } from "../utils/permissions.js";
+import { assertVenuePerm, assertArtistPerm, assertArtistOwner, sanitizeArtistPermissions } from "../utils/permissions.js";
+import { addUserToArtistConversations } from "../utils/conversations.js";
 
 const router = express.Router();
+
+// POST /api/artists/updateArtistProfile (auth)
+router.post("/updateArtistProfile", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const { artistProfileId, updates } = req.body || {};
+  if (!artistProfileId || !updates || typeof updates !== "object") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "artistProfileId and updates are required" });
+  }
+
+  try {
+    // Ensure caller has profile.edit permission on this artist profile
+    await assertArtistPerm(db, uid, artistProfileId, "profile.edit");
+
+    const allowedUpdates = { ...updates };
+    // Server-controlled fields: never allow client to override
+    delete allowedUpdates.userId;
+    delete allowedUpdates.createdBy;
+    delete allowedUpdates.createdAt;
+    delete allowedUpdates.updatedAt;
+
+    const artistRef = db.doc(`artistProfiles/${artistProfileId}`);
+    await artistRef.update({
+      ...allowedUpdates,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res.json({ data: { success: true } });
+  } catch (err) {
+    console.error("updateArtistProfile error:", err);
+    const code = err.code || err.message || "INTERNAL";
+    if (code === "permission-denied" || code === "PERMISSION_DENIED") {
+      return res.status(403).json({ error: "PERMISSION_DENIED", message: "You do not have permission to edit this artist profile." });
+    }
+    return res.status(500).json({ error: "INTERNAL", message: "Failed to update artist profile." });
+  }
+}));
+
+// POST /api/artists/updateArtistMemberPermissions (auth)
+router.post("/updateArtistMemberPermissions", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const { artistProfileId, memberId, permissionsInput = {} } = req.body || {};
+  if (!artistProfileId || !memberId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "artistProfileId and memberId are required" });
+  }
+
+  try {
+    // Only the artist owner can change member permissions
+    await assertArtistOwner(db, uid, artistProfileId);
+
+    const safePermissions = sanitizeArtistPermissions(permissionsInput || {});
+    const memberRef = db.doc(`artistProfiles/${artistProfileId}/members/${memberId}`);
+    await memberRef.update({
+      permissions: safePermissions,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res.json({ data: { success: true } });
+  } catch (err) {
+    console.error("updateArtistMemberPermissions error:", err);
+    const code = err.code || err.message || "INTERNAL";
+    if (code === "permission-denied" || code === "PERMISSION_DENIED") {
+      return res.status(403).json({ error: "PERMISSION_DENIED", message: "You do not have permission to edit member permissions for this artist profile." });
+    }
+    return res.status(500).json({ error: "INTERNAL", message: "Failed to update member permissions." });
+  }
+}));
 
 // POST /api/musicians/cancelledGigMusicianProfileUpdate
 router.post("/cancelledGigMusicianProfileUpdate", requireAuth, asyncHandler(async (req, res) => {
@@ -115,7 +182,8 @@ router.post("/createArtistInvite", requireAuth, asyncHandler(async (req, res) =>
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "email format invalid" });
   }
-  await assertArtistPerm(db, inviterUid, artistProfileId, "profile.edit"); // Using profile.edit as permission to invite members
+  // Only the artist owner can invite new members
+  await assertArtistOwner(db, inviterUid, artistProfileId);
 
   const nowMs = Date.now();
   const existingQ = await db.collection("artistInvites")
@@ -161,8 +229,17 @@ router.post("/removeArtistMember", requireAuth, asyncHandler(async (req, res) =>
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "artistProfileId and memberId are required" });
   }
 
-  // Ensure caller has permission to manage members on this artist profile
-  await assertArtistPerm(db, uid, artistProfileId, "profile.edit");
+  // Ensure caller is the owner of this artist profile
+  await assertArtistOwner(db, uid, artistProfileId);
+
+  // Prevent removing the owner by mistake
+  const artistSnap = await db.doc(`artistProfiles/${artistProfileId}`).get();
+  if (artistSnap.exists) {
+    const artist = artistSnap.data() || {};
+    if (artist.userId === memberId || artist.createdBy === memberId) {
+      return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Cannot remove the artist owner." });
+    }
+  }
 
   const memberRef = db.doc(`artistProfiles/${artistProfileId}/members/${memberId}`);
   const userRef = db.doc(`users/${memberId}`);
@@ -224,6 +301,11 @@ router.post("/acceptArtistInvite", requireAuth, asyncHandler(async (req, res) =>
   if (memberSnap.exists && (memberSnap.data() || {}).status === "active") {
     // Already an active member - delete invite and return ok
     await inviteRef.delete();
+    try {
+      await addUserToArtistConversations(artistProfileId, uid);
+    } catch (e) {
+      console.error("addUserToArtistConversations failed:", e);
+    }
     return res.json({ data: { ok: true, message: "ALREADY_MEMBER", artistProfileId } });
   }
 
@@ -283,6 +365,11 @@ router.post("/acceptArtistInvite", requireAuth, asyncHandler(async (req, res) =>
       at: admin.firestore.FieldValue.serverTimestamp(),
     });
   });
+  try {
+    await addUserToArtistConversations(artistProfileId, uid);
+  } catch (e) {
+    console.error("addUserToArtistConversations failed:", e);
+  }
 
   return res.json({ data: { ok: true, artistProfileId } });
 }));

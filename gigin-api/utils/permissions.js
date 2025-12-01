@@ -124,3 +124,32 @@ export async function assertArtistPerm(db, callerUid, artistProfileId, permKey) 
     }
     return true;
 }
+
+/** Assert that caller is the owner of the given artist profile. */
+export async function assertArtistOwner(db, callerUid, artistProfileId) {
+    if (!callerUid) {
+      const e = new Error("PERMISSION_DENIED");
+      e.code = "permission-denied";
+      throw e;
+    }
+    if (!artistProfileId || typeof artistProfileId !== "string") {
+      const e = new Error("INVALID_ARGUMENT: artistProfileId required");
+      e.code = "invalid-argument";
+      throw e;
+    }
+    const artistRef = db.doc(`artistProfiles/${artistProfileId}`);
+    const artistSnap = await artistRef.get();
+    if (!artistSnap.exists) {
+      const e = new Error("NOT_FOUND: artist profile");
+      e.code = "not-found";
+      throw e;
+    }
+    const artist = artistSnap.data() || {};
+    const isOwner = artist.userId === callerUid || artist.createdBy === callerUid;
+    if (!isOwner) {
+      const e = new Error("PERMISSION_DENIED: requires artist owner");
+      e.code = "permission-denied";
+      throw e;
+    }
+    return true;
+}

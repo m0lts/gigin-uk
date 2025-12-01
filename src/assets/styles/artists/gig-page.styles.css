@@ -331,6 +331,31 @@
     font-weight: 500;
 }
 
+.gig-page-body .action-box-buttons .permissions {
+    display: flex;
+    align-items:flex-start;
+    gap:5px;
+    margin-top: 0.5rem;
+    border: 1px solid var(--gn-grey-400);
+    background-color: var(--gn-grey-250);
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+}
+
+.gig-page-body .action-box-buttons .permissions p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gn-grey-600);
+}
+
+.gig-page-body .action-box-buttons .permissions .icon {
+    font-size: 0.85rem;
+    color: var(--gn-grey-600);
+    margin-top: 2px;
+}
+
+
+
 /* IMPORTANT INFO */
 
 .gig-page-body .important-info {

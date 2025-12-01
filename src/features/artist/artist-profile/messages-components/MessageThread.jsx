@@ -3,12 +3,13 @@ import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { 
     RejectedIcon,
     SendMessageIcon,
-    TickIcon } from '@features/shared/ui/extras/Icons';
+    TickIcon,
+    PermissionsIcon } from '@features/shared/ui/extras/Icons';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useNavigate } from 'react-router-dom';
 import { listenToMessages } from '@services/client-side/messages';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
+import { getMusicianProfileByMusicianId, getArtistProfileMembers } from '@services/client-side/artists';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/client-side/emails';
 import { toast } from 'sonner';
 import { formatDate, toJsDate } from '../../../../services/utils/dates';
@@ -18,6 +19,7 @@ import { notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { acceptGigOffer, acceptGigOfferOM, declineGigApplication, updateGigWithCounterOffer } from '@services/api/gigs';
 import { sendGigAcceptedMessage, sendMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/api/messages';
+import { sanitizeArtistPermissions } from '@services/utils/permissions';
 
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData }) => {
@@ -28,6 +30,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const [newCounterOffer, setNewCounterOffer] = useState('');
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [eventLoading, setEventLoading] = useState(false);
+    const [artistProfilePerms, setArtistProfilePerms] = useState(null);
+    const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
     const navigate = useNavigate();
 
     const messagesEndRef = useRef(null);
@@ -42,18 +46,70 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
         scrollToBottom();
     }, [messages]);
 
+    // On the artist profile side, all participants are treated as the musician side,
+    // never as the venue. Band-specific infrastructure has been removed.
     useEffect(() => {
-        if (activeConversation) {
-            const userEntry = activeConversation.accountNames.find(account => account.accountId === user.uid);
-            if (userEntry?.role === 'venue') {
-                setUserRole('venue');
-            } else if (userEntry?.role === 'band') {
-                setUserRole('band');
-            } else {
-                setUserRole('musician');
+        if (!activeConversation) return;
+        setUserRole('musician');
+    }, [activeConversation]);
+
+    // Load artist profile permissions for this conversation's musicianProfileId (if it's an artistProfile)
+    useEffect(() => {
+        let cancelled = false;
+        const run = async () => {
+            if (!user?.uid || !musicianProfileId) {
+                if (!cancelled) setArtistProfilePerms(null);
+                return;
             }
-        }
-    }, [activeConversation])
+
+            const isArtistProfile =
+                Array.isArray(user?.artistProfiles) &&
+                user.artistProfiles.some(
+                    (p) => (p.id || p.profileId) === musicianProfileId
+                );
+
+            if (!isArtistProfile) {
+                if (!cancelled) setArtistProfilePerms(null);
+                return;
+            }
+
+            try {
+                setLoadingArtistPerms(true);
+                const members = await getArtistProfileMembers(musicianProfileId);
+                if (cancelled) return;
+                const me = members.find(
+                    (m) => m.id === user.uid && (m.status || 'active') === 'active'
+                );
+                const perms = sanitizeArtistPermissions(me?.permissions || {});
+                setArtistProfilePerms(perms);
+            } catch (e) {
+                console.error(
+                    'Failed to load artist profile permissions for message thread gig actions:',
+                    e
+                );
+                if (!cancelled) setArtistProfilePerms(null);
+            } finally {
+                if (!cancelled) setLoadingArtistPerms(false);
+            }
+        };
+
+        run();
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.uid, user?.artistProfiles, musicianProfileId]);
+
+    const canBookCurrentArtistProfile = (() => {
+        if (!musicianProfileId) return true;
+        const isArtistProfile =
+            Array.isArray(user?.artistProfiles) &&
+            user.artistProfiles.some(
+                (p) => (p.id || p.profileId) === musicianProfileId
+            );
+        if (!isArtistProfile) return true;
+        if (!artistProfilePerms) return true; // fallback: don't block if we couldn't load perms
+        return !!artistProfilePerms['gigs.book'];
+    })();
 
     useEffect(() => {
         if (!conversationId) return;
@@ -120,6 +176,10 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleAcceptGig = async (event, messageId) => {
         event.stopPropagation();
         try {
+            if (!canBookCurrentArtistProfile) {
+                return toast.error('You do not have permission to manage gig bookings for this artist profile.');
+            }
+            console.log('gigData', gigData);
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -169,7 +229,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 venueProfile: venueData,
                 gigData,
                 globalAgreedFee,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                profileType: 'musician',
                 nonPayableGig,
             });
             if (gigData.kind === 'Ticketed Gig') {
@@ -185,6 +245,9 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleAcceptNegotiation = async (event, messageId) => {
         event.stopPropagation();    
         try {
+            if (!canBookCurrentArtistProfile) {
+                return toast.error('You do not have permission to manage gig bookings for this artist profile.');
+            }
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -217,7 +280,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 gigData,
                 agreedFee,
                 isNegotiated: true,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                profileType: 'musician',
               });
         } catch (error) {
             console.error('Error updating gig document:', error);
@@ -229,6 +292,9 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleDeclineNegotiation = async (event, newFee, messageId) => {
         event.stopPropagation();
         try {
+            if (!canBookCurrentArtistProfile) {
+                return toast.error('You do not have permission to manage gig bookings for this artist profile.');
+            }
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -253,7 +319,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 musicianProfile: musicianProfileData,
                 gigData,
                 declineType: 'negotiation',
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                profileType: 'musician',
             });
             setAllowCounterOffer(true);
         } catch (error) {
@@ -266,6 +332,9 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
     const handleDeclineApplication = async (event, messageId) => {
         event.stopPropagation();
         try {
+            if (!canBookCurrentArtistProfile) {
+                return toast.error('You do not have permission to manage gig bookings for this artist profile.');
+            }
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -289,7 +358,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 venueProfile: venueData,
                 musicianProfile: musicianProfileData,
                 gigData,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                profileType: 'musician',
               });
         } catch (error) {
             console.error('Error updating gig document:', error);
@@ -300,6 +369,9 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
 
     const handleSendCounterOffer = async (newFee, messageId) => {
         try {
+            if (!canBookCurrentArtistProfile) {
+                return toast.error('You do not have permission to manage gig bookings for this artist profile.');
+            }
             if (!gigData) return console.error('Gig data is missing');
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
@@ -328,7 +400,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 venueProfile: venueData,
                 gigData,
                 newFee,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                profileType: 'musician',
             });
             setAllowCounterOffer(false);
             setNewCounterOffer('');
@@ -488,6 +560,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                 {eventLoading ? (
                                                     <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
                                                 ) : (
+                                                canBookCurrentArtistProfile && (
                                                     <>
                                                         <h4>Send Counter Offer:</h4>
                                                         <div className='input-group'>
@@ -499,14 +572,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                                 placeholder='£'
                                                                 disabled={eventLoading}
                                                             />
-                                                                <button
-                                                                    className='btn primary'
-                                                                    onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
-                                                                >
-                                                                    Send
-                                                                </button>
+                                                            <button
+                                                                className='btn primary'
+                                                                onClick={() => handleSendCounterOffer(newCounterOffer, message.id)}
+                                                            >
+                                                                Send
+                                                            </button>
                                                         </div>
                                                     </>
+                                                )
                                                 )}
                                         </div>
                                         )}
@@ -569,20 +643,29 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         )}
                                         </>
                                     ) : message.status !== 'countered' && message.status !== 'apps-closed' ? (
-                                        <div className='two-buttons'>
-                                            {eventLoading ? (
-                                                <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
-                                            ) : (
-                                                <>
-                                                    <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
-                                                        Accept
-                                                    </button>
-                                                    <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
-                                                        Decline
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
+                                        canBookCurrentArtistProfile ? (
+                                            <div className='two-buttons'>
+                                                {eventLoading ? (
+                                                    <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                                ) : (
+                                                    <>
+                                                        <button className='btn accept' onClick={(event) => handleAcceptGig(event, message.id)}>
+                                                            Accept
+                                                        </button>
+                                                        <button className='btn decline' onClick={(event) => handleDeclineApplication(event, message.id)}>
+                                                            Decline
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="status-box">
+                                                <div className='status past'>
+                                                    <PermissionsIcon />
+                                                    You do not have permission to manage gig applications
+                                                </div>
+                                            </div>
+                                        )
                                     ) : message.status === 'withdrawn' && (
                                         <div className='status-box'>
                                             <div className='status rejected'>
@@ -647,7 +730,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                                     Declined
                                                 </div>
                                             </div>
-                                            {message.status !== 'countered'  && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && !confirmedMusicianId && (
+                                            {message.status !== 'countered'  && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && !confirmedMusicianId && canBookCurrentArtistProfile && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                         {eventLoading ? (
                                                             <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
@@ -676,20 +759,29 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             )}
                                         </>
                                     ) : message.status !== 'countered' && message.status !== "apps-closed" ? (
-                                        <div className='two-buttons'>
-                                            {eventLoading ? (
-                                                <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
-                                            ) : (
-                                                <>
-                                                    <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
-                                                        Accept
-                                                    </button>
-                                                    <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
-                                                        Decline
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
+                                        canBookCurrentArtistProfile ? (
+                                            <div className='two-buttons'>
+                                                {eventLoading ? (
+                                                    <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
+                                                ) : (
+                                                    <>
+                                                        <button className='btn accept' onClick={(event) => handleAcceptNegotiation(event, message.id)}>
+                                                            Accept
+                                                        </button>
+                                                        <button className='btn decline' onClick={(event) => handleDeclineNegotiation(event, message.newFee, message.id)}>
+                                                            Decline
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="status-box">
+                                                <div className='status past'>
+                                                    <PermissionsIcon />
+                                                    You do not have permission to manage gig applications
+                                                </div>
+                                            </div>
+                                        )
                                     ) : message.status === 'withdrawn' && (
                                         <div className='status-box'>
                                             <div className='status rejected'>
@@ -744,7 +836,11 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         ) : (
                                             <>
                                                 <h6>{ts ? ts.toLocaleString() : ''}</h6>
-                                                <h4>{message.text} {userRole !== 'venue' && !activeConversation.bandConversation ? 'Your payment will arrive in your account 48 hours after the gig has been performed.' : userRole !== 'venue' && activeConversation.bandConversation && 'The band admin will receive the gig fee 48 hours after the gig is performed.'}</h4>
+                                                <h4>
+                                                    {message.text}{' '}
+                                                    {userRole !== 'venue' &&
+                                                        'Your payment will arrive in your account 48 hours after the gig has been performed.'}
+                                                </h4>
                                                 {gigData && (
                                                     <AddToCalendarButton
                                                         event={{

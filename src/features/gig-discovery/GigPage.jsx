@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
+import { Header as CommonHeader } from '@features/shared/components/Header';
 import '@styles/artists/gig-page.styles.css';
 import { 
     BackgroundMusicIcon,
@@ -28,13 +29,13 @@ import { validateMusicianUser } from '@services/utils/validation';
 import { useMapbox } from '@hooks/useMapbox';
 import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
-import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication, withdrawArtistApplication } from '../../services/client-side/artists';
+import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication, withdrawArtistApplication, getArtistProfileMembers } from '../../services/client-side/artists';
 import { getBandMembers } from '../../services/client-side/bands';
 import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
 import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
-import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
+import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { ProfileCreator } from '../artist/profile-creator/ProfileCreator';
 import { NoProfileModal } from '../artist/components/NoProfileModal';
@@ -42,6 +43,7 @@ import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
+import { sanitizeArtistPermissions } from '@services/utils/permissions';
 import { applyToGig, negotiateGigFee, acceptGigOffer, acceptGigOfferOM } from '@services/api/gigs';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '@services/api/messages';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -75,9 +77,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const [accessTokenIsMusicianProfile, setAccessTokenIsMusicianProfile] = useState(false);
     const [invitedToGig, setInvitedToGig] = useState(false);
     const [userAcceptedInvite, setUserAcceptedInvite] = useState(false);
-    const [showCreateProfileModal, setShowCreateProfileModal] = useState(false);
+    const [showCreateProfileModal, setShowCreateProfileModal] = useState(null);
     const [gigSaved, setGigSaved] = useState(false);
     const [otherSlots, setOtherSlots] = useState(null);
+
+    // Permission state for artistProfile members
+    const [artistProfilePerms, setArtistProfilePerms] = useState(null);
+    const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
 
     useEffect(() => {
         if (isLgUp) {
@@ -201,6 +207,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           setUserAppliedToGig(false);
           setInvitedToGig(false);
           setUserAcceptedInvite(false);
+          setArtistProfilePerms(null);
           return;
         }
         const { invited, applied, accepted } = computeStatusForProfile(gigData, selectedProfile);
@@ -208,6 +215,41 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         setUserAppliedToGig(applied);
         setUserAcceptedInvite(accepted);
     }, [selectedProfile, gigData]);
+
+    // Load artist profile permissions for the current selected profile (if it's an artistProfile)
+    useEffect(() => {
+        let cancelled = false;
+        const run = async () => {
+            if (!user?.uid || !selectedProfile) {
+                if (!cancelled) setArtistProfilePerms(null);
+                return;
+            }
+            const profileId = selectedProfile.id || selectedProfile.profileId || selectedProfile.musicianId;
+            const isArtistProfile = Array.isArray(user?.artistProfiles)
+              && user.artistProfiles.some(p => (p.id || p.profileId) === profileId);
+            if (!isArtistProfile) {
+                if (!cancelled) setArtistProfilePerms(null);
+                return;
+            }
+            try {
+                setLoadingArtistPerms(true);
+                const members = await getArtistProfileMembers(profileId);
+                if (cancelled) return;
+                const me = members.find(m => m.id === user.uid && (m.status || 'active') === 'active');
+                const perms = sanitizeArtistPermissions(me?.permissions || {});
+                setArtistProfilePerms(perms);
+            } catch (e) {
+                console.error('Failed to load artist profile permissions for gig booking:', e);
+                if (!cancelled) setArtistProfilePerms(null);
+            } finally {
+                if (!cancelled) setLoadingArtistPerms(false);
+            }
+        };
+        run();
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.uid, user?.artistProfiles, selectedProfile]);
 
 
     const stripFirestoreRefs = (obj) => {
@@ -354,19 +396,41 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         setNewOffer(`£${value}`)
     };
 
+    const canBookCurrentArtistProfile = (() => {
+        if (!selectedProfile) return true;
+        const profileId = selectedProfile.id || selectedProfile.profileId || selectedProfile.musicianId;
+        const isArtistProfile = Array.isArray(user?.artistProfiles)
+          && user.artistProfiles.some(p => (p.id || p.profileId) === profileId);
+        if (!isArtistProfile) return true;
+        // Owners will have full perms at backend; here we just respect gigs.book if present
+        if (!artistProfilePerms) return true; // fallback: don't block if we couldn't load perms
+        return !!artistProfilePerms['gigs.book'];
+    })();
+
     const handleGigApplication = async () => {
+        if (!canBookCurrentArtistProfile) {
+            return toast.error('You do not have permission to apply to gigs for this artist profile.');
+        }
         if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
-        const { valid, musicianProfile } = validateMusicianUser({
+        const { valid, musicianProfile, modal, reason } = validateMusicianUser({
             user,
             setAuthModal,
             setAuthType,
-            setNoProfileModal,
-            setIncompleteMusicianProfile,
-            setNoProfileModalClosable,
-            navigate,
             profile: selectedProfile,
+            navigate,
           });
-          if (!valid || userAppliedToGig) return;
+          if (!valid) {
+            if (modal && !musicianProfile) {
+              setShowCreateProfileModal(reason);
+              if (reason === 'no-profile') {
+                toast.info('Create an artist profile to apply for gigs.');
+              } else if (reason === 'incomplete-profile') {
+                toast.info('Complete your artist profile before applying for gigs.');
+              }
+            }
+            return;
+          }
+          if (userAppliedToGig) return;
           setApplyingToGig(true);
           try {
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' || gigData.budget === '£' || gigData.budget === '£0';
@@ -417,6 +481,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     }
 
     const handleWithdrawApplication = async () => {
+        if (!canBookCurrentArtistProfile) {
+            return toast.error('You do not have permission to manage gig applications for this artist profile.');
+        }
         setApplyingToGig(true);
         try {
             // Check if this is an artist profile
@@ -440,38 +507,56 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     }
 
     const handleNegotiateButtonClick = () => {
+        if (!canBookCurrentArtistProfile) {
+            return toast.error('You do not have permission to negotiate gigs for this artist profile.');
+        }
         if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
-        const { valid, musicianProfile } = validateMusicianUser({
+        const { valid, musicianProfile, modal, reason } = validateMusicianUser({
             user,
             setAuthModal,
             setAuthType,
-            setNoProfileModal,
-            setIncompleteMusicianProfile,
-            setNoProfileModalClosable,
-            navigate,
             profile: selectedProfile,
-          });
-      
-        if (valid) {
-          setNegotiateModal(true);
-        } else {
+            navigate,
+        });
+        if (!valid) {
+          if (modal && !musicianProfile) {
+            setShowCreateProfileModal(reason);
+            if (reason === 'no-profile') {
+              toast.info('Create an artist profile to negotiate gigs.');
+            } else if (reason === 'incomplete-profile') {
+              toast.info('Complete your artist profile before negotiating gigs.');
+            }
+          }
           setApplyingToGig(false);
+          return;
         }
+
+        setNegotiateModal(true);
       };
 
     const handleNegotiate = async () => {
+        if (!canBookCurrentArtistProfile) {
+            return toast.error('You do not have permission to negotiate gigs for this artist profile.');
+        }
         if (userAppliedToGig || !newOffer) return;
-        const { valid, musicianProfile } = validateMusicianUser({
+        const { valid, musicianProfile, modal, reason } = validateMusicianUser({
             user,
             setAuthModal,
             setAuthType,
-            setNoProfileModal,
-            setIncompleteMusicianProfile,
-            setNoProfileModalClosable,
-            navigate,
             profile: selectedProfile,
+            navigate,
           });
-        if (!valid) return;
+        if (!valid) {
+          if (modal && !musicianProfile) {
+            setShowCreateProfileModal(reason);
+            if (reason === 'no-profile') {
+              toast.info('Create an artist profile to negotiate gigs.');
+            } else if (reason === 'incomplete-profile') {
+              toast.info('Complete your artist profile before negotiating gigs.');
+            }
+          }
+          return;
+        }
         const value = (newOffer || '').trim();
         const numericPart = value.replace(/£|\s/g, '');
         const num = Number(numericPart);
@@ -488,7 +573,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
             };
             const { updatedApplicants } = await negotiateGigFee({ gigId, musicianProfile: normalizedProfile, newFee: newOffer, sender: 'musician' });
-            console.log('updatedApplicants', updatedApplicants);
             setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
             
             // Use artist profile update if this is an artist profile
@@ -549,17 +633,27 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     };
     
     const handleMessage = async () => {
-        const { valid, musicianProfile } = validateMusicianUser({
+        if (!canBookCurrentArtistProfile) {
+            return toast.error('You do not have permission to message venues about gigs for this artist profile.');
+        }
+        const { valid, musicianProfile, modal, reason } = validateMusicianUser({
             user,
             setAuthModal,
             setAuthType,
-            setNoProfileModal,
-            setIncompleteMusicianProfile,
-            setNoProfileModalClosable,
-            navigate,
             profile: selectedProfile,
+            navigate,
           });
-        if (!valid) return;
+        if (!valid) {
+          if (modal && !musicianProfile) {
+            setShowCreateProfileModal(reason);
+            if (reason === 'no-profile') {
+              toast.info('Create an artist profile to message venues about gigs.');
+            } else if (reason === 'incomplete-profile') {
+              toast.info('Complete your artist profile before messaging venues about gigs.');
+            }
+          }
+          return;
+        }
         try {
             // Normalize profile for API compatibility
             const normalizedProfile = {
@@ -576,6 +670,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     };
 
     const handleAccept = async (event, proposedFee) => {
+        if (!canBookCurrentArtistProfile) {
+            return toast.error('You do not have permission to accept gig invitations for this artist profile.');
+        }
         event.stopPropagation();
         setApplyingToGig(true);
         const musicianId = selectedProfile?.id || selectedProfile?.profileId || selectedProfile?.musicianId;
@@ -761,7 +858,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     
     return (
         <div className='gig-page'>
-            {user?.venueProfiles?.length > 0 && (!user.artistProfiles?.length) ? (
+            {!user ? (
+                <CommonHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                    setNoProfileModal={setNoProfileModal}
+                    noProfileModal={noProfileModal}
+                    setNoProfileModalClosable={setNoProfileModalClosable}
+                />
+            ) : user?.venueProfiles?.length > 0 && (!user.artistProfiles?.length) ? (
                 <VenueHeader
                     user={user}
                     setAuthModal={setAuthModal}
@@ -780,7 +886,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     noProfileModalClosable={true}
                 />
             )}
-            <section className={`gig-page-body ${!isMdUp && 'mobile'}`} style={{ width: `${width}`, marginTop: `${user?.artistProfiles || user?.artistProfiles?.length > 0 ? '6rem' : '0'}`}}>
+            <section className={`gig-page-body ${!isMdUp && 'mobile'}`} style={{ width: `${width}`, marginTop: `${!user || user?.artistProfiles || user?.artistProfiles?.length > 0 ? '6rem' : '0'}`}}>
                 {loading ? (
                     <div className='loading-state'>
                         <LoadingSpinner />
@@ -1083,17 +1189,26 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                 ) : accepted && hasAccessToPrivateGig ? (
                                                                     <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
                                                                 ) : showAcceptInvite && hasAccessToPrivateGig ? (
-                                                                        <button className='btn primary-alt' onClick={handleAccept}>
+                                                                        <button className={`btn primary-alt ${!canBookCurrentArtistProfile ? 'disabled' : ''}`} onClick={canBookCurrentArtistProfile ? handleAccept : undefined} disabled={!canBookCurrentArtistProfile}>
                                                                             Accept Invitation
                                                                         </button>
                                                                 ) : showApply && hasAccessToPrivateGig ? (
-                                                                        <button className='btn primary-alt' onClick={handleGigApplication}>
+                                                                        <button
+                                                                            className={`btn primary-alt ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
+                                                                            onClick={canBookCurrentArtistProfile ? handleGigApplication : undefined}
+                                                                            disabled={!canBookCurrentArtistProfile}
+                                                                        >
                                                                             Apply To Gig
                                                                         </button>
                                                                 ) : null}
 
                                                                 {showApplied && hasAccessToPrivateGig && (
-                                                                    <button className='btn secondary' onClick={handleWithdrawApplication} style={{ marginTop: '5px'}}>
+                                                                    <button
+                                                                        className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
+                                                                        onClick={canBookCurrentArtistProfile ? handleWithdrawApplication : undefined}
+                                                                        disabled={!canBookCurrentArtistProfile}
+                                                                        style={{ marginTop: '5px'}}
+                                                                    >
                                                                         Withdraw Application
                                                                     </button>
                                                                 )}
@@ -1101,14 +1216,22 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                 <div className='two-buttons'>
                                                                     {/* Negotiate */}
                                                                     {showNegotiate && !kindBlocksNegotiate && hasAccessToPrivateGig && (
-                                                                        <button className='btn secondary' onClick={handleNegotiateButtonClick}>
+                                                                        <button
+                                                                            className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
+                                                                            onClick={canBookCurrentArtistProfile ? handleNegotiateButtonClick : undefined}
+                                                                            disabled={!canBookCurrentArtistProfile}
+                                                                        >
                                                                             Negotiate
                                                                         </button>
                                                                     )}
 
                                                                     {/* Message */}
                                                                     {showMessage && hasAccessToPrivateGig && (
-                                                                    <button className='btn secondary' onClick={handleMessage}>
+                                                                    <button
+                                                                        className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
+                                                                        onClick={canBookCurrentArtistProfile ? handleMessage : undefined}
+                                                                        disabled={!canBookCurrentArtistProfile}
+                                                                    >
                                                                         Message
                                                                     </button>
                                                                     )}
@@ -1119,6 +1242,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     <div className="private-applications">
                                                                     <InviteIconSolid />
                                                                     <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Permission notice when artist member lacks gigs.book */}
+                                                                {!canBookCurrentArtistProfile && hasAccessToPrivateGig && (
+                                                                    <div className="status-box permissions">
+                                                                        <PermissionsIcon />
+                                                                        <p>
+                                                                            You don’t have permission to manage gigs for this artist profile. Please contact the profile owner.
+                                                                        </p>
                                                                     </div>
                                                                 )}
                                                             </>
@@ -1509,17 +1642,22 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                 ) : accepted && hasAccessToPrivateGig ? (
                                                                     <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
                                                                 ) : showAcceptInvite && hasAccessToPrivateGig ? (
-                                                                        <button className='btn primary-alt' onClick={handleAccept}>
+                                                                        <button className='btn primary-alt' onClick={canBookCurrentArtistProfile ? handleAccept : undefined} disabled={!canBookCurrentArtistProfile}>
                                                                             Accept Invitation
                                                                         </button>
                                                                 ) : showApply && hasAccessToPrivateGig ? (
-                                                                        <button className='btn primary-alt' onClick={handleGigApplication}>
+                                                                        <button className='btn primary-alt' onClick={canBookCurrentArtistProfile ? handleGigApplication : undefined} disabled={!canBookCurrentArtistProfile}>
                                                                             Apply To Gig
                                                                         </button>
                                                                 ) : null}
 
                                                                 {showApplied && hasAccessToPrivateGig && (
-                                                                    <button className='btn secondary' onClick={handleWithdrawApplication} style={{ marginTop: '5px'}}>
+                                                                    <button
+                                                                        className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
+                                                                        onClick={canBookCurrentArtistProfile ? handleWithdrawApplication : undefined}
+                                                                        disabled={!canBookCurrentArtistProfile}
+                                                                        style={{ marginTop: '5px'}}
+                                                                    >
                                                                         Withdraw Application
                                                                     </button>
                                                                 )}
@@ -1527,14 +1665,22 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                 <div className='two-buttons'>
                                                                     {/* Negotiate */}
                                                                     {showNegotiate && !kindBlocksNegotiate && hasAccessToPrivateGig && (
-                                                                        <button className='btn secondary' onClick={handleNegotiateButtonClick}>
+                                                                        <button
+                                                                            className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
+                                                                            onClick={canBookCurrentArtistProfile ? handleNegotiateButtonClick : undefined}
+                                                                            disabled={!canBookCurrentArtistProfile}
+                                                                        >
                                                                             Negotiate
                                                                         </button>
                                                                     )}
 
                                                                     {/* Message */}
                                                                     {showMessage && hasAccessToPrivateGig && (
-                                                                    <button className='btn secondary' onClick={handleMessage}>
+                                                                    <button
+                                                                        className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
+                                                                        onClick={canBookCurrentArtistProfile ? handleMessage : undefined}
+                                                                        disabled={!canBookCurrentArtistProfile}
+                                                                    >
                                                                         Message
                                                                     </button>
                                                                     )}
@@ -1604,9 +1750,23 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 </Portal>
             )}
 
-            {showCreateProfileModal && (
+            {showCreateProfileModal !== null && (
                 <Portal>
-                    <ProfileCreator user={user} setShowModal={setShowCreateProfileModal} selectedUserType={selectedUserType} />
+                    <div className="modal">
+                        <div className="modal-content">
+                            <button className="btn close tertiary" onClick={() => setShowCreateProfileModal(null)}>Close</button>
+                            <div className="modal-header">
+                                <GuitarsIcon />
+                                <h3>{showCreateProfileModal === 'no-profile' ? 'Create Your Artist Profile' : 'Complete Your Artist Profile'}</h3>
+                                <p>{showCreateProfileModal === 'no-profile' ? 'You must create an artist profile to apply for gigs.' : 'Complete your artist profile to apply for gigs.'}</p>
+                            </div>
+                            <div className="modal-body">
+                                <div className="modal-actions">
+                                    <button className="btn artist-profile" onClick={() => {setShowCreateProfileModal(null); navigate('/artist-profile')}}>{showCreateProfileModal === 'no-profile' ? 'Create Artist Profile' : 'Complete Artist Profile'}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </Portal>
             )}
         </div>

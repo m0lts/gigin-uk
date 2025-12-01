@@ -17,13 +17,19 @@ export const validateMusicianUser = ({
   setAuthModal,
   setAuthType,
   profile,
+  navigate,
 }) => {
   // Check if user is logged in
   if (!user) {
     setAuthModal?.(true);
     setAuthType?.('login');
-    sessionStorage.setItem('redirect', 'do-not-redirect');
-    return { valid: false };
+    sessionStorage.setItem('redirect', window.location.pathname);
+    return {
+      valid: false,
+      modal: false,
+      musicianProfile: null,
+      reason: 'unauthenticated',
+    };
   }
 
   // Get the profile to validate
@@ -41,10 +47,23 @@ export const validateMusicianUser = ({
 
   // Check if profile exists and is complete
   if (!p || p.isComplete !== true) {
-    return { valid: false };
+    if (!p) {
+      return {
+        valid: false,
+        modal: true,
+        musicianProfile: null,
+        reason: 'no-profile',
+      };
+    }
+    return {
+      valid: false,
+      modal: true,
+      musicianProfile: null,
+      reason: 'incomplete-profile',
+    };
   }
 
-  return { valid: true, musicianProfile: p };
+  return { valid: true, musicianProfile: p, modal: false, reason: 'valid' };
 };
 
 

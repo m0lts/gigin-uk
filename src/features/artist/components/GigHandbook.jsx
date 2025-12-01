@@ -17,6 +17,9 @@ import { openInNewTab } from '../../../services/utils/misc';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { logGigCancellation, revertGigAfterCancellation } from '@services/api/gigs';
 import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
+import { getArtistProfileMembers } from '@services/client-side/artists';
+import { sanitizeArtistPermissions } from '@services/utils/permissions';
+import { toast } from 'sonner';
 
 
 export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) => {
@@ -30,6 +33,9 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
   const [showConfirmation, setShowConfirmation] = useState(false);
     const mapContainerRef = useRef(null);
 
+    const [artistProfilePerms, setArtistProfilePerms] = useState(null);
+    const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
+
     useMapbox({
         containerRef: mapContainerRef,
         coordinates: gigForHandbook?.coordinates,
@@ -37,6 +43,63 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
         addMarker: true,
         reinitKey: showConfirmation ? 'confirming' : 'active',
       });
+
+    useEffect(() => {
+        let cancelled = false;
+        const run = async () => {
+            if (!user?.uid || !musicianId) {
+                if (!cancelled) setArtistProfilePerms(null);
+                return;
+            }
+
+            const isArtistProfile =
+                Array.isArray(user?.artistProfiles) &&
+                user.artistProfiles.some(
+                    (p) => (p.id || p.profileId) === musicianId
+                );
+
+            if (!isArtistProfile) {
+                if (!cancelled) setArtistProfilePerms(null);
+                return;
+            }
+
+            try {
+                setLoadingArtistPerms(true);
+                const members = await getArtistProfileMembers(musicianId);
+                if (cancelled) return;
+                const me = members.find(
+                    (m) => m.id === user.uid && (m.status || 'active') === 'active'
+                );
+                const perms = sanitizeArtistPermissions(me?.permissions || {});
+                setArtistProfilePerms(perms);
+            } catch (e) {
+                console.error(
+                    'Failed to load artist profile permissions for gig cancellation:',
+                    e
+                );
+                if (!cancelled) setArtistProfilePerms(null);
+            } finally {
+                if (!cancelled) setLoadingArtistPerms(false);
+            }
+        };
+
+        run();
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.uid, user?.artistProfiles, musicianId]);
+
+    const canCancelGigForProfile = (() => {
+        if (!musicianId) return true;
+        const isArtistProfile =
+            Array.isArray(user?.artistProfiles) &&
+            user.artistProfiles.some(
+                (p) => (p.id || p.profileId) === musicianId
+            );
+        if (!isArtistProfile) return true;
+        if (!artistProfilePerms) return true; // fallback: don't block if we couldn't load perms
+        return !!artistProfilePerms['gigs.book'];
+    })();
 
     const handleModalClick = (e) => {
         if (loading) return;
@@ -90,6 +153,10 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
     };
 
     const handleGigCancelation = () => {
+        if (!canCancelGigForProfile) {
+            toast.error('You do not have permission to cancel gigs for this artist profile.');
+            return;
+        }
         setShowConfirmation(true);
     };
 
@@ -112,6 +179,10 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
     }
     
     const handleConfirmCancel = async () => {
+        if (!canCancelGigForProfile) {
+            toast.error('You do not have permission to cancel gigs for this artist profile.');
+            return;
+        }
         setLoading(true);
         try {
             const taskNames = [
@@ -262,9 +333,11 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
                         <button className='btn primary' onClick={() => setShowPromoteModal(true)}>
                             <PeopleGroupIcon /> Promote
                         </button>
-                        <button className='btn danger' onClick={() => handleGigCancelation()}>
-                            Cancel Gig
-                        </button>
+                        {canCancelGigForProfile && (
+                            <button className='btn danger' onClick={() => handleGigCancelation()}>
+                                Cancel Gig
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className='body'>

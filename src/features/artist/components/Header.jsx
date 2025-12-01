@@ -140,8 +140,8 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                     </Link>
                                 )}
                             </div>
-                            <div className={`right-block ${user.artistProfiles && user.artistProfiles.length > 0 ? '' : 'empty'}`}>
-                                {user.artistProfiles && user.artistProfiles.length > 0 && (
+                            <div className={`right-block ${user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? '' : 'empty'}`}>
+                                {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
                                     <>
                                         <Link className={`link ${location.pathname === '/artist-profile' ? 'disabled' : ''}`} to={'/artist-profile'}>
                                             Profile
@@ -173,6 +173,13 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                         <Link className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} to={'/artist-profile/finances'}>
                                             Finances
                                         </Link>
+                                    </>
+                                ) : location.pathname !== '/artist-profile' && (
+                                    <>
+                                        <button className='btn artist-profile' onClick={() => navigate('/artist-profile')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '1rem'}}>
+                                            <GuitarsIcon />
+                                            Create Artist Profile
+                                        </button>
                                     </>
                                 )}
                                 <button

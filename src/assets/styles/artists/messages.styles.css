@@ -358,6 +358,13 @@
     color: var(--gn-red);
 }
 
+.message-page .status.past {
+    border:1px solid var(--gn-grey-400);
+    background-color: var(--gn-grey-250);
+    color: var(--gn-grey-700);
+    text-transform: capitalize;
+}
+
 .message-page .message.sent {
     margin-left: auto;
     background-color: var(--gn-grey-300);

@@ -27,3 +27,15 @@ export function removeArtistMember({ artistProfileId, memberId }) {
 export function acceptArtistInvite({ inviteId }) {
   return post('/artists/acceptArtistInvite', { body: { inviteId } });
 }
+
+export function updateArtistProfile({ artistProfileId, updates }) {
+  return post('/artists/updateArtistProfile', { body: { artistProfileId, updates } });
+}
+
+export function updateArtistMemberPermissions({ artistProfileId, memberId, permissionsInput }) {
+  return post('/artists/updateArtistMemberPermissions', { body: { artistProfileId, memberId, permissionsInput } });
+}
+
+export function createVenueRequest(requestData) {
+  return post('/venues/createVenueRequest', { body: requestData });
+}

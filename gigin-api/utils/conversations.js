@@ -1,18 +1,33 @@
 import { db, admin } from "../config/admin.js";
 
-export async function addUserToVenueConversations(venueId, uid) {
+/**
+ * Add a user to all existing conversations for a given account (venue or artist).
+ *
+ * @param {"venue"|"artist"} accountType - Type of account.
+ * @param {string} accountId - Venue ID or artistProfile ID that appears in `participants`.
+ * @param {string} uid - User UID to add.
+ */
+export async function addUserToAccountConversations(accountType, accountId, uid) {
+  if (!accountType || !accountId || !uid) {
+    throw new Error("addUserToAccountConversations: accountType, accountId, and uid are required");
+  }
+
   const userSnap = await db.doc(`users/${uid}`).get();
   const user = userSnap.exists ? (userSnap.data() || {}) : {};
+
+  const role = accountType === "venue" ? "venue" : "musician";
 
   const entry = {
     accountId: uid,
     accountName: user.name ?? null,
-    role: "venue",
-    participantId: venueId,
+    role,
+    participantId: accountId,
     accountImg: user.picture || null,
   };
 
-  const convosRef = db.collection("conversations").where("participants", "array-contains", venueId);
+  const convosRef = db
+    .collection("conversations")
+    .where("participants", "array-contains", accountId);
 
   let updatedCount = 0;
   let lastDoc = null;
@@ -33,7 +48,11 @@ export async function addUserToVenueConversations(venueId, uid) {
       const current = Array.isArray(data.accountNames) ? data.accountNames : [];
 
       const alreadyPresent = current.some(
-        (a) => a && a.accountId === uid && a.role === "venue" && a.participantId === venueId
+        (a) =>
+          a &&
+          a.accountId === uid &&
+          a.role === role &&
+          a.participantId === accountId
       );
       if (alreadyPresent) continue;
 
@@ -59,4 +78,14 @@ export async function addUserToVenueConversations(venueId, uid) {
   }
 
   return { updated: updatedCount };
+}
+
+// Backwards-compatible wrapper for existing venue code.
+export async function addUserToVenueConversations(venueId, uid) {
+  return addUserToAccountConversations("venue", venueId, uid);
+}
+
+// New helper for artist profiles.
+export async function addUserToArtistConversations(artistProfileId, uid) {
+  return addUserToAccountConversations("artist", artistProfileId, uid);
 }

@@ -19,6 +19,7 @@ import { updateConversationDocument } from '@services/api/conversations';
 import { openInNewTab } from '@services/utils/misc';
 import { useArtistDashboard } from '../../../../context/ArtistDashboardContext';
 import { MailboxFullIconSolid } from '../../../shared/ui/extras/Icons';
+import { getGigById } from '@services/client-side/gigs';
 
 export const ArtistProfileMessages = () => {
   const { user } = useAuth();
@@ -88,6 +89,28 @@ export const ArtistProfileMessages = () => {
     conversations,
     paramsConversationId,
   ]);
+
+  // Load gig data whenever the active conversation changes
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!activeConversation?.gigId) {
+        if (!cancelled) setGigData(undefined);
+        return;
+      }
+      try {
+        const gig = await getGigById(activeConversation.gigId);
+        if (!cancelled) setGigData(gig || undefined);
+      } catch (err) {
+        console.error('Failed to load gig for conversation:', err);
+        if (!cancelled) setGigData(undefined);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConversation]);
 
   useEffect(() => {
     if (!user || !activeConversation) return;
@@ -258,15 +281,12 @@ export const ArtistProfileMessages = () => {
                     </div>
                   </div>
                   {(() => {
-                    const isBand = activeConversation.bandConversation;
-                    const bandAccount = isBand
-                      ? activeConversation.accountNames.find(
-                          (account) => account.role === 'band'
-                        )
-                      : null;
-                    const musicianAccount =
+                    // Artist profiles now cover both bands and solo musicians.
+                    // Use the first musician/band participant as the artist side id.
+                    const artistAccount =
                       activeConversation.accountNames.find(
-                        (account) => account.role === 'musician'
+                        (account) =>
+                          account.role === 'musician' || account.role === 'band'
                       );
 
                     return (
@@ -274,11 +294,7 @@ export const ArtistProfileMessages = () => {
                         activeConversation={activeConversation}
                         conversationId={activeConversation.id}
                         user={user}
-                        musicianProfileId={
-                          isBand
-                            ? bandAccount?.participantId
-                            : musicianAccount?.participantId
-                        }
+                        musicianProfileId={artistAccount?.participantId}
                         gigId={activeConversation.gigId}
                         gigData={gigData}
                         setGigData={setGigData}
