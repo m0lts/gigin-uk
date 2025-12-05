@@ -97,10 +97,11 @@ export const Account = () => {
     const [stripeBalance, setStripeBalance] = useState(null);
     const [loadingStripeBalance, setLoadingStripeBalance] = useState(false);
     const [payingOut, setPayingOut] = useState(false);
-    const useEmulator = import.meta.env.VITE_USE_EMULATOR === 'true';
-    const stripeAccountUrl = useEmulator
-        ? import.meta.env.VITE_STRIPE_ACCOUNT_URL_EMULATOR
-        : import.meta.env.VITE_STRIPE_ACCOUNT_URL;
+    // const useEmulator = import.meta.env.VITE_USE_EMULATOR === 'true';
+    // const stripeAccountUrl = useEmulator
+    //     ? import.meta.env.VITE_STRIPE_ACCOUNT_URL_EMULATOR
+    //     : import.meta.env.VITE_STRIPE_ACCOUNT_URL;
+    const stripeAccountUrl = import.meta.env.VITE_STRIPE_ACCOUNT_URL;
     const payoutsRef = useRef(null);
 
     const [showPayoutHelp, setShowPayoutHelp] = useState(false);

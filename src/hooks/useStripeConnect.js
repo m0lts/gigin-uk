@@ -3,10 +3,11 @@ import { loadConnectAndInitialize } from '@stripe/connect-js';
 
 export const useStripeConnect = (connectedAccountId) => {
   const [stripeConnectInstance, setStripeConnectInstance] = useState();
-  const useEmulator = import.meta.env.VITE_USE_EMULATOR === 'true';
-  const accountSessionUrl = useEmulator
-      ? import.meta.env.VITE_STRIPE_ACCOUNT_SESSION_URL_EMULATOR
-      : import.meta.env.VITE_STRIPE_ACCOUNT_SESSION_URL;
+  // const useEmulator = import.meta.env.VITE_USE_EMULATOR === 'true';
+  // const accountSessionUrl = useEmulator
+  //     ? import.meta.env.VITE_STRIPE_ACCOUNT_SESSION_URL_EMULATOR
+  //     : import.meta.env.VITE_STRIPE_ACCOUNT_SESSION_URL;
+  const accountSessionUrl = import.meta.env.VITE_STRIPE_ACCOUNT_SESSION_URL;
 
   useEffect(() => {
     if (!connectedAccountId) {
