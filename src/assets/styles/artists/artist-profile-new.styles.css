@@ -1,0 +1,4463 @@
+@import '../breakpoints.css';
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Artist Profile Container */
+.artist-profile-container {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.artist-profile-container.repositioning-mode {
+  cursor: grab;
+}
+
+.artist-profile-container.repositioning-mode .artist-profile-content {
+  pointer-events: none;
+}
+
+.artist-profile-container.repositioning-mode .artist-profile-state-box,
+.artist-profile-container.repositioning-mode .exit-button {
+  pointer-events: auto;
+}
+
+/* Background Layers */
+.artist-profile-background-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.artist-profile-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  /* background-position is set inline to allow dynamic positioning */
+  background-repeat: no-repeat;
+  opacity: 1;
+  transition: opacity 400ms ease;
+}
+
+.artist-profile-background.image-layer {
+  z-index: 1;
+}
+
+.artist-profile-background.image-layer.repositioning {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.artist-profile-background.image-layer.dragging {
+  cursor: grabbing !important;
+}
+
+.artist-profile-background.image-layer.fade-out {
+  opacity: 0;
+}
+
+.artist-profile-background.placeholder-layer {
+  z-index: 2;
+  background-color: var(--gn-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.artist-profile-background.placeholder-layer.fade-in {
+  opacity: 1;
+}
+
+.artist-profile-background-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px dashed var(--gn-grey-300);
+  color: var(--gn-grey-500);
+}
+
+.artist-profile-background-placeholder .icon {
+  font-size: 3rem;
+  color: var(--gn-grey-500);
+}
+
+.artist-profile-background.brightness-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+/* Content Overlay */
+.artist-profile-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Constant Elements - Always Visible */
+.artist-profile-constants {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.artist-profile-constants .artist-name {
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+
+.artist-profile-constants.creation-transition .artist-name {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+/* Exit Button - Top Right */
+.exit-button {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  z-index: 10;
+  background: var(--gn-white);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.exit-button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Artist Name - Bottom Left */
+.artist-name {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 10;
+}
+
+.artist-name h1 {
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--gn-white);
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+.artist-name h1 .orange-dot {
+  color: var(--gn-orange);
+}
+
+/* State Box - Right Side, 30vw */
+.artist-profile-state-box {
+  position: fixed;
+  bottom:0;
+  right: 0;
+  width: 35vw;
+  max-height: 90vh;
+  min-width: 400px;
+  max-width: 600px;
+  height: fit-content;
+  overflow-y: auto;
+  padding: 2rem;
+  z-index: 10;
+  background: transparent;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+.artist-profile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(--gn-white);
+  height:100%;
+  border-radius: 1rem;
+}
+
+.artist-profile-state-box.gigs-view {
+  min-height: calc(95vh - 1rem);
+  height:100%;
+}
+
+.artist-profile-state-box::-webkit-scrollbar {
+  display: none;
+}
+
+.artist-profile-state-box::-ms-overflow-style {
+  display: none;
+}
+
+/* Profile State Content */
+.profile-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  transition: gap 0.3s ease;
+}
+
+.profile-state-content.creating-transition {
+  gap: 0.5rem;
+}
+
+.profile-sections-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  transition: opacity 400ms ease, max-height 350ms ease, transform 400ms ease;
+  max-height: 5000px;
+}
+
+.profile-sections-stack.fade-out {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Common Sub-Component Box Styling */
+.creation-box-container {
+  margin-top: 1rem;
+}
+
+.bio-card-container,
+.creation-box-container,
+.additional-info-card-container {
+  background: var(--gn-white);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+              margin 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.3s ease,
+              color 0.3s ease;
+}
+
+.bio-card-container,
+.videos-tracks-card-container,
+.additional-info-card-container {
+  opacity: 0;
+  max-height: 0;
+  padding: 0;
+  overflow: hidden;
+  transform: translateY(-12px);
+  pointer-events: none;
+  transition: opacity 350ms ease, max-height 350ms ease, transform 350ms ease, padding 350ms ease;
+}
+
+.bio-card-container,
+.additional-info-card-container {
+  margin-bottom: 0.5rem;
+}
+
+.bio-card-container.is-visible,
+.videos-tracks-card-container.is-visible,
+.additional-info-card-container.is-visible {
+  opacity: 1;
+  max-height: 2500px;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.bio-card-container.is-visible,
+.additional-info-card-container.is-visible {
+  padding: 1rem;
+}
+
+.artist-profile-gigs-card {
+  height: 100%;
+  background: var(--gn-white);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden; /* Prevent the card itself from scrolling */
+}
+
+.artist-profile-gigs-card .head.gigs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap:0.5rem;
+}
+
+.artist-profile-gigs-card .filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.artist-profile-gigs-card .head.gigs .title-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.artist-profile-gigs-card .sub-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs .message-page,
+.artist-profile-gigs-card .message-page {
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  display: block; /* Override global grid layout for profile messages */
+}
+
+.artist-profile-gigs-card .body.gigs .message-page .column.conversations,
+.artist-profile-gigs-card .message-page .column.conversations {
+  width: 100%;
+}
+
+.artist-profile-gigs-card .body.gigs .message-page .column.conversations .conversations-list,
+.artist-profile-gigs-card .message-page .column.conversations .conversations-list {
+  width: 100%;
+  align-items: stretch;
+}
+
+.artist-profile-gigs-card .body.gigs .message-page .column.message-thread,
+.artist-profile-gigs-card .message-page .column.message-thread {
+  width: 100%;
+  max-width: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.artist-profile-gigs-card .body.gigs .message-page .column.message-thread .messages,
+.artist-profile-gigs-card .message-page .column.message-thread .messages {
+  padding-top: 0.5rem;
+}
+
+/* Artist Profile - Finances */
+.artist-profile-gigs-card .head.finances {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.artist-profile-gigs-card .head.finances .title-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.artist-profile-gigs-card .head.finances .finances-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: var(--gn-grey-300);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box .icon {
+  font-size: 1rem;
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box span {
+  font-size: 0.85rem;
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.ok {
+  background-color: var(--gn-offset-green);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.ok .icon,
+.artist-profile-gigs-card .head.finances .account-status .status-box.ok span {
+  color: var(--gn-green);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.warn {
+  background-color: rgba(255, 166, 0, 0.075);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.warn .icon,
+.artist-profile-gigs-card .head.finances .account-status .status-box.warn span {
+  color: orange;
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.urgent {
+  background-color: var(--gn-offset-red);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.urgent .icon,
+.artist-profile-gigs-card .head.finances .account-status .status-box.urgent span {
+  color: var(--gn-red);
+}
+
+.artist-profile-gigs-card .head.finances .account-status .status-box.clickable {
+  cursor: pointer;
+}
+
+.artist-profile-gigs-card .body.gigs .top-section.finances {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-card {
+  flex: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background-color: var(--gn-grey-100);
+}
+
+.artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--gn-off-black);
+  color: var(--gn-white);
+}
+
+.artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-text h5 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--gn-grey-700);
+}
+
+.artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-text h2,
+.artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-text h3 {
+  margin: 0;
+}
+
+.artist-profile-gigs-card .body.gigs .top-section.finances .venue-expenditure-container {
+  min-width: 220px;
+  flex: 1;
+}
+
+.artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-card.other {
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+/* Slightly smaller amount text for artist earnings card */
+.artist-profile-gigs-card .body.gigs .top-section.finances .expenditure-card.other .expenditure-text h3 {
+  font-size: 1.25rem;
+}
+
+.artist-profile-gigs-card .body.gigs .artist-profile-finances-banner {
+  margin-bottom: 1rem;
+  padding: 1.5rem 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--gn-grey-100);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.artist-profile-gigs-card .body.gigs .artist-profile-finances-banner .icon {
+  align-self: flex-start;
+  font-size: 1.5rem;
+}
+
+.artist-profile-gigs-card .body.gigs .withdraw-funds-row {
+  margin-bottom: 1rem;
+}
+
+.artist-profile-gigs-card .body.gigs .information-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38% 38% auto;
+  gap: 2%;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.artist-profile-gigs-card .body.gigs .information-item {
+  background-color: var(--gn-grey-300);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s linear;
+}
+
+.artist-profile-gigs-card .body.gigs .information-item:hover {
+  background-color: var(--gn-grey-350);
+  box-shadow: 0 0 2px var(--gn-shadow);
+}
+
+.artist-profile-gigs-card .body.gigs .information-item .icon {
+  font-size: 2rem;
+}
+
+.artist-profile-gigs-card .body.gigs .information-item.actions {
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0;
+  cursor: auto;
+}
+
+.artist-profile-gigs-card .body.gigs .information-item.actions:hover {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.artist-profile-gigs-card .body.gigs .information-item.actions .btn {
+  width: 100%;
+}
+
+.artist-profile-gigs-card .body.gigs .artist-profile-finances-banner p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-payout-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .payout-percentage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box .icon {
+  font-size: 0.85rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box span {
+  font-size: 0.85rem;
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box.ok {
+  background-color: var(--gn-offset-green);
+  color: var(--gn-green);
+}
+
+.artist-profile-gigs-card .body.gigs .payout-recipients-section .member-item .status-box.warn {
+  background-color: rgba(255, 166, 0, 0.075);
+  color: orange;
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs .payout-recipients-section h3 {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs .payout-recipients-section .payout-percentage {
+  color: var(--gn-white);
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees {
+  margin-top: 0.5rem;
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees th,
+.artist-profile-gigs-card .body.gigs .tile.your-fees td {
+  padding: 0.5rem 0.25rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees tbody tr {
+  cursor: pointer;
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees tbody tr:hover {
+  background-color: var(--gn-grey-100);
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status.cleared {
+  color: var(--gn-green);
+  background-color: var(--gn-offset-green);
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status.in-dispute {
+  color: red;
+  background-color: var(--gn-offset-red);
+}
+
+.artist-profile-gigs-card .body.gigs .tile.your-fees .no-receipts .flex {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+/* Explicitly remove box-shadow from thread header in profile context */
+.artist-profile-gigs-card .message-page .column.message-thread .top-banner {
+  box-shadow: none !important;
+}
+
+/* Artist Profile Messages - Thread header */
+.artist-profile-gigs-card .message-page .column.message-thread .top-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 0.75rem 0;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--gn-grey-250);
+  background: transparent;
+}
+
+.artist-profile-gigs-card .message-page .column.message-thread .top-banner h3 {
+  margin: 0;
+}
+
+.artist-profile-gigs-card .message-page .column.message-thread .top-banner .btn.text {
+  padding: 0;
+}
+
+.artist-profile-gigs-card .message-page .column.message-thread .top-banner .buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Back button above thread header */
+.artist-profile-gigs-card .message-page .btn.tertiary {
+  align-self: flex-start;
+}
+
+@media (--bp-md) {
+  .artist-profile-gigs-card .message-page .column.message-thread .top-banner {
+    padding-right: 0.25rem;
+  }
+}
+
+/* Artist Profile Messages - Conversation items */
+.artist-profile-gigs-card .body.gigs .conversations-list {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  padding: 0.75rem 0.5rem;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: background-color 120ms linear, border-color 120ms linear;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation:hover,
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation.active {
+  background-color: var(--gn-grey-300);
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation-icon {
+  min-width: 50px;
+  min-height: 50px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--gn-off-black);
+  box-shadow: 0 0 10px var(--gn-grey-400);
+  overflow: hidden;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation-icon .participant-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation-title-text {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .last-message-preview {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gn-grey-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .conversation-date {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--gn-grey-600);
+  white-space: nowrap;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .notification-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artist-profile-gigs-card .body.gigs .conversations-list .notification-dot .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--gn-orange);
+}
+
+.artist-profile-gigs-card .body.gigs .no-messages-empty-state {
+  margin: auto 0;
+  padding:1.5rem 1rem;
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap:0.5rem;
+  text-align: center;
+}
+
+.artist-profile-gigs-card .body.gigs .no-messages-empty-state .icon {
+  font-size: 1.25rem;
+}
+
+.artist-profile-gigs-card .status-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background-color: var(--gn-grey-300);
+  padding: 3px;
+  border-radius: 0.5rem;
+}
+
+.artist-profile-gigs-card .status-buttons .btn {
+  background-color: transparent;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: var(--gn-grey-700);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.artist-profile-gigs-card .status-buttons .btn.active {
+  background-color: var(--gn-white);
+  color: var(--gn-black);
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.artist-profile-gigs-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0; /* Allow flex children to shrink */
+  overflow: hidden; /* Prevent content from scrolling */
+}
+
+.artist-profile-gigs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-shrink: 0; /* Prevent sections from shrinking */
+}
+
+.artist-profile-gigs-section.all-gigs {
+  flex: 1;
+  min-height: 0; /* Allow flex child to shrink */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent section from scrolling */
+}
+
+.artist-profile-gigs-section.invitations {
+  flex-shrink: 0; /* Keep invitations section at bottom, don't shrink */
+}
+
+.artist-profile-gigs-section .section-header {
+  margin-bottom: 0;
+}
+
+.next-gig-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--gn-grey-300);
+  border-radius: 0.85rem;
+  background: var(--gn-grey-200);
+}
+
+.next-gig-card .next-gig-primary .gig-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.next-gig-card .next-gig-primary .gig-venue,
+.next-gig-card .next-gig-primary .gig-date {
+  margin: 0.2rem 0;
+  color: var(--gn-grey-700);
+}
+
+.next-gig-card .next-gig-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.next-gig-card .status {
+  font-size: 0.85rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.next-gig-card .status.confirmed {
+  background-color: rgba(0, 239, 0, 0.1);
+  color: rgb(0, 219, 0);
+}
+
+.artist-profile-gigs-section.invitations .invites-row {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.artist-profile-gigs-section.invitations .invites-row::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.artist-profile-gigs-section.invitations .invite-card {
+  min-width: 200px;
+  border: 1px solid var(--gn-grey-300);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  background: var(--gn-white);
+  cursor: pointer;
+  margin-top: 0.1rem;
+  transition: transform 0.2s ease;
+}
+
+.artist-profile-gigs-section.invitations .invite-card:hover {
+  transform: translateY(-2px);
+}
+
+.artist-profile-gigs-section.invitations .invite-card .gig-name {
+  margin: 0;
+  font-weight: 600;
+}
+
+.artist-profile-gigs-section.invitations .invite-card .gig-venue,
+.artist-profile-gigs-section.invitations .invite-card .gig-date {
+  margin: 0.15rem 0;
+  color: var(--gn-grey-700);
+}
+
+.artist-profile-gigs-section.invitations .invite-card .invite-chip {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.4rem;
+  background: var(--gn-offset-orange);
+  color: var(--gn-orange);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.artist-profile-gigs-section.invitations .invites-empty {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px dashed var(--gn-grey-400);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+}
+
+.artist-profile-gigs-card .body.gigs {
+  width: 100%;
+  flex: 1;
+  min-height: 0; /* Allow flex child to shrink */
+  overflow-x: auto;
+  overflow-y: auto; /* Make only the table scrollable */
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.artist-profile-gigs-card .body.gigs::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.artist-profile-gigs-card .body.gigs table {
+  width: 100%;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  border-top: 1px solid var(--gn-grey-350);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.artist-profile-gigs-card .body.gigs table thead tr {
+  text-align: left;
+}
+
+.artist-profile-gigs-card .body.gigs table th {
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid var(--gn-grey-350);
+  font-weight: 400;
+  color: var(--gn-grey-700);
+}
+
+.artist-profile-gigs-card .body.gigs table td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--gn-grey-350);
+  font-size: 0.95rem;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs table tbody tr {
+  background-color: transparent;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.artist-profile-gigs-card .body.gigs table tbody tr:hover {
+  background-color: var(--gn-grey-300);
+}
+
+.artist-profile-gigs-card .body.gigs table .notification-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gn-orange);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.artist-profile-gigs-card .body.gigs table #date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.artist-profile-gigs-card .body.gigs table .centre {
+  text-align: center;
+}
+
+.artist-profile-gigs-card .body.gigs table .status {
+  font-size: 0.85rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* Reuse status pill styling for invitation cards */
+.artist-profile-gigs-section.invitations .status {
+  font-size: 0.85rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+  border-radius: 0.25rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.artist-profile-gigs-section.invitations .status.respond {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.confirmed {
+  background-color: rgba(0, 239, 0, 0.1);
+  color: rgb(0, 219, 0);
+}
+
+.artist-profile-gigs-card .body.gigs table .status.upcoming {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.closed {
+  background-color: rgba(255, 0, 0, 0.1);
+  color: red;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.pending {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.past {
+  background-color: rgba(128, 128, 128, 0.1);
+  color: gray;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.declined {
+  background-color: var(--gn-offset-red);
+  color: var(--gn-red);
+}
+
+.artist-profile-gigs-card .body.gigs table .status.withdrawn {
+  background-color: var(--gn-offset-red);
+  color: var(--gn-red);
+}
+
+.artist-profile-gigs-card .body.gigs table .status.not-applied {
+  background-color: rgba(128, 128, 128, 0.1);
+  color: gray;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.awaiting-venue-payment {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.respond {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.select-profile {
+  background-color: rgba(128, 128, 128, 0.1);
+  color: gray;
+}
+
+.artist-profile-gigs-card .body.gigs table .status.dispute-logged {
+  background-color: var(--gn-offset-red);
+  color: var(--gn-red);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell {
+  text-align: center;
+  vertical-align: middle;
+  position: relative;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon {
+  background-color: var(--gn-white);
+  border: 1px solid var(--gn-grey-350);
+  box-shadow: 0 0 4px var(--gn-shadow);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 5px;
+  transition: all 200ms linear;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon .icon {
+  font-size: 1rem;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon:focus {
+  outline-color: var(--gn-off-black);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon.active {
+  background-color: var(--gn-grey-350);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .btn.icon:hover {
+  background-color: var(--gn-grey-350);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 1rem;
+  background-color: var(--gn-white);
+  border: 1px solid var(--gn-grey-300);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  padding: 0.5rem 0;
+  min-width: 250px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 0.5rem;
+  width: 95%;
+  margin: 0 auto;
+  border-radius: 0.5rem;
+  font-weight: 400;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.15s ease;
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button:hover {
+  background-color: var(--gn-grey-300);
+}
+
+.artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button.danger {
+  color: var(--gn-red);
+}
+
+/* Portal dropdown - rendered outside table to avoid overflow clipping */
+.options-dropdown.portal-dropdown {
+  position: fixed !important;
+  background-color: var(--gn-white) !important;
+  border: 1px solid var(--gn-grey-300) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
+  padding: 0.5rem 0 !important;
+  min-width: 250px !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.options-dropdown.portal-dropdown button {
+  background: transparent !important;
+  border: none !important;
+  text-align: left !important;
+  padding: 0.5rem !important;
+  width: 95% !important;
+  margin: 0 auto !important;
+  border-radius: 0.5rem !important;
+  font-weight: 400 !important;
+  color: var(--gn-off-black) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: background-color 0.15s ease !important;
+  font-size: 0.9rem !important;
+}
+
+.options-dropdown.portal-dropdown button:hover {
+  background-color: var(--gn-grey-300) !important;
+}
+
+.options-dropdown.portal-dropdown button.danger {
+  color: var(--gn-red) !important;
+}
+
+.dark-mode .options-dropdown.portal-dropdown {
+  background-color: var(--gn-black) !important;
+  border-color: var(--gn-grey-700) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark-mode .options-dropdown.portal-dropdown button {
+  color: var(--gn-white) !important;
+}
+
+.dark-mode .options-dropdown.portal-dropdown button:hover {
+  background-color: var(--gn-grey-800) !important;
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .btn.icon {
+  background-color: var(--gn-black);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .btn.icon.active,
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .btn.icon:hover {
+  background-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown {
+  background-color: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table .options-cell .options-dropdown button:hover {
+  background-color: var(--gn-grey-800);
+}
+
+.artist-profile-gigs-empty {
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+}
+
+.dark-mode .artist-profile-gigs-card {
+  background: var(--gn-black);
+  color: var(--gn-white);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.dark-mode .artist-profile-gigs-card .status-buttons {
+  background-color: var(--gn-grey-800);
+}
+
+.dark-mode .artist-profile-gigs-card .status-buttons .btn {
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-gigs-card .status-buttons .btn.active {
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table th,
+.dark-mode .artist-profile-gigs-card .body.gigs table td {
+  color: var(--gn-white);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-gigs-card .body.gigs table tbody tr:hover {
+  background-color: var(--gn-grey-800);
+}
+
+.dark-mode .next-gig-card {
+  background: var(--gn-grey-900);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .next-gig-card .gig-venue,
+.dark-mode .next-gig-card .gig-date {
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-gigs-section.invitations .invite-card {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-750);
+}
+
+.dark-mode .artist-profile-gigs-section.invitations .invite-card .gig-venue,
+.dark-mode .artist-profile-gigs-section.invitations .invite-card .gig-date {
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-gigs-section.invitations .invites-empty {
+  border-color: var(--gn-grey-700);
+  color: var(--gn-grey-200);
+}
+
+.bio-card-container.is-hidden,
+.videos-tracks-card-container.is-hidden,
+.additional-info-card-container.is-hidden {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+}
+
+/* Dark Mode - Invert colors for containers */
+.dark-mode .bio-card-container,
+.dark-mode .creation-box-container,
+.dark-mode .dark-mode-toggle-container,
+.dark-mode .additional-info-card-container {
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .bio-card-container h3,
+.dark-mode .bio-card-container p,
+.dark-mode .creation-box-container h3,
+.dark-mode .creation-box-container p,
+.dark-mode .videos-section h3,
+.dark-mode .tracks-section h3,
+.dark-mode .section-header h3,
+.dark-mode .section-header h4 {
+  color: var(--gn-white);
+}
+
+.dark-mode .section-header .external-link.spotify {
+  color: var(--gn-spotify-green);
+}
+
+.dark-mode .section-header .external-link.soundcloud {
+  color: var(--gn-soundcloud-red);
+}
+
+.dark-mode .bio-content p,
+.dark-mode .creation-box-content p {
+  color: var(--gn-grey-300);
+}
+
+/* Dark mode for track items */
+.dark-mode .track-item {
+  background: transparent;
+}
+
+.dark-mode .track-info h4 {
+  color: var(--gn-white);
+}
+
+.dark-mode .track-info p {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .track-thumbnail-placeholder {
+  background: var(--gn-grey-800);
+}
+
+.dark-mode .track-thumbnail-placeholder svg {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .play-track {
+  color: var(--gn-white);
+}
+
+/* Dark mode for inactive card header */
+.dark-mode .videos-section.inactive .section-header,
+.dark-mode .tracks-section.inactive .section-header {
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode-toggle-container {
+  background: var(--gn-white);
+  border-radius: 0.5rem;
+  padding: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+              margin 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.3s ease;
+  width: fit-content;
+  display: inline-flex;
+  margin-left: auto;
+  align-self: flex-end;
+  margin-top: 0.5rem;
+}
+
+.bottom-buttons-container {
+  width:100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.edit-buttons-container {
+  width: fit-content;
+  display: inline-flex;
+  align-self: flex-end;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--gn-grey-350);
+  color: var(--gn-grey-700);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.edit-btn:hover {
+  color: var(--gn-black);
+}
+
+.edit-btn.active {
+  background: var(--gn-grey-400);
+  border-color: var(--gn-grey-400);
+}
+
+.component-edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  font-weight: 500;
+  color: var(--gn-black);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  border:none;
+  text-decoration: underline;
+}
+
+.component-edit-btn .icon {
+  font-size: 0.75rem;
+}
+
+.component-edit-btn:hover {
+  color: var(--gn-grey-600);
+}
+
+.dark-mode .component-edit-btn,
+.dark-mode .component-edit-btn:hover {
+  color: var(--gn-white);
+}
+
+.component-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem !important;
+  font-weight: 500;
+  color: var(--gn-black);
+  font-size: 0.875rem;
+}
+
+.edit-box {
+  opacity: 0;
+  max-height: 0;
+  padding: 0;
+  overflow: hidden;
+  transform: translateY(-12px);
+  pointer-events: none;
+  transition: opacity 350ms ease, max-height 350ms ease, transform 350ms ease, padding 350ms ease, margin-bottom 350ms ease;
+  margin-bottom: 0;
+}
+
+.edit-box.is-visible {
+  opacity: 1;
+  max-height: 2500px;
+  transform: translateY(0);
+  pointer-events: auto;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.edit-box.is-hidden {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.dark-mode .edit-btn {
+  color: var(--gn-grey-300);
+  background: var(--gn-black);
+  border-color: var(--gn-black);
+}
+
+.dark-mode .edit-btn:hover {
+  color: var(--gn-white);
+  background-color: var(--gn-black);
+  border-color: var(--gn-grey-800);
+}
+
+.dark-mode .edit-btn.active {
+  background: var(--gn-grey-700);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .edit-box {
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+/* Additional Info Buttons Container */
+.additional-info-buttons-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.additional-info-btn {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.additional-info-btn:hover {
+  background-color: var(--gn-grey-300);
+  border-color: transparent;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.dark-mode .additional-info-btn {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-btn:hover {
+  border-color: var(--gn-white);
+}
+
+/* Additional Info Section */
+.additional-info-section {
+  width: 100%;
+}
+
+.additional-info-section .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.additional-info-section .section-header .title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.additional-info-section .section-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--gn-off-black);
+}
+
+.additional-info-section .close-section-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--gn-grey-600);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.additional-info-section .close-section-btn:hover {
+  color: var(--gn-black);
+}
+
+.additional-info-section .section-content {
+  color: var(--gn-grey-700);
+  line-height: 1.6;
+}
+
+.dark-mode .additional-info-section .section-header h3 {
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .close-section-btn {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .additional-info-section .close-section-btn:hover {
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .section-content {
+  color: var(--gn-grey-300);
+}
+
+.dark-mode .additional-info-section .section-content h6 {
+  color: var(--gn-white);
+}
+
+/* About Section Field Styling */
+.about-field-section {
+  margin-bottom: 0.75rem;
+}
+
+.additional-info-section .about-field-title.label {
+  text-transform: uppercase;
+  color: var(--gn-grey-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.dark-mode .additional-info-section .about-field-title.label {
+  color: var(--gn-white);
+}
+
+/* Selection Cards for Additional Info Section (About) */
+
+.additional-info-section .selection-container .label,
+.additional-info-section .selection-container h6.label {
+  text-transform: uppercase;
+  color: var(--gn-grey-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.additional-info-section .selections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.additional-info-section .selection-card {
+  border: 1px solid var(--gn-grey-400);
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  transition: outline-color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+  background: var(--gn-white);
+}
+
+.additional-info-section .selection-card:hover {
+  border-color: var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.additional-info-section .selection-card.selected {
+  border-color: var(--gn-off-black);
+  outline-color: var(--gn-off-black);
+  background: var(--gn-off-black);
+  color: var(--gn-white);
+}
+
+.additional-info-section .selection-card h4.text {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.additional-info-section .input-container {
+  margin-top: 1.5rem;
+}
+
+.additional-info-section .input-container .label {
+  text-transform: uppercase;
+  color: var(--gn-grey-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+  display: block;
+}
+
+.additional-info-section .input-container .input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--gn-grey-400);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background: var(--gn-white);
+  color: var(--gn-off-black);
+  transition: border-color 200ms ease;
+}
+
+.additional-info-section .input-container .input:focus {
+  outline: none;
+  border-color: var(--gn-off-black);
+}
+
+.additional-info-section .input-container select.input {
+  cursor: pointer;
+}
+
+/* Dark mode for selection cards in additional info section */
+.dark-mode .additional-info-section .selection-container .label,
+.dark-mode .additional-info-section .selection-container h6.label {
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .selection-card {
+  border-color: var(--gn-grey-700);
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .selection-card:hover {
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .additional-info-section .selection-card.selected {
+  border-color: var(--gn-white);
+  outline-color: var(--gn-white);
+  background: var(--gn-white);
+  color: var(--gn-black);
+}
+
+.dark-mode .additional-info-section .input-container .label {
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .input-container .input {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .input-container .input:focus {
+  border-color: var(--gn-white);
+}
+
+/* Members Section Styling */
+.add-member-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: var(--gn-grey-100);
+  border-radius: 0.5rem;
+  border: 1px solid var(--gn-grey-350);
+}
+
+.member-name {
+  font-weight: 500;
+  color: var(--gn-off-black);
+  flex: 1;
+}
+
+.member-role {
+  font-size: 0.85rem;
+  color: var(--gn-grey-600);
+  font-weight: 400;
+}
+
+.member-status {
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 0.5rem;
+}
+
+.member-status.pending {
+  background-color: rgba(255, 166, 0, 0.1);
+  color: orange;
+  border: 1px solid orange;
+}
+
+.member-item.pending {
+  opacity: 0.8;
+}
+
+.member-item.pending .member-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.member-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.edit-permissions-btn,
+.remove-member-btn {
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--gn-grey-600);
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.edit-permissions-btn:hover {
+  color: var(--gn-off-black);
+}
+
+.remove-member-btn:hover {
+  color: var(--gn-red, #dc2626);
+}
+
+.dark-mode .member-item {
+  background: var(--gn-grey-900);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .member-name {
+  color: var(--gn-white);
+}
+
+.dark-mode .member-role {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .edit-permissions-btn,
+.dark-mode .remove-member-btn {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .edit-permissions-btn:hover {
+  color: var(--gn-white);
+}
+
+.dark-mode .remove-member-btn:hover {
+  color: var(--gn-red, #ef4444);
+}
+
+/* Members Permissions Section (shared with creation) */
+.additional-info-section .permissions-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.additional-info-section .permission-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s ease;
+}
+
+.additional-info-section .permission-checkbox input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--gn-black);
+  cursor: pointer;
+}
+
+.additional-info-section .permission-checkbox span {
+  font-size: 0.9rem;
+  color: var(--gn-off-black);
+  user-select: none;
+}
+
+.additional-info-section .permission-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dark-mode .additional-info-section .permission-checkbox:hover {
+  background-color: var(--gn-grey-800);
+}
+
+.dark-mode .additional-info-section .permission-checkbox input[type="checkbox"] {
+  accent-color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .permission-checkbox span {
+  color: var(--gn-white);
+}
+
+/* Members Step Container in Additional Info Section */
+.additional-info-section .members-step-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.additional-info-section .members-email-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.additional-info-section .section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+  margin-bottom: 0.5rem;
+}
+
+.additional-info-section .email-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.additional-info-section .email-input-container .input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--gn-grey-400);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background: var(--gn-white);
+  color: var(--gn-off-black);
+  transition: border-color 200ms ease;
+}
+
+.additional-info-section .email-input-container .input:focus {
+  outline: none;
+  border-color: var(--gn-off-black);
+}
+
+.additional-info-section .send-button {
+  white-space: nowrap;
+  min-width: auto;
+}
+
+.dark-mode .additional-info-section .section-title {
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .email-input-container .input {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.dark-mode .additional-info-section .email-input-container .input:focus {
+  border-color: var(--gn-white);
+}
+
+.videos-tracks-card-container {
+  transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+              margin 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Common Header Styling - All sub-component headers */
+.bio-header,
+.section-header,
+.creation-box-header,
+.dark-mode-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-header .title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-header .external-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.section-header .external-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 0.4rem;
+  padding: 0.15rem 0.25rem;
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.section-header .external-link .icon {
+  font-size: 1rem;
+}
+
+.section-header .external-link:hover {
+  opacity: 0.8;
+}
+
+.section-header .external-link.spotify {
+  color: var(--gn-spotify-green);
+  background-color: var(--gn-spotify-green-offset);
+  border: 1px solid var(--gn-spotify-green);
+}
+
+.section-header .external-link.soundcloud {
+  color: var(--gn-soundcloud-red);
+  background-color: var(--gn-soundcloud-red-offset);
+  border: 1px solid var(--gn-soundcloud-red);
+}
+
+.section-header .external-link.instagram {
+  color: var(--gn-instagram-orange);
+  background-color: var(--gn-instagram-orange-offset);
+  border: 1px solid var(--gn-instagram-orange);
+}
+
+.section-header .external-link.website {
+  color: var(--gn-off-black);
+  background-color: var(--gn-grey-250);
+  border: 1px solid var(--gn-off-black);
+}
+
+.dark-mode .section-header .external-link.website {
+  background-color: var(--gn-grey-800);
+  border-color: var(--gn-grey-300);
+  color: var(--gn-white);
+}
+
+.section-header .external-link.youtube {
+  color: var(--gn-youtube-red);
+  background-color: var(--gn-youtube-red-offset);
+  border: 1px solid var(--gn-youtube-red);
+}
+
+.bio-header h3,
+.section-header h3,
+.creation-box-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.bio-content p,
+.creation-box-content p {
+  color: var(--gn-grey-700);
+  line-height: 1.4;
+  margin: 0;
+}
+
+
+/* Videos/Tracks Card - WeTransfer-style card stack animation */
+.videos-tracks-card-container {
+  position: relative;
+  perspective: 1000px;
+}
+
+.videos-tracks-inner {
+  position: relative;
+  width: 100%;
+  margin-top: 2rem;
+}
+
+.videos-section,
+.tracks-section {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: var(--gn-white);
+  border-radius: 1rem;
+  padding: 1rem;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              opacity 0.5s ease,
+              z-index 0s linear 0.25s,
+              background 0.3s ease,
+              color 0.3s ease;
+  will-change: transform, opacity;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  backface-visibility: hidden;
+}
+
+/* Dark mode for video/track sections */
+.dark-mode .videos-section,
+.dark-mode .tracks-section {
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+/* Active card - front position */
+.videos-section.active,
+.tracks-section.active {
+  z-index: 2;
+  top:2rem;
+  transform: translateY(0) scale(1) translateZ(0);
+  opacity: 1;
+  pointer-events: auto;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              opacity 0.5s ease,
+              z-index 0s linear 0s;
+}
+
+/* Active card header should be normal */
+.videos-section.active .section-header,
+.tracks-section.active .section-header {
+  position: relative;
+  top: 0;
+}
+
+/* Inactive card - behind position */
+.videos-section.inactive,
+.tracks-section.inactive {
+  z-index: 1;
+  transform: translateY(30px) scale(0.96) translateZ(0);
+  opacity: 0.8;
+  border-radius: 0 0 1rem 1rem;
+  pointer-events: none;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+}
+
+/* Allow header clicks on inactive card - make it visible above active card */
+.videos-section.inactive .section-header,
+.tracks-section.inactive .section-header {
+  pointer-events: auto;
+  cursor: pointer;
+  position: absolute;
+  top: -60px;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--gn-white);
+  padding: 1.5rem;
+  border-radius: 1rem 1rem 0 0;
+  opacity: 1;
+  box-shadow: 0 -4px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
+
+/* Show Tracks text in header when inactive */
+.show-tracks-text {
+  margin-left: auto;
+  font-size: 0.875rem;
+  color: var(--gn-grey-700);
+  font-weight: 500;
+}
+
+.videos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.video-thumbnail {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--gn-grey-200);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.video-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gn-grey-500);
+  font-size: 0.875rem;
+}
+
+.play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-icon .icon {
+  font-size: 2rem;
+  color: var(--gn-white);
+}
+
+.tracks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.track-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0;
+}
+
+.track-thumbnail {
+  width: 4rem;
+  height: 4rem;
+  min-width: 4rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--gn-grey-200);
+}
+
+.track-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.track-thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gn-grey-250);
+  border-radius: 0.5rem;
+}
+
+.track-thumbnail-placeholder .icon {
+  font-size: 1.5rem;
+}
+
+.track-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.track-info h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--gn-black);
+}
+
+.track-info p {
+  font-size: 0.875rem;
+  color: var(--gn-grey-600);
+  margin: 0;
+  font-weight: 400;
+}
+
+.play-track {
+  background: transparent;
+  color: var(--gn-black);
+  border: none;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+}
+
+.play-track:hover {
+  opacity: 0.7;
+  background-color: transparent !important;
+}
+
+/* Dark Mode Toggle */
+.dark-mode-toggle-content {
+  display: flex;
+  max-width: fit-content;
+  padding:0;
+}
+
+.toggle-mode-btn {
+  padding: 0.5rem 1rem;
+  background: var(--gn-white);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-mode-btn:first-of-type {
+  border-radius: 0.5rem 0 0 0.5rem;
+}
+
+.toggle-mode-btn:last-of-type {
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.toggle-mode-btn:hover .icon {
+  color: var(--gn-grey-600);
+}
+
+.toggle-mode-btn .icon {
+  color: var(--gn-grey-500);
+  transition: color 200ms ease;
+}
+
+.toggle-mode-btn.active .icon {
+  color: var(--gn-black);
+}
+
+/* Dark mode for toggle buttons */
+.dark-mode .toggle-mode-btn {
+  background: transparent;
+}
+
+.dark-mode .toggle-mode-btn:hover .icon {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .toggle-mode-btn .icon {
+  color: var(--gn-grey-600);
+  transition: color 200ms ease;
+}
+
+.dark-mode .toggle-mode-btn.active .icon {
+  color: var(--gn-white);
+}
+
+/* Profile Creation Box */
+.artist-profile-creation-box {
+  height: fit-content;
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: height;
+  overflow: hidden;
+}
+
+.artist-profile-creation-box .creation-box-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .creation-box-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.artist-profile-creation-box .creation-step-question,
+.tracks-section .creation-step-question,
+.videos-section .creation-step-question {
+  margin-bottom: 0.5rem;
+}
+
+.artist-profile-creation-box .creation-progress-dots {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+  padding-top: 0.5rem;
+}
+
+.artist-profile-creation-box .progress-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gn-grey-500);
+  opacity: 0.35;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.artist-profile-creation-box .progress-dot.filled {
+  opacity: 1;
+  background: var(--gn-black);
+}
+
+.artist-profile-creation-box .creation-box-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.artist-profile-creation-box .creation-box-actions.single {
+  flex-direction: column;
+}
+
+.artist-profile-creation-box .creation-box-actions.hidden {
+  display: none;
+}
+
+.artist-profile-creation-box .creation-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding-left: 0;
+  background: transparent;
+  transition: color 200ms ease;
+}
+
+.dark-mode .artist-profile-creation-box .creation-back-btn {
+  color: var(--gn-white);
+}
+
+.artist-profile-creation-box .creation-back-btn:hover {
+  color: var(--gn-grey-600);
+  background-color: transparent;
+}
+
+.dark-mode .artist-profile-creation-box .creation-back-btn:hover {
+  color: var(--gn-grey-400);
+  background-color: transparent;
+}
+
+.artist-profile-creation-box .creation-back-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.artist-profile-creation-box .creation-back-btn:disabled:hover {
+  color: var(--gn-grey-400);
+}
+
+.artist-profile-creation-box .creation-step-panels {
+  position: relative;
+  overflow: hidden;
+  height:fit-content;
+  transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.artist-profile-creation-box .creation-step-panel {
+  width: 100%;
+}
+
+.artist-profile-creation-box .creation-step-panel.exit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.artist-profile-creation-box .creation-step-panel.enter.animating {
+  position: relative;
+}
+
+.artist-profile-creation-box .creation-step-panel.enter.forward.animating {
+  animation: creation-step-slide-in-right 320ms ease forwards;
+}
+
+.artist-profile-creation-box .creation-step-panel.exit.forward {
+  animation: creation-step-slide-out-left 320ms ease forwards;
+}
+
+.artist-profile-creation-box .creation-step-panel.enter.backward.animating {
+  animation: creation-step-slide-in-left 320ms ease forwards;
+}
+
+.artist-profile-creation-box .creation-step-panel.exit.backward {
+  animation: creation-step-slide-out-right 320ms ease forwards;
+}
+
+.artist-profile-creation-box .creation-step-panel.enter:not(.animating) {
+  animation: none;
+}
+
+.artist-profile-creation-box .creation-hero-upload,
+.tracks-section .creation-hero-upload,
+.videos-section .creation-hero-upload {
+  width: 100%;
+  min-height: 220px;
+  border: 1px solid var(--gn-grey-350);
+  background-color: var(--gn-grey-200);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: var(--gn-grey-800);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border 200ms ease, transform 200ms ease;
+  padding: 1rem;
+}
+
+.artist-profile-creation-box .creation-hero-upload .icon,
+.tracks-section .creation-hero-upload .icon,
+.videos-section .creation-hero-upload .icon {
+  font-size: 1.5rem;
+}
+
+.artist-profile-creation-box .creation-hero-upload .upload-icon,
+.tracks-section .creation-hero-upload .upload-icon,
+.videos-section .creation-hero-upload .upload-icon {
+  font-size: 1.8rem;
+  color: inherit;
+}
+
+.artist-profile-creation-box .creation-hero-upload:hover,
+.tracks-section .creation-hero-upload:hover,
+.videos-section .creation-hero-upload:hover {
+  border: 2px solid var(--gn-off-black);
+  transform: translateY(-2px);
+}
+
+.artist-profile-creation-box .creation-hero-upload.has-image,
+.tracks-section .creation-hero-upload.has-image,
+.videos-section .creation-hero-upload.has-image {
+  padding: 0;
+}
+
+.artist-profile-creation-box .creation-hero-upload.has-image img,
+.tracks-section .creation-hero-upload.has-image img,
+.videos-section .creation-hero-upload.has-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 1rem;
+}
+
+.artist-profile-creation-box .creation-hero-upload.track,
+.tracks-section .creation-hero-upload.track,
+.videos-section .creation-hero-upload.track {
+  min-height: 150px;
+}
+
+.artist-profile-creation-box .creation-hero-adjust {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .hero-image-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.artist-profile-creation-box .hero-edit-button {
+  width: 100%;
+  border: 1px solid var(--gn-grey-350);
+  outline: 1px solid transparent;
+  background-color: var(--gn-grey-200);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: var(--gn-grey-800);
+  font-weight: 500;
+  cursor: pointer;
+  outline-offset: -2px;
+  padding: 1rem;
+  transition: border 200ms ease, outline 200ms ease;
+}
+
+.artist-profile-creation-box .hero-edit-button:hover {
+  border: 1px solid var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-creation-box .hero-brightness-control {
+  border-radius: 1rem;
+  background: transparent;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .hero-upload-status {
+  width: 100%;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--gn-grey-600);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.artist-profile-creation-box .hero-upload-status .hero-upload-progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gn-grey-200);
+  overflow: hidden;
+}
+
+.artist-profile-creation-box .hero-upload-status .hero-upload-progress-bar .fill {
+  height: 100%;
+  background: var(--gn-orange);
+  transition: width 180ms ease;
+}
+
+.artist-profile-creation-box .hero-upload-status .success,
+.artist-profile-creation-box .hero-upload-status.complete {
+  color: var(--gn-green-600);
+}
+
+.artist-profile-creation-box .hero-upload-status .error {
+  color: var(--gn-red-500);
+}
+
+.artist-profile-creation-box .hero-upload-status .idle {
+  color: var(--gn-grey-500);
+}
+
+.dark-mode .artist-profile-creation-box .hero-upload-status {
+  color: var(--gn-grey-300);
+}
+
+.dark-mode .artist-profile-creation-box .hero-upload-status .hero-upload-progress-bar {
+  background: var(--gn-grey-800);
+}
+
+.dark-mode .artist-profile-creation-box .hero-upload-status .hero-upload-progress-bar .fill {
+  background: var(--gn-orange);
+}
+
+.artist-profile-creation-box .tracks-list,
+.tracks-section .tracks-list,
+.videos-section .tracks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .storage-usage,
+.tracks-section .storage-usage,
+.videos-section .storage-usage {
+  margin:1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.artist-profile-creation-box .storage-usage-header,
+.tracks-section .storage-usage-header,
+.videos-section .storage-usage-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-creation-box .storage-usage-bar,
+.tracks-section .storage-usage-bar,
+.videos-section .storage-usage-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gn-grey-250);
+  overflow: hidden;
+}
+
+.artist-profile-creation-box .storage-usage-bar-fill,
+.tracks-section .storage-usage-bar-fill,
+.videos-section .storage-usage-bar-fill {
+  height: 100%;
+  background: var(--gn-black);
+  transition: width 220ms ease;
+}
+
+.artist-profile-creation-box .storage-usage.over-limit .storage-usage-bar-fill,
+.tracks-section .storage-usage.over-limit .storage-usage-bar-fill,
+.videos-section .storage-usage.over-limit .storage-usage-bar-fill {
+  background: var(--gn-red);
+}
+
+.artist-profile-creation-box .storage-usage-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--gn-grey-600);
+  flex-wrap: wrap;
+}
+
+.artist-profile-creation-box .storage-usage-breakdown {
+  font-weight: 500;
+}
+
+.artist-profile-creation-box .storage-usage-remaining {
+  margin-left: auto;
+}
+
+.dark-mode .artist-profile-creation-box .storage-usage-header,
+.dark-mode .tracks-section .storage-usage-header,
+.dark-mode .videos-section .storage-usage-header {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .storage-usage-bar,
+.dark-mode .tracks-section .storage-usage-bar,
+.dark-mode .videos-section .storage-usage-bar {
+  background: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-creation-box .storage-usage-bar-fill,
+.dark-mode .tracks-section .storage-usage-bar-fill,
+.dark-mode .videos-section .storage-usage-bar-fill {
+  background: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .storage-usage-meta {
+  color: var(--gn-grey-300);
+}
+
+.dark-mode .artist-profile-creation-box .storage-usage.over-limit .storage-usage-bar-fill {
+  background: var(--gn-red-400);
+}
+
+.artist-profile-creation-box .media-size-label,
+.tracks-section .media-size-label,
+.videos-section .media-size-label {
+  font-size: 0.85rem;
+  color: var(--gn-grey-600);
+  margin-top: 0.15rem;
+}
+
+.dark-mode .artist-profile-creation-box .media-size-label,
+.dark-mode .tracks-section .media-size-label,
+.dark-mode .videos-section .media-size-label {
+  color: var(--gn-grey-300);
+}
+
+.artist-profile-creation-box .track-preview-card,
+.tracks-section .track-preview-card,
+.videos-section .track-preview-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(60px, 85px) minmax(0, 1fr) minmax(100px, auto);
+  gap: 1rem;
+  min-width: 0; /* Allow grid to shrink below content size */
+}
+
+
+.artist-profile-creation-box .track-cover-button,
+.tracks-section .track-cover-button,
+.videos-section .track-cover-button {
+  width: 100%;
+  min-width: 0; /* Allow button to shrink */
+  margin: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.75rem;
+  border: 1px solid var(--gn-grey-350);
+  background: var(--gn-grey-250);
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  transition: border 200ms ease, outline 200ms ease;
+}
+
+.artist-profile-creation-box .track-cover-button span,
+.tracks-section .track-cover-button span,
+.videos-section .track-cover-button span {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.artist-profile-creation-box .track-cover-button:hover,
+.tracks-section .track-cover-button:hover,
+.videos-section .track-cover-button:hover {
+  border: 1px solid var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-creation-box .track-cover-button img,
+.tracks-section .track-cover-button img,
+.videos-section .track-cover-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.85rem;
+}
+
+.artist-profile-creation-box .track-cover-button.video img,
+.tracks-section .track-cover-button.video img,
+.videos-section .track-cover-button.video img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.85rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.artist-profile-creation-box .track-cover-button.video,
+.tracks-section .track-cover-button.video,
+.videos-section .track-cover-button.video {
+  position: relative;
+  cursor: default;
+  background: var(--gn-grey-250);
+  pointer-events: none;
+  border:none;
+  width: 100%;
+  min-width: 0;
+  margin: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.artist-profile-creation-box .video-play-icon,
+.tracks-section .video-play-icon,
+.videos-section .video-play-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: var(--gn-white);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.artist-profile-creation-box .video-thumbnail-status,
+.tracks-section .video-thumbnail-status,
+.videos-section .video-thumbnail-status {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--gn-grey-600);
+}
+
+.artist-profile-creation-box .video-thumbnail-status.error,
+.tracks-section .video-thumbnail-status.error,
+.videos-section .video-thumbnail-status.error {
+  color: var(--gn-red-500);
+}
+
+.videos-section .videos-grid .video-thumbnail {
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.videos-section .videos-grid .video-thumbnail img,
+.videos-section .videos-grid .video-thumbnail .video-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  aspect-ratio: 1 / 1;
+  display: block;
+}
+
+.videos-section .videos-grid .play-icon-button {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  color: var(--gn-white);
+  cursor: pointer;
+  transition: background 200ms ease;
+}
+
+.videos-section .videos-grid .play-icon-button:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.videos-section .video-expanded-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: fadeIn 200ms ease;
+}
+
+.videos-section .video-expanded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--gn-grey-300);
+  padding:0.5rem;
+  padding-bottom: 0;
+}
+
+.videos-section .video-expanded-header .btn.icon {
+  color: var(--gn-red);
+  padding:0.25rem 0.4rem;
+}
+
+.videos-section .video-expanded-header .btn.icon:hover {
+  background-color: var(--gn-offset-red);
+}
+
+.videos-section .video-expanded-player {
+  width: 75%;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--gn-grey-250);
+}
+
+.videos-section .video-expanded-player video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.videos-section .video-expanded-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.videos-section .video-placeholder.large {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--gn-grey-200);
+  color: var(--gn-grey-600);
+  font-weight: 600;
+}
+
+.dark-mode .videos-section .video-expanded-player {
+  background: var(--gn-grey-850);
+}
+
+.dark-mode .videos-section .video-expanded-title p {
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .videos-section .video-placeholder.large {
+  background: var(--gn-grey-800);
+  color: var(--gn-grey-200);
+}
+
+.tracks-section .tracks-list.playable {
+  gap: 0.75rem;
+}
+
+.tracks-section .track-item.playable {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tracks-section .track-item.playable .track-thumbnail {
+  width: 64px;
+  height: 64px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--gn-grey-250);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tracks-section .track-item.playable .track-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tracks-section .track-item.playable .track-info h4 {
+  margin: 0;
+}
+
+.tracks-section .track-item.playable .track-info p {
+  margin: 0.15rem 0 0;
+  color: var(--gn-grey-600);
+  font-size: 0.92rem;
+}
+
+.tracks-section .track-item.playable .btn.icon.play-track {
+  margin-left: auto;
+}
+
+.tracks-section .track-expanded-header .btn.icon.close {
+  color: var(--gn-red);
+  padding:0.25rem 0.4rem;
+}
+
+.tracks-section .track-expanded-header .btn.icon.close:hover {
+  background-color: var(--gn-offset-red);
+}
+.tracks-section .track-expanded-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: fadeIn 200ms ease;
+}
+
+.tracks-section .track-expanded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--gn-grey-300);
+  padding: 0.5rem;
+  padding-bottom: 0;
+}
+
+.tracks-section .track-expanded-header h4 {
+  margin: 0;
+}
+
+.tracks-section .track-expanded-cover {
+  width: 75%;
+  margin: 0 auto;
+  aspect-ratio: 1/1;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--gn-grey-250);
+}
+
+.tracks-section .track-expanded-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tracks-section .track-placeholder.large {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--gn-grey-600);
+}
+
+.tracks-section .track-expanded-audio audio {
+  width: 100%;
+}
+
+.tracks-section .track-expanded-audio .audio-placeholder {
+  width: 100%;
+  padding: 2rem 1rem;
+  text-align: center;
+  border-radius: 0.85rem;
+  color: var(--gn-grey-600);
+  font-weight: 600;
+}
+
+.tracks-section .track-player {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.tracks-section .track-player-toggle {
+  align-self: center;
+  color: var(--gn-black);
+  padding: 0.25rem 0.4rem;
+}
+
+.tracks-section .track-player-toggle .icon {
+  font-size: 1.25rem;
+}
+
+.tracks-section .track-player-toggle:hover {
+  background-color: transparent;
+}
+
+.tracks-section .track-player-toggle:disabled {
+  color: var(--gn-grey-400);
+  cursor: not-allowed;
+}
+
+.tracks-section .track-progress-bar {
+  position: relative;
+  margin: 0 auto;
+  width: 75%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--gn-grey-250);
+  margin-bottom: 0.5rem;
+}
+
+.tracks-section .track-progress-fill {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  background: var(--gn-off-black);
+  transition: width 120ms linear;
+}
+
+.tracks-section .track-progress-handle {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gn-black);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.tracks-section .track-progress-handle.scrubbing {
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.08);
+}
+
+.dark-mode .tracks-section .track-player-toggle {
+  color: var(--gn-white);
+}
+
+.dark-mode .tracks-section .track-player-toggle:disabled {
+  color: var(--gn-grey-500);
+}
+
+.dark-mode .tracks-section .track-progress-bar {
+  background: var(--gn-grey-700);
+}
+
+.dark-mode .tracks-section .track-progress-fill {
+  background: var(--gn-white);
+}
+
+.dark-mode .tracks-section .track-progress-handle {
+  background: var(--gn-white);
+  border-color: var(--gn-black);
+}
+
+.dark-mode .tracks-section .track-item.playable {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .tracks-section .track-item.playable .track-info p {
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .tracks-section .track-expanded-header {
+  border-top-color: var(--gn-grey-700);
+}
+
+.dark-mode .tracks-section .track-expanded-cover {
+  background: var(--gn-grey-850);
+}
+
+.dark-mode .tracks-section .track-placeholder.large {
+  color: var(--gn-grey-300);
+}
+
+.dark-mode .tracks-section .track-expanded-audio .audio-placeholder {
+  background: var(--gn-grey-800);
+  color: var(--gn-grey-200);
+}
+
+.artist-profile-creation-box .track-meta,
+.tracks-section .track-meta,
+.videos-section .track-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0; /* Allow flex item to shrink */
+  overflow: hidden; /* Prevent content from overflowing */
+}
+
+.artist-profile-creation-box .track-name-input-container,
+.tracks-section .track-name-input-container,
+.videos-section .track-name-input-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0; /* Allow container to shrink */
+  border: 1px solid transparent;
+  padding:0.25rem 0rem;
+  border-radius: 0.5rem;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  transition: padding 200ms ease, border 200ms ease, outline 200ms ease;
+}
+
+.artist-profile-creation-box .track-name-input-container:focus-within,
+.tracks-section .track-name-input-container:focus-within,
+.videos-section .track-name-input-container:focus-within {
+  border: 1px solid var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+  padding:0.25rem 0.25rem;
+}
+
+.artist-profile-creation-box .track-name-input-container svg,
+.tracks-section .track-name-input-container svg,
+.videos-section .track-name-input-container svg {
+  flex-shrink: 0; /* Prevent icon from shrinking */
+  width: 1rem;
+  height: 1rem;
+}
+
+.artist-profile-creation-box .track-meta input,
+.tracks-section .track-meta input,
+.videos-section .track-meta input {
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding:0;
+  border:none;
+  min-width: 0; /* Allow input to shrink */
+  flex: 1; /* Take available space */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist-profile-creation-box .track-meta input:focus,
+.tracks-section .track-meta input:focus,
+.videos-section .track-meta input:focus {
+  outline: none;
+  border:none;
+}
+
+.artist-profile-creation-box .track-preview-card .track-info .label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--gn-grey-500);
+  letter-spacing: 0.08em;
+}
+
+.artist-profile-creation-box .track-preview-card .track-info h4 {
+  margin: 0.25rem 0 0;
+  font-size: 1.1rem;
+}
+
+.artist-profile-creation-box .track-audio-player {
+  width: 100%;
+}
+
+.artist-profile-creation-box .track-actions,
+.tracks-section .track-actions,
+.videos-section .track-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.dark-mode .artist-profile-creation-box .track-actions .btn.danger,
+.dark-mode .tracks-section .track-actions .btn.danger,
+.dark-mode .videos-section .track-actions .btn.danger {
+  background-color: var(--gn-youtube-red-offset);
+}
+
+.artist-profile-creation-box .track-reorder-buttons,
+.tracks-section .track-reorder-buttons,
+.videos-section .track-reorder-buttons {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.artist-profile-creation-box .track-reorder-buttons button,
+.tracks-section .track-reorder-buttons button,
+.videos-section .track-reorder-buttons button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.artist-profile-creation-box .track-reorder-buttons button:disabled,
+.tracks-section .track-reorder-buttons button:disabled,
+.videos-section .track-reorder-buttons button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dark-mode .artist-profile-creation-box .track-reorder-buttons button,
+.dark-mode .tracks-section .track-reorder-buttons button,
+.dark-mode .videos-section .track-reorder-buttons button {
+  color: var(--gn-white);
+}
+
+.artist-profile-creation-box .add-track-button,
+.tracks-section .add-track-button,
+.videos-section .add-track-button {
+  width: 100%;
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--gn-grey-350);
+  outline: 1px solid transparent;
+  background-color: var(--gn-grey-200);
+  border-radius: 0.5rem;
+  color: var(--gn-grey-800);
+  font-weight: 500;
+  cursor: pointer;
+  outline-offset: -2px;
+  padding: 1rem;
+  transition: border 200ms ease, outline 200ms ease;
+}
+
+.artist-profile-creation-box .add-track-button:hover,
+.tracks-section .add-track-button:hover,
+.videos-section .add-track-button:hover {
+  border: 1px solid var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.dark-mode .artist-profile-creation-box .add-track-button,
+.dark-mode .tracks-section .add-track-button,
+.dark-mode .videos-section .add-track-button {
+  background-color: transparent;
+  border-color: var(--gn-grey-250);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .add-track-button:hover,
+.dark-mode .tracks-section .add-track-button:hover,
+.dark-mode .videos-section .add-track-button:hover {
+  border: 1px solid var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.artist-profile-creation-box .hero-edit-button.secondary {
+  background-color: var(--gn-grey-150);
+  border-color: var(--gn-grey-300);
+}
+
+.artist-profile-creation-box .link-entries-container,
+.tracks-section .link-entries-container,
+.videos-section .link-entries-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.artist-profile-creation-box .link-entry-container,
+.tracks-section .link-entry-container,
+.videos-section .link-entry-container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  border: 1px solid transparent;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: border 200ms ease, outline 200ms ease;
+}
+
+.artist-profile-creation-box .link-entry-container input,
+.tracks-section .link-entry-container input,
+.videos-section .link-entry-container input {
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 0.5rem 0.25rem;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.artist-profile-creation-box .link-entry-container.spotify:focus-within,
+.tracks-section .link-entry-container.spotify:focus-within {
+  outline: 1px solid var(--gn-spotify-green);
+}
+
+.artist-profile-creation-box .link-entry-container.soundcloud:focus-within,
+.tracks-section .link-entry-container.soundcloud:focus-within {
+  outline: 1px solid var(--gn-soundcloud-red);
+}
+
+.artist-profile-creation-box .link-entry-container.spotify input::placeholder,
+.tracks-section .link-entry-container.spotify input::placeholder {
+  color: var(--gn-spotify-green-placeholder);
+}
+
+.artist-profile-creation-box .link-entry-container.soundcloud input::placeholder,
+.tracks-section .link-entry-container.soundcloud input::placeholder {
+  color: var(--gn-soundcloud-red-placeholder);
+}
+
+.artist-profile-creation-box .link-entry-container.spotify,
+.tracks-section .link-entry-container.spotify {
+  border-color: var(--gn-spotify-green);
+  background-color: var(--gn-spotify-green-offset);
+  color: var(--gn-spotify-green);
+}
+
+.artist-profile-creation-box .link-entry-container.soundcloud,
+.tracks-section .link-entry-container.soundcloud {
+  border-color: var(--gn-soundcloud-red);
+  background-color: var(--gn-soundcloud-red-offset);
+  color: var(--gn-soundcloud-red);
+}
+
+.artist-profile-creation-box .link-entry-container.spotify input,
+.tracks-section .link-entry-container.spotify input {
+  color: var(--gn-spotify-green);
+}
+
+.artist-profile-creation-box .link-entry-container.soundcloud input,
+.tracks-section .link-entry-container.soundcloud input {
+  color: var(--gn-soundcloud-red);
+}
+
+.artist-profile-creation-box .link-entry-container.website:focus-within {
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-creation-box .link-entry-container.instagram:focus-within {
+  outline: 1px solid var(--gn-instagram-orange);
+}
+
+.artist-profile-creation-box .link-entry-container.website input::placeholder {
+  color: var(--gn-grey-500);
+}
+
+.artist-profile-creation-box .link-entry-container.instagram input::placeholder {
+  color: var(--gn-instagram-orange-placeholder);
+}
+
+.artist-profile-creation-box .link-entry-container.website {
+  color: var(--gn-off-black);
+  background-color: var(--gn-grey-250);
+  border: 1px solid var(--gn-off-black);
+}
+
+.dark-mode .artist-profile-creation-box .link-entry-container.website {
+  background-color: var(--gn-grey-800);
+  border-color: var(--gn-grey-300);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .link-entry-container.website:focus-within {
+  outline: 1px solid var(--gn-white);
+}
+
+.artist-profile-creation-box .link-entry-container.website:focus-within {
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-creation-box .link-entry-container.instagram {
+  border-color: var(--gn-instagram-orange);
+  background-color: var(--gn-instagram-orange-offset);
+  color: var(--gn-instagram-gradient);
+}
+
+.artist-profile-creation-box .link-entry-container.website input {
+  color: var(--gn-off-black);
+}
+
+.dark-mode .artist-profile-creation-box .link-entry-container.website input {
+  color: var(--gn-white);
+}
+
+.artist-profile-creation-box .link-entry-container.instagram input {
+  color: var(--gn-instagram-orange);
+}
+
+.artist-profile-creation-box .link-entry-container.instagram .icon {
+  color: var(--gn-instagram-orange);
+}
+
+.artist-profile-creation-box .link-entry-container.youtube input,
+.tracks-section .link-entry-container.youtube input,
+.videos-section .link-entry-container.youtube input {
+  color: var(--gn-youtube-red);
+}
+
+.artist-profile-creation-box .link-entry-container.youtube input::placeholder,
+.tracks-section .link-entry-container.youtube input::placeholder,
+.videos-section .link-entry-container.youtube input::placeholder {
+  color: var(--gn-youtube-red-placeholder);
+}
+
+.artist-profile-creation-box .link-entry-container.youtube,
+.tracks-section .link-entry-container.youtube,
+.videos-section .link-entry-container.youtube {
+  border-color: var(--gn-youtube-red);
+  background-color: var(--gn-youtube-red-offset);
+  color: var(--gn-youtube-red);
+}
+
+/* Bio component link inputs - match creation box styling */
+.artist-profile-bio .link-entries-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.artist-profile-bio .link-entry-container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  border: 1px solid transparent;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: border 200ms ease, outline 200ms ease;
+}
+
+.artist-profile-bio .link-entry-container input {
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 0.5rem 0.25rem;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.artist-profile-bio .link-entry-container.website:focus-within {
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-bio .link-entry-container.instagram:focus-within {
+  outline: 1px solid var(--gn-instagram-orange);
+}
+
+.artist-profile-bio .link-entry-container.website input::placeholder {
+  color: var(--gn-grey-500);
+}
+
+.artist-profile-bio .link-entry-container.instagram input::placeholder {
+  color: var(--gn-instagram-orange-placeholder);
+}
+
+.artist-profile-bio .link-entry-container.website {
+  color: var(--gn-off-black);
+  background-color: var(--gn-grey-250);
+  border: 1px solid var(--gn-off-black);
+}
+
+.dark-mode .artist-profile-bio .link-entry-container.website {
+  background-color: var(--gn-grey-800);
+  border-color: var(--gn-grey-300);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-bio .link-entry-container.website:focus-within {
+  outline: 1px solid var(--gn-white);
+}
+
+.artist-profile-bio .link-entry-container.website:focus-within {
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-bio .link-entry-container.instagram {
+  border-color: var(--gn-instagram-orange);
+  background-color: var(--gn-instagram-orange-offset);
+  color: var(--gn-instagram-gradient);
+}
+
+.artist-profile-bio .link-entry-container.website input {
+  color: var(--gn-off-black);
+}
+
+.dark-mode .artist-profile-bio .link-entry-container.website input {
+  color: var(--gn-white);
+}
+
+.artist-profile-bio .link-entry-container.instagram input {
+  color: var(--gn-instagram-orange);
+}
+
+.artist-profile-bio .link-entry-container.instagram .icon {
+  color: var(--gn-instagram-orange);
+}
+
+/* Bio component textarea - match creation box styling */
+.artist-profile-bio .creation-bio-textarea-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.artist-profile-bio .creation-bio-textarea-length {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.65rem;
+}
+
+.artist-profile-bio .creation-bio-textarea-length.red {
+  color: var(--gn-red);
+}
+
+.artist-profile-bio .creation-bio-textarea {
+  width: 100%;
+  min-height: 100px;
+  border-radius: 1rem;
+  border: 1px solid var(--gn-grey-350);
+  padding: 1rem;
+  font-size: 1rem;
+  background: var(--gn-grey-200);
+  resize: none;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  transition: border 0.3s ease, background-color 0.3s ease, color 0.3s ease, outline 0.3s ease;
+}
+
+.artist-profile-bio .creation-bio-textarea:focus {
+  border-color: var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-bio .creation-bio-textarea::placeholder {
+  color: var(--gn-grey-500);
+}
+
+.dark-mode .artist-profile-bio .creation-bio-textarea {
+  background: var(--gn-off-black);
+  border-color: var(--gn-grey-600);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-bio .creation-bio-textarea:focus {
+  background: var(--gn-black);
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-bio .creation-bio-textarea::placeholder {
+  color: var(--gn-grey-500);
+}
+
+.dark-mode .artist-profile-creation-box .track-preview-card,
+.dark-mode .tracks-section .track-preview-card,
+.dark-mode .videos-section .track-preview-card {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-800);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.dark-mode .artist-profile-creation-box .track-cover-button,
+.dark-mode .tracks-section .track-cover-button,
+.dark-mode .videos-section .track-cover-button {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-creation-box .track-meta input,
+.dark-mode .tracks-section .track-meta input,
+.dark-mode .videos-section .track-meta input {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.artist-profile-creation-box .hero-brightness-control .brightness-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-grey-800);
+}
+
+.artist-profile-creation-box .hero-brightness-control .brightness-header .icon {
+  font-size: 1.5rem;
+}
+
+.artist-profile-creation-box .hero-brightness-slider {
+  width: 100%;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--gn-grey-350);
+  border-radius: 0px;
+  accent-color: var(--gn-grey-350);
+}
+
+.artist-profile-creation-box .hero-brightness-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--gn-black);
+  border: 2px solid var(--gn-black);
+}
+
+.artist-profile-creation-box .creation-stage-name-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 75px;
+  background: transparent;
+}
+
+.artist-profile-creation-box .creation-stage-name-input {
+  width: 100%;
+  max-width: 600px;
+  border: none;
+  font-size: 3.5rem;
+  font-weight: 600;
+  padding: 0;
+  margin: 0;
+  color: var(--gn-black);
+  background: transparent;
+  text-align: center;
+  outline: none;
+  transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.artist-profile-creation-box .creation-stage-name-input::placeholder {
+  color: var(--gn-grey-300);
+}
+
+.artist-profile-creation-box .creation-bio-card {
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-250);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 12px 40px rgba(15, 15, 15, 0.08);
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.artist-profile-creation-box .creation-bio-card-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-creation-box .creation-bio-card-header .icon {
+  font-size: 1.25rem;
+}
+
+.artist-profile-creation-box .creation-bio-card-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.artist-profile-creation-box .creation-bio-card-header span {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--gn-grey-700);
+  margin-top: 0.15rem;
+}
+
+.artist-profile-creation-box .creation-bio-textarea-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.artist-profile-creation-box .creation-bio-textarea-length {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.65rem;
+}
+
+.artist-profile-creation-box .creation-bio-textarea-length.red {
+  color: var(--gn-red);
+}
+
+.artist-profile-creation-box .creation-bio-textarea {
+  width: 100%;
+  min-height: 100px;
+  border-radius: 1rem;
+  border: 1px solid var(--gn-grey-350);
+  padding: 1rem;
+  font-size: 1rem;
+  background: var(--gn-grey-200);
+  resize: none;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  transition: border 0.3s ease, background-color 0.3s ease, color 0.3s ease, outline 0.3s ease;
+}
+
+.artist-profile-creation-box .creation-bio-textarea:focus {
+  border-color: var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-creation-box .creation-bio-textarea::placeholder {
+  color: var(--gn-grey-500);
+}
+
+.dark-mode .artist-profile-creation-box .creation-bio-textarea {
+  background: var(--gn-off-black);
+  border-color: var(--gn-grey-600);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-bio-textarea:focus {
+  background: var(--gn-black);
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-bio-textarea::placeholder {
+  color: var(--gn-grey-500);
+}
+
+.artist-profile-creation-box .creation-tip-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--gn-grey-600);
+  line-height: 1.4;
+}
+
+.artist-profile-creation-box .creation-summary {
+  background: var(--gn-grey-100);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  margin-top: 0.75rem;
+  color: var(--gn-grey-800);
+}
+
+.artist-profile-creation-box .creation-placeholder-card {
+  background: var(--gn-grey-100);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  font-size: 0.95rem;
+  color: var(--gn-grey-700);
+  line-height: 1.4;
+}
+
+.artist-profile-creation-box .additional-info-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.artist-profile-creation-box .additional-info-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem;
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 1rem;
+  cursor: pointer;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.artist-profile-creation-box .additional-info-option:hover {
+  border-color: var(--gn-black);
+  outline: 1px solid var(--gn-black);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+.artist-profile-creation-box .additional-info-option .option-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.artist-profile-creation-box .additional-info-option:hover .option-content {
+  transform: translateX(2px);
+}
+
+.artist-profile-creation-box .additional-info-option .option-content .icon {
+  font-size: 1.25rem;
+}
+
+.artist-profile-creation-box .additional-info-option h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.artist-profile-creation-box .additional-info-option p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gn-grey-600);
+}
+
+
+@keyframes creation-step-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes creation-step-slide-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+}
+
+@keyframes creation-step-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes creation-step-slide-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+.dark-mode .artist-profile-creation-box .creation-step-pill {
+  background: var(--gn-grey-800);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-stage-name-input {
+  color: var(--gn-white);
+  background: transparent;
+}
+
+.dark-mode .artist-profile-creation-box .creation-stage-name-input::placeholder {
+  color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-creation-box .progress-dot {
+  background: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-creation-box .progress-dot.filled {
+  background: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-hero-upload,
+.dark-mode .tracks-section .creation-hero-upload,
+.dark-mode .videos-section .creation-hero-upload {
+  background: var(--gn-off-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-creation-box .creation-hero-upload:hover,
+.dark-mode .tracks-section .creation-hero-upload:hover,
+.dark-mode .videos-section .creation-hero-upload:hover {
+  border-color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-hero-upload.has-image img {
+  border-radius: 1rem;
+}
+
+.dark-mode .artist-profile-creation-box .hero-change-tile {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-creation-box .hero-edit-button {
+  border: 1px solid var(--gn-grey-700);
+  background-color: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .hero-edit-button:hover {
+  border: 1px solid var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .hero-brightness-control {
+  color: var(--gn-grey-100);
+}
+
+.dark-mode .artist-profile-creation-box .hero-brightness-slider {
+  background: var(--gn-grey-700);
+  accent-color: var(--gn-black);
+}
+
+.dark-mode .artist-profile-creation-box .hero-brightness-slider::-webkit-slider-thumb {
+  background: var(--gn-white);
+  border: 2px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-step-question {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-summary {
+  background: var(--gn-grey-900);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-placeholder-card {
+  background: var(--gn-grey-900);
+  color: var(--gn-grey-200);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option:hover {
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option h4 {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option p {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .artist-profile-creation-box .additional-info-option .icon {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .creation-field-hint {
+  color: var(--gn-grey-400);
+}
+
+/* Toggle Buttons Container */
+.toggle-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: margin 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-button {
+  padding: 0.75rem 1.5rem;
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-300);
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-button:hover {
+  background: var(--gn-grey-100);
+  border-color: var(--gn-orange);
+}
+
+/* Selection Cards for About Step */
+.artist-profile-creation-box .selection-container {
+  margin-top: 1.5rem;
+}
+
+.artist-profile-creation-box .selection-container .label,
+.artist-profile-creation-box .selection-container h6.label {
+  text-transform: uppercase;
+  color: var(--gn-grey-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.artist-profile-creation-box .selections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.artist-profile-creation-box .selection-card {
+  border: 1px solid var(--gn-grey-400);
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  transition: outline-color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+  background: var(--gn-white);
+}
+
+.artist-profile-creation-box .selection-card:hover {
+  border-color: var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-creation-box .selection-card.selected {
+  border-color: var(--gn-off-black);
+  outline-color: var(--gn-off-black);
+  background: var(--gn-off-black);
+  color: var(--gn-white);
+}
+
+.artist-profile-creation-box .selection-card h4.text {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.artist-profile-creation-box .input-container {
+  margin-top: 1.5rem;
+}
+
+.artist-profile-creation-box .input-container .label {
+  text-transform: uppercase;
+  color: var(--gn-grey-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.artist-profile-creation-box .input-container .input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 0.5rem;
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  font-size: 1rem;
+  transition: border-color 200ms ease, outline-color 200ms ease;
+  font-family: inherit;
+}
+
+.artist-profile-creation-box .input-container .input:focus {
+  outline: 1px solid var(--gn-off-black);
+  border-color: var(--gn-off-black);
+}
+
+.artist-profile-creation-box .input-container select.input {
+  cursor: pointer;
+  background-color: var(--gn-white);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 12px;
+  padding-right: 2.5rem;
+}
+
+.dark-mode .artist-profile-creation-box .input-container select.input {
+  background-color: var(--gn-black);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+
+/* Dark mode for selection cards */
+.dark-mode .artist-profile-creation-box .selection-container .label,
+.dark-mode .artist-profile-creation-box .selection-container h6.label {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .selection-card {
+  border-color: var(--gn-grey-700);
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .selection-card:hover {
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .selection-card.selected {
+  border-color: var(--gn-white);
+  outline-color: var(--gn-white);
+  background: var(--gn-white);
+  color: var(--gn-black);
+}
+
+.dark-mode .artist-profile-creation-box .input-container .label {
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .input-container .input {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .input-container .input:focus {
+  outline-color: var(--gn-white);
+  border-color: var(--gn-white);
+}
+
+/* Members Step Styles */
+.members-step-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.members-permissions-section,
+.members-email-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.members-step-container .section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gn-off-black);
+}
+
+.permission-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.permission-checkbox input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--gn-black);
+}
+
+.permission-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.permission-checkbox span {
+  font-size: 0.9rem;
+  color: var(--gn-off-black);
+  user-select: none;
+}
+
+.email-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.email-input-container .input {
+  flex: 1;
+}
+
+.email-input-container .send-button {
+  white-space: nowrap;
+  min-width: auto;
+}
+
+/* Dark mode for Members Step */
+.dark-mode .members-step-container .section-title {
+  color: var(--gn-white);
+}
+
+.dark-mode .permission-checkbox {
+  color: var(--gn-white);
+}
+
+.dark-mode .permission-checkbox:hover {
+  background-color: var(--gn-grey-800);
+}
+
+.dark-mode .permission-checkbox span {
+  color: var(--gn-white);
+}
+
+.dark-mode .permission-checkbox input[type="checkbox"] {
+  accent-color: var(--gn-white);
+}
+
+/* Responsive Design */
+@media (--bp-md) {
+  .artist-profile-state-box {
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    padding: 1rem;
+  }
+
+  .artist-name h1 {
+    font-size: 2.5rem;
+  }
+
+  .exit-button {
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+

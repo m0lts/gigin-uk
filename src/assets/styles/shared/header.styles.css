@@ -7,10 +7,30 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: fixed;
+    top:1rem;
+    left:0;
+    right:0;
+    z-index: 2;
+}
+
+.header .left,
+.header .right {
     background-color: var(--gn-white);
     box-shadow: 0 0 5px var(--gn-grey-400);
     position: relative;
-    z-index: 2;
+    padding:0.5rem 0.5rem;
+    border-radius: var(--gn-border-radius);
+}
+
+.header .logo.no-text {
+    margin:0 0.5rem;
+    margin-top: -8px;
+}
+
+.header .logo.no-text:hover .link {
+    color: var(--gn-orange);
+    transition: color 200ms linear;
 }
 
 .header .left,
@@ -41,11 +61,28 @@
 }
 
 .header .right {
-    gap:2rem;
+    gap:0.5rem;
 }
 
-.header .right .buttons {
-    gap:2rem;
+.header .right .link {
+    margin:0 2rem;
+    margin-left: 2rem;
+}
+
+.header .right .link.messages-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.header .right .link.messages-link .notification-dot-dot {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--gn-orange);
 }
 
 .header .right .btn.account .icon {
@@ -78,12 +115,6 @@
 .header .left .breadcrumbs .item.active {
     font-weight: 600;
 }
-
-.header .nav-list {
-    display: flex;
-    gap:1rem;
-}
-
 
 /* ACCOUNT MENU */
 
@@ -235,7 +266,7 @@
     position: absolute;
     min-width: 250px;
     right:2.5%;
-    top:65px;
+    top:8%;
     background-color: var(--gn-white);
     padding:1rem;
     border: 1px solid var(--gn-grey-300);
@@ -342,4 +373,82 @@
 
 .mobile-menu .title {
     padding: 5px 10px;
+}
+
+.mobile-menu .primary-profile-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap:5px;
+}
+
+.mobile-menu .primary-profile-badge {
+    background-color: var(--gn-offset-orange);
+    color: var(--gn-orange);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+/* MUSICIAN */
+
+.header.musician {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 2rem;
+}
+
+.header.musician .left-block,
+.header.musician .right-block {
+    display: flex;
+    align-items: center;
+    background-color: var(--gn-white);
+    box-shadow: 0 0 5px var(--gn-shadow);
+    padding:0.5rem 0.5rem;
+    border-radius: var(--gn-border-radius);
+    overflow: hidden;
+}
+
+.header.musician .right-block {
+    width: calc(35vw - 4rem);
+    min-width: calc(400px - 4rem);
+    max-width: calc(600px - 4rem);
+    justify-content: space-around;
+}
+
+.header.musician .right-block.empty {
+    width: auto;
+    min-width: auto;
+    max-width: auto;
+}
+
+.header.musician .link {
+    font-weight: 500;
+    padding:0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 200ms linear;
+}
+
+@media (--bp-xl) {
+    .header.musician .link {
+        padding:0.5rem 0.75rem;
+    }
+}
+
+.header.musician .logo .link {
+    padding:none !important;
+    background-color: transparent !important;
+}
+
+.header.musician .link:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.header.musician .link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

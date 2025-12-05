@@ -10,10 +10,10 @@ import { Venues } from './Venues';
 import { GigApplications } from './GigApplications';
 import { Overview } from './Overview';
 import { Finances } from './Finances';
-import { SavedMusicians } from './SavedMusicians';
-import { FindMusicians } from './FindMusicians';
+import { SavedArtists } from './SavedArtists';
+import { FindArtists } from './FindArtists';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
-import { WelcomeModal } from '@features/musician/components/WelcomeModal';
+import { WelcomeModal } from '@features/artist/components/WelcomeModal';
 import { mergeAndSortConversations } from '@services/utils/filtering';
 import { getBreadcrumbs } from '@services/utils/breadcrumbs';
 import { getPendingGigsToReview } from '@services/utils/filtering';
@@ -150,8 +150,8 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
                         <Route path='my-venues/:venueId' element={<VenuePage user={user} venues={venueProfiles} setVenues={setVenueProfiles} />} />
-                        <Route path='musicians' element={<SavedMusicians user={user} />} />
-                        <Route path='musicians/find' element={<FindMusicians user={user} />} />
+                        <Route path='artists' element={<SavedArtists user={user} />} />
+                        <Route path='artists/find' element={<FindArtists user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />
                     </Routes>
                 </div>

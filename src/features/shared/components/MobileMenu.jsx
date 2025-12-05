@@ -5,8 +5,8 @@ import Portal from "./Portal";
 import { useState } from "react";
 
 export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable, setShowFeedbackModal, showFeedbackModal, feedback, setFeedback }) => {
-    const { isLgUp, isXlUp, isMdUp } = useBreakpoint();
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const { isLgUp, isXlUp, isMdUp } = useBreakpoint();
     const location = useLocation();
     
     return (
@@ -35,26 +35,22 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             </button>
                         </div>
                     </>
-                ) : user && !user?.musicianProfile && !user.venueProfiles ? (
+                ) : user && !user?.artistProfiles && !user.venueProfiles ? (
                     <>
-                        <Link className='link item no-margin' to={'/find-a-gig'}>
-                            Find a Gig
-                            <MapIcon />
-                        </Link>
-                        <button className={`btn inline item no-margin ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(!noProfileModalClosable)}}>
-                            Create a Musician Profile
-                            <GuitarsIcon />
-                        </button>
-                        <Link className='link item no-margin' to={'/venues/add-venue'}>
-                            I'm a Venue
-                            <VenueIconLight />
+                        <div className='item name-and-email no-margin'>
+                            <h6>{user.name}</h6>
+                            <p>{user.email}</p>
+                        </div>
+                        <Link to={'/account'} className='item no-margin link settings'>
+                            Settings
+                            <SettingsIcon />
                         </Link>
                         <button className='btn logout no-margin' onClick={handleLogout}>
                             Log Out
                             <LogOutIcon />
                         </button>
                     </>
-                ) : user && !user?.musicianProfile && user?.venueProfiles ? (
+                ) : user && !user?.artistProfiles && user?.venueProfiles ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
@@ -134,12 +130,40 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <LogOutIcon />
                         </button>
                     </>
-                ) : user && user?.musicianProfile && !user?.venueProfiles && (
+                ) : user && user?.artistProfiles && !user?.venueProfiles ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
                             <p>{user.email}</p>
                         </div>
+                        <button className="btn artist-profile inline" style={{ fontWeight: 500}} onClick={() => {
+                            // Navigate to base path first to clear any existing profileId
+                            navigate('/artist-profile?create=true', { replace: true });
+                        }}>
+                            New Artist Profile
+                            <GuitarsIcon />
+                        </button>
+                        {user.artistProfiles && user.artistProfiles.length > 1 && (
+                            <>
+                                <div className="break" />
+                                <h6 className="title">Artist Profiles</h6>
+                                {user.artistProfiles.map((artistProfile) => {
+                                    const profileId = artistProfile.id || artistProfile.profileId;
+                                    const isPrimary = profileId === user.primaryArtistProfileId;
+                                    return (
+                                        <button 
+                                            className={`btn inline item no-margin ${isPrimary ? 'primary-profile-item' : ''}`}
+                                            key={profileId} 
+                                            onClick={() => navigate(`/artist-profile/${profileId}`)}
+                                        >
+                                            {artistProfile.name}
+                                            {isPrimary && <span className="primary-profile-badge">Primary</span>}
+                                    </button>
+                                    );
+                                })}
+                                <div className="break" />
+                            </>
+                        )}
                         {!isLgUp && (
                             <Link className='link item no-margin' to={'/find-a-gig'}>
                                 Find a Gig
@@ -152,15 +176,67 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 <TelescopeIcon />
                             </Link>
                         )}
-                        {!user.musicianProfile && !isLgUp && (
-                            <Link className='link item no-margin' onClick={() => setNoProfileModal(true)}>
-                                Create Musician Profile
-                                <GuitarsIcon />
-                            </Link>
-                        )}
-                        {!isLgUp && (
-                            newMessages ? (
-                                <Link className='link item no-margin message' to={'/messages'}>
+                        {isMobile && (() => {
+                            // Get active profile ID from localStorage or default
+                            const getActiveProfileId = () => {
+                                if (!user?.uid) return null;
+                                try {
+                                    const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                                    if (stored) {
+                                        const profileExists = user.artistProfiles?.some(
+                                            (p) => (p.id === stored || p.profileId === stored)
+                                        );
+                                        if (profileExists) return stored;
+                                    }
+                                } catch (e) {}
+                                if (user?.primaryArtistProfileId) return user.primaryArtistProfileId;
+                                const firstComplete = user?.artistProfiles?.find((p) => p.isComplete);
+                                return firstComplete?.id || firstComplete?.profileId || null;
+                            };
+                            const activeProfileId = getActiveProfileId();
+                            const basePath = activeProfileId ? `/artist-profile/${activeProfileId}` : '/artist-profile';
+                            return (
+                                <>
+                                    <Link className='link item no-margin' to={basePath}>
+                                        Profile
+                                        <ProfileIcon />
+                                    </Link>
+                                    <Link className='link item no-margin' to={`${basePath}/gigs`}>
+                                        Gigs
+                                        <AllGigsIcon />
+                                    </Link>
+                                    <Link className='link item no-margin' to={`${basePath}/messages`}>
+                                        Messages
+                                        {newMessages ? <MailboxFullIcon /> : <MailboxEmptyIcon />}
+                                    </Link>
+                                    <Link className='link item no-margin' to={`${basePath}/finances`}>
+                                        Finances
+                                        <CoinsIcon />
+                                    </Link>
+                                </>
+                            );
+                        })()}
+                        {!isLgUp && !isMobile && (() => {
+                            // Get active profile ID from localStorage or default
+                            const getActiveProfileId = () => {
+                                if (!user?.uid) return null;
+                                try {
+                                    const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                                    if (stored) {
+                                        const profileExists = user.artistProfiles?.some(
+                                            (p) => (p.id === stored || p.profileId === stored)
+                                        );
+                                        if (profileExists) return stored;
+                                    }
+                                } catch (e) {}
+                                if (user?.primaryArtistProfileId) return user.primaryArtistProfileId;
+                                const firstComplete = user?.artistProfiles?.find((p) => p.isComplete);
+                                return firstComplete?.id || firstComplete?.profileId || null;
+                            };
+                            const activeProfileId = getActiveProfileId();
+                            const messagesPath = activeProfileId ? `/artist-profile/${activeProfileId}/messages` : '/artist-profile/messages';
+                            return newMessages ? (
+                                <Link className='link item no-margin message' to={messagesPath}>
                                     <div>
                                         Messages
                                         <MailboxFullIcon />
@@ -168,32 +244,12 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                     <span className="notification-dot" />
                                 </Link>
                             ) : (
-                                <Link className='link item no-margin' to={'/messages'}>
+                                <Link className='link item no-margin' to={messagesPath}>
                                     Messages
                                     <MailboxEmptyIcon />
                                 </Link>
-                            )
-                        )}
-                        {isMobile && (
-                            <>
-                                <Link className='link item no-margin' to={'/dashboard/profile'}>
-                                    My Profile
-                                    <ProfileIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/dashboard/gigs'}>
-                                    Gigs
-                                    <AllGigsIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/dashboard/bands'}>
-                                    My Band(s)
-                                    <PeopleGroupIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/dashboard/finances'}>
-                                    Finances
-                                    <CoinsIcon />
-                                </Link>
-                            </>
-                        )}
+                            );
+                        })()}
 
                         {!isXlUp && (
                             <div className='break' />
@@ -215,7 +271,45 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <LogOutIcon />
                         </button>
                     </>
-                )}
+                ) : user && user?.artistProfiles && user?.venueProfiles ? (
+                    <>
+                        <div className='item name-and-email no-margin'>
+                            <h6>{user.name}</h6>
+                            <p>{user.email}</p>
+                        </div>
+                        {isMobile && (
+                            <>
+                                <Link className='link item no-margin' to={'/artist-profile'}>
+                                    Artist Profile
+                                    <GuitarsIcon />
+                                </Link>
+                                <Link className='link item no-margin' to={'/venues/dashboard/gigs'}>
+                                    Venue Dashboard
+                                    <VenueIconLight />
+                                </Link>
+                            </>
+                        )}
+                        {!isXlUp && (
+                            <div className='break' />
+                        )}
+                        <a className='link item no-margin' href='mailto:hq.gigin@gmail.com'>
+                            Contact Us
+                            <TicketIcon />
+                        </a>
+                        <button className="btn inline item no-margin" style={{ color: 'var(--gn-black)'}} onClick={() => setShowFeedbackModal(!showFeedbackModal)}>
+                            Feedback
+                            <FeedbackIcon />
+                        </button>
+                        <Link to={'/account'} className='item no-margin link'>
+                            Settings
+                            <SettingsIcon />
+                        </Link>
+                        <button className='btn logout no-margin' onClick={handleLogout}>
+                            Log Out
+                            <LogOutIcon />
+                        </button>
+                    </>
+                ) : null}
             </nav>
         </>
     )

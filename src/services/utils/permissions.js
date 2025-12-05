@@ -85,3 +85,58 @@ export function normalizePermissions(incoming) {
     }
     return base;
 }
+
+/** Artist Profile Permissions */
+export const ARTIST_PERM_KEYS = [
+    "profile.viewer",           // viewing profile (default true, can't be unselected)
+    "profile.edit",              // edit artist profile
+    "gigs.book",                 // book and request gigs
+    "finances.edit",             // edit finances
+];
+
+export const ARTIST_PERMS_DISPLAY = {
+    "profile.viewer": "Profile viewer",
+    "profile.edit": "Edit artist profile",
+    "gigs.book": "Book and request gigs",
+    "finances.edit": "Edit finances",
+};
+
+export const ARTIST_PERM_DEFAULTS = {
+    "profile.viewer": true,
+    "profile.edit": false,
+    "gigs.book": false,
+    "finances.edit": false,
+};
+
+/** Runtime guard to validate artist permission keys. */
+export function isValidArtistPermKey(key) {
+    return ARTIST_PERM_KEYS.includes(key);
+}
+
+/** Sanitize artist permissions input to ensure valid structure. */
+export function sanitizeArtistPermissions(input) {
+    const out = { ...ARTIST_PERM_DEFAULTS };
+    if (input && typeof input === "object") {
+      for (const [k, v] of Object.entries(input)) {
+        if (isValidArtistPermKey(k)) out[k] = !!v;
+      }
+    }
+    // Always enforce profile.viewer = true
+    out["profile.viewer"] = true;
+    return out;
+}
+
+/** Normalize artist permissions to ensure full structure. */
+export function normalizeArtistPermissions(incoming) {
+    const base = { ...ARTIST_PERM_DEFAULTS };
+    if (incoming && typeof incoming === "object") {
+      for (const k of ARTIST_PERM_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(incoming, k)) {
+          base[k] = !!incoming[k];
+        }
+      }
+      // Always enforce profile.viewer = true
+      base["profile.viewer"] = true;
+    }
+    return base;
+}

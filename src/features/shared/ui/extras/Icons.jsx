@@ -1,8 +1,8 @@
 import { faApple, faFacebook, faFacebookSquare, faGoogle, faInstagram, faInstagramSquare, faSoundcloud, faSpotify, faStripe, faTwitter, faTwitterSquare, faXTwitter, faYoutube, faYoutubeSquare } from '@fortawesome/free-brands-svg-icons'
 import { faArrowLeft, faBoxArchive, faCircle, faInbox, faLocationDot, faPlayCircle, faUserCircle, faFileImport, faSquareMinus, faChevronUp, faChevronDown, faChevronLeft, faChevronRight, faX, faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
-import { faAddressCard, faArrowLeftFromArc, faBeerFoam, faCameraViewfinder, faCastle, faCoin, faCutlery, faDrum, faEnvelope, faGlassesRound, faGraduationCap, faGuitars, faLightbulb, faLocationPin, faMicrophoneStand, faMuseum, faPause, faPencil, faPiano, faPlaceOfWorship, faPlay, faPlayPause, faQuestionCircle, faReel, faSpeakers, faTelescope, faTurntable, faXmarkCircle, faStarShooting, faTrashCan, faLink, faTicket as faTicketLight } from '@fortawesome/pro-regular-svg-icons'
+import { faAddressCard, faArrowLeftFromArc, faBeerFoam, faCameraViewfinder, faCastle, faCoin, faCutlery, faDrum, faEnvelope, faGlassesRound, faGraduationCap, faLightbulb, faLocationPin, faMicrophoneStand, faMuseum, faPencil, faPiano, faPlaceOfWorship,  faPlayPause, faQuestionCircle, faReel, faSpeakers, faTelescope, faTurntable, faXmarkCircle, faStarShooting, faTrashCan, faLink, faTicket as faTicketLight } from '@fortawesome/pro-regular-svg-icons'
 import { faComments, faFaceFrown, faFaceMeh, faFaceSmile, faFaceSmileHearts, faPencilSquare, faTableTree, faClock, faCircleArrowLeft, faChartPieSimple, faCreditCard, faFileInvoice, faPartyHorn, faListMusic, faCircleExclamation, faBan, faCirclePlus, faMapLocation, faDesktop, faAmpGuitar, faPlug,  } from '@fortawesome/pro-regular-svg-icons'
-import { faClipboard, faShieldCheck, faCirclePlus as faCirclePlusSolid, faAsterisk, faKey, faUserMinus, faDoorOpen, faPhotoFilmMusic, faSquareInfo, faHashtag, faPiggyBank, faCircleExclamation as faCircleExclamationSolid, faWarning, faMoneyBillTransfer, faBadgeCheck, faMoneyBillsSimple, faBellRing, faEmptySet, faCircleVideo, faRingsWedding, faTicket, faVolume, faExpand, faArrowUp, faArrowUpRightFromSquare, faArrowRightFromBracket, faImageSlash, faExcavator, faThumbsUp, faThumbsDown, faUserLock, faBars, faMobileRetro, faSpeaker, faGuitarElectric,  } from '@fortawesome/pro-solid-svg-icons';
+import { faClipboard, faShieldCheck, faCirclePlus as faCirclePlusSolid, faAsterisk, faKey, faUserMinus, faDoorOpen, faPhotoFilmMusic, faSquareInfo, faHashtag, faPiggyBank, faCircleExclamation as faCircleExclamationSolid, faWarning, faMoneyBillTransfer, faBadgeCheck, faMoneyBillsSimple, faBellRing, faEmptySet, faCircleVideo, faRingsWedding, faTicket, faVolume, faExpand, faArrowUp, faArrowUpRightFromSquare, faArrowRightFromBracket, faImageSlash, faExcavator, faThumbsUp, faThumbsDown, faUserLock, faBars, faMobileRetro, faSpeaker, faGuitarElectric, faDna, faFilmAlt, faCompactDisc, faGuitars, faSun, faMoon, faArrowRightLong, faArrowLeftLong, faArrowUpLong, faArrowDownLong, faGlobePointer, faTachographDigital, faPenToSquare, faPlay, faPause, } from '@fortawesome/pro-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBookmark as faSaveIcon } from '@fortawesome/pro-regular-svg-icons'
 import { faBookmark as faSavedIcon } from '@fortawesome/free-solid-svg-icons'
@@ -415,7 +415,7 @@ export const CopyIcon = () => {
 }
 export const EditIcon = () => {
     return (
-        <FontAwesomeIcon icon={faPencilSquare} className='icon' />
+        <FontAwesomeIcon icon={faPenToSquare} className='icon' />
     )
 }
 export const OptionsIcon = () => {
@@ -530,7 +530,7 @@ export const TrackIcon = () => {
 }
 export const PlayIcon = () => {
     return (
-        <FontAwesomeIcon icon={faPlayCircle} className='icon' />
+        <FontAwesomeIcon icon={faPlay} className='icon' />
     )
 }
 export const PauseIcon = () => {
@@ -561,11 +561,6 @@ export const RejectedIcon = () => {
 export const SendMessageIcon = () => {
     return (
         <FontAwesomeIcon icon={faArrowUp} className='icon' />
-    )
-}
-export const LeftArrowIcon = () => {
-    return (
-        <FontAwesomeIcon icon={faArrowLeft} className='icon' />
     )
 }
 export const AddMember = () => {
@@ -842,5 +837,61 @@ export const HamburgerMenuIcon = () => {
 export const MobileIcon = () => {
     return (
         <FontAwesomeIcon icon={faMobileRetro} className='icon' />
+    )
+}
+export const DNAIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faDna} className='icon' />
+    )
+}
+export const FilmIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFilmAlt} className='icon' />
+    )
+}
+export const VinylIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faCompactDisc} className='icon' />
+    )
+}
+export const LightModeIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faSun} className='icon' />
+    )
+}
+export const DarkModeIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faMoon} className='icon' />
+    )
+}
+
+export const RightArrowIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faArrowRightLong} className='icon' />
+    )
+}
+export const LeftArrowIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faArrowLeftLong} className='icon' />
+    )
+}
+export const UpArrowIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faArrowUpLong} className='icon' />
+    )
+}
+export const DownArrowIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faArrowDownLong} className='icon' />
+    )
+}
+export const WebsiteIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faGlobePointer} className='icon' />
+    )
+}
+export const TechRiderIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faTachographDigital} className='icon' />
     )
 }

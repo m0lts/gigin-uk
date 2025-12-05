@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@hooks/useAuth'
-import { useMusicianDashboard } from '../context/MusicianDashboardContext';
+import { useArtistDashboard } from '../context/ArtistDashboardContext';
 import '@styles/shared/dashboard.styles.css'
-import { ProfileCreator } from '../features/musician/profile-creator/ProfileCreator';
-import { Header } from '../features/musician/components/Header';
+import { ProfileCreator } from '../features/artist/profile-creator/ProfileCreator';
+import { Header } from '../features/artist/components/Header';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useNavigate } from 'react-router-dom';
 
 export const MusicianDashboardLayout = ({
     children,
@@ -18,7 +19,8 @@ export const MusicianDashboardLayout = ({
   }) => {
     const { loading } = useAuth();
     const { isMdUp } = useBreakpoint();
-    const { loading: dashboardLoading } = useMusicianDashboard();
+    const { loading: dashboardLoading } = useArtistDashboard();
+    const navigate = useNavigate();
 
     const hasBasics = useMemo(() => {
       const p = user?.musicianProfile || null;
@@ -36,14 +38,13 @@ export const MusicianDashboardLayout = ({
       }
 
       if (!loading && user && !user.musicianProfile) {
-        setNoProfileModal(true);
+        navigate('/artist-profile');
         setAuthClosable?.(false);
         return;
       }
 
       if (!loading && user?.musicianProfile === undefined) {
-        setNoProfileModal(true);
-        setNoProfileModalClosable(false);
+        navigate('/artist-profile');
         setAuthClosable?.(false);
         return;
       }
@@ -53,8 +54,7 @@ export const MusicianDashboardLayout = ({
       }
 
       if (!loading && user?.musicianProfile && !hasBasics) {
-        setNoProfileModal(true);
-        setNoProfileModalClosable(false);
+        navigate('/artist-profile');
         setAuthClosable?.(false);
         return;
       }

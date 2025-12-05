@@ -20,13 +20,13 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { cancelGigAndRefund } from '@services/api/payments';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { postCancellationMessage } from '@services/api/messages';
-import { getMusicianProfileByMusicianId } from '../../../services/client-side/musicians';
+import { getMusicianProfileByMusicianId } from '../../../services/client-side/artists';
 import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { duplicateGig, updateGigDocument } from '@services/api/gigs';
 import { saveGigTemplate } from '@services/api/venues';
-import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
 

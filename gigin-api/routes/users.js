@@ -141,7 +141,7 @@ router.post("/sendVerificationEmail", requireAuth, asyncHandler(async (req, res)
   return res.json({ data: { success: true } });
 }));
 
-const ALLOWED_ARRAY_FIELDS = ["venueProfiles", "savedMusicians", "bands", "musicianProfile"];
+const ALLOWED_ARRAY_FIELDS = ["venueProfiles", "savedMusicians", "savedArtists", "bands", "artistProfiles"];
 
 // POST /api/users/updateUserArrayField (auth required)
 router.post("/updateUserArrayField", requireAuth, asyncHandler(async (req, res) => {
@@ -174,6 +174,65 @@ router.post("/clearUserArrayField", requireAuth, asyncHandler(async (req, res) =
   const userRef = db.doc(`users/${uid}`);
   await userRef.update({ [field]: FieldValue.delete() });
   return res.json({ data: { success: true, field, cleared: true } });
+}));
+
+// POST /api/users/setPrimaryArtistProfile (auth required)
+// Sets a user's primary artist profile. Can only be set once.
+router.post("/setPrimaryArtistProfile", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const { artistProfileId } = req.body || {};
+  
+  if (!artistProfileId || typeof artistProfileId !== "string") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "artistProfileId is required" });
+  }
+
+  const userRef = db.doc(`users/${uid}`);
+  const userSnap = await userRef.get();
+  
+  if (!userSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "User not found" });
+  }
+
+  const userData = userSnap.data();
+  const artistProfiles = userData.artistProfiles || [];
+
+  // Check if user has more than one profile
+  if (artistProfiles.length <= 1) {
+    return res.status(400).json({ 
+      error: "INVALID_ARGUMENT", 
+      message: "You must have more than one artist profile to set a primary profile" 
+    });
+  }
+
+  // Check if primary profile has already been set (can only change once)
+  if (userData.primaryProfileSet === true) {
+    return res.status(403).json({ 
+      error: "FORBIDDEN", 
+      message: "Primary profile has already been set and cannot be changed" 
+    });
+  }
+
+  // Validate that the profileId belongs to the user
+  // artistProfiles can be an array of strings (profile IDs) or objects with id/profileId
+  const profileInArray = artistProfiles.find(
+    (p) => (typeof p === 'string' && p === artistProfileId) ||
+           (typeof p === 'object' && (p.id === artistProfileId || p.profileId === artistProfileId))
+  );
+
+  if (!profileInArray) {
+    return res.status(403).json({ 
+      error: "FORBIDDEN", 
+      message: "This artist profile does not belong to you" 
+    });
+  }
+
+  // Set primary profile
+  await userRef.update({
+    primaryArtistProfileId: artistProfileId,
+    primaryProfileSet: true,
+  });
+
+  return res.json({ data: { success: true, primaryArtistProfileId: artistProfileId } });
 }));
 
 // DELETE /api/users/deleteUserDocument (auth required)

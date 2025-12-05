@@ -27,9 +27,17 @@ dist-ssr
 .env.production
 .env.development
 functions/service-account.json
+firestore-rules
 scripts/
 gigin-api/node_modules
 gigin-api/dist
 gigin-api/dist-ssr
 gigin-api/*.local
 gigin-api/.env
+MIGRATION_GUIDE.md
+scripts/service-account.dev.json
+scripts/service-account.prod.json
+scripts/firestore-backup-*.json
+scripts/firestore-backup-latest.json
+scripts/artistProfileMigrations.output.json
+scripts/legacyArtistProfiles.output.json

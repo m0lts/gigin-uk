@@ -4,8 +4,8 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 import { admin, db, FieldValue } from "../config/admin.js";
 import { v4 as uuidv4 } from "uuid";
-import { assertVenuePerm, PERM_DEFAULTS, PERM_KEYS, sanitizePermissions } from "../utils/permissions.js";
-import { addUserToVenueConversations } from "../utils/conversations.js";
+import { assertVenuePerm, assertArtistPerm, PERM_DEFAULTS, PERM_KEYS, sanitizePermissions } from "../utils/permissions.js";
+import { addUserToAccountConversations } from "../utils/conversations.js";
 
 const router = express.Router();
 
@@ -76,9 +76,9 @@ router.post("/acceptVenueInvite", requireAuth, asyncHandler(async (req, res) => 
   if (memberSnap.exists && (memberSnap.data() || {}).status === "active") {
     await inviteRef.delete();
     try {
-      await addUserToVenueConversations(venueId, uid);
+      await addUserToAccountConversations("venue", venueId, uid);
     } catch (e) {
-      console.error("addUserToVenueConversations failed:", e);
+      console.error("addUserToAccountConversations (venue) failed:", e);
     }
     return res.json({ data: { ok: true, message: "ALREADY_MEMBER", venueId } });
   }
@@ -113,9 +113,9 @@ router.post("/acceptVenueInvite", requireAuth, asyncHandler(async (req, res) => 
   });
 
   try {
-    await addUserToVenueConversations(venueId, uid);
+    await addUserToAccountConversations("venue", venueId, uid);
   } catch (e) {
-    console.error("addUserToVenueConversations failed:", e);
+    console.error("addUserToAccountConversations (venue) failed:", e);
   }
 
   return res.json({ data: { ok: true, venueId } });
@@ -214,6 +214,53 @@ router.post("/updateVenueMemberPermissions", requireAuth, asyncHandler(async (re
   });
   return res.json({ data: { ok: true } });
 
+}));
+
+// POST /api/venues/createVenueRequest (auth)
+router.post("/createVenueRequest", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
+  const {
+    venueId,
+    musicianId,
+    musicianName,
+    musicianImage,
+    musicianGenres,
+    musicianType,
+    musicianPlays,
+    message,
+    createdAt,
+    viewed = false,
+  } = req.body || {};
+
+  if (!venueId || !musicianId) {
+    return res.status(400).json({
+      error: "INVALID_ARGUMENT",
+      message: "venueId and musicianId are required",
+    });
+  }
+
+  // If this is an artistProfile, enforce gigs.book for the caller
+  const artistRef = db.doc(`artistProfiles/${musicianId}`);
+  const artistSnap = await artistRef.get();
+  if (artistSnap.exists) {
+    await assertArtistPerm(db, caller, musicianId, "gigs.book");
+  }
+
+  const payload = {
+    venueId,
+    musicianId,
+    musicianName: musicianName || null,
+    musicianImage: musicianImage || "",
+    musicianGenres: musicianGenres || [],
+    musicianType: musicianType || null,
+    musicianPlays: musicianPlays || null,
+    message: message || "",
+    createdAt: createdAt ? new Date(createdAt) : new Date(),
+    viewed: !!viewed,
+  };
+
+  const docRef = await db.collection("venueRequests").add(payload);
+  return res.json({ data: { requestId: docRef.id } });
 }));
 
 // POST /api/venues/removeVenueMember (auth)
@@ -445,6 +492,28 @@ router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "templateId is required" });
   }
 
+  // Remove payment, applicant, and task-related fields from template - templates should be plain gig documents
+  const templateData = { ...payload };
+  const fieldsToRemove = [
+    "payoutConfig",
+    "agreedFee",
+    "paymentIntentId",
+    "paymentStatus",
+    "paid",
+    "musicianFeeStatus",
+    "disputeClearingTime",
+    "disputeLogged",
+    "clearPendingFeeTaskName",
+    "automaticMessageTaskName",
+    "applicants", // Templates shouldn't have applicants
+    "gigId", // Templates have templateId, not gigId
+  ];
+  fieldsToRemove.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(templateData, field)) {
+      delete templateData[field];
+    }
+  });
+
   const templateRef = db.doc(`templates/${templateId}`);
 
   await db.runTransaction(async (tx) => {
@@ -459,7 +528,7 @@ router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
       }
     }
 
-    tx.set(templateRef, payload, { merge: true });
+    tx.set(templateRef, templateData, { merge: true });
 
   });
 

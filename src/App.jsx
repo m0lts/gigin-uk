@@ -17,27 +17,30 @@ import { MusicianDashboardLayout } from '@layouts/MusicianDashboardLayout';
 import { VenueDashboard } from '@features/venue/dashboard/Dashboard';
 import { GigFinder } from '@features/gig-discovery/GigFinder';
 import { GigPage } from '@features/gig-discovery/GigPage';
-import { MusicianDashboard } from '@features/musician/dashboard/Dashboard';
-import { ProfileCreator } from '@features/musician/profile-creator/ProfileCreator';
-import { MusicianProfile } from '@features/musician/components/MusicianProfile';
-import { MessagePage } from '@features/musician/messages/MessagePage';
+import { MusicianDashboard } from '@features/artist/dashboard/Dashboard';
+import { ProfileCreator } from '@features/artist/profile-creator/ProfileCreator';
+import { MusicianProfile } from '@features/artist/components/MusicianProfile';
+import { ArtistProfile } from '@features/artist/artist-profile/ArtistProfile';
+import { ArtistProfileViewer } from '@features/artist/artist-profile/ArtistProfileViewer';
+import { MessagePage } from '@features/artist/messages/MessagePage';
 import { MessagesLayout } from '@layouts/MessagesLayout';
 import { VenueDashboardLayout } from '@layouts/VenueDashboardLayout';
 import { Account } from '@features/account/Account';
-import { Testimonials } from '@features/musician/profile/TestimonialPage';
+import { Testimonials } from '@features/artist/profile/TestimonialPage';
 import { VenuePage } from './features/venue/components/VenuePage';
 import { VerifyEmailModal } from './features/shared/components/VerifyEmailModal';
 import { auth } from "@lib/firebase";
-import { NoProfileModal } from './features/musician/components/NoProfileModal';
+import { NoProfileModal } from './features/artist/components/NoProfileModal';
 import { VenueFinder } from './features/venue-discovery/VenueFinder';
 import Portal from './features/shared/components/Portal';
 import { logClientError } from './services/client-side/errors';
 import { TermsAndConditions } from './features/legals/TermsAndConditions';
 import { PrivacyPolicy } from './features/legals/PrivacyPolicy';
 import { JoinVenuePage } from './features/venue/components/JoinVenue';
+import { JoinArtistPage } from './features/artist/components/JoinArtist';
 import { EmailActionHandler } from './features/shared/components/EmailActionHandler';
 import { VenueDashboardProvider } from './context/VenueDashboardContext';
-import { MusicianDashboardProvider } from './context/MusicianDashboardContext';
+import { ArtistDashboardProvider } from './context/ArtistDashboardContext';
 
 
 
@@ -131,9 +134,11 @@ export default function App() {
         {/* MUSICIAN ROUTES */}
         <Route path='/'>
           <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} /></MainLayout>} />
-          <Route path='dashboard/*' element={<MusicianDashboardProvider user={user}><MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><MusicianDashboard user={user} /></MusicianDashboardLayout></MusicianDashboardProvider>} />
+          <Route path='artist-profile/:profileId?/*' element={<ArtistDashboardProvider user={user}><ArtistProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} /></ArtistDashboardProvider>} />
+          <Route path='dashboard/*' element={<ArtistDashboardProvider user={user}><MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><MusicianDashboard user={user} /></MusicianDashboardLayout></ArtistDashboardProvider>} />
           <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
           <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+          <Route path='artist/:artistId' element={<ArtistProfileViewer user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
 
         {/* VENUES ROUTES */}
@@ -149,6 +154,7 @@ export default function App() {
         <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
         <Route path='/testimonials' element={<Testimonials />} />
         <Route path='/join-venue' element={<JoinVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+        <Route path='/join-artist' element={<JoinArtistPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
         <Route path="/auth/email-verified" element={<EmailActionHandler user={user} />} />

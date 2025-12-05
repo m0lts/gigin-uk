@@ -75,9 +75,6 @@
 
 .loading.spinner {
   border: 2px solid transparent;
-  border-top-color: var(--gn-off-black);
-  border-right-color: var(--gn-off-black);
-  border-bottom-color: var(--gn-off-black);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

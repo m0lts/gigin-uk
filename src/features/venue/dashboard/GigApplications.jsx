@@ -15,7 +15,8 @@ import { useAuth } from '@hooks/useAuth';
 import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
+import { getMusicianProfileByMusicianId, getArtistProfileById } from '@services/client-side/artists';
+import { getUserById } from '@services/client-side/users';
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { getMostRecentMessage } from '@services/client-side/messages';
@@ -37,7 +38,7 @@ import { hasVenuePerm } from '../../../services/utils/permissions';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { toJsDate } from '../../../services/utils/dates';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, postCancellationMessage } from '@services/api/messages';
-import { cancelledGigMusicianProfileUpdate } from '@services/api/musicians';
+import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -62,6 +63,34 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const navigate = useNavigate();
     const { user } = useAuth();
     const now = useMemo(() => new Date(), []);
+
+    // Helper function to fetch profile (artist or musician) by ID
+    const getProfileById = async (profileId) => {
+      let profile = await getArtistProfileById(profileId);
+      const isArtistProfile = !!profile;
+      if (!profile) {
+        profile = await getMusicianProfileByMusicianId(profileId);
+      }
+      if (profile) {
+        // For artist profiles, fetch user email from user document
+        if (isArtistProfile && profile.userId && !profile.email) {
+          try {
+            const user = await getUserById(profile.userId);
+            if (user?.email) {
+              profile.email = user.email;
+            }
+          } catch (error) {
+            console.error('Error fetching user email:', error);
+          }
+        }
+        // Normalize profile structure for backward compatibility
+        return {
+          ...profile,
+          musicianId: profile.id || profile.musicianId || profileId,
+        };
+      }
+      return null;
+    };
     const [videoToPlay, setVideoToPlay] = useState(null);
     const [gigInfo, setGigInfo] = useState(null);
     const [musicianProfiles, setMusicianProfiles] = useState([]);
@@ -127,9 +156,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         try {
           const profiles = await Promise.all(
             (gigInfo.applicants || []).map(async (app) => {
-              const m = await getMusicianProfileByMusicianId(app.id);
-              return m ? {
-                ...m,
+              const profile = await getProfileById(app.id);
+              return profile ? {
+                ...profile,
                 id: app.id,
                 status: app.status,
                 proposedFee: app.fee,
@@ -140,7 +169,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
           setMusicianProfiles(profiles.filter(Boolean));
           setLoading(false);
         } catch (e) {
-          console.error("Error fetching musician profiles:", e);
+          console.error("Error fetching profiles:", e);
         }
       }
     }, [gigInfo]);
@@ -227,15 +256,33 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 }));
                 globalAgreedFee = agreedFee;
             }
-            const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
+            const musicianProfile = await getProfileById(musicianId);
             const venueProfile = await getVenueProfileById(gigInfo.venueId);
             const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: gigInfo, venueProfile, type: 'application' });
             if (proposedFee === gigInfo.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
-                await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: gigInfo.budget, userRole: 'venue', nonPayableGig });
+                if (applicationMessage?.id) {
+                    await sendGigAcceptedMessage({
+                        conversationId,
+                        originalMessageId: applicationMessage.id,
+                        senderId: user.uid,
+                        agreedFee: gigInfo.budget,
+                        userRole: 'venue',
+                        nonPayableGig,
+                    });
+                }
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
-                await sendGigAcceptedMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, agreedFee: globalAgreedFee, userRole: 'venue', nonPayableGig });
+                if (applicationMessage?.id) {
+                    await sendGigAcceptedMessage({
+                        conversationId,
+                        originalMessageId: applicationMessage.id,
+                        senderId: user.uid,
+                        agreedFee: globalAgreedFee,
+                        userRole: 'venue',
+                        nonPayableGig,
+                    });
+                }
             }
             await sendGigAcceptedEmail({
                 userRole: 'venue',
@@ -276,7 +323,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 ...prevGigInfo,
                 applicants: updatedApplicants,
             }));
-            const musicianProfile = await getMusicianProfileByMusicianId(musicianId);
+            const musicianProfile = await getProfileById(musicianId);
             const venueProfile = await getVenueProfileById(gigInfo.venueId);
             const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: gigInfo, venueProfile, type: 'application' })
             if (proposedFee === gigInfo.budget) {
@@ -503,7 +550,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 const bandOrMusicianProfiles = await Promise.all(
                   nextGig.applicants
                     .filter(app => app.status === 'confirmed')
-                    .map(app => getMusicianProfileByMusicianId(app.id))
+                    .map(app => getProfileById(app.id))
                 );
                 for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
                   await handleMusicianCancellation(musician);
@@ -514,7 +561,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 console.error("No confirmed applicant found");
                 return;
               }
-              const musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+              const musicianProfile = await getProfileById(confirmedApplicant.id);
               await handleMusicianCancellation(musicianProfile);
             }
             setCancellationReason({

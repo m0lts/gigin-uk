@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Header as MusicianHeader } from '@features/musician/components/Header';
+import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
+import { Header as CommonHeader } from '@features/shared/components/Header';
 import '@styles/host/venue-page.styles.css';
 import { 
     ClubIcon,
@@ -10,14 +11,15 @@ import {
     InstagramIcon,
     MicrophoneIcon,
     SpeakersIcon,
-    TwitterIcon } from '@features/shared/ui/extras/Icons';
+    TwitterIcon,
+    PermissionsIcon } from '@features/shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { getGigsByVenueId } from '../../../services/client-side/gigs';
 import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { createVenueRequest, getMusicianProfilesByIds } from '../../../services/client-side/musicians';
+import { getMusicianProfilesByIds, getArtistProfileMembers } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
 import { AmpIcon, BassIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { VenueGigsList } from './VenueGigsList';
@@ -27,6 +29,8 @@ import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { toJsDate } from '../../../services/utils/dates';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { sanitizeArtistPermissions } from '../../../services/utils/permissions';
+import { createVenueRequest } from '@services/api/artists';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
@@ -48,6 +52,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [loadingRequest, setLoadingRequest] = useState(false);
     const [musicianProfiles, setMusicianProfiles] = useState([]);
     const [selectedProfile, setSelectedProfile] = useState(null);
+    const [canRequestGigForSelectedProfile, setCanRequestGigForSelectedProfile] = useState(true);
+    const [checkingRequestPerms, setCheckingRequestPerms] = useState(false);
 
     useEffect(() => {
         if (!venueId) return;
@@ -85,16 +91,24 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
 
     useEffect(() => {
         if (!venueViewing) return;
-        const isMusician = !!user?.musicianProfile?.id;
+        const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
+        const isMusician = !!user?.musicianProfile?.id || hasArtistProfiles;
         const shouldHideVenueView = !user || isMusician;
         if (!shouldHideVenueView) return;
+
         const params = new URLSearchParams(searchParams);
         params.delete('venueViewing');
+
         if (isMusician) {
-          params.set('musicianId', user.musicianProfile.id);
+          const primaryArtistId = hasArtistProfiles ? user.artistProfiles[0].id : null;
+          const idForParam = user?.musicianProfile?.id || primaryArtistId;
+          if (idForParam) {
+            params.set('musicianId', idForParam);
+          }
         } else {
           params.delete('musicianId');
         }
+
         navigate(
           {
             pathname: `/venues/${venueId}`,
@@ -105,9 +119,31 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
       }, [venueViewing, user, searchParams, venueId, navigate]);
 
 
+    // Extract coordinates from venueData, handling various formats
+    // Mapbox expects [lng, lat] format
+    const mapCoordinates = useMemo(() => {
+        if (venueData?.coordinates && Array.isArray(venueData.coordinates) && venueData.coordinates.length === 2) {
+            // venueData.coordinates should already be [lng, lat]
+            const [lng, lat] = venueData.coordinates;
+            if (typeof lng === 'number' && typeof lat === 'number' && !isNaN(lng) && !isNaN(lat)) {
+                return [lng, lat];
+            }
+        }
+        // Fallback to venueData.geopoint if it exists
+        if (venueData?.geopoint) {
+            const lat = venueData.geopoint._lat || venueData.geopoint.latitude;
+            const lng = venueData.geopoint._long || venueData.geopoint.longitude;
+            if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+                return [lng, lat]; // Mapbox expects [lng, lat]
+            }
+        }
+        return null;
+    }, [venueData?.coordinates, venueData?.geopoint]);
+
     useMapbox({
         containerRef: mapContainerRef,
-        coordinates: venueData?.coordinates,
+        coordinates: mapCoordinates,
+        shouldInit: !!mapCoordinates,
     });
     
 
@@ -132,6 +168,14 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             setLoadingRequest(true);
           const profile = selectedProfile;
           if (!profile) throw new Error('Musician profile not found');
+
+          // Front-end guard: ensure we already determined this member can request gigs
+          if (!canRequestGigForSelectedProfile) {
+            toast.error('You do not have permission to request gigs on behalf of this artist profile.');
+            setLoadingRequest(false);
+            return;
+          }
+
           await createVenueRequest({
             venueId: venueData.id,
             musicianId: profile.musicianId,
@@ -199,20 +243,92 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const handleFetchMusicianProfiles = async () => {
         try {
             if (!user) return;
+
+            // Prefer new artistProfiles structure if present
+            const artistProfiles = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
+            if (artistProfiles.length > 0) {
+                const normalized = artistProfiles.map((p) => ({
+                    id: p.id,
+                    musicianId: p.id,
+                    name: p.name,
+                    picture: p.heroMedia?.url || '',
+                    genres: p.genres || [],
+                    musicianType: p.artistType || 'Musician/Band',
+                    musicType: p.genres || [],
+                    bandProfile: false,
+                    userId: p.userId,
+                }));
+                setMusicianProfiles(normalized);
+
+                const paramId = musicianId;
+                if (paramId) {
+                    const match = normalized.find(
+                        (profile) => profile.id === paramId || profile.musicianId === paramId
+                    );
+                    setSelectedProfile(match || normalized[0] || null);
+                } else {
+                    setSelectedProfile(normalized[0] || null);
+                }
+                setLoadingRequest(false);
+                return;
+            }
+
+            // Legacy musicianProfile / bands flow
             if (user?.bands && user.bands.length > 0 && musicianId) {
-                const allIds = [...user.bands, musicianId]
+                const allIds = [...user.bands, musicianId];
                 const profiles = await getMusicianProfilesByIds(allIds);
                 setMusicianProfiles(profiles);
                 setLoadingRequest(false);
             } else {
-                setSelectedProfile(user?.musicianProfile)
+                setSelectedProfile(user?.musicianProfile || null);
                 setLoadingRequest(false);
             }
         } catch (error) {
             console.error(error);
-            toast.error('Failed to request a gig.')
+            toast.error('Failed to request a gig.');
         }
     }
+
+    // When the selected profile changes, check whether the current user
+    // has gigs.book permission for that artist profile (if applicable).
+    useEffect(() => {
+        let cancelled = false;
+        const run = async () => {
+            const profile = selectedProfile;
+            if (!user?.uid || !profile) {
+                if (!cancelled) setCanRequestGigForSelectedProfile(true);
+                return;
+            }
+
+            const artistProfiles = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
+            const isArtistProfile = artistProfiles.some((p) => p.id === profile.musicianId);
+            if (!isArtistProfile) {
+                if (!cancelled) setCanRequestGigForSelectedProfile(true);
+                return;
+            }
+
+            try {
+                if (!cancelled) setCheckingRequestPerms(true);
+                const members = await getArtistProfileMembers(profile.musicianId);
+                if (cancelled) return;
+                const me = members.find(
+                    (m) => m.id === user.uid && (m.status || 'active') === 'active'
+                );
+                const perms = sanitizeArtistPermissions(me?.permissions || {});
+                if (!cancelled) setCanRequestGigForSelectedProfile(!!perms['gigs.book']);
+            } catch (e) {
+                console.error('Failed to load artist permissions for venue request:', e);
+                if (!cancelled) setCanRequestGigForSelectedProfile(false);
+            } finally {
+                if (!cancelled) setCheckingRequestPerms(false);
+            }
+        };
+
+        run();
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedProfile, user?.uid, user?.artistProfiles]);
 
     const rawOff = venueData?.primaryImageOffsetY;
     let percentFromTop;
@@ -312,17 +428,24 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             const musicianProfile = user?.musicianProfile;
             const venueProfile = user?.venueProfiles?.[0];
             const isVenueOwner = venueId === venueProfile?.venueId;
-            if (musicianProfile) {
-                const isMusician = !!user?.musicianProfile?.id;
+            const hasArtistProfiles = Array.isArray(user.artistProfiles) && user.artistProfiles.length > 0;
+            const hasAnyMusicProfile = !!musicianProfile || hasArtistProfiles;
+
+            if (hasAnyMusicProfile) {
+                const isMusician = hasAnyMusicProfile;
                 const shouldHideVenueView = !user || isMusician;
                 if (!shouldHideVenueView) return;
+
                 const params = new URLSearchParams(searchParams);
                 params.delete('venueViewing');
-                if (isMusician) {
-                  params.set('musicianId', user.musicianProfile.id);
+                const primaryArtistId = hasArtistProfiles ? user.artistProfiles[0].id : null;
+                const idForParam = musicianProfile?.id || primaryArtistId;
+                if (idForParam) {
+                    params.set('musicianId', idForParam);
                 } else {
-                  params.delete('musicianId');
+                    params.delete('musicianId');
                 }
+
                 navigate(
                     {
                       pathname: `/venues/${venueId}`,
@@ -361,7 +484,13 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
 
     return (
         <div className='venue-page'>
-            {user?.venueProfiles?.length > 0 && (!user.musicianProfile) ? (
+            {!user ? (
+                <CommonHeader
+                    setAuthModal={setAuthModal}
+                    setAuthType={setAuthType}
+                    user={user}
+                />
+            ) : user?.venueProfiles?.length > 0 && (!user.artistProfiles?.length) ? (
                 <VenueHeader
                     user={user}
                     setAuthModal={setAuthModal}
@@ -690,10 +819,38 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         <button className="btn tertiary" onClick={() => setShowRequestModal(false)}>
                                             Cancel
                                         </button>
-                                        <button className="btn primary" onClick={() => handleMusicianRequest(selectedProfile)}>
+                                        <button
+                                            className={`btn primary ${!canRequestGigForSelectedProfile ? 'disabled' : ''}`}
+                                            onClick={() => handleMusicianRequest(selectedProfile)}
+                                            disabled={loadingRequest || !canRequestGigForSelectedProfile}
+                                        >
                                             Request To Play Here
                                         </button>
                                     </div>
+                                    {!canRequestGigForSelectedProfile && (
+                                        <div
+                                            className="status-box"
+                                            style={{ marginTop: '0.75rem' }}
+                                        >
+                                            <div
+                                                className="status past"
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.4rem',
+                                                    border: '1px solid var(--gn-grey-400)',
+                                                    backgroundColor: 'var(--gn-grey-250)',
+                                                    color: 'var(--gn-grey-700)',
+                                                    padding: '0.35rem 0.6rem',
+                                                    borderRadius: '5px',
+                                                    fontSize: '0.8rem',
+                                                }}
+                                            >
+                                                <PermissionsIcon />
+                                                You do not have permission to request gigs for this artist profile
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

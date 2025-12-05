@@ -20,7 +20,7 @@ import { TicketedGig } from './TicketedGig';
 import { GeoPoint, Timestamp } from 'firebase/firestore';
 import { geohashForLocation } from 'geofire-common';
 import { validateGigTimings } from '../../../services/utils/validation';
-import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/musicians';
+import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/artists';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '../../../services/client-side/messages';
 import { formatDate } from '../../../services/utils/dates';
@@ -707,7 +707,23 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               return;
             }
             const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
-            const musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
+            // Try to load as legacy musicianProfile first, then fall back to artistProfiles
+            let musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
+
+            if (!musicianProfile) {
+              // Fallback: build a musicianProfile-shaped payload from the artist profile data
+              musicianProfile = {
+                musicianId: buildingForMusicianData.id,
+                id: buildingForMusicianData.id,
+                name: buildingForMusicianData.name,
+                genres: buildingForMusicianData.genres || [],
+                musicianType: buildingForMusicianData.type || 'Musician/Band',
+                musicType: buildingForMusicianData.genres || [],
+                bandProfile: buildingForMusicianData.bandProfile || false,
+                userId: buildingForMusicianData.userId,
+              };
+            }
+
             const res = await inviteToGig({ gigId: firstGigDoc.gigId, musicianProfile });
             if (!res.success) {
               if (res.code === "permission-denied") {

@@ -10,6 +10,7 @@ import { submitUserFeedback } from '../../../services/client-side/reports';
 import { toast } from 'sonner';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { NoTextVenueLogoLink } from '../../shared/ui/logos/Logos';
 
 export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     
@@ -82,6 +83,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
 
     const headerStyle = {
         padding: location.pathname.includes('dashboard') ? '0 1rem' : `0 ${padding || '5%'}`,
+        justifyContent: user?.venueProfiles && user?.venueProfiles?.length > 0 ? 'flex-end' : '',
     };
 
     const menuStyle = {
@@ -91,21 +93,23 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     
     return (
         <>
-            <header className='header venue' style={headerStyle}>
+            <header className={`header venue`} style={headerStyle}>
                 {isMdUp ? (
                     user ? (
                         <>
-                            <div className='left venues'>
-                                <VenueLogoLink />
-                            </div>
                             <div className='right'>
                                 <div className='buttons'>
-                                    {!(user.venueProfiles && user.venueProfiles.length > 0 && user.venueProfiles.some(profile => profile.completed)) && (
+                                    {!(user.venueProfiles && user.venueProfiles.length > 0 && user.venueProfiles.some(profile => profile.completed)) ? (
                                         <Link className='link' to={'/venues/add-venue'}>
                                             <button className='btn secondary important'>
                                                 <VenueIconSolid />
                                                 Add Your Venue
                                             </button>
+                                        </Link>
+                                    ) : (
+                                        <Link className={`btn text-no-underline`} to={'/venues/dashboard'} style={{ color: 'black'}}>
+                                            <VenueIconSolid />
+                                            Venue Dashboard
                                         </Link>
                                     )}
                                 </div>
@@ -116,22 +120,6 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                                     {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
                                 </button>
                             </div>
-                            {accountMenu && (
-                                <MobileMenu
-                                    setMobileOpen={setAccountMenu}
-                                    user={user}
-                                    showAuthModal={showAuthModal}
-                                    setAuthType={setAuthType}
-                                    handleLogout={handleLogout}
-                                    newMessages={newMessages}
-                                    isMobile={!isMdUp}
-                                    menuStyle={menuStyle}
-                                    setShowFeedbackModal={setShowFeedbackModal}
-                                    feedback={feedback}
-                                    setFeedback={setFeedback}
-                                    showFeedbackModal={showFeedbackModal}
-                                />
-                            )}
                         </>
                     ) : (
                         <>

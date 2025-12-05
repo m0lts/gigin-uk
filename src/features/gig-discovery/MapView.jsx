@@ -278,7 +278,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
       <div
         ref={mapContainerRef}
         className="map"
-        style={{ width: '100%', height: clickedGigs.length > 0 ? '70%' : '100%', borderRadius: (!isMdUp && clickedGigs.length > 0) ? '0 0 0.5rem 0.5rem' : '1rem' }}
+        style={{ width: '100%', height: clickedGigs.length > 0 ? '70%' : '100%', borderRadius: (!isMdUp && clickedGigs.length > 0) ? '0 0 0.5rem 0.5rem' : '0 0 1rem1rem' }}
       >
         {!loading && (
           <button

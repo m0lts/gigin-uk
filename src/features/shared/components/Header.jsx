@@ -5,20 +5,19 @@ import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth'
 import { useState, useEffect } from 'react'
 import { listenToUserConversations } from '@services/client-side/conversations';
-import { ProfileCreator } from '../../musician/profile-creator/ProfileCreator';
+import { ProfileCreator } from '../../artist/profile-creator/ProfileCreator';
 import { CloseIcon, ExitIcon, FeedbackIcon, HamburgerMenuIcon, MapIcon } from '../ui/extras/Icons';
-import { NoProfileModal } from '../../musician/components/NoProfileModal';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { MobileMenu } from './MobileMenu';
 import { submitUserFeedback } from '../../../services/client-side/reports';
 import { toast } from 'sonner';
 import Portal from './Portal';
 import { LoadingSpinner } from '../ui/loading/Loading';
+import { NoTextLogoLink, NoTextMusicianLogoLink, NoTextVenueLogoLink } from '../ui/logos/Logos';
 
 export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoProfileModal, noProfileModalClosable = false, setNoProfileModalClosable }) => {
-    
-    const { logout } = useAuth();
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
     const location = useLocation();
     const { isMdUp } = useBreakpoint();
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -52,8 +51,8 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
         }
     }
 
-    useEffect(() => { setMobileOpen(false); }, [location.pathname]);
-    useEffect(() => { if (isMdUp && mobileOpen) setMobileOpen(false); }, [isMdUp, mobileOpen]);
+    // useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+    // useEffect(() => { if (isMdUp && mobileOpen) setMobileOpen(false); }, [isMdUp, mobileOpen]);
 
     window.addEventListener('click', () => {
         setMobileOpen(false);
@@ -74,17 +73,18 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
 
     const getLocation = () => {
         if (location.pathname.includes('host')) {
-            return <VenueLogoLink />;
+            return <NoTextVenueLogoLink />;
         } else if (location.pathname.includes('musician')) {
-            return <MusicianLogoLink />;
+            return <NoTextMusicianLogoLink />;
         } else {
-            return <TextLogoLink />;
+            return <NoTextLogoLink />;
         }
     }
 
     const headerStyle = {
         padding: location.pathname.includes('dashboard') ? '0 1rem' : '0 2.5%',
     };
+    
 
     return (
         <>
@@ -92,49 +92,74 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                 {isMdUp ? (
                     user ? (
                         <>
-                            { getLocation() }
-                            <div className='right'>
-                                <div className='buttons'>
-                                    <Link className='link' to={'/find-a-gig'}>
-                                        <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                                            <MapIcon />
-                                            Find a Gig
-                                        </button>
-                                    </Link>
-                                    <button className={`btn secondary ${noProfileModal ? 'disabled' : ''}`}  onClick={() => {setNoProfileModal(true); setNoProfileModalClosable(!noProfileModalClosable)}}>
-                                        <GuitarsIcon />
-                                        Create a Musician Profile
-                                    </button>
-                                    <Link className='link' to={'/venues/add-venue'}>
-                                        <button className='btn text'>
-                                            I'm a Venue
-                                        </button>
-                                    </Link>
-                                </div>
-                                <button className='btn secondary logout' onClick={() => handleLogout()}>
-                                    Log Out
-                                </button>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            { getLocation() }
-                            <nav className='nav-list right'>
-                                <Link className='link' to={'/venues/add-venue'}>
-                                        <button className='btn text'>
-                                            I'm a Venue
-                                        </button>
-                                </Link>
+                            <div className='left'>
+                                { getLocation() }
                                 <Link className='link' to={'/find-a-gig'}>
-                                    <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
-                                        <MapIcon />
+                                    <button className={`btn secondary-alt ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                                         Find a Gig
                                     </button>
                                 </Link>
                                 <Link className='link' to={'/find-venues'}>
-                                    <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
-                                        <TelescopeIcon />
+                                    <button className={`btn secondary-alt ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
                                         Find a Venue
+                                    </button>
+                                </Link>
+                            </div>
+                            {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
+                                <div className="right">
+                                    <button className={`btn text-no-underline ${noProfileModal ? 'disabled' : ''}`}  onClick={() => navigate(`/artist-profile`)}>
+                                        <GuitarsIcon />
+                                        Artist Dashboard
+                                    </button>
+                                    <button
+                                        className='btn icon hamburger-menu-btn'
+                                        aria-label='Open menu'
+                                        aria-expanded={mobileOpen}
+                                        aria-controls='mobile-menu'
+                                        onClick={(e) => {setMobileOpen(o => !o); e.stopPropagation();}}
+                                    >
+                                        <HamburgerMenuIcon />
+                                    </button>
+                                </div>
+                            ) : (
+                            <div className='right'>
+                                <Link className='link' to={'/venues/add-venue'}>
+                                    <button className='btn text-no-underline'>
+                                        I'm a Venue
+                                    </button>
+                                </Link>
+                                <button className={`btn artist-profile ${noProfileModal ? 'disabled' : ''}`}  onClick={() => navigate('/artist-profile')}>
+                                    <GuitarsIcon />
+                                    Create Artist Profile
+                                </button>
+                                <button
+                                    className='btn icon hamburger-menu-btn'
+                                    onClick={(e) => {e.stopPropagation(); setMobileOpen(o => !o)}}
+                                >
+                                    {mobileOpen ? <CloseIcon /> : <HamburgerMenuIcon />}
+                                </button>
+                            </div>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <div className='left'>
+                                { getLocation() }
+                                <Link className='link' to={'/find-a-gig'}>
+                                    <button className={`btn secondary-alt ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
+                                        Find a Gig
+                                    </button>
+                                </Link>
+                                <Link className='link' to={'/find-venues'}>
+                                    <button className={`btn secondary-alt ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
+                                        Find a Venue
+                                    </button>
+                                </Link>
+                            </div>
+                            <nav className='nav-list right'>
+                                <Link className='link' to={'/venues/add-venue'}>
+                                    <button className='btn text'>
+                                        I'm a Venue
                                     </button>
                                 </Link>
                                 <button className='item btn secondary' onClick={() => {showAuthModal(true); setAuthType('login')}}>

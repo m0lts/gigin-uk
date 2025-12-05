@@ -48,6 +48,10 @@ export async function getConnectAccountStatus() {
   return await post('/billing/getConnectAccountStatus');
 }
 
+export async function getStripeBalance() {
+  return await post('/billing/getStripeBalance');
+}
+
 export async function transferStripeFunds({ connectedAccountId, amount }) {
   return await post('/billing/transferFunds', { body: { connectedAccountId, amount } });
 }

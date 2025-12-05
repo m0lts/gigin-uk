@@ -7,8 +7,6 @@ export const ConversationItem = ({
   isActive,
   onClick
 }) => {
-  const isBandConversation = !!conversation.bandConversation;
-
   const yourParticipantIds = (conversation.accountNames || [])
     .filter(a => a.accountId === user.uid)
     .map(a => a.participantId);
@@ -31,7 +29,7 @@ export const ConversationItem = ({
 
   const title =
     otherParticipant?.accountName ||
-    (isBandConversation ? 'Band' : 'Musician');
+    (otherParticipant?.role === 'band' ? 'Band' : 'Musician');
 
   const subtitle =
     otherParticipant?.role === 'band'

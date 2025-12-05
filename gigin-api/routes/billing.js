@@ -372,19 +372,77 @@ router.post("/getCustomerData", requireAuth, asyncHandler(async (req, res) => {
 router.post("/deleteStripeConnectedAccount", requireAuth, asyncHandler(async (req, res) => {
   const { musicianId } = req.body || {};
   if (!musicianId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "musicianId required" });
+  const uid = req.auth.uid;
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "User not found" });
+  const userData = userSnap.data() || {};
+  const stripeConnectId = userData.stripeConnectId;
+  
+  // Legacy: check musicianProfile if no stripeConnectId on user
+  let stripeAccountId = stripeConnectId;
+  if (!stripeAccountId) {
   const musicRef = db.collection("musicianProfiles").doc(musicianId);
   const musicSnap = await musicRef.get();
   if (!musicSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "Musician profile not found" });
-  const { userId, stripeAccountId } = musicSnap.data() || {};
-  if (userId !== req.auth.uid) return res.status(403).json({ error: "PERMISSION_DENIED" });
+    const { userId, stripeAccountId: legacyStripeAccountId } = musicSnap.data() || {};
+    if (userId !== uid) return res.status(403).json({ error: "PERMISSION_DENIED" });
+    stripeAccountId = legacyStripeAccountId;
+  }
+  
   if (!stripeAccountId) return res.json({ data: { success: true, message: "No Stripe account attached." } });
   const stripe = getStripe();
   const balance = await stripe.balance.retrieve({ stripeAccount: stripeAccountId });
   const availableTotal = (balance.available || []).reduce((sum, b) => sum + (b.amount || 0), 0);
   if (availableTotal > 0) return res.json({ data: { success: false, message: "Please withdraw your available balance before deleting your account." } });
   await stripe.accounts.del(stripeAccountId);
-  await musicRef.update({ stripeAccountId: admin.firestore.FieldValue.delete(), bankDetailsAdded: false, withdrawableEarnings: 0 });
+  
+  // Update user document (new model)
+  await userRef.update({ 
+    stripeConnectId: admin.firestore.FieldValue.delete(),
+    withdrawableEarnings: 0 
+  });
+  
+  // Legacy: also update musicianProfile if it exists
+  const musicRef = db.collection("musicianProfiles").doc(musicianId);
+  const musicSnap = await musicRef.get();
+  if (musicSnap.exists) {
+    await musicRef.update({ 
+      stripeAccountId: admin.firestore.FieldValue.delete(), 
+      bankDetailsAdded: false 
+    });
+  }
+  
   return res.json({ data: { success: true } });
+}));
+
+// POST /api/billing/getStripeBalance
+router.post("/getStripeBalance", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const userSnap = await db.collection("users").doc(uid).get();
+  if (!userSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "User not found" });
+  const userData = userSnap.data() || {};
+  
+  // If user has Stripe Connect account, get balance from Stripe
+  if (userData.stripeConnectId) {
+    try {
+      const stripe = getStripe();
+      const balance = await stripe.balance.retrieve({ stripeAccount: userData.stripeConnectId });
+      // Sum all available balances (can be multiple currencies)
+      const availableTotal = (balance.available || []).reduce((sum, b) => sum + (b.amount || 0), 0);
+      const availableTotalGBP = availableTotal / 100; // Convert from pence to pounds
+      return res.json({ data: { withdrawableEarnings: availableTotalGBP, source: "stripe" } });
+    } catch (error) {
+      console.error("Error fetching Stripe balance:", error);
+      // Fall back to user document if Stripe query fails
+      const withdrawableEarnings = userData.withdrawableEarnings || 0;
+      return res.json({ data: { withdrawableEarnings, source: "fallback" } });
+    }
+  }
+  
+  // If no Stripe account, return withdrawableEarnings from user document
+  const withdrawableEarnings = userData.withdrawableEarnings || 0;
+  return res.json({ data: { withdrawableEarnings, source: "user_document" } });
 }));
 
 // POST /api/billing/getConnectAccountStatus
@@ -393,14 +451,14 @@ router.post("/getConnectAccountStatus", requireAuth, asyncHandler(async (req, re
   const userSnap = await db.collection("users").doc(uid).get();
   if (!userSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "User not found" });
   const userData = userSnap.data() || {};
-  let musicianId = Array.isArray(userData.musicianProfile) && userData.musicianProfile.length ? userData.musicianProfile[0] : null;
-  if (!musicianId) return res.json({ data: { exists: false, status: "no_account", reason: "no_musician_profile" } });
-  const musicianSnap = await db.collection("musicianProfiles").doc(musicianId).get();
-  if (!musicianSnap.exists) return res.json({ data: { exists: false, status: "no_account", reason: "profile_not_found" } });
-  const musicianProfile = musicianSnap.data() || {};
-  if (!musicianProfile.stripeAccountId) return res.json({ data: { exists: false, status: "no_account" } });
+  
+  // Check for Stripe Connect account on user document (new structure)
+  if (!userData.stripeConnectId) {
+    return res.json({ data: { exists: false, status: "no_account", reason: "no_stripe_account" } });
+  }
+  
   const stripe = getStripe();
-  const accountId = musicianProfile.stripeAccountId;
+  const accountId = userData.stripeConnectId;
   const account = await stripe.accounts.retrieve(accountId);
   const reqs = account.requirements;
   const currentlyDueArr = reqs.currently_due;
@@ -418,7 +476,12 @@ router.post("/getConnectAccountStatus", requireAuth, asyncHandler(async (req, re
   const needsOnboarding = (currentlyDueArr.length > 0) || (pastDueArr.length > 0) || !account.details_submitted;
   let resolveUrl = null;
   if (status !== "all_good" || needsOnboarding) {
-    const link = await stripe.accountLinks.create({ account: accountId, refresh_url: "https://giginmusic.com/dashboard/finances?retry=true", return_url: "https://giginmusic.com/dashboard/finances?done=true", type: needsOnboarding ? "account_onboarding" : "account_update" });
+    const link = await stripe.accountLinks.create({ 
+      account: accountId, 
+      refresh_url: "https://giginmusic.com/account?show=payouts&retry=true", 
+      return_url: "https://giginmusic.com/account?show=payouts&done=true", 
+      type: needsOnboarding ? "account_onboarding" : "account_update" 
+    });
     resolveUrl = link.url;
   }
   return res.json({ data: { exists: true, status, counts: { currentlyDue: currentlyDueArr.length, pastDue: pastDueArr.length, eventuallyDue: eventuallyDueArr.length }, payoutsEnabled: !!account.payouts_enabled, disabledReason, actions, verification: { status: verificationStatus, details: verificationDetails, code: verificationCode }, resolveUrl, raw: { detailsSubmitted: account.details_submitted, capabilities: account.capabilities } } });
@@ -442,17 +505,82 @@ router.post("/transferFunds", requireAuth, asyncHandler(async (req, res) => {
 router.post("/payoutToBankAccount", requireAuth, asyncHandler(async (req, res) => {
   const { musicianId, amount } = req.body || {};
   if (!musicianId || !amount || amount <= 0) return res.status(400).json({ error: "INVALID_ARGUMENT" });
+  const uid = req.auth.uid;
   const stripe = getStripe();
+  
+  // Get user document (new model)
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "User not found" });
+  const userData = userSnap.data() || {};
+  const stripeConnectId = userData.stripeConnectId;
+  
+  // Legacy: fallback to musicianProfile if no stripeConnectId on user
+  let stripeAccountId = stripeConnectId;
+  if (!stripeAccountId) {
   const musicianDoc = await admin.firestore().collection("musicianProfiles").doc(musicianId).get();
   if (!musicianDoc.exists) return res.status(404).json({ error: "NOT_FOUND", message: "Musician profile not found" });
   const musicianData = musicianDoc.data() || {};
-  const stripeAccountId = musicianData.stripeAccountId;
-  if (!stripeAccountId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Stripe account ID not found for this musician" });
-  const withdrawableEarnings = musicianData.withdrawableEarnings || 0;
-  if (withdrawableEarnings < amount) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Insufficient withdrawable earnings" });
+    stripeAccountId = musicianData.stripeAccountId;
+    if (!stripeAccountId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Stripe account ID not found" });
+  }
+  
+  // Check available balance from Stripe (source of truth for users with Stripe accounts)
+  if (stripeAccountId) {
+    try {
+      const balance = await stripe.balance.retrieve({ stripeAccount: stripeAccountId });
+      const availableTotal = (balance.available || []).reduce((sum, b) => sum + (b.amount || 0), 0);
+      const availableTotalGBP = availableTotal / 100; // Convert from pence to pounds
+      
+      if (availableTotalGBP < amount) {
+        return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Insufficient balance in Stripe account" });
+      }
+    } catch (error) {
+      console.error("Error checking Stripe balance:", error);
+      return res.status(500).json({ error: "INTERNAL", message: "Failed to check Stripe balance" });
+    }
+  } else {
+    // Fallback: check withdrawableEarnings from user document (for users without Stripe)
+    const withdrawableEarnings = userData.withdrawableEarnings || 0;
+    if (withdrawableEarnings < amount) {
+      return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Insufficient withdrawable earnings" });
+    }
+  }
+  
   try {
-    const payout = await stripe.payouts.create({ amount: Math.round(amount * 100), currency: "gbp", metadata: { musicianId, description: "Payout of withdrawable funds" } }, { stripeAccount: stripeAccountId });
-    await admin.firestore().collection("musicianProfiles").doc(musicianId).update({ withdrawableEarnings: FieldValue.increment(-amount), withdrawals: FieldValue.arrayUnion({ amount, status: "complete", timestamp: admin.firestore.Timestamp.now(), stripePayoutId: payout.id }) });
+    const payout = await stripe.payouts.create({ 
+      amount: Math.round(amount * 100), 
+      currency: "gbp", 
+      metadata: { 
+        userId: uid,
+        musicianId, 
+        description: "Payout of withdrawable funds" 
+      } 
+    }, { stripeAccount: stripeAccountId });
+    
+    // Record withdrawal in user document (for tracking, not for balance calculation)
+    await userRef.update({ 
+      withdrawals: FieldValue.arrayUnion({ 
+        amount, 
+        status: "complete", 
+        timestamp: admin.firestore.Timestamp.now(), 
+        stripePayoutId: payout.id 
+      })
+    });
+    
+    // Legacy: also update musicianProfile if it exists
+    const musicianDoc = await admin.firestore().collection("musicianProfiles").doc(musicianId).get();
+    if (musicianDoc.exists) {
+      await admin.firestore().collection("musicianProfiles").doc(musicianId).update({ 
+        withdrawals: FieldValue.arrayUnion({ 
+          amount, 
+          status: "complete", 
+          timestamp: admin.firestore.Timestamp.now(), 
+          stripePayoutId: payout.id 
+        }) 
+      });
+    }
+    
     return res.json({ data: { success: true, payoutId: payout.id } });
   } catch (error) {
     console.error("Error creating payout:", error);

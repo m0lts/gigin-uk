@@ -26,4 +26,8 @@ export function deleteUserDocument(options = {}) {
   return del('/users/deleteUserDocument', { body: { confirm } });
 }
 
+export function setPrimaryArtistProfile({ artistProfileId }) {
+  return post('/users/setPrimaryArtistProfile', { body: { artistProfileId } });
+}
+
 

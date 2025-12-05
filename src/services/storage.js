@@ -1,11 +1,12 @@
 import { storage } from '@lib/firebase';
-import { deleteObject,
-    listAll,
-    ref,
-    uploadBytes,
-    getDownloadURL,
-    uploadBytesResumable,
-    getStorage
+import {
+  deleteObject,
+  listAll,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  uploadBytesResumable,
+  getStorage,
 } from 'firebase/storage';
 
 /*** CREATE OPERATIONS ***/
@@ -221,6 +222,16 @@ export const deleteFileFromStorage = async (fileUrl) => {
   } catch (error) {
     console.error('Failed to parse or delete storage path:', error);
     throw error;
+  }
+};
+
+export const deleteStoragePath = async (path) => {
+  if (!path) return;
+  try {
+    const fileRef = ref(storage, path);
+    await deleteObject(fileRef);
+  } catch (error) {
+    console.error('Failed to delete storage path:', error);
   }
 };
 

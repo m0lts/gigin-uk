@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { StarEmptyIcon, StarIcon } from '@features/shared/ui/extras/Icons';
-import Skeleton from 'react-loading-skeleton';
 import '@styles/shared/review-modal.styles.css';
-import { getMusicianProfileByMusicianId } from '@services/client-side/musicians';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { sendDisputeMessage } from '@services/api/messages';
 import { sendEmail } from '@services/client-side/emails';
@@ -16,10 +12,11 @@ import { LoadingSpinner } from '../ui/loading/Loading';
 import { LoadingModal } from '../ui/loading/LoadingModal';
 import { PermissionsIcon, ThumbsDownIcon, ThumbsUpIcon } from '../ui/extras/Icons';
 import { logDispute, submitReview } from '@services/api/reviews';
-import { findPendingFeeByGigId, markPendingFeeInDispute } from '@services/api/musicians';
+import { findPendingFeeByGigId, markPendingFeeInDispute } from '@services/api/artists';
 import { updateGigDocument } from '@services/api/gigs';
 import { useVenueDashboard } from '../../../context/VenueDashboardContext';
 import { hasVenuePerm } from '../../../services/utils/permissions';
+import { getArtistProfileById } from '../../../services/client-side/artists';
 
 export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewer, setGigData, venueProfiles }) => {
 
@@ -48,7 +45,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
             const confirmedApplicant = gigData.applicants.find(applicant => applicant.status === 'confirmed' || applicant.status === 'paid');
             if (confirmedApplicant) {
                 try {
-                    setMusicianProfile(await getMusicianProfileByMusicianId(confirmedApplicant.id));
+                    setMusicianProfile(await getArtistProfileById(confirmedApplicant.id));
                     setVenueProfile(await getVenueProfileById(gigData.venueId));
                 } catch (error) {
                     console.error('Error fetching venue profile:', error);
@@ -79,16 +76,16 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
             }
             if (success && success2) {
                 await logDispute({
-                    musicianId: musicianProfile.musicianId,
+                    musicianId: musicianProfile.id,
                     gigId: gigData.gigId,
                     venueId: gigData.venueId,
                     reason: disputeReason,
                     message: disputeText || "",
                     attachments: [],
                 });
-                const match = await findPendingFeeByGigId({ musicianId: musicianProfile.musicianId, gigId: gigData.gigId });
+                const match = await findPendingFeeByGigId({ musicianId: musicianProfile.id, gigId: gigData.gigId });
                 if (match) {
-                    await markPendingFeeInDispute({ musicianId: musicianProfile.musicianId, docId: match.docId, gigId: gigData.gigId, disputeReason, details: disputeText || null, venueId: gigData.venueId });
+                    await markPendingFeeInDispute({ musicianId: musicianProfile.id, docId: match.docId, gigId: gigData.gigId, disputeReason, details: disputeText || null, venueId: gigData.venueId });
                 } else {
                     console.warn('No pending fee doc found for this gig to mark as disputed.');
                 }
@@ -154,7 +151,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
             setLoading(true);
             await submitReview({
                 reviewer,
-                musicianId: musicianProfile.musicianId,
+                musicianId: musicianProfile.id,
                 venueId: gigData.venueId,
                 gigId: gigData.gigId,
                 rating,
@@ -192,11 +189,11 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                             <div className='review-head'>
                                 {musicianProfile?.picture && (
                                     <figure className='musician-img-cont'>
-                                        <img src={musicianProfile.picture} alt={musicianProfile.name} className='musician-img' />
+                                        <img src={musicianProfile.picture || musicianProfile.heroMedia.url} alt={musicianProfile.name} className='musician-img' />
                                     </figure>
                                 )}
                                 <div className='name-and-reviews'>
-                                    <h2>{musicianProfile?.name || 'the musician'}</h2>
+                                    <h2>{musicianProfile?.name || 'Artist'}</h2>
                                     {musicianProfile.avgReviews ? (
                                         <h4>{musicianProfile.avgReviews.totalReviews} Review(s)</h4>
                                     ) : (
@@ -279,12 +276,12 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                                     <div className='review-head'>
                                         {musicianProfile?.picture && (
                                             <figure className='musician-img-cont'>
-                                                <img src={musicianProfile.picture} alt={musicianProfile.name} className='musician-img' />
+                                                <img src={musicianProfile.picture || musicianProfile.heroMedia.url} alt={musicianProfile.name} className='musician-img' />
                                             </figure>
                                             
                                         )}
                                         <div className='name-and-reviews'>
-                                            <h2>{musicianProfile?.name || 'the musician'}</h2>
+                                            <h2>{musicianProfile?.name || 'Artist'}</h2>
                                             {musicianProfile?.avgReviews ? (
                                                 <h4>{musicianProfile.avgReviews.totalReviews} Review(s)</h4>
                                             ) : (

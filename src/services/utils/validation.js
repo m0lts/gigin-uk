@@ -1,67 +1,70 @@
 /**
- * Checks if the user is authenticated and the given musician profile is valid and complete.
+ * Checks if the user is authenticated and the given artist profile is complete.
  *
  * @param {object} params
  * @param {object} params.user - The current user object.
  * @param {function} params.setAuthModal
  * @param {function} params.setAuthType
- * @param {function} params.setNoProfileModal
- * @param {function} params.setIncompleteMusicianProfile
- * @param {object} [params.profile] - Optional: a specific musician or band profile to validate.
+ * @param {function} params.setNoProfileModal - Function to show the "create profile" modal
+ * @param {function} params.setNoProfileModalClosable
+ * @param {object} [params.profile] - Optional: a specific artist profile to validate.
+ * @param {function} [params.setIncompleteMusicianProfile] - Unused, kept for backward compatibility
+ * @param {function} [params.navigate] - Unused, kept for backward compatibility
  * @returns {{ valid: boolean, musicianProfile?: object }}
  */
 export const validateMusicianUser = ({
   user,
   setAuthModal,
   setAuthType,
-  setNoProfileModal,
-  setIncompleteMusicianProfile,
-  setNoProfileModalClosable,
   profile,
+  navigate,
 }) => {
+  // Check if user is logged in
   if (!user) {
     setAuthModal?.(true);
     setAuthType?.('login');
-    setNoProfileModalClosable(true);
-    sessionStorage.setItem('redirect', 'do-not-redirect');
-    return { valid: false };
+    sessionStorage.setItem('redirect', window.location.pathname);
+    return {
+      valid: false,
+      modal: false,
+      musicianProfile: null,
+      reason: 'unauthenticated',
+    };
   }
+
+  // Get the profile to validate
   const p =
-  profile ||
-  user?.musicianProfile ||
-  null;
-  const { canApply, reasons } = getMusicianEligibility(p);
-  if (!canApply) {
-    setNoProfileModal?.(true);
-    setIncompleteMusicianProfile?.(p || null);
-    setNoProfileModalClosable(true);
-    return { valid: false, reasons };
+    profile ||
+    (user?.artistProfiles?.length > 0 
+      ? user.artistProfiles.sort((a, b) => {
+          const aTime = a.createdAt?.seconds || a.createdAt || 0;
+          const bTime = b.createdAt?.seconds || b.createdAt || 0;
+          return aTime - bTime;
+        })[0]
+      : null) ||
+    user?.musicianProfile ||
+    null;
+
+  // Check if profile exists and is complete
+  if (!p || p.isComplete !== true) {
+    if (!p) {
+      return {
+        valid: false,
+        modal: true,
+        musicianProfile: null,
+        reason: 'no-profile',
+      };
+    }
+    return {
+      valid: false,
+      modal: true,
+      musicianProfile: null,
+      reason: 'incomplete-profile',
+    };
   }
-  return { valid: true, musicianProfile: p };
+
+  return { valid: true, musicianProfile: p, modal: false, reason: 'valid' };
 };
-
-
-/**
- * Business rule: what makes a musician eligible to apply to gigs?
- * Keep this pure and framework-agnostic.
- * Extend later with moderation/bans/verifications without touching UI.
- *
- * @param {object|null} profile
- * @returns {{ canApply: boolean, reasons: string[] }}
- */
-export function getMusicianEligibility(profile) {
-  if (!profile) {
-    return { canApply: false, reasons: ['No musician profile found'] };
-  }
-  const reasons = [];
-  const hasName = typeof profile.name === 'string' && profile.name.trim().length >= 0;
-  const completedSignup = profile.onboarded;
-  if (!hasName) reasons.push('Add a stage name');
-  if (!completedSignup) reasons.push('Complete signup');
-  if (profile.status === 'banned') reasons.push('Your account is restricted');
-  if (profile.photoModeration === 'rejected') reasons.push('Upload a new profile photo');
-  return { canApply: reasons.length === 0, reasons };
-}
 
 
 /**

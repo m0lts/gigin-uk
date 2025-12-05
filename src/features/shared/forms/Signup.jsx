@@ -1,6 +1,6 @@
 // Dependencies
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { toast } from 'sonner';
 import { getPhoneExistsBoolean } from '@services/api/users';
@@ -37,6 +37,7 @@ import { isBlockedEmail } from '../../../services/utils/validation';
  * If the user has already signed up, it renders a button to login instead.
  */
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
+  const navigate = useNavigate();
 
   const { signup, continueWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
@@ -169,7 +170,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                     if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
-                      setNoProfileModal(true);
+                      navigate('/artist-profile');
                     } else {        
                       setAuthModal(false);
                       setAuthClosable(true);
