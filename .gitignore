@@ -27,6 +27,7 @@ dist-ssr
 .env.production
 .env.development
 functions/service-account.json
+firestore-rules
 scripts/
 gigin-api/node_modules
 gigin-api/dist
