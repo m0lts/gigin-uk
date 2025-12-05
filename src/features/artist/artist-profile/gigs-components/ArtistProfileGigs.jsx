@@ -56,8 +56,8 @@ export const ArtistProfileGigs = () => {
   const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
 
   const selectedStatus = searchParams.get('status') || 'all';
-  const focusProfileId =
-    activeArtistProfile?.id || artistProfiles?.[0]?.id || '';
+  // Use activeArtistProfile from context (which is filtered by activeProfileId prop)
+  const focusProfileId = activeArtistProfile?.id || activeArtistProfile?.profileId || '';
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -279,7 +279,7 @@ export const ArtistProfileGigs = () => {
         gigData: gig,
         venueProfile,
       });
-      navigate(`/messages?conversationId=${conversationId}`);
+      navigate(`/artist-profile/messages?conversationId=${conversationId}`);
     } catch (error) {
       console.error('Failed to contact venue:', error);
       toast.error('Unable to contact venue right now.');
@@ -688,29 +688,29 @@ export const ArtistProfileGigs = () => {
                   </button>
                   {canBookCurrentArtistProfile &&
                     (isConfirmed ? (
+                    <button
+                      onClick={() => {
+                        closeOptionsMenu();
+                        setGigForHandbook(gig);
+                        setShowGigHandbook(true);
+                      }}
+                      className='danger'
+                    >
+                      Cancel Gig <CancelIcon />
+                    </button>
+                  ) : (
+                    gigStatus.text !== 'Withdrawn' &&
+                    !isSaved && (
                       <button
                         onClick={() => {
                           closeOptionsMenu();
-                          setGigForHandbook(gig);
-                          setShowGigHandbook(true);
+                          handleWithdrawApplication(gig, appliedProfile);
                         }}
                         className='danger'
                       >
-                        Cancel Gig <CancelIcon />
+                        Withdraw Application <CancelIcon />
                       </button>
-                    ) : (
-                      gigStatus.text !== 'Withdrawn' &&
-                      !isSaved && (
-                        <button
-                          onClick={() => {
-                            closeOptionsMenu();
-                            handleWithdrawApplication(gig, appliedProfile);
-                          }}
-                          className='danger'
-                        >
-                          Withdraw Application <CancelIcon />
-                        </button>
-                      )
+                    )
                     ))}
                 </>
               );

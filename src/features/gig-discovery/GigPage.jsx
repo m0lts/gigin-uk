@@ -98,9 +98,38 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
     }, [isSmUp, isMdUp, isLgUp]);
 
+    // Extract coordinates from gigData.geopoint or venueProfile.coordinates
+    // Mapbox expects [lng, lat] format
+    const mapCoordinates = useMemo(() => {
+        if (venueProfile?.coordinates && Array.isArray(venueProfile.coordinates) && venueProfile.coordinates.length === 2) {
+            // venueProfile.coordinates should already be [lng, lat]
+            const [lng, lat] = venueProfile.coordinates;
+            if (typeof lng === 'number' && typeof lat === 'number' && !isNaN(lng) && !isNaN(lat)) {
+                return [lng, lat];
+            }
+        }
+        // Fallback to gigData.geopoint
+        if (gigData?.geopoint) {
+            const lat = gigData.geopoint._lat || gigData.geopoint.latitude;
+            const lng = gigData.geopoint._long || gigData.geopoint.longitude;
+            if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+                return [lng, lat]; // Mapbox expects [lng, lat]
+            }
+        }
+        // Fallback to gigData.coordinates if it exists
+        if (gigData?.coordinates && Array.isArray(gigData.coordinates) && gigData.coordinates.length === 2) {
+            const [lng, lat] = gigData.coordinates;
+            if (typeof lng === 'number' && typeof lat === 'number' && !isNaN(lng) && !isNaN(lat)) {
+                return [lng, lat];
+            }
+        }
+        return null;
+    }, [venueProfile?.coordinates, gigData?.geopoint, gigData?.coordinates]);
+
     useMapbox({
         containerRef: mapContainerRef,
-        coordinates: venueProfile?.coordinates,
+        coordinates: mapCoordinates,
+        shouldInit: !!mapCoordinates,
     });
     
     const computeStatusForProfile = (gig, profile) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback, useContext } from 'react';
 import { useAuth } from '@hooks/useAuth';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { ProfileView } from './profile-components/ProfileView';
 import '@styles/artists/artist-profile-new.styles.css';
 // Hardcoded background image for example profile
@@ -9,9 +9,9 @@ import { ArtistDashboardContext, ArtistDashboardProvider } from '../../../contex
 import { uploadFileToStorage, uploadFileWithProgress, deleteStoragePath } from '@services/storage';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '@lib/firebase';
-import { updateUserArrayField } from '@services/api/users';
+import { updateUserArrayField, setPrimaryArtistProfile } from '@services/api/users';
 import { toast } from 'sonner';
-import { NoImageIcon, InviteIconSolid } from '@features/shared/ui/extras/Icons';
+import { NoImageIcon, InviteIconSolid, GuitarsIcon } from '@features/shared/ui/extras/Icons';
 import { CREATION_STEP_ORDER } from './profile-components/ProfileCreationBox';
 import { LoadingModal } from '@features/shared/ui/loading/LoadingModal';
 import { Header as MusicianHeader } from '../components/Header';
@@ -131,7 +131,11 @@ const ArtistProfileComponent = ({
   const { user: authUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { profileId: urlProfileIdParam } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  // If ?create=true is in URL, ignore the profileId from URL path to avoid showing old profile data
+  const shouldCreate = searchParams.get('create') === 'true';
+  const urlProfileId = shouldCreate ? null : urlProfileIdParam;
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedExampleProfile, setSelectedExampleProfile] = useState(null);
   const darkModeInitializedRef = useRef(false);
@@ -183,14 +187,16 @@ const ArtistProfileComponent = ({
     if (!pathname.startsWith('/artist-profile')) {
       return DashboardView.PROFILE;
     }
+    // Remove profileId from path for matching (e.g., /artist-profile/abc123/gigs -> /artist-profile/gigs)
+    const pathWithoutProfileId = pathname.replace(/^\/artist-profile\/[^/]+/, '/artist-profile');
     // Check for sub-routes (must come before the base path check)
-    if (pathname === '/artist-profile/gigs' || pathname.startsWith('/artist-profile/gigs/')) {
+    if (pathWithoutProfileId === '/artist-profile/gigs' || pathWithoutProfileId.startsWith('/artist-profile/gigs/')) {
       return DashboardView.GIGS;
     }
-    if (pathname === '/artist-profile/messages' || pathname.startsWith('/artist-profile/messages/')) {
+    if (pathWithoutProfileId === '/artist-profile/messages' || pathWithoutProfileId.startsWith('/artist-profile/messages/')) {
       return DashboardView.MESSAGES;
     }
-    if (pathname === '/artist-profile/finances' || pathname.startsWith('/artist-profile/finances/')) {
+    if (pathWithoutProfileId === '/artist-profile/finances' || pathWithoutProfileId.startsWith('/artist-profile/finances/')) {
       return DashboardView.FINANCES;
     }
     // Default to PROFILE for /artist-profile or any other /artist-profile/* path
@@ -235,18 +241,149 @@ const ArtistProfileComponent = ({
   const latestTracksRef = useRef([]); // Store the most up-to-date tracks data (including uploaded URLs)
   const latestVideosRef = useRef([]); // Store the most up-to-date videos data (including generated thumbnails)
   const isMountedRef = useRef(true);
+  const createFromUrlRef = useRef(false); // Track if we've triggered creation from URL param
+  const previousActiveProfileIdRef = useRef(null); // Track previous profile ID to detect switches
+  const [isSwitchingProfile, setIsSwitchingProfile] = useState(false); // Track if we're switching profiles
+  const switchingProfileTimeoutRef = useRef(null); // Store timeout ID for profile switching
+  const [showPrimaryProfileModal, setShowPrimaryProfileModal] = useState(false); // Modal for selecting primary profile
+  const [selectedPrimaryProfile, setSelectedPrimaryProfile] = useState(null); // Selected profile for primary
+  const [settingPrimary, setSettingPrimary] = useState(false); // Loading state for setting primary
 
   const artistProfiles = user?.artistProfiles || [];
+  
+  // Helper function to get/set active profile ID from localStorage
+  const getStoredActiveProfileId = () => {
+    if (!user?.uid) return null;
+    try {
+      const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+      return stored || null;
+    } catch (e) {
+      return null;
+    }
+  };
+  
+  const setStoredActiveProfileId = (profileId) => {
+    if (!user?.uid || !profileId) return;
+    try {
+      localStorage.setItem(`activeArtistProfileId_${user.uid}`, profileId);
+    } catch (e) {
+      console.error('Failed to store active profile ID:', e);
+    }
+  };
+  
+  // Select profile based on URL param, localStorage, or default to primary/complete/draft
+  // When creating a new profile (not resuming a draft), don't show any existing profile data
+  const activeProfileData = useMemo(() => {
+    // If we're in creating state, handle creation profile logic first
+    if (isCreatingProfile && creationProfileId) {
+      const isResumingDraft = artistProfiles.some(
+        (p) => (p.id === creationProfileId || p.profileId === creationProfileId) && !p.isComplete
+      );
+      if (isResumingDraft) {
+        // Resuming a draft - return the draft profile
+        return artistProfiles.find(
+          (p) => (p.id === creationProfileId || p.profileId === creationProfileId) && !p.isComplete
+        ) || null;
+      } else {
+        // Creating a brand new profile - return null so we don't show old profile data
+        return null;
+      }
+    }
+    
+    // If ?create=true is in URL, don't show any existing profile data
+    const shouldCreate = searchParams.get('create') === 'true';
+    if (shouldCreate) {
+      return null;
+    }
+    
+    if (urlProfileId) {
+      // Find profile by ID from URL
+      const profile = artistProfiles.find((p) => p.id === urlProfileId || p.profileId === urlProfileId);
+      if (profile) {
+        // Store the active profile ID when found in URL
+        setStoredActiveProfileId(profile.id || profile.profileId);
+        return profile;
+      }
+      // If URL has profileId but profile not found, return null (will redirect)
+      return null;
+    }
+    
+    // Check localStorage for previously viewed profile
+    const storedProfileId = getStoredActiveProfileId();
+    if (storedProfileId) {
+      const storedProfile = artistProfiles.find(
+        (p) => (p.id === storedProfileId || p.profileId === storedProfileId)
+      );
+      if (storedProfile) {
+        return storedProfile;
+      }
+    }
+    
+    // Default priority: primary profile > first complete > first draft
+    if (user?.primaryArtistProfileId) {
+      const primary = artistProfiles.find(
+        (p) => (p.id === user.primaryArtistProfileId || p.profileId === user.primaryArtistProfileId)
+      );
+      if (primary) {
+        setStoredActiveProfileId(primary.id || primary.profileId);
+        return primary;
+      }
+    }
+    // Fallback: first complete profile, or first draft if no complete
+    const completed = artistProfiles.find((profile) => profile?.isComplete);
+    const fallback = completed || artistProfiles.find((profile) => !profile?.isComplete) || null;
+    if (fallback) {
+      setStoredActiveProfileId(fallback.id || fallback.profileId);
+    }
+    return fallback;
+  }, [artistProfiles, urlProfileId, user?.primaryArtistProfileId, user?.uid, isCreatingProfile, creationProfileId, searchParams]);
+  
   const completedProfile = useMemo(
     () => artistProfiles.find((profile) => profile?.isComplete),
     [artistProfiles]
   );
+  
   const draftProfile = useMemo(
     () => artistProfiles.find((profile) => !profile?.isComplete),
     [artistProfiles]
   );
-  const activeProfileData = completedProfile || draftProfile || null;
+  
   const hasCompleteProfile = !!completedProfile;
+  
+  // Redirect if URL profileId doesn't match any profile, or if no profileId but we have profiles
+  useEffect(() => {
+    if (viewerMode) return; // Don't redirect in viewer mode
+    if (!user?.uid) return; // Wait for auth
+    
+    // Don't redirect if we're creating a new profile
+    if (shouldCreate || isCreatingProfile) return;
+    
+    // If URL has profileId but profile not found, redirect to default (primary > complete > draft)
+    if (urlProfileId && !activeProfileData && artistProfiles.length > 0) {
+      let defaultProfile = null;
+      if (user?.primaryArtistProfileId) {
+        defaultProfile = artistProfiles.find(
+          (p) => (p.id === user.primaryArtistProfileId || p.profileId === user.primaryArtistProfileId)
+        );
+      }
+      if (!defaultProfile) {
+        defaultProfile = completedProfile || draftProfile;
+      }
+      if (defaultProfile) {
+        const profileId = defaultProfile.id || defaultProfile.profileId;
+        navigate(`/artist-profile/${profileId}${location.pathname.includes('/gigs') ? '/gigs' : location.pathname.includes('/messages') ? '/messages' : location.pathname.includes('/finances') ? '/finances' : ''}`, { replace: true });
+      }
+      return;
+    }
+    
+    // If no profileId in URL but we have profiles, redirect to default profile
+    if (!urlProfileId && artistProfiles.length > 0 && activeProfileData) {
+      const profileId = activeProfileData.id || activeProfileData.profileId;
+      if (profileId && location.pathname === '/artist-profile') {
+        navigate(`/artist-profile/${profileId}`, { replace: true });
+      }
+    }
+  }, [urlProfileId, activeProfileData, artistProfiles, completedProfile, draftProfile, navigate, location.pathname, viewerMode, user?.uid, shouldCreate, isCreatingProfile]);
   const isOwner =
     !!user && !!activeProfileData && user.uid && activeProfileData.userId
       ? user.uid === activeProfileData.userId
@@ -521,6 +658,37 @@ const ArtistProfileComponent = ({
   useEffect(() => {
     if (viewerMode) return; // viewer mode ignores URL-driven creation/dashboard state
     const urlState = searchParams.get('state');
+    const shouldCreate = searchParams.get('create') === 'true';
+    
+    // If ?create=true is in URL, navigate to base path first (to clear old profileId), then trigger creation
+    if (shouldCreate && !isCreatingProfile && !initializingArtistProfile && !createFromUrlRef.current) {
+      // If there's a profileId in the URL path, navigate to base path first to clear it
+      if (urlProfileId) {
+        // Force navigation to base path without profileId
+        navigate('/artist-profile?create=true', { replace: true });
+        // The navigation will cause a re-render, and on the next render (without urlProfileId),
+        // we'll trigger the creation. Set the ref to prevent multiple navigations.
+        createFromUrlRef.current = true;
+        return;
+      }
+      
+      // No profileId in URL (or we've already navigated), start creation
+      createFromUrlRef.current = true;
+      handleBeginCreation();
+      // Clear the create param after triggering
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('create');
+        return newParams;
+      });
+      return;
+    }
+    
+    // Reset the ref when not creating
+    if (!shouldCreate && !isCreatingProfile) {
+      createFromUrlRef.current = false;
+    }
+    
     if (urlState && Object.values(ArtistProfileState).includes(urlState)) {
       // Only allow URL state if it makes sense (e.g., don't force dashboard if no profile)
       if (urlState === ArtistProfileState.CREATING && !hasCompleteProfile) {
@@ -528,32 +696,81 @@ const ArtistProfileComponent = ({
         setIsCreatingProfile(true);
       }
     }
-  }, [searchParams, hasCompleteProfile]);
+  }, [searchParams, hasCompleteProfile, isCreatingProfile, initializingArtistProfile, urlProfileId, navigate, location.pathname]);
 
   // Determine state based on profile status
   useEffect(() => {
     if (viewerMode) return; // viewer mode always stays in dashboard/profile
-    // If we're in creating state, don't auto-switch until profile is complete
-    if (isCreatingProfile && !hasCompleteProfile) {
+    
+    // Don't override if we're already in dashboard state (e.g., from direct transition in save handlers)
+    if (currentState === ArtistProfileState.DASHBOARD && !isCreatingProfile) {
+      // Already in dashboard - just sync dashboard view with URL if needed
+      const viewFromPath = getDashboardViewFromPath(location.pathname);
+      if (viewFromPath !== dashboardView) {
+        setDashboardView(viewFromPath);
+      }
       return;
     }
-
-    if (hasCompleteProfile) {
-      // Profile just completed - transition to dashboard
-      if (previousProfileRef.current !== hasCompleteProfile) {
+    
+    // Check if the active profile is complete (either from hasCompleteProfile or activeProfileData directly)
+    const activeProfileIsComplete = activeProfileData?.isComplete === true;
+    const profileIsComplete = hasCompleteProfile || activeProfileIsComplete;
+    
+    // If we're in creating state, check if the profile we're creating is now complete
+    if (isCreatingProfile) {
+      // Check if the creationProfileId matches activeProfileData and it's complete
+      const creatingProfileIsComplete = creationProfileId && 
+        (activeProfileData?.id === creationProfileId || activeProfileData?.profileId === creationProfileId) &&
+        activeProfileIsComplete;
+      
+      if (creatingProfileIsComplete) {
+        // Profile just completed - transition to dashboard
         setIsCreatingProfile(false);
         setCurrentState(ArtistProfileState.DASHBOARD);
         // Set dashboard view to match current URL, or default to PROFILE
         const viewFromPath = getDashboardViewFromPath(location.pathname);
         setDashboardView(viewFromPath);
         // Navigate to correct path if not already there
+        const profileId = activeProfileData?.id || activeProfileData?.profileId;
+        const basePath = profileId ? `/artist-profile/${profileId}` : '/artist-profile';
         const pathMap = {
-          [DashboardView.PROFILE]: '/artist-profile',
-          [DashboardView.GIGS]: '/artist-profile/gigs',
-          [DashboardView.MESSAGES]: '/artist-profile/messages',
-          [DashboardView.FINANCES]: '/artist-profile/finances',
+          [DashboardView.PROFILE]: basePath,
+          [DashboardView.GIGS]: `${basePath}/gigs`,
+          [DashboardView.MESSAGES]: `${basePath}/messages`,
+          [DashboardView.FINANCES]: `${basePath}/finances`,
         };
-        const targetPath = pathMap[viewFromPath] || '/artist-profile';
+        const targetPath = pathMap[viewFromPath] || basePath;
+        if (location.pathname !== targetPath) {
+          navigate(targetPath, { replace: true });
+        }
+        // Clear URL state when transitioning to dashboard
+        setSearchParams({});
+        previousProfileRef.current = true;
+        return;
+      }
+      
+      // Still creating and not complete yet
+      return;
+    }
+
+    if (profileIsComplete) {
+      // Profile just completed - transition to dashboard
+      if (previousProfileRef.current !== profileIsComplete) {
+        setIsCreatingProfile(false);
+        setCurrentState(ArtistProfileState.DASHBOARD);
+        // Set dashboard view to match current URL, or default to PROFILE
+        const viewFromPath = getDashboardViewFromPath(location.pathname);
+        setDashboardView(viewFromPath);
+        // Navigate to correct path if not already there
+        const profileId = activeProfileData?.id || activeProfileData?.profileId;
+        const basePath = profileId ? `/artist-profile/${profileId}` : '/artist-profile';
+        const pathMap = {
+          [DashboardView.PROFILE]: basePath,
+          [DashboardView.GIGS]: `${basePath}/gigs`,
+          [DashboardView.MESSAGES]: `${basePath}/messages`,
+          [DashboardView.FINANCES]: `${basePath}/finances`,
+        };
+        const targetPath = pathMap[viewFromPath] || basePath;
         if (location.pathname !== targetPath) {
           navigate(targetPath, { replace: true });
         }
@@ -562,7 +779,7 @@ const ArtistProfileComponent = ({
       }
     } else {
       // No complete profile - show example view (unless explicitly creating)
-      if (!isCreatingProfile) {
+      if (!isCreatingProfile && currentState !== ArtistProfileState.DASHBOARD) {
         setCurrentState(ArtistProfileState.EXAMPLE_PROFILE);
         // Clear URL state when showing example
         if (searchParams.get('state')) {
@@ -571,8 +788,8 @@ const ArtistProfileComponent = ({
       }
     }
 
-    previousProfileRef.current = hasCompleteProfile;
-  }, [hasCompleteProfile, isCreatingProfile, searchParams, location.pathname, navigate]);
+    previousProfileRef.current = profileIsComplete;
+  }, [hasCompleteProfile, activeProfileData?.isComplete, activeProfileData?.id, activeProfileData?.profileId, isCreatingProfile, creationProfileId, searchParams, location.pathname, navigate, viewerMode, currentState, dashboardView]);
 
   // Initialize dark mode from Firestore when profile data first loads.
   // After initialisation, local toggles control the value without being overwritten.
@@ -601,23 +818,101 @@ const ArtistProfileComponent = ({
   // Update URL when dashboard view changes (only when in dashboard state)
   useEffect(() => {
     if (viewerMode) return; // don't push /artist-profile URLs when viewing as a guest/venue
+    // Don't update URL if we're creating a new profile
+    if (shouldCreate || isCreatingProfile) return;
     if (currentState === ArtistProfileState.DASHBOARD && !isNavigatingFromUrlRef.current) {
+      const profileId = activeProfileData?.id || activeProfileData?.profileId;
+      const basePath = profileId ? `/artist-profile/${profileId}` : '/artist-profile';
       const pathMap = {
-        [DashboardView.PROFILE]: '/artist-profile',
-        [DashboardView.GIGS]: '/artist-profile/gigs',
-        [DashboardView.MESSAGES]: '/artist-profile/messages',
-        [DashboardView.FINANCES]: '/artist-profile/finances',
+        [DashboardView.PROFILE]: basePath,
+        [DashboardView.GIGS]: `${basePath}/gigs`,
+        [DashboardView.MESSAGES]: `${basePath}/messages`,
+        [DashboardView.FINANCES]: `${basePath}/finances`,
       };
-      const targetPath = pathMap[dashboardView] || '/artist-profile';
+      const targetPath = pathMap[dashboardView] || basePath;
       if (location.pathname !== targetPath) {
         navigate(targetPath, { replace: true });
       }
     }
     isNavigatingFromUrlRef.current = false;
-  }, [dashboardView, currentState, navigate, location.pathname]);
+  }, [dashboardView, currentState, navigate, location.pathname, activeProfileData, shouldCreate, isCreatingProfile]);
 
   // Track previous editing image to detect cancellation
   const previousEditingHeroImageRef = useRef(null);
+  
+  // Initialize previous profile ID ref when activeProfileData first loads
+  useEffect(() => {
+    const currentProfileId = activeProfileData?.id || activeProfileData?.profileId;
+    if (currentProfileId && previousActiveProfileIdRef.current === null && currentState === ArtistProfileState.DASHBOARD) {
+      previousActiveProfileIdRef.current = currentProfileId;
+    }
+  }, [activeProfileData?.id, activeProfileData?.profileId, currentState]);
+
+  // Detect profile switches and show loading screen
+  useEffect(() => {
+    // Skip if already switching to avoid re-triggering
+    if (isSwitchingProfile) return;
+    
+    // Don't trigger profile switching logic when creating a new profile
+    if (isCreatingProfile || shouldCreate) {
+      // Clear any existing timeout and reset switching state if we're creating
+      if (switchingProfileTimeoutRef.current) {
+        clearTimeout(switchingProfileTimeoutRef.current);
+        switchingProfileTimeoutRef.current = null;
+      }
+      if (isSwitchingProfile) {
+        setIsSwitchingProfile(false);
+      }
+      return;
+    }
+    
+    // Clear any existing timeout
+    if (switchingProfileTimeoutRef.current) {
+      clearTimeout(switchingProfileTimeoutRef.current);
+      switchingProfileTimeoutRef.current = null;
+    }
+    
+    const currentProfileId = activeProfileData?.id || activeProfileData?.profileId;
+    const previousProfileId = previousActiveProfileIdRef.current;
+    
+    // If profile ID changed and we're in dashboard state, we're switching profiles
+    const profileChanged = currentProfileId !== previousProfileId && 
+                           currentProfileId !== null && 
+                           previousProfileId !== null;
+    
+    if (profileChanged && 
+        currentState === ArtistProfileState.DASHBOARD && 
+        !isCreatingProfile &&
+        !shouldCreate) {
+      setIsSwitchingProfile(true);
+      
+      // Clear editing states when switching profiles
+      setEditingHeroImage(null);
+      setEditingHeroBrightness(null);
+      setEditingHeroPosition(null);
+      setEditingName(null);
+      previousEditingHeroImageRef.current = null;
+      
+      // Hide loading after a delay to allow data to load and images to update
+      switchingProfileTimeoutRef.current = setTimeout(() => {
+        setIsSwitchingProfile(false);
+        // Update the ref after the switch is complete
+        previousActiveProfileIdRef.current = currentProfileId;
+        switchingProfileTimeoutRef.current = null;
+      }, 800); // Increased to 800ms for smoother transition
+    } else if (currentProfileId && currentProfileId === previousProfileId) {
+      // If not switching and profile ID matches, ensure ref is up to date
+      previousActiveProfileIdRef.current = currentProfileId;
+    }
+    
+    // Cleanup function to clear timeout if component unmounts or dependencies change
+    return () => {
+      if (switchingProfileTimeoutRef.current) {
+        clearTimeout(switchingProfileTimeoutRef.current);
+        switchingProfileTimeoutRef.current = null;
+      }
+    };
+  }, [activeProfileData?.id, activeProfileData?.profileId, currentState, isCreatingProfile, shouldCreate]);
   
   // Keep hero image in sync with current state
   useEffect(() => {
@@ -642,10 +937,19 @@ const ArtistProfileComponent = ({
 
     // Don't update background image if we're in edit mode but editingHeroImage is null
     // (this prevents reverting to old image while user is selecting new one)
+    // BUT: Always update when profile ID changes (switching profiles or completing creation)
+    const currentProfileId = activeProfileData?.id || activeProfileData?.profileId;
+    const previousProfileId = previousActiveProfileIdRef.current;
+    const profileChanged = currentProfileId !== previousProfileId;
+    
+    // Also check if we just completed profile creation - if so, force update
+    const justCompletedCreation = !isCreatingProfile && creationProfileId && currentProfileId === creationProfileId;
+    
     const isInEditMode =
       activeProfileData?.heroMedia?.url && currentState === ArtistProfileState.DASHBOARD;
-    if (!viewerMode && isInEditMode && !wasEditing) {
+    if (!viewerMode && isInEditMode && !wasEditing && !profileChanged && !justCompletedCreation) {
       // In edit mode for the owner, keep current image until new one is selected
+      // UNLESS we're switching profiles or just completed creation
       return;
     }
 
@@ -666,8 +970,9 @@ const ArtistProfileComponent = ({
       targetImage = selectedExampleProfile?.backgroundImage;
     }
 
-    if (targetImage && targetImage !== backgroundImage) {
-      setBackgroundImage(targetImage);
+    // Always update if profile changed, just completed creation, or if targetImage is different
+    if (profileChanged || justCompletedCreation || (targetImage && targetImage !== backgroundImage)) {
+      setBackgroundImage(targetImage || null);
     }
   }, [
     currentState,
@@ -675,9 +980,13 @@ const ArtistProfileComponent = ({
     creationHasHeroImage,
     creationHeroImage?.previewUrl,
     activeProfileData?.heroMedia?.url,
+    activeProfileData?.id,
+    activeProfileData?.profileId,
     backgroundImage,
     editingHeroImage,
     viewerMode,
+    isCreatingProfile,
+    creationProfileId,
   ]);
 
   const resetCreationState = () => {
@@ -742,12 +1051,15 @@ const ArtistProfileComponent = ({
     setSearchParams({});
   };
 
-  // Resume draft profile automatically
+  // Resume draft profile automatically (but not when ?create=true is in URL)
   useEffect(() => {
     if (!draftProfile) return;
     if (creationProfileId === draftProfile.id) return;
     if (isCreatingProfile) return;
     if (hasCompleteProfile) return;
+    // Don't auto-resume draft if user explicitly wants to create a new profile
+    const shouldCreateNew = searchParams.get('create') === 'true';
+    if (shouldCreateNew) return;
 
     setIsCreatingProfile(true);
     setCurrentState(ArtistProfileState.CREATING);
@@ -900,7 +1212,7 @@ const ArtistProfileComponent = ({
       heroStoragePathRef.current = null;
       setCreationHasHeroImage(false);
     }
-  }, [draftProfile, creationProfileId, isCreatingProfile, hasCompleteProfile]);
+  }, [draftProfile, creationProfileId, isCreatingProfile, hasCompleteProfile, searchParams]);
 
   // Handle transition to creation flow
   const handleBeginCreation = async () => {
@@ -913,7 +1225,10 @@ const ArtistProfileComponent = ({
       return;
     }
 
-    if (draftProfile) {
+    // If ?create=true is in URL, skip draft profile and create a new one
+    const shouldCreateNew = searchParams.get('create') === 'true';
+    
+    if (draftProfile && !shouldCreateNew) {
       setIsCreatingProfile(true);
       setCurrentState(ArtistProfileState.CREATING);
       setCreationProfileId(draftProfile.id);
@@ -1015,6 +1330,7 @@ const ArtistProfileComponent = ({
       return;
     }
 
+    // Creating a new profile (not resuming a draft)
     setInitializingArtistProfile(true);
     setCreationHasHeroImage(false);
     const newProfileId = generateArtistProfileId();
@@ -1072,12 +1388,64 @@ const ArtistProfileComponent = ({
   };
 
   // Handle profile creation completion
-  const handleProfileCreated = () => {
+  const handleProfileCreated = async () => {
     if (heroBrightnessUpdateTimeoutRef.current) {
       clearTimeout(heroBrightnessUpdateTimeoutRef.current);
     }
-    resetCreationState();
-    // State will automatically transition to DASHBOARD via useEffect
+    
+    if (!creationProfileId) {
+      resetCreationState();
+      return;
+    }
+
+    // Check for ongoing uploads - if media is still uploading, show modal
+    if (heroUploadStatus === 'uploading') {
+      toast.error('Please wait for hero image upload to complete');
+      return;
+    }
+
+    if (tracksUploadStatus === 'uploading') {
+      setShowTracksUploadModal(true);
+      return;
+    }
+
+    if (videoUploadStatus === 'uploading') {
+      setShowVideoUploadModal(true);
+      return;
+    }
+
+    // All uploads are complete - mark profile as complete
+    setSavingDraft(true);
+
+    try {
+      // Mark the profile as complete
+      await updateArtistProfileDocument(creationProfileId, {
+        status: 'complete',
+        isComplete: true,
+      });
+      
+      toast.success('Profile completed!');
+      
+      // Store the new profile ID in localStorage and navigate to it
+      setStoredActiveProfileId(creationProfileId);
+      navigate(`/artist-profile/${creationProfileId}`, { replace: true });
+      
+      // Directly transition to dashboard - don't wait for useEffect
+      setIsCreatingProfile(false);
+      setCurrentState(ArtistProfileState.DASHBOARD);
+      setDashboardView(DashboardView.PROFILE);
+      setSearchParams({});
+      
+      // Clear creationProfileId after a short delay
+      setTimeout(() => {
+        setCreationProfileId(null);
+      }, 100);
+    } catch (error) {
+      console.error('Failed to complete profile:', error);
+      toast.error('Failed to complete your profile. Please try again.');
+    } finally {
+      setSavingDraft(false);
+    }
   };
 
   const handleHeroPositionChange = useCallback(
@@ -1394,21 +1762,25 @@ const ArtistProfileComponent = ({
       const trackId = track.id;
       const previousPaths = tracksStoragePathsRef.current[trackId] || {};
 
+      // Capture file references at the start to prevent ERR_UPLOAD_FILE_CHANGED
+      const audioFile = track.audioFile;
+      const coverFile = track.coverFile;
+
       // Upload audio file if present
-      if (track.audioFile) {
-        const extension = track.audioFile.name?.split('.').pop() || 'mp3';
+      if (audioFile) {
+        const extension = audioFile.name?.split('.').pop() || 'mp3';
         const filename = `track-${trackId}-${Date.now()}.${extension}`;
         const storagePath = `artistProfiles/${creationProfileId}/tracks/${filename}`;
         const previousAudioPath = previousPaths.audioPath;
 
         const audioUploadPromise = uploadFileWithProgress(
-          track.audioFile,
+          audioFile, // Use captured reference, not from state
           storagePath,
           (progress) => {
             if (tracksUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
-            // Update progress based on completed uploads + current progress
+            // progress is already 0-100, so we need to scale it by the upload's share
             const baseProgress = (completedUploadsRef.current / totalUploads) * 100;
-            const currentProgress = (progress / totalUploads) * 100;
+            const currentProgress = (progress / totalUploads);
             setTracksUploadProgress(baseProgress + currentProgress);
           }
         )
@@ -1421,7 +1793,7 @@ const ArtistProfileComponent = ({
             const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
             if (trackIndex !== -1) {
               const audioSizeBytes =
-                track.audioFile?.size ??
+                audioFile?.size ??
                 tracksToUpdate[trackIndex].audioSizeBytes ??
                 0;
               const coverSizeBytes = tracksToUpdate[trackIndex].coverSizeBytes ?? 0;
@@ -1466,20 +1838,20 @@ const ArtistProfileComponent = ({
       }
 
       // Upload cover image if present
-      if (track.coverFile) {
-        const extension = track.coverFile.name?.split('.').pop() || 'jpg';
+      if (coverFile) {
+        const extension = coverFile.name?.split('.').pop() || 'jpg';
         const filename = `cover-${trackId}-${Date.now()}.${extension}`;
         const storagePath = `artistProfiles/${creationProfileId}/tracks/covers/${filename}`;
         const previousCoverPath = previousPaths.coverPath;
 
         const coverUploadPromise = uploadFileWithProgress(
-          track.coverFile,
+          coverFile, // Use captured reference, not from state
           storagePath,
           (progress) => {
             if (tracksUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
-            // Update progress based on completed uploads + current progress
+            // progress is already 0-100, so we need to scale it by the upload's share
             const baseProgress = (completedUploadsRef.current / totalUploads) * 100;
-            const currentProgress = (progress / totalUploads) * 100;
+            const currentProgress = (progress / totalUploads);
             setTracksUploadProgress(baseProgress + currentProgress);
           }
         )
@@ -1492,7 +1864,7 @@ const ArtistProfileComponent = ({
             const trackIndex = tracksToUpdate.findIndex(t => t.id === trackId);
             if (trackIndex !== -1) {
               const coverSizeBytes =
-                track.coverFile?.size ??
+                coverFile?.size ??
                 tracksToUpdate[trackIndex].coverSizeBytes ??
                 0;
               const audioSizeBytes = tracksToUpdate[trackIndex].audioSizeBytes ?? 0;
@@ -1698,19 +2070,24 @@ const ArtistProfileComponent = ({
       const videoId = video.id;
       const previousPaths = videosStoragePathsRef.current[videoId] || {};
 
-      if (video.videoFile) {
-        const extension = video.videoFile.name?.split('.').pop() || 'mp4';
+      // Capture file references at the start to prevent ERR_UPLOAD_FILE_CHANGED
+      const videoFile = video.videoFile;
+      const thumbnailFile = video.thumbnailFile;
+
+      if (videoFile) {
+        const extension = videoFile.name?.split('.').pop() || 'mp4';
         const filename = `video-${videoId}-${Date.now()}.${extension}`;
         const storagePath = `artistProfiles/${creationProfileId}/videos/${filename}`;
         const previousVideoPath = previousPaths.videoPath;
 
         const videoUploadPromise = uploadFileWithProgress(
-          video.videoFile,
+          videoFile, // Use captured reference, not from state
           storagePath,
           (progress) => {
             if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+            // progress is already 0-100, so we need to scale it by the upload's share
             const baseProgress = (completedUploadsRef.current / totalUploads) * 100;
-            const currentProgress = (progress / totalUploads) * 100;
+            const currentProgress = (progress / totalUploads);
             setVideoUploadProgress(baseProgress + currentProgress);
           }
         )
@@ -1719,12 +2096,16 @@ const ArtistProfileComponent = ({
 
             const videoIndex = videosToUpdate.findIndex((v) => v.id === videoId);
             if (videoIndex !== -1) {
+              const videoSizeBytes = videoFile?.size ?? videosToUpdate[videoIndex].videoSizeBytes ?? 0;
+              const thumbnailSizeBytes = videosToUpdate[videoIndex].thumbnailSizeBytes ?? 0;
               videosToUpdate[videoIndex] = {
                 ...videosToUpdate[videoIndex],
                 uploadedVideoUrl: videoUrl,
                 videoStoragePath: storagePath,
-                videoFile: null,
+                videoFile: null, // Clear file reference after upload
                 videoPreviewUrl: videosToUpdate[videoIndex].videoPreviewUrl || videoUrl,
+                videoSizeBytes,
+                totalSizeBytes: videoSizeBytes + thumbnailSizeBytes,
               };
             }
 
@@ -1754,24 +2135,25 @@ const ArtistProfileComponent = ({
         uploadPromises.push(videoUploadPromise);
       }
 
-      if (video.thumbnailFile) {
+      if (thumbnailFile) {
         // Validate thumbnail file
-        if (!(video.thumbnailFile instanceof File) && !(video.thumbnailFile instanceof Blob)) {
-          console.error(`Invalid thumbnail file for video ${videoId}, skipping upload:`, video.thumbnailFile);
+        if (!(thumbnailFile instanceof File) && !(thumbnailFile instanceof Blob)) {
+          console.error(`Invalid thumbnail file for video ${videoId}, skipping upload:`, thumbnailFile);
           // Don't increment counter or update progress - invalid files aren't counted in totalUploads
         } else {
-          const extension = video.thumbnailFile.name?.split('.').pop() || 'png';
+          const extension = thumbnailFile.name?.split('.').pop() || 'png';
           const filename = `thumbnail-${videoId}-${Date.now()}.${extension}`;
           const storagePath = `artistProfiles/${creationProfileId}/videos/thumbnails/${filename}`;
           const previousThumbnailPath = previousPaths.thumbnailPath;
 
           const thumbnailUploadPromise = uploadFileWithProgress(
-            video.thumbnailFile,
+            thumbnailFile, // Use captured reference, not from state
             storagePath,
             (progress) => {
               if (videosUploadTokenRef.current !== uploadToken || !isMountedRef.current) return;
+              // progress is already 0-100, so we need to scale it by the upload's share
               const baseProgress = (completedUploadsRef.current / totalUploads) * 100;
-              const currentProgress = (progress / totalUploads) * 100;
+              const currentProgress = (progress / totalUploads);
               setVideoUploadProgress(baseProgress + currentProgress);
             }
           )
@@ -1780,14 +2162,18 @@ const ArtistProfileComponent = ({
 
             const videoIndex = videosToUpdate.findIndex((v) => v.id === videoId);
             if (videoIndex !== -1) {
+              const thumbnailSizeBytes = (thumbnailFile instanceof Blob ? thumbnailFile.size : thumbnailFile?.size) ?? videosToUpdate[videoIndex].thumbnailSizeBytes ?? 0;
+              const videoSizeBytes = videosToUpdate[videoIndex].videoSizeBytes ?? 0;
               videosToUpdate[videoIndex] = {
                 ...videosToUpdate[videoIndex],
                 thumbnailUploadedUrl: thumbnailUrl,
                 thumbnailStoragePath: storagePath,
-                thumbnailFile: null,
+                thumbnailFile: null, // Clear file reference after upload
                 thumbnailPreviewUrl: videosToUpdate[videoIndex].thumbnailPreviewUrl || thumbnailUrl,
                 thumbnailGenerationError: null,
                 isThumbnailGenerating: false,
+                thumbnailSizeBytes,
+                totalSizeBytes: videoSizeBytes + thumbnailSizeBytes,
               };
             }
 
@@ -2113,9 +2499,12 @@ const ArtistProfileComponent = ({
     }
   };
 
-  // Handler for dark mode changes - updates Firestore
+  // Handler for dark mode changes - optimistic update
   const handleDarkModeChange = async (newDarkMode) => {
-    // Only update Firestore if user has a profile (not in example or creation mode)
+    // Optimistic update: update local state immediately
+    setIsDarkMode(newDarkMode);
+    
+    // Then sync to Firestore in the background (only if user has a profile)
     if (currentState === ArtistProfileState.DASHBOARD && activeProfileData) {
       const profileId = activeProfileData?.profileId || activeProfileData?.id;
       if (profileId) {
@@ -2123,12 +2512,12 @@ const ArtistProfileComponent = ({
           await updateArtistProfileDocument(profileId, { darkMode: newDarkMode });
         } catch (error) {
           console.error('Failed to update dark mode:', error);
-          // Still update local state even if Firestore update fails
+          // Revert to previous value on error
+          setIsDarkMode(!newDarkMode);
+          toast.error('Failed to save dark mode preference. Please try again.');
         }
       }
     }
-    // Always update local state
-    setIsDarkMode(newDarkMode);
   };
 
   // Handler for saving tracks from profile view
@@ -2906,9 +3295,22 @@ const ArtistProfileComponent = ({
       
       toast.success('Profile completed!');
       
-      // The useEffect at line 235 will automatically detect isComplete: true
-      // and transition to dashboard - no need to manually set state
+      // Store the new profile ID in localStorage and navigate to it
+      if (creationProfileId) {
+        setStoredActiveProfileId(creationProfileId);
+        navigate(`/artist-profile/${creationProfileId}`, { replace: true });
+      }
+      
+      // Directly transition to dashboard - don't wait for useEffect
       setIsCreatingProfile(false);
+      setCurrentState(ArtistProfileState.DASHBOARD);
+      setDashboardView(DashboardView.PROFILE);
+      setSearchParams({});
+      
+      // Clear creationProfileId after a short delay
+      setTimeout(() => {
+        setCreationProfileId(null);
+      }, 100);
     } catch (error) {
       console.error('Failed to complete profile:', error);
       toast.error('Failed to complete your profile. Please try again.');
@@ -3073,9 +3475,20 @@ const ArtistProfileComponent = ({
         );
       
       case ArtistProfileState.CREATING:
+        // When creating a new profile (not resuming a draft), pass null to avoid showing old profile data
+        const creatingProfileData = (() => {
+          if (creationProfileId) {
+            const isResumingDraft = artistProfiles.some(
+              (p) => (p.id === creationProfileId || p.profileId === creationProfileId) && !p.isComplete
+            );
+            // Only pass profileData if we're resuming a draft, otherwise pass null for new profile
+            return isResumingDraft ? activeProfileData : null;
+          }
+          return null;
+        })();
         return (
           <ProfileView 
-            profileData={activeProfileData}
+            profileData={creatingProfileData}
             onBeginCreation={handleBeginCreation}
             isExample={false}
             isDarkMode={isDarkMode}
@@ -3135,8 +3548,52 @@ const ArtistProfileComponent = ({
     }
   };
 
-  // Show loading state while checking auth or dashboard data
-  if (authLoading) {
+  // Check if user needs to set primary profile (multiple profiles, no primary set, in dashboard)
+  useEffect(() => {
+    if (viewerMode || authLoading || !user) return;
+    if (currentState !== ArtistProfileState.DASHBOARD) return;
+    
+    const hasMultipleProfiles = artistProfiles.length > 1;
+    const hasNoPrimary = !user.primaryProfileSet;
+    
+    if (hasMultipleProfiles && hasNoPrimary) {
+      setShowPrimaryProfileModal(true);
+    } else {
+      setShowPrimaryProfileModal(false);
+    }
+  }, [currentState, artistProfiles.length, user?.primaryProfileSet, viewerMode, authLoading, user]);
+
+  // Handle setting primary profile
+  const handleSetPrimaryProfile = async () => {
+    if (!selectedPrimaryProfile) return;
+    
+    const profileId = selectedPrimaryProfile.id || selectedPrimaryProfile.profileId;
+    if (!profileId) {
+      toast.error('Invalid profile selected');
+      return;
+    }
+
+    setSettingPrimary(true);
+    try {
+      await setPrimaryArtistProfile({ artistProfileId: profileId });
+      toast.success(`${selectedPrimaryProfile.name} set as primary profile`);
+      setShowPrimaryProfileModal(false);
+      // Reload to get updated user data
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to set primary profile:', error);
+      const errorMessage = error?.payload?.error?.message || 
+                           error?.message || 
+                           'Failed to set primary profile. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setSettingPrimary(false);
+    }
+  };
+
+  // Show loading state while checking auth, switching profiles, or loading dashboard data
+  // Don't show loading screen when creating a new profile (only when switching between existing profiles)
+  if (authLoading || (isSwitchingProfile && !isCreatingProfile && currentState === ArtistProfileState.DASHBOARD)) {
     return (
       <div className="artist-profile-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <LoadingScreen />
@@ -3408,12 +3865,71 @@ const ArtistProfileComponent = ({
           <LoadingModal title="Sending Invite" />
         </Portal>
       )}
+
+      {/* Primary Profile Selection Modal - Non-closable */}
+      {showPrimaryProfileModal && (
+        <Portal>
+          <div className="modal primary-profile-selection" style={{ pointerEvents: 'auto' }}>
+            {/* No onClick handler on outer div - modal is non-closable */}
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <GuitarsIcon />
+                <h2>Select Your Primary Artist Profile</h2>
+                <p>You have multiple artist profiles. Please select one as your primary profile. This can only be set once.</p>
+              </div>
+              <div className="modal-body">
+                <div className='artist-profile-list'>
+                  {artistProfiles.map((profile) => {
+                    const profileId = profile.id || profile.profileId;
+                    const isSelected = selectedPrimaryProfile?.id === profileId || selectedPrimaryProfile?.profileId === profileId;
+                    
+                    return (
+                      <div
+                        key={profileId}
+                        className={`artist-profile-card ${isSelected ? 'selected' : ''}`}
+                        onClick={() => setSelectedPrimaryProfile(profile)}
+                      >
+                        {profile.heroMedia?.url && (
+                          <figure className='artist-profile-image'>
+                            <img 
+                              src={profile.heroMedia.url} 
+                              alt={profile.name}
+                            />
+                          </figure>
+                        )}
+                        <div className='artist-profile-details'>
+                          <h3 className='artist-profile-name'>{profile.name}</h3>
+                          {profile.bio && (
+                            <p className='artist-profile-bio'>
+                              {profile.bio.length > 100 ? `${profile.bio.substring(0, 100)}...` : profile.bio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="two-buttons">
+                  <button
+                    className="btn primary"
+                    disabled={!selectedPrimaryProfile || settingPrimary}
+                    onClick={handleSetPrimaryProfile}
+                  >
+                    {settingPrimary ? 'Setting Primary...' : 'Set as Primary'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
     </div>
   );
 };
 
 export const ArtistProfile = (props) => {
   const ctx = useContext(ArtistDashboardContext);
+  // Note: activeProfileId is now read from URL params inside ArtistDashboardProvider
   if (!ctx) {
     return (
       <ArtistDashboardProvider user={props.user}>

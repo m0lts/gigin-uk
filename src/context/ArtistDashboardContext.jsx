@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { subscribeToMusicianProfile, getMusicianProfilesByIds } from '@services/client-side/artists';
 import { getGigsByIds } from '@services/client-side/gigs';
 import { getBandMembers } from '@services/client-side/bands';
@@ -7,7 +8,10 @@ import { getMusicianProfileByMusicianId } from '../services/client-side/artists'
 
 export const ArtistDashboardContext = createContext();
 
-export const ArtistDashboardProvider = ({ user, children }) => {
+export const ArtistDashboardProvider = ({ user, children, activeProfileId: propActiveProfileId = null }) => {
+  // Get active profile ID from URL params (highest priority) or props
+  const { profileId: urlProfileId } = useParams();
+  const activeProfileId = urlProfileId || propActiveProfileId;
   const [loading, setLoading] = useState(true);
   const [musicianProfile, setMusicianProfile] = useState(null);
   const [gigApplications, setGigApplications] = useState([]);
@@ -195,16 +199,25 @@ export const ArtistDashboardProvider = ({ user, children }) => {
     const profiles = (user?.artistProfiles || []).filter(Boolean);
     setArtistProfilesState(profiles);
 
-    setActiveArtistProfile((prev) => {
-      if (!profiles.length) return null;
-      const completed = profiles.find((profile) => profile?.isComplete);
-      if (completed) return completed;
-      if (prev && profiles.some((profile) => profile.id === prev.id)) {
-        return prev;
-      }
-      return profiles[0];
-    });
-  }, [hasArtistProfiles, user?.artistProfiles]);
+    // Use activeProfileId from props (URL) if provided, otherwise fall back to default logic
+    if (activeProfileId) {
+      const activeProfile = profiles.find(
+        (p) => (p.id === activeProfileId || p.profileId === activeProfileId)
+      );
+      setActiveArtistProfile(activeProfile || null);
+    } else {
+      // Fallback: use first complete profile or first profile
+      setActiveArtistProfile((prev) => {
+        if (!profiles.length) return null;
+        const completed = profiles.find((profile) => profile?.isComplete);
+        if (completed) return completed;
+        if (prev && profiles.some((profile) => profile.id === prev.id)) {
+          return prev;
+        }
+        return profiles[0];
+      });
+    }
+  }, [hasArtistProfiles, user?.artistProfiles, activeProfileId]);
 
   useEffect(() => {
     if (!hasArtistProfiles) {
@@ -224,37 +237,42 @@ export const ArtistDashboardProvider = ({ user, children }) => {
       return;
     }
 
+    // Filter to only the active profile if activeProfileId is provided
+    const activeProfile = activeProfileId
+      ? profiles.find((p) => (p.id === activeProfileId || p.profileId === activeProfileId))
+      : activeArtistProfile;
+
+    if (!activeProfile) {
+      setArtistGigApplications([]);
+      setArtistGigs([]);
+      setArtistSavedGigs([]);
+      setArtistDataLoading(false);
+      return;
+    }
+
     let cancelled = false;
     const fetchArtistGigs = async () => {
       setArtistDataLoading(true);
       try {
-        const aggregatedApplications = profiles.flatMap((profile) => {
-          if (!profile) return [];
-          const profileId = profile.id || profile.profileId || profile.musicianId;
-          const applications = Array.isArray(profile.gigApplications) ? profile.gigApplications : [];
-          return applications.map((app) => ({
-            ...app,
-            profileId: app.profileId || profileId,
-            profileName: app.profileName || profile.name,
-            submittedBy: 'artist',
-            profileType: 'artist',
-          }));
-        });
+        // Only use data from the active profile, not all profiles
+        const profileId = activeProfile.id || activeProfile.profileId || activeProfile.musicianId;
+        const applications = Array.isArray(activeProfile.gigApplications) ? activeProfile.gigApplications : [];
+        const profileApplications = applications.map((app) => ({
+          ...app,
+          profileId: app.profileId || profileId,
+          profileName: app.profileName || activeProfile.name,
+          submittedBy: 'artist',
+          profileType: 'artist',
+        }));
 
-        const uniqKey = (a) => `${a.gigId}:${a.profileId}`;
-        const dedupedApplications = Array.from(
-          aggregatedApplications.reduce((map, app) => map.set(uniqKey(app), app), new Map()).values()
-        );
         if (!cancelled) {
-          setArtistGigApplications(dedupedApplications);
+          setArtistGigApplications(profileApplications);
         }
 
-        const applicationGigIds = [...new Set(dedupedApplications.map((app) => app.gigId).filter(Boolean))];
+        const applicationGigIds = [...new Set(profileApplications.map((app) => app.gigId).filter(Boolean))];
         const savedGigIds = [
           ...new Set(
-            profiles
-              .flatMap((profile) => (Array.isArray(profile.savedGigs) ? profile.savedGigs : []))
-              .filter(Boolean)
+            (Array.isArray(activeProfile.savedGigs) ? activeProfile.savedGigs : []).filter(Boolean)
           ),
         ];
 
@@ -285,7 +303,7 @@ export const ArtistDashboardProvider = ({ user, children }) => {
     return () => {
       cancelled = true;
     };
-  }, [artistProfilesState, artistRefreshNonce, hasArtistProfiles]);
+  }, [artistProfilesState, artistRefreshNonce, hasArtistProfiles, activeProfileId, activeArtistProfile]);
 
   const checkGigsForReview = (gigs, musicianIds = []) => {
     const now = new Date();

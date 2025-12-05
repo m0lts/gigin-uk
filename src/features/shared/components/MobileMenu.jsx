@@ -136,6 +136,34 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <h6>{user.name}</h6>
                             <p>{user.email}</p>
                         </div>
+                        <button className="btn artist-profile inline" style={{ fontWeight: 500}} onClick={() => {
+                            // Navigate to base path first to clear any existing profileId
+                            navigate('/artist-profile?create=true', { replace: true });
+                        }}>
+                            New Artist Profile
+                            <GuitarsIcon />
+                        </button>
+                        {user.artistProfiles && user.artistProfiles.length > 1 && (
+                            <>
+                                <div className="break" />
+                                <h6 className="title">Artist Profiles</h6>
+                                {user.artistProfiles.map((artistProfile) => {
+                                    const profileId = artistProfile.id || artistProfile.profileId;
+                                    const isPrimary = profileId === user.primaryArtistProfileId;
+                                    return (
+                                        <button 
+                                            className={`btn inline item no-margin ${isPrimary ? 'primary-profile-item' : ''}`}
+                                            key={profileId} 
+                                            onClick={() => navigate(`/artist-profile/${profileId}`)}
+                                        >
+                                            {artistProfile.name}
+                                            {isPrimary && <span className="primary-profile-badge">Primary</span>}
+                                    </button>
+                                    );
+                                })}
+                                <div className="break" />
+                            </>
+                        )}
                         {!isLgUp && (
                             <Link className='link item no-margin' to={'/find-a-gig'}>
                                 Find a Gig
@@ -148,29 +176,67 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 <TelescopeIcon />
                             </Link>
                         )}
-                        {isMobile && (
-                            <>
-                                <Link className='link item no-margin' to={'/artist-profile'}>
-                                    Profile
-                                    <ProfileIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/artist-profile/gigs'}>
-                                    Gigs
-                                    <AllGigsIcon />
-                                </Link>
-                                <Link className='link item no-margin' to={'/artist-profile/messages'}>
-                                    Messages
-                                    {newMessages ? <MailboxFullIcon /> : <MailboxEmptyIcon />}
-                                </Link>
-                                <Link className='link item no-margin' to={'/artist-profile/finances'}>
-                                    Finances
-                                    <CoinsIcon />
-                                </Link>
-                            </>
-                        )}
-                        {!isLgUp && !isMobile && (
-                            newMessages ? (
-                                <Link className='link item no-margin message' to={'/artist-profile/messages'}>
+                        {isMobile && (() => {
+                            // Get active profile ID from localStorage or default
+                            const getActiveProfileId = () => {
+                                if (!user?.uid) return null;
+                                try {
+                                    const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                                    if (stored) {
+                                        const profileExists = user.artistProfiles?.some(
+                                            (p) => (p.id === stored || p.profileId === stored)
+                                        );
+                                        if (profileExists) return stored;
+                                    }
+                                } catch (e) {}
+                                if (user?.primaryArtistProfileId) return user.primaryArtistProfileId;
+                                const firstComplete = user?.artistProfiles?.find((p) => p.isComplete);
+                                return firstComplete?.id || firstComplete?.profileId || null;
+                            };
+                            const activeProfileId = getActiveProfileId();
+                            const basePath = activeProfileId ? `/artist-profile/${activeProfileId}` : '/artist-profile';
+                            return (
+                                <>
+                                    <Link className='link item no-margin' to={basePath}>
+                                        Profile
+                                        <ProfileIcon />
+                                    </Link>
+                                    <Link className='link item no-margin' to={`${basePath}/gigs`}>
+                                        Gigs
+                                        <AllGigsIcon />
+                                    </Link>
+                                    <Link className='link item no-margin' to={`${basePath}/messages`}>
+                                        Messages
+                                        {newMessages ? <MailboxFullIcon /> : <MailboxEmptyIcon />}
+                                    </Link>
+                                    <Link className='link item no-margin' to={`${basePath}/finances`}>
+                                        Finances
+                                        <CoinsIcon />
+                                    </Link>
+                                </>
+                            );
+                        })()}
+                        {!isLgUp && !isMobile && (() => {
+                            // Get active profile ID from localStorage or default
+                            const getActiveProfileId = () => {
+                                if (!user?.uid) return null;
+                                try {
+                                    const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                                    if (stored) {
+                                        const profileExists = user.artistProfiles?.some(
+                                            (p) => (p.id === stored || p.profileId === stored)
+                                        );
+                                        if (profileExists) return stored;
+                                    }
+                                } catch (e) {}
+                                if (user?.primaryArtistProfileId) return user.primaryArtistProfileId;
+                                const firstComplete = user?.artistProfiles?.find((p) => p.isComplete);
+                                return firstComplete?.id || firstComplete?.profileId || null;
+                            };
+                            const activeProfileId = getActiveProfileId();
+                            const messagesPath = activeProfileId ? `/artist-profile/${activeProfileId}/messages` : '/artist-profile/messages';
+                            return newMessages ? (
+                                <Link className='link item no-margin message' to={messagesPath}>
                                     <div>
                                         Messages
                                         <MailboxFullIcon />
@@ -178,12 +244,12 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                     <span className="notification-dot" />
                                 </Link>
                             ) : (
-                                <Link className='link item no-margin' to={'/artist-profile/messages'}>
+                                <Link className='link item no-margin' to={messagesPath}>
                                     Messages
                                     <MailboxEmptyIcon />
                                 </Link>
-                            )
-                        )}
+                            );
+                        })()}
 
                         {!isXlUp && (
                             <div className='break' />

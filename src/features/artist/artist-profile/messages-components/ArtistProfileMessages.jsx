@@ -32,7 +32,8 @@ export const ArtistProfileMessages = () => {
   const [gigData, setGigData] = useState();
 
   const { activeArtistProfile } = useArtistDashboard();
-  const focusProfileId = activeArtistProfile?.id || null;
+  // Use activeArtistProfile from context (which is filtered by activeProfileId prop)
+  const focusProfileId = activeArtistProfile?.id || activeArtistProfile?.profileId || null;
 
   const queryParams = new URLSearchParams(location.search);
   const paramsConversationId = queryParams.get('conversationId');

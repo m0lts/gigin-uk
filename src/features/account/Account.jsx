@@ -37,11 +37,12 @@ import {
   WarningIcon,
   PaymentSystemIcon,
   CopyIcon,
+  GuitarsIcon,
 } from '../shared/ui/extras/Icons';
 import { LoadingModal } from '../shared/ui/loading/LoadingModal';
 import { firestore } from '@lib/firebase';
 import { uploadFileToStorage } from '../../services/storage';
-import { clearUserArrayField, deleteUserDocument, updateUserArrayField } from '@services/api/users';
+import { clearUserArrayField, deleteUserDocument, updateUserArrayField, setPrimaryArtistProfile } from '@services/api/users';
 import { transferVenueOwnership } from '@services/api/venues';
 import { deleteReview } from '@services/api/reviews';
 import { deleteGigsBatch } from '../../services/client-side/gigs';
@@ -77,6 +78,9 @@ export const Account = () => {
     const [eventLoading, setEventLoading] = useState(false);
     const [transferLoading, setTransferLoading] = useState(false);
     const [showEventLoadingModal, setShowEventLoadingModal] = useState(false);
+    const [settingPrimary, setSettingPrimary] = useState(false);
+    const [profileToSetPrimary, setProfileToSetPrimary] = useState(null);
+    const [showSetPrimaryModal, setShowSetPrimaryModal] = useState(false);
 
     // Stripe / payouts state (user-level)
     const [connectedAccountId, setConnectedAccountId] = useState(user?.stripeConnectId || null);
@@ -668,11 +672,29 @@ export const Account = () => {
         }
     };
 
+    const handleSetPrimary = async () => {
+        setSettingPrimary(true);
+        try {
+            await setPrimaryArtistProfile({ artistProfileId: profileToSetPrimary.id });
+            toast.success(`${profileToSetPrimary.name} set as primary profile`);
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to set primary profile:', error);
+            const errorMessage = error?.payload?.error?.message || 
+                                 error?.message || 
+                                 'Failed to set primary profile. Please try again.';
+            toast.error(errorMessage);
+        } finally {
+            setSettingPrimary(false);
+            setShowSetPrimaryModal(false);
+        }
+    };
+
     if (!user) {
         return <LoadingScreen />;
     } else {
         return (
-            <div className='account-page' style={{ width: width }}>
+            <div className='account-page' style={{ width: width, marginTop: user.artistProfiles?.length > 0 ? '6rem' : '0' }}>
                 <div className='heading'>
                     <h1>Your Gigin Account</h1>
                 </div>
@@ -1044,36 +1066,69 @@ export const Account = () => {
                         )}
 
                         {/* Musician Profile Section */}
-                        {user.musicianProfile && (
+                        {user.artistProfiles?.length > 0 && (
                             <>
-                                <h2>Musician Profile</h2>
-                                <div className='account-profile'>
-                                    <div className='account-profile-data'>
-                                        <figure className='account-profile-img'>
-                                            <img src={user.musicianProfile.picture} alt={user.musicianProfile.name} />
-                                        </figure>
-                                        <div className='account-profile-details'>
-                                            <h3>{user.musicianProfile.name}</h3>
-                                            <h4>{user.musicianProfile.musicianType}</h4>
+                                <h2>Artist Profile{user.artistProfiles.length > 1 ? 's' : ''}</h2>
+                                {user.artistProfiles.map((artistProfile) => {
+                                    const profileId = artistProfile.id || artistProfile.profileId;
+                                    const isPrimary = user.primaryArtistProfileId === profileId;
+                                    const canSetPrimary = user.artistProfiles.length > 1 && !user.primaryProfileSet;
+                                    const showPrimaryButton = canSetPrimary && !isPrimary;
+                                    
+                                    return (
+                                        <div key={profileId} className='account-profile'>
+                                            <div className='account-profile-data'>
+                                                <figure className='account-profile-img'>
+                                                    <img src={artistProfile.heroMedia?.url} alt={artistProfile.name} />
+                                                </figure>
+                                                <div>
+                                                    <h3>
+                                                        {artistProfile.name}
+                                                        {isPrimary && (
+                                                            <span style={{ 
+                                                                marginLeft: '0.5rem', 
+                                                                fontSize: '0.875rem', 
+                                                                color: 'var(--gn-primary)', 
+                                                                fontWeight: 500 
+                                                            }}>
+                                                                (Primary)
+                                                            </span>
+                                                        )}
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                            <div className='account-profile-actions'>
+                                                <button
+                                                    className='btn tertiary'
+                                                    onClick={() =>
+                                                        navigate(`/artist-profile/${profileId}`)
+                                                    }
+                                                >
+                                                    <EditIcon />
+                                                </button>
+                                                {showPrimaryButton && (
+                                                    <button
+                                                        className='btn secondary'
+                                                        disabled={settingPrimary}
+                                                        onClick={async () => {
+                                                            if (!profileId) return;
+                                                            setShowSetPrimaryModal(true);
+                                                            setProfileToSetPrimary(artistProfile);
+                                                        }}
+                                                    >
+                                                        Set as Primary
+                                                    </button>
+                                                )}
+                                                {/* <button
+                                                    className='btn danger'
+                                                    onClick={() => handleDeleteMusicianProfile(user.musicianProfile.musicianId)}
+                                                >
+                                                    Delete Profile
+                                                </button> */}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className='account-profile-actions'>
-                                        <button
-                                            className='btn tertiary'
-                                            onClick={() =>
-                                                navigate('/dashboard/profile')
-                                            }
-                                        >
-                                            <EditIcon />
-                                        </button>
-                                        {/* <button
-                                            className='btn danger'
-                                            onClick={() => handleDeleteMusicianProfile(user.musicianProfile.musicianId)}
-                                        >
-                                            Delete Profile
-                                        </button> */}
-                                    </div>
-                                </div>
+                                    );
+                                })}
                             </>
                         )}
                     </div>
@@ -1580,6 +1635,33 @@ export const Account = () => {
                 {showEventLoadingModal && (
                     <Portal>
                         <LoadingModal />
+                    </Portal>
+                )}
+
+                {showSetPrimaryModal && (
+                    <Portal>
+                        {settingPrimary ? (
+                            <LoadingModal title={'Setting Primary Profile'} text={"Please don't close this window or refresh the page"} />
+                        ) : (
+                            <div className="modal stripe-account" onClick={() => setShowSetPrimaryModal(false)}>
+                                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                    <div className="modal-header">
+                                        <GuitarsIcon />
+                                        <h2>Set "{profileToSetPrimary.name}" as your primary profile?</h2>
+                                        <div className="more-information">
+                                            <p><MoreInformationIcon /> Are you sure you want to set "{profileToSetPrimary.name}" as your primary profile? You can only set your primary profile once.</p>
+                                        </div>
+                                        <button className="btn close tertiary" onClick={() => setShowSetPrimaryModal(false)}>Close</button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="two-buttons">
+                                            <button className="btn tertiary" onClick={() => setShowSetPrimaryModal(false)}>Cancel</button>
+                                            <button className="btn primary" onClick={() => handleSetPrimary()}>Confirm</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </Portal>
                 )}
             </div>

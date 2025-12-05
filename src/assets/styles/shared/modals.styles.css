@@ -843,3 +843,80 @@
     justify-content: space-between;
     align-items: center;
 }
+
+
+/* PRIMARY PROFILE SELECTION MODAL */
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list {
+    display: flex;
+    flex-direction: column;
+    height: 400px;
+    gap:0.25rem;
+    overflow-y: scroll;
+    scrollbar-width: none;       /* Firefox */
+    -ms-overflow-style: none;    /* IE 10+ */
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list::-webkit-scrollbar {
+    display: none;               /* Chrome, Safari, Opera */
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list .artist-profile-card {
+    border:1px solid transparent;
+    outline: 1px solid transparent;
+    outline-offset: -2px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap:1rem;
+    padding:0.5rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list .artist-profile-card:hover {
+    background-color: var(--gn-grey-300);
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list .artist-profile-card.selected {
+    border:1px solid var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+    background-color: var(--gn-grey-250);
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list .artist-profile-card .artist-profile-image {
+    width: 50px;
+    height: 50px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin: 0;
+    box-shadow: 0 0 5px var(--gn-shadow);
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list .artist-profile-card .artist-profile-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list .artist-profile-card .artist-profile-details {
+    flex: 1;
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list .artist-profile-card .artist-profile-details .artist-profile-name {
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .artist-profile-list .artist-profile-card .artist-profile-details .artist-profile-bio {
+    font-size: 0.875rem;
+    color: var(--gn-grey-600);
+}
+
+.modal.primary-profile-selection .modal-content .modal-body .two-buttons {
+    margin-top: 2rem;
+}

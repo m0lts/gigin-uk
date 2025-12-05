@@ -1,4 +1,4 @@
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link, useParams } from 'react-router-dom';
 import { MusicianLogoLink } from '@features/shared/ui/logos/Logos';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading'
 import { 
@@ -21,7 +21,7 @@ import {
     TicketIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth';
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { listenToUserConversations } from '@services/client-side/conversations';
 import { CloseIcon, FeedbackIcon, HamburgerMenuIcon } from '../../shared/ui/extras/Icons';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
@@ -37,8 +37,48 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
     const { logout } = useAuth();
     const { isMdUp, isLgUp } = useBreakpoint();
     const location = useLocation();
+    const navigate = useNavigate();
+    const { profileId: urlProfileId } = useParams();
     const [accountMenu, setAccountMenu] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
+    
+    // Get active profile ID from URL, localStorage, or default to primary/first profile
+    const activeProfileId = useMemo(() => {
+        // If URL has profileId, use it
+        if (urlProfileId) {
+            return urlProfileId;
+        }
+        
+        // Check localStorage for stored active profile
+        if (user?.uid) {
+            try {
+                const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                if (stored) {
+                    // Verify the stored profile still exists
+                    const profileExists = user.artistProfiles?.some(
+                        (p) => (p.id === stored || p.profileId === stored)
+                    );
+                    if (profileExists) {
+                        return stored;
+                    }
+                }
+            } catch (e) {
+                // Ignore localStorage errors
+            }
+        }
+        
+        // Fallback to primary profile or first complete profile
+        if (user?.primaryArtistProfileId) {
+            return user.primaryArtistProfileId;
+        }
+        
+        const firstComplete = user?.artistProfiles?.find((p) => p.isComplete);
+        if (firstComplete) {
+            return firstComplete.id || firstComplete.profileId;
+        }
+        
+        return null;
+    }, [urlProfileId, user?.uid, user?.primaryArtistProfileId, user?.artistProfiles]);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [feedback, setFeedback] = useState({
         feedback: '',
@@ -143,36 +183,82 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                             <div className={`right-block ${user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? '' : 'empty'}`}>
                                 {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
                                     <>
-                                        <Link className={`link ${location.pathname === '/artist-profile' ? 'disabled' : ''}`} to={'/artist-profile'}>
-                                            Profile
-                                        </Link>
-                                        <Link className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} to={'/artist-profile/gigs'}>
-                                            Gigs
-                                        </Link>
-                                        <Link
-                                            className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
-                                            to={'/artist-profile/messages'}
-                                        >
-                                            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                Messages
-                                                {newMessages && (
-                                                    <span
-                                                        style={{
-                                                            position: 'absolute',
-                                                            top: -6,
-                                                            right: -12,
-                                                            width: 6,
-                                                            height: 6,
-                                                            borderRadius: '50%',
-                                                            backgroundColor: 'var(--gn-orange)',
-                                                        }}
-                                                    />
-                                                )}
-                                            </span>
-                                        </Link>
-                                        <Link className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} to={'/artist-profile/finances'}>
-                                            Finances
-                                        </Link>
+                                        {activeProfileId ? (
+                                            <>
+                                                <Link 
+                                                    className={`link ${location.pathname === `/artist-profile/${activeProfileId}` || (location.pathname === '/artist-profile' && !urlProfileId) ? 'disabled' : ''}`} 
+                                                    to={`/artist-profile/${activeProfileId}`}
+                                                >
+                                                    Profile
+                                                </Link>
+                                                <Link 
+                                                    className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} 
+                                                    to={`/artist-profile/${activeProfileId}/gigs`}
+                                                >
+                                                    Gigs
+                                                </Link>
+                                                <Link
+                                                    className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
+                                                    to={`/artist-profile/${activeProfileId}/messages`}
+                                                >
+                                                    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                        Messages
+                                                        {newMessages && (
+                                                            <span
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    top: -6,
+                                                                    right: -12,
+                                                                    width: 6,
+                                                                    height: 6,
+                                                                    borderRadius: '50%',
+                                                                    backgroundColor: 'var(--gn-orange)',
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </span>
+                                                </Link>
+                                                <Link 
+                                                    className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} 
+                                                    to={`/artist-profile/${activeProfileId}/finances`}
+                                                >
+                                                    Finances
+                                                </Link>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Link className={`link ${location.pathname === '/artist-profile' ? 'disabled' : ''}`} to={'/artist-profile'}>
+                                                    Profile
+                                                </Link>
+                                                <Link className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} to={'/artist-profile/gigs'}>
+                                                    Gigs
+                                                </Link>
+                                                <Link
+                                                    className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
+                                                    to={'/artist-profile/messages'}
+                                                >
+                                                    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                        Messages
+                                                        {newMessages && (
+                                                            <span
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    top: -6,
+                                                                    right: -12,
+                                                                    width: 6,
+                                                                    height: 6,
+                                                                    borderRadius: '50%',
+                                                                    backgroundColor: 'var(--gn-orange)',
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </span>
+                                                </Link>
+                                                <Link className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} to={'/artist-profile/finances'}>
+                                                    Finances
+                                                </Link>
+                                            </>
+                                        )}
                                     </>
                                 ) : location.pathname !== '/artist-profile' && (
                                     <>

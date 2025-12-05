@@ -375,6 +375,24 @@
     padding: 5px 10px;
 }
 
+.mobile-menu .primary-profile-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap:5px;
+}
+
+.mobile-menu .primary-profile-badge {
+    background-color: var(--gn-offset-orange);
+    color: var(--gn-orange);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
 /* MUSICIAN */
 
 .header.musician {

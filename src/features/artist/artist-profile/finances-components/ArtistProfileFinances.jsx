@@ -36,7 +36,8 @@ export const ArtistProfileFinances = () => {
   const [loadingStripeBalance, setLoadingStripeBalance] = useState(false);
 
   const hasStripeAccount = !!user?.stripeConnectId;
-  const artistProfileId = activeArtistProfile?.id || null;
+  // Use activeArtistProfile from context (which is filtered by activeProfileId prop)
+  const artistProfileId = activeArtistProfile?.id || activeArtistProfile?.profileId || null;
 
   useEffect(() => {
     if (!artistProfileId) return;

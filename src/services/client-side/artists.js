@@ -48,7 +48,8 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
   if (!profileId) throw new Error('[createArtistProfileDocument] profileId is required');
   if (!userId) throw new Error('[createArtistProfileDocument] userId is required');
 
-  const now = Timestamp.now();
+  // Note: createdAt and updatedAt are blocked by Firestore rules and should be set server-side
+  // Using serverTimestamp() if needed, but rules block client-set timestamps
   const defaultData = {
     userId,
     status: 'draft',
@@ -64,11 +65,14 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
     heroMedia: null,
     heroBrightness: 100,
     heroPositionY: 50,
-    createdAt: now,
-    updatedAt: now,
+    // createdAt and updatedAt are blocked by Firestore rules - must be set server-side
   };
 
   const payload = { ...defaultData, ...initialData };
+  // Remove createdAt and updatedAt if they were passed in initialData (rules block them)
+  delete payload.createdAt;
+  delete payload.updatedAt;
+  
   const docRef = doc(firestore, 'artistProfiles', profileId);
   await setDoc(docRef, payload, { merge: false });
 
@@ -87,6 +91,7 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
     'finances.edit': true,
   };
   
+  // Note: createdAt and updatedAt are also blocked for members subcollection
   await setDoc(memberRef, {
     status: 'active',
     role: 'owner',
@@ -97,8 +102,7 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
     userEmail: userData?.email || null,
     payoutSharePercent: 100, // Owner gets 100% by default
     payoutsEnabled: hasStripeConnect, // Enabled if user has Stripe Connect account
-    createdAt: now,
-    updatedAt: now,
+    // createdAt and updatedAt are blocked by Firestore rules - must be set server-side
   }, { merge: false });
 
   return profileId;
