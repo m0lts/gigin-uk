@@ -316,10 +316,10 @@ export const ProfileCreationBox = ({
   const isFinalStep = currentStepIndex === totalSteps - 1;
 
   useEffect(() => {
-    if (initialArtistName !== artistName && initialArtistName) {
-      setArtistName(initialArtistName);
+    if (initialArtistName !== artistName) {
+      setArtistName(initialArtistName || "");
     }
-  }, [initialArtistName]);
+  }, [initialArtistName, artistName]);
 
   useEffect(() => {
     if (!initialHeroImage) return;
@@ -1118,8 +1118,8 @@ function HeroImageStep({
             type="range"
             min={60}
             max={140}
-            value={heroBrightness}
-            onChange={(e) => onHeroBrightnessChange?.(Number(e.target.value))}
+            value={200 - heroBrightness}
+            onChange={(e) => onHeroBrightnessChange?.(200 - Number(e.target.value))}
           />
         </div>
       </div>
@@ -1235,6 +1235,21 @@ function TracksStep({
   totalUsageBytes = 0,
   storageLimitBytes = MEDIA_STORAGE_LIMIT_BYTES,
 }) {
+  const trackInputRefs = useRef(new Map());
+  
+  const getTrackInputRef = (trackId) => {
+    if (!trackInputRefs.current.has(trackId)) {
+      trackInputRefs.current.set(trackId, { current: null });
+    }
+    return trackInputRefs.current.get(trackId);
+  };
+  
+  const focusTrackInput = (trackId) => {
+    const ref = trackInputRefs.current.get(trackId);
+    if (ref?.current) {
+      ref.current.focus();
+    }
+  };
   const usageBar = (
     <StorageUsageBar
       usedBytes={totalUsageBytes}
@@ -1328,14 +1343,28 @@ function TracksStep({
               )}
             </button>
             <div className="track-meta">
-              <div className="track-name-input-container">
+              <div 
+                className="track-name-input-container"
+                onClick={() => focusTrackInput(track.id)}
+                style={{ cursor: 'text' }}
+              >
                 <input
+                  ref={(el) => {
+                    const ref = getTrackInputRef(track.id);
+                    if (ref) ref.current = el;
+                  }}
                   type="text"
                   value={track.title}
                   onChange={(e) => onTrackTitleChange(track.id, e.target.value)}
                   placeholder="Track title"
                 />
-                <EditIcon />
+                <EditIcon 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    focusTrackInput(track.id);
+                  }}
+                  style={{ cursor: 'pointer' }}
+                />
               </div>
               <p>{artistName}</p>
               <p className="media-size-label">
@@ -1419,6 +1448,21 @@ function VideosStep({
   totalUsageBytes = 0,
   storageLimitBytes = MEDIA_STORAGE_LIMIT_BYTES,
 }) {
+  const videoInputRefs = useRef(new Map());
+  
+  const getVideoInputRef = (videoId) => {
+    if (!videoInputRefs.current.has(videoId)) {
+      videoInputRefs.current.set(videoId, { current: null });
+    }
+    return videoInputRefs.current.get(videoId);
+  };
+  
+  const focusVideoInput = (videoId) => {
+    const ref = videoInputRefs.current.get(videoId);
+    if (ref?.current) {
+      ref.current.focus();
+    }
+  };
   const usageBar = (
     <StorageUsageBar
       usedBytes={totalUsageBytes}
@@ -1502,14 +1546,28 @@ function VideosStep({
                 </div>
               </div>
               <div className="track-meta">
-                <div className="track-name-input-container">
+                <div 
+                  className="track-name-input-container"
+                  onClick={() => focusVideoInput(video.id)}
+                  style={{ cursor: 'text' }}
+                >
                   <input
+                    ref={(el) => {
+                      const ref = getVideoInputRef(video.id);
+                      if (ref) ref.current = el;
+                    }}
                     type="text"
                     value={video.title}
                     onChange={(e) => onVideoTitleChange(video.id, e.target.value)}
                     placeholder="Video title"
                   />
-                  <EditIcon />
+                  <EditIcon 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      focusVideoInput(video.id);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  />
                 </div>
                 <p>{artistName || "Your Artist Name"}</p>
               <p className="media-size-label">

@@ -150,13 +150,26 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 {user.artistProfiles.map((artistProfile) => {
                                     const profileId = artistProfile.id || artistProfile.profileId;
                                     const isPrimary = profileId === user.primaryArtistProfileId;
+                                    const isIncomplete = artistProfile.isComplete === false;
+                                    const isDraft = artistProfile.status === 'draft';
+                                    const shouldShowCreationFlow = isIncomplete || isDraft;
+                                    const hasName = artistProfile.name && typeof artistProfile.name === 'string' && artistProfile.name.trim();
+                                    
                                     return (
                                         <button 
-                                            className={`btn inline item no-margin ${isPrimary ? 'primary-profile-item' : ''}`}
+                                            className={`btn inline item no-margin ${isPrimary ? 'primary-profile-item' : ''} ${!hasName ? 'placeholder' : ''}`}
                                             key={profileId} 
-                                            onClick={() => navigate(`/artist-profile/${profileId}`)}
+                                            onClick={() => {
+                                                if (shouldShowCreationFlow) {
+                                                    // Navigate to profile with creation flow - the ArtistProfile component will handle the redirect
+                                                    navigate(`/artist-profile/${profileId}`);
+                                                } else {
+                                                    // Navigate to dashboard for complete profiles
+                                                    navigate(`/artist-profile/${profileId}`);
+                                                }
+                                            }}
                                         >
-                                            {artistProfile.name}
+                                            {hasName ? artistProfile.name : <span className="placeholder">Unnamed Profile</span>}
                                             {isPrimary && <span className="primary-profile-badge">Primary</span>}
                                     </button>
                                     );

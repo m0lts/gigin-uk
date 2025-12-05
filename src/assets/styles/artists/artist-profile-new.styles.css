@@ -1632,6 +1632,15 @@
   transform: translateY(-1px);
 }
 
+.additional-info-btn.active {
+  background-color: var(--gn-off-black);
+  color: var(--gn-white);
+  border-color: var(--gn-off-black);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+
 .dark-mode .additional-info-btn {
   background: var(--gn-black);
   border-color: var(--gn-grey-700);
@@ -1640,6 +1649,13 @@
 
 .dark-mode .additional-info-btn:hover {
   border-color: var(--gn-white);
+}
+.dark-mode .additional-info-btn.active {
+  background-color: var(--gn-grey-250);
+  color: var(--gn-black);
+  border-color: var(--gn-grey-250);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 /* Additional Info Section */
@@ -2685,6 +2701,11 @@
 .artist-profile-creation-box .hero-edit-button:hover {
   border: 1px solid var(--gn-off-black);
   outline: 1px solid var(--gn-off-black);
+}
+
+.artist-profile-creation-box .hero-edit-button.active {
+  background-color: var(--gn-off-black);
+  color: var(--gn-white);
 }
 
 .artist-profile-creation-box .hero-brightness-control {
@@ -3794,6 +3815,7 @@
 .dark-mode .videos-section .track-cover-button {
   background: var(--gn-black);
   border-color: var(--gn-grey-700);
+  color: var(--gn-white);
 }
 
 .dark-mode .artist-profile-creation-box .track-meta input,
@@ -4141,6 +4163,11 @@
 .dark-mode .artist-profile-creation-box .hero-edit-button:hover {
   border: 1px solid var(--gn-white);
   outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .artist-profile-creation-box .hero-edit-button.active {
+  background-color: var(--gn-white);
+  color: var(--gn-black);
 }
 
 .dark-mode .artist-profile-creation-box .hero-brightness-control {

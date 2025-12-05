@@ -212,6 +212,7 @@ const ArtistProfileComponent = ({
   
   // Track previous profile state to detect completion
   const previousProfileRef = useRef(null);
+  const justCompletedProfileRef = useRef(false);
   const heroBrightnessUpdateTimeoutRef = useRef(null);
   const heroPositionUpdateTimeoutRef = useRef(null);
   const artistNameUpdateTimeoutRef = useRef(null);
@@ -298,10 +299,21 @@ const ArtistProfileComponent = ({
     
     if (urlProfileId) {
       // Find profile by ID from URL
-      const profile = artistProfiles.find((p) => p.id === urlProfileId || p.profileId === urlProfileId);
+      let profile = artistProfiles.find((p) => p.id === urlProfileId || p.profileId === urlProfileId);
+      
+      // If profile not found but we just completed it, try to find it even if isComplete is still false in user context
+      // This handles the case where we just completed the profile but user context hasn't refreshed yet
+      if (!profile && justCompletedProfileRef.current && creationProfileId === urlProfileId) {
+        profile = artistProfiles.find((p) => p.id === urlProfileId || p.profileId === urlProfileId);
+      }
+      
       if (profile) {
         // Store the active profile ID when found in URL
         setStoredActiveProfileId(profile.id || profile.profileId);
+        // If we just completed this profile, temporarily mark it as complete for display purposes
+        if (justCompletedProfileRef.current && creationProfileId === urlProfileId) {
+          return { ...profile, isComplete: true, status: 'complete' };
+        }
         return profile;
       }
       // If URL has profileId but profile not found, return null (will redirect)
@@ -355,8 +367,8 @@ const ArtistProfileComponent = ({
     if (viewerMode) return; // Don't redirect in viewer mode
     if (!user?.uid) return; // Wait for auth
     
-    // Don't redirect if we're creating a new profile
-    if (shouldCreate || isCreatingProfile) return;
+    // Don't redirect if we're creating a new profile or just completed one
+    if (shouldCreate || isCreatingProfile || justCompletedProfileRef.current) return;
     
     // If URL has profileId but profile not found, redirect to default (primary > complete > draft)
     if (urlProfileId && !activeProfileData && artistProfiles.length > 0) {
@@ -698,6 +710,134 @@ const ArtistProfileComponent = ({
     }
   }, [searchParams, hasCompleteProfile, isCreatingProfile, initializingArtistProfile, urlProfileId, navigate, location.pathname]);
 
+  // Check if active profile should redirect to creation flow (incomplete or draft)
+  // This MUST run before the "Determine state based on profile status" useEffect
+  useEffect(() => {
+    if (viewerMode) return; // Don't redirect in viewer mode
+    if (!user?.uid) return; // Wait for auth
+    if (!activeProfileData) return; // No profile selected yet
+    if (shouldCreate) return; // Creating new profile (not resuming draft)
+    
+    // Simple check: if isComplete is false, go to creation flow
+    const isIncomplete = activeProfileData.isComplete === false;
+    const isDraft = activeProfileData.status === 'draft';
+    
+    // If profile is complete, don't do anything
+    if (!isIncomplete && !isDraft) {
+      return;
+    }
+    
+    // CRITICAL: Don't redirect if we just completed the profile (prevents redirect loop during Firestore refresh)
+    // This flag is set when we complete the profile and cleared after 1 second
+    if (justCompletedProfileRef.current) {
+      return; // Just completed, wait for Firestore to refresh before checking again
+    }
+    
+    // If we're already creating this exact profile, don't re-trigger
+    const currentProfileId = activeProfileData.id || activeProfileData.profileId;
+    if (isCreatingProfile && creationProfileId === currentProfileId) {
+      return; // Already creating this profile
+    }
+    
+    // Profile is incomplete - redirect to creation flow
+    const profileId = currentProfileId;
+    const onboardingStep = activeProfileData.onboardingStep || CREATION_STEP_ORDER[0];
+    
+    setIsCreatingProfile(true);
+    setCurrentState(ArtistProfileState.CREATING);
+    setCreationProfileId(profileId);
+    setCreationStep(onboardingStep);
+    
+    // Load saved data from draft profile
+    const savedBrightness = activeProfileData.heroBrightness ?? BRIGHTNESS_DEFAULT;
+    setCreationHeroBrightness(savedBrightness);
+    const savedPosition = clampHeroPosition(activeProfileData.heroPositionY ?? HERO_POSITION_DEFAULT);
+    setCreationHeroPosition(savedPosition);
+    setCreationArtistName(activeProfileData.name || "");
+    setCreationArtistBio(activeProfileData.bio || "");
+    setCreationSpotifyUrl(activeProfileData.spotifyUrl || "");
+    setCreationSoundcloudUrl(activeProfileData.soundcloudUrl || "");
+    setCreationYoutubeUrl(activeProfileData.youtubeUrl || "");
+    setCreationWebsiteUrl(activeProfileData.websiteUrl || "");
+    setCreationInstagramUrl(activeProfileData.instagramUrl || "");
+    
+    // Load tracks if they exist
+    if (activeProfileData.tracks && Array.isArray(activeProfileData.tracks) && activeProfileData.tracks.length > 0) {
+      const loadedTracks = activeProfileData.tracks.map(track => ({
+        id: track.id,
+        title: track.title || `Track ${track.id}`,
+        artist: track.artist || "",
+        audioFile: null,
+        audioPreviewUrl: track.audioUrl || null,
+        coverFile: null,
+        coverPreviewUrl: track.coverUrl || null,
+        uploadedAudioUrl: track.audioUrl || null,
+        audioUrl: track.audioUrl || null,
+        coverUploadedUrl: track.coverUrl || null,
+        coverUrl: track.coverUrl || null,
+        audioStoragePath: track.audioStoragePath || null,
+        coverStoragePath: track.coverStoragePath || null,
+      }));
+      setCreationTracks(loadedTracks);
+      latestTracksRef.current = loadedTracks;
+      
+      loadedTracks.forEach(track => {
+        if (track.audioStoragePath || track.coverStoragePath) {
+          tracksStoragePathsRef.current[track.id] = {
+            audioPath: track.audioStoragePath || null,
+            coverPath: track.coverStoragePath || null,
+          };
+        }
+      });
+    } else {
+      setCreationTracks([]);
+    }
+    
+    // Load videos if they exist
+    if (activeProfileData.videos && Array.isArray(activeProfileData.videos) && activeProfileData.videos.length > 0) {
+      const loadedVideos = activeProfileData.videos.map(video => ({
+        id: video.id,
+        title: video.title || `Video ${video.id}`,
+        videoFile: null,
+        videoPreviewUrl: video.videoUrl || null,
+        thumbnailFile: null,
+        thumbnailPreviewUrl: video.thumbnailUrl || null,
+        uploadedVideoUrl: video.videoUrl || null,
+        videoUrl: video.videoUrl || null,
+        thumbnailUploadedUrl: video.thumbnailUrl || null,
+        thumbnailUrl: video.thumbnailUrl || null,
+        videoStoragePath: video.videoStoragePath || null,
+        thumbnailStoragePath: video.thumbnailStoragePath || null,
+      }));
+      setCreationVideos(loadedVideos);
+      latestVideosRef.current = loadedVideos;
+      
+      loadedVideos.forEach(video => {
+        if (video.videoStoragePath || video.thumbnailStoragePath) {
+          videosStoragePathsRef.current[video.id] = {
+            videoPath: video.videoStoragePath || null,
+            thumbnailPath: video.thumbnailStoragePath || null,
+          };
+        }
+      });
+    } else {
+      setCreationVideos([]);
+    }
+    
+    // Load hero image if it exists
+    if (activeProfileData.heroMedia?.url) {
+      setCreationHeroImage({
+        file: null,
+        previewUrl: activeProfileData.heroMedia.url,
+        storagePath: activeProfileData.heroMedia.storagePath || null,
+        uploadedUrl: activeProfileData.heroMedia.url,
+      });
+      setCreationHasHeroImage(true);
+      heroStoragePathRef.current = activeProfileData.heroMedia.storagePath || null;
+    }
+  }, [activeProfileData, user?.uid, viewerMode, isCreatingProfile, shouldCreate, creationProfileId, urlProfileId, currentState]);
+
+
   // Determine state based on profile status
   useEffect(() => {
     if (viewerMode) return; // viewer mode always stays in dashboard/profile
@@ -778,7 +918,17 @@ const ArtistProfileComponent = ({
         setSearchParams({});
       }
     } else {
-      // No complete profile - show example view (unless explicitly creating)
+      // No complete profile - check if it's incomplete/draft and should go to creation flow
+      const isIncomplete = activeProfileData?.isComplete === false;
+      const isDraft = activeProfileData?.status === 'draft';
+      
+      // If profile is incomplete/draft, don't set to example - let the creation flow useEffect handle it
+      if (isIncomplete || isDraft) {
+        // Don't override - the creation flow useEffect will handle this
+        return;
+      }
+      
+      // No profile at all - show example view (unless explicitly creating)
       if (!isCreatingProfile && currentState !== ArtistProfileState.DASHBOARD) {
         setCurrentState(ArtistProfileState.EXAMPLE_PROFILE);
         // Clear URL state when showing example
@@ -853,8 +1003,8 @@ const ArtistProfileComponent = ({
     // Skip if already switching to avoid re-triggering
     if (isSwitchingProfile) return;
     
-    // Don't trigger profile switching logic when creating a new profile
-    if (isCreatingProfile || shouldCreate) {
+    // Don't trigger profile switching logic when creating a new profile or just completed one
+    if (isCreatingProfile || shouldCreate || justCompletedProfileRef.current) {
       // Clear any existing timeout and reset switching state if we're creating
       if (switchingProfileTimeoutRef.current) {
         clearTimeout(switchingProfileTimeoutRef.current);
@@ -883,7 +1033,8 @@ const ArtistProfileComponent = ({
     if (profileChanged && 
         currentState === ArtistProfileState.DASHBOARD && 
         !isCreatingProfile &&
-        !shouldCreate) {
+        !shouldCreate &&
+        !justCompletedProfileRef.current) {
       setIsSwitchingProfile(true);
       
       // Clear editing states when switching profiles
@@ -1426,8 +1577,20 @@ const ArtistProfileComponent = ({
       
       toast.success('Profile completed!');
       
+      // Mark that we just completed the profile to prevent redirect loop
+      justCompletedProfileRef.current = true;
+      
+      // Clear any profile switching state
+      setIsSwitchingProfile(false);
+      if (switchingProfileTimeoutRef.current) {
+        clearTimeout(switchingProfileTimeoutRef.current);
+        switchingProfileTimeoutRef.current = null;
+      }
+      
       // Store the new profile ID in localStorage and navigate to it
       setStoredActiveProfileId(creationProfileId);
+      // Update the previous profile ID ref to prevent switching detection
+      previousActiveProfileIdRef.current = creationProfileId;
       navigate(`/artist-profile/${creationProfileId}`, { replace: true });
       
       // Directly transition to dashboard - don't wait for useEffect
@@ -1436,9 +1599,13 @@ const ArtistProfileComponent = ({
       setDashboardView(DashboardView.PROFILE);
       setSearchParams({});
       
-      // Clear creationProfileId after a short delay
+      // Clear creationProfileId and reset the flag after a short delay
       setTimeout(() => {
         setCreationProfileId(null);
+        // Reset the flag after profile data has had time to refresh
+        setTimeout(() => {
+          justCompletedProfileRef.current = false;
+        }, 1000);
       }, 100);
     } catch (error) {
       console.error('Failed to complete profile:', error);
@@ -1694,7 +1861,10 @@ const ArtistProfileComponent = ({
       return;
     }
 
-    const hasTracksToUpload = creationTracks.some(
+    // Capture creationTracks at the start to prevent file reference changes during upload
+    const tracksSnapshot = [...creationTracks];
+
+    const hasTracksToUpload = tracksSnapshot.some(
       track => track.audioFile || track.coverFile
     );
 
@@ -1722,7 +1892,7 @@ const ArtistProfileComponent = ({
 
     const uploadPromises = [];
     // Create a deep copy of tracks to update, preserving all existing properties including uploaded URLs
-    const tracksToUpdate = creationTracks.map(track => {
+    const tracksToUpdate = tracksSnapshot.map(track => {
       const audioSizeBytes = track.audioSizeBytes ?? track.audioFile?.size ?? 0;
       const coverSizeBytes = track.coverSizeBytes ?? track.coverFile?.size ?? 0;
       return {
@@ -1739,7 +1909,7 @@ const ArtistProfileComponent = ({
     });
     // Use a ref to track completed uploads so all progress callbacks see the current value
     const completedUploadsRef = { current: 0 };
-    const totalUploads = creationTracks.reduce((count, track) => {
+    const totalUploads = tracksSnapshot.reduce((count, track) => {
       return count + (track.audioFile ? 1 : 0) + (track.coverFile ? 1 : 0);
     }, 0);
 
@@ -1758,7 +1928,7 @@ const ArtistProfileComponent = ({
       }
     };
 
-    creationTracks.forEach((track, index) => {
+    tracksSnapshot.forEach((track, index) => {
       const trackId = track.id;
       const previousPaths = tracksStoragePathsRef.current[trackId] || {};
 
@@ -1997,7 +2167,10 @@ const ArtistProfileComponent = ({
       return;
     }
 
-    const hasVideosToUpload = creationVideos.some(
+    // Capture creationVideos at the start to prevent file reference changes during upload
+    const videosSnapshot = [...creationVideos];
+    
+    const hasVideosToUpload = videosSnapshot.some(
       (video) => video.videoFile || video.thumbnailFile
     );
 
@@ -2021,7 +2194,7 @@ const ArtistProfileComponent = ({
     setVideoUploadStatus('uploading');
     setVideoUploadProgress(0);
 
-    const videosToUpdate = creationVideos.map((video) => {
+    const videosToUpdate = videosSnapshot.map((video) => {
       const videoSizeBytes = video.videoSizeBytes ?? video.videoFile?.size ?? 0;
       const thumbnailSizeBytes =
         video.thumbnailSizeBytes ??
@@ -2040,7 +2213,7 @@ const ArtistProfileComponent = ({
 
     // Use a ref to track completed uploads so all progress callbacks see the current value
     const completedUploadsRef = { current: 0 };
-    const totalUploads = creationVideos.reduce((count, video) => {
+    const totalUploads = videosSnapshot.reduce((count, video) => {
       let videoCount = 0;
       if (video.videoFile) videoCount++;
       if (video.thumbnailFile && (video.thumbnailFile instanceof File || video.thumbnailFile instanceof Blob)) {
@@ -2066,11 +2239,12 @@ const ArtistProfileComponent = ({
       }
     };
 
-    creationVideos.forEach((video) => {
+    videosSnapshot.forEach((video) => {
       const videoId = video.id;
       const previousPaths = videosStoragePathsRef.current[videoId] || {};
 
       // Capture file references at the start to prevent ERR_UPLOAD_FILE_CHANGED
+      // Use the snapshot to ensure we always use the same file reference
       const videoFile = video.videoFile;
       const thumbnailFile = video.thumbnailFile;
 
@@ -3295,9 +3469,21 @@ const ArtistProfileComponent = ({
       
       toast.success('Profile completed!');
       
+      // Mark that we just completed the profile to prevent redirect loop
+      justCompletedProfileRef.current = true;
+      
+      // Clear any profile switching state
+      setIsSwitchingProfile(false);
+      if (switchingProfileTimeoutRef.current) {
+        clearTimeout(switchingProfileTimeoutRef.current);
+        switchingProfileTimeoutRef.current = null;
+      }
+      
       // Store the new profile ID in localStorage and navigate to it
       if (creationProfileId) {
         setStoredActiveProfileId(creationProfileId);
+        // Update the previous profile ID ref to prevent switching detection
+        previousActiveProfileIdRef.current = creationProfileId;
         navigate(`/artist-profile/${creationProfileId}`, { replace: true });
       }
       
@@ -3307,9 +3493,13 @@ const ArtistProfileComponent = ({
       setDashboardView(DashboardView.PROFILE);
       setSearchParams({});
       
-      // Clear creationProfileId after a short delay
+      // Clear creationProfileId and reset the flag after a short delay
       setTimeout(() => {
         setCreationProfileId(null);
+        // Reset the flag after profile data has had time to refresh
+        setTimeout(() => {
+          justCompletedProfileRef.current = false;
+        }, 1000);
       }, 100);
     } catch (error) {
       console.error('Failed to complete profile:', error);
@@ -3592,8 +3782,8 @@ const ArtistProfileComponent = ({
   };
 
   // Show loading state while checking auth, switching profiles, or loading dashboard data
-  // Don't show loading screen when creating a new profile (only when switching between existing profiles)
-  if (authLoading || (isSwitchingProfile && !isCreatingProfile && currentState === ArtistProfileState.DASHBOARD)) {
+  // Don't show loading screen when creating a new profile or just completed one (only when switching between existing profiles)
+  if (authLoading || (isSwitchingProfile && !isCreatingProfile && currentState === ArtistProfileState.DASHBOARD && !justCompletedProfileRef.current)) {
     return (
       <div className="artist-profile-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <LoadingScreen />

@@ -5,6 +5,11 @@ export async function getEmailAddress({ email }) {
   return result?.user || null;
 }
 
+export async function getUserEmailById({ userId }) {
+  const result = await post('/users/getUserEmailById', { body: { userId } });
+  return result?.email || null;
+}
+
 export function getPhoneExistsBoolean({ phoneNumber }) {
   return post('/users/getPhoneExistsBoolean', { body: { phoneNumber } });
 }

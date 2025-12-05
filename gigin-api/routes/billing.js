@@ -90,13 +90,33 @@ router.post("/confirmPayment", requireAuth, asyncHandler(async (req, res) => {
   let applicantId = acceptedMusician.id;
   let recipientMusicianId = applicantId;
   const applicantType = acceptedMusician.type || "musician";
-  if (applicantType === "band") {
+  
+  // Check if this is an artist profile (new model) or legacy musician/band profile
+  const artistProfileSnap = await admin.firestore().collection("artistProfiles").doc(applicantId).get();
+  const isArtistProfile = artistProfileSnap.exists;
+  
+  if (isArtistProfile) {
+    // For artist profiles, use the artist profile ID as recipient
+    // Payments are handled at the user level via Stripe Connect, so we use the profile ID
+    recipientMusicianId = applicantId;
+  } else if (applicantType === "band") {
+    // Legacy band profile - try to fetch from bands collection (may not exist after migration)
     const bandSnap = await admin.firestore().collection("bands").doc(applicantId).get();
-    if (!bandSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "Band profile not found" });
-    const band = bandSnap.data() || {};
-    recipientMusicianId = band?.admin?.musicianId;
-    if (!recipientMusicianId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Band missing admin musician id" });
+    if (bandSnap.exists) {
+      const band = bandSnap.data() || {};
+      recipientMusicianId = band?.admin?.musicianId || applicantId;
+    } else {
+      // Band collection doesn't exist - this is likely a migrated artist profile
+      // Try to find it in artistProfiles
+      const migratedArtistSnap = await admin.firestore().collection("artistProfiles").doc(applicantId).get();
+      if (migratedArtistSnap.exists) {
+        recipientMusicianId = applicantId;
+      } else {
+        return res.status(404).json({ error: "NOT_FOUND", message: "Artist profile not found" });
+      }
+    }
   }
+  // For legacy musician profiles, recipientMusicianId is already set to applicantId
   try {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountToCharge,
@@ -197,13 +217,32 @@ router.post("/createGigPaymentIntent", requireAuth, asyncHandler(async (req, res
     const accepted = Array.isArray(gigData.applicants) ? gigData.applicants.find((a) => a?.id === musicianProfileId && a?.status === "accepted") : null;
     if (!accepted) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Accepted applicant doesn't match musician ID" });
     applicantType = accepted.type || "musician";
-    if (applicantType === "band") {
+    
+    // Check if this is an artist profile (new model) or legacy musician/band profile
+    const artistProfileSnap = await db.collection("artistProfiles").doc(musicianProfileId).get();
+    const isArtistProfile = artistProfileSnap.exists;
+    
+    if (isArtistProfile) {
+      // For artist profiles, use the artist profile ID as recipient
+      recipientMusicianId = musicianProfileId;
+    } else if (applicantType === "band") {
+      // Legacy band profile - try to fetch from bands collection (may not exist after migration)
       const bandSnap = await db.collection("bands").doc(musicianProfileId).get();
-      if (!bandSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: `Band ${musicianProfileId} n/a` });
-      const band = bandSnap.data() || {};
-      recipientMusicianId = band?.admin?.musicianId;
-      if (!recipientMusicianId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: `Band ${musicianProfileId} missing admin id` });
+      if (bandSnap.exists) {
+        const band = bandSnap.data() || {};
+        recipientMusicianId = band?.admin?.musicianId || musicianProfileId;
+      } else {
+        // Band collection doesn't exist - this is likely a migrated artist profile
+        // Try to find it in artistProfiles (should have been caught above, but double-check)
+        const migratedArtistSnap = await db.collection("artistProfiles").doc(musicianProfileId).get();
+        if (migratedArtistSnap.exists) {
+          recipientMusicianId = musicianProfileId;
+        } else {
+          return res.status(404).json({ error: "NOT_FOUND", message: `Artist profile ${musicianProfileId} not found` });
+        }
+      }
     }
+    // For legacy musician profiles, recipientMusicianId is already set to musicianProfileId
   }
   const pi = await stripe.paymentIntents.create({
     amount: amountToCharge,

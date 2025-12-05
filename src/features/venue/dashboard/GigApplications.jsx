@@ -16,7 +16,7 @@ import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { getMusicianProfileByMusicianId, getArtistProfileById } from '@services/client-side/artists';
-import { getUserById } from '@services/client-side/users';
+import { getUserEmailById } from '@services/api/users';
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { getMostRecentMessage } from '@services/client-side/messages';
@@ -75,9 +75,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         // For artist profiles, always fetch user email from user document (artist profiles don't have email field)
         if (isArtistProfile && profile.userId) {
           try {
-            const user = await getUserById(profile.userId);
-            if (user?.email) {
-              profile.email = user.email;
+            const email = await getUserEmailById({ userId: profile.userId });
+            if (email) {
+              profile.email = email;
             }
           } catch (error) {
             console.error('Error fetching user email:', error);

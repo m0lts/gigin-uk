@@ -1198,7 +1198,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                             const profileId = profile.id || profile.profileId || profile.musicianId;
                                                             return (
                                                                 <option key={profileId} value={profileId}>
-                                                                    {profile.name} (Artist)
+                                                                    {profile.name}
                                                                 </option>
                                                             );
                                                         })}
@@ -1651,7 +1651,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                             const profileId = profile.id || profile.profileId || profile.musicianId;
                                                             return (
                                                                 <option key={profileId} value={profileId}>
-                                                                    {profile.name} (Artist)
+                                                                    {profile.name}
                                                                 </option>
                                                             );
                                                         })}

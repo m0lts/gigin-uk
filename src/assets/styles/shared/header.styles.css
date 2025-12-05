@@ -383,6 +383,11 @@
     gap:5px;
 }
 
+.mobile-menu .btn.placeholder {
+    background-color: rgba(255, 166, 0, 0.123);
+    color: orange;
+}
+
 .mobile-menu .primary-profile-badge {
     background-color: var(--gn-offset-orange);
     color: var(--gn-orange);
@@ -451,4 +456,24 @@
 .header.musician .link.disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.header.musician .active-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: var(--gn-offset-orange);
+    padding: 0.5rem 1rem;
+    border-radius: 7px;
+    color: var(--gn-orange);
+}
+
+.header.musician .active-profile .title {
+    font-size: 0.9rem;
+    color: var(--gn-orange);
+}
+
+.header.musician .active-profile .subtitle {
+    font-size: 0.6rem;
+    color: var(--gn-orange);
 }

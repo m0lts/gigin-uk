@@ -1105,21 +1105,21 @@ export const ProfileView = ({
       {!isCreatingProfile && !isExample && (
         <div className="additional-info-buttons-container">
           <button
-            className="btn additional-info-btn"
+            className={`btn additional-info-btn ${selectedAdditionalInfo === 'tech-rider' ? 'active' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'tech-rider' ? null : 'tech-rider')}
           >
             <TechRiderIcon />
             Tech Rider
           </button>
           <button
-            className="btn additional-info-btn"
+            className={`btn additional-info-btn ${selectedAdditionalInfo === 'members' ? 'active' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'members' ? null : 'members')}
           >
             <PeopleGroupIconSolid />
             Members
           </button>
           <button
-            className="btn additional-info-btn"
+            className={`btn additional-info-btn ${selectedAdditionalInfo === 'about' ? 'active' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'about' ? null : 'about')}
           >
             <MoreInformationIcon />

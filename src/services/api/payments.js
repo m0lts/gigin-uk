@@ -13,14 +13,18 @@ export async function confirmGigPayment({ cardId, gigData, musicianProfileId, cu
   const amountToCharge = Math.round(amount * 100);
   const gigDate = toJsDate(gigData.startDateTime);
   if (!gigDate) throw new Error('Invalid startDateTime');
-  const payload = { paymentMethodId: cardId, amountToCharge, gigData, gigDate, musicianProfileId, customerId };
+  // Convert Date to ISO string for API (metadata expects string)
+  const gigDateString = gigDate instanceof Date ? gigDate.toISOString() : gigDate;
+  const payload = { paymentMethodId: cardId, amountToCharge, gigData, gigDate: gigDateString, musicianProfileId, customerId };
   return await post('/billing/confirmPayment', { body: payload });
 }
 
 export async function confirmPaymentIntent({ amountToCharge, gigData, musicianProfileId, customerId }) {
   const gigDate = toJsDate(gigData.startDateTime);
   if (!gigDate) throw new Error('Invalid startDateTime');
-  const payload = { amountToCharge, gigData, gigDate, musicianProfileId, customerId };
+  // Convert Date to ISO string for API (metadata expects string)
+  const gigDateString = gigDate instanceof Date ? gigDate.toISOString() : gigDate;
+  const payload = { amountToCharge, gigData, gigDate: gigDateString, musicianProfileId, customerId };
   return await post('/billing/createGigPaymentIntent', { body: payload });
 }
 

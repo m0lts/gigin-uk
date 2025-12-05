@@ -42,15 +42,20 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
     const [accountMenu, setAccountMenu] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
     
-    // Get active profile ID from URL, localStorage, or default to primary/first profile
-    const activeProfileId = useMemo(() => {
-        // If URL has profileId, use it
-        if (urlProfileId) {
-            return urlProfileId;
+    // Get active profile object from URL, localStorage, or default to primary/first profile
+    const activeProfile = useMemo(() => {
+        if (!user?.artistProfiles || user.artistProfiles.length === 0) {
+            return null;
         }
         
+        let targetProfileId = null;
+        
+        // If URL has profileId, use it
+        if (urlProfileId) {
+            targetProfileId = urlProfileId;
+        }
         // Check localStorage for stored active profile
-        if (user?.uid) {
+        else if (user?.uid) {
             try {
                 const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
                 if (stored) {
@@ -59,7 +64,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                         (p) => (p.id === stored || p.profileId === stored)
                     );
                     if (profileExists) {
-                        return stored;
+                        targetProfileId = stored;
                     }
                 }
             } catch (e) {
@@ -68,17 +73,29 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
         }
         
         // Fallback to primary profile or first complete profile
-        if (user?.primaryArtistProfileId) {
-            return user.primaryArtistProfileId;
+        if (!targetProfileId) {
+            if (user?.primaryArtistProfileId) {
+                targetProfileId = user.primaryArtistProfileId;
+            } else {
+                const firstComplete = user?.artistProfiles?.find((p) => p.isComplete);
+                if (firstComplete) {
+                    targetProfileId = firstComplete.id || firstComplete.profileId;
+                }
+            }
         }
         
-        const firstComplete = user?.artistProfiles?.find((p) => p.isComplete);
-        if (firstComplete) {
-            return firstComplete.id || firstComplete.profileId;
+        // Find and return the full profile object
+        if (targetProfileId) {
+            const profile = user.artistProfiles.find(
+                (p) => (p.id === targetProfileId || p.profileId === targetProfileId)
+            );
+            return profile || null;
         }
         
         return null;
     }, [urlProfileId, user?.uid, user?.primaryArtistProfileId, user?.artistProfiles]);
+
+    
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [feedback, setFeedback] = useState({
         feedback: '',
@@ -180,101 +197,130 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                     </Link>
                                 )}
                             </div>
-                            <div className={`right-block ${user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? '' : 'empty'}`}>
-                                {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
-                                    <>
-                                        {activeProfileId ? (
-                                            <>
-                                                <Link 
-                                                    className={`link ${location.pathname === `/artist-profile/${activeProfileId}` || (location.pathname === '/artist-profile' && !urlProfileId) ? 'disabled' : ''}`} 
-                                                    to={`/artist-profile/${activeProfileId}`}
-                                                >
-                                                    Profile
-                                                </Link>
-                                                <Link 
-                                                    className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} 
-                                                    to={`/artist-profile/${activeProfileId}/gigs`}
-                                                >
-                                                    Gigs
-                                                </Link>
-                                                <Link
-                                                    className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
-                                                    to={`/artist-profile/${activeProfileId}/messages`}
-                                                >
-                                                    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                        Messages
-                                                        {newMessages && (
-                                                            <span
-                                                                style={{
-                                                                    position: 'absolute',
-                                                                    top: -6,
-                                                                    right: -12,
-                                                                    width: 6,
-                                                                    height: 6,
-                                                                    borderRadius: '50%',
-                                                                    backgroundColor: 'var(--gn-orange)',
-                                                                }}
-                                                            />
-                                                        )}
-                                                    </span>
-                                                </Link>
-                                                <Link 
-                                                    className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} 
-                                                    to={`/artist-profile/${activeProfileId}/finances`}
-                                                >
-                                                    Finances
-                                                </Link>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Link className={`link ${location.pathname === '/artist-profile' ? 'disabled' : ''}`} to={'/artist-profile'}>
-                                                    Profile
-                                                </Link>
-                                                <Link className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} to={'/artist-profile/gigs'}>
-                                                    Gigs
-                                                </Link>
-                                                <Link
-                                                    className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
-                                                    to={'/artist-profile/messages'}
-                                                >
-                                                    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                        Messages
-                                                        {newMessages && (
-                                                            <span
-                                                                style={{
-                                                                    position: 'absolute',
-                                                                    top: -6,
-                                                                    right: -12,
-                                                                    width: 6,
-                                                                    height: 6,
-                                                                    borderRadius: '50%',
-                                                                    backgroundColor: 'var(--gn-orange)',
-                                                                }}
-                                                            />
-                                                        )}
-                                                    </span>
-                                                </Link>
-                                                <Link className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} to={'/artist-profile/finances'}>
-                                                    Finances
-                                                </Link>
-                                            </>
-                                        )}
-                                    </>
-                                ) : location.pathname !== '/artist-profile' && (
-                                    <>
-                                        <button className='btn artist-profile' onClick={() => navigate('/artist-profile')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '1rem'}}>
+                            {location.pathname.includes('artist-profile') ? (
+
+                                <div className={`right-block ${user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? '' : 'empty'}`}>
+                                    {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
+                                        <>
+                                            {activeProfile ? (
+                                                <>
+                                                    <Link 
+                                                        className={`link ${location.pathname === `/artist-profile/${activeProfile.id || activeProfile.profileId}` || (location.pathname === '/artist-profile' && !urlProfileId) ? 'disabled' : ''}`} 
+                                                        to={`/artist-profile/${activeProfile.id || activeProfile.profileId}`}
+                                                    >
+                                                        Profile
+                                                    </Link>
+                                                    <Link 
+                                                        className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} 
+                                                        to={`/artist-profile/${activeProfile.id || activeProfile.profileId}/gigs`}
+                                                    >
+                                                        Gigs
+                                                    </Link>
+                                                    <Link
+                                                        className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
+                                                        to={`/artist-profile/${activeProfile.id || activeProfile.profileId}/messages`}
+                                                    >
+                                                        <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                            Messages
+                                                            {newMessages && (
+                                                                <span
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        top: -6,
+                                                                        right: -12,
+                                                                        width: 6,
+                                                                        height: 6,
+                                                                        borderRadius: '50%',
+                                                                        backgroundColor: 'var(--gn-orange)',
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        </span>
+                                                    </Link>
+                                                    <Link 
+                                                        className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} 
+                                                        to={`/artist-profile/${activeProfile.id || activeProfile.profileId}/finances`}
+                                                    >
+                                                        Finances
+                                                    </Link>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Link className={`link ${location.pathname === '/artist-profile' ? 'disabled' : ''}`} to={'/artist-profile'}>
+                                                        Profile
+                                                    </Link>
+                                                    <Link className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} to={'/artist-profile/gigs'}>
+                                                        Gigs
+                                                    </Link>
+                                                    <Link
+                                                        className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
+                                                        to={'/artist-profile/messages'}
+                                                    >
+                                                        <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                            Messages
+                                                            {newMessages && (
+                                                                <span
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        top: -6,
+                                                                        right: -12,
+                                                                        width: 6,
+                                                                        height: 6,
+                                                                        borderRadius: '50%',
+                                                                        backgroundColor: 'var(--gn-orange)',
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        </span>
+                                                    </Link>
+                                                    <Link className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} to={'/artist-profile/finances'}>
+                                                        Finances
+                                                    </Link>
+                                                </>
+                                            )}
+                                        </>
+                                    ) : location.pathname !== '/artist-profile' && (
+                                        <>
+                                            <button className='btn artist-profile' onClick={() => navigate('/artist-profile')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '1rem'}}>
+                                                <GuitarsIcon />
+                                                Create Artist Profile
+                                            </button>
+                                        </>
+                                    )}
+                                    <button
+                                        className='btn icon hamburger-menu-btn'
+                                        onClick={(e) => {e.stopPropagation(); setAccountMenu(!accountMenu)}}
+                                    >
+                                        {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="right">
+                                    {activeProfile.isComplete ? (
+                                        <>
+                                            <div className="active-profile">
+                                                <h6 className="subtitle">Active Profile:</h6>
+                                                <h4 className="title">{activeProfile?.name}</h4>
+                                            </div>
+                                            <button className='btn text-no-underline' onClick={() => navigate(`/artist-profile/${activeProfile.id || activeProfile.profileId}`)}>
+                                                <GuitarsIcon />
+                                                Artist Dashboard
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button className='btn artist-profile' onClick={() => navigate(`/artist-profile`)}>
                                             <GuitarsIcon />
-                                            Create Artist Profile
+                                            Complete Artist Profile
                                         </button>
-                                    </>
-                                )}
-                                <button
-                                    className='btn icon hamburger-menu-btn'
-                                    onClick={(e) => {e.stopPropagation(); setAccountMenu(!accountMenu)}}
-                                >
-                                    {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
-                                </button>
-                            </div>
+                                    )}
+                                    <button
+                                        className='btn icon hamburger-menu-btn'
+                                        onClick={(e) => {e.stopPropagation(); setAccountMenu(!accountMenu)}}
+                                    >
+                                        {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
+                                    </button>
+                                </div>
+                            )}
                         </>
                     ) : (
                         <>

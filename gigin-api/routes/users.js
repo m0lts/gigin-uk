@@ -19,6 +19,21 @@ router.post("/getUserEmail", asyncHandler(async (req, res) => {
   return res.json({ data: { found: true, user } });
 }));
 
+// POST /api/users/getUserEmailById (auth required)
+// Returns only the email address for a given userId (for privacy)
+router.post("/getUserEmailById", requireAuth, asyncHandler(async (req, res) => {
+  const { userId } = req.body || {};
+  if (!userId || typeof userId !== "string") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "userId is required" });
+  }
+  const userSnap = await db.collection("users").doc(userId).get();
+  if (!userSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "User not found" });
+  }
+  const userData = userSnap.data() || {};
+  return res.json({ data: { email: userData.email || null } });
+}));
+
 // POST /api/users/getPhoneExistsBoolean
 router.post("/getPhoneExistsBoolean", asyncHandler(async (req, res) => {
   const { phoneNumber } = req.body || {};
