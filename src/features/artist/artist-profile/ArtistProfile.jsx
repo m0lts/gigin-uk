@@ -3391,7 +3391,7 @@ const ArtistProfileComponent = ({
             currentHeroImage={activeProfileData?.heroMedia?.url}
             currentHeroBrightness={activeProfileData?.heroBrightness || BRIGHTNESS_DEFAULT}
             currentHeroPosition={activeProfileData?.heroPositionY || HERO_POSITION_DEFAULT}
-            currentArtistName={activeProfileData?.name || ""}
+            currentArtistName={typeof activeProfileData?.name === 'string' ? activeProfileData.name : String(activeProfileData?.name || "")}
             isEditingHero={isRepositioningHero}
             onHeroRepositionToggleEdit={handleHeroRepositionToggle}
             onEditingNameChange={handleEditingNameChange}
@@ -3898,8 +3898,8 @@ const ArtistProfileComponent = ({
                           </figure>
                         )}
                         <div className='artist-profile-details'>
-                          <h3 className='artist-profile-name'>{profile.name}</h3>
-                          {profile.bio && (
+                          <h3 className='artist-profile-name'>{typeof profile.name === 'string' ? profile.name : String(profile.name || "")}</h3>
+                          {profile.bio && typeof profile.bio === 'string' && profile.bio.trim() && (
                             <p className='artist-profile-bio'>
                               {profile.bio.length > 100 ? `${profile.bio.substring(0, 100)}...` : profile.bio}
                             </p>

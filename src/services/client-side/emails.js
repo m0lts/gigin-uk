@@ -550,7 +550,17 @@ export const sendGigAcceptedEmail = async ({
   const inner = userRole === 'musician' ? innerMusician : innerVenue;
   const html = htmlBase(title, inner);
 
-  const to = userRole === 'musician' ? venueProfile.email : musicianProfile.email;
+  const to = userRole === 'musician' ? venueProfile?.email : musicianProfile?.email;
+
+  // Skip sending email if recipient email is not available
+  if (!to) {
+    console.warn('Cannot send gig accepted email: recipient email is missing', {
+      userRole,
+      venueProfileEmail: venueProfile?.email,
+      musicianProfileEmail: musicianProfile?.email,
+    });
+    return;
+  }
 
   const mailRef = collection(firestore, 'mail');
   await addDoc(mailRef, {

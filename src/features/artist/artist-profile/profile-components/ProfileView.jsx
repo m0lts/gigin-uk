@@ -182,7 +182,7 @@ export const ProfileView = ({
   const [editHeroImage, setEditHeroImage] = useState(null);
   const [editHeroBrightness, setEditHeroBrightness] = useState(currentHeroBrightness);
   const [editHeroPosition, setEditHeroPosition] = useState(currentHeroPosition);
-  const [editArtistName, setEditArtistName] = useState(currentArtistName);
+  const [editArtistName, setEditArtistName] = useState(typeof currentArtistName === 'string' ? currentArtistName : String(currentArtistName || ""));
   const [editHeroUploadStatus, setEditHeroUploadStatus] = useState('idle');
   const [editHeroUploadProgress, setEditHeroUploadProgress] = useState(0);
   const [editingTracks, setEditingTracks] = useState([]);
@@ -199,7 +199,7 @@ export const ProfileView = ({
     .filter(Boolean)
     .join(' ');
 
-  const liveBioContent = (isCreatingProfile && creationArtistBio?.trim())
+  const liveBioContent = (isCreatingProfile && creationArtistBio && typeof creationArtistBio === 'string' && creationArtistBio.trim())
     ? creationArtistBio
     : data?.bio;
 
@@ -210,7 +210,7 @@ export const ProfileView = ({
   let shouldShowBio = false;
   if (isCreatingProfile) {
     // In creation mode: only show if we've reached bio step AND user has entered a bio
-    shouldShowBio = Boolean(creationArtistBio?.trim());
+    shouldShowBio = Boolean(creationArtistBio && typeof creationArtistBio === 'string' && creationArtistBio.trim());
   } else {
     // Not in creation mode: show if bio data exists
     shouldShowBio = Boolean(data?.bio);
@@ -734,7 +734,8 @@ export const ProfileView = ({
   }, [editHeroPosition, isEditingBackground, onEditingHeroPositionChange]);
 
   useEffect(() => {
-    setEditArtistName(currentArtistName || data?.name || "");
+    const nameValue = currentArtistName || data?.name || "";
+    setEditArtistName(typeof nameValue === 'string' ? nameValue : String(nameValue || ""));
   }, [currentArtistName, data?.name, isEditingName]);
 
   // Notify parent when editing name changes for real-time display
@@ -904,7 +905,8 @@ export const ProfileView = ({
 
   const handleCancelName = () => {
     setIsEditingName(false);
-    const originalName = currentArtistName || data?.name || "";
+    const nameValue = currentArtistName || data?.name || "";
+    const originalName = typeof nameValue === 'string' ? nameValue : String(nameValue || "");
     setEditArtistName(originalName);
     // Reset display name to original
     if (onEditingNameChange) {
@@ -1272,7 +1274,7 @@ export const ProfileView = ({
                 <button
                   className="btn artist-profile"
                   onClick={handleSaveName}
-                  disabled={!editArtistName.trim() || editArtistName.trim() === (currentArtistName || data?.name || "")}
+                  disabled={!String(editArtistName || "").trim() || String(editArtistName || "").trim() === String(currentArtistName || data?.name || "").trim()}
                 >
                   Save
                 </button>

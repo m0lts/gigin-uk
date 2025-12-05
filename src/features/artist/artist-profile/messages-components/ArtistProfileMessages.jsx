@@ -1,6 +1,6 @@
 import '@styles/artists/messages.styles.css';
 import { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import {
@@ -26,6 +26,7 @@ export const ArtistProfileMessages = () => {
   const { isLgUp } = useBreakpoint();
   const navigate = useNavigate();
   const location = useLocation();
+  const { profileId: urlProfileId } = useParams();
   const [conversations, setConversations] = useState([]);
   const [archivedConversations, setArchivedConversations] = useState([]);
   const [showArchived, setShowArchived] = useState(false);
@@ -130,7 +131,11 @@ export const ArtistProfileMessages = () => {
   }, [activeConversation, user]);
 
   const handleSelectConversation = async (conversationId) => {
-    navigate(`/artist-profile/messages?conversationId=${conversationId}`);
+    // Include profileId in the route if it exists in the URL
+    const basePath = urlProfileId 
+      ? `/artist-profile/${urlProfileId}/messages`
+      : '/artist-profile/messages';
+    navigate(`${basePath}?conversationId=${conversationId}`);
     if (user?.uid) {
       await updateConversationLastViewed(conversationId, user.uid);
     }
@@ -233,7 +238,13 @@ export const ArtistProfileMessages = () => {
                 <div className="column message-thread">
                   <button
                     className="btn tertiary"
-                    onClick={() => navigate(-1)}
+                    onClick={() => {
+                      // Navigate back to messages list (remove conversationId from URL)
+                      const basePath = urlProfileId 
+                        ? `/artist-profile/${urlProfileId}/messages`
+                        : '/artist-profile/messages';
+                      navigate(basePath);
+                    }}
                     style={{ marginBottom: '0.5rem' }}
                   >
                     <LeftArrowIcon /> Back

@@ -72,8 +72,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         profile = await getMusicianProfileByMusicianId(profileId);
       }
       if (profile) {
-        // For artist profiles, fetch user email from user document
-        if (isArtistProfile && profile.userId && !profile.email) {
+        // For artist profiles, always fetch user email from user document (artist profiles don't have email field)
+        if (isArtistProfile && profile.userId) {
           try {
             const user = await getUserById(profile.userId);
             if (user?.email) {
