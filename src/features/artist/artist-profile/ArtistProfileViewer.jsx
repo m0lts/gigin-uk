@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArtistDashboardProvider } from '../../../context/ArtistDashboardContext';
 import { ArtistProfile } from './ArtistProfile';
 import { getArtistProfileById } from '../../../services/client-side/artists';
@@ -10,9 +10,11 @@ import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
  * - Loads a single artistProfile by ID
  * - Wraps it in ArtistDashboardProvider so existing ArtistProfile UI can render
  * - Forces "viewer mode" so only the profile view is shown and editing is disabled
+ * - Redirects venue visitors away from incomplete profiles
  */
 export const ArtistProfileViewer = ({ user, setAuthModal, setAuthType }) => {
   const { artistId } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,6 +45,34 @@ export const ArtistProfileViewer = ({ user, setAuthModal, setAuthType }) => {
       cancelled = true;
     };
   }, [artistId]);
+
+  // Guard: Redirect venue visitors away from incomplete profiles
+  useEffect(() => {
+    if (!profile || loading) return;
+    
+    // Check if profile is incomplete
+    const isIncomplete = profile.isComplete === false || profile.status === 'draft';
+    
+    if (isIncomplete) {
+      // Check if user is a venue (not the owner)
+      const isVenue = user?.venueProfiles && user.venueProfiles.length > 0;
+      const isOwner = user?.uid && profile.userId && user.uid === profile.userId;
+      
+      // If venue visitor (not owner), redirect back
+      if (isVenue && !isOwner) {
+        // Try to go back to previous page, with fallback to find-a-gig page
+        // Use replace: true to prevent them from going back to the incomplete profile
+        const hasHistory = window.history.length > 1;
+        if (hasHistory) {
+          navigate(-1); // Go back to previous page
+        } else {
+          // No history (e.g., direct link), redirect to find-a-gig page
+          navigate('/venues/dashboard/artists/find', { replace: true });
+        }
+        return;
+      }
+    }
+  }, [profile, user, loading, navigate]);
 
   if (loading) {
     return <LoadingScreen />;

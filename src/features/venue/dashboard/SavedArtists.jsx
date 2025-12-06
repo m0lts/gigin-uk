@@ -132,6 +132,8 @@ export const SavedArtists = ({ user }) => {
                       )
                       .map((artist) => {
                         if (!artist) return null;
+                        const isComplete = artist?.isComplete;
+                        if (!isComplete) return null;
 
                         const {
                             id,
