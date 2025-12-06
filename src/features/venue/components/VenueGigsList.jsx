@@ -23,8 +23,8 @@ import { useBreakpoint } from "../../../hooks/useBreakpoint";
 
 export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null, venueId }) => {
     const { isMdUp } = useBreakpoint();
-    const [expanded, setExpanded] = useState(false);
-    const displayed = useMemo(() => (expanded ? gigs : gigs?.slice(0, 3) ?? []), [expanded, gigs]);
+    // Always show all gigs, container will be scrollable
+    const displayed = gigs ?? [];
     const [profilesById, setProfilesById] = useState({});
     const [loadingProfiles, setLoadingProfiles] = useState(false);
   
@@ -114,18 +114,9 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
           ) : (
             <h4 className="subtitle">{title}</h4>
           )}
-          {gigs?.length > 3 && (
-            <button
-              type="button"
-              className="btn text"
-              onClick={() => setExpanded(v => !v)}
-              aria-expanded={expanded}
-            >
-              {expanded ? "See less" : `See more (${gigs.length - 3})`}
-            </button>
-          )}
         </div>
         
+        <div className="gigs-list-container">
         {displayed.length > 0 ? (
           displayed?.map((gig) => {
             const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
@@ -217,7 +208,7 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
             </div>
           )
         )}
-  
+        </div>
   
         {/* optional subtle hint while profiles are loading */}
         {title === "Upcoming" && loadingProfiles && <div className="loading-inline">Loading acts…</div>}

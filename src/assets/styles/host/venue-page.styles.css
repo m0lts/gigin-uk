@@ -1,9 +1,12 @@
 @import '../breakpoints.css';
 
 .venue-page-body {
-    margin: 2rem auto;
-    padding-bottom: 5rem !important;
-    margin-top: 0;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 
@@ -552,4 +555,573 @@
         justify-content: space-between;
     }
     
+}
+
+/* Venue Profile Desktop Layout - Similar to Artist Profile */
+.venue-profile-background-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.venue-profile-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 1;
+  transition: opacity 400ms ease;
+}
+
+.venue-profile-background.image-layer {
+  z-index: 1;
+}
+
+/* Content Overlay */
+.venue-profile-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Constant Elements - Always Visible */
+.venue-profile-constants {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Venue Name - Bottom Left */
+.venue-profile-constants .venue-name {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 10;
+}
+
+.venue-profile-constants .venue-name h1 {
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--gn-white);
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+.venue-profile-constants .venue-name h1 .orange-dot {
+  color: var(--gn-orange);
+}
+
+/* State Box - Right Side, 90vh */
+.venue-profile-state-box {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 35vw;
+  max-height: 90vh;
+  min-width: 400px;
+  max-width: 600px;
+  height: 90vh;
+  padding: 2rem;
+  z-index: 10;
+  background: transparent;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.venue-profile-state-box::-webkit-scrollbar {
+  display: none;
+}
+
+.venue-profile-state-box::-ms-overflow-style {
+  display: none;
+}
+
+.venue-profile-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  justify-content: flex-end;
+}
+
+.venue-profile-state-content::-webkit-scrollbar {
+  display: none;
+}
+
+.venue-profile-state-content::-ms-overflow-style {
+  display: none;
+}
+
+.venue-profile-sections-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  min-height: min-content;
+}
+
+/* Action Buttons Container - no background */
+.venue-profile-state-box .venue-action-buttons-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.venue-profile-state-box .venue-action-btn {
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  color: var(--gn-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.venue-profile-state-box .venue-action-btn:hover {
+  background-color: var(--gn-grey-300);
+  border-color: transparent;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Profile Card Styling */
+.venue-profile-state-box .profile-card {
+  background: var(--gn-white);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.venue-profile-state-box .bio-card-container {
+  background: var(--gn-white);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.venue-profile-state-box .bio-card-container h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--gn-off-black);
+}
+
+.venue-profile-state-box .bio-card-container p {
+  color: var(--gn-grey-700);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Additional Info Card Container */
+.venue-profile-state-box .additional-info-card-container {
+  background: var(--gn-white);
+  border-radius: 1rem;
+  padding: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.25rem;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transform: translateY(-12px);
+  pointer-events: none;
+  transition: opacity 350ms ease, max-height 350ms ease, transform 350ms ease, padding 350ms ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.venue-profile-state-box .additional-info-card-container.is-visible {
+  opacity: 1;
+  max-height: 2500px;
+  transform: translateY(0);
+  pointer-events: auto;
+  padding: 1rem;
+}
+
+.venue-profile-state-box .additional-info-section {
+  width: 100%;
+}
+
+.venue-profile-state-box .additional-info-section .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.venue-profile-state-box .additional-info-section .section-header .title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.venue-profile-state-box .additional-info-section .section-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--gn-off-black);
+}
+
+.venue-profile-state-box .additional-info-section .close-section-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--gn-grey-600);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.venue-profile-state-box .additional-info-section .close-section-btn:hover {
+  color: var(--gn-black);
+}
+
+.venue-profile-state-box .additional-info-section .section-content {
+  color: var(--gn-grey-700);
+  line-height: 1.6;
+}
+
+/* Location Content Wrapper */
+.venue-profile-state-box .additional-info-section .section-content .location-content-wrapper {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .map-wrapper {
+  width: 70%;
+  flex-shrink: 0;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .location-info-wrapper {
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Map Container Styling in Venue Profile */
+.venue-profile-state-box .additional-info-section .section-content .map-container {
+  min-height: 150px;
+  height: 150px;
+  width: 100%;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .map-container > div {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .location-info-wrapper h5 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0;
+  color: var(--gn-off-black);
+  line-height: 1.4;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .location-info-wrapper .btn.tertiary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* Website and Socials Styling */
+.venue-profile-state-box .additional-info-section .section-content > div {
+  margin-bottom: 1.5rem;
+}
+
+.venue-profile-state-box .additional-info-section .section-content > div:last-child {
+  margin-bottom: 0;
+}
+
+.venue-profile-state-box .additional-info-section .section-content h6 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 0.75rem 0;
+  color: var(--gn-grey-600);
+}
+
+.venue-profile-state-box .additional-info-section .section-content a {
+  color: var(--gn-off-black);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  word-break: break-word;
+  display: inline-block;
+}
+
+.venue-profile-state-box .additional-info-section .section-content a:hover {
+  color: var(--gn-orange);
+  text-decoration: underline;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .socials-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .socials-buttons a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gn-grey-250);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .socials-buttons a:hover {
+  background: var(--gn-grey-300);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+}
+
+.venue-profile-state-box .additional-info-section .section-content .socials-buttons a .icon {
+  font-size: 1.25rem;
+  color: var(--gn-off-black);
+}
+
+/* Additional Info Buttons Container */
+.venue-profile-state-box .additional-info-buttons-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0rem;
+  padding-top: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.venue-profile-state-box .additional-info-btn {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.venue-profile-state-box .additional-info-btn:hover {
+  background-color: var(--gn-grey-300);
+  border-color: transparent;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.venue-profile-state-box .additional-info-btn.active {
+  background-color: var(--gn-off-black);
+  color: var(--gn-white);
+  border-color: var(--gn-off-black);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Gig Vacancies Styling */
+.venue-profile-state-box .gigs-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0;
+}
+
+.venue-profile-state-box .gigs-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.venue-profile-state-box .gigs-box-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--gn-off-black);
+}
+
+.venue-profile-state-box .gigs-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 0.25rem;
+}
+
+.venue-profile-state-box .gigs-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.venue-profile-state-box .gigs-list-container::-webkit-scrollbar-track {
+  background: var(--gn-grey-250);
+  border-radius: 3px;
+}
+
+.venue-profile-state-box .gigs-list-container::-webkit-scrollbar-thumb {
+  background: var(--gn-grey-400);
+  border-radius: 3px;
+}
+
+.venue-profile-state-box .gigs-list-container::-webkit-scrollbar-thumb:hover {
+  background: var(--gn-grey-500);
+}
+
+.venue-profile-state-box .venue-gig {
+  border: 1px solid var(--gn-grey-350);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: var(--gn-white);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.venue-profile-state-box .venue-gig:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+  border-color: var(--gn-grey-400);
+}
+
+.venue-profile-state-box .venue-gig .confirmed-musician {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex: 1;
+  align-items: center;
+}
+
+.venue-profile-state-box .venue-gig .confirmed-musician .left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.venue-profile-state-box .venue-gig .date-box {
+  background-color: var(--gn-grey-250);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+
+.venue-profile-state-box .venue-gig .date-box .month {
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--gn-grey-700);
+  text-transform: uppercase;
+}
+
+.venue-profile-state-box .venue-gig .date-box .day {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--gn-off-black);
+}
+
+.venue-profile-state-box .venue-gig .gig-time h3 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+  color: var(--gn-grey-700);
+}
+
+.venue-profile-state-box .venue-gig .gig-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  margin-right: 1rem;
+}
+
+.venue-profile-state-box .venue-gig .gig-type .icon {
+  color: var(--gn-grey-700);
+  font-size: 1.25rem;
+}
+
+.venue-profile-state-box .venue-gig .gig-type h4 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0;
+  color: var(--gn-off-black);
+}
+
+.venue-profile-state-box .venue-gig .btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.venue-profile-state-box .gigs-box .no-gigs {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--gn-grey-600);
+}
+
+.venue-profile-state-box .gigs-box .no-gigs h4 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0 0 1rem 0;
 }
