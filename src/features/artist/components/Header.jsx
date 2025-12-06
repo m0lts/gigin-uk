@@ -30,7 +30,7 @@ import Portal from '../../shared/components/Portal';
 import { submitUserFeedback } from '../../../services/client-side/reports';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
-import { NoTextLogoLink } from '../../shared/ui/logos/Logos';
+import { NoTextLogoLink, NoTextMusicianLogoLink } from '../../shared/ui/logos/Logos';
 
 export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModal, setNoProfileModal, setNoProfileModalClosable, noProfileModalClosable = false }) => {
    
@@ -50,7 +50,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
             return null;
         }
     });
-    
+
     // Listen for storage events to update when localStorage changes
     useEffect(() => {
         if (!user?.uid) return;
@@ -398,16 +398,20 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                     )
                 ) : (
                     <>
-                        <MusicianLogoLink />
-                        <button
-                            className='btn icon hamburger-menu-btn'
-                            aria-label={accountMenu ? 'Close Menu' : 'Open Menu'}
-                            aria-expanded={accountMenu}
-                            aria-controls='account-menu'
-                            onClick={(e) => {setAccountMenu(o => !o); e.stopPropagation();}}
-                        >
-                            {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
-                        </button>
+                        <div className='left'>
+                            <NoTextMusicianLogoLink />
+                        </div>
+                        <div className='right'>
+                            <button
+                                className='btn icon hamburger-menu-btn'
+                                aria-label={accountMenu ? 'Close Menu' : 'Open Menu'}
+                                aria-expanded={accountMenu}
+                                aria-controls='account-menu'
+                                onClick={(e) => {setAccountMenu(o => !o); e.stopPropagation();}}
+                            >
+                                {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
+                            </button>
+                        </div>
                     </>
                 )}
             </header>

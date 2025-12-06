@@ -26,16 +26,23 @@ export const useAuth = () => {
     artistProfilesDataRef.current = {};
     setUser((prev) => {
       if (!prev) return prev;
-      return { ...prev, artistProfiles: [] };
+      const { artistProfiles, artistProfileIds, ...rest } = prev;
+      return rest;
     });
   };
 
   const publishArtistProfiles = () => {
     setUser((prev) => {
       if (!prev) return prev;
+      const profiles = Object.values(artistProfilesDataRef.current);
+      if (profiles.length === 0) {
+        // Remove artistProfiles and artistProfileIds if empty
+        const { artistProfiles, artistProfileIds, ...rest } = prev;
+        return rest;
+      }
       return {
         ...prev,
-        artistProfiles: Object.values(artistProfilesDataRef.current),
+        artistProfiles: profiles,
       };
     });
   };
@@ -124,12 +131,25 @@ export const useAuth = () => {
               .filter(Boolean)
           : [];
 
-        setUser((prev) => ({
-          ...(prev || {}),
-          ...userData,
-          artistProfileIds,
-          artistProfiles: prev?.artistProfiles || [],
-        }));
+        setUser((prev) => {
+          // Only include artistProfileIds and artistProfiles if there are actual profiles
+          const userUpdate = {
+            ...(prev || {}),
+            ...userData,
+          };
+
+          if (artistProfileIds.length > 0) {
+            userUpdate.artistProfileIds = artistProfileIds;
+            // artistProfiles will be set by publishArtistProfiles when subscriptions sync
+            userUpdate.artistProfiles = prev?.artistProfiles || [];
+          } else {
+            // Remove artistProfileIds and artistProfiles if user has none
+            delete userUpdate.artistProfileIds;
+            delete userUpdate.artistProfiles;
+          }
+
+          return userUpdate;
+        });
 
         syncArtistProfileSubscriptions(artistProfileIds);
         setLoading(false);

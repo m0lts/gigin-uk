@@ -231,7 +231,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                 onClick={(e) => {
                                                     const other = getOtherPartyAccount(activeConversation);
                                                     if (!other) return;
-                                                    openInNewTab(`/${other.participantId}/${activeConversation.gigId || 'null'}`, e);
+                                                    openInNewTab(`/artist/${other.participantId}`, e);
                                                 }}
                                                 >
                                                 {getOtherPartyAccount(activeConversation)?.accountName || 'Conversation'}
@@ -353,7 +353,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                 onClick={(e) => {
                                                     const other = getOtherPartyAccount(activeConversation);
                                                     if (!other) return;
-                                                    openInNewTab(`/${other.participantId}/${activeConversation.gigId || 'null'}`, e);
+                                                    openInNewTab(`/artist/${other.participantId}`, e);
                                                 }}
                                                 >
                                                 {getOtherPartyAccount(activeConversation)?.accountName || 'Conversation'}

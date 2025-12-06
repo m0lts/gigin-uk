@@ -250,12 +250,6 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user, c
             <span style={{ marginRight: 2 }}>Finding Venues...</span>
           </div>
         )}
-        {(!isMdUp && !loading) && (
-          <button className="btn secondary venue-button" onClick={() => navigate('/find-a-gig')}>
-            <MapIcon />
-            Find a Gig
-          </button>
-        )}
       </div>
 
       {(clickedVenues?.length ?? 0) > 0 && (

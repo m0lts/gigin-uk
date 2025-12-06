@@ -37,6 +37,12 @@
     scrollbar-width: 0;
 }
 
+@media (--bp-md) {
+    .dashboard .window .output .messages {
+        margin-top: 1rem;
+    }
+}
+
 .dashboard .window .output::-webkit-scrollbar {
     display: none;
 }

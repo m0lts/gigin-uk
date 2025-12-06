@@ -82,13 +82,14 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     }
 
     const headerStyle = {
-        padding: location.pathname.includes('dashboard') ? '0 1rem' : `0 2rem`,
-        justifyContent: user?.venueProfiles && user?.venueProfiles?.length > 0 ? 'flex-end' : '',
+        padding: location.pathname.includes('dashboard') ? '0 1rem' : isMdUp ? `0 2rem` : '0 1rem',
+        justifyContent: user?.venueProfiles && user?.venueProfiles?.length > 0 && isMdUp ? 'flex-end' : '',
     };
 
     const menuStyle = {
         right: location.pathname.includes('dashboard') ? '1rem' : '5%',
     };
+
 
     
     return (
@@ -136,16 +137,20 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
                     )
                 ) : (
                     <>
-                        <VenueLogoLink />
-                        <button
-                            className='btn icon hamburger-menu-btn'
-                            aria-label={accountMenu ? 'Close Menu' : 'Open Menu'}
-                            aria-expanded={accountMenu}
-                            aria-controls='account-menu'
-                            onClick={(e) => {setAccountMenu(o => !o); e.stopPropagation();}}
-                        >
-                            {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
-                        </button>
+                        <div className='left'>
+                            <NoTextVenueLogoLink />
+                        </div>
+                        <div className='right'>
+                            <button
+                                className='btn icon hamburger-menu-btn'
+                                aria-label={accountMenu ? 'Close Menu' : 'Open Menu'}
+                                aria-expanded={accountMenu}
+                                aria-controls='account-menu'
+                                onClick={(e) => {setAccountMenu(o => !o); e.stopPropagation();}}
+                            >
+                                {accountMenu ? <CloseIcon /> : <HamburgerMenuIcon />}
+                            </button>
+                        </div>
                     </>
                 )}
             </header>

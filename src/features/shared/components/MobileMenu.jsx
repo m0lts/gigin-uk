@@ -9,7 +9,6 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
   const navigate = useNavigate();
   const { isLgUp, isXlUp, isMdUp } = useBreakpoint();
     const location = useLocation();
-    
     return (
         <>
             <nav className='mobile-menu' style={menuStyle}>
@@ -36,7 +35,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             </button>
                         </div>
                     </>
-                ) : user && !user?.artistProfiles && !user.venueProfiles ? (
+                ) : user && !user?.artistProfiles && !user?.venueProfiles ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
@@ -51,7 +50,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <LogOutIcon />
                         </button>
                     </>
-                ) : user && !user?.artistProfiles && user?.venueProfiles ? (
+                ) : user && !user?.artistProfiles && !user?.artistProfiles?.length > 0 && user?.venueProfiles?.length > 0 ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
@@ -103,8 +102,8 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                     My Venues
                                     <VenueIconLight />
                                 </Link>
-                                <Link className='link item no-margin' to={'/venues/dashboard/musicians'}>
-                                    Musicians
+                                <Link className='link item no-margin' to={'/venues/dashboard/artists'}>
+                                    Artists
                                     <MusicianIconLight />
                                 </Link>
                                 <Link className='link item no-margin' to={'/venues/dashboard/finances'}>
@@ -131,7 +130,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <LogOutIcon />
                         </button>
                     </>
-                ) : user && user?.artistProfiles && !user?.venueProfiles ? (
+                ) : user && user?.artistProfiles && user?.artistProfiles.length > 0 && !user?.venueProfiles ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
@@ -326,7 +325,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <LogOutIcon />
                         </button>
                     </>
-                ) : user && user?.artistProfiles && user?.venueProfiles ? (
+                ) : user && user?.artistProfiles && user?.artistProfiles.length > 0 && user?.venueProfiles.length > 0 ? (
                     <>
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
@@ -334,10 +333,6 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                         </div>
                         {isMobile && (
                             <>
-                                <Link className='link item no-margin' to={'/artist-profile'}>
-                                    Artist Profile
-                                    <GuitarsIcon />
-                                </Link>
                                 <Link className='link item no-margin' to={'/venues/dashboard/gigs'}>
                                     Venue Dashboard
                                     <VenueIconLight />

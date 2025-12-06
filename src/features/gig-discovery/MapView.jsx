@@ -299,18 +299,6 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
             <span style={{ marginRight: 2 }}>Finding Gigs...</span>
           </div>
         )}
-        {(!isMdUp && !loading) && (
-          <button className="btn secondary filter-button" onClick={toggleFilters}>
-            <FilterIconEmpty />
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
-          </button>
-        )}
-        {(!isMdUp && !loading) && (
-          <button className="btn secondary venue-button" onClick={() => navigate('/find-venues')}>
-            <TelescopeIcon />
-            Find a Venue
-          </button>
-        )}
       </div>
 
       {clickedGigs.length > 0 && (

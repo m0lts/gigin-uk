@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback, useContext } from 'react';
 import { useAuth } from '@hooks/useAuth';
+import { useBreakpoint } from '@hooks/useBreakpoint';
 import { useNavigate, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { ProfileView } from './profile-components/ProfileView';
 import '@styles/artists/artist-profile-new.styles.css';
@@ -127,8 +128,10 @@ const ArtistProfileComponent = ({
   setAuthModal,
   setAuthType,
   viewerMode = false,
+  viewerProfile = null,
 }) => {
   const { user: authUser, loading: authLoading } = useAuth();
+  const { isMdUp } = useBreakpoint();
   const navigate = useNavigate();
   const location = useLocation();
   const { profileId: urlProfileIdParam } = useParams();
@@ -250,7 +253,10 @@ const ArtistProfileComponent = ({
   const [selectedPrimaryProfile, setSelectedPrimaryProfile] = useState(null); // Selected profile for primary
   const [settingPrimary, setSettingPrimary] = useState(false); // Loading state for setting primary
 
-  const artistProfiles = user?.artistProfiles || [];
+  // In viewer mode, use the viewerProfile prop instead of user's artistProfiles
+  const artistProfiles = viewerMode && viewerProfile 
+    ? [viewerProfile] 
+    : (user?.artistProfiles || []);
   
   // Helper function to get/set active profile ID from localStorage
   const getStoredActiveProfileId = () => {
@@ -3950,12 +3956,14 @@ const ArtistProfileComponent = ({
               {canSaveProgress ? (savingDraft ? 'Saving...' : 'Save & Exit') : 'Exit'}
             </button>
           )}
-          {/* Artist name - bottom left */}
-          <div className="artist-name">
-            <h1>
-              {displayName}
-            </h1>
-          </div>
+          {/* Artist name - bottom left (desktop only) */}
+          {isMdUp && (
+            <div className="artist-name">
+              <h1>
+                {displayName}
+              </h1>
+            </div>
+          )}
         </div>
 
         {/* State box - right side, 30vw, changes based on state */}
@@ -3971,6 +3979,15 @@ const ArtistProfileComponent = ({
         >
           {renderStateContent({ canEdit })}
         </div>
+
+        {/* Artist name - below dashboard components (mobile only) */}
+        {!isMdUp && (
+          <div className="artist-name artist-name-mobile">
+            <h1>
+              {displayName}
+            </h1>
+          </div>
+        )}
       </div>
 
       {/* Show loading modal when user tries to save while media is uploading */}

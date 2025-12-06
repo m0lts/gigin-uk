@@ -56,15 +56,17 @@ export const ArtistProfileViewer = ({ user, setAuthModal, setAuthType }) => {
     );
   }
 
-  // Construct a minimal "user-like" object so the dashboard context can operate
-  const viewerUser = {
-    ...(user || {}),
-    artistProfiles: [profile],
-  };
-
+  // For viewer mode, pass the real user without modifying artistProfiles
+  // The profile will be handled separately in viewer mode
   return (
-    <ArtistDashboardProvider user={viewerUser}>
-      <ArtistProfile user={viewerUser} setAuthModal={setAuthModal} setAuthType={setAuthType} viewerMode />
+    <ArtistDashboardProvider user={user}>
+      <ArtistProfile 
+        user={user} 
+        setAuthModal={setAuthModal} 
+        setAuthType={setAuthType} 
+        viewerMode 
+        viewerProfile={profile}
+      />
     </ArtistDashboardProvider>
   );
 };

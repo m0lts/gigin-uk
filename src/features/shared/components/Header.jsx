@@ -174,29 +174,37 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                 ) : (
                     mobileOpen ? (
                         <>
-                            { getLocation() }
-                            <button
-                                className='btn icon hamburger-menu-btn'
-                                aria-label='Close menu'
-                                aria-expanded={mobileOpen}
-                                aria-controls='mobile-menu'
-                                onClick={(e) => {setMobileOpen(o => !o); e.stopPropagation();}}
-                            >
-                                <CloseIcon />
-                            </button>
+                            <div className="left">
+                                { getLocation() }
+                            </div>
+                            <div className="right">
+                                <button
+                                    className='btn icon hamburger-menu-btn'
+                                    aria-label='Close menu'
+                                    aria-expanded={mobileOpen}
+                                    aria-controls='mobile-menu'
+                                    onClick={(e) => {setMobileOpen(o => !o); e.stopPropagation();}}
+                                >
+                                    <CloseIcon />
+                                </button>
+                            </div>
                         </>
                     ) : (
                         <>
-                            { getLocation() }
-                            <button
-                                className='btn icon hamburger-menu-btn'
-                                aria-label='Open menu'
-                                aria-expanded={mobileOpen}
-                                aria-controls='mobile-menu'
-                                onClick={(e) => {setMobileOpen(o => !o); e.stopPropagation();}}
-                            >
-                                <HamburgerMenuIcon />
-                            </button>
+                            <div className="left">
+                                { getLocation() }
+                            </div>
+                            <div className="right">
+                                <button
+                                    className='btn icon hamburger-menu-btn'
+                                    aria-label='Open menu'
+                                    aria-expanded={mobileOpen}
+                                    aria-controls='mobile-menu'
+                                    onClick={(e) => {setMobileOpen(o => !o); e.stopPropagation();}}
+                                >
+                                    <HamburgerMenuIcon />
+                                </button>
+                            </div>
                         </>
                     )
                 )}

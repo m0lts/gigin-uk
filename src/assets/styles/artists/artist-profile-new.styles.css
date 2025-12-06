@@ -4497,11 +4497,67 @@
 
 /* Responsive Design */
 @media (--bp-md) {
+  /* Prevent page scrolling in mobile mode */
+  .artist-profile-container {
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  .artist-profile-content {
+    overflow: hidden;
+    height: 100vh;
+  }
+
   .artist-profile-state-box {
     width: 100%;
     max-width: 100%;
-    position: relative;
-    padding: 1rem;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem 1rem 0 1rem;
+    height: auto;
+    max-height: 60vh;
+    min-width: auto;
+    z-index: 10;
+    overflow-y: auto;
+  }
+
+  .artist-profile-state-box.gigs-view {
+    height: 60vh;
+    max-height: 60vh;
+    min-height: 60vh;
+  }
+
+  /* Remove extra spacing in mobile mode */
+  .profile-state-content {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .profile-sections-stack {
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  .additional-info-buttons-container {
+    margin-top: 1rem;
+    margin-bottom: 0;
+    padding-bottom: 1rem;
+  }
+
+  .additional-info-card-container {
+    margin-bottom: 0;
+  }
+
+  .additional-info-card-container.is-visible {
+    margin-bottom: 1rem;
+  }
+
+  .videos-tracks-card-container {
+    margin-bottom: 0;
   }
 
   .artist-name h1 {
@@ -4513,6 +4569,28 @@
     right: 1rem;
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
+  }
+
+  /* Mobile artist name - fixed above dashboard components */
+  .artist-name-mobile {
+    position: fixed;
+    bottom: 60vh;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 1rem;
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: transparent;
+  }
+
+  .artist-name-mobile h1 {
+    font-size: 2rem;
+    text-align: left;
+    color: var(--gn-white);
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   }
 }
 

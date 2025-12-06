@@ -5,6 +5,7 @@ import { DarkModeToggle } from './DarkModeToggle';
 import { ProfileCreationBox, CREATION_STEP_ORDER } from './ProfileCreationBox';
 import { AdditionalInfoSection } from './AdditionalInfoSection';
 import { useScrollFade } from '@hooks/useScrollFade';
+import { useBreakpoint } from '@hooks/useBreakpoint';
 import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, NoImageIcon, LightModeIcon, EditIcon, InviteIconSolid, SavedIcon, SaveIcon, ShareIcon } from '../../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
@@ -622,12 +623,17 @@ export const ProfileView = ({
   const trackCoverInputRef = useRef(null);
   const videoFileInputRef = useRef(null);
   const pendingCoverTrackIdRef = useRef(null);
+  const { isMdUp } = useBreakpoint();
   const editHeroContainerRef = useRef(null);
   const editNameContainerRef = useRef(null);
   const venueActionsContainerRef = useRef(null);
   const { opacity: editHeroOpacity, scale: editHeroScale } = useScrollFade(editHeroContainerRef, scrollContainerRef, 30);
   const { opacity: editNameOpacity, scale: editNameScale } = useScrollFade(editNameContainerRef, scrollContainerRef, 30);
   const { opacity: venueActionsOpacity, scale: venueActionsScale } = useScrollFade(venueActionsContainerRef, scrollContainerRef, 30);
+  
+  // Disable scroll fade effects in mobile mode
+  const effectiveVenueActionsOpacity = isMdUp ? venueActionsOpacity : 1;
+  const effectiveVenueActionsScale = isMdUp ? venueActionsScale : 1;
   
   // Refs for containers to apply scroll fade effect
   const bioContainerRef = useRef(null);
@@ -951,8 +957,8 @@ export const ProfileView = ({
             className="profile-card venue-viewer-actions-card"
             aria-hidden={!shouldShowBio}
             style={{
-              opacity: venueActionsOpacity,
-              transform: `scale(${venueActionsScale})`,
+              opacity: effectiveVenueActionsOpacity,
+              transform: `scale(${effectiveVenueActionsScale})`,
               transformOrigin: 'top center',
               transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
             }}
@@ -1152,21 +1158,21 @@ export const ProfileView = ({
             className={`btn additional-info-btn ${selectedAdditionalInfo === 'tech-rider' ? 'active' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'tech-rider' ? null : 'tech-rider')}
           >
-            <TechRiderIcon />
+            {isMdUp && <TechRiderIcon />}
             Tech Rider
           </button>
           <button
             className={`btn additional-info-btn ${selectedAdditionalInfo === 'members' ? 'active' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'members' ? null : 'members')}
           >
-            <PeopleGroupIconSolid />
+            {isMdUp && <PeopleGroupIconSolid />}
             Members
           </button>
           <button
             className={`btn additional-info-btn ${selectedAdditionalInfo === 'about' ? 'active' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'about' ? null : 'about')}
           >
-            <MoreInformationIcon />
+            {isMdUp && <MoreInformationIcon />}
             About
           </button>
         </div>
