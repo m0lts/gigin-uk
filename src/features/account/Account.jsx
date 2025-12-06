@@ -18,6 +18,7 @@ import { deleteTemplatesByVenueId, deleteVenueProfile } from '@services/client-s
 import { updateUserDocument } from '../../services/client-side/users';
 import { updateVenueProfileAccountNames } from '../../services/client-side/venues';
 import { getConnectAccountStatus, deleteStripeConnectAccount, getStripeBalance, payoutToBankAccount } from '@services/api/payments';
+import { updateStripeConnectId } from '@services/api/users';
 import { useStripeConnect } from '@hooks/useStripeConnect';
 import { toast } from 'sonner';
 import Portal from '../shared/components/Portal';
@@ -193,16 +194,6 @@ export const Account = () => {
             setPayingOut(false);
         }
     };
-
-    // Debug: Log when stripeConnectInstance changes
-    useEffect(() => {
-        if (connectedAccountId) {
-            console.log('[Account] connectedAccountId:', connectedAccountId);
-        }
-        if (stripeConnectInstance) {
-            console.log('[Account] stripeConnectInstance created');
-        }
-    }, [connectedAccountId, stripeConnectInstance]);
 
     // Load Stripe Connect account status when we have a connected account
     useEffect(() => {
@@ -640,9 +631,11 @@ export const Account = () => {
             const res = await deleteStripeConnectAccount({ musicianId: user.uid });
             if (res?.success) {
                 setConnectedAccountId(null);
-                await updateUserDocument(user.uid, { stripeConnectId: null });
-                // Disable payouts across all artist profiles
-                await updateUserPayoutsEnabledAcrossAllProfiles(user.uid, false);
+                // Clear stripeConnectId and disable payouts via server endpoint
+                await updateStripeConnectId({ 
+                    stripeConnectId: null,
+                    enablePayouts: false 
+                });
                 toast.success('Stripe account deleted.');
                 // Refresh balance after deletion
                 setStripeBalance(0);
@@ -851,12 +844,22 @@ export const Account = () => {
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify({ userId: user.uid }),
                                                 });
-                                                const { account, error } = await res.json();
+                                                
+                                                if (!res.ok) {
+                                                    const errorData = await res.json().catch(() => ({ error: `Server error: ${res.status} ${res.statusText}` }));
+                                                    console.error('Stripe account creation failed:', errorData);
+                                                    setStripeError(true);
+                                                    return;
+                                                }
+                                                
+                                                const data = await res.json();
+                                                const { account, error } = data;
                                                 if (account) {
                                                     setConnectedAccountId(account);
                                                     // Don't save to user doc yet - wait until onboarding completes
                                                     // This ensures the onboarding UI shows up
                                                 } else if (error) {
+                                                    console.error('Stripe account creation error:', error);
                                                     setStripeError(true);
                                                 }
                                             } catch (e) {
@@ -882,17 +885,18 @@ export const Account = () => {
                                             onExit={async () => {
                                                 try {
                                                     if (user?.uid && connectedAccountId) {
-                                                        // Update user document with Stripe Connect ID
-                                                        await updateUserDocument(user.uid, {
+                                                        // Update user document with Stripe Connect ID via server endpoint
+                                                        // This also enables payouts across all artist profiles
+                                                        await updateStripeConnectId({ 
                                                             stripeConnectId: connectedAccountId,
+                                                            enablePayouts: true 
                                                         });
-                                                        // Update all artistProfile member documents to enable payouts
-                                                        await updateUserPayoutsEnabledAcrossAllProfiles(user.uid, true);
                                                     }
-                                                    toast.success('Payout account connected! Funds will be transferred automatically once your account is verified.');
+                                                    toast.success('Payout account connected!');
                                                 } catch (error) {
                                                     console.error('Error updating user with Stripe account ID:', error);
-                                                    toast.error('Error connecting payout account. Please try again.');
+                                                    const errorMessage = error?.payload?.error?.message || error?.message || 'Error connecting payout account. Please try again.';
+                                                    toast.error(errorMessage);
                                                 }
                                             }}
                                         />

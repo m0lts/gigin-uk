@@ -678,6 +678,12 @@ router.post("/revertGigAfterCancellation", requireAuth, asyncHandler(async (req,
   const remaining = applicants.filter((a) => a?.id !== musicianId);
   const reopenedApplicants = remaining.map((a) => ({ ...a, status: "pending" }));
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
+  
+  // Get payoutConfig before deleting it (needed for pendingFunds update)
+  const gigSnap = await gigRef.get();
+  const currentGigData = gigSnap.exists ? gigSnap.data() : {};
+  const payoutConfig = currentGigData.payoutConfig || gigData.payoutConfig || null;
+  
   await gigRef.update({
     applicants: reopenedApplicants,
     agreedFee: FieldValue.delete(),
@@ -692,6 +698,97 @@ router.post("/revertGigAfterCancellation", requireAuth, asyncHandler(async (req,
     status: "open",
     cancellationReason: cancellationReason || null,
   });
+
+  // Mark pending fees as cancelled for this gig
+  // Check both artistProfiles and musicianProfiles (legacy)
+  const artistRef = db.doc(`artistProfiles/${musicianId}`);
+  const musicianRef = db.doc(`musicianProfiles/${musicianId}`);
+  const [artistSnap, musicianSnap] = await Promise.all([artistRef.get(), musicianRef.get()]);
+  
+  if (artistSnap.exists) {
+    // New model: update pending fees in artistProfiles
+    const pendingFeesRef = artistRef.collection("pendingFees");
+    const pendingFeesSnap = await pendingFeesRef.where("gigId", "==", gigData.gigId).get();
+    
+    if (!pendingFeesSnap.empty) {
+      const batch = db.batch();
+      pendingFeesSnap.forEach((feeDoc) => {
+        const feeData = feeDoc.data();
+        // Only mark as cancelled if still pending (not already cleared or in dispute)
+        if (feeData.status === "pending") {
+          batch.update(feeDoc.ref, {
+            status: "cancelled",
+            cancelledAt: FieldValue.serverTimestamp(),
+            cancellationReason: cancellationReason || null,
+          });
+          
+          // Decrement pendingFunds from user documents
+          if (payoutConfig && payoutConfig.shares) {
+            const totalFee = payoutConfig.totalFee || feeData.amount || 0;
+            for (const share of payoutConfig.shares) {
+              const shareUserId = share.userId;
+              const sharePercent = share.percent || 0;
+              const shareAmount = Math.round((totalFee * sharePercent / 100) * 100) / 100;
+              
+              if (shareAmount > 0 && shareUserId) {
+                const userRef = db.doc(`users/${shareUserId}`);
+                batch.update(userRef, {
+                  pendingFunds: FieldValue.increment(-shareAmount),
+                });
+              }
+            }
+          } else {
+            // Legacy: single user - try to get userId from fee data or profile
+            const feeAmount = feeData.amount || 0;
+            if (feeAmount > 0) {
+              // Try to get userId from the artist profile
+              const artistData = artistSnap.data() || {};
+              const userId = artistData.userId || artistData.createdBy;
+              if (userId) {
+                const userRef = db.doc(`users/${userId}`);
+                batch.update(userRef, {
+                  pendingFunds: FieldValue.increment(-feeAmount),
+                });
+              }
+            }
+          }
+        }
+      });
+      await batch.commit();
+    }
+  } else if (musicianSnap.exists) {
+    // Legacy model: update pending fees in musicianProfiles
+    const pendingFeesRef = musicianRef.collection("pendingFees");
+    const pendingFeesSnap = await pendingFeesRef.where("gigId", "==", gigData.gigId).get();
+    
+    if (!pendingFeesSnap.empty) {
+      const batch = db.batch();
+      pendingFeesSnap.forEach((feeDoc) => {
+        const feeData = feeDoc.data();
+        if (feeData.status === "pending") {
+          batch.update(feeDoc.ref, {
+            status: "cancelled",
+            cancelledAt: FieldValue.serverTimestamp(),
+            cancellationReason: cancellationReason || null,
+          });
+          
+          // Decrement pendingFunds for legacy model
+          const feeAmount = feeData.amount || 0;
+          if (feeAmount > 0) {
+            const musicianData = musicianSnap.data() || {};
+            const userId = musicianData.userId;
+            if (userId) {
+              const userRef = db.doc(`users/${userId}`);
+              batch.update(userRef, {
+                pendingFunds: FieldValue.increment(-feeAmount),
+              });
+            }
+          }
+        }
+      });
+      await batch.commit();
+    }
+  }
 
   // Conversations updates
   const venueId = gigData?.venueId;
@@ -744,6 +841,12 @@ router.post("/revertGigAfterCancellationVenue", requireAuth, asyncHandler(async 
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
   const updatedApplicants = applicants.filter((a) => a?.id !== musicianId);
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
+  
+  // Get payoutConfig before deleting it (needed for pendingFunds update)
+  const gigSnap = await gigRef.get();
+  const currentGigData = gigSnap.exists ? gigSnap.data() : {};
+  const payoutConfig = currentGigData.payoutConfig || gigData.payoutConfig || null;
+  
   await gigRef.update({
     applicants: updatedApplicants,
     agreedFee: FieldValue.delete(),
@@ -758,6 +861,103 @@ router.post("/revertGigAfterCancellationVenue", requireAuth, asyncHandler(async 
     status: "closed",
     cancellationReason: cancellationReason || null,
   });
+
+  // Mark pending fees as cancelled for all applicants of this gig
+  // Get all accepted/confirmed applicants to update their pending fees
+  const acceptedApplicants = applicants.filter((a) => 
+    (a?.status === "accepted" || a?.status === "confirmed") && a?.id
+  );
+  
+  for (const applicant of acceptedApplicants) {
+    const applicantId = applicant.id;
+    const artistRef = db.doc(`artistProfiles/${applicantId}`);
+    const musicianRef = db.doc(`musicianProfiles/${applicantId}`);
+    const [artistSnap, musicianSnap] = await Promise.all([artistRef.get(), musicianRef.get()]);
+    
+    if (artistSnap.exists) {
+      // New model: update pending fees in artistProfiles
+      const pendingFeesRef = artistRef.collection("pendingFees");
+      const pendingFeesSnap = await pendingFeesRef.where("gigId", "==", gigData.gigId).get();
+      
+      if (!pendingFeesSnap.empty) {
+        const batch = db.batch();
+        pendingFeesSnap.forEach((feeDoc) => {
+          const feeData = feeDoc.data();
+          if (feeData.status === "pending") {
+            batch.update(feeDoc.ref, {
+              status: "cancelled",
+              cancelledAt: FieldValue.serverTimestamp(),
+              cancellationReason: cancellationReason || null,
+            });
+            
+            // Decrement pendingFunds from user documents
+            if (payoutConfig && payoutConfig.shares) {
+              const totalFee = payoutConfig.totalFee || feeData.amount || 0;
+              for (const share of payoutConfig.shares) {
+                const shareUserId = share.userId;
+                const sharePercent = share.percent || 0;
+                const shareAmount = Math.round((totalFee * sharePercent / 100) * 100) / 100;
+                
+                if (shareAmount > 0 && shareUserId) {
+                  const userRef = db.doc(`users/${shareUserId}`);
+                  batch.update(userRef, {
+                    pendingFunds: FieldValue.increment(-shareAmount),
+                  });
+                }
+              }
+            } else {
+              // Legacy: single user - try to get userId from profile
+              const feeAmount = feeData.amount || 0;
+              if (feeAmount > 0) {
+                const artistData = artistSnap.data() || {};
+                const userId = artistData.userId || artistData.createdBy;
+                if (userId) {
+                  const userRef = db.doc(`users/${userId}`);
+                  batch.update(userRef, {
+                    pendingFunds: FieldValue.increment(-feeAmount),
+                  });
+                }
+              }
+            }
+          }
+        });
+        await batch.commit();
+      }
+    } else if (musicianSnap.exists) {
+      // Legacy model: update pending fees in musicianProfiles
+      const pendingFeesRef = musicianRef.collection("pendingFees");
+      const pendingFeesSnap = await pendingFeesRef.where("gigId", "==", gigData.gigId).get();
+      
+      if (!pendingFeesSnap.empty) {
+        const batch = db.batch();
+        pendingFeesSnap.forEach((feeDoc) => {
+          const feeData = feeDoc.data();
+          if (feeData.status === "pending") {
+            batch.update(feeDoc.ref, {
+              status: "cancelled",
+              cancelledAt: FieldValue.serverTimestamp(),
+              cancellationReason: cancellationReason || null,
+            });
+            
+            // Decrement pendingFunds for legacy model
+            const feeAmount = feeData.amount || 0;
+            if (feeAmount > 0) {
+              const musicianData = musicianSnap.data() || {};
+              const userId = musicianData.userId;
+              if (userId) {
+                const userRef = db.doc(`users/${userId}`);
+                batch.update(userRef, {
+                  pendingFunds: FieldValue.increment(-feeAmount),
+                });
+              }
+            }
+          }
+        });
+        await batch.commit();
+      }
+    }
+  }
+
   return res.json({ data: { updatedApplicants } });
 }));
 

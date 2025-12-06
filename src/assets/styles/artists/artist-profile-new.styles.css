@@ -296,6 +296,21 @@
   padding: 1rem;
 }
 
+.profile-card {
+  margin-left: auto;
+  margin-bottom: 1rem;
+}
+
+.profile-card.venue-viewer-actions-card {
+  margin-left: 0;
+}
+
+.profile-card .btn.secondary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .artist-profile-gigs-card {
   height: 100%;
   background: var(--gn-white);
@@ -670,7 +685,8 @@
   background-color: var(--gn-offset-green);
 }
 
-.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status.in-dispute {
+.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status.in-dispute,
+.artist-profile-gigs-card .body.gigs .tile.your-fees .status-box .status.cancelled {
   color: red;
   background-color: var(--gn-offset-red);
 }
@@ -2298,6 +2314,7 @@
   border-radius: 0.5rem;
   overflow: hidden;
   cursor: pointer;
+  display: flex;
 }
 
 .video-thumbnail img {
@@ -2314,6 +2331,13 @@
   justify-content: center;
   color: var(--gn-grey-500);
   font-size: 0.875rem;
+}
+
+.video-placeholder.uploading {
+  background: var(--gn-grey-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .play-icon {
@@ -2371,6 +2395,10 @@
 
 .track-thumbnail-placeholder .icon {
   font-size: 1.5rem;
+}
+
+.track-thumbnail-placeholder.uploading {
+  background: var(--gn-grey-300);
 }
 
 .track-info {

@@ -383,7 +383,10 @@ const ArtistProfileComponent = ({
       }
       if (defaultProfile) {
         const profileId = defaultProfile.id || defaultProfile.profileId;
-        navigate(`/artist-profile/${profileId}${location.pathname.includes('/gigs') ? '/gigs' : location.pathname.includes('/messages') ? '/messages' : location.pathname.includes('/finances') ? '/finances' : ''}`, { replace: true });
+        // Preserve query parameters (e.g., conversationId) when redirecting
+        const queryString = location.search || '';
+        const subPath = location.pathname.includes('/gigs') ? '/gigs' : location.pathname.includes('/messages') ? '/messages' : location.pathname.includes('/finances') ? '/finances' : '';
+        navigate(`/artist-profile/${profileId}${subPath}${queryString}`, { replace: true });
       }
       return;
     }
@@ -880,11 +883,17 @@ const ArtistProfileComponent = ({
           [DashboardView.FINANCES]: `${basePath}/finances`,
         };
         const targetPath = pathMap[viewFromPath] || basePath;
+        // Preserve query parameters (e.g., conversationId) when navigating
+        const queryString = location.search || '';
         if (location.pathname !== targetPath) {
-          navigate(targetPath, { replace: true });
+          navigate(`${targetPath}${queryString}`, { replace: true });
         }
-        // Clear URL state when transitioning to dashboard
-        setSearchParams({});
+        // Clear URL state when transitioning to dashboard (but preserve query params)
+        // Only clear search params if they're not conversation-related
+        const currentParams = new URLSearchParams(location.search);
+        if (!currentParams.has('conversationId')) {
+          setSearchParams({});
+        }
         previousProfileRef.current = true;
         return;
       }
@@ -911,11 +920,17 @@ const ArtistProfileComponent = ({
           [DashboardView.FINANCES]: `${basePath}/finances`,
         };
         const targetPath = pathMap[viewFromPath] || basePath;
+        // Preserve query parameters (e.g., conversationId) when navigating
+        const queryString = location.search || '';
         if (location.pathname !== targetPath) {
-          navigate(targetPath, { replace: true });
+          navigate(`${targetPath}${queryString}`, { replace: true });
         }
-        // Clear URL state when transitioning to dashboard
-        setSearchParams({});
+        // Clear URL state when transitioning to dashboard (but preserve query params)
+        // Only clear search params if they're not conversation-related
+        const currentParams = new URLSearchParams(location.search);
+        if (!currentParams.has('conversationId')) {
+          setSearchParams({});
+        }
       }
     } else {
       // No complete profile - check if it's incomplete/draft and should go to creation flow
@@ -963,7 +978,7 @@ const ArtistProfileComponent = ({
         setDashboardView(viewFromPath);
       }
     }
-  }, [location.pathname, currentState]);
+  }, [location.pathname, location.search, currentState]); // Added location.search to dependencies
 
   // Update URL when dashboard view changes (only when in dashboard state)
   useEffect(() => {
@@ -980,12 +995,17 @@ const ArtistProfileComponent = ({
         [DashboardView.FINANCES]: `${basePath}/finances`,
       };
       const targetPath = pathMap[dashboardView] || basePath;
-      if (location.pathname !== targetPath) {
-        navigate(targetPath, { replace: true });
+      // Only navigate if pathname doesn't match
+      const currentPathWithoutQuery = location.pathname.split('?')[0];
+      if (currentPathWithoutQuery !== targetPath) {
+        // Preserve existing query parameters when navigating
+        const queryString = location.search || '';
+        navigate(`${targetPath}${queryString}`, { replace: true });
       }
+      // If pathname matches, do nothing - query parameters are already preserved in the URL
     }
     isNavigatingFromUrlRef.current = false;
-  }, [dashboardView, currentState, navigate, location.pathname, activeProfileData, shouldCreate, isCreatingProfile]);
+  }, [dashboardView, currentState, navigate, location.pathname, location.search, activeProfileData, shouldCreate, isCreatingProfile]);
 
   // Track previous editing image to detect cancellation
   const previousEditingHeroImageRef = useRef(null);
@@ -1074,9 +1094,21 @@ const ArtistProfileComponent = ({
       return;
     }
 
-    // If editingHeroImage is null but it was previously set (user canceled), revert to original
+    // If editingHeroImage is null but it was previously set (user canceled or saved)
     const wasEditing = previousEditingHeroImageRef.current !== null;
     if (wasEditing && editingHeroImage === null) {
+      // Check if backgroundImage is already set to a new URL (just saved)
+      // If so, don't revert - keep the new image
+      const currentBackgroundIsNewUrl = backgroundImage && 
+        (backgroundImage.startsWith('https://') || backgroundImage.startsWith('http://')) &&
+        backgroundImage !== activeProfileData?.heroMedia?.url;
+      
+      if (currentBackgroundIsNewUrl) {
+        // Just saved - keep the new image, don't revert
+        previousEditingHeroImageRef.current = null;
+        return;
+      }
+      
       // User canceled - revert to original image
       previousEditingHeroImageRef.current = null;
       const originalImage = activeProfileData?.heroMedia?.url;
@@ -2606,6 +2638,8 @@ const ArtistProfileComponent = ({
     await updateArtistProfileDocument(profileId, updates);
     
     // Clear editing states after save
+    // Clear the ref FIRST so the useEffect doesn't think we're canceling
+    previousEditingHeroImageRef.current = null;
     setEditingHeroImage(null);
     setEditingHeroBrightness(null);
     setEditingHeroPosition(null);
@@ -4061,7 +4095,7 @@ const ArtistProfileComponent = ({
         <Portal>
           <div className="modal primary-profile-selection" style={{ pointerEvents: 'auto' }}>
             {/* No onClick handler on outer div - modal is non-closable */}
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <GuitarsIcon />
                 <h2>Select Your Primary Artist Profile</h2>

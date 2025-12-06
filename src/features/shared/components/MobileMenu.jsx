@@ -3,6 +3,7 @@ import { AllGigsIcon, CoinsIcon, DashboardIconLight, FeedbackIcon, GigIcon, Guit
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import Portal from "./Portal";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable, setShowFeedbackModal, showFeedbackModal, feedback, setFeedback }) => {
   const navigate = useNavigate();
@@ -143,40 +144,81 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             New Artist Profile
                             <GuitarsIcon />
                         </button>
-                        {user.artistProfiles && user.artistProfiles.length > 1 && (
-                            <>
-                                <div className="break" />
-                                <h6 className="title">Artist Profiles</h6>
-                                {user.artistProfiles.map((artistProfile) => {
-                                    const profileId = artistProfile.id || artistProfile.profileId;
-                                    const isPrimary = profileId === user.primaryArtistProfileId;
-                                    const isIncomplete = artistProfile.isComplete === false;
-                                    const isDraft = artistProfile.status === 'draft';
-                                    const shouldShowCreationFlow = isIncomplete || isDraft;
-                                    const hasName = artistProfile.name && typeof artistProfile.name === 'string' && artistProfile.name.trim();
-                                    
-                                    return (
-                                        <button 
-                                            className={`btn inline item no-margin ${isPrimary ? 'primary-profile-item' : ''} ${!hasName ? 'placeholder' : ''}`}
-                                            key={profileId} 
-                                            onClick={() => {
-                                                if (shouldShowCreationFlow) {
-                                                    // Navigate to profile with creation flow - the ArtistProfile component will handle the redirect
-                                                    navigate(`/artist-profile/${profileId}`);
-                                                } else {
-                                                    // Navigate to dashboard for complete profiles
-                                                    navigate(`/artist-profile/${profileId}`);
-                                                }
-                                            }}
-                                        >
-                                            {hasName ? artistProfile.name : <span className="placeholder">Unnamed Profile</span>}
-                                            {isPrimary && <span className="primary-profile-badge">Primary</span>}
-                                    </button>
-                                    );
-                                })}
-                                <div className="break" />
-                            </>
-                        )}
+                        {user.artistProfiles && user.artistProfiles.length > 1 && (() => {
+                            // Get active profile ID from localStorage (once, outside the map)
+                            let activeProfileId = null;
+                            if (user?.uid) {
+                                try {
+                                    const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                                    if (stored) {
+                                        const profileExists = user.artistProfiles?.some(
+                                            (p) => (p.id === stored || p.profileId === stored)
+                                        );
+                                        if (profileExists) {
+                                            activeProfileId = stored;
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Ignore localStorage errors
+                                }
+                            }
+                            
+                            // Fallback to primary profile if no stored active profile
+                            if (!activeProfileId && user?.primaryArtistProfileId) {
+                                activeProfileId = user.primaryArtistProfileId;
+                            }
+                            
+                            return (
+                                <>
+                                    <div className="break" />
+                                    <h6 className="title">Artist Profiles</h6>
+                                    {user.artistProfiles.map((artistProfile) => {
+                                        const profileId = artistProfile.id || artistProfile.profileId;
+                                        const isActive = profileId === activeProfileId;
+                                        const isIncomplete = artistProfile.isComplete === false;
+                                        const isDraft = artistProfile.status === 'draft';
+                                        const shouldShowCreationFlow = isIncomplete || isDraft;
+                                        const hasName = artistProfile.name && typeof artistProfile.name === 'string' && artistProfile.name.trim();
+                                        
+                                        return (
+                                            <button 
+                                                className={`btn inline item no-margin ${isActive ? 'primary-profile-item' : ''} ${!hasName ? 'placeholder' : ''}`}
+                                                key={profileId} 
+                                                onClick={() => {
+                                                    if (shouldShowCreationFlow) {
+                                                        // Navigate to profile with creation flow for incomplete profiles
+                                                        navigate(`/artist-profile/${profileId}`);
+                                                    } else {
+                                                        // For complete profiles, update localStorage and navigate if on artist-profile route
+                                                        if (user?.uid && profileId !== activeProfileId) {
+                                                            try {
+                                                                localStorage.setItem(`activeArtistProfileId_${user.uid}`, profileId);
+                                                                // Dispatch custom event to notify other components
+                                                                window.dispatchEvent(new Event('activeProfileChanged'));
+                                                                toast.info(`Switched to ${hasName ? artistProfile.name : 'artist profile'}`);
+                                                                setMobileOpen(false); // Close the mobile menu
+                                                                
+                                                                // If currently on artist-profile route, navigate to new profile
+                                                                if (location.pathname.includes('/artist-profile')) {
+                                                                    navigate(`/artist-profile/${profileId}`, { replace: true });
+                                                                }
+                                                            } catch (e) {
+                                                                console.error('Failed to update active profile:', e);
+                                                                toast.error('Failed to switch profile');
+                                                            }
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                {hasName ? artistProfile.name : <span className="placeholder">Unnamed Profile</span>}
+                                                {isActive && <span className="primary-profile-badge">ACTIVE</span>}
+                                            </button>
+                                        );
+                                    })}
+                                    <div className="break" />
+                                </>
+                            );
+                        })()}
                         {!isLgUp && (
                             <Link className='link item no-margin' to={'/find-a-gig'}>
                                 Find a Gig

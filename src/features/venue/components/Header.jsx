@@ -82,7 +82,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding }) => {
     }
 
     const headerStyle = {
-        padding: location.pathname.includes('dashboard') ? '0 1rem' : `0 ${padding || '5%'}`,
+        padding: location.pathname.includes('dashboard') ? '0 1rem' : `0 2rem`,
         justifyContent: user?.venueProfiles && user?.venueProfiles?.length > 0 ? 'flex-end' : '',
     };
 

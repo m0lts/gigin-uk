@@ -3,6 +3,7 @@ import express from "express";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 import { admin, db, FieldValue } from "../config/admin.js";
+import { getStripe } from "../lib/stripeClient.js";
 
 const router = express.Router();
 
@@ -248,6 +249,113 @@ router.post("/setPrimaryArtistProfile", requireAuth, asyncHandler(async (req, re
   });
 
   return res.json({ data: { success: true, primaryArtistProfileId: artistProfileId } });
+}));
+
+// POST /api/users/updateStripeConnectId (auth required)
+// Updates the user's stripeConnectId and enables/disables payouts across all artist profiles
+// stripeConnectId can be a string (to set) or null (to clear)
+router.post("/updateStripeConnectId", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const { stripeConnectId, enablePayouts = true } = req.body || {};
+  
+  // Allow null to clear the stripeConnectId, or a non-empty string to set it
+  if (stripeConnectId !== null && (!stripeConnectId || typeof stripeConnectId !== "string")) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "stripeConnectId must be a string or null" });
+  }
+
+  const userRef = db.doc(`users/${uid}`);
+  const userSnap = await userRef.get();
+  
+  if (!userSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "User not found" });
+  }
+
+  const userData = userSnap.data() || {};
+  const previousStripeConnectId = userData.stripeConnectId;
+  const withdrawableEarnings = userData.withdrawableEarnings || 0;
+  const lastTransferAccountId = userData.lastEarningsTransferAccountId;
+
+  // If connecting a new Stripe account and user has withdrawableEarnings, transfer them
+  let transferCompleted = false;
+  if (stripeConnectId && stripeConnectId !== null && stripeConnectId !== previousStripeConnectId) {
+    // Check if we need to transfer existing earnings
+    if (withdrawableEarnings > 0 && lastTransferAccountId !== stripeConnectId) {
+      try {
+        const stripe = getStripe();
+        
+        // Verify the account exists and can receive transfers
+        const account = await stripe.accounts.retrieve(stripeConnectId);
+        const canTransfer = account?.capabilities?.transfers === 'active' || account?.payouts_enabled === true;
+        
+        if (canTransfer) {
+          // Create transfer
+          const transfer = await stripe.transfers.create({
+            amount: Math.round(withdrawableEarnings * 100), // Convert to pence
+            currency: "gbp",
+            destination: stripeConnectId,
+            metadata: {
+              userId: uid,
+              description: "Transfer of existing earnings to Stripe Connect account",
+            },
+          });
+          
+          console.log(`[updateStripeConnectId] Transferred £${withdrawableEarnings} to user ${uid} account ${stripeConnectId}, transfer ID: ${transfer.id}`);
+          transferCompleted = true;
+        } else {
+          console.log(`[updateStripeConnectId] Account ${stripeConnectId} exists but transfers not active yet. Earnings will remain as withdrawableEarnings.`);
+        }
+      } catch (error) {
+        console.error(`[updateStripeConnectId] Failed to transfer earnings to Stripe account:`, error);
+        // Don't fail the entire request - still update the stripeConnectId
+        // The webhook will retry the transfer when the account is fully activated
+      }
+    }
+  }
+
+  // Update user document with stripeConnectId (can be null to clear it)
+  const updateData = {
+    stripeConnectId: stripeConnectId === null ? FieldValue.delete() : stripeConnectId,
+  };
+  
+  // If transfer was successful, update earnings tracking
+  if (transferCompleted) {
+    updateData.withdrawableEarnings = FieldValue.increment(-withdrawableEarnings);
+    updateData.lastEarningsTransferAccountId = stripeConnectId;
+    updateData.lastEarningsTransferAmount = withdrawableEarnings;
+    updateData.lastEarningsTransferAt = admin.firestore.FieldValue.serverTimestamp();
+  }
+  
+  await userRef.update(updateData);
+
+  // Update payouts enabled status across all artist profile members
+  const artistProfiles = userData.artistProfiles || [];
+  
+  if (artistProfiles.length > 0) {
+    const updatePromises = artistProfiles.map(async (profile) => {
+      try {
+        // Handle both string IDs and objects with id/profileId
+        const profileId = typeof profile === 'string' ? profile : (profile.id || profile.profileId);
+        if (!profileId) return;
+        
+        const memberRef = db.doc(`artistProfiles/${profileId}/members/${uid}`);
+        const memberSnap = await memberRef.get();
+        
+        if (memberSnap.exists) {
+          await memberRef.update({
+            payoutsEnabled: enablePayouts,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (error) {
+        // Log error but continue with other updates
+        console.error(`[updateStripeConnectId] Failed to update member in profile:`, error);
+      }
+    });
+
+    await Promise.all(updatePromises);
+  }
+
+  return res.json({ data: { success: true, stripeConnectId } });
 }));
 
 // DELETE /api/users/deleteUserDocument (auth required)

@@ -20,6 +20,8 @@ import { openInNewTab } from '@services/utils/misc';
 import { useArtistDashboard } from '../../../../context/ArtistDashboardContext';
 import { MailboxFullIconSolid } from '../../../shared/ui/extras/Icons';
 import { getGigById } from '@services/client-side/gigs';
+import { doc, getDoc } from 'firebase/firestore';
+import { firestore } from '@lib/firebase';
 
 export const ArtistProfileMessages = () => {
   const { user } = useAuth();
@@ -31,6 +33,7 @@ export const ArtistProfileMessages = () => {
   const [archivedConversations, setArchivedConversations] = useState([]);
   const [showArchived, setShowArchived] = useState(false);
   const [gigData, setGigData] = useState();
+  const [directConversation, setDirectConversation] = useState(null);
 
   const { activeArtistProfile } = useArtistDashboard();
   // Use activeArtistProfile from context (which is filtered by activeProfileId prop)
@@ -81,15 +84,115 @@ export const ArtistProfileMessages = () => {
     return unsubscribe;
   }, [user, focusProfileId]);
 
-  const activeConversation = useMemo(() => {
+  // Fetch conversation directly if it's not in the filtered list but we have conversationId in URL
+  useEffect(() => {
+    if (!paramsConversationId || !user?.uid) {
+      // Only clear directConversation if paramsConversationId is actually removed
+      // Don't clear it if we still have a conversationId in the URL
+      if (!paramsConversationId) {
+        setDirectConversation(null);
+      }
+      return;
+    }
+
     const list = showArchived ? archivedConversations : conversations;
-    if (!paramsConversationId || list.length === 0) return null;
-    return list.find((c) => c.id === paramsConversationId) || null;
+    const foundInList = list.find((c) => c.id === paramsConversationId);
+    
+    // If conversation is already in the list, we can clear direct fetch
+    // BUT only if the merged list will actually include it (which it should)
+    if (foundInList) {
+      // Don't clear immediately - wait a tick to ensure merged list is updated
+      // This prevents race conditions where we clear before the merged list includes it
+      const timeoutId = setTimeout(() => {
+        // Double-check that the conversation is still in the list before clearing
+        const currentList = showArchived ? archivedConversations : conversations;
+        const stillInList = currentList.find((c) => c.id === paramsConversationId);
+        if (stillInList) {
+          setDirectConversation(null);
+        }
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+
+    // If we already have the direct conversation with the correct ID, don't refetch
+    if (directConversation && directConversation.id === paramsConversationId) {
+      return;
+    }
+
+    // If not in list, try to fetch it directly
+    let cancelled = false;
+    const fetchConversation = async () => {
+      try {
+        const conversationRef = doc(firestore, 'conversations', paramsConversationId);
+        const conversationSnap = await getDoc(conversationRef);
+        
+        if (!cancelled && conversationSnap.exists()) {
+          const conversationData = { id: conversationSnap.id, ...conversationSnap.data() };
+          // Check if user is authorized to view this conversation
+          const authorizedUserIds = conversationData.authorizedUserIds || [];
+          if (authorizedUserIds.includes(user.uid)) {
+            setDirectConversation(conversationData);
+          } else {
+            setDirectConversation(null);
+          }
+        } else if (!cancelled) {
+          setDirectConversation(null);
+        }
+      } catch (error) {
+        console.error('Error fetching conversation directly:', error);
+        if (!cancelled) setDirectConversation(null);
+      }
+    };
+
+    fetchConversation();
+    return () => {
+      cancelled = true;
+    };
+  }, [paramsConversationId, user?.uid, conversations, archivedConversations, showArchived, directConversation]);
+
+  // Merge direct conversation into the appropriate list if it's not already there
+  const mergedConversations = useMemo(() => {
+    if (!directConversation || !paramsConversationId) return conversations;
+    // Check if conversation is already in the list
+    const alreadyInList = conversations.some(c => c.id === paramsConversationId);
+    if (alreadyInList) return conversations;
+    // Add direct conversation to the list
+    return [directConversation, ...conversations];
+  }, [conversations, directConversation, paramsConversationId]);
+
+  const mergedArchivedConversations = useMemo(() => {
+    if (!directConversation || !paramsConversationId) {
+      return archivedConversations;
+    }
+    // Check if conversation is already in the archived list
+    const alreadyInList = archivedConversations.some(c => c.id === paramsConversationId);
+    if (alreadyInList) return archivedConversations;
+    // Add direct conversation to the archived list if it's archived
+    if (directConversation.archived?.[user?.uid]) {
+      return [directConversation, ...archivedConversations];
+    }
+    return archivedConversations;
+  }, [archivedConversations, directConversation, paramsConversationId, user?.uid]);
+
+  const activeConversation = useMemo(() => {
+    if (!paramsConversationId) return null;
+    
+    // Prioritize directConversation if it matches the paramsConversationId
+    // This ensures we show the conversation immediately when it's fetched
+    if (directConversation && directConversation.id === paramsConversationId) {
+      return directConversation;
+    }
+    
+    // Otherwise, look in the merged lists
+    const list = showArchived ? mergedArchivedConversations : mergedConversations;
+    const found = list.find((c) => c.id === paramsConversationId);
+    return found || null;
   }, [
     showArchived,
-    archivedConversations,
-    conversations,
+    mergedArchivedConversations,
+    mergedConversations,
     paramsConversationId,
+    directConversation,
   ]);
 
   // Load gig data whenever the active conversation changes
@@ -160,8 +263,8 @@ export const ArtistProfileMessages = () => {
   };
 
   const hasAnyConversations =
-    conversations.length > 0 || archivedConversations.length > 0;
-  const list = showArchived ? archivedConversations : conversations;
+    mergedConversations.length > 0 || mergedArchivedConversations.length > 0;
+  const list = showArchived ? mergedArchivedConversations : mergedConversations;
 
   return (
     <div className="artist-profile-gigs-card">

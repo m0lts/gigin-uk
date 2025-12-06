@@ -5,7 +5,7 @@ import { DarkModeToggle } from './DarkModeToggle';
 import { ProfileCreationBox, CREATION_STEP_ORDER } from './ProfileCreationBox';
 import { AdditionalInfoSection } from './AdditionalInfoSection';
 import { useScrollFade } from '@hooks/useScrollFade';
-import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, NoImageIcon, LightModeIcon, EditIcon, InviteIconSolid, SavedIcon, SaveIcon } from '../../../shared/ui/extras/Icons';
+import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, NoImageIcon, LightModeIcon, EditIcon, InviteIconSolid, SavedIcon, SaveIcon, ShareIcon } from '../../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
@@ -920,6 +920,27 @@ export const ProfileView = ({
   const showVenueViewerActions =
     !!profileData?.onInviteArtist || !!profileData?.onToggleSaveArtist;
 
+  // Get the profile ID for sharing
+  const artistProfileId = profileId || profileData?.profileId || profileData?.id;
+
+  // Handle share profile button click
+  const handleShareProfile = async () => {
+    if (!artistProfileId) {
+      toast.error('Unable to share profile. Profile ID not found.');
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/artist/${artistProfileId}`;
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Profile link copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      toast.error('Failed to copy link. Please try again.');
+    }
+  };
+
   return (
     <div className={profileContentClassNames}>
       <div className='profile-sections-stack'>
@@ -970,6 +991,29 @@ export const ProfileView = ({
                   }
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Share Profile Button - shown above bio for profile owners only */}
+        {!isCreatingProfile && !isExample && artistProfileId && !showVenueViewerActions && (
+          <div
+            className="profile-card"
+            aria-hidden={!shouldShowBio}
+            style={{
+              opacity: bioOpacity,
+              transform: `scale(${bioScale})`,
+              transformOrigin: 'top center',
+              transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+            }}
+          >
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={handleShareProfile}
+            >
+              <ShareIcon />
+              Share Profile
+            </button>
           </div>
         )}
 
@@ -1191,9 +1235,9 @@ export const ProfileView = ({
                       type="range"
                       min={60}
                       max={140}
-                      value={editHeroBrightness}
+                      value={200 - editHeroBrightness}
                       onChange={(e) => {
-                        const newBrightness = Number(e.target.value);
+                        const newBrightness = 200 - Number(e.target.value);
                         setEditHeroBrightness(newBrightness);
                         // Real-time update
                         if (onEditingHeroBrightnessChange) {
@@ -1202,11 +1246,6 @@ export const ProfileView = ({
                       }}
                     />
                   </div>
-                </div>
-              )}
-              {editHeroUploadStatus === 'uploading' && (
-                <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                  <LoadingSpinner />
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: '1rem' }}>

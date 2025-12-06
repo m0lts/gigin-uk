@@ -136,8 +136,10 @@ export const Finances = ({ user, musicianProfile }) => {
         const fetchFees = async () => {
             try {
                 const { clearedFees, pendingFees } = await getMusicianFees(musicianProfile.id);
+                // Filter out cancelled fees from pending total
+                const activePendingFees = pendingFees.filter(fee => fee.status !== 'cancelled');
                 const combinedFees = [...pendingFees, ...clearedFees];
-                const totalPending = pendingFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
+                const totalPending = activePendingFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
                 setPendingTotal(totalPending);
                 combinedFees.sort((a, b) => {
                     const dateA = new Date(a.gigDate).getTime();
@@ -526,7 +528,9 @@ export const Finances = ({ user, musicianProfile }) => {
 
                                         // choose a status label or a component
                                         let statusNode;
-                                        if (fee.status === "cleared") {
+                                        if (fee.status === "cancelled") {
+                                            statusNode = "Cancelled";
+                                        } else if (fee.status === "cleared") {
                                             statusNode = "Fee Released";
                                         } else if (fee.status === "in dispute") {
                                             statusNode = "In Dispute";
@@ -543,7 +547,9 @@ export const Finances = ({ user, musicianProfile }) => {
                                         }
 
                                         const statusClass =
-                                        fee.status === "cleared"
+                                        fee.status === "cancelled"
+                                            ? "cancelled"
+                                            : fee.status === "cleared"
                                             ? "succeeded"
                                             : fee.status === "in dispute"
                                             ? "declined"

@@ -136,12 +136,20 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
       const fetchData = async () => {
         setLoadingMembers(true);
         try {
-          const [membersList, invitesList] = await Promise.all([
-            getArtistProfileMembers(profileId),
-            getArtistProfilePendingInvites(profileId)
-          ]);
+          // Always try to fetch members
+          const membersList = await getArtistProfileMembers(profileId);
           setMembers(membersList);
-          setPendingInvites(invitesList);
+          
+          // Try to fetch invites, but don't fail if user doesn't have permission
+          try {
+            const invitesList = await getArtistProfilePendingInvites(profileId);
+            setPendingInvites(invitesList);
+          } catch (inviteError) {
+            // If user doesn't have permission to read invites, just set empty array
+            // This allows members without profile.edit to still see the members section
+            console.warn('Unable to fetch invites (may not have permission):', inviteError);
+            setPendingInvites([]);
+          }
         } catch (error) {
           console.error('Failed to fetch members/invites:', error);
           toast.error('Failed to load members');

@@ -72,14 +72,25 @@ export async function cancelGigAndRefund({ taskNames, transactionId, gigId, venu
   try {
     for (const taskName of taskNames) {
       if (taskName) {
-        await cancelTask({ taskName, gigId, venueId });
+        try {
+          await cancelTask({ taskName, gigId, venueId });
+        } catch (error) {
+          console.warn(`Failed to cancel task ${taskName}:`, error);
+          // Continue even if task cancellation fails
+        }
       }
     }
     if (transactionId) {
-      await processRefund({ paymentIntentId: transactionId });
+      try {
+        await processRefund({ paymentIntentId: transactionId });
+      } catch (error) {
+        console.warn(`Failed to process refund for ${transactionId}:`, error);
+        // Continue even if refund fails (payment might already be refunded or not refundable)
+      }
     }
     return { success: true };
   } catch (error) {
     console.error("[CloudFn Error] cancelGigAndRefund:", error);
+    throw error;
   }
 };

@@ -20,7 +20,7 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { cancelGigAndRefund } from '@services/api/payments';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { postCancellationMessage } from '@services/api/messages';
-import { getMusicianProfileByMusicianId } from '../../../services/client-side/artists';
+import { getMusicianProfileByMusicianId, getArtistProfileById } from '../../../services/client-side/artists';
 import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
@@ -248,23 +248,41 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
               });
             }
             const handleMusicianCancellation = async (musician) => {
-              const { conversationId } = await getOrCreateConversation({ musicianProfile: musician, gigData: nextGig, venueProfile, type: 'cancellation' });
+              if (!musician) {
+                console.error('Musician profile is null');
+                return;
+              }
+              // Normalize profile for API compatibility
+              const normalizedProfile = {
+                ...musician,
+                musicianId: musician.id || musician.profileId || musician.musicianId,
+                profileId: musician.id || musician.profileId || musician.musicianId,
+              };
+              const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData: nextGig, venueProfile, type: 'cancellation' });
               await postCancellationMessage(
                 { conversationId, senderId: user.uid, message: `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
                   cancellationReason
                 )}. We apologise for any inconvenience caused.`, cancellingParty: 'venue' }
               );
-              await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId: musician.musicianId, cancellationReason });
-              await cancelledGigMusicianProfileUpdate({ musicianId: musician.musicianId, gigId });
+              const musicianId = normalizedProfile.musicianId;
+              await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId, cancellationReason });
+              await cancelledGigMusicianProfileUpdate({ musicianId, gigId });
               const cancellingParty = 'venue';
-              await logGigCancellation({ gigId, musicianId: musician.musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
+              await logGigCancellation({ gigId, musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
             };
         
             if (isOpenMic) {
               const bandOrMusicianProfiles = await Promise.all(
                 nextGig.applicants
                   .filter(app => app.status === 'confirmed')
-                  .map(app => getMusicianProfileByMusicianId(app.id))
+                  .map(async (app) => {
+                    // Try musician profile first, then artist profile
+                    let profile = await getMusicianProfileByMusicianId(app.id);
+                    if (!profile) {
+                      profile = await getArtistProfileById(app.id);
+                    }
+                    return profile;
+                  })
               );
               for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
                 await handleMusicianCancellation(musician);
@@ -275,7 +293,11 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                 console.error("No confirmed applicant found");
                 return;
               }
-              const musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+              // Try musician profile first, then artist profile
+              let musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+              if (!musicianProfile) {
+                musicianProfile = await getArtistProfileById(confirmedApplicant.id);
+              }
               await handleMusicianCancellation(musicianProfile);
             }
             setLoading(false);

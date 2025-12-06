@@ -53,7 +53,7 @@ export const stripeAccountSession = http(
         "Error occurred calling the Stripe API to create account session",
         error
       );
-      res.status(500).send({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );

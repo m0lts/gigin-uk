@@ -36,11 +36,10 @@ export const stripeAccount = http(
       return res.status(405).send("Method Not Allowed");
     }
     try {
-      const { userId, musicianId } = req.body;
-      // Support both new (userId) and legacy (musicianId) models
-      const ownerId = userId || musicianId;
+      const { userId } = req.body;
+      const ownerId = userId;
       if (!ownerId) {
-        return res.status(400).send({ error: "User ID or Musician ID is required." });
+        return res.status(400).json({ error: "User ID is required." });
       }
 
       // Try to derive a default website URL for this account
@@ -71,8 +70,6 @@ export const stripeAccount = http(
         country: "GB",
         metadata: { 
           userId: userId || null,
-          musicianId: musicianId || null,
-          ownerId, // For backward compatibility
         },
         business_profile: {
           url: websiteUrl,
@@ -94,7 +91,7 @@ export const stripeAccount = http(
         "Error occurred when calling the Stripe API to create an account",
         error
       );
-      res.status(500).send({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );

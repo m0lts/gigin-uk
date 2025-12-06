@@ -10,7 +10,7 @@ import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { listenToMessages } from '@services/client-side/messages';
 import { getVenueProfileById } from '@services/client-side/venues';
-import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
+import { getMusicianProfileByMusicianId, getArtistProfileById } from '@services/client-side/artists';
 import { sendGigAcceptedEmail, sendGigDeclinedEmail, sendCounterOfferEmail } from '@services/client-side/emails';
 import { fetchSavedCards, confirmGigPayment } from '@services/api/payments';
 import AddToCalendarButton from '../../../shared/components/AddToCalendarButton';
@@ -276,7 +276,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 musicianProfile: musicianProfileData,
                 gigData,
                 declineType: 'negotiation',
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                profileType: musicianProfileData?.bandProfile ? 'band' : (musicianProfileData ? 'musician' : 'artist'),
             });
             setAllowCounterOffer(true);
         } catch (error) {
@@ -307,13 +307,32 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             }));
             await updateDeclinedApplicationMessage({ conversationId, originalMessageId: messageId, senderId: user.uid, userRole });
             const venueData = await getVenueProfileById(gigData.venueId);
-            const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
+            let musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
+            
+            // If musicianProfileData is null, it might be an artist profile
+            if (!musicianProfileData) {
+                try {
+                    const artistProfile = await getArtistProfileById(musicianProfileId);
+                    if (artistProfile) {
+                        // Normalize artist profile to match musician profile shape for email function
+                        musicianProfileData = {
+                            id: artistProfile.id,
+                            name: artistProfile.name,
+                            email: artistProfile.email || null, // Artist profiles might not have email directly
+                            bandProfile: false,
+                        };
+                    }
+                } catch (error) {
+                    console.warn('Failed to fetch artist profile for email:', error);
+                }
+            }
+            
             await sendGigDeclinedEmail({
                 userRole,
                 venueProfile: venueData,
                 musicianProfile: musicianProfileData,
                 gigData,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                profileType: musicianProfileData?.bandProfile ? 'band' : (musicianProfileData ? 'musician' : 'artist'),
               });
         } catch (error) {
             console.error('Error updating gig document:', error);
@@ -346,14 +365,33 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             setGigData((prev) => ({ ...prev, applicants: updatedApplicants }));
             await sendCounterOfferMessage({ conversationId, messageId, senderId: user.uid, newFee, oldFee: gigData.budget, userRole });
             const venueData = await getVenueProfileById(gigData.venueId);
-            const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
+            let musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
+            
+            // If musicianProfileData is null, it might be an artist profile
+            if (!musicianProfileData) {
+                try {
+                    const artistProfile = await getArtistProfileById(musicianProfileId);
+                    if (artistProfile) {
+                        // Normalize artist profile to match musician profile shape for email function
+                        musicianProfileData = {
+                            id: artistProfile.id,
+                            name: artistProfile.name,
+                            email: artistProfile.email || null, // Artist profiles might not have email directly
+                            bandProfile: false,
+                        };
+                    }
+                } catch (error) {
+                    console.warn('Failed to fetch artist profile for email:', error);
+                }
+            }
+            
             await sendCounterOfferEmail({
                 userRole,
                 musicianProfile: musicianProfileData,
                 venueProfile: venueData,
                 gigData,
                 newFee,
-                profileType: musicianProfileData.bandProfile ? 'band' : 'musician',
+                profileType: musicianProfileData?.bandProfile ? 'band' : (musicianProfileData ? 'musician' : 'artist'),
             });
             setAllowCounterOffer(false);
             setNewCounterOffer('');

@@ -35,4 +35,8 @@ export function setPrimaryArtistProfile({ artistProfileId }) {
   return post('/users/setPrimaryArtistProfile', { body: { artistProfileId } });
 }
 
+export function updateStripeConnectId({ stripeConnectId, enablePayouts = true }) {
+  return post('/users/updateStripeConnectId', { body: { stripeConnectId, enablePayouts } });
+}
+
 

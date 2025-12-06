@@ -320,15 +320,28 @@
     gap:5px;
 }
 
-.gig-page-body .profile-select-wrapper {
+.gig-page-body .active-profile-status {
+    width:fit-content;
     margin: 1rem 0;
+    margin-left: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--gn-offset-orange);
+    border-radius: 0.5rem;
+    border: 1px solid var(--gn-grey-300);
 }
 
-.gig-page-body .profile-select-wrapper label {
+.gig-page-body .active-profile-name {
     font-weight: 500;
+    color: var(--gn-orange);
+}
+
+.gig-page-body .active-profile-badge {
+    font-size: 0.7rem;
+    color: var(--gn-orange);
 }
 
 .gig-page-body .action-box-buttons .permissions {

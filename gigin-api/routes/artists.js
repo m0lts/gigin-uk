@@ -103,7 +103,15 @@ router.post("/cancelledGigMusicianProfileUpdate", requireAuth, asyncHandler(asyn
 router.post("/findPendingFeeByGigId", requireAuth, asyncHandler(async (req, res) => {
   const { musicianId, gigId } = req.body || {};
   if (!musicianId || !gigId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "musicianId and gigId are required" });
-  const snap = await db.collection("musicianProfiles").doc(musicianId).collection("pendingFees").where("gigId", "==", gigId).limit(1).get();
+  
+  const artistRef = db.doc(`artistProfiles/${musicianId}`);
+  const artistSnap = await artistRef.get();
+  
+  if (!artistSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "artist profile not found" });
+  }
+  
+  const snap = await artistRef.collection("pendingFees").where("gigId", "==", gigId).limit(1).get();
   if (snap.empty) return res.json({ data: { found: false } });
   const d = snap.docs[0];
   return res.json({ data: { docId: d.id, data: d.data() || {} } });
@@ -119,44 +127,67 @@ router.post("/markPendingFeeInDispute", requireAuth, asyncHandler(async (req, re
   if (typeof disputeReason === "string") safeExtras.disputeReason = disputeReason.trim().slice(0, 2000);
   if (typeof details === "string") safeExtras.details = details.trim().slice(0, 5000);
 
-  // Authorization: either venue reviewer (venueId provided) or owner of musician profile
+  // Check artist profile
+  const artistRef = db.doc(`artistProfiles/${musicianId}`);
+  const artistSnap = await artistRef.get();
+  
+  if (!artistSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "artist profile not found" });
+  }
+
+  // Authorization: either venue reviewer (venueId provided) or owner/member of artist profile
   if (venueId) {
     await assertVenuePerm(db, callerUid, venueId, 'reviews.create');
   } else {
-    const userSnap = await db.doc(`users/${callerUid}`).get();
-    const user = userSnap.data() || {};
-    const callerMusicianIds = Array.isArray(user.musicianProfile) ? user.musicianProfile : (user.musicianProfile ? [user.musicianProfile] : []);
-    const ownsMusician = callerMusicianIds.includes(musicianId);
-    if (!ownsMusician) return res.status(403).json({ error: "PERMISSION_DENIED", message: "caller must own musician profile or provide venueId" });
+    // Check if caller is owner or active member of the artist profile
+    try {
+      await assertArtistPerm(db, callerUid, musicianId, "gigs.book"); // Using gigs.book as proxy for review permission
+    } catch (permError) {
+      return res.status(403).json({ error: "PERMISSION_DENIED", message: "caller must be owner or active member of artist profile or provide venueId" });
+    }
   }
 
-  const musicianRef = db.doc(`musicianProfiles/${musicianId}`);
-  const pendingCol = musicianRef.collection("pendingFees");
-  const result = await db.runTransaction(async (tx) => {
-    const musicianSnap = await tx.get(musicianRef);
-    if (!musicianSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "musician profile" });
-    let pfRef = null; let pfSnap = null;
-    if (docId) {
-      pfRef = pendingCol.doc(docId);
-      pfSnap = await tx.get(pfRef);
-      if (!pfSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "pending fee (docId)" });
-    } else {
-      const qSnap = await tx.get(pendingCol.where("gigId", "==", gigId).limit(1));
-      if (qSnap.empty) return res.status(404).json({ error: "NOT_FOUND", message: "pending fee (gigId)" });
-      pfSnap = qSnap.docs[0];
-      pfRef = pfSnap.ref;
+  const pendingCol = artistRef.collection("pendingFees");
+  let result;
+  try {
+    result = await db.runTransaction(async (tx) => {
+      const artistSnapTx = await tx.get(artistRef);
+      if (!artistSnapTx.exists) {
+        throw new Error("NOT_FOUND: artist profile");
+      }
+      let pfRef = null; let pfSnap = null;
+      if (docId) {
+        pfRef = pendingCol.doc(docId);
+        pfSnap = await tx.get(pfRef);
+        if (!pfSnap.exists) {
+          throw new Error("NOT_FOUND: pending fee (docId)");
+        }
+      } else {
+        const qSnap = await tx.get(pendingCol.where("gigId", "==", gigId).limit(1));
+        if (qSnap.empty) {
+          throw new Error("NOT_FOUND: pending fee (gigId)");
+        }
+        pfSnap = qSnap.docs[0];
+        pfRef = pfSnap.ref;
+      }
+      const before = pfSnap.data() || {};
+      const currentStatus = String(before.status || "").toLowerCase();
+      if (currentStatus === "in dispute") {
+        return { alreadyInDispute: true, pendingFeeId: pfSnap.id, status: "in dispute" };
+      }
+      tx.update(pfRef, { disputeLogged: true, status: "in dispute", disputeClearingTime: null, updatedAt: FieldValue.serverTimestamp(), ...safeExtras });
+      const disputeRef = db.collection("disputes").doc();
+      tx.set(disputeRef, { type: "pendingFeeDispute", musicianId, pendingFeeId: pfSnap.id, gigId: before.gigId || null, raisedByUid: callerUid, disputeReason: safeExtras.disputeReason ?? null, details: safeExtras.details ?? null, createdAt: FieldValue.serverTimestamp() });
+      return { alreadyInDispute: false, pendingFeeId: pfSnap.id, status: "in dispute", disputeDocId: disputeRef.id };
+    });
+  } catch (error) {
+    if (error.message?.startsWith("NOT_FOUND:")) {
+      const message = error.message.replace("NOT_FOUND: ", "");
+      return res.status(404).json({ error: "NOT_FOUND", message });
     }
-    const before = pfSnap.data() || {};
-    const currentStatus = String(before.status || "").toLowerCase();
-    if (currentStatus === "in dispute") {
-      return { alreadyInDispute: true, pendingFeeId: pfSnap.id, status: "in dispute" };
-    }
-    tx.update(pfRef, { disputeLogged: true, status: "in dispute", disputeClearingTime: null, updatedAt: FieldValue.serverTimestamp(), ...safeExtras });
-    const disputeRef = db.collection("disputes").doc();
-    tx.set(disputeRef, { type: "pendingFeeDispute", musicianId, pendingFeeId: pfSnap.id, gigId: before.gigId || null, raisedByUid: callerUid, disputeReason: safeExtras.disputeReason ?? null, details: safeExtras.details ?? null, createdAt: FieldValue.serverTimestamp() });
-    return { alreadyInDispute: false, pendingFeeId: pfSnap.id, status: "in dispute", disputeDocId: disputeRef.id };
-  });
-  return res.json({ data: { success: true, ...result, message: result.alreadyInDispute ? 'This fee is already marked as "in dispute".' : 'Dispute submitted. We’ll review it and pause clearing.' } });
+    throw error;
+  }
+  return res.json({ data: { success: true, ...result, message: result.alreadyInDispute ? 'This fee is already marked as "in dispute".' : 'Dispute submitted. We\'ll review it and pause clearing.' } });
 }));
 
 // POST /api/musicians/markInviteAsViewed

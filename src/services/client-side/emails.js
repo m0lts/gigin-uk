@@ -16,6 +16,7 @@ import {
 import { NextGigIcon } from '../../features/shared/ui/extras/Icons';
 import { TextLogo } from '../../features/shared/ui/logos/Logos';
 import { toJsDate } from '../utils/dates';
+import { getArtistProfileMembers } from './artists';
 
 /**
  * Sends an email using the Firestore 'mail' collection.
@@ -37,6 +38,44 @@ export const sendEmail = async ({ to, subject, text, html }) => {
       html,
     },
   });
+};
+
+/**
+ * Helper function to get recipient email addresses for a musician/artist profile.
+ * For artist profiles, fetches all active members' emails from the members subcollection.
+ * For legacy musician profiles, uses the profile's email field.
+ * 
+ * @param {Object|null} musicianProfile - The musician profile (null if it's an artist profile)
+ * @param {string} profileId - The profile ID (musicianId or artistProfileId)
+ * @returns {Promise<string[]>} Array of email addresses to send to
+ */
+const getMusicianRecipientEmails = async (musicianProfile, profileId) => {
+  // If musicianProfile is null or doesn't have an email, try fetching from artist profile members
+  if ((!musicianProfile || !musicianProfile.email) && profileId) {
+    try {
+      const members = await getArtistProfileMembers(profileId);
+      // Filter to active members and extract their userEmail addresses
+      const activeMemberEmails = members
+        .filter(member => member.status === 'active' && member.userEmail)
+        .map(member => member.userEmail);
+      
+      if (activeMemberEmails.length > 0) {
+        return activeMemberEmails;
+      }
+      console.warn(`No active members with emails found for artist profile ${profileId}`);
+      return [];
+    } catch (error) {
+      console.error(`Failed to fetch members for artist profile ${profileId}:`, error);
+      // Fall through to check legacy musician profile email
+    }
+  }
+  
+  // Legacy musician profile - use the email from the profile
+  if (musicianProfile?.email) {
+    return [musicianProfile.email];
+  }
+  
+  return [];
 };
 
 /**
@@ -550,27 +589,41 @@ export const sendGigAcceptedEmail = async ({
   const inner = userRole === 'musician' ? innerMusician : innerVenue;
   const html = htmlBase(title, inner);
 
-  const to = userRole === 'musician' ? venueProfile?.email : musicianProfile?.email;
+  // Get recipient emails
+  let recipientEmails = [];
+  if (userRole === 'musician') {
+    recipientEmails = [venueProfile?.email].filter(Boolean);
+  } else {
+    // For venue role, send to all active members of the artist/musician profile
+    const profileId = musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId;
+    recipientEmails = await getMusicianRecipientEmails(musicianProfile, profileId);
+  }
 
-  // Skip sending email if recipient email is not available
-  if (!to) {
+  // Skip sending email if no recipient emails are available
+  if (recipientEmails.length === 0) {
     console.warn('Cannot send gig accepted email: recipient email is missing', {
       userRole,
       venueProfileEmail: venueProfile?.email,
-      musicianProfileEmail: musicianProfile?.email,
+      musicianProfile: !!musicianProfile,
+      profileId: musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId,
     });
     return;
   }
 
+  // Send email to all recipients
   const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
-    to,
-    message: {
-      subject: subjectMap[userRole],
-      text: textMap[userRole],
-      html,
-    },
-  });
+  await Promise.all(
+    recipientEmails.map(email =>
+      addDoc(mailRef, {
+        to: email,
+        message: {
+          subject: subjectMap[userRole],
+          text: textMap[userRole],
+          html,
+        },
+      })
+    )
+  );
 };
 
 
@@ -591,6 +644,7 @@ export const sendGigDeclinedEmail = async ({
   venueProfile,
   gigData,
   declineType = 'application',
+  profileType,
 }) => {
   const jSDate = toJsDate(gigData.startDateTime);
   const formattedDate = jSDate.toLocaleDateString('en-UK', {
@@ -599,8 +653,9 @@ export const sendGigDeclinedEmail = async ({
     year: 'numeric',
   });
   const mailRef = collection(firestore, 'mail');
-  const isBand = musicianProfile.bandProfile === true;
-  const musicianName = musicianProfile.name;
+  // Use profileType if provided, otherwise check musicianProfile (which may be null for artist profiles)
+  const isBand = profileType === 'band' || (musicianProfile?.bandProfile === true);
+  const musicianName = musicianProfile?.name || 'Artist';
   const verb = isBand ? 'have' : 'has';
 
   const subjectMap = {
@@ -813,14 +868,39 @@ export const sendGigDeclinedEmail = async ({
   const inner = innerMap[userRole][declineType];
   const html = htmlBase(title, inner);
 
-  await addDoc(mailRef, {
-    to: userRole === 'musician' ? venueProfile.email : musicianProfile.email,
-    message: {
-      subject: subjectMap[userRole][declineType],
-      text: textMap[userRole][declineType],
-      html,
-    },
-  });
+  // Get recipient emails
+  let recipientEmails = [];
+  if (userRole === 'musician') {
+    recipientEmails = [venueProfile?.email].filter(Boolean);
+  } else {
+    // For venue role, send to all active members of the artist/musician profile
+    const profileId = musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId;
+    recipientEmails = await getMusicianRecipientEmails(musicianProfile, profileId);
+  }
+
+  // Skip sending email if no recipient emails are available
+  if (recipientEmails.length === 0) {
+    console.warn('Cannot send decline email: recipient email not found', {
+      userRole,
+      musicianProfile: !!musicianProfile,
+      profileId: musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId,
+    });
+    return;
+  }
+
+  // Send email to all recipients
+  await Promise.all(
+    recipientEmails.map(email =>
+      addDoc(mailRef, {
+        to: email,
+        message: {
+          subject: subjectMap[userRole][declineType],
+          text: textMap[userRole][declineType],
+          html,
+        },
+      })
+    )
+  );
 };
 
 
@@ -841,6 +921,7 @@ export const sendCounterOfferEmail = async ({
   venueProfile,
   gigData,
   newFee,
+  profileType,
 }) => {
   const jSDate = toJsDate(gigData.startDateTime);
   const formattedDate = jSDate.toLocaleDateString('en-UK', {
@@ -849,11 +930,10 @@ export const sendCounterOfferEmail = async ({
     year: 'numeric',
   });
   const mailRef = collection(firestore, 'mail');
-  const isBand = musicianProfile.bandProfile === true;
-  const name = musicianProfile.name;
+  // Use profileType if provided, otherwise check musicianProfile (which may be null for artist profiles)
+  const isBand = profileType === 'band' || (musicianProfile?.bandProfile === true);
+  const name = musicianProfile?.name || 'Artist';
   const verb = isBand ? 'have' : 'has';
-
-  const to = userRole === 'musician' ? venueProfile.email : musicianProfile.email;
 
   const subject = `You've received a counter-offer`;
 
@@ -1005,10 +1085,35 @@ export const sendCounterOfferEmail = async ({
   const inner = userRole === 'musician' ? innerMusician : innerVenue;
   const html = htmlBase(title, inner);
 
-  await addDoc(mailRef, {
-    to,
-    message: { subject, text, html },
-  });
+  // Get recipient emails
+  let recipientEmails = [];
+  if (userRole === 'musician') {
+    recipientEmails = [venueProfile?.email].filter(Boolean);
+  } else {
+    // For venue role, send to all active members of the artist/musician profile
+    const profileId = musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId;
+    recipientEmails = await getMusicianRecipientEmails(musicianProfile, profileId);
+  }
+
+  // Skip sending email if no recipient emails are available
+  if (recipientEmails.length === 0) {
+    console.warn('Cannot send counter-offer email: recipient email not found', {
+      userRole,
+      musicianProfile: !!musicianProfile,
+      profileId: musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId,
+    });
+    return;
+  }
+
+  // Send email to all recipients
+  await Promise.all(
+    recipientEmails.map(email =>
+      addDoc(mailRef, {
+        to: email,
+        message: { subject, text, html },
+      })
+    )
+  );
 };
 
 /**
@@ -1825,11 +1930,29 @@ export const sendDisputeLoggedEmail = async ({ musicianProfile, gigData, baseUrl
 
   const html = htmlBase(subject, inner);
 
+  // Get recipient emails - handle artist profiles by fetching member emails
+  const profileId = musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId;
+  const recipientEmails = await getMusicianRecipientEmails(musicianProfile, profileId);
+
+  // Skip sending email if no recipient emails are available
+  if (recipientEmails.length === 0) {
+    console.warn('Cannot send dispute logged email: recipient email not found', {
+      musicianProfile: !!musicianProfile,
+      profileId,
+    });
+    return;
+  }
+
+  // Send email to all recipients
   const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
-    to: musicianProfile.email,
-    message: { subject, text, html },
-  });
+  await Promise.all(
+    recipientEmails.map(email =>
+      addDoc(mailRef, {
+        to: email,
+        message: { subject, text, html },
+      })
+    )
+  );
 };
 
 /**

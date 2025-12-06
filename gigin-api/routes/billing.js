@@ -633,9 +633,41 @@ router.post("/processRefund", requireAuth, asyncHandler(async (req, res) => {
   if (!paymentIntentId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "paymentIntentId required" });
   try {
     const stripe = getStripe();
+    
+    // First, retrieve the payment intent to check its status
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch (retrieveError) {
+      // Payment intent doesn't exist or can't be retrieved
+      if (retrieveError.code === 'resource_missing') {
+        console.log(`Payment intent ${paymentIntentId} not found. May have already been refunded or deleted.`);
+        return res.json({ data: { success: true, message: "Payment intent not found (may have already been refunded)" } });
+      }
+      throw retrieveError;
+    }
+    
+    // Check if payment intent is in a refundable state
+    if (paymentIntent.status !== 'succeeded') {
+      console.log(`Payment intent ${paymentIntentId} is in status '${paymentIntent.status}', cannot be refunded.`);
+      return res.json({ data: { success: true, message: `Payment intent is in status '${paymentIntent.status}', no refund needed` } });
+    }
+    
+    // Check if already refunded
+    if (paymentIntent.amount_refunded > 0) {
+      console.log(`Payment intent ${paymentIntentId} already has refunds (${paymentIntent.amount_refunded}).`);
+      return res.json({ data: { success: true, message: "Payment intent already refunded" } });
+    }
+    
+    // Attempt to create refund
     await stripe.refunds.create({ payment_intent: paymentIntentId });
     return res.json({ data: { success: true } });
   } catch (error) {
+    // Handle specific Stripe errors
+    if (error.code === 'charge_already_refunded' || error.type === 'StripeInvalidRequestError' && error.message?.includes('already been refunded')) {
+      console.log(`Payment intent ${paymentIntentId} already refunded.`);
+      return res.json({ data: { success: true, message: "Payment intent already refunded" } });
+    }
     console.error("Error processing refund:", error);
     return res.status(500).json({ error: "INTERNAL", message: `Failed to process refund: ${error.message}` });
   }

@@ -534,16 +534,27 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 });
             }
             const handleMusicianCancellation = async (musician) => {
-                const { conversationId } = await getOrCreateConversation({ musicianProfile: musician, gigData: nextGig, venueProfile, type: 'cancellation' });
+                if (!musician) {
+                    console.error('Musician profile is null');
+                    return;
+                }
+                // Normalize profile for API compatibility
+                const normalizedProfile = {
+                    ...musician,
+                    musicianId: musician.id || musician.profileId || musician.musicianId,
+                    profileId: musician.id || musician.profileId || musician.musicianId,
+                };
+                const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData: nextGig, venueProfile, type: 'cancellation' });
                 await postCancellationMessage(
                   { conversationId, senderId: user.uid, message: `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
                     cancellationReason
                   )}. We apologise for any inconvenience caused.`, cancellingParty: 'venue' }
                 );
-                await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId: musician.musicianId, cancellationReason });
-                await cancelledGigMusicianProfileUpdate({ musicianId: musician.musicianId, gigId });
+                const musicianId = normalizedProfile.musicianId;
+                await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId, cancellationReason });
+                await cancelledGigMusicianProfileUpdate({ musicianId, gigId });
                 const cancellingParty = 'venue';
-                await logGigCancellation({ gigId, musicianId: musician.musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
+                await logGigCancellation({ gigId, musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
               };
           
               if (isOpenMic) {

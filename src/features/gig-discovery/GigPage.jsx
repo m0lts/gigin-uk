@@ -196,8 +196,37 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 ? profiles.find(p => profileId(p) === appliedProfile)
                 : null;
 
+            // Get active profile from localStorage
+            let activeProfileId = null;
+            if (user?.uid) {
+                try {
+                    const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                    if (stored) {
+                        const profileExists = profiles.some(p => profileId(p) === stored);
+                        if (profileExists) {
+                            activeProfileId = stored;
+                        }
+                    }
+                } catch (e) {
+                    // Ignore localStorage errors
+                }
+            }
+            
+            // Fallback to primary profile if no stored active profile
+            if (!activeProfileId && user?.primaryArtistProfileId) {
+                const primaryExists = profiles.some(p => profileId(p) === user.primaryArtistProfileId);
+                if (primaryExists) {
+                    activeProfileId = user.primaryArtistProfileId;
+                }
+            }
+
+            const activeProfile = activeProfileId
+                ? profiles.find(p => profileId(p) === activeProfileId)
+                : null;
+
             const finalSelected =
                 preferredProfile ||
+                activeProfile ||
                 (selectedProfile && profiles.find(p => profileId(p) === profileId(selectedProfile))) ||
                 defaultSelected ||
                 null;
@@ -279,6 +308,43 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             cancelled = true;
         };
     }, [user?.uid, user?.artistProfiles, selectedProfile]);
+
+    // Listen for active profile changes from localStorage
+    useEffect(() => {
+        if (!user?.uid || !validProfiles?.length) return;
+
+        const handleActiveProfileChange = () => {
+            try {
+                const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                if (stored) {
+                    const profileId = (p) => p.id || p.profileId || p.musicianId;
+                    const newActiveProfile = validProfiles.find(p => profileId(p) === stored);
+                    if (newActiveProfile) {
+                        const currentProfileId = selectedProfile ? (selectedProfile.id || selectedProfile.profileId || selectedProfile.musicianId) : null;
+                        const newProfileId = profileId(newActiveProfile);
+                        if (newProfileId !== currentProfileId) {
+                            setSelectedProfile(newActiveProfile);
+                        }
+                    }
+                }
+            } catch (e) {
+                // Ignore errors
+            }
+        };
+
+        window.addEventListener('activeProfileChanged', handleActiveProfileChange);
+        const storageHandler = (e) => {
+            if (e.key === `activeArtistProfileId_${user.uid}`) {
+                handleActiveProfileChange();
+            }
+        };
+        window.addEventListener('storage', storageHandler);
+
+        return () => {
+            window.removeEventListener('activeProfileChanged', handleActiveProfileChange);
+            window.removeEventListener('storage', storageHandler);
+        };
+    }, [user?.uid, validProfiles, selectedProfile]);
 
 
     const stripFirestoreRefs = (obj) => {
@@ -690,8 +756,17 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
               profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
             };
-            const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData, venueProfile, type: 'message' });
-            navigate(`/messages?conversationId=${conversationId}`);
+            const response = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData, venueProfile, type: 'message' });
+            const conversationId = response?.conversationId || response?.data?.conversationId;
+            if (!conversationId) {
+              console.error('No conversationId returned from getOrCreateConversation');
+              toast.error('Failed to create conversation. Please try again.');
+              return;
+            }
+            // Navigate to artist profile messages URL with conversationId as query param
+            const profileId = normalizedProfile.id || normalizedProfile.profileId || normalizedProfile.musicianId;
+            navigate(`/artist-profile/${profileId}/messages?conversationId=${conversationId}`);
+            console.log('Conversation created and navigated to:', `/artist-profile/${profileId}/messages?conversationId=${conversationId}`);
         } catch (error) {
             console.error('Error while creating or fetching conversation:', error);
             toast.error('Failed to send message. Please try again')
@@ -762,7 +837,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 nonPayableGig: nonPayableGig,
             })
             if (nonPayableGig) {
-                await notifyOtherApplicantsGigConfirmed(gigData, musicianId);
+                await notifyOtherApplicantsGigConfirmed({ gigData, acceptedMusicianId: musicianId });
             }
             toast.success('Invitation Accepted.')
         } catch (error) {
@@ -1181,29 +1256,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         )} */}
                                         {!(user?.venueProfiles?.length > 0 && !user.artistProfiles?.length) && !venueVisiting && (
                                             <>
-                                                {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && !applyingToGig && (
-                                                    <div className="profile-select-wrapper">
-                                                        <label htmlFor="profileSelect" className="profile-select-label">Applying as:</label>
-                                                        <select
-                                                            id="profileSelect"
-                                                            className="input"
-                                                            value={selectedProfile?.id || selectedProfile?.profileId || selectedProfile?.musicianId}
-                                                            onChange={(e) => {
-                                                                const profileId = (p) => p.id || p.profileId || p.musicianId;
-                                                                const selected = validProfiles.find(profile => profileId(profile) === e.target.value);
-                                                                setSelectedProfile(selected);
-                                                            }}
-                                                        >
-                                                        {validProfiles.map((profile) => {
-                                                            const profileId = profile.id || profile.profileId || profile.musicianId;
-                                                            return (
-                                                                <option key={profileId} value={profileId}>
-                                                                    {profile.name}
-                                                                </option>
-                                                            );
-                                                        })}
-                                                        </select>
-                                                    </div>
+                                                {selectedProfile && !applyingToGig && (
+                                                    <div className="active-profile-status">
+                                                    <h6 className="active-profile-badge">ACTIVE PROFILE:</h6>
+                                                    <span className="active-profile-name">{selectedProfile.name || 'Unnamed Profile'}</span>
+                                                </div>
                                                 )}
                                                 <div className='action-box-buttons'>
                                                     {isFutureOpen  ? (
@@ -1634,28 +1691,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         )} */}
                                         {!(user?.venueProfiles?.length > 0 && !user.artistProfiles?.length) && !venueVisiting && (
                                             <>
-                                                {(validProfiles?.length > 1 && !accessTokenIsMusicianProfile) && !applyingToGig && (
-                                                    <div className="profile-select-wrapper">
-                                                        <label htmlFor="profileSelect" className="profile-select-label">Applying as:</label>
-                                                        <select
-                                                            id="profileSelect"
-                                                            className="input"
-                                                            value={selectedProfile?.id || selectedProfile?.profileId || selectedProfile?.musicianId}
-                                                            onChange={(e) => {
-                                                                const profileId = (p) => p.id || p.profileId || p.musicianId;
-                                                                const selected = validProfiles.find(profile => profileId(profile) === e.target.value);
-                                                                setSelectedProfile(selected);
-                                                            }}
-                                                        >
-                                                        {validProfiles.map((profile) => {
-                                                            const profileId = profile.id || profile.profileId || profile.musicianId;
-                                                            return (
-                                                                <option key={profileId} value={profileId}>
-                                                                    {profile.name}
-                                                                </option>
-                                                            );
-                                                        })}
-                                                        </select>
+                                                {selectedProfile && !applyingToGig && (
+                                                    <div className="active-profile-status">
+                                                        <h6 className="active-profile-badge">ACTIVE PROFILE</h6>
+                                                        <span className="active-profile-name">{selectedProfile.name || 'Unnamed Profile'}</span>
                                                     </div>
                                                 )}
                                                 <div className='action-box-buttons'>

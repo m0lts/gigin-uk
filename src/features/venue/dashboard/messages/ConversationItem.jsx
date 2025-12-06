@@ -66,7 +66,6 @@ export const ConversationItem = ({
                   <span> - {otherParticipant.venueName}</span>
                 )}
               </h4>
-              <h5 className='conversation-title-comp'>{subtitle}</h5>
             </div>
           </div>
           {hasUnreadMessages && <div className='notification-dot'></div>}

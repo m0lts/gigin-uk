@@ -163,7 +163,21 @@ export const VideosTracks = ({
   const needsTrackUsage = isEditingTracks || isEditingVideos;
   const needsVideoUsage = isEditingTracks || isEditingVideos;
 
-  const trackDataset = tracksSource.length ? tracksSource : tracks;
+  // Base track dataset from source or props
+  const baseTrackDataset = tracksSource.length ? tracksSource : tracks;
+  
+  // Get uploading tracks from editingTracks (tracks with audioFile but no uploaded URL)
+  const uploadingTracks = editingTracks.filter(
+    (track) => track.audioFile && !track.uploadedAudioUrl
+  );
+  
+  // Merge uploading tracks into dataset for viewing mode
+  // Only include uploading tracks that aren't already in the dataset
+  const trackDataset = useMemo(() => {
+    const existingIds = new Set(baseTrackDataset.map((t) => t.id));
+    const newUploadingTracks = uploadingTracks.filter((t) => !existingIds.has(t.id));
+    return [...baseTrackDataset, ...newUploadingTracks];
+  }, [baseTrackDataset, uploadingTracks]);
 
   const getTrackSizeEstimate = (track) => {
     const directSize = getTrackMediaBytes(track);
@@ -204,7 +218,21 @@ export const VideosTracks = ({
     track.audioUrl ||
     '';
 
-  const videoDataset = videosSource.length ? videosSource : videos;
+  // Base video dataset from source or props
+  const baseVideoDataset = videosSource.length ? videosSource : videos;
+  
+  // Get uploading videos from editingVideos (videos with file but no uploaded URL)
+  const uploadingVideos = editingVideos.filter(
+    (video) => video.videoFile && !video.uploadedVideoUrl
+  );
+  
+  // Merge uploading videos into dataset for viewing mode
+  // Only include uploading videos that aren't already in the dataset
+  const videoDataset = useMemo(() => {
+    const existingIds = new Set(baseVideoDataset.map((v) => v.id));
+    const newUploadingVideos = uploadingVideos.filter((v) => !existingIds.has(v.id));
+    return [...baseVideoDataset, ...newUploadingVideos];
+  }, [baseVideoDataset, uploadingVideos]);
 
   const trackUsageBytes = useMemo(
     () => tracksForUsage.reduce((total, track) => total + getTrackSizeEstimate(track), 0),
@@ -465,21 +493,17 @@ export const VideosTracks = ({
         // Get the height of the active card
         const cardHeight = activeCard.offsetHeight;
         // Account for the top offset (2rem = 32px) from CSS for active card position
-        const topOffset = 32;
+        const topOffset = 30;
         // Account for margin-top (2rem = 32px) on .videos-tracks-inner
-        
         const marginTop = 26;
         // Account for inactive header space (60px) that extends above
         const inactiveHeaderSpace = 0;
-        
         // Inner container height: top offset + card height
         const innerHeight = topOffset + cardHeight;
         // Parent container height: margin-top + inactive header space + top offset + card height
         const totalHeight = marginTop + inactiveHeaderSpace + topOffset + cardHeight;
-        
         // Update inner container height
         containerRef.current.style.height = `${innerHeight}px`;
-        
         // Update the parent container height
         const parentContainer = containerRef.current.closest('.videos-tracks-card-container');
         if (parentContainer) {
@@ -790,22 +814,32 @@ export const VideosTracks = ({
                       video.thumbnail ||
                       video.thumbnailUrl ||
                       null;
+                    // Check if video is uploading (has file but no uploaded URL yet)
+                    const isUploading = !!(video.videoFile && !video.uploadedVideoUrl);
+                    
                     return (
                       <div key={videoKey} className="video-thumbnail">
-                        {thumbnail ? (
+                        {isUploading ? (
+                          <div className="video-placeholder uploading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                            <LoadingSpinner />
+                            <h5 style={{ fontSize: '0.875rem', color: 'var(--gn-grey-600)' }}>Uploading Video...</h5>
+                          </div>
+                        ) : thumbnail ? (
                           <img src={thumbnail} alt={video.title || `Video ${index + 1}`} />
                         ) : (
                           <div className="video-placeholder">Video {index + 1}</div>
                         )}
-                        <button
-                          type="button"
-                          className="play-icon-button"
-                          onClick={() => handleVideoPlayRequest(videoKey)}
-                          disabled={!allowPlayback}
-                          aria-label={`Play ${video.title || `video ${index + 1}`}`}
-                        >
-                          <PlayIcon />
-                        </button>
+                        {!isUploading && (
+                          <button
+                            type="button"
+                            className="play-icon-button"
+                            onClick={() => handleVideoPlayRequest(videoKey)}
+                            disabled={!allowPlayback}
+                            aria-label={`Play ${video.title || `video ${index + 1}`}`}
+                          >
+                            <PlayIcon />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -1167,10 +1201,17 @@ export const VideosTracks = ({
                   {trackDataset.map((track, index) => {
                     const trackKey = getTrackIdentifier(track, index);
                     const cover = resolveTrackCover(track);
+                    // Check if track is uploading (has audioFile but no uploaded URL yet)
+                    const isUploading = !!(track.audioFile && !track.uploadedAudioUrl);
+                    
                     return (
                       <div key={trackKey} className="track-item playable">
                         <div className="track-thumbnail">
-                          {cover ? (
+                          {isUploading ? (
+                            <div className="track-thumbnail-placeholder uploading">
+                              <LoadingSpinner />
+                            </div>
+                          ) : cover ? (
                             <img src={cover} alt={track.title || 'Track'} />
                           ) : (
                             <div className="track-thumbnail-placeholder">
@@ -1179,18 +1220,29 @@ export const VideosTracks = ({
                           )}
                         </div>
                         <div className="track-info">
-                          <h4>{track.title || `Track ${index + 1}`}</h4>
-                          {track.artist && <p>{track.artist}</p>}
+                          {isUploading ? (
+                            <>
+                            <h4>Uploading Track...</h4>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--gn-grey-600)' }}>Don't leave this page...</p>
+                            </>
+                          ) : (
+                            <>
+                              <h4>{track.title || `Track ${index + 1}`}</h4>
+                              {track.artist && <p>{track.artist}</p>}
+                            </>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          className="btn icon play-track"
-                          onClick={() => handleTrackPlayRequest(trackKey)}
-                          disabled={!allowPlayback}
-                          aria-label={`Play ${track.title || `track ${index + 1}`}`}
-                        >
-                          <PlayIcon />
-                        </button>
+                        {!isUploading && (
+                          <button
+                            type="button"
+                            className="btn icon play-track"
+                            onClick={() => handleTrackPlayRequest(trackKey)}
+                            disabled={!allowPlayback}
+                            aria-label={`Play ${track.title || `track ${index + 1}`}`}
+                          >
+                            <PlayIcon />
+                          </button>
+                        )}
                       </div>
                     );
                   })}

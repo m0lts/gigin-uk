@@ -66,16 +66,40 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
         if (!disputeAllowed) return;
         try {
             setLoading(true);
-            const success = await cancelTask({ taskName: gigData.clearPendingFeeTaskName, gigId: gigData.gigId, venueId: gigData.venueId });
-            const success2 = await cancelTask({ taskName: gigData.automaticMessageTaskName, gigId: gigData.gigId, venueId: gigData.venueId });
+            // Only cancel tasks if they exist
+            let success = true;
+            let success2 = true;
+            
+            if (gigData.clearPendingFeeTaskName) {
+                try {
+                    success = await cancelTask({ taskName: gigData.clearPendingFeeTaskName, gigId: gigData.gigId, venueId: gigData.venueId });
+                } catch (error) {
+                    console.warn('Failed to cancel clearPendingFeeTask:', error);
+                    // Continue even if task cancellation fails (task might not exist)
+                    success = true;
+                }
+            }
+            
+            if (gigData.automaticMessageTaskName) {
+                try {
+                    success2 = await cancelTask({ taskName: gigData.automaticMessageTaskName, gigId: gigData.gigId, venueId: gigData.venueId });
+                } catch (error) {
+                    console.warn('Failed to cancel automaticMessageTask:', error);
+                    // Continue even if task cancellation fails (task might not exist)
+                    success2 = true;
+                }
+            }
+            
             if (!success || !success2) {
                 console.error('Failed to cancel task');
                 toast.error('Failed to submit dispute. Please try again.');
                 setLoading(false);
                 return;
             }
-            if (success && success2) {
-                await logDispute({
+            
+            // Proceed with dispute submission regardless of task cancellation results
+            // (tasks might not exist if they were already cancelled or never created)
+            await logDispute({
                     musicianId: musicianProfile.id,
                     gigId: gigData.gigId,
                     venueId: gigData.venueId,
@@ -115,7 +139,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                 setDisputeSubmitted(true);
                 onClose(false);
                 toast.success('Dispute submitted. A member of the team will be in touch shortly via email.')
-            }
+            
         } catch (error) {
             console.error('Error logging dispute:', error);
             toast.error('An error occurred while logging the dispute. Please try again.');

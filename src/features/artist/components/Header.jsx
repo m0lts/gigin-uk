@@ -41,6 +41,44 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
     const { profileId: urlProfileId } = useParams();
     const [accountMenu, setAccountMenu] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
+    // Track localStorage changes to force re-render when active profile changes
+    const [activeProfileIdFromStorage, setActiveProfileIdFromStorage] = useState(() => {
+        if (!user?.uid) return null;
+        try {
+            return localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+        } catch (e) {
+            return null;
+        }
+    });
+    
+    // Listen for storage events to update when localStorage changes
+    useEffect(() => {
+        if (!user?.uid) return;
+        
+        const handleStorageChange = (e) => {
+            if (e.key === `activeArtistProfileId_${user.uid}`) {
+                setActiveProfileIdFromStorage(e.newValue);
+            }
+        };
+        
+        // Listen for custom event for same-window updates
+        const handleCustomStorageChange = () => {
+            try {
+                const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                setActiveProfileIdFromStorage(stored);
+            } catch (e) {
+                // Ignore errors
+            }
+        };
+        
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('activeProfileChanged', handleCustomStorageChange);
+        
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('activeProfileChanged', handleCustomStorageChange);
+        };
+    }, [user?.uid]);
     
     // Get active profile object from URL, localStorage, or default to primary/first profile
     const activeProfile = useMemo(() => {
@@ -54,21 +92,17 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
         if (urlProfileId) {
             targetProfileId = urlProfileId;
         }
-        // Check localStorage for stored active profile
+        // Check localStorage for stored active profile (use state value for reactivity)
         else if (user?.uid) {
-            try {
-                const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
-                if (stored) {
-                    // Verify the stored profile still exists
-                    const profileExists = user.artistProfiles?.some(
-                        (p) => (p.id === stored || p.profileId === stored)
-                    );
-                    if (profileExists) {
-                        targetProfileId = stored;
-                    }
+            const stored = activeProfileIdFromStorage;
+            if (stored) {
+                // Verify the stored profile still exists
+                const profileExists = user.artistProfiles?.some(
+                    (p) => (p.id === stored || p.profileId === stored)
+                );
+                if (profileExists) {
+                    targetProfileId = stored;
                 }
-            } catch (e) {
-                // Ignore localStorage errors
             }
         }
         
@@ -93,7 +127,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
         }
         
         return null;
-    }, [urlProfileId, user?.uid, user?.primaryArtistProfileId, user?.artistProfiles]);
+    }, [urlProfileId, user?.uid, user?.primaryArtistProfileId, user?.artistProfiles, activeProfileIdFromStorage]);
 
     
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -133,10 +167,37 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
     useEffect(() => {
         if (!user) return;
 
-        // Collect all artist profile ids for this user (new artist profile structure)
-        const artistProfileIds = Array.isArray(user.artistProfiles)
-          ? user.artistProfiles.map((p) => p.id).filter(Boolean)
-          : [];
+        // Get the active artist profile ID from localStorage
+        let activeProfileId = null;
+        if (user?.uid) {
+            try {
+                const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                if (stored) {
+                    // Verify the stored profile still exists
+                    const profileExists = user.artistProfiles?.some(
+                        (p) => (p.id === stored || p.profileId === stored)
+                    );
+                    if (profileExists) {
+                        activeProfileId = stored;
+                    }
+                }
+            } catch (e) {
+                // Ignore localStorage errors
+            }
+        }
+
+        // Fallback: if no stored profile, use URL profileId or primary profile
+        if (!activeProfileId) {
+            if (urlProfileId) {
+                activeProfileId = urlProfileId;
+            } else if (user?.primaryArtistProfileId) {
+                activeProfileId = user.primaryArtistProfileId;
+            } else if (user?.artistProfiles?.length > 0) {
+                // Use first complete profile or first profile
+                const completed = user.artistProfiles.find((p) => p?.isComplete);
+                activeProfileId = completed?.id || completed?.profileId || user.artistProfiles[0]?.id || user.artistProfiles[0]?.profileId;
+            }
+        }
 
         const unsubscribe = listenToUserConversations(user, (conversations) => {
           const hasUnread = conversations.some((conv) => {
@@ -145,12 +206,12 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
             const isNotSender = conv.lastMessageSenderId !== user.uid;
             const isDifferentPage = !location.pathname.includes(conv.id);
 
-            // Only consider conversations that involve one of the user's artist profiles
+            // Only consider conversations that involve the active artist profile
             const involvesActiveArtistProfile =
-              artistProfileIds.length === 0
-                ? true
+              !activeProfileId
+                ? false
                 : Array.isArray(conv.participants)
-                  ? conv.participants.some((id) => artistProfileIds.includes(id))
+                  ? conv.participants.includes(activeProfileId)
                   : false;
 
             return (
@@ -165,7 +226,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
         });
 
         return () => unsubscribe();
-    }, [user, location.pathname]);
+    }, [user, location.pathname, urlProfileId]);
 
     const showAuthModal = (type) => {
         setAuthModal(true);
@@ -296,7 +357,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                 </div>
                             ) : (
                                 <div className="right">
-                                    {activeProfile.isComplete ? (
+                                    {activeProfile?.isComplete ? (
                                         <>
                                             <div className="active-profile">
                                                 <h6 className="subtitle">Active Profile:</h6>
@@ -310,7 +371,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                     ) : (
                                         <button className='btn artist-profile' onClick={() => navigate(`/artist-profile`)}>
                                             <GuitarsIcon />
-                                            Complete Artist Profile
+                                            Create Artist Profile
                                         </button>
                                     )}
                                     <button

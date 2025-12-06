@@ -850,7 +850,7 @@
 .modal.primary-profile-selection .modal-content .modal-body .artist-profile-list {
     display: flex;
     flex-direction: column;
-    height: 400px;
+    height: 300px;
     gap:0.25rem;
     overflow-y: scroll;
     scrollbar-width: none;       /* Firefox */

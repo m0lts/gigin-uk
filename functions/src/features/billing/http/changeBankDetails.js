@@ -35,7 +35,7 @@ export const changeBankDetails = http(
 
     const { accountId } = req.body;
     if (!accountId) {
-      return res.status(400).send({ error: "Musician ID is required." });
+      return res.status(400).json({ error: "Musician ID is required." });
     }
 
     try {
@@ -55,7 +55,7 @@ export const changeBankDetails = http(
         "Error occurred when calling the Stripe API to edit details",
         error
       );
-      return res.status(500).send({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 );

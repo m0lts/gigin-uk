@@ -48,8 +48,10 @@ export const ArtistProfileFinances = () => {
         const { clearedFees = [], pendingFees = [] } =
           (await getArtistProfileFees(artistProfileId)) || {};
 
+        // Filter out cancelled fees from pending total
+        const activePendingFees = pendingFees.filter(fee => fee.status !== 'cancelled');
         const combinedFees = [...pendingFees, ...clearedFees];
-        const totalPending = pendingFees.reduce(
+        const totalPending = activePendingFees.reduce(
           (sum, fee) => sum + (fee.amount || 0),
           0
         );
@@ -356,10 +358,20 @@ export const ArtistProfileFinances = () => {
                         >
                           <td>{fee.venueName}</td>
                           <td>£{fee.amount.toFixed(2)}</td>
-                          <td>{formatFeeDate(fee.disputeClearingTime)}</td>
-                          <td className={`status-box ${fee.status}`}>
-                            <p className={`status ${fee.status}`}>
-                              {fee.statusLabel || fee.status}
+                          <td>
+                            {fee.disputeLogged ? 'N/A' : formatFeeDate(fee.disputeClearingTime)}
+                          </td>
+                          <td className={`status-box ${fee.status === 'in dispute' ? 'cancelled' : fee.status}`}>
+                            <p className={`status ${fee.status === 'in dispute' ? 'cancelled' : fee.status}`}>
+                              {fee.status === 'cancelled' 
+                                ? 'Cancelled' 
+                                : fee.status === 'cleared'
+                                ? 'Fee Released'
+                                : fee.status === 'in dispute'
+                                ? 'In Dispute'
+                                : fee.status === 'pending'
+                                ? 'Pending'
+                                : fee.statusLabel || fee.status}
                             </p>
                           </td>
                         </tr>
