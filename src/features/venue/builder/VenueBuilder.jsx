@@ -53,6 +53,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             instagram: '',
         },
         primaryImageOffsetY: 0,
+        primaryImageBlur: 0,
     });
 
     useEffect(() => {
@@ -70,7 +71,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         if (venue) {
             const photos = (venue.photos || []).map((url, i) => {
                 if (i === 0) {
-                    return { file: url, offsetY: venue.primaryImageOffsetY || 0 };
+                    return { file: url, offsetY: venue.primaryImageOffsetY || 0, blur: venue.primaryImageBlur || 0 };
                 }
                 return url;
             });
@@ -91,6 +92,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 website: venue.website,
                 socialMedia: venue.socialMedia,
                 primaryImageOffsetY: venue.primaryImageOffsetY || 0,
+                primaryImageBlur: venue.primaryImageBlur || 0,
             });
         }
     }, [venue])
@@ -148,6 +150,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 ...formData,
                 photos: imageUrls,
                 primaryImageOffsetY: formData.photos[0]?.offsetY || formData.primaryImageOffsetY,
+                primaryImageBlur: formData.photos[0]?.blur || formData.primaryImageBlur || 0,
                 completed: true,
                 ...getGeoField(formData.coordinates),
             };
@@ -193,7 +196,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         } catch (error) {
             setUploadingProfile(false);
             if (error.message?.includes('storage') || error.message?.includes('image')) {
-                setStepError("Something went wrong while uploading your images. Please check your connection and try again.");
+                setStepError("Something went wrong while uploading your image. Please check your connection and try again.");
             } else if (error.message?.includes('createVenueProfile')) {
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             } else if (error.message?.includes('updateUserDocument')) {
@@ -202,7 +205,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             }
             toast.error('Error creating venue profile. Please try again.')
-            console.error('Error uploading images or creating venue profile: ', error);
+            console.error('Error uploading image or creating venue profile: ', error);
         }
     };
 
@@ -238,6 +241,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 const imageUrls = await uploadImageArrayWithFallback(imageFiles, `venues/${formData.venueId}`);
                 updatedFormData.photos = imageUrls;
                 updatedFormData.primaryImageOffsetY = formData.photos[0]?.offsetY || formData.primaryImageOffsetY;
+                updatedFormData.primaryImageBlur = formData.photos[0]?.blur || formData.primaryImageBlur || 0;
             }
             try {
                 await createVenueProfile(formData.venueId, updatedFormData, user.uid);
@@ -255,7 +259,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             toast.success('Venue profile saved.')
         } catch (error) {
             if (error.message?.includes('storage') || error.message?.includes('image')) {
-                setStepError("Something went wrong while uploading your images. Please check your connection and try again.");
+                setStepError("Something went wrong while uploading your image. Please check your connection and try again.");
             } else if (error.message?.includes('createVenueProfile')) {
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             } else if (error.message?.includes('updateUserDocument')) {
@@ -264,7 +268,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             }
             toast.error('Error saving venue profile. Please try again.')
-            console.error('Error uploading images or saving venue profile: ', error);
+            console.error('Error uploading image or saving venue profile: ', error);
         } finally {
             setSaving(false);
         }
@@ -545,7 +549,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                                 <div className='circle'>
                                     {isStep4Complete() ? <TickIcon /> : formData.type === 'Public Establishment' ? 4 : 3}
                                 </div>
-                                Upload Photos
+                                Upload Photo
                                 </li>
 
                                 <li

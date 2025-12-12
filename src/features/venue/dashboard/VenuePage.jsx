@@ -197,7 +197,7 @@ export const VenuePage = ({ user, venues, setVenues }) => {
     return (
         <div className='venue-page'>
             <section className='venue-page-body'>
-                <div className='venue-page-hero'>
+                {/* <div className='venue-page-hero'>
                     <img
                         src={venueData?.photos[0]}
                         alt={venueData?.name}
@@ -314,7 +314,8 @@ export const VenuePage = ({ user, venues, setVenues }) => {
                                 </div>
                             )}
                         </div>
-                    )}
+                    </div>
+                    )} */}
                     <div className="venue-page-settings">
                         {!isSmUp && (
                             <button className="btn text" onClick={() => navigate(-1)} style={{marginTop: '1rem'}}>
@@ -369,7 +370,6 @@ export const VenuePage = ({ user, venues, setVenues }) => {
                             )}
                         </ul>
                     </div>
-                </div>
                 {fullscreenImage && (
                     <div className='fullscreen-overlay' onClick={closeFullscreen}>
                         <span className='arrow left' onClick={showPrevImage}>&#8249;</span>

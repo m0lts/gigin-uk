@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LeftChevronIcon, FileIcon, DeleteIcon, StarIcon } from '@features/shared/ui/extras/Icons';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { CameraIcon, DeleteGigIcon, RepositionIcon, SaveIcon } from '../../shared/ui/extras/Icons';
+import { CameraIcon, DeleteGigIcon } from '../../shared/ui/extras/Icons';
 
-const ItemType = 'IMAGE';
-const MAX_IMAGES = 12;
+const MAX_IMAGES = 1;
 const IMAGE_MIME = /^image\//i;
 
 const prepareIncomingFiles = (fileList, currentCount) => {
   const incoming = Array.from(fileList).filter(f => IMAGE_MIME.test(f.type));
   const availableSlots = Math.max(0, MAX_IMAGES - currentCount);
-  return incoming.slice(0, availableSlots).map(file => ({ file, offsetY: 0 }));
+  return incoming.slice(0, availableSlots).map(file => ({ file, offsetY: 0, blur: 0 }));
 };
 
 const DraggableImage = ({
@@ -26,27 +22,15 @@ const DraggableImage = ({
     setIsRepositioning,
     updatePrimaryOffset,
     venueName,
+    updatePrimaryBlur,
+    isBlurring,
+    setIsBlurring,
   }) => {
-    const isDraggable = !isPrimary;
-    const [, ref] = useDrag({
-      type: ItemType,
-      item: { index },
-      canDrag: () => isDraggable,
-    });
-  
-    const [, drop] = useDrop({
-      accept: ItemType,
-      hover: (draggedItem) => {
-        if (draggedItem.index !== index) {
-          moveImage(draggedItem.index, index);
-          draggedItem.index = index;
-        }
-      },
-    });
   
     const [startY, setStartY] = useState(null);
     const [initialOffsetY, setInitialOffsetY] = useState(0);
     const [offsetY, setOffsetY] = useState(image.offsetY || 0);
+    const [localBlur, setLocalBlur] = useState(image.blur || 0);
     
     const handleMouseDown = (e) => {
       if (!isRepositioning) return;
@@ -74,9 +58,16 @@ const DraggableImage = ({
         if (image?.file instanceof File) return URL.createObjectURL(image.file);
         return '';
       }, [image]);
+
+    // Sync local blur with image blur when image file changes (not when blur changes during editing)
+    useEffect(() => {
+      if (image?.blur !== undefined) {
+        setLocalBlur(image.blur);
+      }
+    }, [image?.file]);
   
     return (
-      <div ref={isDraggable ? (node) => ref(drop(node)) : null} className="image-row-card">
+      <div className="image-row-card">
         <div
           className={`draggable-container ${isRepositioning ? 'repositioning' : ''}`}
           onMouseDown={handleMouseDown}
@@ -96,14 +87,11 @@ const DraggableImage = ({
             style={{
               objectFit: 'cover',
               transform: `translateY(${isPrimary ? offsetY : image.offsetY || 0}%)`,
-              transition: isRepositioning ? 'none' : 'transform 0.2s ease-out',
+              transition: isRepositioning ? 'none' : 'transform 0.2s ease-out, filter 0.2s ease-out',
+              filter: isPrimary ? (localBlur ? `blur(${localBlur}px)` : 'none') : (image.blur ? `blur(${image.blur}px)` : 'none'),
             }}
           />
         </div>
-
-        {isPrimary && venueName && (
-          <h1 className="venue-name">{venueName}<span className='orange-dot'>.</span></h1>
-        )}
   
         <div className="image-actions">
           {isPrimary ? (
@@ -113,10 +101,44 @@ const DraggableImage = ({
               </button>
               <button
                 className="btn tertiary"
-                onClick={() => setIsRepositioning((prev) => !prev)}
+                onClick={() => {
+                  setIsRepositioning((prev) => !prev);
+                  if (isRepositioning) setIsBlurring(false);
+                }}
               >
                 {isRepositioning ? 'Save Position' : 'Reposition'}
               </button>
+              <button
+                className="btn tertiary"
+                onClick={() => {
+                  setIsBlurring((prev) => !prev);
+                  if (isBlurring) setIsRepositioning(false);
+                }}
+              >
+                {isBlurring ? 'Save Blur' : 'Blur'}
+              </button>
+              {isBlurring && (
+                <div className="blur-control">
+                  <input
+                    type="range"
+                    min="0"
+                    max="20"
+                    step="0.5"
+                    value={localBlur}
+                    onChange={(e) => {
+                      const newBlur = parseFloat(e.target.value);
+                      setLocalBlur(newBlur);
+                      if (isPrimary && updatePrimaryBlur) {
+                        updatePrimaryBlur(newBlur);
+                      }
+                    }}
+                    className="blur-slider"
+                  />
+                  <span className="blur-value">
+                    {Math.round((localBlur / 20) * 100)}%
+                  </span>
+                </div>
+              )}
             </>
           ) : (
             <button className="btn icon remove" onClick={() => removeImage(index)}>
@@ -124,20 +146,6 @@ const DraggableImage = ({
             </button>
           )}
   
-          {!isPrimary && (
-            <div className="position-select">
-              {Array.from({ length: totalImages }).map((_, i) => (
-                <button
-                  key={i}
-                  className={`btn tiny ${i === index ? 'selected' : ''}`}
-                  onClick={() => moveImage(index, i)}
-                  disabled={i === index}
-                >
-                    {i + 1}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     );
@@ -148,11 +156,11 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
     const [images, setImages] = useState(formData.photos || []);
     const [primaryImage, setPrimaryImage] = useState(
         images[0]
-          ? { file: images[0], offsetY: formData.primaryImageOffsetY || 0 }
+          ? { file: images[0], offsetY: formData.primaryImageOffsetY || 0, blur: formData.primaryImageBlur || 0 }
           : null
       );
-    const [otherImages, setOtherImages] = useState(images.slice(1));
     const [isRepositioning, setIsRepositioning] = useState(false);
+    const [isBlurring, setIsBlurring] = useState(false);
 
     const updatePrimaryOffset = (newOffset /* -50..0 from your drag */) => {
       setPrimaryImage((prev) => ({ ...prev, offsetY: newOffset }));
@@ -161,6 +169,11 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
       // you can allow positive newOffset up to +50 to reach [0..100].
       const percentFromTop = Math.max(0, Math.min(100, 50 + Number(newOffset || 0)));
       handleInputChange?.('primaryImageOffsetY', percentFromTop);
+    };
+
+    const updatePrimaryBlur = (newBlur) => {
+      setPrimaryImage((prev) => ({ ...prev, blur: newBlur }));
+      handleInputChange?.('primaryImageBlur', newBlur);
     };
 
     const toEditorOffset = (percentFromTop) => {
@@ -174,29 +187,34 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
     useEffect(() => {
         handleInputChange(
           'photos',
-          primaryImage ? [primaryImage, ...otherImages] : []
+          primaryImage ? [primaryImage] : []
         );
-      }, [primaryImage, otherImages]);
+      }, [primaryImage]);
 
     useEffect(() => {
       if (images.length > 0) {
         const wrappedImages = images.map((img, i) => {
-          // If it's already an object with offsetY, keep it as-is
-          if (typeof img === 'object' && 'file' in img) return img;
-          // Otherwise construct an object and PRESERVE the DB offset on the first image
+          // If it's already an object with offsetY and blur, keep it as-is
+          if (typeof img === 'object' && 'file' in img) {
+            // Preserve blur from current primaryImage if it exists and file hasn't changed
+            if (i === 0 && primaryImage && img.file === primaryImage.file && primaryImage.blur !== undefined) {
+              return { ...img, blur: primaryImage.blur };
+            }
+            return img;
+          }
+          // Otherwise construct an object and PRESERVE the DB offset and blur on the first image
           const offsetY = i === 0 ? toEditorOffset(formData.primaryImageOffsetY) : 0;
-          return { file: img, offsetY };
+          const blur = i === 0 ? (primaryImage?.blur ?? formData.primaryImageBlur ?? 0) : 0;
+          return { file: img, offsetY, blur };
         });
         // Clamp to MAX_IMAGES if something upstream added too many
         const clamped = wrappedImages.slice(0, MAX_IMAGES);
         if (wrappedImages.length > MAX_IMAGES) {
-          setStepError?.(`You can upload up to ${MAX_IMAGES} images.`);
+          setStepError?.(`You can upload up to ${MAX_IMAGES} image.`);
         }
         setPrimaryImage(clamped[0] || null);
-        setOtherImages(clamped.slice(1));
       } else {
         setPrimaryImage(null);
-        setOtherImages([]);
       }
     }, [images, formData.primaryImageOffsetY, setStepError]);
 
@@ -209,10 +227,11 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
         const overCap = currentCount + Array.from(event.target.files).length > MAX_IMAGES;
       
         if (triedNonImage) setStepError?.('Only image files are allowed.');
-        if (overCap) setStepError?.(`You can upload up to ${MAX_IMAGES} images.`);
+        if (overCap) setStepError?.(`You can upload up to ${MAX_IMAGES} image.`);
       
         if (wrappedFiles.length === 0) return;
-        setImages(prev => [...prev, ...wrappedFiles]);
+        // Replace existing image instead of adding
+        setImages(wrappedFiles);
       };
       
       const handleDrop = (event) => {
@@ -224,10 +243,11 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
         const overCap = currentCount + Array.from(event.dataTransfer.files).length > MAX_IMAGES;
       
         if (triedNonImage) setStepError?.('Only image files are allowed.');
-        if (overCap) setStepError?.(`You can upload up to ${MAX_IMAGES} images.`);
+        if (overCap) setStepError?.(`You can upload up to ${MAX_IMAGES} image.`);
       
         if (wrappedFiles.length === 0) return;
-        setImages(prev => [...prev, ...wrappedFiles]);
+        // Replace existing image instead of adding
+        setImages(wrappedFiles);
       };
 
     const handleDragOver = (event) => {
@@ -236,30 +256,14 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
 
     const handleNext = () => {
         if (images.length === 0) {
-            setStepError('Please upload some images of your venue.');
+            setStepError('Please upload an image of your venue.');
             return;
         }
-        if (images.length < 1) {
-            setStepError('You must upload a minimum of one image.');
-            return;
-        };
         navigate('/venues/add-venue/additional-details');
     };
 
-    const moveImage = (fromIndex, toIndex, newOffsetY = null) => {
-        const updatedImages = [...images];
-        if (newOffsetY !== null && fromIndex === 0 && toIndex === 0) {
-          const updatedPrimary = { ...primaryImage, offsetY: newOffsetY };
-          setPrimaryImage(updatedPrimary);
-          return;
-        }
-        const [movedImage] = updatedImages.splice(fromIndex, 1);
-        updatedImages.splice(toIndex, 0, movedImage);
-        setImages(updatedImages);
-      };
-
     const removeImage = (index) => {
-        setImages(images.filter((_, i) => i !== index));
+        setImages([]);
     };
 
     useEffect(() => {
@@ -269,14 +273,14 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
     }, [formData]);
 
     return (
-        <DndProvider backend={HTML5Backend}>
-            <div className='stage photos'>
+        <div className='stage photos'>
                 <div className="stage-content">
                     <div className="stage-definition">
                         <h1>Show Off Your Venue</h1>
-                        <p className="stage-copy">Upload clear photos that highlight your venue’s space, stage setup, and unique atmosphere. A great first impression starts here.</p>
+                        <p className="stage-copy">Upload a clear photo that highlights your venue's space, stage setup, and unique atmosphere. A great first impression starts here.</p>
                     </div>
                     <div className='photo-space'>
+                      {images.length === 0 && (
                         <div
                             className={`upload ${stepError ? 'error' : ''}`}
                             onDrop={handleDrop}
@@ -285,7 +289,6 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                             <input
                                 type='file'
                                 accept="image/*" 
-                                multiple
                                 onChange={handleFileChange}
                                 onClick={() => setStepError(null)}
                                 style={{ display: 'none' }}
@@ -298,33 +301,27 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                         >
                           <CameraIcon />
                           <div className="text">
-                            <h4>{images.length >= MAX_IMAGES ? `Limit reached (${MAX_IMAGES})` : 'Click here to upload images, or drag and drop them here.'}</h4>
-                            <p>Add at least 1 image.</p>
+                            <h4>{images.length >= MAX_IMAGES ? 'Image uploaded' : 'Click here to upload an image, or drag and drop it here.'}</h4>
+                            <p>Add 1 image.</p>
                           </div>
                         </label>
                         </div>
+                        )}
                         {images.length > 0 && (
                             <>
-                                <h6 className='input-label'>Add your best venue image here</h6>
+                                <h6 className='input-label'>Your venue image</h6>
                                 <div className="primary-image-dropzone">
                                     {primaryImage ? (
                                         <div className="banner-preview">
                                             <DraggableImage
                                                 image={primaryImage}
                                                 index={0}
-                                                moveImage={(fromIndex, toIndex) => {
-                                                    if (fromIndex !== 0) {
-                                                    const imageToMove = otherImages[fromIndex - 1];
-                                                    const updatedOthers = otherImages.filter((_, i) => i !== fromIndex - 1);
-                                                    setPrimaryImage(imageToMove);
-                                                    setOtherImages([primaryImage, ...updatedOthers]);
-                                                    }
-                                                }}
+                                                moveImage={() => {}}
                                                 removeImage={() => {
                                                     setPrimaryImage(null);
-                                                    setImages([...otherImages]);
+                                                    setImages([]);
                                                 }}
-                                                totalImages={images.length}
+                                                totalImages={1}
                                                 isPrimary={true}
                                                 isRepositioning={isRepositioning}
                                                 setIsRepositioning={(updater) => {
@@ -341,29 +338,18 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                                                 }}
                                                 updatePrimaryOffset={updatePrimaryOffset}
                                                 venueName={formData?.name}
+                                                updatePrimaryBlur={updatePrimaryBlur}
+                                                isBlurring={isBlurring}
+                                                setIsBlurring={setIsBlurring}
                                             />
                                         </div>
                                     ) : (
                                         <div
                                             className="upload empty-primary"
                                         >
-                                            <h4>Drag a photo here to make it your primary image</h4>
+                                            <h4>Drag a photo here</h4>
                                         </div>
                                     )}
-                                </div>
-                                <h6 className='input-label'>Arrange your other images here</h6>
-                                <div className='preview'>
-                                    {otherImages.map((image, index) => (
-                                        <DraggableImage
-                                          key={`image-${index}`}
-                                          image={image}
-                                          index={index + 1}
-                                          moveImage={moveImage}
-                                          removeImage={removeImage}
-                                          totalImages={images.length}
-                                          isPrimary={false}
-                                        />
-                                    ))}
                                 </div>
                             </>
                         )}
@@ -376,7 +362,6 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                     <button className='btn primary' onClick={handleNext}>Continue</button>
                 </div>
             </div>
-        </DndProvider>
     );
 };
 

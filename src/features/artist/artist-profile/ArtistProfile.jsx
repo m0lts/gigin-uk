@@ -34,6 +34,8 @@ import { sanitizeArtistPermissions } from '@services/utils/permissions';
 import Portal from '@features/shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
+import exampleProfileImage from '@assets/images/musician-profile-example.png';
+import { UpdateIcon } from '../../shared/ui/extras/Icons';
 
 const BRIGHTNESS_DEFAULT = 100;
 const BRIGHTNESS_RANGE = 40; // slider distance from neutral
@@ -252,6 +254,8 @@ const ArtistProfileComponent = ({
   const [showPrimaryProfileModal, setShowPrimaryProfileModal] = useState(false); // Modal for selecting primary profile
   const [selectedPrimaryProfile, setSelectedPrimaryProfile] = useState(null); // Selected profile for primary
   const [settingPrimary, setSettingPrimary] = useState(false); // Loading state for setting primary
+  const [showUpdateModal, setShowUpdateModal] = useState(false); // Modal for new profile updates
+  const [updatingProfile, setUpdatingProfile] = useState(false); // Loading state for updating profile
 
   // In viewer mode, use the viewerProfile prop instead of user's artistProfiles
   const artistProfiles = viewerMode && viewerProfile 
@@ -3793,6 +3797,18 @@ const ArtistProfileComponent = ({
     }
   }, [currentState, artistProfiles.length, user?.primaryProfileSet, viewerMode, authLoading, user]);
 
+  // Check if user needs to see the update modal (newProfileUpdate field is true)
+  useEffect(() => {
+    if (viewerMode || authLoading || !user) return;
+    if (currentState !== ArtistProfileState.CREATING) return;
+    if (!activeProfileData?.id && !activeProfileData?.profileId) return;
+    
+    // Check if newProfileUpdate is true
+    if (activeProfileData?.newProfileUpdate === true) {
+      setShowUpdateModal(true);
+    }
+  }, [activeProfileData?.newProfileUpdate, currentState, viewerMode, authLoading, user, activeProfileData?.id, activeProfileData?.profileId]);
+
   // Handle setting primary profile
   const handleSetPrimaryProfile = async () => {
     if (!selectedPrimaryProfile) return;
@@ -3818,6 +3834,26 @@ const ArtistProfileComponent = ({
       toast.error(errorMessage);
     } finally {
       setSettingPrimary(false);
+    }
+  };
+
+  // Handle closing the update modal and updating the profile
+  const handleCloseUpdateModal = async () => {
+    const profileId = activeProfileData?.id || activeProfileData?.profileId;
+    if (!profileId) {
+      setShowUpdateModal(false);
+      return;
+    }
+
+    setUpdatingProfile(true);
+    try {
+      await updateArtistProfileDocument(profileId, { newProfileUpdate: false });
+      setShowUpdateModal(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      toast.error('Failed to update profile. Please try again.');
+    } finally {
+      setUpdatingProfile(false);
     }
   };
 
@@ -4157,6 +4193,35 @@ const ArtistProfileComponent = ({
                     onClick={handleSetPrimaryProfile}
                   >
                     {settingPrimary ? 'Setting Primary...' : 'Set as Primary'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Profile Update Modal - Shows when newProfileUpdate is true */}
+      {showUpdateModal && (
+        <Portal>
+          <div className="modal profile-update" onClick={handleCloseUpdateModal}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <UpdateIcon />
+                <h2>New Artist Profiles!</h2>
+                <p>We've upgraded how Artist Profiles look. Below is an example of what your new profile will look like. You may need to finish creating your profile to see the new look.</p>
+              </div>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+                <div className="example-profile-container" style={{ width: '70%', height: 'auto', objectFit: 'contain', borderRadius: '1rem', overflow: 'hidden' }}>
+                  <img src={exampleProfileImage} alt="Example Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '1rem' }} />
+                </div>
+                <div className="two-buttons">
+                  <button
+                    className="btn primary"
+                    disabled={updatingProfile}
+                    onClick={handleCloseUpdateModal}
+                  >
+                    {updatingProfile ? 'Updating...' : 'Update Profile'}
                   </button>
                 </div>
               </div>
