@@ -3,8 +3,8 @@
  * Component for Tech Rider, Members, and About sections
  */
 
-import { useState, useEffect } from 'react';
-import { MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, EditIcon, AddMember } from "../../../shared/ui/extras/Icons";
+import { useState, useEffect, useMemo } from 'react';
+import { MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, EditIcon, AddMember, LeftChevronIcon, RightArrowIcon, PlusIconSolid, CloseIcon, ExitIcon } from "../../../shared/ui/extras/Icons";
 import { updateArtistProfileDocument, getArtistProfileMembers, updateArtistProfileMemberPermissions, getArtistProfilePendingInvites } from "@services/client-side/artists";
 import { createArtistInvite, removeArtistMember } from "@services/api/artists";
 import { sendArtistInviteEmail } from "@services/client-side/emails";
@@ -35,6 +35,125 @@ const UK_CITIES = [
   'Slough', 'Southampton', 'Southend-on-Sea', 'Stirling', 'Stoke-on-Trent', 'Swindon', 'Truro', 'Wolverhampton',
   'Worcester', 'York'
 ];
+
+// Instrument types for tech rider
+const INSTRUMENT_TYPES = [
+  'Vocals',
+  'Drums',
+  'Keys',
+  'Guitar',
+  'Bass',
+  'Tenor Sax',
+  'Alto Sax',
+  'Soprano Sax',
+  'Trumpet',
+  'Trombone',
+  'Other',
+  'Playback'
+];
+
+// Instrument-specific question configurations
+const INSTRUMENT_QUESTIONS = {
+  'Vocals': [
+    { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true },
+    { key: 'needsMicStand', type: 'yesno', label: 'Need mic stand provided?', notes: true },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Drums': [
+    { key: 'needsDrumKit', type: 'yesno', label: 'Need drum kit provided?', notes: true },
+    { key: 'needsCymbals', type: 'yesno', label: 'Need cymbals provided?', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsMicStand', type: 'yesno', label: 'Needs stand provided?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Keys': [
+    { key: 'bringingKeyboard', type: 'yesno', label: 'Bringing keyboard?', notes: false },
+    { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
+    { key: 'needsKeyboardStand', type: 'yesno', label: 'Need keyboard stand provided?', notes: true },
+    { key: 'hasSeat', type: 'yesno', label: 'Have seat (if needed)?', notes: false },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Guitar': [
+    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
+    { key: 'needsAmp', type: 'yesno', label: 'Need amp provided?', notes: true },
+    { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Bass': [
+    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
+    { key: 'needsAmp', type: 'yesno', label: 'Need amp provided?', notes: true },
+    { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Tenor Sax': [
+    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Need mic provided? (in case horns need amplification)', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMicForSinging', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Alto Sax': [
+    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Need mic provided? (in case horns need amplification)', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMicForSinging', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Soprano Sax': [
+    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Need mic provided? (in case horns need amplification)', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMicForSinging', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Trumpet': [
+    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Need mic provided? (in case horns need amplification)', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMicForSinging', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Trombone': [
+    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Need mic provided? (in case horns need amplification)', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMicForSinging', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Other': [
+    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
+    { key: 'needsAmp', type: 'yesno', label: 'Need amp provided?', notes: true },
+    { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
+    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
+    { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ],
+  'Playback': [
+    { key: 'hasPrerecordedSounds', type: 'yesno', label: 'Have pre-recorded sounds?', notes: false },
+    { key: 'bringingLaptopPhone', type: 'yesno', label: 'Bringing laptop/phone and connectivity?', notes: false, dependsOn: { key: 'hasPrerecordedSounds', value: true } },
+    { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
+    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
+    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+  ]
+};
 
 async function geocodeCity(city) {
   if (!city || city.trim().length < 2) return null;
@@ -88,6 +207,23 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
   const [inviteEmail, setInviteEmail] = useState('');
   const [isSendingInvite, setIsSendingInvite] = useState(false);
 
+  // State for Tech Rider section
+  const [techRiderStage, setTechRiderStage] = useState(1); // 1-6 stages
+  const [techRiderData, setTechRiderData] = useState({
+    lineup: [],
+    performerDetails: [],
+    extraNotes: '',
+    stageArrangement: {
+      performers: [],
+      stageWidth: null,
+      stageDepth: null
+    },
+    isComplete: false
+  });
+  const [loadingTechRider, setLoadingTechRider] = useState(false);
+  const [savingTechRider, setSavingTechRider] = useState(false);
+  const [currentPerformerIndex, setCurrentPerformerIndex] = useState(0); // For Stage 2 substages
+
   // Initialize state from profileData
   useEffect(() => {
     if (type === 'about' && profileData) {
@@ -129,6 +265,40 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
       setHasChanges(changed);
     }
   }, [type, artistType, selectedGenres, city, cityCoordinates, travelDistance, profileData]);
+
+  // Initialize tech rider data from profileData
+  useEffect(() => {
+    if (type === 'tech-rider' && profileData?.techRider) {
+      setTechRiderData({
+        lineup: profileData.techRider.lineup || [],
+        performerDetails: profileData.techRider.performerDetails || [],
+        extraNotes: profileData.techRider.extraNotes || '',
+        stageArrangement: profileData.techRider.stageArrangement || {
+          performers: [],
+          stageWidth: null,
+          stageDepth: null
+        },
+        isComplete: profileData.techRider.isComplete || false
+      });
+      // If tech rider exists, start at stage 1 but allow navigation
+      setTechRiderStage(1);
+    } else if (type === 'tech-rider' && !profileData?.techRider) {
+      // Reset to empty state
+      setTechRiderData({
+        lineup: [],
+        performerDetails: [],
+        extraNotes: '',
+        stageArrangement: {
+          performers: [],
+          stageWidth: null,
+          stageDepth: null
+        },
+        isComplete: false
+      });
+      setTechRiderStage(1);
+    }
+  }, [type, profileData]);
+
 
   // Fetch members and pending invites when Members section is opened
   useEffect(() => {
@@ -814,6 +984,701 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Tech Rider Handlers
+  const handleTechRiderStageChange = (newStage) => {
+    if (newStage >= 1 && newStage <= 6) {
+      setTechRiderStage(newStage);
+      if (newStage === 2) {
+        setCurrentPerformerIndex(0);
+      }
+    }
+  };
+
+  const handleAddPerformer = () => {
+    const newPerformer = {
+      performerId: null,
+      performerName: '',
+      instruments: [],
+      isMember: false,
+      memberId: null
+    };
+    setTechRiderData(prev => ({
+      ...prev,
+      lineup: [...prev.lineup, newPerformer],
+      performerDetails: [...prev.performerDetails, {}]
+    }));
+  };
+
+  const handleRemovePerformer = (index) => {
+    setTechRiderData(prev => {
+      const newLineup = prev.lineup.filter((_, i) => i !== index);
+      const newDetails = prev.performerDetails.filter((_, i) => i !== index);
+      // Also remove from stage arrangement
+      const newArrangement = {
+        ...prev.stageArrangement,
+        performers: prev.stageArrangement.performers.filter(p => p.lineupIndex !== index)
+          .map(p => p.lineupIndex > index ? { ...p, lineupIndex: p.lineupIndex - 1 } : p)
+      };
+      return {
+        ...prev,
+        lineup: newLineup,
+        performerDetails: newDetails,
+        stageArrangement: newArrangement
+      };
+    });
+  };
+
+  const handleUpdatePerformer = (index, updates) => {
+    setTechRiderData(prev => {
+      const newLineup = [...prev.lineup];
+      newLineup[index] = { ...newLineup[index], ...updates };
+      return { ...prev, lineup: newLineup };
+    });
+  };
+
+  const handleAddInstrument = (performerIndex) => {
+    const performer = techRiderData.lineup[performerIndex];
+    const currentInstruments = performer.instruments || [];
+    handleUpdatePerformer(performerIndex, { instruments: [...currentInstruments, ''] });
+  };
+
+  const handleUpdateInstrument = (performerIndex, instrumentIndex, instrumentValue) => {
+    const performer = techRiderData.lineup[performerIndex];
+    const currentInstruments = [...(performer.instruments || [])];
+    currentInstruments[instrumentIndex] = instrumentValue;
+    // Remove empty strings from the array
+    const filteredInstruments = currentInstruments.filter(i => i !== '');
+    handleUpdatePerformer(performerIndex, { instruments: filteredInstruments });
+  };
+
+  const handleRemoveInstrument = (performerIndex, instrumentIndex) => {
+    const performer = techRiderData.lineup[performerIndex];
+    const currentInstruments = [...(performer.instruments || [])];
+    currentInstruments.splice(instrumentIndex, 1);
+    handleUpdatePerformer(performerIndex, { instruments: currentInstruments });
+  };
+
+  const handleUpdatePerformerDetails = (index, updates) => {
+    setTechRiderData(prev => {
+      const newDetails = [...prev.performerDetails];
+      newDetails[index] = { ...newDetails[index], ...updates };
+      return { ...prev, performerDetails: newDetails };
+    });
+  };
+
+  const handleAddMemberFromLineup = async (performerIndex) => {
+    const performer = techRiderData.lineup[performerIndex];
+    if (!performer || !performer.performerName || !performer.performerName.includes('@')) {
+      toast.error('Please enter a valid email address for the performer');
+      return;
+    }
+
+    try {
+      setIsSendingInvite(true);
+      const sanitizedPermissions = sanitizeArtistPermissions({ ...ARTIST_PERM_DEFAULTS });
+      
+      const invite = await createArtistInvite({
+        artistProfileId: profileId,
+        email: performer.performerName.trim(),
+        permissionsInput: sanitizedPermissions,
+        invitedByName: user?.name || null,
+      });
+
+      if (invite?.inviteId) {
+        const link = `${window.location.origin}/join-artist?invite=${invite.inviteId}`;
+        await sendArtistInviteEmail({
+          to: performer.performerName.trim(),
+          artistProfile: { name: profileData?.name || 'your artist profile' },
+          link,
+        });
+        toast.success(`Invitation sent to ${performer.performerName}`);
+      }
+    } catch (error) {
+      console.error('Error sending invite:', error);
+      toast.error('Failed to send invite. Please try again.');
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
+
+  const handleSaveTechRider = async () => {
+    if (!profileId || savingTechRider) return;
+
+    setSavingTechRider(true);
+    try {
+      const techRiderPayload = {
+        ...techRiderData,
+        lastUpdated: new Date().toISOString(),
+        version: 1
+      };
+
+      await updateArtistProfileDocument(profileId, {
+        techRider: techRiderPayload
+      });
+
+      toast.success('Tech rider saved successfully');
+    } catch (error) {
+      console.error('Failed to save tech rider:', error);
+      toast.error('Failed to save tech rider. Please try again.');
+    } finally {
+      setSavingTechRider(false);
+    }
+  };
+
+  // Auto-populate lineup from members when tech rider is first opened (only if lineup is empty and no existing tech rider)
+  useEffect(() => {
+    if (type === 'tech-rider' && profileId) {
+      const fetchAndPopulate = async () => {
+        try {
+          const membersList = await getArtistProfileMembers(profileId);
+          setMembers(membersList);
+          
+          // Only auto-populate if tech rider doesn't exist yet and lineup is empty
+          if (membersList.length > 0 && !profileData?.techRider) {
+            setTechRiderData(prev => {
+              // Only populate if lineup is still empty
+              if (prev.lineup.length === 0) {
+                const lineupFromMembers = membersList.map(member => ({
+                  performerId: member.userId || member.id,
+                  performerName: member.userName || member.userEmail || 'Unknown',
+                  instruments: [],
+                  isMember: true,
+                  memberId: member.id
+                }));
+                const detailsFromMembers = membersList.map(() => ({}));
+                
+                return {
+                  ...prev,
+                  lineup: lineupFromMembers,
+                  performerDetails: detailsFromMembers
+                };
+              }
+              return prev;
+            });
+          }
+        } catch (error) {
+          console.error('Failed to fetch members for tech rider:', error);
+        }
+      };
+      fetchAndPopulate();
+    }
+  }, [type, profileId, profileData?.techRider]); // Only run when type, profileId, or techRider existence changes
+
+  // Render Tech Rider section
+  if (type === 'tech-rider') {
+    return (
+      <div className="additional-info-section">
+        <div className="section-header">
+          <div className="title">
+            {getIcon()}
+            <h3>{getTitle()}</h3>
+          </div>
+          {canEdit && (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                className="btn primary"
+                onClick={handleSaveTechRider}
+                disabled={savingTechRider}
+              >
+                {savingTechRider ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="section-content">
+          {/* Stage 1: Lineup */}
+          {techRiderStage === 1 && (
+            <div className="tech-rider-stage">
+              <h4>Lineup</h4>
+              
+              {techRiderData.lineup.map((performer, index) => {
+                // Check if this performer is the profile owner
+                const isProfileOwner = performer.isMember && performer.performerId === profileData?.userId;
+                
+                return (
+                <div key={index} className="tech-rider-performer-row">
+                  {/* Single row: Name input, Instrument dropdowns, and Remove button */}
+                  <div className="tech-rider-performer-content">
+                    <div className="tech-rider-performer-name-field">
+                      <label className="label tech-rider-performer-name-label">Performer Name</label>
+                      <input
+                        type="text"
+                        className="input tech-rider-performer-name-input"
+                        value={performer.performerName}
+                        onChange={(e) => handleUpdatePerformer(index, { performerName: e.target.value })}
+                        disabled={!canEdit || performer.isMember}
+                        placeholder="Enter performer name or email"
+                      />
+                    </div>
+
+                    <div className="tech-rider-instruments-container">
+                      {/* First instrument with plus button inline */}
+                      <div className="tech-rider-instrument-row">
+                        <div className="tech-rider-instrument-field">
+                          <label className="label tech-rider-instrument-label">Instrument{performer.instruments.length <= 1 ? '' : 's'}</label>
+                          <select
+                            className="input tech-rider-instrument-select"
+                            value={(performer.instruments && performer.instruments[0]) || ''}
+                            onChange={(e) => handleUpdateInstrument(index, 0, e.target.value)}
+                            disabled={!canEdit}
+                          >
+                            <option value="">Select instrument</option>
+                            {INSTRUMENT_TYPES.map((inst) => (
+                              <option key={inst} value={inst}>
+                                {inst}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {canEdit && (
+                          <button
+                            className="btn icon tech-rider-add-instrument-btn"
+                            onClick={() => handleAddInstrument(index)}
+                            title="Add another instrument"
+                          >
+                            <PlusIconSolid />
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Additional instruments below, each with minus button */}
+                      {performer.instruments && performer.instruments.length > 1 && performer.instruments.slice(1).map((instrument, instIndex) => (
+                        <div key={instIndex + 1} className="tech-rider-instrument-row">
+                          <div className="tech-rider-instrument-field">
+                            <select
+                              className="input tech-rider-instrument-select"
+                              value={instrument || ''}
+                              onChange={(e) => handleUpdateInstrument(index, instIndex + 1, e.target.value)}
+                              disabled={!canEdit}
+                            >
+                              <option value="">Select instrument</option>
+                              {INSTRUMENT_TYPES.map((inst) => (
+                                <option key={inst} value={inst}>
+                                  {inst}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {canEdit && (
+                            <button
+                              className="btn icon tech-rider-remove-instrument-btn"
+                              onClick={() => handleRemoveInstrument(index, instIndex + 1)}
+                              title="Remove instrument"
+                            >
+                              <CloseIcon />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Remove button - don't show for profile owner */}
+                    {canEdit && !isProfileOwner && (
+                      <div className="tech-rider-remove-performer-wrapper">
+                        <button
+                          className="btn danger small tech-rider-remove-performer-btn"
+                          onClick={() => handleRemovePerformer(index)}
+                          title="Remove performer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )})}
+
+              {canEdit && (
+                <button
+                  className="btn secondary tech-rider-add-performer-btn"
+                  onClick={handleAddPerformer}
+                >
+                  <PlusIconSolid /> Add Performer
+                </button>
+              )}
+
+              {canEdit && techRiderData.lineup.length > 0 && (
+                <div className="tech-rider-stage-nav">
+                  <button
+                    className="btn artist-profile"
+                    onClick={() => handleTechRiderStageChange(2)}
+                  >
+                    Next <RightArrowIcon />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Stage 2: Performer Details */}
+          {techRiderStage === 2 && (
+            <div className="tech-rider-stage">
+              <h4>
+                {techRiderData.lineup[currentPerformerIndex]?.performerName || `Performer ${currentPerformerIndex + 1}`}'s Performer Details
+              </h4>
+              
+              {techRiderData.lineup.length === 0 ? (
+                <div>
+                  <p>Please add performers in Stage 1 first.</p>
+                  <button
+                    className="btn artist-profile"
+                    onClick={() => handleTechRiderStageChange(1)}
+                  >
+                    Go to Stage 1
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Questions for current performer's instruments */}
+                  {techRiderData.lineup[currentPerformerIndex]?.instruments?.map((instrument) => {
+                    const questions = INSTRUMENT_QUESTIONS[instrument] || [];
+                    const details = techRiderData.performerDetails[currentPerformerIndex] || {};
+                    const instrumentDetails = details[instrument] || {};
+
+                    return (
+                      <div key={instrument} className="tech-rider-instrument-questions">
+                        {questions.map((question) => {
+                          // Check if question should be shown based on dependencies
+                          if (question.dependsOn) {
+                            const dependsValue = instrumentDetails[question.dependsOn.key];
+                            if (dependsValue !== question.dependsOn.value) {
+                              return null;
+                            }
+                          }
+
+                          const questionKey = `${instrument}_${question.key}`;
+                          const currentValue = instrumentDetails[question.key];
+
+                          if (question.type === 'yesno') {
+                            const isRequired = question.key !== 'extraNotes';
+                            return (
+                              <div key={questionKey} className="tech-rider-question-field">
+                                <label className="label">
+                                  {question.label}
+                                  {isRequired && <span className="required-asterisk">*</span>}
+                                </label>
+                                <div className={`tech-rider-yesno-radio ${!question.notes ? 'no-notes' : ''}`}>
+                                  <label className={`tech-rider-radio-option ${currentValue === true ? 'selected' : ''}`}>
+                                    <input
+                                      type="radio"
+                                      name={questionKey}
+                                      checked={currentValue === true}
+                                      onChange={() => {
+                                        const newDetails = { ...instrumentDetails, [question.key]: true };
+                                        handleUpdatePerformerDetails(currentPerformerIndex, {
+                                          ...details,
+                                          [instrument]: newDetails
+                                        });
+                                      }}
+                                      disabled={!canEdit}
+                                    />
+                                    <span>Yes</span>
+                                  </label>
+                                  <label className={`tech-rider-radio-option ${currentValue === false ? 'selected' : ''}`}>
+                                    <input
+                                      type="radio"
+                                      name={questionKey}
+                                      checked={currentValue === false}
+                                      onChange={() => {
+                                        const newDetails = { ...instrumentDetails, [question.key]: false };
+                                        handleUpdatePerformerDetails(currentPerformerIndex, {
+                                          ...details,
+                                          [instrument]: newDetails
+                                        });
+                                      }}
+                                      disabled={!canEdit}
+                                    />
+                                    <span>No</span>
+                                  </label>
+                                </div>
+                                {question.notes && (
+                                  <textarea
+                                    className="input tech-rider-notes-textarea"
+                                    placeholder="Notes (optional)"
+                                    value={instrumentDetails[`${question.key}_notes`] || ''}
+                                    onChange={(e) => {
+                                      const newDetails = { ...instrumentDetails, [`${question.key}_notes`]: e.target.value };
+                                      handleUpdatePerformerDetails(currentPerformerIndex, {
+                                        ...details,
+                                        [instrument]: newDetails
+                                      });
+                                    }}
+                                    disabled={!canEdit}
+                                    rows={2}
+                                  />
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (question.type === 'number') {
+                            const isRequired = question.key !== 'extraNotes';
+                            const labelText = question.key === 'needsPowerSockets' 
+                              ? 'Number of power sockets required'
+                              : question.label;
+                            return (
+                              <div key={questionKey} className="tech-rider-question-field">
+                                <label className="label">
+                                  {labelText}
+                                  {isRequired && <span className="required-asterisk">*</span>}
+                                </label>
+                                <input
+                                  type="number"
+                                  className="input"
+                                  min="0"
+                                  value={currentValue ?? 0}
+                                  onChange={(e) => {
+                                    const newDetails = { ...instrumentDetails, [question.key]: parseInt(e.target.value) || 0 };
+                                    handleUpdatePerformerDetails(currentPerformerIndex, {
+                                      ...details,
+                                      [instrument]: newDetails
+                                    });
+                                  }}
+                                  disabled={!canEdit}
+                                />
+                                {question.notes && (
+                                  <textarea
+                                    className="input tech-rider-notes-textarea"
+                                    placeholder="Notes (optional)"
+                                    value={instrumentDetails[`${question.key}_notes`] || ''}
+                                    onChange={(e) => {
+                                      const newDetails = { ...instrumentDetails, [`${question.key}_notes`]: e.target.value };
+                                      handleUpdatePerformerDetails(currentPerformerIndex, {
+                                        ...details,
+                                        [instrument]: newDetails
+                                      });
+                                    }}
+                                    disabled={!canEdit}
+                                    rows={2}
+                                  />
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (question.type === 'text') {
+                            const isRequired = question.key !== 'extraNotes';
+                            return (
+                              <div key={questionKey} className="tech-rider-question-field">
+                                <label className="label">
+                                  {question.label}
+                                  {isRequired && <span className="required-asterisk">*</span>}
+                                </label>
+                                <textarea
+                                  className="input tech-rider-notes-textarea"
+                                  value={currentValue || ''}
+                                  onChange={(e) => {
+                                    const newDetails = { ...instrumentDetails, [question.key]: e.target.value };
+                                    handleUpdatePerformerDetails(currentPerformerIndex, {
+                                      ...details,
+                                      [instrument]: newDetails
+                                    });
+                                  }}
+                                  disabled={!canEdit}
+                                  rows={3}
+                                />
+                              </div>
+                            );
+                          }
+
+                          return null;
+                        })}
+                      </div>
+                    );
+                  })}
+
+                  {techRiderData.lineup[currentPerformerIndex]?.instruments?.length === 0 && (
+                    <p className="tech-rider-empty-message">
+                      Please add instruments for this performer in Stage 1.
+                    </p>
+                  )}
+
+                  <div className="tech-rider-stage-actions">
+                    <button
+                      className="btn tertiary"
+                      onClick={() => {
+                        if (currentPerformerIndex > 0) {
+                          setCurrentPerformerIndex(currentPerformerIndex - 1);
+                        } else {
+                          handleTechRiderStageChange(1);
+                        }
+                      }}
+                    >
+                      <LeftChevronIcon /> Back
+                    </button>
+                    <button
+                      className="btn artist-profile"
+                      onClick={() => {
+                        if (currentPerformerIndex < techRiderData.lineup.length - 1) {
+                          setCurrentPerformerIndex(currentPerformerIndex + 1);
+                        } else {
+                          handleTechRiderStageChange(3);
+                        }
+                      }}
+                    >
+                      {currentPerformerIndex < techRiderData.lineup.length - 1 ? 'Next Performer' : 'Next: Extra Notes'} <RightArrowIcon />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Stage 3: Extra Notes */}
+          {techRiderStage === 3 && (
+            <div className="tech-rider-stage">
+              <h4>Stage 3: Extra Notes</h4>
+              <textarea
+                className="input"
+                value={techRiderData.extraNotes}
+                onChange={(e) => setTechRiderData(prev => ({ ...prev, extraNotes: e.target.value }))}
+                disabled={!canEdit}
+                rows={8}
+                placeholder="Enter any additional notes about your technical requirements..."
+              />
+              <div className="tech-rider-stage-actions">
+                <button
+                  className="btn tertiary"
+                  onClick={() => handleTechRiderStageChange(2)}
+                >
+                  <LeftChevronIcon /> Back
+                </button>
+                <button
+                  className="btn artist-profile"
+                  onClick={() => handleTechRiderStageChange(4)}
+                >
+                  Next: Stage Map <RightArrowIcon />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 4: Map of Performers */}
+          {techRiderStage === 4 && (
+            <div className="tech-rider-stage">
+              <h4>Stage 4: Map of Performers</h4>
+              <div className="tech-rider-stage-map-placeholder">
+                <p>Stage arrangement visual editor coming soon</p>
+              </div>
+              <div className="tech-rider-stage-actions">
+                <button
+                  className="btn tertiary"
+                  onClick={() => handleTechRiderStageChange(3)}
+                >
+                  <LeftChevronIcon /> Back
+                </button>
+                <button
+                  className="btn artist-profile"
+                  onClick={() => handleTechRiderStageChange(5)}
+                >
+                  Next: Add Members <RightArrowIcon />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 5: Add Members */}
+          {techRiderStage === 5 && (
+            <div className="tech-rider-stage">
+              <h4>Stage 5: Add Members to Artist Profile</h4>
+              
+              {techRiderData.lineup.filter(p => !p.isMember && p.performerName && p.performerName.includes('@')).map((performer, index) => {
+                const lineupIndex = techRiderData.lineup.findIndex(p => p === performer);
+                return (
+                  <div key={lineupIndex} className="tech-rider-member-invite-card">
+                    <div className="tech-rider-member-invite-content">
+                      <div>
+                        <strong>{performer.performerName}</strong>
+                        <p className="tech-rider-member-invite-status">
+                          Not a member yet
+                        </p>
+                      </div>
+                      {canEdit && isOwner && (
+                        <button
+                          className="btn artist-profile small"
+                          onClick={() => handleAddMemberFromLineup(lineupIndex)}
+                          disabled={isSendingInvite}
+                        >
+                          {isSendingInvite ? 'Sending...' : 'Send Invite'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {techRiderData.lineup.filter(p => !p.isMember && p.performerName && p.performerName.includes('@')).length === 0 && (
+                <p className="tech-rider-empty-message">
+                  All performers are already members, or no performers with email addresses were found.
+                </p>
+              )}
+
+              <div className="tech-rider-stage-actions">
+                <button
+                  className="btn tertiary"
+                  onClick={() => handleTechRiderStageChange(4)}
+                >
+                  <LeftChevronIcon /> Back
+                </button>
+                <button
+                  className="btn artist-profile"
+                  onClick={() => handleTechRiderStageChange(6)}
+                >
+                  Next: Info <RightArrowIcon />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 6: Info */}
+          {techRiderStage === 6 && (
+            <div className="tech-rider-stage">
+              <h4 className="stage-title">Stage 6: Information</h4>
+              <div className="tech-rider-info-content">
+                <h5 className="tech-rider-info-section">What is a Tech Rider?</h5>
+                <p className="tech-rider-info-text">
+                  A tech rider is a document that outlines your technical requirements for live performances. 
+                  It helps venues understand what equipment you need and what you&apos;ll be bringing yourself.
+                </p>
+
+                <h5 className="tech-rider-info-section">How It Works</h5>
+                <p className="tech-rider-info-text">
+                  When you apply for a gig, we&apos;ll automatically compare your tech rider with the venue&apos;s available equipment. 
+                  You&apos;ll see a summary showing what the venue can provide and what you&apos;ll need to bring or arrange.
+                </p>
+
+                <h5 className="tech-rider-info-section">Tips</h5>
+                <ul className="tech-rider-info-list">
+                  <li>Be as detailed as possible in your notes</li>
+                  <li>Update your tech rider if your setup changes</li>
+                  <li>Include power requirements for all equipment</li>
+                  <li>Specify any special positioning needs</li>
+                </ul>
+              </div>
+              <div className="tech-rider-stage-actions">
+                <button
+                  className="btn tertiary"
+                  onClick={() => handleTechRiderStageChange(5)}
+                >
+                  <LeftChevronIcon /> Back
+                </button>
+                <button
+                  className="btn artist-profile"
+                  onClick={() => {
+                    setTechRiderData(prev => ({ ...prev, isComplete: true }));
+                    handleSaveTechRider();
+                  }}
+                >
+                  Complete Tech Rider
+                </button>
+              </div>
             </div>
           )}
         </div>

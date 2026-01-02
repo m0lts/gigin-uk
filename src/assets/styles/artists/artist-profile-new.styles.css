@@ -4594,3 +4594,291 @@
   }
 }
 
+/* Tech Rider Styles */
+.tech-rider-stage {
+  width: 100%;
+}
+
+.tech-rider-stage h3 {
+  margin-bottom: 0.5rem;
+}
+
+.tech-rider-stage h4 {
+  margin-bottom: 0.5rem;
+}
+
+.tech-rider-stage h4.stage-title {
+  margin-bottom: 1rem;
+}
+
+.tech-rider-performer-row {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--gn-grey-300);
+  background: var(--gn-grey-200);
+  border-radius: 8px;
+}
+
+.tech-rider-performer-content {
+  display: flex;
+  gap: 1rem;
+  align-items: space-between;
+}
+
+.tech-rider-performer-name-field {
+  width: 200px;
+}
+
+.tech-rider-performer-name-label {
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.tech-rider-performer-name-input {
+  font-size: 0.9rem;
+}
+
+.tech-rider-instruments-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tech-rider-instrument-row {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.tech-rider-instrument-label {
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.tech-rider-instrument-select {
+  font-size: 0.9rem;
+}
+
+.tech-rider-remove-instrument-btn {
+  margin-bottom: 0.8rem;
+  margin-left: 0.5rem;
+  padding: 0 !important;
+}
+
+.tech-rider-remove-instrument-btn .icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--gn-red);
+}
+
+
+.tech-rider-add-instrument-btn {
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: auto;
+  height: fit-content;
+  margin-bottom: 0.9rem;
+  margin-left: 0.5rem;
+}
+
+
+.tech-rider-remove-performer-wrapper {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.25rem;
+}
+
+.tech-rider-remove-performer-btn {
+  align-self: center;
+}
+
+.tech-rider-stage-nav {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+
+.tech-rider-instrument-questions {
+  margin-bottom: 2rem;
+}
+
+.tech-rider-instrument-title {
+  margin-bottom: 1rem;
+}
+
+.tech-rider-question-field {
+  margin-bottom: 1rem;
+}
+
+.tech-rider-yesno-radio {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.tech-rider-yesno-radio.no-notes {
+  margin-bottom: 0;
+}
+
+.tech-rider-radio-option {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--gn-grey-400);
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: var(--gn-off-black);
+  cursor: pointer;
+  transition: outline-color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+  background: var(--gn-white);
+}
+
+.tech-rider-radio-option:hover {
+  border-color: var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.tech-rider-radio-option.selected {
+  border-color: var(--gn-off-black);
+  outline-color: var(--gn-off-black);
+  background: var(--gn-off-black);
+  color: var(--gn-white);
+}
+
+.tech-rider-radio-option input[type="radio"] {
+  display: none;
+}
+
+.tech-rider-radio-option span {
+  user-select: none;
+}
+
+.tech-rider-notes-textarea {
+  margin-top: 0.5rem;
+  width: 100%;
+  resize: none;
+  height: 60px;
+}
+
+.required-asterisk {
+  color: var(--gn-red);
+  margin-left: 0.25rem;
+}
+
+.tech-rider-empty-message {
+  color: var(--gn-grey-600);
+}
+
+.tech-rider-stage-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+}
+
+.tech-rider-stage-map-placeholder {
+  border: 2px dashed var(--gn-grey-300);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gn-grey-500);
+}
+
+.tech-rider-member-invite-card {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--gn-grey-200);
+  border-radius: 8px;
+}
+
+.tech-rider-member-invite-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tech-rider-member-invite-status {
+  font-size: 0.85rem;
+  color: var(--gn-grey-600);
+  margin: 0.25rem 0 0 0;
+}
+
+.tech-rider-info-content {
+  line-height: 1.6;
+}
+
+.tech-rider-info-section {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.tech-rider-info-text {
+  margin-bottom: 1rem;
+  color: var(--gn-grey-700);
+}
+
+.tech-rider-info-list {
+  margin-bottom: 1rem;
+  color: var(--gn-grey-700);
+  padding-left: 1.5rem;
+}
+
+/* Dark mode for tech rider */
+.dark-mode .tech-rider-performer-row {
+  border-color: var(--gn-grey-700);
+}
+
+
+.dark-mode .tech-rider-stage-map-placeholder {
+  border-color: var(--gn-grey-700);
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .tech-rider-member-invite-card {
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .tech-rider-empty-message {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .tech-rider-radio-option {
+  border-color: var(--gn-grey-700);
+  background: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-radio-option:hover {
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .tech-rider-radio-option.selected {
+  border-color: var(--gn-white);
+  outline-color: var(--gn-white);
+  background: var(--gn-white);
+  color: var(--gn-black);
+}
+
+.dark-mode .tech-rider-member-invite-status {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .tech-rider-info-text {
+  color: var(--gn-grey-300);
+}
+
+.dark-mode .tech-rider-info-list {
+  color: var(--gn-grey-300);
+}
+
