@@ -1944,6 +1944,35 @@
   align-items: center;
 }
 
+.member-actions .input {
+  width: 200px;
+  padding: 10px 5px;
+  border: 1px solid var(--gn-grey-400);
+  border-radius: 5px;
+  background-color: var(--gn-white);
+  transition: all 0.1s ease-in-out;
+  font-size: 1rem;
+}
+
+.member-actions .input:focus {
+  border: 1px solid var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.tech-rider-invite-btn {
+  padding: 0.4rem 0.75rem;
+}
+
+.tech-rider-stage-subtext {
+  color: var(--gn-grey-600);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.dark-mode .tech-rider-stage-subtext {
+  color: var(--gn-grey-400);
+}
+
 .edit-permissions-btn,
 .remove-member-btn {
   background: transparent;
@@ -4599,18 +4628,6 @@
   width: 100%;
 }
 
-.tech-rider-stage h3 {
-  margin-bottom: 0.5rem;
-}
-
-.tech-rider-stage h4 {
-  margin-bottom: 0.5rem;
-}
-
-.tech-rider-stage h4.stage-title {
-  margin-bottom: 1rem;
-}
-
 .tech-rider-performer-row {
   margin-bottom: 0.75rem;
   padding: 0.75rem;
@@ -4703,6 +4720,17 @@
 }
 
 
+.tech-rider-stage h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem 0;
+  color: var(--gn-off-black);
+}
+
+.dark-mode .tech-rider-stage h4 {
+  color: var(--gn-white);
+}
+
 .tech-rider-instrument-questions {
   margin-bottom: 2rem;
 }
@@ -4715,14 +4743,36 @@
   margin-bottom: 1rem;
 }
 
-.tech-rider-yesno-radio {
+.tech-rider-yesno-radio-container {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.5rem;
+  align-items: center;
   margin-bottom: 0.5rem;
 }
 
-.tech-rider-yesno-radio.no-notes {
+.tech-rider-yesno-radio-container.no-notes {
   margin-bottom: 0;
+}
+
+.tech-rider-yesno-radio {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tech-rider-number-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.tech-rider-number-input-container.no-notes {
+  margin-bottom: 0;
+}
+
+.tech-rider-number-input {
+  width: fit-content;
+  min-width: 80px;
 }
 
 .tech-rider-radio-option {
@@ -4767,6 +4817,29 @@
   height: 60px;
 }
 
+.tech-rider-notes-textarea-inline {
+  flex: 1;
+  resize: none;
+  height: 38px;
+  padding: 0.5rem;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
+.tech-rider-extra-notes-textarea {
+  width: 100%;
+  resize: none;
+  height: 38px;
+  padding: 0.5rem;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
+.tech-rider-extra-notes-stage-textarea {
+  width: 100%;
+  resize: none;
+}
+
 .required-asterisk {
   color: var(--gn-red);
   margin-left: 0.25rem;
@@ -4782,16 +4855,164 @@
   margin-top: 1.5rem;
 }
 
-.tech-rider-stage-map-placeholder {
-  border: 2px dashed var(--gn-grey-300);
+.tech-rider-stage-map-container {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 200px;
+  margin-bottom: 1.5rem;
+}
+
+.tech-rider-stage-area {
+  flex: 0 0 65%;
+  position: relative;
+  border: 1px solid var(--gn-grey-400);
   border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
-  min-height: 300px;
+  background: var(--gn-grey-100);
+  min-height: 200px;
+  cursor: crosshair;
+}
+
+.tech-rider-stage-map-container.view-mode .tech-rider-stage-area {
+  flex: 0 0 100%;
+  cursor: default;
+}
+
+.tech-rider-stage-area.view-mode {
+  cursor: default;
+}
+
+.tech-rider-stage-front {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: var(--gn-grey-300);
+  border-top: 1px solid var(--gn-grey-500);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gn-grey-500);
+}
+
+.tech-rider-stage-performer {
+  position: absolute;
+  cursor: move;
+  z-index: 10;
+}
+
+.tech-rider-stage-performer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-400);
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  border-radius: 0.5rem;
+  min-width: 80px;
+  max-width: 100%;
+  position: relative;
+  transition: outline-color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+}
+
+.tech-rider-stage-performer-content .icon {
+  font-size: 1rem;
+  color: var(--gn-off-black);
+}
+
+.tech-rider-stage-performer-name {
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-align: center;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 70px;
+  line-height: 1.2;
+}
+
+.tech-rider-stage-performer-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s ease;
+}
+
+.tech-rider-stage-performer-remove:hover {
+  opacity: 0.7;
+}
+
+.tech-rider-stage-performer-remove .icon {
+  color: var(--gn-red);
+  font-size: 0.8rem !important;
+}
+
+.tech-rider-stage-performer-list {
+  flex: 0 0 35%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+.tech-rider-stage-performer-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--gn-white);
+  border: 1px solid var(--gn-grey-400);
+  outline: 1px solid transparent;
+  outline-offset: -2px;
+  border-radius: 0.5rem;
+  cursor: grab;
+  transition: outline-color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+  text-align: left;
+  width: fit-content;
+  font-weight: 500;
+  color: var(--gn-off-black);
+  font-size: 0.75rem;
+}
+
+.tech-rider-stage-performer-button:not(:disabled):hover {
+  border-color: var(--gn-off-black);
+  outline: 1px solid var(--gn-off-black);
+}
+
+.tech-rider-stage-performer-button:active {
+  cursor: grabbing;
+}
+
+.tech-rider-stage-performer-button:disabled,
+.tech-rider-stage-performer-button.on-stage {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--gn-grey-200);
+}
+
+.tech-rider-stage-performer-button .icon {
+  font-size: 1rem;
+  color: var(--gn-off-black);
+  flex-shrink: 0;
+}
+
+.tech-rider-stage-performer-button span {
+  font-weight: 500;
+  color: var(--gn-off-black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
 }
 
 .tech-rider-member-invite-card {
@@ -4839,9 +5060,56 @@
 }
 
 
-.dark-mode .tech-rider-stage-map-placeholder {
+.dark-mode .tech-rider-stage-area {
+  background: var(--gn-grey-900);
   border-color: var(--gn-grey-700);
-  color: var(--gn-grey-400);
+}
+
+.dark-mode .tech-rider-stage-front {
+  background: var(--gn-grey-800);
+  border-top-color: var(--gn-grey-600);
+  color: var(--gn-grey-300);
+}
+
+.dark-mode .tech-rider-stage-performer-content {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .tech-rider-stage-performer-content:hover {
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .tech-rider-stage-performer-content .icon {
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-stage-performer-name {
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-stage-performer-list h6 {
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-stage-performer-button {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-stage-performer-button:not(:disabled):hover {
+  border-color: var(--gn-white);
+  outline: 1px solid var(--gn-white);
+}
+
+.dark-mode .tech-rider-stage-performer-button .icon {
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-stage-performer-button span {
+  color: var(--gn-white);
 }
 
 .dark-mode .tech-rider-member-invite-card {

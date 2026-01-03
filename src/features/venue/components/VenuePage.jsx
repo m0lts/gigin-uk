@@ -24,6 +24,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMusicianProfilesByIds, getArtistProfileMembers } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
 import { AmpIcon, BassIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon, TechRiderIcon, SaveIcon, SavedIcon, ShareIcon, EditIcon, MoreInformationIcon } from '../../shared/ui/extras/Icons';
+import { TechRiderEquipmentCard } from '../../shared/ui/tech-rider/TechRiderEquipmentCard';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
@@ -159,6 +160,211 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
 
     const closeFullscreen = () => {
         setFullscreenImage(null);
+    };
+
+    const renderTechRider = () => {
+        if (!venueData?.techRider) {
+            return <p>The venue has not listed any tech rider information.</p>;
+        }
+
+        const { soundSystem, backline, houseRules } = venueData.techRider;
+        const equipmentItems = [];
+        const equipmentNotes = [];
+
+        // PA
+        if (soundSystem?.pa) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="pa"
+                    equipmentName="PA"
+                    available={soundSystem.pa.available}
+                />
+            );
+            if (soundSystem.pa.notes) {
+                equipmentNotes.push({ name: 'PA', notes: soundSystem.pa.notes });
+            }
+        }
+
+        // Mixing Console
+        if (soundSystem?.mixingConsole) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="mixingConsole"
+                    equipmentName="Mixing Console"
+                    available={soundSystem.mixingConsole.available}
+                />
+            );
+            if (soundSystem.mixingConsole.notes) {
+                equipmentNotes.push({ name: 'Mixing Console', notes: soundSystem.mixingConsole.notes });
+            }
+        }
+
+        // Vocal Mics
+        if (soundSystem?.vocalMics) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="vocalMics"
+                    equipmentName="Vocal Mics"
+                    count={soundSystem.vocalMics.count}
+                />
+            );
+            if (soundSystem.vocalMics.notes) {
+                equipmentNotes.push({ name: 'Vocal Mics', notes: soundSystem.vocalMics.notes });
+            }
+        }
+
+        // DI Boxes
+        if (soundSystem?.diBoxes) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="diBoxes"
+                    equipmentName="DI Boxes"
+                    count={soundSystem.diBoxes.count}
+                />
+            );
+            if (soundSystem.diBoxes.notes) {
+                equipmentNotes.push({ name: 'DI Boxes', notes: soundSystem.diBoxes.notes });
+            }
+        }
+
+        // Drum Kit
+        if (backline?.drumKit) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="drumKit"
+                    equipmentName="Drum Kit"
+                    available={backline.drumKit.available}
+                />
+            );
+            if (backline.drumKit.notes) {
+                equipmentNotes.push({ name: 'Drum Kit', notes: backline.drumKit.notes });
+            }
+        }
+
+        // Bass Amp
+        if (backline?.bassAmp) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="bassAmp"
+                    equipmentName="Bass Amp"
+                    available={backline.bassAmp.available}
+                />
+            );
+            if (backline.bassAmp.notes) {
+                equipmentNotes.push({ name: 'Bass Amp', notes: backline.bassAmp.notes });
+            }
+        }
+
+        // Guitar Amp
+        if (backline?.guitarAmp) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="guitarAmp"
+                    equipmentName="Guitar Amp"
+                    available={backline.guitarAmp.available}
+                />
+            );
+            if (backline.guitarAmp.notes) {
+                equipmentNotes.push({ name: 'Guitar Amp', notes: backline.guitarAmp.notes });
+            }
+        }
+
+        // Keyboard
+        if (backline?.keyboard) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="keyboard"
+                    equipmentName="Keyboard"
+                    available={backline.keyboard.available}
+                />
+            );
+            if (backline.keyboard.notes) {
+                equipmentNotes.push({ name: 'Keyboard', notes: backline.keyboard.notes });
+            }
+        }
+
+        return (
+            <>
+                <div className="tech-rider-grid">
+                    {equipmentItems}
+                </div>
+                
+                {/* Volume Level and Noise Curfew */}
+                {(houseRules?.volumeLevel || houseRules?.noiseCurfew) && (
+                    <div className="tech-rider-volume-curfew">
+                        {houseRules.volumeLevel && (
+                            <div className="tech-rider-volume-curfew-item">
+                                <h6>Volume Level</h6>
+                                <p>{houseRules.volumeLevel.charAt(0).toUpperCase() + houseRules.volumeLevel.slice(1)}</p>
+                                {houseRules.volumeNotes && (
+                                    <p style={{ fontSize: '0.875rem', color: 'var(--gn-grey-600)', marginTop: '0.25rem' }}>{houseRules.volumeNotes}</p>
+                                )}
+                            </div>
+                        )}
+                        {houseRules.noiseCurfew && (
+                            <div className="tech-rider-volume-curfew-item">
+                                <h6>Noise Curfew</h6>
+                                <p>{houseRules.noiseCurfew}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Equipment Notes */}
+                {equipmentNotes.length > 0 && (
+                    <div className="tech-rider-notes-section">
+                        <h6>Equipment Notes</h6>
+                        {equipmentNotes.map((item, index) => (
+                            <div key={index}>
+                                <p><strong>{item.name}:</strong> {item.notes}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Other Note Fields */}
+                {(soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules) && (
+                    <div className="tech-rider-notes-section">
+                        {soundSystem?.monitoring && (
+                            <div>
+                                <h6>Monitoring</h6>
+                                <p>{soundSystem.monitoring}</p>
+                            </div>
+                        )}
+                        {soundSystem?.cables && (
+                            <div>
+                                <h6>Cables</h6>
+                                <p>{soundSystem.cables}</p>
+                            </div>
+                        )}
+                        {backline?.other && (
+                            <div>
+                                <h6>Other Backline</h6>
+                                <p>{backline.other}</p>
+                            </div>
+                        )}
+                        {backline?.stageSize && (
+                            <div>
+                                <h6>Stage Size</h6>
+                                <p>{backline.stageSize}</p>
+                            </div>
+                        )}
+                        {houseRules?.powerAccess && (
+                            <div>
+                                <h6>Power Access</h6>
+                                <p>{houseRules.powerAccess}</p>
+                            </div>
+                        )}
+                        {houseRules?.houseRules && (
+                            <div>
+                                <h6>House Rules</h6>
+                                <p>{houseRules.houseRules}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </>
+        );
     };
 
     const showNextImage = (e) => {
@@ -660,10 +866,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     {/* Content Box - Changes based on active tab */}
                                     {activeContentTab === 'tech-rider' && (
                                         <div className="venue-content-section">
-                                            <div className="coming-soon-content">
-                                                <h3>Tech Rider</h3>
-                                                <p>Coming Soon</p>
-                                            </div>
+                                            {renderTechRider()}
                                         </div>
                                     )}
                                     {activeContentTab === 'location' && (

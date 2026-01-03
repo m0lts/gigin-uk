@@ -42,6 +42,31 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         equipmentAvailable: '',
         equipment: [],
         equipmentInformation: '',
+        techRider: {
+            soundSystem: {
+                pa: { available: '', notes: '' },
+                mixingConsole: { available: '', notes: '' },
+                vocalMics: { count: '', notes: '' },
+                diBoxes: { count: '', notes: '' },
+                monitoring: '',
+                cables: ''
+            },
+            backline: {
+                drumKit: { available: '', notes: '' },
+                bassAmp: { available: '', notes: '' },
+                guitarAmp: { available: '', notes: '' },
+                keyboard: { available: '', notes: '' },
+                other: '',
+                stageSize: ''
+            },
+            houseRules: {
+                volumeLevel: '',
+                volumeNotes: '',
+                noiseCurfew: '',
+                powerAccess: '',
+                houseRules: ''
+            }
+        },
         photos: [],
         extraInformation: '',
         description: '',
@@ -85,6 +110,31 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 equipmentAvailable: venue.equipmentAvailable || '',
                 equipment: venue.equipment || [],
                 equipmentInformation: venue.equipmentInformation || '',
+                techRider: venue.techRider || {
+                    soundSystem: {
+                        pa: { available: '', notes: '' },
+                        mixingConsole: { available: '', notes: '' },
+                        vocalMics: { count: '', notes: '' },
+                        diBoxes: { count: '', notes: '' },
+                        monitoring: '',
+                        cables: ''
+                    },
+                    backline: {
+                        drumKit: { available: '', notes: '' },
+                        bassAmp: { available: '', notes: '' },
+                        guitarAmp: { available: '', notes: '' },
+                        keyboard: { available: '', notes: '' },
+                        other: '',
+                        stageSize: ''
+                    },
+                    houseRules: {
+                        volumeLevel: '',
+                        volumeNotes: '',
+                        noiseCurfew: '',
+                        powerAccess: '',
+                        houseRules: ''
+                    }
+                },
                 photos: photos || [],
                 extraInformation: venue.extraInformation || '',
                 description: venue.description || '',
@@ -110,7 +160,11 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             ...formData,
             [field]: value
         });
-        setStepError(null)
+        // Don't clear stepError if it's a techRider update and there's already an error
+        // This prevents validation errors from being cleared immediately
+        if (field !== 'techRider' || !stepError) {
+            setStepError(null);
+        }
     };
 
     useEffect(() => {
@@ -369,8 +423,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             formData.name &&
             formData.address &&
             formData.coordinates &&
-            formData.establishment &&
-            (!isPublic || (formData.equipmentAvailable))
+            formData.establishment
           ) {
             redirectToStep(photoStep);
           }
@@ -380,14 +433,12 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         // Step 5 — additional info (only if Public Establishment)
         const finalStep = isPublic ? 5 : 4;
         if (step === finalStep) {
-          const step3Valid = !isPublic || (formData.equipmentAvailable);
           const step4Valid = formData.photos.length > 0;
           if (
             formData.name &&
             formData.address &&
             formData.coordinates &&
             formData.establishment &&
-            step3Valid &&
             step4Valid
           ) {
             redirectToStep(finalStep);
@@ -403,7 +454,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
               formData.address &&
               formData.coordinates &&
               formData.establishment &&
-              (!isPublic || formData.equipmentAvailable) &&
               step4Valid &&
               step5Valid
             ) {
@@ -429,10 +479,27 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         return baseValid;
       };
     
-    const isStep3Complete = () =>
-    formData.type === 'Public Establishment'
-        ? formData.equipmentAvailable
-        : true;
+    const isStep3Complete = () => {
+        if (formData.type !== 'Public Establishment') {
+            return true; // Step 3 doesn't exist for non-public establishments
+        }
+        
+        // Check if all required tech rider fields are filled
+        const techRider = formData.techRider || {};
+        const soundSystem = techRider.soundSystem || {};
+        const backline = techRider.backline || {};
+        
+        return (
+            soundSystem.pa?.available &&
+            soundSystem.mixingConsole?.available &&
+            (soundSystem.vocalMics?.count !== '' && soundSystem.vocalMics?.count !== null && soundSystem.vocalMics?.count !== undefined) &&
+            (soundSystem.diBoxes?.count !== '' && soundSystem.diBoxes?.count !== null && soundSystem.diBoxes?.count !== undefined) &&
+            backline.drumKit?.available &&
+            backline.bassAmp?.available &&
+            backline.guitarAmp?.available &&
+            backline.keyboard?.available
+        );
+    };
     
     const isStep4Complete = () => formData.photos.length > 0;
     
@@ -538,7 +605,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                                     onClick={() => handleStepClick(3)}
                                 >
                                     <div className='circle'>{isStep3Complete() ? <TickIcon /> : 3}</div>
-                                    Any In House Equipment?
+                                    Tech Rider
                                 </li>
                                 )}
 

@@ -35,7 +35,8 @@ import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
 import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
-import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid } from '../shared/ui/extras/Icons';
+import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid, WarningIcon } from '../shared/ui/extras/Icons';
+import { TechRiderEquipmentCard } from '../shared/ui/tech-rider/TechRiderEquipmentCard';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { ProfileCreator } from '../artist/profile-creator/ProfileCreator';
 import { NoProfileModal } from '../artist/components/NoProfileModal';
@@ -925,7 +926,374 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const formatSlotName = (name = '') => {
         const match = name.match(/\(([^)]+)\)/);
         return match ? match[1] : '';
-      };
+    };
+
+    const checkTechRiderMismatches = () => {
+        if (!selectedProfile?.techRider || !venueProfile?.techRider) {
+            return [];
+        }
+
+        const artistTechRider = selectedProfile.techRider;
+        const venueTechRider = venueProfile.techRider;
+        const mismatches = [];
+
+        // Extract artist equipment needs
+        const artistNeeds = {
+            needsDrumKit: false,
+            needsBassAmp: false,
+            needsGuitarAmp: false,
+            needsKeyboard: false,
+            needsMic: false,
+            needsMicCount: 0,
+            needsDIBoxes: 0,
+            needsPA: true, // Assume PA is always needed for live performance
+            needsMixingConsole: true, // Assume mixing console is always needed
+        };
+
+        // Check lineup and performer details
+        if (artistTechRider.lineup && artistTechRider.performerDetails) {
+            artistTechRider.lineup.forEach((performer, index) => {
+                const details = artistTechRider.performerDetails[index];
+                if (!details) return;
+
+                const instruments = performer.instruments || [];
+                
+                instruments.forEach(instrument => {
+                    const instrumentLower = instrument.toLowerCase();
+                    
+                    // Check for drum kit
+                    if (instrumentLower.includes('drum')) {
+                        if (details.Drums?.needsDrumKit === true) {
+                            artistNeeds.needsDrumKit = true;
+                        }
+                    }
+                    
+                    // Check for bass amp (if bass instrument is present)
+                    if (instrumentLower.includes('bass') && !instrumentLower.includes('drum')) {
+                        artistNeeds.needsBassAmp = true;
+                    }
+                    
+                    // Check for guitar amp (if guitar instrument is present)
+                    if (instrumentLower.includes('guitar')) {
+                        artistNeeds.needsGuitarAmp = true;
+                    }
+                    
+                    // Check for keyboard/piano
+                    if (instrumentLower.includes('keyboard') || instrumentLower.includes('piano') || instrumentLower.includes('keys')) {
+                        artistNeeds.needsKeyboard = true;
+                    }
+                });
+
+                // Check for mic needs (vocalists or singers)
+                if (details.Vocals?.needsMic === true || details.singing === true) {
+                    artistNeeds.needsMic = true;
+                    artistNeeds.needsMicCount += 1;
+                }
+                
+                // Check for DI boxes in various instrument details
+                if (details.Drums?.needsDIBoxes && typeof details.Drums.needsDIBoxes === 'number') {
+                    artistNeeds.needsDIBoxes += details.Drums.needsDIBoxes;
+                }
+                if (details.Bass?.needsDIBoxes && typeof details.Bass.needsDIBoxes === 'number') {
+                    artistNeeds.needsDIBoxes += details.Bass.needsDIBoxes;
+                }
+                if (details.Guitar?.needsDIBoxes && typeof details.Guitar.needsDIBoxes === 'number') {
+                    artistNeeds.needsDIBoxes += details.Guitar.needsDIBoxes;
+                }
+                if (details.Keyboard?.needsDIBoxes && typeof details.Keyboard.needsDIBoxes === 'number') {
+                    artistNeeds.needsDIBoxes += details.Keyboard.needsDIBoxes;
+                }
+                if (details.Piano?.needsDIBoxes && typeof details.Piano.needsDIBoxes === 'number') {
+                    artistNeeds.needsDIBoxes += details.Piano.needsDIBoxes;
+                }
+            });
+        }
+
+        // Compare with venue availability
+        // PA
+        if (artistNeeds.needsPA && venueTechRider.soundSystem?.pa?.available === 'no') {
+            mismatches.push('PA System');
+        }
+
+        // Mixing Console
+        if (artistNeeds.needsMixingConsole && venueTechRider.soundSystem?.mixingConsole?.available === 'no') {
+            mismatches.push('Mixing Console');
+        }
+
+        // Vocal Mics
+        if (artistNeeds.needsMic) {
+            const venueMicCount = parseInt(venueTechRider.soundSystem?.vocalMics?.count || '0');
+            if (venueMicCount < artistNeeds.needsMicCount) {
+                mismatches.push(`Vocal Mics (need ${artistNeeds.needsMicCount}, venue has ${venueMicCount})`);
+            }
+        }
+
+        // DI Boxes
+        if (artistNeeds.needsDIBoxes > 0) {
+            const venueDICount = parseInt(venueTechRider.soundSystem?.diBoxes?.count || '0');
+            if (venueDICount < artistNeeds.needsDIBoxes) {
+                mismatches.push(`DI Boxes (need ${artistNeeds.needsDIBoxes}, venue has ${venueDICount})`);
+            }
+        }
+
+        // Drum Kit
+        if (artistNeeds.needsDrumKit && venueTechRider.backline?.drumKit?.available === 'no') {
+            mismatches.push('Drum Kit');
+        }
+
+        // Bass Amp
+        if (artistNeeds.needsBassAmp && venueTechRider.backline?.bassAmp?.available === 'no') {
+            mismatches.push('Bass Amp');
+        }
+
+        // Guitar Amp
+        if (artistNeeds.needsGuitarAmp && venueTechRider.backline?.guitarAmp?.available === 'no') {
+            mismatches.push('Guitar Amp');
+        }
+
+        // Keyboard
+        if (artistNeeds.needsKeyboard && venueTechRider.backline?.keyboard?.available === 'no') {
+            mismatches.push('Keyboard');
+        }
+
+        return mismatches;
+    };
+
+    const formatTechRiderWarningText = (mismatches) => {
+        if (mismatches.length === 0) return '';
+        
+        // Clean up mismatch strings to get just the equipment names
+        const equipmentNames = mismatches.map(mismatch => {
+            // Remove count information if present (e.g., "Vocal Mics (need 2, venue has 1)" -> "vocal mics")
+            const cleaned = mismatch.split('(')[0].trim().toLowerCase();
+            // Handle special cases
+            if (cleaned.includes('pa system')) return 'a PA system';
+            if (cleaned.includes('mixing console')) return 'a mixing console';
+            if (cleaned.includes('vocal mics')) return 'microphones';
+            if (cleaned.includes('di boxes')) return 'DI boxes';
+            if (cleaned.includes('drum kit')) return 'a drum kit';
+            if (cleaned.includes('bass amp')) return 'a bass amp';
+            if (cleaned.includes('guitar amp')) return 'a guitar amp';
+            if (cleaned.includes('keyboard')) return 'a keyboard';
+            return `a ${cleaned}`;
+        });
+
+        if (equipmentNames.length === 1) {
+            return `The venue does not have ${equipmentNames[0]} available for use.`;
+        } else if (equipmentNames.length === 2) {
+            return `The venue does not have ${equipmentNames[0]} or ${equipmentNames[1]} available for use.`;
+        } else {
+            // For 3 or more, use Oxford comma
+            const lastItem = equipmentNames[equipmentNames.length - 1];
+            const otherItems = equipmentNames.slice(0, -1).join(', ');
+            return `The venue does not have ${otherItems}, or ${lastItem} available for use.`;
+        }
+    };
+
+    const renderTechRider = () => {
+        if (!venueProfile?.techRider) {
+            return <p>The venue has not listed any tech rider information.</p>;
+        }
+
+        const { soundSystem, backline, houseRules } = venueProfile.techRider;
+        const equipmentItems = [];
+        const equipmentNotes = [];
+
+        // PA
+        if (soundSystem?.pa) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="pa"
+                    equipmentName="PA"
+                    available={soundSystem.pa.available}
+                />
+            );
+            if (soundSystem.pa.notes) {
+                equipmentNotes.push({ name: 'PA', notes: soundSystem.pa.notes });
+            }
+        }
+
+        // Mixing Console
+        if (soundSystem?.mixingConsole) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="mixingConsole"
+                    equipmentName="Mixing Console"
+                    available={soundSystem.mixingConsole.available}
+                />
+            );
+            if (soundSystem.mixingConsole.notes) {
+                equipmentNotes.push({ name: 'Mixing Console', notes: soundSystem.mixingConsole.notes });
+            }
+        }
+
+        // Vocal Mics
+        if (soundSystem?.vocalMics) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="vocalMics"
+                    equipmentName="Vocal Mics"
+                    count={soundSystem.vocalMics.count}
+                />
+            );
+            if (soundSystem.vocalMics.notes) {
+                equipmentNotes.push({ name: 'Vocal Mics', notes: soundSystem.vocalMics.notes });
+            }
+        }
+
+        // DI Boxes
+        if (soundSystem?.diBoxes) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="diBoxes"
+                    equipmentName="DI Boxes"
+                    count={soundSystem.diBoxes.count}
+                />
+            );
+            if (soundSystem.diBoxes.notes) {
+                equipmentNotes.push({ name: 'DI Boxes', notes: soundSystem.diBoxes.notes });
+            }
+        }
+
+        // Drum Kit
+        if (backline?.drumKit) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="drumKit"
+                    equipmentName="Drum Kit"
+                    available={backline.drumKit.available}
+                />
+            );
+            if (backline.drumKit.notes) {
+                equipmentNotes.push({ name: 'Drum Kit', notes: backline.drumKit.notes });
+            }
+        }
+
+        // Bass Amp
+        if (backline?.bassAmp) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="bassAmp"
+                    equipmentName="Bass Amp"
+                    available={backline.bassAmp.available}
+                />
+            );
+            if (backline.bassAmp.notes) {
+                equipmentNotes.push({ name: 'Bass Amp', notes: backline.bassAmp.notes });
+            }
+        }
+
+        // Guitar Amp
+        if (backline?.guitarAmp) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="guitarAmp"
+                    equipmentName="Guitar Amp"
+                    available={backline.guitarAmp.available}
+                />
+            );
+            if (backline.guitarAmp.notes) {
+                equipmentNotes.push({ name: 'Guitar Amp', notes: backline.guitarAmp.notes });
+            }
+        }
+
+        // Keyboard
+        if (backline?.keyboard) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="keyboard"
+                    equipmentName="Keyboard"
+                    available={backline.keyboard.available}
+                />
+            );
+            if (backline.keyboard.notes) {
+                equipmentNotes.push({ name: 'Keyboard', notes: backline.keyboard.notes });
+            }
+        }
+
+        return (
+            <>
+                <div className="tech-rider-grid">
+                    {equipmentItems}
+                </div>
+                
+                {/* Volume Level and Noise Curfew */}
+                {(houseRules?.volumeLevel || houseRules?.noiseCurfew) && (
+                    <div className="tech-rider-volume-curfew">
+                        {houseRules.volumeLevel && (
+                            <div className="tech-rider-volume-curfew-item">
+                                <h6>Volume Level</h6>
+                                <p>{houseRules.volumeLevel.charAt(0).toUpperCase() + houseRules.volumeLevel.slice(1)}</p>
+                                {houseRules.volumeNotes && (
+                                    <p style={{ fontSize: '0.875rem', color: 'var(--gn-grey-600)', marginTop: '0.25rem' }}>{houseRules.volumeNotes}</p>
+                                )}
+                            </div>
+                        )}
+                        {houseRules.noiseCurfew && (
+                            <div className="tech-rider-volume-curfew-item">
+                                <h6>Noise Curfew</h6>
+                                <p>{houseRules.noiseCurfew}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Equipment Notes */}
+                {equipmentNotes.length > 0 && (
+                    <div className="tech-rider-notes-section">
+                        <h6>Equipment Notes</h6>
+                        {equipmentNotes.map((item, index) => (
+                            <div key={index}>
+                                <p><strong>{item.name}:</strong> {item.notes}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Other Note Fields */}
+                {(soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules) && (
+                    <div className="tech-rider-notes-section">
+                        {soundSystem?.monitoring && (
+                            <div>
+                                <h6>Monitoring</h6>
+                                <p>{soundSystem.monitoring}</p>
+                            </div>
+                        )}
+                        {soundSystem?.cables && (
+                            <div>
+                                <h6>Cables</h6>
+                                <p>{soundSystem.cables}</p>
+                            </div>
+                        )}
+                        {backline?.other && (
+                            <div>
+                                <h6>Other Backline</h6>
+                                <p>{backline.other}</p>
+                            </div>
+                        )}
+                        {backline?.stageSize && (
+                            <div>
+                                <h6>Stage Size</h6>
+                                <p>{backline.stageSize}</p>
+                            </div>
+                        )}
+                        {houseRules?.powerAccess && (
+                            <div>
+                                <h6>Power Access</h6>
+                                <p>{houseRules.powerAccess}</p>
+                            </div>
+                        )}
+                        {houseRules?.houseRules && (
+                            <div>
+                                <h6>House Rules</h6>
+                                <p>{houseRules.houseRules}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </>
+        );
+    };
 
     const now = new Date();
     const isFutureOpen = getLocalGigDateTime(gigData) > now && (gigData?.status || '').toLowerCase() !== 'closed';
@@ -1087,14 +1455,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             </div>
                                         </div>
                                     </div>
-                                    <div className='equipment'>
-                                        <h4 className="subtitle">Gig Description</h4>
-                                        <p className='detail-text'>
-                                            {gigData.technicalInformation !== '' && (
-                                                gigData.technicalInformation
-                                            )}
-                                        </p>    
-                                    </div>
+                                    {gigData.technicalInformation !== '' && (
+                                        <div className='equipment'>
+                                            <h4 className="subtitle">Gig Description</h4>
+                                            <p className='detail-text'>
+                                                  {gigData.technicalInformation !== '' && (
+                                                    gigData.technicalInformation
+                                                  )}
+                                            </p>    
+                                        </div>
+                                    )}
                                     <div className='timeline'>
                                         <h4 className='subtitle'>Gig Timeline</h4>
                                         {gigData.startTime && (
@@ -1131,27 +1501,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         )}
                                     </div>
                                     <div className='equipment'>
-                                        <h4>Equipment Available at {gigData.venue.venueName}</h4>
-                                        {venueProfile?.equipmentAvailable === 'yes' ? (
-                                            <>
-                                                <div className="equipment-grid">
-                                                    {venueProfile.equipment.map((e) => (
-                                                        <span className="equipment-item" key={e}>
-                                                            {formatEquipmentIcon(e)}
-                                                            {e}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                                {venueProfile?.equipmentInformation && (
-                                                    <div className="equipment-notes" style={{ marginTop: '1rem' }}>
-                                                        <h6>EQUIPMENT INFORMATION</h6>
-                                                        <p>{venueProfile?.equipmentInformation}</p>
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <p>The venue has not listed any equipment for use.</p>
-                                        )}
+                                        <h4>{venueProfile?.name || gigData.venue.venueName}'s Tech Rider</h4>
+                                        {renderTechRider()}
                                     </div>
                                     {venueProfile?.description && (
                                         <div className='description'>
@@ -1336,10 +1687,24 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     <div className="status-box permissions">
                                                                         <PermissionsIcon />
                                                                         <p>
-                                                                            You don’t have permission to manage gigs for this artist profile. Please contact the profile owner.
+                                                                            You don't have permission to manage gigs for this artist profile. Please contact the profile owner.
                                                                         </p>
                                                                     </div>
                                                                 )}
+
+                                                                {/* Tech Rider Mismatch Warning */}
+                                                                {selectedProfile && hasAccessToPrivateGig && (() => {
+                                                                    const mismatches = checkTechRiderMismatches();
+                                                                    if (mismatches.length > 0) {
+                                                                        return (
+                                                                            <div className="tech-rider-warning">
+                                                                                <WarningIcon />
+                                                                                <p>{formatTechRiderWarningText(mismatches)}</p>
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    return null;
+                                                                })()}
                                                             </>
 
                                                         )
@@ -1532,27 +1897,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 </div>
                                 <div className="section">
                                     <div className='equipment'>
-                                        <h4>Equipment Available at {gigData.venue.venueName}</h4>
-                                        {venueProfile?.equipmentAvailable === 'yes' ? (
-                                            <>
-                                                <div className="equipment-grid">
-                                                    {venueProfile.equipment.map((e) => (
-                                                        <span className="equipment-item" key={e}>
-                                                            {formatEquipmentIcon(e)}
-                                                            {e}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                                {venueProfile?.equipmentInformation && (
-                                                    <div className="equipment-notes" style={{ marginTop: '1rem' }}>
-                                                        <h6>EQUIPMENT INFORMATION</h6>
-                                                        <p>{venueProfile?.equipmentInformation}</p>
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <p>The venue has not listed any equipment for use.</p>
-                                        )}
+                                        <h4>{venueProfile?.name || gigData.venue.venueName}'s Tech Rider</h4>
+                                        {renderTechRider()}
                                     </div>
                                 </div>
                                 <div className="section">
@@ -1697,6 +2043,27 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         <span className="active-profile-name">{selectedProfile.name || 'Unnamed Profile'}</span>
                                                     </div>
                                                 )}
+                                                {/* Tech Rider Mismatch Warning */}
+                                                {selectedProfile && hasAccessToPrivateGig && (() => {
+                                                    const mismatches = checkTechRiderMismatches();
+                                                    if (mismatches.length > 0) {
+                                                        return (
+                                                            <div className="status-box tech-rider-warning">
+                                                                <ErrorIcon />
+                                                                <div>
+                                                                    <h6>Equipment Mismatch</h6>
+                                                                    <p>The venue may not have all the equipment you need:</p>
+                                                                    <ul>
+                                                                        {mismatches.map((mismatch, index) => (
+                                                                            <li key={index}>{mismatch}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                                 <div className='action-box-buttons'>
                                                     {isFutureOpen  ? (
                                                         applyingToGig ? (
@@ -1761,6 +2128,20 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
                                                                     </div>
                                                                 )}
+
+                                                                {/* Tech Rider Mismatch Warning */}
+                                                                {selectedProfile && hasAccessToPrivateGig && (() => {
+                                                                    const mismatches = checkTechRiderMismatches();
+                                                                    if (mismatches.length > 0) {
+                                                                        return (
+                                                                            <div className="tech-rider-warning">
+                                                                                <WarningIcon />
+                                                                                <p>{formatTechRiderWarningText(mismatches)}</p>
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    return null;
+                                                                })()}
                                                             </>
 
                                                         )

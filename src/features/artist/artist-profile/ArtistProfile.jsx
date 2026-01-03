@@ -3553,6 +3553,8 @@ const ArtistProfileComponent = ({
     }
   };
 
+  console.log('activeProfileData', activeProfileData);
+
   // Render dashboard sub-views
   const renderDashboardView = ({ canEdit }) => {
     switch (dashboardView) {

@@ -367,6 +367,31 @@
     margin-top: 2px;
 }
 
+.gig-page-body .action-box-buttons .tech-rider-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border: 1px solid var(--gn-orange);
+    border-radius: 8px;
+    background-color: rgba(255, 166, 0, 0.05); /* 95% transparent orange */
+}
+
+.gig-page-body .action-box-buttons .tech-rider-warning .icon {
+    font-size: 1.25rem;
+    color: var(--gn-orange);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.gig-page-body .action-box-buttons .tech-rider-warning p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gn-orange);
+    line-height: 1.5;
+}
+
 
 
 /* IMPORTANT INFO */
@@ -505,6 +530,104 @@
 
 .gig-page-body .equipment .equipment-grid .equipment-item .icon {
     font-size: 1.25rem;
+}
+
+/* Tech Rider Equipment Cards */
+.tech-rider-equipment-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 8px;
+    background-color: var(--gn-white);
+}
+
+.tech-rider-equipment-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tech-rider-equipment-icon .icon {
+    font-size: 1.25rem;
+    color: var(--gn-grey-600);
+}
+
+.tech-rider-equipment-name {
+    flex: 1;
+    font-weight: 400;
+    color: var(--gn-off-black);
+}
+
+.tech-rider-equipment-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.tech-rider-count {
+    font-weight: 500;
+    color: var(--gn-off-black);
+}
+
+.tech-rider-equipment-status .icon {
+    font-size: 1.25rem;
+}
+
+.tech-rider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.tech-rider-volume-curfew {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.tech-rider-volume-curfew-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.tech-rider-volume-curfew-item h6 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--gn-grey-600);
+    font-weight: 600;
+    margin: 0;
+}
+
+.tech-rider-volume-curfew-item p {
+    margin: 0;
+    font-weight: 400;
+    color: var(--gn-off-black);
+    text-transform: capitalize;
+}
+
+.tech-rider-notes-section {
+    margin-top: 1.5rem;
+}
+
+.tech-rider-notes-section h6 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--gn-grey-600);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.tech-rider-notes-section p {
+    margin: 0.25rem 0;
+    color: var(--gn-off-black);
+    line-height: 1.5;
 }
 
 
