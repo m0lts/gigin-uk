@@ -1427,6 +1427,250 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
 
   // Render Tech Rider section
   if (type === 'tech-rider') {
+    // View-only mode for venues/public viewers
+    if (!canEdit && techRiderData.isComplete && techRiderData.lineup.length > 0) {
+      return (
+        <div className="additional-info-section">
+          <div className="section-header">
+            <div className="title">
+              {getIcon()}
+              <h3>Tech Rider</h3>
+            </div>
+          </div>
+          <div className="section-content">
+            {/* Stage Map - View Only */}
+            <div className="tech-rider-stage-map-container view-mode">
+              <div className="tech-rider-stage-area view-mode">
+                <h6 className="tech-rider-stage-front">Front of Stage</h6>
+                {techRiderData.stageArrangement.performers.map((performer) => {
+                  const performerData = techRiderData.lineup[performer.lineupIndex];
+                  if (!performerData) return null;
+                  const primaryInstrument = performerData.instruments?.[0] || 'Other';
+                  return (
+                    <div
+                      key={performer.lineupIndex}
+                      className="tech-rider-stage-performer"
+                      style={{
+                        left: `${performer.x}%`,
+                        top: `${performer.y}%`,
+                        transform: 'translate(-50%, -50%)'
+                      }}
+                    >
+                      <div className="tech-rider-stage-performer-content">
+                        {getInstrumentIcon(primaryInstrument)}
+                        <span className="tech-rider-stage-performer-name">
+                          {performerData.performerName || `Performer ${performer.lineupIndex + 1}`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Performer Requirements List */}
+            <div className="tech-rider-viewer-performers-list">
+              <div className="tech-rider-viewer-performers-grid">
+                {techRiderData.lineup.map((performer, index) => {
+                  const details = techRiderData.performerDetails[index] || {};
+                  const instruments = performer.instruments || [];
+                  
+                  // Collect all questions from all instruments, deduplicated
+                  const questionMap = new Map();
+                  
+                  // First pass: collect all questions from all instruments to identify dependency-only questions
+                  const allQuestions = [];
+                  instruments.forEach((instrument) => {
+                    const questions = INSTRUMENT_QUESTIONS[instrument] || [];
+                    allQuestions.push(...questions.map(q => ({ ...q, instrument })));
+                  });
+                  
+                  // Identify questions that are only used as dependencies
+                  const dependencyOnlyKeys = new Set();
+                  allQuestions.forEach(question => {
+                    if (!question.notes && question.type === 'yesno' && question.key !== 'extraNotes') {
+                      // Check if any other question depends on this one
+                      const isUsedAsDependency = allQuestions.some(q => q.dependsOn && q.dependsOn.key === question.key);
+                      if (isUsedAsDependency) {
+                        dependencyOnlyKeys.add(question.key);
+                      }
+                    }
+                  });
+                  
+                  // Second pass: collect questions, filtering out dependency-only ones
+                  instruments.forEach((instrument) => {
+                    const questions = INSTRUMENT_QUESTIONS[instrument] || [];
+                    const instrumentDetails = details[instrument] || {};
+                    
+                    questions.forEach((question) => {
+                      // Skip dependency-only questions
+                      if (dependencyOnlyKeys.has(question.key)) {
+                        return;
+                      }
+                      
+                      if (question.dependsOn) {
+                        let dependencyMet = false;
+                        const dependsValue = instrumentDetails[question.dependsOn.key];
+                        if (dependsValue === question.dependsOn.value) {
+                          dependencyMet = true;
+                        } else {
+                          const existing = questionMap.get(question.key);
+                          if (existing) {
+                            for (const inst of existing.instruments) {
+                              const instDetails = details[inst] || {};
+                              if (instDetails[question.dependsOn.key] === question.dependsOn.value) {
+                                dependencyMet = true;
+                                break;
+                              }
+                            }
+                          }
+                        }
+                        if (!dependencyMet) {
+                          return;
+                        }
+                      }
+                      
+                      if (!questionMap.has(question.key)) {
+                        questionMap.set(question.key, {
+                          ...question,
+                          instruments: [instrument],
+                          currentValue: instrumentDetails[question.key],
+                          instrumentDetails: instrumentDetails,
+                          sourceInstrument: instrument
+                        });
+                      } else {
+                        const existing = questionMap.get(question.key);
+                        existing.instruments.push(instrument);
+                        if (existing.currentValue === undefined || existing.currentValue === null || existing.currentValue === '') {
+                          const thisValue = instrumentDetails[question.key];
+                          if (thisValue !== undefined && thisValue !== null && thisValue !== '') {
+                            existing.currentValue = thisValue;
+                            existing.instrumentDetails = instrumentDetails;
+                            existing.sourceInstrument = instrument;
+                          }
+                        }
+                      }
+                    });
+                  });
+
+                  const questions = Array.from(questionMap.values()).filter(q => {
+                    // Only show questions that have answers and are not dependency-only
+                    if (q.type === 'yesno') return q.currentValue !== undefined && q.currentValue !== null;
+                    if (q.type === 'number') return q.currentValue !== undefined && q.currentValue !== null && q.currentValue !== 0;
+                    if (q.type === 'text') return q.currentValue && q.currentValue.trim() !== '';
+                    return false;
+                  });
+
+                  return (
+                    <div key={index} className="tech-rider-viewer-performer-card">
+                      <div className="tech-rider-viewer-performer-header">
+                        <span className="tech-rider-viewer-performer-name">
+                          {performer.performerName || `Performer ${index + 1}`}
+                        </span>
+                        <span className="tech-rider-viewer-performer-separator">·</span>
+                        <span className="tech-rider-viewer-performer-instruments-inline">
+                          {instruments.map((inst, instIdx) => (
+                            <span key={instIdx}>
+                              {instIdx > 0 && ', '}
+                              {inst}
+                            </span>
+                          ))}
+                        </span>
+                      </div>
+                      
+                      {questions.length > 0 ? (
+                        <div className="tech-rider-viewer-performer-requirements">
+                          {questions.map((questionData) => {
+                            const question = questionData;
+                            const currentValue = questionData.currentValue;
+                            const instrumentDetails = questionData.instrumentDetails;
+                            const notesValue = instrumentDetails[`${question.key}_notes`] || '';
+
+                            return (
+                              <div key={question.key} className="tech-rider-viewer-requirement-item">
+                                {question.type === 'yesno' && (
+                                  <span>
+                                    {(() => {
+                                      // Clean up the label - remove question mark
+                                      let label = question.label.replace('?', '').trim();
+                                      
+                                      // Normalize to "Needs" format (only if it starts with "Need " not "Needs ")
+                                      const lowerLabel = label.toLowerCase();
+                                      if (lowerLabel.startsWith('need ') && !lowerLabel.startsWith('needs ')) {
+                                        label = 'Needs ' + label.substring(5);
+                                      }
+                                      
+                                      if (currentValue) {
+                                        return label;
+                                      } else {
+                                        // Convert to negative - remove "Needs " or "Need " prefix
+                                        if (lowerLabel.startsWith('needs ')) {
+                                          return "Doesn't need " + label.substring(6);
+                                        } else if (lowerLabel.startsWith('need ')) {
+                                          return "Doesn't need " + label.substring(5);
+                                        }
+                                        return "Doesn't need " + label.toLowerCase();
+                                      }
+                                    })()}
+                                    {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
+                                  </span>
+                                )}
+                                {question.type === 'number' && (
+                                  <span>
+                                    Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}
+                                    {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
+                                  </span>
+                                )}
+                                {question.type === 'text' && (
+                                  <span>
+                                    {currentValue}
+                                    {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="tech-rider-viewer-no-requirements">No specific requirements listed.</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Extra Notes */}
+              {techRiderData.extraNotes && techRiderData.extraNotes.trim() !== '' && (
+                <div className="tech-rider-viewer-extra-notes">
+                  <h5 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Additional Notes</h5>
+                  <p style={{ color: 'var(--gn-grey-700)', whiteSpace: 'pre-wrap' }}>
+                    {techRiderData.extraNotes}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Empty state for viewers
+    if (!canEdit && (!techRiderData.isComplete || techRiderData.lineup.length === 0)) {
+      return (
+        <div className="additional-info-section">
+          <div className="section-header">
+            <div className="title">
+              {getIcon()}
+              <h3>Tech Rider</h3>
+            </div>
+          </div>
+          <div className="section-content">
+            <p>The artist hasn&apos;t added a tech rider yet.</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="additional-info-section">
         <div className="section-header">

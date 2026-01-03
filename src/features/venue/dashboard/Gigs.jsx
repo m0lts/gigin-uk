@@ -8,7 +8,7 @@ import {
     SortIcon,
     TickIcon,
 CloseIcon } from '@features/shared/ui/extras/Icons';
-import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch } from '@services/client-side/gigs';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
@@ -369,7 +369,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
 
     const copyToClipboard = (link) => {
       navigator.clipboard.writeText(`${link}`).then(() => {
-          toast.success(`Copied Venue Link: ${link}`);
+          toast.success(`Copied Gig Link: ${link}`);
       }).catch((err) => {
           toast.error('Failed to copy link. Please try again.')
           console.error('Failed to copy link: ', err);
@@ -654,9 +654,52 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             )
                           )}
                           <td className="options-cell" onClick={(e) => e.stopPropagation()}>
-                              <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
-                                  <OptionsIcon />
-                              </button>
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                  <button 
+                                      className="btn secondary small" 
+                                      onClick={async (e) => {
+                                          e.stopPropagation();
+                                          if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                              toast.error('You do not have permission to update this gig.');
+                                              return;
+                                          }
+                                          try {
+                                              const newPrivateApplications = !gig.privateApplications;
+                                              await updateGigDocument({ 
+                                                  gigId: gig.gigId, 
+                                                  action: 'gigs.update', 
+                                                  updates: { privateApplications: newPrivateApplications } 
+                                              });
+                                              toast.success(`Gig changed to ${newPrivateApplications ? 'Private' : 'Public'} Applications`);
+                                              refreshGigs();
+                                          } catch (error) {
+                                              console.error('Error updating private applications:', error);
+                                              toast.error('Failed to update gig. Please try again.');
+                                          }
+                                      }}
+                                  >
+                                      {gig.privateApplications ? 'Private Apps' : 'Public Apps'}
+                                  </button>
+                                  {gig.privateApplications ? (
+                                      <button className="btn icon" onClick={(e) => {
+                                          e.stopPropagation();
+                                          // Invite icon - no action yet
+                                      }}>
+                                          <InviteIconSolid />
+                                      </button>
+                                  ) : (
+                                      <button className="btn icon" onClick={(e) => {
+                                          e.stopPropagation();
+                                          const gigLink = `${window.location.origin}/gig/${gig.gigId}`;
+                                          copyToClipboard(gigLink);
+                                      }}>
+                                          <LinkIcon />
+                                      </button>
+                                  )}
+                                  <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
+                                      <OptionsIcon />
+                                  </button>
+                              </div>
                               {openOptionsGigId === gig.gigId && (
                                   <div className="options-dropdown">
                                   <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <GigIcon /></button>

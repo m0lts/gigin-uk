@@ -22,6 +22,7 @@ import { MailboxFullIconSolid } from '../../../shared/ui/extras/Icons';
 import { getGigById } from '@services/client-side/gigs';
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@lib/firebase';
+import { TechRiderModal } from './TechRiderModal';
 
 export const ArtistProfileMessages = () => {
   const { user } = useAuth();
@@ -34,6 +35,7 @@ export const ArtistProfileMessages = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [gigData, setGigData] = useState();
   const [directConversation, setDirectConversation] = useState(null);
+  const [showTechRiderModal, setShowTechRiderModal] = useState(false);
 
   const { activeArtistProfile } = useArtistDashboard();
   // Use activeArtistProfile from context (which is filtered by activeProfileId prop)
@@ -393,6 +395,12 @@ export const ArtistProfileMessages = () => {
                       >
                         View Gig
                       </button>
+                      <button
+                        className="btn secondary"
+                        onClick={() => setShowTechRiderModal(true)}
+                      >
+                        Tech Rider
+                      </button>
                     </div>
                   </div>
                   {(() => {
@@ -421,6 +429,16 @@ export const ArtistProfileMessages = () => {
             </section>
           </div>
         </>
+      )}
+      {showTechRiderModal && activeConversation && (
+        <TechRiderModal
+          isOpen={showTechRiderModal}
+          onClose={() => setShowTechRiderModal(false)}
+          venueId={activeConversation.accountNames.find(
+            (account) => account.role === 'venue'
+          )?.participantId}
+          artistProfileId={focusProfileId}
+        />
       )}
     </div>
   );

@@ -94,6 +94,28 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
           <p>BETA</p>
         </div>
       </div>
+      <button className='btn primary' onClick={() => setGigPostModal(true)}>
+        Create Gig <GigIcon />
+      </button>
+      <ul className="menu">
+        {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {
+          const isActive = exact ? pathname === path : pathname.includes(path);
+          return (
+            <li
+              key={path}
+              className={`menu-item${isActive ? ' active' : ''}`}
+              onClick={() => navigate(path)}
+            >
+              <span className="body">
+                {isActive ? iconActive : icon} {label}
+              </span>
+              {notification ? 
+              <span className='notification'><DotIcon /></span>
+               : null}
+            </li>
+          );
+        })}
+      </ul>
       <ul className={`account-dropdown ${showDropdown ? 'open' : ''}`} onClick={() => setShowDropdown(!showDropdown)}>
         <li className='account-dropdown-item exempt'>
           <div className='account-info'>
@@ -124,31 +146,9 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
           </>
         )}
       </ul>
-      <button className='btn primary' onClick={() => setGigPostModal(true)}>
-        Create Gig <GigIcon />
-      </button>
-      <ul className="menu">
-        {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {
-          const isActive = exact ? pathname === path : pathname.includes(path);
-          return (
-            <li
-              key={path}
-              className={`menu-item${isActive ? ' active' : ''}`}
-              onClick={() => navigate(path)}
-            >
-              <span className="body">
-                {isActive ? iconActive : icon} {label}
-              </span>
-              {notification ? 
-              <span className='notification'><DotIcon /></span>
-               : null}
-            </li>
-          );
-        })}
-      </ul>
-      {pathname !== '/venues/dashboard' && (
+      {/* {pathname !== '/venues/dashboard' && (
         <FeedbackBox user={user} setShowWelcomeModal={setShowWelcomeModal} setRevisitingModal={setRevisitingModal} />
-      )}
+      )} */}
     </div>
   );
 };

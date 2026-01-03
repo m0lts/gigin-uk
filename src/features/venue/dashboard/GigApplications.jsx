@@ -11,6 +11,7 @@ import {
     StarIcon,
     TickIcon
 } from '@features/shared/ui/extras/Icons';
+import { TechRiderModal } from '@features/venue/components/TechRiderModal';
 import { useAuth } from '@hooks/useAuth';
 import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
@@ -115,6 +116,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         extraDetails: '',
       });
     const [eventLoading, setEventLoading] = useState(false);
+    const [showTechRiderModal, setShowTechRiderModal] = useState(false);
+    const [techRiderProfile, setTechRiderProfile] = useState(null);
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
     const venueName = location.state?.gig?.venue?.venueName || '';
@@ -697,6 +700,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                         <th>Genre(s)</th>
                                     )}
                                     <th>Video</th>
+                                    {isMdUp && (
+                                        <th>Tech Rider</th>
+                                    )}
                                     <th>Fee</th>
                                     <th>Status</th>
                                 </tr>
@@ -739,6 +745,26 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                             ) : (
                                                 'No Video'
                                             )}</td>
+                                            {isMdUp && (
+                                                <td>
+                                                    {profile?.techRider && profile.techRider.isComplete && profile.techRider.lineup && profile.techRider.lineup.length > 0 ? (
+                                                        <button 
+                                                            className='btn small tertiary' 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setTechRiderProfile(profile);
+                                                                setShowTechRiderModal(true);
+                                                            }}
+                                                            onMouseEnter={() => setHoveredRowId(null)} 
+                                                            onMouseLeave={() => setHoveredRowId(profile.id)}
+                                                        >
+                                                            See Tech Rider
+                                                        </button>
+                                                    ) : (
+                                                        <span style={{ color: 'var(--gn-grey-500)', fontSize: '0.9rem' }}>No tech rider</span>
+                                                    )}
+                                                </td>
+                                            )}
                                             <td>
                                                 {(gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') ? (
                                                     profile.proposedFee !== gigInfo.budget ? (
@@ -1085,6 +1111,23 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 </Portal>
             )}
             {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
+            {showTechRiderModal && techRiderProfile && (
+                <Portal>
+                    <TechRiderModal 
+                        techRider={techRiderProfile.techRider}
+                        artistName={techRiderProfile.name}
+                        venueTechRider={(() => {
+                            if (!gigInfo?.venueId || !venues) return null;
+                            const venue = venues.find(v => v.venueId === gigInfo.venueId);
+                            return venue?.techRider || null;
+                        })()}
+                        onClose={() => {
+                            setShowTechRiderModal(false);
+                            setTechRiderProfile(null);
+                        }}
+                    />
+                </Portal>
+            )}
         </>
     );
 };

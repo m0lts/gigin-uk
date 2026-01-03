@@ -18,12 +18,14 @@ import {
     markGigApplicantAsViewed,
 } from '@services/api/conversations';
 import { openInNewTab } from '@services/utils/misc';
-import { ArchiveIcon, InboxIcon } from '@features/shared/ui/extras/Icons';
+import { ArchiveIcon, InboxIcon, TechRiderIcon } from '@features/shared/ui/extras/Icons';
 import { updateConversationDocument } from '@services/api/conversations';
 import { DeleteGigIcon, DeleteIcon, ErrorIcon, LeftArrowIcon, OptionsIcon } from '../../../shared/ui/extras/Icons';
 import Portal from '../../../shared/components/Portal';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 import { useBreakpoint } from '../../../../hooks/useBreakpoint';
+import { TechRiderModal } from '@features/venue/components/TechRiderModal';
+import { getArtistProfileById } from '@services/client-side/artists';
 
 // Given a conversation doc, return the venueId (participantId of a venue entry).
 function getVenueIdFromConversation(conv) {
@@ -65,6 +67,9 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     const [menuOpen, setMenuOpen] = useState(false);
     const [showGigModal, setShowGigModal] = useState(false);
     const [archiving, setArchiving] = useState(false);
+    const [showTechRiderModal, setShowTechRiderModal] = useState(false);
+    const [artistProfile, setArtistProfile] = useState(null);
+    const [loadingTechRider, setLoadingTechRider] = useState(false);
     const menuRef = useRef();
 
 
@@ -143,6 +148,44 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
           return;
         }
     }, [activeConversation, venueGigs]);
+
+    // Fetch artist profile when conversation changes
+    useEffect(() => {
+        if (!activeConversation) {
+            setArtistProfile(null);
+            return;
+        }
+        
+        const otherParty = getOtherPartyAccount(activeConversation);
+        const profileId = otherParty?.participantId;
+        
+        if (!profileId) {
+            setArtistProfile(null);
+            return;
+        }
+        
+        let cancelled = false;
+        
+        const fetchProfile = async () => {
+            try {
+                const profile = await getArtistProfileById(profileId);
+                if (!cancelled) {
+                    setArtistProfile(profile);
+                }
+            } catch (error) {
+                console.error('Error fetching artist profile:', error);
+                if (!cancelled) {
+                    setArtistProfile(null);
+                }
+            }
+        };
+        
+        fetchProfile();
+        
+        return () => {
+            cancelled = true;
+        };
+    }, [activeConversation]);
 
 
     const handleSelectConversation = async (conversationId) => {
@@ -246,6 +289,45 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                         Gig Info
                                                     </button>
                                                 )}
+
+                                                {(() => {
+                                                    const otherParty = getOtherPartyAccount(activeConversation);
+                                                    const profileId = otherParty?.participantId;
+                                                    const hasTechRider = artistProfile?.techRider?.isComplete && artistProfile?.techRider?.lineup?.length > 0;
+                                                    return profileId && (
+                                                        <button
+                                                            className='btn tertiary'
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                if (!artistProfile) {
+                                                                    setLoadingTechRider(true);
+                                                                    try {
+                                                                        const profile = await getArtistProfileById(profileId);
+                                                                        setArtistProfile(profile);
+                                                                        if (profile?.techRider?.isComplete && profile?.techRider?.lineup?.length > 0) {
+                                                                            setShowTechRiderModal(true);
+                                                                        }
+                                                                    } catch (error) {
+                                                                        console.error('Error fetching artist profile:', error);
+                                                                    } finally {
+                                                                        setLoadingTechRider(false);
+                                                                    }
+                                                                } else if (hasTechRider) {
+                                                                    setShowTechRiderModal(true);
+                                                                }
+                                                            }}
+                                                            disabled={loadingTechRider}
+                                                        >
+                                                            {loadingTechRider ? (
+                                                                <LoadingSpinner width={15} height={15} />
+                                                            ) : (
+                                                                <>
+                                                                    Tech Rider
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })()}
                                                 
                                                 {showArchived ? (
                                                     <button
@@ -370,6 +452,45 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                                 </button>
                                             )}
                                             
+                                            {(() => {
+                                                const otherParty = getOtherPartyAccount(activeConversation);
+                                                const profileId = otherParty?.participantId;
+                                                const hasTechRider = artistProfile?.techRider?.isComplete && artistProfile?.techRider?.lineup?.length > 0;
+                                                return profileId && (
+                                                    <button
+                                                        className='btn tertiary'
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            if (!artistProfile) {
+                                                                setLoadingTechRider(true);
+                                                                try {
+                                                                    const profile = await getArtistProfileById(profileId);
+                                                                    setArtistProfile(profile);
+                                                                    if (profile?.techRider?.isComplete && profile?.techRider?.lineup?.length > 0) {
+                                                                        setShowTechRiderModal(true);
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('Error fetching artist profile:', error);
+                                                                } finally {
+                                                                    setLoadingTechRider(false);
+                                                                }
+                                                            } else if (hasTechRider) {
+                                                                setShowTechRiderModal(true);
+                                                            }
+                                                        }}
+                                                        disabled={loadingTechRider}
+                                                    >
+                                                        {loadingTechRider ? (
+                                                            <LoadingSpinner width={15} height={15} />
+                                                        ) : (
+                                                            <>
+                                                                Tech Rider
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })()}
+                                            
                                             {showArchived ? (
                                                 <button
                                                     className="btn tertiary"
@@ -452,6 +573,22 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                             </div>
                         </div>
 
+                    </Portal>
+                )}
+                {showTechRiderModal && artistProfile && artistProfile.techRider && (
+                    <Portal>
+                        <TechRiderModal 
+                            techRider={artistProfile.techRider}
+                            artistName={artistProfile.name || getOtherPartyAccount(activeConversation)?.accountName || 'Artist'}
+                            venueTechRider={(() => {
+                                const venueId = getVenueIdFromConversation(activeConversation);
+                                const venue = venueProfiles?.find(v => v.venueId === venueId);
+                                return venue?.techRider || null;
+                            })()}
+                            onClose={() => {
+                                setShowTechRiderModal(false);
+                            }}
+                        />
                     </Portal>
                 )}
             </div>

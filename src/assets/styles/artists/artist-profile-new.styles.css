@@ -5150,3 +5150,119 @@
   color: var(--gn-grey-300);
 }
 
+/* Tech Rider Viewer (View-Only) Styles */
+.tech-rider-viewer-performers-list {
+  margin-top: 1rem;
+}
+
+.tech-rider-viewer-performers-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tech-rider-viewer-performer-card {
+  flex: 1 1 300px;
+  min-width: 250px;
+  padding: 0.75rem;
+  border: 1px solid var(--gn-grey-200);
+  border-radius: 6px;
+  background: var(--gn-white);
+}
+
+.tech-rider-viewer-performer-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--gn-off-black);
+}
+
+.tech-rider-viewer-performer-name {
+  font-weight: 600;
+}
+
+.tech-rider-viewer-performer-separator {
+  color: var(--gn-grey-500);
+  font-weight: 400;
+}
+
+.tech-rider-viewer-performer-instruments-inline {
+  color: var(--gn-grey-700);
+  font-weight: 500;
+}
+
+.tech-rider-viewer-performer-requirements {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.tech-rider-viewer-requirement-item {
+  font-size: 0.9rem;
+  color: var(--gn-grey-700);
+  line-height: 1.4;
+}
+
+.tech-rider-viewer-notes {
+  color: var(--gn-grey-600);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.tech-rider-viewer-no-requirements {
+  color: var(--gn-grey-500);
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0;
+}
+
+.tech-rider-viewer-extra-notes {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--gn-grey-50);
+  border-radius: 8px;
+  border: 1px solid var(--gn-grey-200);
+}
+
+/* Dark mode for tech rider viewer */
+.dark-mode .tech-rider-viewer-performer-card {
+  background: var(--gn-black);
+  border-color: var(--gn-grey-700);
+}
+
+.dark-mode .tech-rider-viewer-performer-header {
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-viewer-performer-name {
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-viewer-performer-separator {
+  color: var(--gn-grey-500);
+}
+
+.dark-mode .tech-rider-viewer-performer-instruments-inline {
+  color: var(--gn-grey-300);
+}
+
+.dark-mode .tech-rider-viewer-requirement-item {
+  color: var(--gn-grey-300);
+}
+
+.dark-mode .tech-rider-viewer-notes {
+  color: var(--gn-grey-400);
+}
+
+.dark-mode .tech-rider-viewer-no-requirements {
+  color: var(--gn-grey-500);
+}
+
+.dark-mode .tech-rider-viewer-extra-notes {
+  background: var(--gn-grey-900);
+  border-color: var(--gn-grey-700);
+}
+

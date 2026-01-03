@@ -97,6 +97,11 @@ button {
     background-color: transparent;
 }
 
+.btn.secondary.small {
+    padding:2px 5px;
+    font-size: 0.8rem;
+}
+
 /* SECONDARY BUTTONS */
 
 .btn.secondary-alt {
