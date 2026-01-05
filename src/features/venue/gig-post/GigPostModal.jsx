@@ -815,7 +815,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                                 <>
                                     <button className='btn secondary' onClick={prevStage}>Back</button>
                                     <button className='btn primary' onClick={handlePostGig}>
-                                        Post Gig{formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}
+                                        Create Gig{formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}
                                     </button>
                                 </>
                                 ) : (

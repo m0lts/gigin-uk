@@ -219,7 +219,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
     return (
         <>
             <div className='head'>
-                <h1 className='title'>Review and Post</h1>
+                <h1 className='title'>Review Gig Details</h1>
             </div>
             <div className='body review'>
                 <div className='review-box-top'>

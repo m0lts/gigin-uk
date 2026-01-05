@@ -1131,8 +1131,9 @@ export const ProfileView = ({
             className={`additional-info-card-container ${selectedAdditionalInfo ? 'is-visible' : 'is-hidden'}`}
             aria-hidden={!selectedAdditionalInfo}
             style={{ 
-              opacity: selectedAdditionalInfo ? additionalInfoOpacity : 0,
-              transform: `scale(${selectedAdditionalInfo ? additionalInfoScale : 0.96})`,
+              // Disable scroll fade effect when a tab is open to prevent content from being hidden
+              opacity: selectedAdditionalInfo ? 1 : 0,
+              transform: `scale(${selectedAdditionalInfo ? 1 : 0.96})`,
               transformOrigin: 'top center',
               transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
             }}

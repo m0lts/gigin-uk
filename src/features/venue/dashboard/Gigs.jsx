@@ -548,6 +548,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   {isMdUp && <th className='centre'>Budget</th>}
                   <th className='centre'>Status</th>
                   {isXlUp && <th className='centre'>Applications</th>}
+                  {isMdUp && <th className='centre'>Private?</th>}
                   <th></th>
                 </tr>
               </thead>
@@ -571,7 +572,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       <React.Fragment key={gig.gigId}>
                         {isFirstPreviousGig && (
                           <tr className='filler-row'>
-                            <td className='data' colSpan={8}>
+                            <td className='data' colSpan={9}>
                               <div className='flex center'>
                                 <h4>Past Gigs</h4>
                               </div>
@@ -653,33 +654,41 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             </td>
                             )
                           )}
+                          {isMdUp && (
+                            <td className="centre gigs-private-apps-cell" onClick={(e) => e.stopPropagation()}>
+                                <div className="gigs-toggle-container">
+                                    <label className="gigs-toggle-switch">
+                                        <input
+                                            type="checkbox"
+                                            checked={gig.privateApplications || false}
+                                            onChange={async (e) => {
+                                                e.stopPropagation();
+                                                if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                                    toast.error('You do not have permission to update this gig.');
+                                                    return;
+                                                }
+                                                try {
+                                                    const newPrivateApplications = e.target.checked;
+                                                    await updateGigDocument({ 
+                                                        gigId: gig.gigId, 
+                                                        action: 'gigs.update', 
+                                                        updates: { privateApplications: newPrivateApplications } 
+                                                    });
+                                                    toast.success(`Gig changed to ${newPrivateApplications ? 'Private' : 'Public'} Applications`);
+                                                    refreshGigs();
+                                                } catch (error) {
+                                                    console.error('Error updating private applications:', error);
+                                                    toast.error('Failed to update gig. Please try again.');
+                                                }
+                                            }}
+                                        />
+                                        <span className="gigs-toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </td>
+                          )}
                           <td className="options-cell" onClick={(e) => e.stopPropagation()}>
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                  <button 
-                                      className="btn secondary small" 
-                                      onClick={async (e) => {
-                                          e.stopPropagation();
-                                          if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
-                                              toast.error('You do not have permission to update this gig.');
-                                              return;
-                                          }
-                                          try {
-                                              const newPrivateApplications = !gig.privateApplications;
-                                              await updateGigDocument({ 
-                                                  gigId: gig.gigId, 
-                                                  action: 'gigs.update', 
-                                                  updates: { privateApplications: newPrivateApplications } 
-                                              });
-                                              toast.success(`Gig changed to ${newPrivateApplications ? 'Private' : 'Public'} Applications`);
-                                              refreshGigs();
-                                          } catch (error) {
-                                              console.error('Error updating private applications:', error);
-                                              toast.error('Failed to update gig. Please try again.');
-                                          }
-                                      }}
-                                  >
-                                      {gig.privateApplications ? 'Private Apps' : 'Public Apps'}
-                                  </button>
                                   {gig.privateApplications ? (
                                       <button className="btn icon" onClick={(e) => {
                                           e.stopPropagation();
@@ -842,7 +851,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   })
                 ) : (
                   <tr className='no-gigs'>
-                    <td className='data' colSpan={8} style={{ padding: '0'}}>
+                    <td className='data' colSpan={9} style={{ padding: '0'}}>
                       <div className='flex' style={{ padding: '2rem 0', backgroundColor: 'var(--gn-grey-300)'}}>
                         <h4>No Gigs Available</h4>
                       </div>

@@ -714,7 +714,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                     const status = applicant ? applicant.status : 'pending';
                                     const gigAlreadyConfirmed = gigInfo?.applicants?.some((a) => a.status === 'confirmed');
                                     return (
-                                        <tr key={index} className='applicant' onClick={(e) => openInNewTab(`/${profile.id}/${gigInfo.gigId}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
+                                        <tr key={index} className='applicant' onClick={(e) => openInNewTab(`/artist/${profile.id}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
                                         onMouseLeave={() => setHoveredRowId(null)}>
                                             <td className='musician-name'>
                                                 {hoveredRowId === profile.id && (
