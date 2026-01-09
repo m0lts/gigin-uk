@@ -56,7 +56,6 @@ const INSTRUMENT_TYPES = [
 const INSTRUMENT_QUESTIONS = {
   'Vocals': [
     { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true },
-    { key: 'needsMicStand', type: 'yesno', label: 'Need mic stand provided?', notes: true },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
@@ -65,7 +64,6 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'needsCymbals', type: 'yesno', label: 'Need cymbals provided?', notes: true },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true, dependsOn: { key: 'singing', value: true } },
-    { key: 'needsMicStand', type: 'yesno', label: 'Needs stand provided?', notes: true, dependsOn: { key: 'singing', value: true } },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
@@ -73,7 +71,7 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'bringingKeyboard', type: 'yesno', label: 'Bringing keyboard?', notes: false },
     { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
     { key: 'needsKeyboardStand', type: 'yesno', label: 'Need keyboard stand provided?', notes: true },
-    { key: 'hasSeat', type: 'yesno', label: 'Have seat (if needed)?', notes: false },
+    { key: 'hasSeat', type: 'yesno', label: 'Need seat provided?', notes: false },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
@@ -189,6 +187,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
   // State for About section editing
   const [artistType, setArtistType] = useState(profileData?.artistType || '');
   const [selectedGenres, setSelectedGenres] = useState(profileData?.genres || []);
+  const [previousVenues, setPreviousVenues] = useState(profileData?.previousVenues || '');
   const [city, setCity] = useState(profileData?.location?.city || '');
   const [cityCoordinates, setCityCoordinates] = useState(profileData?.location?.coordinates || null);
   const [travelDistance, setTravelDistance] = useState(profileData?.location?.travelDistance || '');
@@ -237,6 +236,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
     if (type === 'about' && profileData) {
       setArtistType(profileData.artistType || '');
       setSelectedGenres(profileData.genres || []);
+      setPreviousVenues(profileData.previousVenues || '');
       setCity(profileData.location?.city || '');
       setCityCoordinates(profileData.location?.coordinates || null);
       setTravelDistance(profileData.location?.travelDistance || '');
@@ -250,6 +250,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
       const original = {
         artistType: profileData?.artistType || '',
         genres: profileData?.genres || [],
+        previousVenues: profileData?.previousVenues || '',
         city: profileData?.location?.city || '',
         coordinates: profileData?.location?.coordinates || null,
         travelDistance: profileData?.location?.travelDistance || '',
@@ -258,6 +259,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
       const current = {
         artistType,
         genres: selectedGenres,
+        previousVenues,
         city,
         coordinates: cityCoordinates,
         travelDistance,
@@ -266,13 +268,14 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
       const changed = 
         original.artistType !== current.artistType ||
         JSON.stringify(original.genres.sort()) !== JSON.stringify(current.genres.sort()) ||
+        original.previousVenues !== current.previousVenues ||
         original.city !== current.city ||
         JSON.stringify(original.coordinates) !== JSON.stringify(current.coordinates) ||
         original.travelDistance !== current.travelDistance;
 
       setHasChanges(changed);
     }
-  }, [type, artistType, selectedGenres, city, cityCoordinates, travelDistance, profileData]);
+  }, [type, artistType, selectedGenres, previousVenues, city, cityCoordinates, travelDistance, profileData]);
 
   // Initialize tech rider data from profileData
   useEffect(() => {
@@ -491,6 +494,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
     // Reset to original values
     setArtistType(profileData?.artistType || '');
     setSelectedGenres(profileData?.genres || []);
+    setPreviousVenues(profileData?.previousVenues || '');
     setCity(profileData?.location?.city || '');
     setCityCoordinates(profileData?.location?.coordinates || null);
     setTravelDistance(profileData?.location?.travelDistance || '');
@@ -505,6 +509,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
       const updates = {
         artistType: artistType || null,
         genres: selectedGenres,
+        previousVenues: previousVenues || null,
         location: city && cityCoordinates ? {
           city,
           coordinates: cityCoordinates,
@@ -534,40 +539,9 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
     }
   };
 
-  const getTechRiderStageName = () => {
-    switch (techRiderStage) {
-      case 1:
-        return 'Lineup';
-      case 2:
-        return 'Performer Details';
-      case 3:
-        return 'Extra Notes';
-      case 4:
-        return 'Map of Performers';
-      case 5:
-        return 'Add Members';
-      case 6:
-        return 'Information';
-      default:
-        return '';
-    }
-  };
-
   const getTitle = () => {
     switch (type) {
       case 'tech-rider':
-        // If viewing completed tech rider, just show "Tech Rider"
-        if (isViewingTechRider && techRiderData.isComplete) {
-          return 'Tech Rider';
-        }
-        const stageName = getTechRiderStageName();
-        if (stageName) {
-          return (
-            <>
-              Tech Rider <RightArrowIcon /> {stageName}
-            </>
-          );
-        }
         return 'Tech Rider';
       case 'members':
         return 'Members';
@@ -596,6 +570,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
     const hasAboutContent =
       !!artistType ||
       (Array.isArray(selectedGenres) && selectedGenres.length > 0) ||
+      !!previousVenues ||
       !!city ||
       !!travelDistance;
 
@@ -625,86 +600,168 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
           </div>
         </div>
         <div className="section-content">
-          {/* Artist Type */}
-          <div className="about-field-section">
-            <h6 className="label about-field-title">
-              Performer Type
-            </h6>
-            <div className="selection-container">
-              <div className="selections">
-                <div 
-                  className={`selection-card ${artistType === 'Musician/Band' ? 'selected' : ''} ${!canEdit ? 'read-only' : ''}`}
-                  onClick={canEdit ? () => handleArtistTypeSelect('Musician/Band') : undefined}
-                >
-                  <h4 className='text'>Musician/Band</h4>
+          {!canEdit ? (
+            // View mode for third parties - show only the answers
+            <>
+              {/* Artist Type */}
+              {artistType && (
+                <div className="about-field-section">
+                  <h6 className="label about-field-title">
+                    Performer Type
+                  </h6>
+                  <p style={{ marginTop: '0.5rem', color: 'var(--gn-grey-700)' }}>{artistType}</p>
                 </div>
-                <div 
-                  className={`selection-card ${artistType === 'DJ' ? 'selected' : ''} ${!canEdit ? 'read-only' : ''}`}
-                  onClick={canEdit ? () => handleArtistTypeSelect('DJ') : undefined}
-                >
-                  <h4 className='text'>DJ</h4>
-                </div>
-              </div>
-            </div>
-          </div>
+              )}
 
-          {/* Genres */}
-          {artistType && (
-            <div className="about-field-section">
-              <h6 className="label about-field-title">
-                Genres
-              </h6>
-              <div className="selection-container">
-                <div className="selections">
-                  {genres[artistType]?.map((genre) => (
-                    <div
-                      key={genre}
-                      className={`selection-card ${selectedGenres.includes(genre) ? 'selected' : ''} ${!canEdit ? 'read-only' : ''}`}
-                      onClick={canEdit ? () => handleGenreToggle(genre) : undefined}
-                    >
-                      {genre}
+              {/* Genres */}
+              {artistType && selectedGenres && selectedGenres.length > 0 && (
+                <div className="about-field-section">
+                  <h6 className="label about-field-title">
+                    Genres
+                  </h6>
+                  <div className="selection-container">
+                    <div className="selections">
+                      {selectedGenres.map((genre) => (
+                        <div
+                          key={genre}
+                          className="selection-card selected"
+                        >
+                          {genre}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Previous Venues */}
+              {previousVenues && previousVenues.trim() && (
+                <div className="about-field-section">
+                  <h6 className="label about-field-title">
+                    Previous Performances
+                  </h6>
+                  <p style={{ marginTop: '0.5rem', color: 'var(--gn-grey-700)', whiteSpace: 'pre-wrap' }}>{previousVenues}</p>
+                </div>
+              )}
+
+              {/* Location */}
+              {city && (
+                <div className="about-field-section">
+                  <h6 className="label about-field-title">
+                    Location
+                  </h6>
+                  <p style={{ marginTop: '0.5rem', color: 'var(--gn-grey-700)' }}>
+                    {city}{travelDistance ? ` · Willing to travel ${travelDistance}` : ''}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            // Edit mode for owners
+            <>
+              {/* Artist Type */}
+              <div className="about-field-section">
+                <h6 className="label about-field-title">
+                  Performer Type
+                </h6>
+                <div className="selection-container">
+                  <div className="selections">
+                    <div 
+                      className={`selection-card ${artistType === 'Musician/Band' ? 'selected' : ''}`}
+                      onClick={() => handleArtistTypeSelect('Musician/Band')}
+                    >
+                      <h4 className='text'>Musician/Band</h4>
+                    </div>
+                    <div 
+                      className={`selection-card ${artistType === 'DJ' ? 'selected' : ''}`}
+                      onClick={() => handleArtistTypeSelect('DJ')}
+                    >
+                      <h4 className='text'>DJ</h4>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Location */}
-          <div className="about-field-section">
-            <div className="input-container" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="about-city" className='label'>City</label>
-              <select
-                className='input'
-                id="about-city"
-                value={city}
-                onChange={canEdit ? (e) => handleCityChange(e.target.value) : undefined}
-                disabled={!canEdit}
-              >
-                <option value="">Select a city</option>
-                {UK_CITIES.map((cityName) => (
-                  <option key={cityName} value={cityName}>
-                    {cityName}
-                  </option>
-                ))}
-              </select>
-              {isGeocoding && <p style={{ fontSize: '0.85rem', color: 'var(--gn-grey-500)', marginTop: '0.5rem' }}>Finding your location...</p>}
-            </div>
-            <div className="selection-container">
-              <h6 className='label'>Travel Distance</h6>
-              <div className="selections">
-                {['5 miles', '25 miles', '50 miles', '100 miles', 'Nationwide'].map((distance) => (
-                  <div
-                    key={distance}
-                    className={`selection-card ${travelDistance === distance ? 'selected' : ''} ${!canEdit ? 'read-only' : ''}`}
-                    onClick={canEdit ? () => handleTravelDistanceSelect(distance) : undefined}
-                  >
-                    <h4 className='text'>{distance}</h4>
+              {/* Genres */}
+              {artistType && (
+                <div className="about-field-section">
+                  <h6 className="label about-field-title">
+                    Genres
+                  </h6>
+                  <div className="selection-container">
+                    <div className="selections">
+                      {genres[artistType]?.map((genre) => (
+                        <div
+                          key={genre}
+                          className={`selection-card ${selectedGenres.includes(genre) ? 'selected' : ''}`}
+                          onClick={() => handleGenreToggle(genre)}
+                        >
+                          {genre}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                </div>
+              )}
+
+              {/* Previous Venues */}
+              <div className="about-field-section">
+                <div className="input-container" style={{ marginBottom: '0.5rem' }}>
+                  <label htmlFor="about-previous-venues" className='label'>
+                    List any venues you have previously performed at
+                  </label>
+                  <textarea
+                    className='input'
+                    id="about-previous-venues"
+                    value={previousVenues}
+                    onChange={(e) => setPreviousVenues(e.target.value)}
+                    placeholder="Enter venues you've performed at..."
+                    rows={4}
+                    style={{ 
+                      resize: 'none',
+                      minHeight: '80px',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          </div>
+
+              {/* Location */}
+              <div className="about-field-section">
+                <div className="input-container" style={{ marginBottom: '0.5rem' }}>
+                  <label htmlFor="about-city" className='label'>City</label>
+                  <select
+                    className='input'
+                    id="about-city"
+                    value={city}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                  >
+                    <option value="">Select a city</option>
+                    {UK_CITIES.map((cityName) => (
+                      <option key={cityName} value={cityName}>
+                        {cityName}
+                      </option>
+                    ))}
+                  </select>
+                  {isGeocoding && <p style={{ fontSize: '0.85rem', color: 'var(--gn-grey-500)', marginTop: '0.5rem' }}>Finding your location...</p>}
+                </div>
+                <div className="selection-container">
+                  <h6 className='label'>Travel Distance</h6>
+                  <div className="selections">
+                    {['5 miles', '25 miles', '50 miles', '100 miles', 'Nationwide'].map((distance) => (
+                      <div
+                        key={distance}
+                        className={`selection-card ${travelDistance === distance ? 'selected' : ''}`}
+                        onClick={() => handleTravelDistanceSelect(distance)}
+                      >
+                        <h4 className='text'>{distance}</h4>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Save/Cancel Buttons */}
           {canEdit && hasChanges && (
@@ -1351,6 +1408,15 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
       return;
     }
 
+    // Check if this performer is the profile owner
+    const isProfileOwner = performer.performerId === profileData?.userId || 
+                          (performer.isMember && performer.performerId === profileData?.userId);
+    
+    if (isProfileOwner) {
+      toast.error('You cannot invite yourself - you are already the profile owner');
+      return;
+    }
+
     // Use provided email or fall back to performerName if it's an email
     const inviteEmail = email || (performer.performerName && performer.performerName.includes('@') ? performer.performerName.trim() : null);
     
@@ -1362,6 +1428,12 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
     // Validate email format
     if (!validateEmail(inviteEmail)) {
       toast.error('Please enter a valid email address');
+      return;
+    }
+
+    // Check if email matches current user's email
+    if (user?.email && inviteEmail.toLowerCase() === user.email.toLowerCase()) {
+      toast.error('You cannot invite yourself');
       return;
     }
 
@@ -1427,8 +1499,8 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
 
   // Render Tech Rider section
   if (type === 'tech-rider') {
-    // View-only mode for venues/public viewers
-    if (!canEdit && techRiderData.isComplete && techRiderData.lineup.length > 0) {
+    // View mode: show full tech rider when completed (for both viewers and owners)
+    if (techRiderData.isComplete && techRiderData.lineup.length > 0 && isViewingTechRider) {
       return (
         <div className="additional-info-section">
           <div className="section-header">
@@ -1436,6 +1508,16 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
               {getIcon()}
               <h3>Tech Rider</h3>
             </div>
+            {canEdit && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="btn primary"
+                  onClick={handleEditTechRider}
+                >
+                  <EditIcon /> Edit Tech Rider
+                </button>
+              </div>
+            )}
           </div>
           <div className="section-content">
             {/* Stage Map - View Only */}
@@ -1601,7 +1683,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                                       }
                                       
                                       if (currentValue) {
-                                        return label;
+                                        return <span style={{ color: 'var(--gn-red)' }}>{label}</span>;
                                       } else {
                                         // Convert to negative - remove "Needs " or "Need " prefix
                                         if (lowerLabel.startsWith('needs ')) {
@@ -1617,13 +1699,13 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                                 )}
                                 {question.type === 'number' && (
                                   <span>
-                                    Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}
+                                    <span style={{ color: 'var(--gn-red)' }}>Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}</span>
                                     {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
                                   </span>
                                 )}
                                 {question.type === 'text' && (
                                   <span>
-                                    {currentValue}
+                                    <span style={{ color: 'var(--gn-red)' }}>{currentValue}</span>
                                     {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
                                   </span>
                                 )}
@@ -1654,7 +1736,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
       );
     }
 
-    // Empty state for viewers
+    // Empty state for viewers (only show if not editable and no tech rider)
     if (!canEdit && (!techRiderData.isComplete || techRiderData.lineup.length === 0)) {
       return (
         <div className="additional-info-section">
@@ -2137,7 +2219,34 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
           {techRiderStage === 4 && (
             <div className="tech-rider-stage">
               <div className={`tech-rider-stage-map-container ${isViewingTechRider ? 'view-mode' : ''}`}>
-                {/* Stage area - 80% */}
+                {/* Performer list - horizontal above stage */}
+                {!isViewingTechRider && (
+                  <div className="tech-rider-stage-performer-list">
+                    <h6>Performers</h6>
+                    <div>
+                      {techRiderData.lineup.map((performer, index) => {
+                        const isOnStage = techRiderData.stageArrangement.performers.some(
+                          p => p.lineupIndex === index
+                        );
+                        const primaryInstrument = performer.instruments?.[0] || 'Other';
+                        return (
+                          <button
+                            key={index}
+                            className={`tech-rider-stage-performer-button ${isOnStage ? 'on-stage' : ''}`}
+                            draggable={canEdit && !isOnStage}
+                            onDragStart={(e) => handlePerformerDragStart(e, index)}
+                            disabled={!canEdit || isOnStage}
+                          >
+                            {getInstrumentIcon(primaryInstrument)}
+                            <span>{performer.performerName || `Performer ${index + 1}`}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Stage area - full width below */}
                 <div 
                   className={`tech-rider-stage-area ${isViewingTechRider ? 'view-mode' : ''}`}
                   onDrop={isViewingTechRider ? undefined : handleStageDrop}
@@ -2182,31 +2291,6 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                     );
                   })}
                 </div>
-
-                {/* Performer list - 20% */}
-                {!isViewingTechRider && (
-                  <div className="tech-rider-stage-performer-list">
-                    <h6>Performers</h6>
-                    {techRiderData.lineup.map((performer, index) => {
-                      const isOnStage = techRiderData.stageArrangement.performers.some(
-                        p => p.lineupIndex === index
-                      );
-                      const primaryInstrument = performer.instruments?.[0] || 'Other';
-                      return (
-                        <button
-                          key={index}
-                          className={`tech-rider-stage-performer-button ${isOnStage ? 'on-stage' : ''}`}
-                          draggable={canEdit && !isOnStage}
-                          onDragStart={(e) => handlePerformerDragStart(e, index)}
-                          disabled={!canEdit || isOnStage}
-                        >
-                          {getInstrumentIcon(primaryInstrument)}
-                          <span>{performer.performerName || `Performer ${index + 1}`}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
               {!isViewingTechRider && (
                 <div className="tech-rider-stage-actions">
@@ -2235,19 +2319,27 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
               </p>
               <div className="members-list">
                 {techRiderData.lineup.map((performer, index) => {
+                  // Check if this performer is the profile owner
+                  const isProfileOwner = performer.performerId === profileData?.userId || 
+                                        (performer.isMember && performer.performerId === profileData?.userId);
+                  
                   // Check if this performer is already a member
                   const matchingMember = members.find(m => 
                     (performer.isMember && performer.memberId && m.id === performer.memberId) ||
                     (performer.performerId && (m.userId === performer.performerId || m.id === performer.performerId))
                   );
 
-                  if (matchingMember) {
-                    // Performer is already a member - show like members list
+                  if (matchingMember || isProfileOwner) {
+                    // Performer is already a member or is the owner - show like members list
+                    const displayName = matchingMember 
+                      ? (matchingMember.userName || matchingMember.userEmail || performer.performerName || 'Unknown Member')
+                      : (performer.performerName || user?.name || user?.email || 'Profile Owner');
+                    
                     return (
                       <div key={index} className="member-item">
                         <div className="member-name">
-                          {matchingMember.userName || matchingMember.userEmail || performer.performerName || 'Unknown Member'}
-                          {matchingMember.role === 'owner' && (
+                          {displayName}
+                          {(matchingMember?.role === 'owner' || isProfileOwner) && (
                             <span className="member-role"> (Owner)</span>
                           )}
                         </div>

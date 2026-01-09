@@ -296,6 +296,10 @@
   padding: 1rem;
 }
 
+.additional-info-card-container.is-visible {
+  margin-top: 1rem;
+}
+
 .profile-card {
   margin-left: auto;
   margin-bottom: 1rem;
@@ -4857,6 +4861,7 @@
 
 .tech-rider-stage-map-container {
   display: flex;
+  flex-direction: column;
   gap: 0.75rem;
   width: 100%;
   min-height: 200px;
@@ -4864,18 +4869,20 @@
 }
 
 .tech-rider-stage-area {
-  flex: 0 0 65%;
   position: relative;
   border: 1px solid var(--gn-grey-400);
   border-radius: 8px;
   background: var(--gn-grey-100);
   min-height: 200px;
   cursor: crosshair;
+  max-width: 400px;
+  width: 100%;
 }
 
 .tech-rider-stage-map-container.view-mode .tech-rider-stage-area {
   flex: 0 0 100%;
   cursor: default;
+  max-width: 400px;
 }
 
 .tech-rider-stage-area.view-mode {
@@ -4957,12 +4964,37 @@
 }
 
 .tech-rider-stage-performer-list {
-  flex: 0 0 35%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  overflow-y: auto;
-  max-height: 200px;
+}
+
+.tech-rider-stage-performer-list > div {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tech-rider-stage-performer-list > div::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tech-rider-stage-performer-list > div::-webkit-scrollbar-track {
+  background: var(--gn-grey-200);
+  border-radius: 3px;
+}
+
+.tech-rider-stage-performer-list > div::-webkit-scrollbar-thumb {
+  background: var(--gn-grey-400);
+  border-radius: 3px;
+}
+
+.tech-rider-stage-performer-list > div::-webkit-scrollbar-thumb:hover {
+  background: var(--gn-grey-500);
 }
 
 .tech-rider-stage-performer-button {

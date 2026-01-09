@@ -17,7 +17,6 @@ import '@styles/artists/gig-page.styles.css';
 const INSTRUMENT_QUESTIONS = {
   'Vocals': [
     { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true },
-    { key: 'needsMicStand', type: 'yesno', label: 'Need mic stand provided?', notes: true },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
@@ -26,7 +25,6 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'needsCymbals', type: 'yesno', label: 'Need cymbals provided?', notes: true },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true, dependsOn: { key: 'singing', value: true } },
-    { key: 'needsMicStand', type: 'yesno', label: 'Needs stand provided?', notes: true, dependsOn: { key: 'singing', value: true } },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
@@ -34,7 +32,7 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'bringingKeyboard', type: 'yesno', label: 'Bringing keyboard?', notes: false },
     { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
     { key: 'needsKeyboardStand', type: 'yesno', label: 'Need keyboard stand provided?', notes: true },
-    { key: 'hasSeat', type: 'yesno', label: 'Have seat (if needed)?', notes: false },
+    { key: 'hasSeat', type: 'yesno', label: 'Need seat provided?', notes: false },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
@@ -491,7 +489,7 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                                       }
                                       
                                       if (currentValue) {
-                                        return label;
+                                        return <span style={{ color: 'var(--gn-red)' }}>{label}</span>;
                                       } else {
                                         // Convert to negative - remove "Needs " or "Need " prefix
                                         if (lowerLabel.startsWith('needs ')) {
@@ -507,13 +505,13 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                                 )}
                                 {question.type === 'number' && (
                                   <span>
-                                    Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}
+                                    <span style={{ color: 'var(--gn-red)' }}>Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}</span>
                                     {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
                                   </span>
                                 )}
                                 {question.type === 'text' && (
                                   <span>
-                                    {currentValue}
+                                    <span style={{ color: 'var(--gn-red)' }}>{currentValue}</span>
                                     {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
                                   </span>
                                 )}

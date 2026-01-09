@@ -136,13 +136,6 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <h6>{user.name}</h6>
                             <p>{user.email}</p>
                         </div>
-                        <button className="btn artist-profile inline" style={{ fontWeight: 500}} onClick={() => {
-                            // Navigate to base path first to clear any existing profileId
-                            navigate('/artist-profile?create=true', { replace: true });
-                        }}>
-                            New Artist Profile
-                            <GuitarsIcon />
-                        </button>
                         {user.artistProfiles && user.artistProfiles.length > 1 && (() => {
                             // Get active profile ID from localStorage (once, outside the map)
                             let activeProfileId = null;

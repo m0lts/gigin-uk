@@ -36,6 +36,7 @@ import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import exampleProfileImage from '@assets/images/musician-profile-example.png';
 import { UpdateIcon } from '../../shared/ui/extras/Icons';
+import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 
 const BRIGHTNESS_DEFAULT = 100;
 const BRIGHTNESS_RANGE = 40; // slider distance from neutral
@@ -176,6 +177,8 @@ const ArtistProfileComponent = ({
   const [videoUploadStatus, setVideoUploadStatus] = useState('idle');
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [showVideoUploadModal, setShowVideoUploadModal] = useState(false);
+  const [showProfileCompletionModal, setShowProfileCompletionModal] = useState(false);
+  const [completedProfileId, setCompletedProfileId] = useState(null); // Store profileId for modal even after creationProfileId is cleared
   const [isRepositioningHero, setIsRepositioningHero] = useState(false);
   const [isHeroDragging, setIsHeroDragging] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -687,6 +690,14 @@ const ArtistProfileComponent = ({
     
     // If ?create=true is in URL, navigate to base path first (to clear old profileId), then trigger creation
     if (shouldCreate && !isCreatingProfile && !initializingArtistProfile && !createFromUrlRef.current) {
+      // Prevent creating multiple profiles
+      if (artistProfiles && artistProfiles.length > 0) {
+        toast.error('You already have an artist profile. Multiple profiles are not currently supported.');
+        // Remove ?create=true from URL
+        setSearchParams({}, { replace: true });
+        return;
+      }
+      
       // If there's a profileId in the URL path, navigate to base path first to clear it
       if (urlProfileId) {
         // Force navigation to base path without profileId
@@ -1421,6 +1432,7 @@ const ArtistProfileComponent = ({
     // If ?create=true is in URL, skip draft profile and create a new one
     const shouldCreateNew = searchParams.get('create') === 'true';
     
+    // Allow resuming draft profiles
     if (draftProfile && !shouldCreateNew) {
       setIsCreatingProfile(true);
       setCurrentState(ArtistProfileState.CREATING);
@@ -1523,6 +1535,13 @@ const ArtistProfileComponent = ({
       return;
     }
 
+    // Prevent creating multiple profiles - check if user already has any artist profile
+    // (This check is after the draft resume check, so drafts can still be resumed)
+    if (artistProfiles && artistProfiles.length > 0) {
+      toast.error('You already have an artist profile. Multiple profiles are not currently supported.');
+      return;
+    }
+
     // Creating a new profile (not resuming a draft)
     setInitializingArtistProfile(true);
     setCreationHasHeroImage(false);
@@ -1619,6 +1638,9 @@ const ArtistProfileComponent = ({
       
       toast.success('Profile completed!');
       
+      // Store profileId for modal before clearing creationProfileId
+      setCompletedProfileId(creationProfileId);
+      
       // Mark that we just completed the profile to prevent redirect loop
       justCompletedProfileRef.current = true;
       
@@ -1641,7 +1663,13 @@ const ArtistProfileComponent = ({
       setDashboardView(DashboardView.PROFILE);
       setSearchParams({});
       
+      // Show profile completion modal after navigation and state updates complete
+      setTimeout(() => {
+        setShowProfileCompletionModal(true);
+      }, 300);
+      
       // Clear creationProfileId and reset the flag after a short delay
+      // Don't clear completedProfileId - let the modal handle that when it closes
       setTimeout(() => {
         setCreationProfileId(null);
         // Reset the flag after profile data has had time to refresh
@@ -3513,6 +3541,9 @@ const ArtistProfileComponent = ({
       
       toast.success('Profile completed!');
       
+      // Store profileId for modal before clearing creationProfileId
+      setCompletedProfileId(creationProfileId);
+      
       // Mark that we just completed the profile to prevent redirect loop
       justCompletedProfileRef.current = true;
       
@@ -3537,7 +3568,13 @@ const ArtistProfileComponent = ({
       setDashboardView(DashboardView.PROFILE);
       setSearchParams({});
       
+      // Show profile completion modal after navigation and state updates complete
+      setTimeout(() => {
+        setShowProfileCompletionModal(true);
+      }, 300);
+      
       // Clear creationProfileId and reset the flag after a short delay
+      // Don't clear completedProfileId - let the modal handle that when it closes
       setTimeout(() => {
         setCreationProfileId(null);
         // Reset the flag after profile data has had time to refresh
@@ -3552,8 +3589,6 @@ const ArtistProfileComponent = ({
       setSavingDraft(false);
     }
   };
-
-  console.log('activeProfileData', activeProfileData);
 
   // Render dashboard sub-views
   const renderDashboardView = ({ canEdit }) => {
@@ -4230,6 +4265,18 @@ const ArtistProfileComponent = ({
             </div>
           </div>
         </Portal>
+      )}
+
+      {/* Profile Completion Modal - Shows once when profile is completed */}
+      {completedProfileId && (
+        <ProfileCompletionModal
+          onClose={() => {
+            setShowProfileCompletionModal(false);
+            setCompletedProfileId(null);
+          }}
+          profileId={completedProfileId}
+          shouldShow={showProfileCompletionModal}
+        />
       )}
     </div>
   );

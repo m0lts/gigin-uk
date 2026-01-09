@@ -51,7 +51,6 @@ const INSTRUMENT_TYPES = [
 const INSTRUMENT_QUESTIONS = {
   'Vocals': [
     { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true },
-    { key: 'needsMicStand', type: 'yesno', label: 'Need mic stand provided?', notes: true },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
@@ -60,7 +59,6 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'needsCymbals', type: 'yesno', label: 'Need cymbals provided?', notes: true },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true, dependsOn: { key: 'singing', value: true } },
-    { key: 'needsMicStand', type: 'yesno', label: 'Needs stand provided?', notes: true, dependsOn: { key: 'singing', value: true } },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
@@ -68,7 +66,7 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'bringingKeyboard', type: 'yesno', label: 'Bringing keyboard?', notes: false },
     { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
     { key: 'needsKeyboardStand', type: 'yesno', label: 'Need keyboard stand provided?', notes: true },
-    { key: 'hasSeat', type: 'yesno', label: 'Have seat (if needed)?', notes: false },
+    { key: 'hasSeat', type: 'yesno', label: 'Need seat provided?', notes: false },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
     { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
@@ -173,7 +171,7 @@ async function geocodeCity(city) {
   }
 }
 
-export const CREATION_STEP_ORDER = ["hero-image", "stage-name", "bio", "videos", "tracks", "additional-info", "about", "members", "tech-rider"];
+export const CREATION_STEP_ORDER = ["hero-image", "stage-name", "bio", "videos", "tracks", "tech-rider"];
 
 const DEFAULT_STEP = CREATION_STEP_ORDER[0];
 const STAGE_NAME_FONT_MAX = 40;
@@ -336,6 +334,7 @@ export const ProfileCreationBox = ({
   const [heroFlowStage, setHeroFlowStage] = useState("upload");
   const [tracks, setTracks] = useState(initialTracks);
   const [videos, setVideos] = useState(initialVideos);
+  const [techRiderStage, setTechRiderStage] = useState(1);
   const createEntityId = (prefix) =>
     typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
@@ -365,6 +364,8 @@ export const ProfileCreationBox = ({
   const contentWrapperRef = useRef(null);
   const stageNameWrapperRef = useRef(null);
   const textMeasureContextRef = useRef(null);
+  const techRiderDataRef = useRef(null);
+  const currentPerformerIndexRef = useRef(0);
   const [containerHeight, setContainerHeight] = useState("auto");
   const [stageNameFontSize, setStageNameFontSize] = useState(STAGE_NAME_FONT_MAX);
   const trackUsageBytes = useMemo(
@@ -654,9 +655,55 @@ export const ProfileCreationBox = ({
       return;
     }
 
-    if (displayedStep === "additional-info") {
-      // Handle save and exit for additional-info step
-      onSaveAndExit?.();
+    if (displayedStep === "tech-rider") {
+      // Handle tech rider stage navigation
+      if (techRiderStage === 1) {
+        // Validate stage 1 before advancing using TechRiderStep's validation
+        if (window.__techRiderValidateStage1) {
+          const isValid = window.__techRiderValidateStage1();
+          if (!isValid) {
+            return;
+          }
+        }
+        setTechRiderStage(2);
+      } else if (techRiderStage === 2) {
+        // Validate stage 2 before advancing
+        if (window.__techRiderValidateStage2) {
+          const isValid = window.__techRiderValidateStage2();
+          if (!isValid) {
+            return;
+          }
+        }
+        // Move to next performer or stage 3
+        const techRiderData = profileData?.techRider || techRiderDataRef.current || {};
+        const lineup = techRiderData.lineup || [];
+        const currentIndex = currentPerformerIndexRef.current || 0;
+        if (currentIndex < lineup.length - 1) {
+          currentPerformerIndexRef.current = currentIndex + 1;
+        } else {
+          setTechRiderStage(3);
+        }
+      } else if (techRiderStage === 3) {
+        setTechRiderStage(4);
+      } else if (techRiderStage === 4) {
+        // Validate stage 4 before advancing
+        if (window.__techRiderValidateStage4) {
+          const isValid = window.__techRiderValidateStage4();
+          if (!isValid) {
+            return;
+          }
+        }
+        setTechRiderStage(5);
+      } else if (techRiderStage === 5) {
+        // Save and complete tech rider (stage 5 is now the final step)
+        if (window.__techRiderFinishAndSave) {
+          window.__techRiderFinishAndSave().then(() => {
+            onCompleteCreation?.();
+          });
+        } else {
+          onCompleteCreation?.();
+        }
+      }
       return;
     }
 
@@ -672,6 +719,24 @@ export const ProfileCreationBox = ({
   const handleBack = () => {
     if (displayedStep === "hero-image" && heroFlowStage === "adjust") {
       setHeroFlowStage("upload");
+      return;
+    }
+    if (displayedStep === "tech-rider") {
+      // Handle tech rider stage navigation
+      if (techRiderStage === 1) {
+        // Go back to tracks
+        goToStep("tracks");
+      } else if (techRiderStage === 2) {
+        // Go back to previous performer or stage 1
+        const currentIndex = currentPerformerIndexRef.current || 0;
+        if (currentIndex > 0) {
+          currentPerformerIndexRef.current = currentIndex - 1;
+        } else {
+          setTechRiderStage(1);
+        }
+      } else {
+        setTechRiderStage(techRiderStage - 1);
+      }
       return;
     }
     if (!isCreating || currentStepIndex === 0) return;
@@ -984,28 +1049,29 @@ export const ProfileCreationBox = ({
           storageLimitBytes={MEDIA_STORAGE_LIMIT_BYTES}
           />
         );
-      case "additional-info":
-        return <AdditionalInfoStep onOptionClick={goToStep} aboutComplete={aboutComplete} profileData={profileData} />;
-      case "about":
-        return (
-          <AboutStep
-            onBackToAdditionalInfo={() => goToStep("additional-info")}
-            creationProfileId={creationProfileId}
-            onAboutCompleteChange={onAboutCompleteChange}
-          />
-        );
-      case "members":
-        return (
-          <MembersStep
-            onBackToAdditionalInfo={() => goToStep("additional-info")}
-            creationProfileId={creationProfileId}
-          />
-        );
       case "tech-rider":
         return (
           <TechRiderStep
-            onBackToAdditionalInfo={() => goToStep("additional-info")}
+            techRiderStage={techRiderStage}
+            onTechRiderStageChange={setTechRiderStage}
+            onBackToTracks={() => goToStep("tracks")}
+            onCompleteCreation={onCompleteCreation}
             creationProfileId={creationProfileId}
+            profileData={profileData}
+            onTechRiderDataChange={(data) => {
+              // Store tech rider data for navigation logic
+              techRiderDataRef.current = data;
+            }}
+            onCurrentPerformerIndexChange={(index) => {
+              currentPerformerIndexRef.current = index;
+              // Force re-render to update subtitle
+              setTechRiderStage(prev => prev);
+            }}
+            currentPerformerIndexRef={currentPerformerIndexRef}
+            onValidateAndAdvance={(callback) => {
+              // Expose validation function to parent
+              window.__techRiderValidateAndAdvance = callback;
+            }}
           />
         );
     }
@@ -1018,12 +1084,43 @@ export const ProfileCreationBox = ({
     .filter(Boolean)
     .join(" ");
 
+  const getTechRiderSubtitle = () => {
+    if (displayedStep !== "tech-rider") return null;
+    
+    const techRiderData = profileData?.techRider || techRiderDataRef.current || {};
+    const lineup = techRiderData.lineup || [];
+    
+    switch (techRiderStage) {
+      case 1:
+        return "Let's create your tech rider. Add any people that perform with you.";
+      case 2: {
+        const currentIndex = currentPerformerIndexRef.current || 0;
+        const currentPerformer = lineup[currentIndex];
+        if (currentPerformer) {
+          const performerName = currentPerformer.performerName || `Performer ${currentIndex + 1}`;
+          const instruments = currentPerformer.instruments || [];
+          const instrumentsText = instruments.length > 0 ? ` (${instruments.join(', ')})` : '';
+          return `${performerName}${instrumentsText}`;
+        }
+        return "Answer questions about this performer's requirements.";
+      }
+      case 3:
+        return "Any extra notes to add?";
+      case 4:
+        return "Drag the performer(s) to their usual position on stage";
+      case 5:
+        return "Add performers to this artist profile";
+      default:
+        return "Share your technical requirements with venues.";
+    }
+  };
+
   const renderProgressDots = () => {
     // Show only 5 progress dots (first 5 steps)
     const stepsToShow = CREATION_STEP_ORDER.slice(0, 5);
-    // Map additional-info step to the 5th dot
+    // Map tech-rider step (6th step, index 5) to the 5th dot
     const getDotIndex = (stepIndex) => {
-      if (stepIndex >= 5) return 4; // additional-info maps to 5th dot (index 4)
+      if (stepIndex >= 5) return 4; // tech-rider maps to 5th dot (index 4)
       return stepIndex;
     };
     const activeDotIndex = getDotIndex(currentStepIndex);
@@ -1079,7 +1176,13 @@ export const ProfileCreationBox = ({
             This is what your profile could look like. Create your own artist profile and start connecting with venues, booking gigs, and building your music career today!
           </p>
         ) : (
-          <div className={creationPanelsClass}>
+          <>
+            {displayedStep === "tech-rider" && getTechRiderSubtitle() && (
+              <p className="creation-step-question">
+                {getTechRiderSubtitle()}
+              </p>
+            )}
+            <div className={creationPanelsClass}>
             {previousStep && (
               <div className={`creation-step-panel exit ${transitionDirection}`}>
                 {renderStepPanel(previousStep)}
@@ -1094,6 +1197,7 @@ export const ProfileCreationBox = ({
               {renderStepPanel(displayedStep)}
             </div>
           </div>
+          </>
         )}
       </div>
 
@@ -1129,7 +1233,7 @@ export const ProfileCreationBox = ({
         onChange={handleTrackCoverFileChange}
       />
 
-      {displayedStep !== "about" && displayedStep !== "members" && displayedStep !== "tech-rider" && (
+      {(
         <div className={actionsClassName}>
           {isCreating ? (
             <>
@@ -1151,11 +1255,7 @@ export const ProfileCreationBox = ({
                 {isLoading ? (
                   <LoadingSpinner width={15} height={15} marginTop={0} marginBottom={0} color="white" />
                 ) : (
-                  displayedStep === "additional-info" ? (
-                    <>
-                      Save
-                    </>
-                  ) : isFinalStep ? (
+                  (displayedStep === "tech-rider" && techRiderStage === 5) || (isFinalStep && displayedStep !== "tech-rider") ? (
                     <>
                       Save
                     </>
@@ -1821,6 +1921,7 @@ function AboutStep({ onBackToAdditionalInfo, creationProfileId, onAboutCompleteC
   const [subStep, setSubStep] = useState(1);
   const [artistType, setArtistType] = useState('');
   const [selectedGenres, setSelectedGenres] = useState([]);
+  const [previousVenues, setPreviousVenues] = useState('');
   const [city, setCity] = useState('');
   const [cityCoordinates, setCityCoordinates] = useState(null);
   const [travelDistance, setTravelDistance] = useState('');
@@ -1876,6 +1977,8 @@ function AboutStep({ onBackToAdditionalInfo, creationProfileId, onAboutCompleteC
       setSubStep(2);
     } else if (subStep === 2 && selectedGenres.length > 0) {
       setSubStep(3);
+    } else if (subStep === 3 && city && travelDistance) {
+      setSubStep(4);
     }
   };
 
@@ -1891,6 +1994,7 @@ function AboutStep({ onBackToAdditionalInfo, creationProfileId, onAboutCompleteC
     if (subStep === 1) return !!artistType;
     if (subStep === 2) return selectedGenres.length > 0;
     if (subStep === 3) return !!city && !!travelDistance;
+    if (subStep === 4) return true; // Previous venues is optional
     return false;
   };
 
@@ -1902,6 +2006,7 @@ function AboutStep({ onBackToAdditionalInfo, creationProfileId, onAboutCompleteC
       const updates = {
         artistType: artistType || null,
         genres: selectedGenres,
+        previousVenues: previousVenues || null,
         location: city && cityCoordinates ? {
           city,
           coordinates: cityCoordinates,
@@ -2002,6 +2107,27 @@ function AboutStep({ onBackToAdditionalInfo, creationProfileId, onAboutCompleteC
         </>
       )}
 
+      {/* Step 4: Previous Venues */}
+      {subStep === 4 && (
+        <>
+          <p className="creation-step-question">List any venues you have previously performed at</p>
+          <div className="input-container">
+            <textarea
+              className='input'
+              value={previousVenues}
+              onChange={(e) => setPreviousVenues(e.target.value)}
+              placeholder="Enter venues you've performed at..."
+              rows={6}
+              style={{ 
+                resize: 'none',
+                minHeight: '120px',
+                fontFamily: 'inherit'
+              }}
+            />
+          </div>
+        </>
+      )}
+
        {/* Navigation buttons for sub-steps */}
        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>
         <button
@@ -2012,7 +2138,7 @@ function AboutStep({ onBackToAdditionalInfo, creationProfileId, onAboutCompleteC
           <LeftArrowIcon />
           Back
         </button>
-        {subStep === 3 && (
+        {subStep === 4 && (
           <button
             type="button"
             className="btn artist-profile"
@@ -2026,7 +2152,7 @@ function AboutStep({ onBackToAdditionalInfo, creationProfileId, onAboutCompleteC
             )}
           </button>
         )}
-        {subStep < 3 && (
+        {subStep < 4 && (
           <button
             type="button"
             className="btn artist-profile"
@@ -2186,11 +2312,8 @@ function MembersStep({ onBackToAdditionalInfo, creationProfileId }) {
   );
 }
 
-function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
+function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks, onCompleteCreation, creationProfileId, profileData, onTechRiderDataChange, onCurrentPerformerIndexChange }) {
   const { user } = useAuth();
-  
-  // State for Tech Rider section
-  const [techRiderStage, setTechRiderStage] = useState(1); // 1-6 stages
   const [techRiderData, setTechRiderData] = useState({
     lineup: [],
     performerDetails: [],
@@ -2209,9 +2332,34 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
   const [sendingInviteForPerformer, setSendingInviteForPerformer] = useState(null);
   const [members, setMembers] = useState([]);
 
+  // Load existing tech rider data from profileData if available
+  useEffect(() => {
+    if (profileData?.techRider) {
+      const existingTechRider = profileData.techRider;
+      setTechRiderData({
+        lineup: existingTechRider.lineup || [],
+        performerDetails: existingTechRider.performerDetails || [],
+        extraNotes: existingTechRider.extraNotes || '',
+        stageArrangement: existingTechRider.stageArrangement || {
+          performers: [],
+          stageWidth: null,
+          stageDepth: null
+        },
+        isComplete: existingTechRider.isComplete || false,
+        lastStage: existingTechRider.lastStage || 1
+      });
+      // Update parent's techRiderStage if we have saved data
+      if (existingTechRider.lastStage && onTechRiderStageChange) {
+        onTechRiderStageChange(existingTechRider.lastStage);
+      }
+    }
+  }, [profileData?.techRider, onTechRiderStageChange]);
+
   // Auto-populate lineup from members when tech rider is first opened
   useEffect(() => {
     if (!creationProfileId) return;
+    // Don't auto-populate if we already have tech rider data
+    if (profileData?.techRider?.lineup?.length > 0) return;
     
     const fetchAndPopulate = async () => {
       try {
@@ -2219,33 +2367,32 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
         setMembers(membersList);
         
         // Only auto-populate if lineup is empty
-        if (membersList.length > 0 && techRiderData.lineup.length === 0) {
-          setTechRiderData(prev => {
-            if (prev.lineup.length > 0) return prev; // Don't overwrite if already populated
-            
-            const lineupFromMembers = membersList.map(member => ({
-              performerId: member.userId || member.id,
-              performerName: member.userName || member.userEmail || 'Unknown',
-              instruments: [],
-              isMember: true,
-              memberId: member.id
-            }));
-            const detailsFromMembers = membersList.map(() => ({}));
-            
-            return {
-              ...prev,
-              lineup: lineupFromMembers,
-              performerDetails: detailsFromMembers
-            };
-          });
-        }
+        setTechRiderData(prev => {
+          if (prev.lineup.length > 0) return prev; // Don't overwrite if already populated
+          if (membersList.length === 0) return prev; // No members to populate from
+          
+          const lineupFromMembers = membersList.map(member => ({
+            performerId: member.userId || member.id,
+            performerName: member.userName || member.userEmail || 'Unknown',
+            instruments: [],
+            isMember: true,
+            memberId: member.id
+          }));
+          const detailsFromMembers = membersList.map(() => ({}));
+          
+          return {
+            ...prev,
+            lineup: lineupFromMembers,
+            performerDetails: detailsFromMembers
+          };
+        });
       } catch (error) {
         console.error('Failed to fetch members for tech rider:', error);
       }
     };
     
     fetchAndPopulate();
-  }, [creationProfileId]);
+  }, [creationProfileId, profileData?.techRider?.lineup?.length]);
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -2254,7 +2401,7 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
 
   const handleTechRiderStageChange = (newStage) => {
     if (newStage >= 1 && newStage <= 6) {
-      setTechRiderStage(newStage);
+      onTechRiderStageChange?.(newStage);
       if (newStage === 2) {
         setCurrentPerformerIndex(0);
       }
@@ -2502,7 +2649,7 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
     }
   };
 
-  const handleSaveTechRider = async (overrideData = null) => {
+  const handleSaveTechRider = async (overrideData = null, showSuccessNotification = true) => {
     if (!creationProfileId || savingTechRider) return;
 
     setSavingTechRider(true);
@@ -2524,7 +2671,9 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
         setTechRiderData(overrideData);
       }
 
-      toast.success('Tech rider saved successfully');
+      if (showSuccessNotification) {
+        toast.success('Tech rider saved successfully');
+      }
     } catch (error) {
       console.error('Failed to save tech rider:', error);
       toast.error('Failed to save tech rider. Please try again.');
@@ -2533,22 +2682,114 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
     }
   };
 
-  const handleFinishAndSave = async () => {
+  // Expose handleFinishAndSave for parent to call
+  const handleFinishAndSave = useCallback(async () => {
     const completedData = {
       ...techRiderData,
       isComplete: true,
-      lastStage: 4
+      lastStage: 5
     };
-    await handleSaveTechRider(completedData);
-    onBackToAdditionalInfo();
+    // Don't show tech rider notification - profile completion will show its own
+    await handleSaveTechRider(completedData, false);
+  }, [techRiderData]);
+  
+  const validateStage2 = () => {
+    // Validate that all required fields are filled for all performers
+    const lineup = techRiderData.lineup || [];
+    const performerDetails = techRiderData.performerDetails || [];
+    
+    for (let i = 0; i < lineup.length; i++) {
+      const performer = lineup[i];
+      const instruments = performer.instruments || [];
+      const details = performerDetails[i] || {};
+      
+      // Check if Vocals is one of the instruments
+      const hasVocals = instruments.includes('Vocals');
+      
+      // Collect all required questions for this performer
+      const requiredQuestions = [];
+      instruments.forEach((instrument) => {
+        const questions = INSTRUMENT_QUESTIONS[instrument] || [];
+        questions.forEach((question) => {
+          // Skip singing and singing-dependent needsMic questions for non-Vocals instruments if Vocals is present
+          if (hasVocals && instrument !== 'Vocals') {
+            if (question.key === 'singing') return;
+            if (question.key === 'needsMic' && question.dependsOn && question.dependsOn.key === 'singing') return;
+          }
+          
+          // Check if question is required (not extraNotes)
+          if (question.key !== 'extraNotes') {
+            // Check dependencies
+            if (question.dependsOn) {
+              const instrumentDetails = details[instrument] || {};
+              const dependsValue = instrumentDetails[question.dependsOn.key];
+              if (dependsValue !== question.dependsOn.value) {
+                // Check if any other instrument has this dependency met
+                let dependencyMet = false;
+                for (const inst of instruments) {
+                  const instDetails = details[inst] || {};
+                  if (instDetails[question.dependsOn.key] === question.dependsOn.value) {
+                    dependencyMet = true;
+                    break;
+                  }
+                }
+                if (!dependencyMet) return; // Skip this question if dependency not met
+              }
+            }
+            requiredQuestions.push({ question, instrument });
+          }
+        });
+      });
+      
+      // Check that all required questions are answered
+      for (const { question, instrument } of requiredQuestions) {
+        const instrumentDetails = details[instrument] || {};
+        const value = instrumentDetails[question.key];
+        
+        if (question.type === 'yesno') {
+          if (value === undefined || value === null) {
+            toast.error(`${performer.performerName || `Performer ${i + 1}`}: Please answer "${question.label}"`);
+            return false;
+          }
+        } else if (question.type === 'number') {
+          if (value === undefined || value === null || value === '') {
+            toast.error(`${performer.performerName || `Performer ${i + 1}`}: Please provide a value for "${question.label}"`);
+            return false;
+          }
+        }
+      }
+    }
+    
+    return true;
   };
+  
+  const validateStage4 = () => {
+    // Validate that at least one performer is placed on stage
+    const performersOnStage = techRiderData.stageArrangement?.performers || [];
+    if (performersOnStage.length === 0) {
+      toast.error('Please place at least one performer on the stage');
+      return false;
+    }
+    return true;
+  };
+  
+  // Expose validation and save functions to parent via window (temporary solution)
+  useEffect(() => {
+    window.__techRiderValidateStage1 = validateStage1;
+    window.__techRiderValidateStage2 = validateStage2;
+    window.__techRiderValidateStage4 = validateStage4;
+    window.__techRiderFinishAndSave = handleFinishAndSave;
+    return () => {
+      delete window.__techRiderValidateStage1;
+      delete window.__techRiderValidateStage2;
+      delete window.__techRiderValidateStage4;
+      delete window.__techRiderFinishAndSave;
+    };
+  }, [techRiderStage, handleFinishAndSave, techRiderData]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ flex: 1 }}>
-        <p className="creation-step-question">
-          Share your technical requirements with venues.
-        </p>
 
         {/* Stage 1: Lineup */}
         {techRiderStage === 1 && (
@@ -2643,16 +2884,6 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
               <PlusIconSolid /> Add Performer
             </button>
 
-            {techRiderData.lineup.length > 0 && (
-              <div className="tech-rider-stage-nav">
-                <button
-                  className="btn artist-profile"
-                  onClick={handleStage1Next}
-                >
-                  Next <RightArrowIcon />
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -2680,6 +2911,9 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
                   const instruments = performer?.instruments || [];
                   const details = techRiderData.performerDetails[currentPerformerIndex] || {};
                   
+                  // Check if Vocals is one of the instruments
+                  const hasVocals = instruments.includes('Vocals');
+                  
                   const questionMap = new Map();
                   
                   instruments.forEach((instrument) => {
@@ -2687,6 +2921,16 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
                     const instrumentDetails = details[instrument] || {};
                     
                     questions.forEach((question) => {
+                      // Skip singing and singing-dependent needsMic questions for non-Vocals instruments if Vocals is present
+                      if (hasVocals && instrument !== 'Vocals') {
+                        if (question.key === 'singing') {
+                          return; // Skip singing question for non-Vocals instruments
+                        }
+                        if (question.key === 'needsMic' && question.dependsOn && question.dependsOn.key === 'singing') {
+                          return; // Skip needsMic question that depends on singing for non-Vocals instruments
+                        }
+                      }
+                      
                       if (question.dependsOn) {
                         let dependencyMet = false;
                         const dependsValue = instrumentDetails[question.dependsOn.key];
@@ -2787,7 +3031,7 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
                             {question.notes && (
                               <textarea
                                 className="input tech-rider-notes-textarea-inline"
-                                placeholder="Notes (optional)"
+                                placeholder={question.key === 'needsMic' ? 'Additional notes (e.g Need mic stand, etc.)' : 'Additional Notes (optional)'}
                                 value={notesValue}
                                 onChange={(e) => updateQuestionForAllInstruments(currentValue, e.target.value)}
                                 rows={1}
@@ -2824,7 +3068,7 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
                             {question.notes && (
                               <textarea
                                 className="input tech-rider-notes-textarea-inline"
-                                placeholder="Notes (optional)"
+                                placeholder="Additional Notes (optional)"
                                 value={notesValue}
                                 onChange={(e) => updateQuestionForAllInstruments(currentValue, e.target.value)}
                                 rows={1}
@@ -2845,7 +3089,7 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
                           </label>
                           <textarea
                             className="input tech-rider-extra-notes-textarea"
-                            placeholder={question.key === 'extraNotes' ? 'Any more information about the performer' : ''}
+                            placeholder={question.key === 'extraNotes' ? 'Any more notes? e.g Preferred monitoring arrangement etc.' : ''}
                             value={currentValue || ''}
                             onChange={(e) => updateQuestionForAllInstruments(e.target.value)}
                             rows={1}
@@ -2864,32 +3108,6 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
                   </p>
                 )}
 
-                <div className="tech-rider-stage-actions">
-                  <button
-                    className="btn tertiary"
-                    onClick={() => {
-                      if (currentPerformerIndex > 0) {
-                        setCurrentPerformerIndex(currentPerformerIndex - 1);
-                      } else {
-                        handleTechRiderStageChange(1);
-                      }
-                    }}
-                  >
-                    Back
-                  </button>
-                  <button
-                    className="btn artist-profile"
-                    onClick={() => {
-                      if (currentPerformerIndex < techRiderData.lineup.length - 1) {
-                        setCurrentPerformerIndex(currentPerformerIndex + 1);
-                      } else {
-                        handleTechRiderStageChange(3);
-                      }
-                    }}
-                  >
-                    Next <RightArrowIcon />
-                  </button>
-                </div>
               </>
             )}
           </div>
@@ -2905,20 +3123,6 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
               rows={8}
               placeholder="Preferred monitoring arrangement etc."
             />
-            <div className="tech-rider-stage-actions">
-              <button
-                className="btn tertiary"
-                onClick={() => handleTechRiderStageChange(2)}
-              >
-                Back
-              </button>
-              <button
-                className="btn artist-profile"
-                onClick={() => handleTechRiderStageChange(4)}
-              >
-                Next <RightArrowIcon />
-              </button>
-            </div>
           </div>
         )}
 
@@ -2926,6 +3130,32 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
         {techRiderStage === 4 && (
           <div className="tech-rider-stage">
             <div className="tech-rider-stage-map-container">
+              {/* Performer list - horizontal above stage */}
+              <div className="tech-rider-stage-performer-list">
+                <h6>Performers</h6>
+                <div>
+                  {techRiderData.lineup.map((performer, index) => {
+                    const isOnStage = techRiderData.stageArrangement.performers.some(
+                      p => p.lineupIndex === index
+                    );
+                    const primaryInstrument = performer.instruments?.[0] || 'Other';
+                    return (
+                      <button
+                        key={index}
+                        className={`tech-rider-stage-performer-button ${isOnStage ? 'on-stage' : ''}`}
+                        draggable={!isOnStage}
+                        onDragStart={(e) => handlePerformerDragStart(e, index)}
+                        disabled={isOnStage}
+                      >
+                        {getInstrumentIcon(primaryInstrument)}
+                        <span>{performer.performerName || `Performer ${index + 1}`}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Stage area - full width below */}
               <div 
                 className="tech-rider-stage-area"
                 onDrop={handleStageDrop}
@@ -2968,42 +3198,6 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
                   );
                 })}
               </div>
-
-              <div className="tech-rider-stage-performer-list">
-                <h6>Performers</h6>
-                {techRiderData.lineup.map((performer, index) => {
-                  const isOnStage = techRiderData.stageArrangement.performers.some(
-                    p => p.lineupIndex === index
-                  );
-                  const primaryInstrument = performer.instruments?.[0] || 'Other';
-                  return (
-                    <button
-                      key={index}
-                      className={`tech-rider-stage-performer-button ${isOnStage ? 'on-stage' : ''}`}
-                      draggable={!isOnStage}
-                      onDragStart={(e) => handlePerformerDragStart(e, index)}
-                      disabled={isOnStage}
-                    >
-                      {getInstrumentIcon(primaryInstrument)}
-                      <span>{performer.performerName || `Performer ${index + 1}`}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="tech-rider-stage-actions">
-              <button
-                className="btn tertiary"
-                onClick={() => handleTechRiderStageChange(3)}
-              >
-                Back
-              </button>
-              <button
-                className="btn artist-profile"
-                onClick={() => handleTechRiderStageChange(5)}
-              >
-                Next <RightArrowIcon />
-              </button>
             </div>
           </div>
         )}
@@ -3011,9 +3205,6 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
         {/* Stage 5: Add Members */}
         {techRiderStage === 5 && (
           <div className="tech-rider-stage">
-            <p className="tech-rider-stage-subtext">
-              Invite any performers that aren't members to join this artist profile.
-            </p>
             <div className="members-list">
               {techRiderData.lineup.map((performer, index) => {
                 const matchingMember = members.find(m => 
@@ -3070,56 +3261,9 @@ function TechRiderStep({ onBackToAdditionalInfo, creationProfileId }) {
               </p>
             )}
 
-            <div className="tech-rider-stage-actions">
-              <button
-                className="btn tertiary"
-                onClick={() => handleTechRiderStageChange(4)}
-              >
-                Back
-              </button>
-              <button
-                className="btn artist-profile"
-                onClick={() => handleTechRiderStageChange(6)}
-              >
-                Next <RightArrowIcon />
-              </button>
-            </div>
           </div>
         )}
 
-        {/* Stage 6: Info */}
-        {techRiderStage === 6 && (
-          <div className="tech-rider-stage">
-            <p className="tech-rider-info-text">
-              This will be saved as your default tech rider. Soon you will be able to add multiple tech riders to your artist profile.
-            </p>
-            <div className="tech-rider-stage-actions">
-              <button
-                className="btn tertiary"
-                onClick={() => handleTechRiderStageChange(5)}
-              >
-                Back
-              </button>
-              <button
-                className="btn artist-profile"
-                onClick={handleFinishAndSave}
-                disabled={savingTechRider}
-              >
-                {savingTechRider ? 'Saving...' : 'Finish & Save'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 'auto', paddingTop: '1.5rem' }}>
-        <button
-          type="button"
-          className="btn tertiary creation-back-btn"
-          onClick={onBackToAdditionalInfo}
-        >
-          <LeftArrowIcon />
-          Back
-        </button>
       </div>
     </div>
   );
