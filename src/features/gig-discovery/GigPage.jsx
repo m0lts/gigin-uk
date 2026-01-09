@@ -1097,7 +1097,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
         const { soundSystem, backline, houseRules } = venueProfile.techRider;
         const equipmentItems = [];
-        const equipmentNotes = [];
 
         // PA
         if (soundSystem?.pa) {
@@ -1106,11 +1105,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     key="pa"
                     equipmentName="PA"
                     available={soundSystem.pa.available}
+                    notes={soundSystem.pa.notes}
                 />
             );
-            if (soundSystem.pa.notes) {
-                equipmentNotes.push({ name: 'PA', notes: soundSystem.pa.notes });
-            }
         }
 
         // Mixing Console
@@ -1120,11 +1117,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     key="mixingConsole"
                     equipmentName="Mixing Console"
                     available={soundSystem.mixingConsole.available}
+                    notes={soundSystem.mixingConsole.notes}
                 />
             );
-            if (soundSystem.mixingConsole.notes) {
-                equipmentNotes.push({ name: 'Mixing Console', notes: soundSystem.mixingConsole.notes });
-            }
         }
 
         // Vocal Mics
@@ -1134,11 +1129,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     key="vocalMics"
                     equipmentName="Vocal Mics"
                     count={soundSystem.vocalMics.count}
+                    notes={soundSystem.vocalMics.notes}
                 />
             );
-            if (soundSystem.vocalMics.notes) {
-                equipmentNotes.push({ name: 'Vocal Mics', notes: soundSystem.vocalMics.notes });
-            }
         }
 
         // DI Boxes
@@ -1148,11 +1141,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     key="diBoxes"
                     equipmentName="DI Boxes"
                     count={soundSystem.diBoxes.count}
+                    notes={soundSystem.diBoxes.notes}
                 />
             );
-            if (soundSystem.diBoxes.notes) {
-                equipmentNotes.push({ name: 'DI Boxes', notes: soundSystem.diBoxes.notes });
-            }
         }
 
         // Drum Kit
@@ -1162,11 +1153,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     key="drumKit"
                     equipmentName="Drum Kit"
                     available={backline.drumKit.available}
+                    notes={backline.drumKit.notes}
                 />
             );
-            if (backline.drumKit.notes) {
-                equipmentNotes.push({ name: 'Drum Kit', notes: backline.drumKit.notes });
-            }
         }
 
         // Bass Amp
@@ -1176,11 +1165,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     key="bassAmp"
                     equipmentName="Bass Amp"
                     available={backline.bassAmp.available}
+                    notes={backline.bassAmp.notes}
                 />
             );
-            if (backline.bassAmp.notes) {
-                equipmentNotes.push({ name: 'Bass Amp', notes: backline.bassAmp.notes });
-            }
         }
 
         // Guitar Amp
@@ -1190,11 +1177,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     key="guitarAmp"
                     equipmentName="Guitar Amp"
                     available={backline.guitarAmp.available}
+                    notes={backline.guitarAmp.notes}
                 />
             );
-            if (backline.guitarAmp.notes) {
-                equipmentNotes.push({ name: 'Guitar Amp', notes: backline.guitarAmp.notes });
-            }
         }
 
         // Keyboard
@@ -1204,55 +1189,38 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     key="keyboard"
                     equipmentName="Keyboard"
                     available={backline.keyboard.available}
+                    notes={backline.keyboard.notes}
                 />
             );
-            if (backline.keyboard.notes) {
-                equipmentNotes.push({ name: 'Keyboard', notes: backline.keyboard.notes });
-            }
         }
 
         return (
             <>
-                <div className="tech-rider-grid">
+                <div className="tech-rider-grid" style={{ marginTop: '1rem', alignItems: 'flex-start' }}>
                     {equipmentItems}
                 </div>
                 
-                {/* Volume Level and Noise Curfew */}
-                {(houseRules?.volumeLevel || houseRules?.noiseCurfew) && (
-                    <div className="tech-rider-volume-curfew">
-                        {houseRules.volumeLevel && (
-                            <div className="tech-rider-volume-curfew-item">
+                {/* Other Note Fields */}
+                {(soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes) && (
+                    <div className="tech-rider-notes-section">
+                        {houseRules?.volumeLevel && (
+                            <div>
                                 <h6>Volume Level</h6>
                                 <p>{houseRules.volumeLevel.charAt(0).toUpperCase() + houseRules.volumeLevel.slice(1)}</p>
-                                {houseRules.volumeNotes && (
-                                    <p style={{ fontSize: '0.875rem', color: 'var(--gn-grey-600)', marginTop: '0.25rem' }}>{houseRules.volumeNotes}</p>
-                                )}
                             </div>
                         )}
-                        {houseRules.noiseCurfew && (
-                            <div className="tech-rider-volume-curfew-item">
+                        {houseRules?.noiseCurfew && (
+                            <div>
                                 <h6>Noise Curfew</h6>
                                 <p>{houseRules.noiseCurfew}</p>
                             </div>
                         )}
-                    </div>
-                )}
-
-                {/* Equipment Notes */}
-                {equipmentNotes.length > 0 && (
-                    <div className="tech-rider-notes-section">
-                        <h6>Equipment Notes</h6>
-                        {equipmentNotes.map((item, index) => (
-                            <div key={index}>
-                                <p><strong>{item.name}:</strong> {item.notes}</p>
+                        {houseRules?.volumeNotes && (
+                            <div>
+                                <h6>Volume Notes</h6>
+                                <p>{houseRules.volumeNotes}</p>
                             </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Other Note Fields */}
-                {(soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules) && (
-                    <div className="tech-rider-notes-section">
+                        )}
                         {soundSystem?.monitoring && (
                             <div>
                                 <h6>Monitoring</h6>

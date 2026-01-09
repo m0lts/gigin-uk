@@ -244,6 +244,11 @@
     width: 90%;
 }
 
+.venue-builder .stage.type .card.large {
+    width: 50%;
+    flex: 1;
+}
+
 .venue-builder .stage .card.selected {
     border-color: var(--gn-off-black);
     outline: 1px solid var(--gn-off-black);
@@ -263,9 +268,25 @@
 .venue-builder .venue-type {
     width:100%;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap:1rem;
     min-height: 50%;
+}
+
+.venue-builder .stage.type .establishment-type {
+    margin-top: 2rem;
+}
+
+.venue-builder .stage.type .establishment-type .selections {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.venue-builder .stage.type .establishment-type .selections .card {
+    padding: 0.5rem 1rem;
+    font-weight: 500;
 }
 
 
@@ -764,7 +785,7 @@
 .venue-builder .stage.extra-details .input-group.large-text {
     display: flex;
     flex-direction: column;
-    width:75%;
+    width:60%;
     min-width: 300px;
 }
 
@@ -795,6 +816,98 @@
 
 .venue-builder .stage.extra-details .input-group textarea.error {
     border-color:red;
+}
+
+/* Character counter styling for venue builder */
+.venue-builder .stage.extra-details .creation-bio-textarea-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.venue-builder .stage.extra-details .creation-bio-textarea-length {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.65rem;
+    font-size: 0.75rem;
+    color: var(--gn-grey-600);
+    font-weight: 500;
+    pointer-events: none;
+}
+
+.venue-builder .stage.extra-details .creation-bio-textarea-length.red {
+    color: var(--gn-red);
+}
+
+.venue-builder .stage.extra-details .creation-bio-textarea {
+    width: 100%;
+    min-height: 60px;
+    max-height: 60px;
+    border-radius: 1rem;
+    border: 1px solid var(--gn-grey-400);
+    padding: 1rem;
+    padding-bottom: 2rem;
+    font-size: 1rem;
+    background: var(--gn-white);
+    resize: none;
+    outline: 1px solid transparent;
+    outline-offset: -2px;
+    transition: border 0.3s ease, background-color 0.3s ease, color 0.3s ease, outline 0.3s ease;
+}
+
+.venue-builder .stage.extra-details .creation-bio-textarea:focus {
+    border-color: var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+}
+
+.venue-builder .stage.extra-details .creation-bio-textarea::placeholder {
+    color: var(--gn-grey-500);
+}
+
+.venue-builder .stage.extra-details .creation-bio-textarea.error {
+    border-color: var(--gn-red);
+}
+
+/* File Upload Styling */
+.venue-builder .stage.extra-details .file-upload-container {
+    position: relative;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.venue-builder .stage.extra-details .file-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.venue-builder .stage.extra-details .file-upload-label {
+    display: flex;
+    align-items: center;
+    gap:0.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    color: var(--gn-off-black);
+    cursor: pointer;
+    transition: border 200ms linear, outline 200ms linear;
+    font-size: 1rem;
+    width: 100%;
+    text-align: left;
+}
+
+.venue-builder .stage.extra-details .file-upload-label:hover {
+    border-color: var(--gn-off-black);
+}
+
+.venue-builder .stage.extra-details .file-input:focus + .file-upload-label {
+    outline: 1px solid var(--gn-off-black);
+    border-color: var(--gn-off-black);
 }
 
 .venue-builder .stage.extra-details .margin {

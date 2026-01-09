@@ -25,6 +25,30 @@ export const uploadFileToStorage = async (file, path) => {
 };
 
 /**
+ * Uploads a single file with fallback - returns existing URL if it's already a string, otherwise uploads the file.
+ *
+ * @param {File|string} file - File object to upload or existing URL string.
+ * @param {string} folderPath - Firebase storage path for uploads.
+ * @returns {Promise<string>} - Download URL of the file.
+ */
+export const uploadFileWithFallback = async (file, folderPath) => {
+  // If it's empty/null/undefined, return empty string
+  if (!file || file === '') {
+    return '';
+  }
+  // If it's already a URL string, return it
+  if (typeof file === 'string' && file.startsWith('https')) {
+    return file;
+  }
+  // If it's a File object, upload it
+  if (file instanceof File) {
+    return await uploadFileToStorage(file, `${folderPath}/${file.name}`);
+  }
+  // Fallback: return empty string
+  return '';
+};
+
+/**
  * Uploads an array of images and returns an array of all image URLs (existing + uploaded).
  *
  * @param {Array<string | { file: File, offsetY?: number }>} images - Mixed array of image URLs and new image objects.
@@ -32,20 +56,50 @@ export const uploadFileToStorage = async (file, path) => {
  * @returns {Promise<string[]>} - Array of all image URLs.
  */
 export const uploadImageArrayWithFallback = async (images, folderPath) => {
-  const urls = images
-    .filter(img =>
-      typeof img === 'string' ||
-      (typeof img.file === 'string' && img.file.startsWith('https'))
-    )
-    .map(img => (typeof img === 'string' ? img : img.file)); // extract actual URLs
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    return [];
+  }
 
+  // Extract existing URLs (either string URLs or wrapped objects with URL strings)
+  const urls = images
+    .filter(img => {
+      // String URL
+      if (typeof img === 'string' && img.startsWith('http')) {
+        return true;
+      }
+      // Wrapped object with string URL
+      if (typeof img === 'object' && img?.file) {
+        if (typeof img.file === 'string' && img.file.startsWith('http')) {
+          return true;
+        }
+      }
+      return false;
+    })
+    .map(img => {
+      // Extract the URL string
+      if (typeof img === 'string') return img;
+      if (typeof img === 'object' && img?.file && typeof img.file === 'string') {
+        return img.file;
+      }
+      return null;
+    })
+    .filter(url => url !== null); // Remove any nulls
+
+  // Extract File objects that need to be uploaded
   const files = images
-    .filter(img => typeof img.file === 'object' && img.file instanceof File)
+    .filter(img => 
+      typeof img === 'object' && 
+      img?.file && 
+      img.file instanceof File
+    )
     .map(img => img.file);
 
-  const uploadedUrls = await Promise.all(
-    files.map(file => uploadFileToStorage(file, `${folderPath}/${file.name}`))
-  );
+  // Upload new files
+  const uploadedUrls = files.length > 0 
+    ? await Promise.all(
+        files.map(file => uploadFileToStorage(file, `${folderPath}/${file.name}`))
+      )
+    : [];
 
   return [...urls, ...uploadedUrls];
 };

@@ -11,7 +11,7 @@ import { UploadingProfile } from './UploadingProfile';
 import { arrayUnion, arrayRemove, GeoPoint, deleteField } from 'firebase/firestore';
 import { createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
 import { BuildingIcon, ErrorIcon, MobileIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
-import { uploadImageArrayWithFallback } from '../../../services/storage';
+import { uploadImageArrayWithFallback, uploadFileWithFallback } from '../../../services/storage';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
 import { Links } from './Links';
@@ -79,6 +79,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         },
         primaryImageOffsetY: 0,
         primaryImageBlur: 0,
+        termsAndConditions: '',
+        prs: '',
+        otherDocuments: '',
     });
 
     useEffect(() => {
@@ -94,12 +97,16 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
 
     useEffect(() => {
         if (venue) {
+            // Convert photos to wrapped format for the Photos component
+            // But also ensure we preserve the original URLs for saving
             const photos = (venue.photos || []).map((url, i) => {
                 if (i === 0) {
                     return { file: url, offsetY: venue.primaryImageOffsetY || 0, blur: venue.primaryImageBlur || 0 };
                 }
                 return url;
             });
+            console.log('Loading venue - original photos:', venue.photos);
+            console.log('Loading venue - converted photos:', photos);
             setFormData({
                 venueId: venue.venueId || uuidv4(),
                 type: venue.type || '',
@@ -143,6 +150,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 socialMedia: venue.socialMedia,
                 primaryImageOffsetY: venue.primaryImageOffsetY || 0,
                 primaryImageBlur: venue.primaryImageBlur || 0,
+                termsAndConditions: venue.termsAndConditions || '',
+                prs: venue.prs || '',
+                otherDocuments: venue.otherDocuments || '',
             });
         }
     }, [venue])
@@ -197,14 +207,40 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         setUploadText(`Adding ${formData?.name} To The Gigin Map`);
         setUploadingProfile(true);
         try {
+            // Validate and upload images
+            const imageFiles = formData.photos || [];
+            let imageUrls = [];
             
-            const imageFiles = formData.photos;
-            const imageUrls = await uploadImageArrayWithFallback(imageFiles, `venues/${formData.venueId}`);
+            if (imageFiles.length > 0) {
+                const firstImage = imageFiles[0];
+                if (firstImage?.file instanceof File) {
+                    // Check if file is readable
+                    if (firstImage.file.size === 0) {
+                        throw new Error('The image file appears to be empty or not fully downloaded. Please ensure the file is downloaded to your computer and try again.');
+                    }
+                }
+                imageUrls = await uploadImageArrayWithFallback(imageFiles, `venues/${formData.venueId}`);
+            } else {
+                // If no photos, ensure we have an empty array
+                imageUrls = [];
+            }
+            
+            // Upload document files if they exist
+            const documentsFolder = `venues/${formData.venueId}/documents`;
+            const [termsAndConditionsUrl, prsUrl, otherDocumentsUrl] = await Promise.all([
+                uploadFileWithFallback(formData.termsAndConditions, documentsFolder),
+                uploadFileWithFallback(formData.prs, documentsFolder),
+                uploadFileWithFallback(formData.otherDocuments, documentsFolder),
+            ]);
+            
             const updatedFormData = {
                 ...formData,
                 photos: imageUrls,
                 primaryImageOffsetY: formData.photos[0]?.offsetY || formData.primaryImageOffsetY,
                 primaryImageBlur: formData.photos[0]?.blur || formData.primaryImageBlur || 0,
+                termsAndConditions: termsAndConditionsUrl,
+                prs: prsUrl,
+                otherDocuments: otherDocumentsUrl,
                 completed: true,
                 ...getGeoField(formData.coordinates),
             };
@@ -249,12 +285,15 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             }, 11000);
         } catch (error) {
             setUploadingProfile(false);
-            if (error.message?.includes('storage') || error.message?.includes('image')) {
+            if (error.message?.includes('empty') || error.message?.includes('not fully downloaded') || error.message?.includes('iCloud')) {
+                setStepError(error.message || "The image file cannot be read. This may be an iCloud file that needs to be downloaded first. Please download the file to your computer and try again.");
+                toast.error('Image file error: Please ensure your image is fully downloaded to your computer.');
+            } else if (error.message?.includes('storage') || error.message?.includes('image')) {
                 setStepError("Something went wrong while uploading your image. Please check your connection and try again.");
             } else if (error.message?.includes('createVenueProfile')) {
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             } else if (error.message?.includes('updateUserDocument')) {
-                setStepError("Your venue was saved, but we couldn’t link it to your account. Please refresh and check your dashboard.");
+                setStepError("Your venue was saved, but we couldn't link it to your account. Please refresh and check your dashboard.");
             } else {
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             }
@@ -276,27 +315,81 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         }
         try {
             setSaving(true);
+            
+            // Always process photos FIRST to convert wrapped objects back to URLs
+            // This ensures existing URLs are preserved when editing
+            let imageUrls = [];
+            console.log('Processing photos - formData.photos:', formData.photos);
+            console.log('Processing photos - venue?.photos:', venue?.photos);
+            
+            if (formData.photos && formData.photos.length > 0) {
+                const imageFiles = formData.photos;
+                // Validate images before upload (only if it's a new File)
+                const firstImage = imageFiles[0];
+                if (firstImage?.file instanceof File) {
+                    if (firstImage.file.size === 0) {
+                        throw new Error('The image file appears to be empty or not fully downloaded. Please ensure the file is downloaded to your computer and try again.');
+                    }
+                }
+                // Upload and convert to URLs - this handles both new files and existing URLs
+                console.log('Calling uploadImageArrayWithFallback with:', imageFiles);
+                imageUrls = await uploadImageArrayWithFallback(imageFiles, `venues/${formData.venueId}`);
+                console.log('uploadImageArrayWithFallback returned:', imageUrls);
+            } else {
+                // If no photos in formData, preserve existing photos from venue data
+                // This prevents clearing photos when editing other fields
+                if (venue?.photos && Array.isArray(venue.photos) && venue.photos.length > 0) {
+                    // Ensure they're URL strings, not wrapped objects
+                    imageUrls = venue.photos.map(photo => {
+                        if (typeof photo === 'string') return photo;
+                        if (typeof photo === 'object' && photo?.file) {
+                            return typeof photo.file === 'string' ? photo.file : photo;
+                        }
+                        return photo;
+                    });
+                    console.log('Preserved photos from venue:', imageUrls);
+                } else {
+                    console.log('No photos found in formData or venue');
+                }
+            }
+            
+            // Now build updatedFormData with processed photos
             let updatedFormData;
             if (formData.completed) {
                 updatedFormData = {
                     ...formData,
+                    photos: imageUrls, // Override with processed URLs
                     completed: true,
                 };
-                delete formData.currentStep;
+                delete updatedFormData.currentStep;
             } else {
                 updatedFormData = {
                     ...formData,
+                    photos: imageUrls, // Override with processed URLs
                     currentStep: currentStep,
                     completed: false,
                 };
             }
-            if (formData.photos.length > 0) {
-                const imageFiles = formData.photos;
-                const imageUrls = await uploadImageArrayWithFallback(imageFiles, `venues/${formData.venueId}`);
-                updatedFormData.photos = imageUrls;
+            
+            // Set primary image offset and blur
+            if (imageUrls.length > 0) {
                 updatedFormData.primaryImageOffsetY = formData.photos[0]?.offsetY || formData.primaryImageOffsetY;
                 updatedFormData.primaryImageBlur = formData.photos[0]?.blur || formData.primaryImageBlur || 0;
             }
+            
+            // Debug log to verify photos are being set
+            console.log('Saving venue with photos:', updatedFormData.photos);
+            
+            // Upload document files if they exist
+            const documentsFolder = `venues/${formData.venueId}/documents`;
+            const [termsAndConditionsUrl, prsUrl, otherDocumentsUrl] = await Promise.all([
+                uploadFileWithFallback(formData.termsAndConditions, documentsFolder),
+                uploadFileWithFallback(formData.prs, documentsFolder),
+                uploadFileWithFallback(formData.otherDocuments, documentsFolder),
+            ]);
+            updatedFormData.termsAndConditions = termsAndConditionsUrl;
+            updatedFormData.prs = prsUrl;
+            updatedFormData.otherDocuments = otherDocumentsUrl;
             try {
                 await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             } catch (error) {
@@ -312,12 +405,15 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             }
             toast.success('Venue profile saved.')
         } catch (error) {
-            if (error.message?.includes('storage') || error.message?.includes('image')) {
+            if (error.message?.includes('empty') || error.message?.includes('not fully downloaded') || error.message?.includes('iCloud')) {
+                setStepError(error.message || "The image file cannot be read. This may be an iCloud file that needs to be downloaded first. Please download the file to your computer and try again.");
+                toast.error('Image file error: Please ensure your image is fully downloaded to your computer.');
+            } else if (error.message?.includes('storage') || error.message?.includes('image')) {
                 setStepError("Something went wrong while uploading your image. Please check your connection and try again.");
             } else if (error.message?.includes('createVenueProfile')) {
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             } else if (error.message?.includes('updateUserDocument')) {
-                setStepError("Your venue was saved, but we couldn’t link it to your account. Please refresh and check your dashboard.");
+                setStepError("Your venue was saved, but we couldn't link it to your account. Please refresh and check your dashboard.");
             } else {
                 setStepError("We couldn't save your venue profile. Please try again or contact support if the issue persists.");
             }
@@ -503,7 +599,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     
     const isStep4Complete = () => formData.photos.length > 0;
     
-    const isStep5Complete = () => formData.extraInformation && formData.description;
+    const isStep5Complete = () => formData.description; // extraInformation is now optional
 
     const isStep6Complete = () => {
         if (formData.completed) {

@@ -538,12 +538,13 @@
 /* Tech Rider Equipment Cards */
 .tech-rider-equipment-card {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 0.75rem;
     padding: 0.75rem;
     border: 1px solid var(--gn-grey-300);
     border-radius: 8px;
     background-color: var(--gn-white);
+    width: 75%;
 }
 
 .tech-rider-equipment-icon {
@@ -554,14 +555,15 @@
 }
 
 .tech-rider-equipment-icon .icon {
-    font-size: 1.25rem;
-    color: var(--gn-grey-600);
+    font-size: 1rem;
 }
 
 .tech-rider-equipment-name {
     flex: 1;
-    font-weight: 400;
-    color: var(--gn-off-black);
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .tech-rider-equipment-status {
@@ -581,8 +583,9 @@
 }
 
 .tech-rider-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 0.75rem;
     width: 100%;
 }
@@ -624,11 +627,10 @@
     text-transform: uppercase;
     color: var(--gn-grey-600);
     font-weight: 600;
-    margin-bottom: 0.5rem;
 }
 
 .tech-rider-notes-section p {
-    margin: 0.25rem 0;
+    margin-bottom: 1rem;
     color: var(--gn-off-black);
     line-height: 1.5;
 }

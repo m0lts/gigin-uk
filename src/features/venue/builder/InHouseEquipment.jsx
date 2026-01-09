@@ -239,7 +239,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         </div>
                         <div className='input-group' style={{ marginTop: '1rem' }}>
                             <textarea
-                                placeholder='Notes'
+                                placeholder='Additional Notes (e.g model, number of speakers)'
                                 value={techRider.soundSystem.pa.notes}
                                 onChange={(e) => handleNotesChange('soundSystem', 'pa', e.target.value)}
                             />
@@ -265,7 +265,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         </div>
                         <div className='input-group' style={{ marginTop: '1rem' }}>
                             <textarea
-                                placeholder='Notes (e.g. number of channels)'
+                                placeholder='Additional Notes (e.g number of channels)'
                                 value={techRider.soundSystem.mixingConsole.notes}
                                 onChange={(e) => handleNotesChange('soundSystem', 'mixingConsole', e.target.value)}
                             />
@@ -285,7 +285,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         />
                         <textarea
                             style={{ marginTop: '0.5rem' }}
-                            placeholder='Notes (e.g. mic stands?)'
+                            placeholder='Additional Notes (eg number of Mic Stands)'
                             value={techRider.soundSystem.vocalMics.notes}
                             onChange={(e) => handleNotesChange('soundSystem', 'vocalMics', e.target.value)}
                         />
@@ -304,7 +304,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         />
                         <textarea
                             style={{ marginTop: '0.5rem' }}
-                            placeholder='Notes'
+                            placeholder='Additional Notes'
                             value={techRider.soundSystem.diBoxes.notes}
                             onChange={(e) => handleNotesChange('soundSystem', 'diBoxes', e.target.value)}
                         />
@@ -315,7 +315,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         <label htmlFor='monitoring' className='input-label'>Monitoring</label>
                         <textarea
                             id='monitoring'
-                            placeholder='Wedges, allow in-ear monitoring?'
+                            placeholder='Additional Notes (e.g Number of monitoring speakers, do you allow in-ear monitoring?)'
                             value={techRider.soundSystem.monitoring}
                             onChange={(e) => handleSoundSystemChange('monitoring', e.target.value)}
                         />
@@ -326,7 +326,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         <label htmlFor='cables' className='input-label'>Cables</label>
                         <textarea
                             id='cables'
-                            placeholder='What cables do you have available?'
+                            placeholder='Additional Notes (e.g A rough number and types of cables available)'
                             value={techRider.soundSystem.cables}
                             onChange={(e) => handleSoundSystemChange('cables', e.target.value)}
                         />
@@ -356,7 +356,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         </div>
                         <div className='input-group' style={{ marginTop: '1rem' }}>
                             <textarea
-                                placeholder='Notes'
+                                placeholder='Additional Notes'
                                 value={techRider.backline.drumKit.notes}
                                 onChange={(e) => handleNotesChange('backline', 'drumKit', e.target.value)}
                             />
@@ -382,7 +382,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         </div>
                         <div className='input-group' style={{ marginTop: '1rem' }}>
                             <textarea
-                                placeholder='Notes'
+                                placeholder='Additional Notes'
                                 value={techRider.backline.bassAmp.notes}
                                 onChange={(e) => handleNotesChange('backline', 'bassAmp', e.target.value)}
                             />
@@ -408,7 +408,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                             </div>
                         <div className='input-group' style={{ marginTop: '1rem' }}>
                             <textarea
-                                placeholder='Notes'
+                                placeholder='Additional Notes'
                                 value={techRider.backline.guitarAmp.notes}
                                 onChange={(e) => handleNotesChange('backline', 'guitarAmp', e.target.value)}
                             />
@@ -434,7 +434,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         </div>
                         <div className='input-group' style={{ marginTop: '1rem' }}>
                             <textarea
-                                placeholder='Notes (W stand?)'
+                                placeholder='Additional Notes'
                                 value={techRider.backline.keyboard.notes}
                                 onChange={(e) => handleNotesChange('backline', 'keyboard', e.target.value)}
                             />
@@ -443,7 +443,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
 
                     {/* Other */}
                     <div className='input-group'>
-                        <label htmlFor='other' className='input-label'>Other Notes</label>
+                        <label htmlFor='other' className='input-label'>Any further notes on venue equipment:</label>
                         <textarea
                             id='other'
                             placeholder='Notes'
@@ -457,7 +457,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         <label htmlFor='stageSize' className='input-label'>Stage size</label>
                             <textarea
                             id='stageSize'
-                            placeholder='Give an idea of how many performers can fit on the stage, or dimensions of performing area.'
+                            placeholder='Additional Notes (e.g How many performers can fit on the stage, dimensions of performing area)'
                             value={techRider.backline.stageSize}
                             onChange={(e) => handleBacklineChange('stageSize', e.target.value)}
                         />
@@ -487,7 +487,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                                 <input
                                     type='text'
                                     className='input'
-                                    placeholder='Notes'
+                                    placeholder='Additional Notes'
                                     value={techRider.houseRules.volumeNotes}
                                     onChange={(e) => handleHouseRulesChange('volumeNotes', e.target.value)}
                                 />
@@ -512,7 +512,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         <label htmlFor='powerAccess' className='input-label'>Power access</label>
                         <textarea
                             id='powerAccess'
-                            placeholder='Power access information'
+                            placeholder='Additional Notes (e.g how many power outlets, extension leads)'
                             value={techRider.houseRules.powerAccess}
                             onChange={(e) => handleHouseRulesChange('powerAccess', e.target.value)}
                         />
@@ -523,7 +523,7 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
                         <label htmlFor='houseRules' className='input-label'>House rules</label>
                         <textarea
                             id='houseRules'
-                            placeholder='House rules'
+                            placeholder='Any rules and important information performers must know.'
                             value={techRider.houseRules.houseRules}
                             onChange={(e) => handleHouseRulesChange('houseRules', e.target.value)}
                         />

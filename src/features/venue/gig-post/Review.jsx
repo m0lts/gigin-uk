@@ -273,7 +273,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                                         {extraSlots.length < 1 ? (
                                             "Single performer (no slot split)"
                                         ) : (
-                                            `Multiple performers: ${extraSlots.length || 0} slots`
+                                            `Multiple performers: ${extraSlots.length + 1 || 0} slots`
                                         )}
                                     </h4>
                                 </div>

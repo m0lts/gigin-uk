@@ -4,7 +4,7 @@ import { GigDate } from './Date';
 import { GigLocation } from './Location';
 import { GigPrivacy } from './Privacy';
 import { GigMusic } from './Music';
-import { GigTimings } from './Timings';
+// GigTimings component kept for reference but no longer used as a stage
 import { GigBudget } from './Budget';
 import { GigReview } from './Review';
 import { v4 as uuidv4 } from 'uuid';
@@ -132,6 +132,32 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
         refreshGigs();
     }, []);
 
+    // Auto-select venue if user only has one venue profile
+    useEffect(() => {
+        if (
+            venueProfiles?.length === 1 &&
+            !editGigData &&
+            !buildingForMusician &&
+            !formData.venueId &&
+            stage === 1
+        ) {
+            const venue = venueProfiles[0];
+            setFormData(prev => ({
+                ...prev,
+                venueId: venue.venueId,
+                venue: {
+                    venueName: venue.name,
+                    address: venue.address,
+                    photo: venue.photos?.[0] || null,
+                    userId: user.uid,
+                    type: venue.type,
+                },
+                coordinates: venue.coordinates,
+            }));
+            setStage(2);
+        }
+    }, [venueProfiles, editGigData, buildingForMusician, formData.venueId, stage, user.uid]);
+
     useEffect(() => {
         if (buildingForMusician && buildingForMusicianData) {
           const { type, genres, venueId } = buildingForMusicianData;
@@ -199,7 +225,13 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
 
         if (stage === 2) {
             if ((formData.date !== null && !formData.dateUndecided) || formData.dateUndecided) {
-                setStage(prevStage => prevStage + 1);
+                // Validate timings along with date
+                const { valid, error: timingError } = validateGigTimings(formData, extraSlots);
+                if (!valid) {
+                    setError(timingError);
+                } else {
+                    setStage(prevStage => prevStage + 1);
+                }
             } else {
                 setError('Please select a date for the gig.');
             }
@@ -250,16 +282,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
         }
     
         if (stage === 7) {
-            const { valid, error: timingError } = validateGigTimings(formData, extraSlots);
-            if (!valid) {
-              setError(timingError);
-            } else {
-              setStage(prevStage => prevStage + 1);
-            }
-            return;
-          }
-    
-          if (stage === 8) {
             if (formData.kind === 'Open Mic') {
               if (formData.openMicApplications === null) {
                 setError("Please select whether you'd like the musicians to apply.");
@@ -292,17 +314,20 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             return;
           }
 
-        if (stage === 9) {
+        if (stage === 8) {
             setStage(prevStage => prevStage + 1);
         }
 
     };
     
     const prevStage = () => {
-        if (stage === 7 && buildingForMusician && buildingForMusicianData?.type) {
+        if (stage === 7 && buildingForMusician && buildingForMusicianData?.genres) {
             setStage(prevStage => prevStage - 2);
+        } else if (stage === 6 && buildingForMusician && buildingForMusicianData?.type) {
+            setStage(prevStage => prevStage - 2);
+        } else {
+            setStage(prevStage => prevStage - 1);
         }
-        setStage(prevStage => prevStage - 1);
         setError('')
     };
 
@@ -343,6 +368,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                         setStage={setStage}
                         error={error}
                         setError={setError}
+                        extraSlots={extraSlots}
+                        setExtraSlots={setExtraSlots}
                     />
                 );
             case 3:
@@ -394,16 +421,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                     />
                 );
             case 7:
-                return (
-                    <GigTimings
-                        formData={formData}
-                        handleInputChange={handleInputChange}
-                        extraSlots={extraSlots}
-                        setExtraSlots={setExtraSlots}
-                        error={error}
-                    />
-                );
-            case 8:
                 if (formData.kind === 'Open Mic') {
                     return (
                         <OpenMicGig
@@ -435,14 +452,14 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                         />
                     );
                 }
-            case 9:
+            case 8:
                 return (
                     <GigExtraDetails
                         formData={formData}
                         handleInputChange={handleInputChange}
                     />
                 );
-            case 10:
+            case 9:
                 return (
                     <GigReview
                         formData={formData}
@@ -463,15 +480,15 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     const getProgressPercentage = () => {
         if (templates?.length > 0 || incompleteGigs?.length > 0) {
             if (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig') {
-                return ((stage) / 10) * 100;
+                return ((stage) / 9) * 100;
             } else {
-                return ((stage) / 10) * 100;
+                return ((stage) / 9) * 100;
             }
         } else {
             if (formData.kind === 'Open Mic' || formData.kind === 'Ticketed Gig') {
-                return ((stage) / 10) * 100;
+                return ((stage) / 9) * 100;
             } else {
-                return ((stage) / 10) * 100;
+                return ((stage) / 9) * 100;
             }
         }
     };
@@ -811,7 +828,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                                     <button className='btn primary' onClick={nextStage}>Next</button>
                                     </>
                                 )
-                                ) : stage === 10 ? (
+                                ) : stage === 9 ? (
                                 <>
                                     <button className='btn secondary' onClick={prevStage}>Back</button>
                                     <button className='btn primary' onClick={handlePostGig}>

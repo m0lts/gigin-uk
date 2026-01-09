@@ -11,6 +11,10 @@ export const VenueType = ({ formData, handleInputChange, setStepError, stepError
             setStepError('Please choose a venue type before continuing.');
             return;
         }
+        if (formData.type === 'Public Establishment' && formData.establishment === '') {
+            setStepError('Please select a type of establishment.');
+            return;
+        }
         setStepError(null);
         navigate('/venues/add-venue/venue-details');
     };
@@ -54,6 +58,32 @@ export const VenueType = ({ formData, handleInputChange, setStepError, stepError
                         e.g. House for private party
                     </button>
                 </div>
+                {formData.type === 'Public Establishment' && (
+                    <div className='establishment-type' style={{ marginTop: '2rem' }}>
+                        <h6 className='input-label'>Type of establishment</h6>
+                        <div className='selections'>
+                            {[
+                                'Pub/Bar',
+                                'Music Venue',
+                                'Restaurant',
+                                'Place of Worship',
+                                'Village Hall',
+                                'Club',
+                                'Other',
+                            ].map((type) => (
+                                <button
+                                    key={type}
+                                    className={`card small ${formData.establishment === type ? 'selected' : ''} ${
+                                        stepError?.includes('establishment') && formData.establishment === '' ? 'error' : ''
+                                    }`}
+                                    onClick={() => handleInputChange('establishment', type)}
+                                >
+                                    {type}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
             <div className='stage-controls single'>
                 <button className='btn primary' onClick={handleNext}>

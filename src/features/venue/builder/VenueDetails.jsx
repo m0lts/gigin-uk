@@ -1,13 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { 
-    LeftChevronIcon,
-    MicrophoneIcon,
-    OtherIcon,
-    PlaceOfWorshipIcon,
-    RestaurantIcon,
-    VillageHallIcon,
-    BeerIcon,
-    ClubIcon } from '@features/shared/ui/extras/Icons';
+    LeftChevronIcon } from '@features/shared/ui/extras/Icons';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Map, { Marker } from 'react-map-gl';
 import { AddressInputAutofill } from './AddressInputAutofill';
@@ -109,11 +102,6 @@ export const VenueDetails = ({ formData, handleInputChange, setStepError, stepEr
             return;
         }
     
-        if (formData.type === 'Public Establishment' && formData.establishment === '') {
-            setStepError('Please select a type of establishment.');
-            return;
-        }
-    
         // All good
         setStepError(null);
     
@@ -196,33 +184,6 @@ export const VenueDetails = ({ formData, handleInputChange, setStepError, stepEr
                                             </svg>
                                         </Marker>
                                     </Map>
-                                </div>
-                            </div>
-                        )}
-
-                        {formData.type === 'Public Establishment' && (
-                            <div className='establishment-type'>
-                                <h6 className='input-label'>Type of establishment</h6>
-                                <div className='selections'>
-                                    {[
-                                        'Pub/Bar',
-                                        'Music Venue',
-                                        'Restaurant',
-                                        'Place of Worship',
-                                        'Village Hall',
-                                        'Club',
-                                        'Other',
-                                    ].map((type) => (
-                                        <button
-                                            key={type}
-                                            className={`card small ${formData.establishment === type ? 'selected' : ''} ${
-                                                stepError?.includes('establishment') && formData.establishment === '' ? 'error' : ''
-                                            }`}
-                                            onClick={() => handleInputChange('establishment', type)}
-                                        >
-                                            {type}
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
                         )}
