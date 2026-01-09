@@ -1569,7 +1569,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         {gigData.kind === 'Ticketed Gig' && (
                                                         <span
                                                             className="tooltip-wrapper"
-                                                            data-tooltip="A ticketed gig means the musicians receive 100% of the ticket revenue but the administration of ticket sales is to be discussed between the two of you."
+                                                            data-tooltip="Ticket sales, administration, and any revenue split are to be agreed directly between you and the venue."
                                                         >
                                                             <MoreInformationIcon />
                                                         </span>
@@ -1999,7 +1999,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         {gigData.kind === 'Ticketed Gig' && (
                                                         <span
                                                             className="tooltip-wrapper"
-                                                            data-tooltip="A ticketed gig means the musicians receive 100% of the ticket revenue but the administration of ticket sales is to be discussed between the two of you."
+                                                            data-tooltip="Ticket sales, administration, and any revenue split are to be agreed directly between you and the venue."
                                                         >
                                                             <MoreInformationIcon />
                                                         </span>

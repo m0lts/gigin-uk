@@ -133,7 +133,7 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
                         </div>
                     ) : showSecondStage && localKind === 'Ticketed Gig' && (
                         <div className='ticketed-container'>
-                            <h4 className='text' style={{ marginTop: '1rem', fontSize: '1.1rem', width: '75%' }}>Musicians that play at a ticketed gig won't be paid by you, but will take home 100% of the ticket revenue. Decide between yourself and the musician who should organise the ticket sales.</h4>
+                            <h4 className='text' style={{ marginTop: '1rem', fontSize: '1.1rem', width: '75%' }}>Ticket sales, administration, and any revenue split are to be agreed directly between you and the musician.</h4>
                             {extraSlots.length > 0 && (<p style={{ marginTop: '1rem', width: '75%' }}>You must tell the musicians about the multiple gig slots, so the musicians can decide how to split the ticket sales.</p>)}
                             <div className='input-group'>
                                 <h6>Confirm that you understand how a ticketed gig works.</h6>
