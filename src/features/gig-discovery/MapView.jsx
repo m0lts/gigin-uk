@@ -39,7 +39,7 @@ const toFeatureCollection = (list) => {
   };
 };
 
-export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, gigMarkerDisplay, userLocation, onSearchArea, showFilters, toggleFilters }) => {
+export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, gigMarkerDisplay, userLocation, onSearchArea, showFilters, toggleFilters, groupedGigs = [] }) => {
 
   const navigate = useNavigate();
   const mapContainerRef = useRef(null);
@@ -273,6 +273,40 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
     return `${formatTime(startDate)}-${formatTime(endDate)}`;
   }
 
+  function formatGigRangeForGroup(gig) {
+    // Find the group this gig belongs to
+    const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+    
+    if (group && group.isGroup && group.allGigs.length > 1) {
+      // For grouped gigs, find the earliest start and latest end
+      const allSlots = group.allGigs.filter(g => g.startTime && g.duration);
+      if (allSlots.length > 0) {
+        // Sort by startTime to get first and last
+        const sortedSlots = [...allSlots].sort((a, b) => {
+          const [aH, aM] = a.startTime.split(':').map(Number);
+          const [bH, bM] = b.startTime.split(':').map(Number);
+          return (aH * 60 + aM) - (bH * 60 + bM);
+        });
+        
+        const firstSlot = sortedSlots[0];
+        const lastSlot = sortedSlots[sortedSlots.length - 1];
+        const firstStartTime = firstSlot.startTime;
+        
+        // Calculate end time of last slot
+        const [lastHour, lastMinute] = lastSlot.startTime.split(':').map(Number);
+        const lastStartDate = new Date();
+        lastStartDate.setHours(lastHour, lastMinute, 0, 0);
+        const lastEndDate = new Date(lastStartDate.getTime() + lastSlot.duration * 60000);
+        const formatTime = (date) => date.toTimeString().slice(0, 5);
+        
+        return `${firstStartTime}-${formatTime(lastEndDate)}`;
+      }
+    }
+    
+    // For single gigs, use the regular format
+    return formatGigRange(gig.startTime, gig.duration);
+  }
+
   return (
     <div className="output-container">
       <div
@@ -329,14 +363,14 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
                     <div className="preview-gig-info">
                       <h3>{gig.venue.venueName?.trim()}</h3>
                       <p>{formatDate(gig.date)}</p>
-                      <p>{formatGigRange(gig.startTime, gig.duration)}</p>
+                      <p>{formatGigRangeForGroup(gig)}</p>
                     </div>
                   </div>
                 ) : (
                   <div className="preview-gig-item-venue">
                     <div className="preview-gig-info">
                       <h3>{gig.venue.venueName?.trim()}</h3>
-                      <p>{formatDate(gig.date)}, {formatGigRange(gig.startTime, gig.duration)}</p>
+                      <p>{formatDate(gig.date)}, {formatGigRangeForGroup(gig)}</p>
                     </div>
                   </div>
                 )}

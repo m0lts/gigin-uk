@@ -100,6 +100,81 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         };
         fetchVenueAndGigs();
       }, [venueId]);
+
+    // Group gigs by their gigSlots relationship (same logic as venue dashboard and gig discovery)
+    const groupedGigs = useMemo(() => {
+      const processed = new Set();
+      const groups = [];
+      
+      venueGigs.forEach(gig => {
+        if (processed.has(gig.gigId)) return;
+        
+        // Check if this gig has gigSlots (is part of a multi-slot group)
+        const hasSlots = Array.isArray(gig.gigSlots) && gig.gigSlots.length > 0;
+        
+        if (hasSlots) {
+          // Build the complete group by collecting all related gigs
+          const groupGigs = [gig];
+          const groupIds = new Set([gig.gigId]);
+          processed.add(gig.gigId);
+          
+          // Use a queue to find all related gigs
+          const queue = [...gig.gigSlots];
+          
+          while (queue.length > 0) {
+            const slotId = queue.shift();
+            if (processed.has(slotId)) continue;
+            
+            const slotGig = venueGigs.find(g => g.gigId === slotId);
+            if (slotGig) {
+              groupGigs.push(slotGig);
+              groupIds.add(slotId);
+              processed.add(slotId);
+              
+              // Add any slots from this gig that we haven't seen yet
+              if (Array.isArray(slotGig.gigSlots)) {
+                slotGig.gigSlots.forEach(id => {
+                  if (!groupIds.has(id) && !processed.has(id)) {
+                    queue.push(id);
+                  }
+                });
+              }
+            }
+          }
+          
+          // Sort by startDateTime to get the first slot
+          groupGigs.sort((a, b) => {
+            const aDate = toJsDate(a.startDateTime);
+            const bDate = toJsDate(b.startDateTime);
+            if (!aDate || !bDate) return 0;
+            return aDate.getTime() - bDate.getTime();
+          });
+          
+          groups.push({
+            isGroup: true,
+            primaryGig: groupGigs[0],
+            allGigs: groupGigs,
+            gigIds: Array.from(groupIds)
+          });
+        } else {
+          // Standalone gig
+          groups.push({
+            isGroup: false,
+            primaryGig: gig,
+            allGigs: [gig],
+            gigIds: [gig.gigId]
+          });
+          processed.add(gig.gigId);
+        }
+      });
+      
+      return groups;
+    }, [venueGigs]);
+
+    // Extract only primary gigs for display
+    const primaryGigsForDisplay = useMemo(() => {
+      return groupedGigs.map(group => group.primaryGig);
+    }, [groupedGigs]);
     useEffect(() => {
         if (!venueViewing) return;
         const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
@@ -1030,7 +1105,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     )}
                                     {!activeContentTab && venueGigs && venueGigs.length > 0 && (
                                         <div className="venue-gigs-section">
-                                            <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                            <VenueGigsList title={'Gig Vacancies'} gigs={primaryGigsForDisplay} groupedGigs={groupedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
                                         </div>
                                     )}
                                 </div>
@@ -1079,7 +1154,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     )}
                                 </div>
                                 <div className="section venue-page-gigs">
-                                    <VenueGigsList title={'Gig Vacancies'} gigs={venueGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                    <VenueGigsList title={'Gig Vacancies'} gigs={primaryGigsForDisplay} groupedGigs={groupedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
                                 </div>
                                 {venueData?.description && (
                                     <div className="section">

@@ -35,7 +35,7 @@ import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
 import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
-import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid, WarningIcon } from '../shared/ui/extras/Icons';
+import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, LeftArrowIcon, RightArrowIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid, WarningIcon } from '../shared/ui/extras/Icons';
 import { TechRiderEquipmentCard } from '../shared/ui/tech-rider/TechRiderEquipmentCard';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { ProfileCreator } from '../artist/profile-creator/ProfileCreator';
@@ -81,10 +81,96 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const [showCreateProfileModal, setShowCreateProfileModal] = useState(null);
     const [gigSaved, setGigSaved] = useState(false);
     const [otherSlots, setOtherSlots] = useState(null);
+    const [currentSlotIndex, setCurrentSlotIndex] = useState(0);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [transitionDirection, setTransitionDirection] = useState(null); // 'left' or 'right'
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
 
     // Permission state for artistProfile members
     const [artistProfilePerms, setArtistProfilePerms] = useState(null);
     const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
+
+    // Combine gigData with otherSlots into allSlots array, sorted by startTime
+    const allSlots = useMemo(() => {
+        if (!gigData) return [];
+        const slots = [gigData];
+        if (otherSlots && Array.isArray(otherSlots) && otherSlots.length > 0) {
+            slots.push(...otherSlots);
+        }
+        // Sort by startTime
+        return slots.sort((a, b) => {
+            const aTime = a.startTime || '';
+            const bTime = b.startTime || '';
+            if (!aTime || !bTime) return 0;
+            const [aH, aM] = aTime.split(':').map(Number);
+            const [bH, bM] = bTime.split(':').map(Number);
+            return (aH * 60 + aM) - (bH * 60 + bM);
+        });
+    }, [gigData, otherSlots]);
+
+    // Current slot being displayed
+    const currentSlot = useMemo(() => {
+        return allSlots[currentSlotIndex] || gigData;
+    }, [allSlots, currentSlotIndex, gigData]);
+
+    // Find initial slot index when gigData loads
+    useEffect(() => {
+        if (gigData && allSlots.length > 0) {
+            const index = allSlots.findIndex(slot => slot.gigId === gigData.gigId);
+            if (index !== -1) {
+                setCurrentSlotIndex(index);
+            }
+        }
+    }, [gigData?.gigId, allSlots.length]);
+
+    // Navigation functions
+    const goToNextSlot = () => {
+        if (currentSlotIndex < allSlots.length - 1 && !isTransitioning) {
+            setIsTransitioning(true);
+            setTransitionDirection('left');
+            setCurrentSlotIndex(prev => prev + 1);
+            setTimeout(() => {
+                setIsTransitioning(false);
+                setTransitionDirection(null);
+            }, 400);
+        }
+    };
+
+    const goToPreviousSlot = () => {
+        if (currentSlotIndex > 0 && !isTransitioning) {
+            setIsTransitioning(true);
+            setTransitionDirection('right');
+            setCurrentSlotIndex(prev => prev - 1);
+            setTimeout(() => {
+                setIsTransitioning(false);
+                setTransitionDirection(null);
+            }, 400);
+        }
+    };
+
+    // Swipe handlers
+    const minSwipeDistance = 50;
+    const onTouchStart = (e) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+    const onTouchMove = (e) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+        if (isLeftSwipe) {
+            goToNextSlot();
+        } else if (isRightSwipe) {
+            goToPreviousSlot();
+        }
+        setTouchStart(null);
+        setTouchEnd(null);
+    };
 
     useEffect(() => {
         if (isLgUp) {
@@ -430,11 +516,21 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
     };
 
-    const calculateEndTime = () => {
-        return calculateTime(gigData.startTime, gigData.duration);
+    const calculateEndTime = (slot) => {
+        if (!slot) return '00:00';
+        return calculateTime(slot.startTime, slot.duration);
     };
 
-    const endTime = gigData?.startTime && gigData?.duration ? calculateEndTime() : '00:00';
+    // Calculate end time for current slot
+    const endTime = useMemo(() => {
+        return currentSlot?.startTime && currentSlot?.duration ? calculateEndTime(currentSlot) : '00:00';
+    }, [currentSlot]);
+
+    // Helper to remove "(Set X)" suffix from gig name
+    const getBaseGigName = (gigName) => {
+        if (!gigName) return '';
+        return gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '');
+    };
 
     const formatDuration = (duration) => {
         const hours = Math.floor(duration / 60);
@@ -526,47 +622,61 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             }
             return;
           }
-          if (userAppliedToGig) return;
+          if (currentSlotStatus.applied) return;
           setApplyingToGig(true);
           try {
-            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' || gigData.budget === '£' || gigData.budget === '£0';
+            const slotGigId = currentSlot.gigId;
+            const nonPayableGig = currentSlot.kind === 'Open Mic' || currentSlot.kind === 'Ticketed Gig' || currentSlot.budget === '£' || currentSlot.budget === '£0';
             // Normalize profile for API compatibility
             const normalizedProfile = {
               ...musicianProfile,
               musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
               profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
             };
-            const { updatedApplicants } = await applyToGig({ gigId, musicianProfile: normalizedProfile });
-            setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
+            const { updatedApplicants } = await applyToGig({ gigId: slotGigId, musicianProfile: normalizedProfile });
+            // Update the slot in allSlots
+            setGigData(prev => {
+                if (prev.gigId === slotGigId) {
+                    return { ...prev, applicants: updatedApplicants };
+                }
+                return prev;
+            });
+            setOtherSlots(prev => {
+                if (!prev) return prev;
+                return prev.map(slot => 
+                    slot.gigId === slotGigId 
+                        ? { ...slot, applicants: updatedApplicants }
+                        : slot
+                );
+            });
             
             // Use artist profile update if this is an artist profile
             const isArtistProfile = user?.artistProfiles?.some(p => (p.id || p.profileId) === normalizedProfile.id);
             if (isArtistProfile) {
-              await updateArtistGigApplications(normalizedProfile, gigId);
+              await updateArtistGigApplications(normalizedProfile, slotGigId);
             } else {
               // Fallback to musician profile update for backward compatibility
-              await updateMusicianGigApplications(normalizedProfile, gigId);
+              await updateMusicianGigApplications(normalizedProfile, slotGigId);
             }
             
             const { conversationId } = await getOrCreateConversation(
-                { musicianProfile: normalizedProfile, gigData: { ...gigData, gigId }, venueProfile, type: 'application' }
+                { musicianProfile: normalizedProfile, gigData: { ...currentSlot, gigId: slotGigId }, venueProfile, type: 'application' }
             );
             await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
-                text: `${normalizedProfile.name} has applied to your gig on ${formatDate(gigData.startDateTime)} at ${gigData.venue.venueName}${nonPayableGig ? '' : ` for ${gigData.budget}`}`,
+                text: `${normalizedProfile.name} has applied to your gig on ${formatDate(currentSlot.startDateTime)} at ${currentSlot.venue.venueName}${nonPayableGig ? '' : ` for ${currentSlot.budget}`}`,
                 profileId: normalizedProfile.musicianId,
                 profileType: 'artist',
             });
             await sendGigApplicationEmail({
                 to: venueProfile.email,
                 musicianName: normalizedProfile.name,
-                venueName: gigData.venue.venueName,
-                date: formatDate(gigData.startDateTime),
-                budget: gigData.budget,
+                venueName: currentSlot.venue.venueName,
+                date: formatDate(currentSlot.startDateTime),
+                budget: currentSlot.budget,
                 profileType: 'artist',
                 nonPayableGig,
             });
-            setUserAppliedToGig(true);
             toast.success('Applied to gig!')
         } catch (error) {
             console.error(error)
@@ -582,16 +692,30 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
         setApplyingToGig(true);
         try {
+            const slotGigId = currentSlot.gigId;
             // Check if this is an artist profile
             const isArtistProfile = user?.artistProfiles?.some(p => (p.id || p.profileId) === (selectedProfile?.id || selectedProfile?.profileId));
             let updatedApplicants;
             if (isArtistProfile) {
-              updatedApplicants = await withdrawArtistApplication(gigId, selectedProfile);
+              updatedApplicants = await withdrawArtistApplication(slotGigId, selectedProfile);
             } else {
-              updatedApplicants = await withdrawMusicianApplication(gigId, selectedProfile);
+              updatedApplicants = await withdrawMusicianApplication(slotGigId, selectedProfile);
             }
             if (updatedApplicants) {
-              setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
+              setGigData(prev => {
+                  if (prev.gigId === slotGigId) {
+                      return { ...prev, applicants: updatedApplicants };
+                  }
+                  return prev;
+              });
+              setOtherSlots(prev => {
+                  if (!prev) return prev;
+                  return prev.map(slot => 
+                      slot.gigId === slotGigId 
+                          ? { ...slot, applicants: updatedApplicants }
+                          : slot
+                  );
+              });
             }
             toast.success('Application withdrawn.');
           } catch (e) {
@@ -606,7 +730,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         if (!canBookCurrentArtistProfile) {
             return toast.error('You do not have permission to negotiate gigs for this artist profile.');
         }
-        if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
+        if (getLocalGigDateTime(currentSlot) < new Date()) return toast.error('Gig is in the past.');
         const { valid, musicianProfile, modal, reason } = validateMusicianUser({
             user,
             setAuthModal,
@@ -634,7 +758,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         if (!canBookCurrentArtistProfile) {
             return toast.error('You do not have permission to negotiate gigs for this artist profile.');
         }
-        if (userAppliedToGig || !newOffer) return;
+        if (currentSlotStatus.applied || !newOffer) return;
         const { valid, musicianProfile, modal, reason } = validateMusicianUser({
             user,
             setAuthModal,
@@ -668,43 +792,58 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
               profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
             };
-            const { updatedApplicants } = await negotiateGigFee({ gigId, musicianProfile: normalizedProfile, newFee: newOffer, sender: 'musician' });
-            setGigData(prev => ({ ...prev, applicants: updatedApplicants }));
+            const slotGigId = currentSlot.gigId;
+            const { updatedApplicants } = await negotiateGigFee({ gigId: slotGigId, musicianProfile: normalizedProfile, newFee: newOffer, sender: 'musician' });
+            // Update the slot in allSlots
+            setGigData(prev => {
+                if (prev.gigId === slotGigId) {
+                    return { ...prev, applicants: updatedApplicants };
+                }
+                return prev;
+            });
+            setOtherSlots(prev => {
+                if (!prev) return prev;
+                return prev.map(slot => 
+                    slot.gigId === slotGigId 
+                        ? { ...slot, applicants: updatedApplicants }
+                        : slot
+                );
+            });
             
             // Use artist profile update if this is an artist profile
             const isArtistProfile = user?.artistProfiles?.some(p => (p.id || p.profileId) === normalizedProfile.id);
             if (isArtistProfile) {
-              await updateArtistGigApplications(normalizedProfile, gigId);
+              await updateArtistGigApplications(normalizedProfile, slotGigId);
             } else {
               // Fallback to musician profile update for backward compatibility
               if (musicianProfile.bandProfile) {
-                await updateBandMembersGigApplications(normalizedProfile, gigId);
+                await updateBandMembersGigApplications(normalizedProfile, slotGigId);
               } else {
-                await updateMusicianGigApplications(normalizedProfile, gigId);
+                await updateMusicianGigApplications(normalizedProfile, slotGigId);
               }
             }
             
-            const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData, venueProfile, type: 'negotiation' });
+            const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData: currentSlot, venueProfile, type: 'negotiation' });
             const profileType = isArtistProfile ? 'artist' : (musicianProfile.bandProfile ? 'band' : 'musician');
             const senderName = normalizedProfile.name;
-            const venueName = gigData.venue?.venueName || 'the venue';
-            if (invitedToGig) {
+            const venueName = currentSlot.venue?.venueName || 'the venue';
+            if (currentSlotStatus.invited) {
                 const invitationMessage = await getMostRecentMessage(conversationId, 'invitation');
                 updateDeclinedApplicationMessage({ conversationId, originalMessageId: invitationMessage.id, senderId: user.uid, userRole: 'musician' });
-                await sendCounterOfferMessage({ conversationId, messageId: invitationMessage.id, senderId: user.uid, newFee: newOffer, oldFee: gigData.budget, userRole: 'musician' });
+                await sendCounterOfferMessage({ conversationId, messageId: invitationMessage.id, senderId: user.uid, newFee: newOffer, oldFee: currentSlot.budget, userRole: 'musician' });
                 await sendCounterOfferEmail({
                     userRole: 'musician',
                     musicianProfile: normalizedProfile,
                     venueProfile: venueProfile,
-                    gigData,
+                    gigData: currentSlot,
                     newOffer,
                 });
             } else {
                 await sendNegotiationMessage(conversationId, {
                     senderId: user.uid,
-                    oldFee: gigData.budget,
+                    oldFee: currentSlot.budget,
                     newFee: newOffer,
-                    text: `${senderName} wants to negotiate the fee for the gig on ${formatDate(gigData.startDateTime)} at ${venueName}`,
+                    text: `${senderName} wants to negotiate the fee for the gig on ${formatDate(currentSlot.startDateTime)} at ${venueName}`,
                     profileId: normalizedProfile.musicianId,
                     profileType
                 });
@@ -712,9 +851,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     to: venueProfile.email,
                     musicianName: senderName,
                     venueName,
-                    oldFee: gigData.budget,
+                    oldFee: currentSlot.budget,
                     newFee: newOffer,
-                    date: formatDate(gigData.startDateTime),
+                    date: formatDate(currentSlot.startDateTime),
                     profileType
                 });
             }
@@ -757,7 +896,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
               profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
             };
-            const response = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData, venueProfile, type: 'message' });
+            const response = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData: currentSlot, venueProfile, type: 'message' });
             const conversationId = response?.conversationId || response?.data?.conversationId;
             if (!conversationId) {
               console.error('No conversationId returned from getOrCreateConversation');
@@ -782,25 +921,43 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         setApplyingToGig(true);
         const musicianId = selectedProfile?.id || selectedProfile?.profileId || selectedProfile?.musicianId;
         try {
-            if (!gigData) return console.error('Gig data is missing');
-            if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
-            const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
+            if (!currentSlot) return console.error('Gig data is missing');
+            const slotGigId = currentSlot.gigId;
+            if (getLocalGigDateTime(currentSlot) < new Date()) return toast.error('Gig is in the past.');
+            const nonPayableGig = currentSlot.kind === 'Open Mic' || currentSlot.kind === "Ticketed Gig" || currentSlot.budget === '£' || currentSlot.budget === '£0';
             let globalAgreedFee;
-            if (gigData.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM({ gigData, musicianProfileId: musicianId, role: 'musician' });
-                setGigData((prevGigData) => ({
-                    ...prevGigData,
-                    applicants: updatedApplicants,
-                    paid: true,
-                }));
+            if (currentSlot.kind === 'Open Mic') {
+                const { updatedApplicants } = await acceptGigOfferOM({ gigData: currentSlot, musicianProfileId: musicianId, role: 'musician' });
+                setGigData(prev => {
+                    if (prev.gigId === slotGigId) {
+                        return { ...prev, applicants: updatedApplicants, paid: true };
+                    }
+                    return prev;
+                });
+                setOtherSlots(prev => {
+                    if (!prev) return prev;
+                    return prev.map(slot => 
+                        slot.gigId === slotGigId 
+                            ? { ...slot, applicants: updatedApplicants, paid: true }
+                            : slot
+                    );
+                });
             } else {
-                const { updatedApplicants, agreedFee } = await acceptGigOffer({ gigData, musicianProfileId: musicianId, nonPayableGig, role: 'musician' });
-                setGigData((prevGigData) => ({
-                    ...prevGigData,
-                    applicants: updatedApplicants,
-                    agreedFee: `${agreedFee}`,
-                    paid: false,
-                }));
+                const { updatedApplicants, agreedFee } = await acceptGigOffer({ gigData: currentSlot, musicianProfileId: musicianId, nonPayableGig, role: 'musician' });
+                setGigData(prev => {
+                    if (prev.gigId === slotGigId) {
+                        return { ...prev, applicants: updatedApplicants, agreedFee: `${agreedFee}`, paid: false };
+                    }
+                    return prev;
+                });
+                setOtherSlots(prev => {
+                    if (!prev) return prev;
+                    return prev.map(slot => 
+                        slot.gigId === slotGigId 
+                            ? { ...slot, applicants: updatedApplicants, agreedFee: `${agreedFee}`, paid: false }
+                            : slot
+                    );
+                });
                 globalAgreedFee = agreedFee;
             }
             // Normalize profile for API compatibility
@@ -809,10 +966,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               musicianId,
               profileId: musicianId,
             };
-            const venueProfile = await getVenueProfileById(gigData.venueId);
+            const venueProfile = await getVenueProfileById(currentSlot.venueId);
             const { conversationId } = await getOrCreateConversation({
               musicianProfile: normalizedProfile,
-              gigData,
+              gigData: currentSlot,
               venueProfile,
               type: 'invitation',
             });
@@ -822,7 +979,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 conversationId,
                 originalMessageId: applicationMessage.id,
                 senderId: user.uid,
-                agreedFee: gigData.budget,
+                agreedFee: currentSlot.budget,
                 userRole: 'musician',
                 nonPayableGig,
               });
@@ -833,12 +990,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 venueEmail: venueEmail,
                 musicianName: musicianName,
                 venueProfile: venueProfile,
-                gigData: gigData,
+                gigData: currentSlot,
                 agreedFee: globalAgreedFee,
                 nonPayableGig: nonPayableGig,
             })
             if (nonPayableGig) {
-                await notifyOtherApplicantsGigConfirmed({ gigData, acceptedMusicianId: musicianId });
+                await notifyOtherApplicantsGigConfirmed({ gigData: currentSlot, acceptedMusicianId: musicianId });
             }
             toast.success('Invitation Accepted.')
         } catch (error) {
@@ -1264,11 +1421,17 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     };
 
     const now = new Date();
-    const isFutureOpen = getLocalGigDateTime(gigData) > now && (gigData?.status || '').toLowerCase() !== 'closed';
-    const isPrivate = !!gigData?.privateApplications;
-    const invited = !!invitedToGig;
-    const applied = !!userAppliedToGig;
-    const accepted = !!userAcceptedInvite;
+    // Compute status for current slot
+    const currentSlotStatus = useMemo(() => {
+        if (!currentSlot || !selectedProfile) return { invited: false, applied: false, accepted: false };
+        return computeStatusForProfile(currentSlot, selectedProfile);
+    }, [currentSlot, selectedProfile, inviteToken]);
+
+    const isFutureOpen = getLocalGigDateTime(currentSlot) > now && (currentSlot?.status || '').toLowerCase() !== 'closed';
+    const isPrivate = !!currentSlot?.privateApplications;
+    const invited = !!currentSlotStatus.invited;
+    const applied = !!currentSlotStatus.applied;
+    const accepted = !!currentSlotStatus.accepted;
 
     // Visibility per your spec
     const showApply =
@@ -1294,7 +1457,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     !(isPrivate && !invited);
 
     // Optional: hide negotiate for kinds you excluded earlier
-    const kindBlocksNegotiate = gigData?.kind === 'Ticketed Gig' || gigData?.kind === 'Open Mic';
+    const kindBlocksNegotiate = currentSlot?.kind === 'Ticketed Gig' || currentSlot?.kind === 'Open Mic';
     
     return (
         <div className='gig-page'>
@@ -1336,7 +1499,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                         <>
                             <div className='head'>
                                 <div className='title'>
-                                    <h1>{gigData.gigName}</h1>
+                                    <h1>{getBaseGigName(gigData.gigName)}</h1>
                                 </div>
                             </div>
                             <div className='images-and-location'>
@@ -1435,26 +1598,26 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                     )}
                                     <div className='timeline'>
                                         <h4 className='subtitle'>Gig Timeline</h4>
-                                        {gigData.startTime && (
+                                        {currentSlot?.startTime && (
                                             <div className='timeline-cont'>
                                                 <div className='timeline-event'>
                                                     <div className='timeline-content'>
                                                         <p>Load In</p>
-                                                        <div className='timeline-time'>{gigData?.loadInTime && gigData?.loadInTime !== '' ? formatTime(gigData?.loadInTime) : 'TBC'}</div>
+                                                        <div className='timeline-time'>{currentSlot?.loadInTime && currentSlot?.loadInTime !== '' ? formatTime(currentSlot?.loadInTime) : 'TBC'}</div>
                                                     </div>
                                                     <div className='timeline-line'></div>
                                                 </div>
                                                 <div className='timeline-event'>
                                                     <div className='timeline-content'>
                                                         <p>Sound Check</p>
-                                                        <div className='timeline-time'>{gigData?.soundCheckTime && gigData?.soundCheckTime !== '' ? formatTime(gigData?.soundCheckTime) : 'TBC'}</div>
+                                                        <div className='timeline-time'>{currentSlot?.soundCheckTime && currentSlot?.soundCheckTime !== '' ? formatTime(currentSlot?.soundCheckTime) : 'TBC'}</div>
                                                     </div>
                                                     <div className='timeline-line'></div>
                                                 </div>
                                                 <div className='timeline-event'>
                                                     <div className='timeline-content'>
                                                         <p>Set Starts</p>
-                                                        <div className='timeline-time orange'>{formatTime(gigData.startTime)}</div>
+                                                        <div className='timeline-time orange'>{formatTime(currentSlot.startTime)}</div>
                                                     </div>
                                                     <div className='timeline-line'></div>
                                                 </div>
@@ -1528,48 +1691,95 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                     )}
                                 </div>
                                 <div className="sticky-right">
-                                    <div className='action-box'>
-                                        <div className='action-box-info'>
-                                            <div className='action-box-budget'>
-                                                {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
-                                                    <h2 className="gig-kind">
-                                                        {gigData.kind}
-                                                        {gigData.kind === 'Ticketed Gig' && (
-                                                        <span
-                                                            className="tooltip-wrapper"
-                                                            data-tooltip="Ticket sales, administration, and any revenue split are to be agreed directly between you and the venue."
-                                                        >
-                                                            <MoreInformationIcon />
-                                                        </span>
-                                                        )}
-                                                    </h2>
-                                                ) : (
-                                                    <>
-                                                        <h1>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h1>
-                                                        {gigData.budget !== '£' && gigData.budget !== '£0' && (
-                                                            <p>gig fee</p>
-                                                        )}
-                                                    </>
-                                                )}
+                                    <div 
+                                        className='action-box'
+                                        onTouchStart={onTouchStart}
+                                        onTouchMove={onTouchMove}
+                                        onTouchEnd={onTouchEnd}
+                                        style={{ overflow: 'hidden' }}
+                                    >
+                                        {allSlots.length > 1 && (
+                                            <div className='slot-navigation' style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'space-between',
+                                                padding: '1rem',
+                                                borderBottom: '1px solid var(--gn-grey-300)',
+                                                marginBottom: '1rem'
+                                            }}>
+                                                <button 
+                                                    className='btn icon' 
+                                                    onClick={goToPreviousSlot}
+                                                    disabled={currentSlotIndex === 0 || isTransitioning}
+                                                    style={{ opacity: currentSlotIndex === 0 ? 0.5 : 1 }}
+                                                >
+                                                    <LeftArrowIcon />
+                                                </button>
+                                                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>
+                                                    Set {currentSlotIndex + 1} of {allSlots.length}
+                                                </h4>
+                                                <button 
+                                                    className='btn icon' 
+                                                    onClick={goToNextSlot}
+                                                    disabled={currentSlotIndex === allSlots.length - 1 || isTransitioning}
+                                                    style={{ opacity: currentSlotIndex === allSlots.length - 1 ? 0.5 : 1 }}
+                                                >
+                                                    <RightArrowIcon />
+                                                </button>
                                             </div>
-                                            <div className='action-box-duration'>
-                                                <h4>{formatDuration(gigData.duration)}</h4>
+                                        )}
+                                        <div 
+                                            className='action-box-content'
+                                            style={{
+                                                transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out',
+                                                transform: isTransitioning 
+                                                    ? (transitionDirection === 'left' ? 'translateX(-50px)' : 'translateX(50px)')
+                                                    : 'translateX(0)',
+                                                opacity: isTransitioning ? 0.5 : 1
+                                            }}
+                                        >
+                                            <div className='action-box-info'>
+                                                <div className='action-box-budget'>
+                                                    {currentSlot?.kind === 'Open Mic' || currentSlot?.kind === 'Ticketed Gig' ? (
+                                                        <h2 className="gig-kind">
+                                                            {currentSlot.kind}
+                                                            {currentSlot.kind === 'Ticketed Gig' && (
+                                                            <span
+                                                                className="tooltip-wrapper"
+                                                                data-tooltip="Ticket sales, administration, and any revenue split are to be agreed directly between you and the venue."
+                                                            >
+                                                                <MoreInformationIcon />
+                                                            </span>
+                                                            )}
+                                                        </h2>
+                                                    ) : (
+                                                        <>
+                                                            <h1>{currentSlot?.budget === '£' || currentSlot?.budget === '£0' ? 'No Fee' : currentSlot?.budget}</h1>
+                                                            {currentSlot?.budget !== '£' && currentSlot?.budget !== '£0' && (
+                                                                <p>gig fee</p>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className='action-box-duration'>
+                                                    <h4>{formatDuration(currentSlot?.duration)}</h4>
+                                                </div>
+                                            </div>
+                                            <div className='action-box-date-and-time'>
+                                                <div className='action-box-date'>
+                                                    <h3>{formatDate(currentSlot?.startDateTime, 'withTime')}</h3>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className='action-box-date-and-time'>
-                                            <div className='action-box-date'>
-                                                <h3>{formatDate(gigData.startDateTime, 'withTime')}</h3>
-                                            </div>
-                                        </div>
-                                        {/* {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig' && !venueVisiting) && (
+                                        {/* {(currentSlot?.kind !== 'Open Mic' && currentSlot?.kind !== 'Ticketed Gig' && !venueVisiting) && (
                                             <div className='action-box-fees'>
                                                 <div className='action-box-service-fee'>
                                                 <p>Service Fee</p>
-                                                <p>£{calculateServiceFee(gigData.budget)}</p>
+                                                <p>£{calculateServiceFee(currentSlot.budget)}</p>
                                                 </div>
                                                 <div className='action-box-total-income'>
                                                 <p>Total Income</p>
-                                                <p>£{calculateTotalIncome(gigData.budget)}</p>
+                                                <p>£{calculateTotalIncome(currentSlot.budget)}</p>
                                                 </div>
                                             </div>
                                         )} */}
@@ -1692,37 +1902,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             </>
                                         )}
                                     </div>
-                                    {otherSlots && (
-                                        <div className="other-slots">
-                                            <h4 className='subtitle'>Other Available Sets</h4>
-                                            <div className='similar-gigs-list'>
-                                                {otherSlots.map(gig => (
-                                                    <div key={gig.id} className='similar-gig-item' onClick={(e) => openInNewTab(gig.id, e)}>
-                                                        <div className='similar-gig-item-venue'>
-                                                            <figure className='similar-gig-img'>
-                                                                <img src={gig.venue.photo} alt={gig.venue.venueName} />
-                                                            </figure>
-                                                            <div className='similar-gig-info'>
-                                                                <h4>{formatSlotName(gig.gigName)}</h4>
-                                                                <p>{formatFeeDate(gig.startDateTime)}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className='similar-gig-budget'>
-                                                            {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
-                                                                <h3 className="gig-kind">
-                                                                    {gigData.kind}
-                                                                </h3>
-                                                            ) : (
-                                                                <>
-                                                                    <h3>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h3>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>                                            
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </>
@@ -1736,7 +1915,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                             </div>
                             <div className='main'>
                                 <div className="section">
-                                    <h1>{gigData.gigName}</h1>
+                                    <h1>{getBaseGigName(gigData.gigName)}</h1>
                                     <div className="divider">
                                         <span className="line"></span>
                                         <h6>@</h6>
@@ -1829,26 +2008,26 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 <div className="section">
                                     <div className='timeline'>
                                         <h4 className='subtitle'>Gig Timeline</h4>
-                                        {gigData.startTime && (
+                                        {currentSlot?.startTime && (
                                             <div className='timeline-cont'>
                                                 <div className='timeline-event'>
                                                     <div className='timeline-content'>
                                                         <p>Load In</p>
-                                                        <div className='timeline-time'>{gigData?.loadInTime && gigData?.loadInTime !== '' ? formatTime(gigData?.loadInTime) : 'TBC'}</div>
+                                                        <div className='timeline-time'>{currentSlot?.loadInTime && currentSlot?.loadInTime !== '' ? formatTime(currentSlot?.loadInTime) : 'TBC'}</div>
                                                     </div>
                                                     <div className='timeline-line'></div>
                                                 </div>
                                                 <div className='timeline-event'>
                                                     <div className='timeline-content'>
                                                         <p>Sound Check</p>
-                                                        <div className='timeline-time'>{gigData?.soundCheckTime && gigData?.soundCheckTime !== '' ? formatTime(gigData?.soundCheckTime) : 'TBC'}</div>
+                                                        <div className='timeline-time'>{currentSlot?.soundCheckTime && currentSlot?.soundCheckTime !== '' ? formatTime(currentSlot?.soundCheckTime) : 'TBC'}</div>
                                                     </div>
                                                     <div className='timeline-line'></div>
                                                 </div>
                                                 <div className='timeline-event'>
                                                     <div className='timeline-content'>
                                                         <p>Set Starts</p>
-                                                        <div className='timeline-time orange'>{formatTime(gigData.startTime)}</div>
+                                                        <div className='timeline-time orange'>{formatTime(currentSlot.startTime)}</div>
                                                     </div>
                                                     <div className='timeline-line'></div>
                                                 </div>
@@ -1925,81 +2104,96 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         </div>
                                     )}
                                 </div>
-                                {otherSlots && (
-                                    <div className="section">
-                                        <div className="other-slots">
-                                            <h4 className='subtitle'>Other Available Sets</h4>
-                                            <div className='similar-gigs-list'>
-                                                {otherSlots.map(gig => (
-                                                    <div key={gig.id} className='similar-gig-item' onClick={(e) => openInNewTab(gig.id, e)}>
-                                                        <div className='similar-gig-item-venue'>
-                                                            <figure className='similar-gig-img'>
-                                                                <img src={gig.venue.photo} alt={gig.venue.venueName} />
-                                                            </figure>
-                                                            <div className='similar-gig-info'>
-                                                                <h4>{formatSlotName(gig.gigName)}</h4>
-                                                                <p>{formatFeeDate(gig.startDateTime)}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className='similar-gig-budget'>
-                                                        {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
-                                                            <h3 className="gig-kind">
-                                                                {gigData.kind}
-                                                            </h3>
-                                                        ) : (
-                                                            <>
-                                                                <h3>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h3>
-                                                            </>
-                                                        )}
-                                                        </div>
-                                                    </div>                                            
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                                 <div className="sticky-bottom">
-                                        <div className='action-box-info'>
-                                            <div className='action-box-budget'>
-                                                {gigData.kind === 'Open Mic' || gigData.kind === 'Ticketed Gig' ? (
-                                                    <h2 className="gig-kind">
-                                                        {gigData.kind}
-                                                        {gigData.kind === 'Ticketed Gig' && (
-                                                        <span
-                                                            className="tooltip-wrapper"
-                                                            data-tooltip="Ticket sales, administration, and any revenue split are to be agreed directly between you and the venue."
-                                                        >
-                                                            <MoreInformationIcon />
-                                                        </span>
-                                                        )}
-                                                    </h2>
-                                                ) : (
-                                                    <>
-                                                        <h1>{gigData.budget === '£' || gigData.budget === '£0' ? 'No Fee' : gigData.budget}</h1>
-                                                        {gigData.budget !== '£' && gigData.budget !== '£0' && (
-                                                            <p>gig fee</p>
-                                                        )}
-                                                    </>
-                                                )}
+                                    <div 
+                                        className='action-box'
+                                        onTouchStart={onTouchStart}
+                                        onTouchMove={onTouchMove}
+                                        onTouchEnd={onTouchEnd}
+                                        style={{ overflow: 'hidden' }}
+                                    >
+                                        {allSlots.length > 1 && (
+                                            <div className='slot-navigation' style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'space-between',
+                                                padding: '1rem',
+                                                borderBottom: '1px solid var(--gn-grey-300)',
+                                                marginBottom: '1rem'
+                                            }}>
+                                                <button 
+                                                    className='btn icon' 
+                                                    onClick={goToPreviousSlot}
+                                                    disabled={currentSlotIndex === 0 || isTransitioning}
+                                                    style={{ opacity: currentSlotIndex === 0 ? 0.5 : 1 }}
+                                                >
+                                                    <LeftArrowIcon />
+                                                </button>
+                                                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>
+                                                    Set {currentSlotIndex + 1} of {allSlots.length}
+                                                </h4>
+                                                <button 
+                                                    className='btn icon' 
+                                                    onClick={goToNextSlot}
+                                                    disabled={currentSlotIndex === allSlots.length - 1 || isTransitioning}
+                                                    style={{ opacity: currentSlotIndex === allSlots.length - 1 ? 0.5 : 1 }}
+                                                >
+                                                    <RightArrowIcon />
+                                                </button>
                                             </div>
-                                            <div className='action-box-duration'>
-                                                <h4>{formatDuration(gigData.duration)}</h4>
+                                        )}
+                                        <div 
+                                            className='action-box-content'
+                                            style={{
+                                                transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out',
+                                                transform: isTransitioning 
+                                                    ? (transitionDirection === 'left' ? 'translateX(-50px)' : 'translateX(50px)')
+                                                    : 'translateX(0)',
+                                                opacity: isTransitioning ? 0.5 : 1
+                                            }}
+                                        >
+                                            <div className='action-box-info'>
+                                                <div className='action-box-budget'>
+                                                    {currentSlot?.kind === 'Open Mic' || currentSlot?.kind === 'Ticketed Gig' ? (
+                                                        <h2 className="gig-kind">
+                                                            {currentSlot.kind}
+                                                            {currentSlot.kind === 'Ticketed Gig' && (
+                                                            <span
+                                                                className="tooltip-wrapper"
+                                                                data-tooltip="Ticket sales, administration, and any revenue split are to be agreed directly between you and the venue."
+                                                            >
+                                                                <MoreInformationIcon />
+                                                            </span>
+                                                            )}
+                                                        </h2>
+                                                    ) : (
+                                                        <>
+                                                            <h1>{currentSlot?.budget === '£' || currentSlot?.budget === '£0' ? 'No Fee' : currentSlot?.budget}</h1>
+                                                            {currentSlot?.budget !== '£' && currentSlot?.budget !== '£0' && (
+                                                                <p>gig fee</p>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className='action-box-duration'>
+                                                    <h4>{formatDuration(currentSlot?.duration)}</h4>
+                                                </div>
+                                            </div>
+                                            <div className='action-box-date-and-time'>
+                                                <div className='action-box-date'>
+                                                    <h3>{formatDate(currentSlot?.startDateTime, 'withTime')}</h3>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className='action-box-date-and-time'>
-                                            <div className='action-box-date'>
-                                                <h3>{formatDate(gigData.startDateTime, 'withTime')}</h3>
-                                            </div>
-                                        </div>
-                                        {/* {(gigData.kind !== 'Open Mic' && gigData.kind !== 'Ticketed Gig' && !venueVisiting) && (
+                                        {/* {(currentSlot?.kind !== 'Open Mic' && currentSlot?.kind !== 'Ticketed Gig' && !venueVisiting) && (
                                             <div className='action-box-fees'>
                                                 <div className='action-box-service-fee'>
                                                 <p>Service Fee</p>
-                                                <p>£{calculateServiceFee(gigData.budget)}</p>
+                                                <p>£{calculateServiceFee(currentSlot.budget)}</p>
                                                 </div>
                                                 <div className='action-box-total-income'>
                                                 <p>Total Income</p>
-                                                <p>£{calculateTotalIncome(gigData.budget)}</p>
+                                                <p>£{calculateTotalIncome(currentSlot.budget)}</p>
                                                 </div>
                                             </div>
                                         )} */}
@@ -2125,6 +2319,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </div>
                                             </>
                                         )}
+                                    </div>
                                 </div>
                             </div>
                         </>

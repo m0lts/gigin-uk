@@ -11,6 +11,8 @@ import {
     StarIcon,
     TickIcon
 } from '@features/shared/ui/extras/Icons';
+import { format } from 'date-fns';
+import { LinkIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
 import { TechRiderModal } from '@features/venue/components/TechRiderModal';
 import { useAuth } from '@hooks/useAuth';
 import { PaymentModal } from '@features/venue/components/PaymentModal';
@@ -37,10 +39,17 @@ import { acceptGigOffer, acceptGigOfferOM, logGigCancellation, markApplicantsVie
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
-import { toJsDate } from '../../../services/utils/dates';
+import { toJsDate, formatDate as formatDateUtil } from '../../../services/utils/dates';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, postCancellationMessage } from '@services/api/messages';
 import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { getGigsByIds } from '@services/client-side/gigs';
+import { inviteToGig } from '@services/api/gigs';
+import { sendGigInvitationMessage } from '@services/client-side/messages';
+import { formatDate } from '@services/utils/dates';
+import { GigHandbook } from '@features/artist/components/GigHandbook';
+import { storage } from '@lib/firebase';
+import { ref, getDownloadURL } from 'firebase/storage';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const VideoModal = ({ video, onClose }) => {
@@ -103,6 +112,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const [makingPayment, setMakingPayment] = useState(false);
     const [paymentSuccess, setPaymentSuccess] = useState(false);
     const [musicianProfileId, setMusicianProfileId] = useState(false);
+    const [paymentSlotGig, setPaymentSlotGig] = useState(null);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [reviewProfile, setReviewProfile] = useState(null);
     const [showPromoteModal, setShowPromoteModal] = useState(false);
@@ -118,6 +128,21 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const [eventLoading, setEventLoading] = useState(false);
     const [showTechRiderModal, setShowTechRiderModal] = useState(false);
     const [techRiderProfile, setTechRiderProfile] = useState(null);
+    const [editingSoundManager, setEditingSoundManager] = useState(false);
+    const [soundManagerValue, setSoundManagerValue] = useState('');
+    const [soundManagerPosition, setSoundManagerPosition] = useState({ top: 0, left: 0 });
+    const [editingNotes, setEditingNotes] = useState(false);
+    const [notesValue, setNotesValue] = useState('');
+    const [notesPosition, setNotesPosition] = useState({ top: 0, left: 0 });
+    const [relatedSlots, setRelatedSlots] = useState([]);
+    const [showSlotInviteModal, setShowSlotInviteModal] = useState(false);
+    const [selectedMusicianForSlotInvite, setSelectedMusicianForSlotInvite] = useState(null);
+    const [declinedSlotGigId, setDeclinedSlotGigId] = useState(null);
+    const [invitingToSlot, setInvitingToSlot] = useState(false);
+    const [showGigHandbook, setShowGigHandbook] = useState(false);
+    const [gigForHandbook, setGigForHandbook] = useState(null);
+    const [confirmedArtistProfiles, setConfirmedArtistProfiles] = useState(new Map());
+    const [heroImageUrls, setHeroImageUrls] = useState(new Map());
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
     const venueName = location.state?.gig?.venue?.venueName || '';
@@ -126,6 +151,30 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         if (!gigId || !gigs) return;
         const activeGig = gigs.find(gig => gig.gigId === gigId);
         setGigInfo(activeGig);
+        if (activeGig) {
+            setSoundManagerValue(activeGig.soundManager || '');
+            setNotesValue(activeGig.notes || '');
+            
+            // Fetch related slots if this gig has gigSlots
+            if (Array.isArray(activeGig.gigSlots) && activeGig.gigSlots.length > 0) {
+                (async () => {
+                    try {
+                        const slotGigs = await getGigsByIds(activeGig.gigSlots);
+                        // Normalize slot gigs to match the format used in the component
+                        const normalizedSlots = slotGigs.map(gig => ({
+                            ...gig,
+                            gigId: gig.id || gig.gigId,
+                        }));
+                        setRelatedSlots(normalizedSlots);
+                    } catch (error) {
+                        console.error('Error fetching related slots:', error);
+                        setRelatedSlots([]);
+                    }
+                })();
+            } else {
+                setRelatedSlots([]);
+            }
+        }
     }, [gigId, gigs]);
 
     const markedRef = useRef(new Set()); // gigIds we’ve already marked this session
@@ -157,25 +206,84 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     
       async function fetchProfiles() {
         try {
-          const profiles = await Promise.all(
-            (gigInfo.applicants || []).map(async (app) => {
-              const profile = await getProfileById(app.id);
-              return profile ? {
+          // Collect applicants from all slots (current gig + related slots)
+          const allSlots = [gigInfo, ...relatedSlots].filter(Boolean);
+          const allApplicants = [];
+          
+          allSlots.forEach((slotGig) => {
+            if (!Array.isArray(slotGig.applicants)) return;
+            slotGig.applicants.forEach((app) => {
+              allApplicants.push({
+                ...app,
+                slotGigId: slotGig.gigId,
+                slotGigName: slotGig.gigName,
+                slotStartTime: slotGig.startTime,
+              });
+            });
+          });
+          
+          // Get unique profile IDs first
+          const uniqueProfileIds = [...new Set(allApplicants.map(app => app.id))];
+          
+          // Fetch all profiles in parallel (but only once per unique ID)
+          const profilePromises = uniqueProfileIds.map(id => getProfileById(id));
+          const fetchedProfiles = await Promise.all(profilePromises);
+          
+          // Create a map of profile ID to profile data
+          const profilesMap = new Map();
+          uniqueProfileIds.forEach((id, index) => {
+            const profile = fetchedProfiles[index];
+            if (profile) {
+              profilesMap.set(id, {
                 ...profile,
-                id: app.id,
+                id: id,
+                applications: [],
+              });
+            }
+          });
+          
+          // Add applications to each profile
+          for (const app of allApplicants) {
+            const profileEntry = profilesMap.get(app.id);
+            if (profileEntry) {
+              profileEntry.applications.push({
+                slotGigId: app.slotGigId,
+                slotGigName: app.slotGigName,
+                slotStartTime: app.slotStartTime,
                 status: app.status,
                 proposedFee: app.fee,
-                viewed: true,
-              } : null;
-            })
-          );
-          setMusicianProfiles(profiles.filter(Boolean));
+                viewed: app.viewed,
+                invited: app.invited,
+                sentBy: app.sentBy,
+              });
+            }
+          }
+          
+          // Convert to array and create separate entries for each slot application
+          const profiles = [];
+          profilesMap.forEach((profile) => {
+            profile.applications.forEach((app) => {
+              profiles.push({
+                ...profile,
+                applicationSlotGigId: app.slotGigId,
+                applicationSlotGigName: app.slotGigName,
+                applicationSlotStartTime: app.slotStartTime,
+                status: app.status,
+                proposedFee: app.proposedFee,
+                viewed: app.viewed,
+                invited: app.invited,
+                sentBy: app.sentBy,
+              });
+            });
+          });
+          
+          setMusicianProfiles(profiles);
           setLoading(false);
         } catch (e) {
           console.error("Error fetching profiles:", e);
         }
       }
-    }, [gigInfo]);
+    }, [gigInfo, relatedSlots]);
 
     const formatDate = (timestamp) => {
         if (!timestamp) return "—";
@@ -215,32 +323,49 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         return res;
     };
 
-    const handleAccept = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
+    const handleAccept = async (musicianId, event, proposedFee, musicianEmail, musicianName, slotGigId) => {
         event.stopPropagation();    
         try {
             if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigInfo) return console.error('Gig data is missing');
-            if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
+            
+            // Determine which gig to accept for (slot-specific or main gig)
+            const targetGig = slotGigId ? [gigInfo, ...relatedSlots].find(g => g.gigId === slotGigId) : gigInfo;
+            if (!targetGig) return console.error('Target gig not found');
+            
+            if (getLocalGigDateTime(targetGig) < new Date()) return toast.error('Gig is in the past.');
             setEventLoading(true);
-            const nonPayableGig = gigInfo.kind === 'Open Mic' || gigInfo.kind === "Ticketed Gig" || gigInfo.budget === '£' || gigInfo.budget === '£0';
+            const nonPayableGig = targetGig.kind === 'Open Mic' || targetGig.kind === "Ticketed Gig" || targetGig.budget === '£' || targetGig.budget === '£0';
             let globalAgreedFee;
-            if (gigInfo.kind === 'Open Mic') {
+            
+            if (targetGig.kind === 'Open Mic') {
                 const { updatedApplicants } = assertOk(
-                    await acceptGigOfferOM({ gigData: gigInfo, musicianProfileId: musicianId, role: 'venue' }),
+                    await acceptGigOfferOM({ gigData: targetGig, musicianProfileId: musicianId, role: 'venue' }),
                     'acceptGigOfferOM'
                 );
                 if (!Array.isArray(updatedApplicants)) {
                     toast.error('Failed to update gig status. Please try again.');
                     throw new Error('acceptGigOfferOM: updatedApplicants is not an array');
                 };
-                setGigInfo((prevGigInfo) => ({
-                    ...prevGigInfo,
-                    applicants: updatedApplicants,
-                    paid: true,
-                }));
+                
+                // Update the target gig
+                if (targetGig.gigId === gigInfo.gigId) {
+                    setGigInfo((prevGigInfo) => ({
+                        ...prevGigInfo,
+                        applicants: updatedApplicants,
+                        paid: true,
+                    }));
+                } else {
+                    // Update related slot
+                    setRelatedSlots(prev => prev.map(slot => 
+                        slot.gigId === slotGigId 
+                            ? { ...slot, applicants: updatedApplicants, paid: true }
+                            : slot
+                    ));
+                }
             } else {
                 const { updatedApplicants, agreedFee } = assertOk(
-                    await acceptGigOffer({ gigData: gigInfo, musicianProfileId: musicianId, nonPayableGig, role: 'venue' }),
+                    await acceptGigOffer({ gigData: targetGig, musicianProfileId: musicianId, nonPayableGig, role: 'venue' }),
                     'acceptGigOffer'
                   );
                 if (!Array.isArray(updatedApplicants)) {
@@ -251,25 +376,56 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     toast.error('Failed to update gig status. Please try again.');
                     throw new Error('acceptGigOffer: no agreedFee')
                 };
-                setGigInfo((prevGigInfo) => ({
-                    ...prevGigInfo,
-                    applicants: updatedApplicants,
-                    agreedFee: `${agreedFee}`,
-                    paid: false,
-                }));
+                
+                // Update the target gig
+                if (targetGig.gigId === gigInfo.gigId) {
+                    setGigInfo((prevGigInfo) => ({
+                        ...prevGigInfo,
+                        applicants: updatedApplicants,
+                        agreedFee: `${agreedFee}`,
+                        paid: false,
+                    }));
+                } else {
+                    // Update related slot
+                    setRelatedSlots(prev => prev.map(slot => 
+                        slot.gigId === slotGigId 
+                            ? { ...slot, applicants: updatedApplicants, agreedFee: `${agreedFee}`, paid: false }
+                            : slot
+                    ));
+                }
                 globalAgreedFee = agreedFee;
             }
+            
+            // If this is a multi-slot gig, decline the musician's applications to other slots
+            if (relatedSlots.length > 0) {
+                const allSlots = [gigInfo, ...relatedSlots];
+                for (const slot of allSlots) {
+                    if (slot.gigId === slotGigId || slot.gigId === targetGig.gigId) continue; // Skip the accepted slot
+                    
+                    const hasPendingApplication = Array.isArray(slot.applicants) && 
+                        slot.applicants.some(app => app.id === musicianId && app.status === 'pending');
+                    
+                    if (hasPendingApplication) {
+                        try {
+                            await declineGigApplication({ gigData: slot, musicianProfileId: musicianId, role: 'venue' });
+                        } catch (error) {
+                            console.error(`Error declining application for slot ${slot.gigId}:`, error);
+                        }
+                    }
+                }
+            }
+            
             const musicianProfile = await getProfileById(musicianId);
-            const venueProfile = await getVenueProfileById(gigInfo.venueId);
-            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: gigInfo, venueProfile, type: 'application' });
-            if (proposedFee === gigInfo.budget) {
+            const venueProfile = await getVenueProfileById(targetGig.venueId);
+            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: targetGig, venueProfile, type: 'application' });
+            if (proposedFee === targetGig.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
                 if (applicationMessage?.id) {
                     await sendGigAcceptedMessage({
                         conversationId,
                         originalMessageId: applicationMessage.id,
                         senderId: user.uid,
-                        agreedFee: gigInfo.budget,
+                        agreedFee: targetGig.budget,
                         userRole: 'venue',
                         nonPayableGig,
                     });
@@ -291,14 +447,17 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 userRole: 'venue',
                 musicianProfile: musicianProfile,
                 venueProfile: venueProfile,
-                gigData: gigInfo,
+                gigData: targetGig,
                 agreedFee: globalAgreedFee,
                 isNegotiated: false,
                 nonPayableGig,
             })
             if (nonPayableGig) {
-                await notifyOtherApplicantsGigConfirmed({ gigData: gigInfo, acceptedMusicianId: musicianId });
+                await notifyOtherApplicantsGigConfirmed({ gigData: targetGig, acceptedMusicianId: musicianId });
             }
+            
+            // Refresh gigs to get updated data
+            refreshGigs();
         } catch (error) {
             toast.error('Error accepting gig application. Please try again.')
             console.error('Error updating gig document:', error);
@@ -307,31 +466,48 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         }
     };
 
-    const handleReject = async (musicianId, event, proposedFee, musicianEmail, musicianName) => {
+    const handleReject = async (musicianId, event, proposedFee, musicianEmail, musicianName, slotGigId) => {
         event.stopPropagation();
         try {
             if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage')) return toast.error('You do not have permission to manage gig applications.');
             if (!gigInfo) return console.error('Gig data is missing');
-            if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
+            
+            // Determine which gig to decline for (slot-specific or main gig)
+            const targetGig = slotGigId ? [gigInfo, ...relatedSlots].find(g => g.gigId === slotGigId) : gigInfo;
+            if (!targetGig) return console.error('Target gig not found');
+            
+            if (getLocalGigDateTime(targetGig) < new Date()) return toast.error('Gig is in the past.');
             setEventLoading(true);
             const {updatedApplicants} = assertOk(
-                await declineGigApplication({ gigData: gigInfo, musicianProfileId: musicianId, role: 'venue' }),
+                await declineGigApplication({ gigData: targetGig, musicianProfileId: musicianId, role: 'venue' }),
                 'declineGigApplication'
             );
             if (!Array.isArray(updatedApplicants)) {
                 toast.error('Failed to update gig status. Please try again.');
                 throw new Error('declineGigApplication: no updatedApplicants')
             };
-            setGigInfo((prevGigInfo) => ({
-                ...prevGigInfo,
-                applicants: updatedApplicants,
-            }));
+            
+            // Update the target gig
+            if (targetGig.gigId === gigInfo.gigId) {
+                setGigInfo((prevGigInfo) => ({
+                    ...prevGigInfo,
+                    applicants: updatedApplicants,
+                }));
+            } else {
+                // Update related slot
+                setRelatedSlots(prev => prev.map(slot => 
+                    slot.gigId === slotGigId 
+                        ? { ...slot, applicants: updatedApplicants }
+                        : slot
+                ));
+            }
+            
             const musicianProfile = await getProfileById(musicianId);
-            const venueProfile = await getVenueProfileById(gigInfo.venueId);
-            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: gigInfo, venueProfile, type: 'application' })
-            if (proposedFee === gigInfo.budget) {
+            const venueProfile = await getVenueProfileById(targetGig.venueId);
+            const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: targetGig, venueProfile, type: 'application' })
+            if (proposedFee === targetGig.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
-                await updateDeclinedApplicationMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, userRole: 'venue', fee: gigInfo.budget });
+                await updateDeclinedApplicationMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, userRole: 'venue', fee: targetGig.budget });
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
                 await updateDeclinedApplicationMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, userRole: 'venue', fee: proposedFee });
@@ -340,8 +516,11 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 userRole: 'venue',
                 venueProfile: venueProfile,
                 musicianProfile: musicianProfile,
-                gigData: gigInfo,
+                gigData: targetGig,
             })
+            
+            // Refresh gigs to get updated data
+            refreshGigs();
         } catch (error) {
             toast.error('Error declining gig application. Please try again.')
             console.error('Error updating gig document:', error);
@@ -356,15 +535,23 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         navigate(`/venues/dashboard/messages?conversationId=${conversationId}`);
     }
 
-    const handleCompletePayment = async (profileId) => {
-        if (getLocalGigDateTime(gigInfo) < new Date()) return toast.error('Gig is in the past.');
-        if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay')) return toast.error('You do not have permission to pay for gigs.');
+    const handleCompletePayment = async (profileId, slotGigId = null) => {
+        // Find the correct slot gig for payment
+        const targetSlotGigId = slotGigId || gigInfo.gigId;
+        const targetSlotGig = targetSlotGigId === gigInfo.gigId 
+            ? gigInfo 
+            : relatedSlots.find(s => s.gigId === targetSlotGigId) || gigInfo;
+        
+        if (getLocalGigDateTime(targetSlotGig) < new Date()) return toast.error('Gig is in the past.');
+        if (!hasVenuePerm(venues, targetSlotGig.venueId, 'gigs.pay')) return toast.error('You do not have permission to pay for gigs.');
         setLoadingPaymentDetails(true);
         try {
             const cards = await fetchSavedCards();
             setSavedCards(cards);
             setShowPaymentModal(true);
             setMusicianProfileId(profileId);
+            // Store the slot gig so we can use it in PaymentModal
+            setPaymentSlotGig(targetSlotGig);
         } catch (error) {
             toast.info("We couldn't access your saved cards. Sorry for any inconvenience.")
             console.error('Error fetching saved cards:', error);
@@ -378,7 +565,9 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         setMakingPayment(true);
         try {
             const customerId = (savedCards.find(c => c.id === cardId) || {}).customer || null;
-            const result = await confirmGigPayment({ cardId, gigData: gigInfo, musicianProfileId, customerId });
+            // Use the payment slot gig if available, otherwise fall back to gigInfo
+            const targetGigForPayment = paymentSlotGig || gigInfo;
+            const result = await confirmGigPayment({ cardId, gigData: targetGigForPayment, musicianProfileId, customerId });
             if (result.success && result.paymentIntent) {
                 const piId = result?.paymentIntent?.id;
                 if (piId) setWatchPaymentIntentId(piId);
@@ -515,6 +704,164 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         }
     }
 
+    const copyToClipboard = (link) => {
+        navigator.clipboard.writeText(`${link}`).then(() => {
+            toast.success(`Copied Gig Link: ${link}`);
+        }).catch((err) => {
+            toast.error('Failed to copy link. Please try again.')
+            console.error('Failed to copy link: ', err);
+        });
+    };
+
+    const calculateEndTime = (startTime, duration) => {
+        if (!startTime || !duration) return null;
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const totalMinutes = hours * 60 + minutes + duration;
+        const endHours = Math.floor(totalMinutes / 60) % 24;
+        const endMinutes = totalMinutes % 60;
+        return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+    };
+
+    // Helper to get slot number (1-indexed)
+    const getSlotNumber = (slotGigId) => {
+        const allSlots = [gigInfo, ...relatedSlots].filter(Boolean);
+        const sortedSlots = [...allSlots].sort((a, b) => {
+            if (!a.startTime || !b.startTime) return 0;
+            const [aH, aM] = a.startTime.split(':').map(Number);
+            const [bH, bM] = b.startTime.split(':').map(Number);
+            return (aH * 60 + aM) - (bH * 60 + bM);
+        });
+        const index = sortedSlots.findIndex(s => s.gigId === slotGigId);
+        return index >= 0 ? index + 1 : null;
+    };
+
+    // Helper to get confirmed artist for a slot
+    const getConfirmedArtistForSlot = (slotGig) => {
+        if (!slotGig || !Array.isArray(slotGig.applicants)) return null;
+        const confirmed = slotGig.applicants.find(app => app.status === 'confirmed');
+        return confirmed ? confirmed.id : null;
+    };
+
+    // Helper to handle inviting to a different slot
+    const handleInviteToSlot = async (slotGig) => {
+        if (!selectedMusicianForSlotInvite || !slotGig) return;
+        
+        try {
+            setInvitingToSlot(true);
+            if (!hasVenuePerm(venues, slotGig.venueId, 'gigs.invite')) {
+                toast.error('You do not have permission to invite artists for this venue.');
+                return;
+            }
+            
+            const venueToSend = venues.find(v => v.venueId === slotGig.venueId);
+            if (!venueToSend) {
+                toast.error('Venue not found.');
+                return;
+            }
+            
+            const musicianProfilePayload = {
+                musicianId: selectedMusicianForSlotInvite.id,
+                id: selectedMusicianForSlotInvite.id,
+                name: selectedMusicianForSlotInvite.name,
+                genres: selectedMusicianForSlotInvite.genres || [],
+                musicianType: selectedMusicianForSlotInvite.artistType || 'Musician/Band',
+                musicType: selectedMusicianForSlotInvite.genres || [],
+                bandProfile: false,
+                userId: selectedMusicianForSlotInvite.userId,
+            };
+            
+            const res = await inviteToGig({ gigId: slotGig.gigId, musicianProfile: musicianProfilePayload });
+            if (!res.success) {
+                if (res.code === 'permission-denied') {
+                    toast.error("You don't have permission to invite artists for this venue.");
+                } else if (res.code === 'failed-precondition') {
+                    toast.error('This gig is missing required venue info.');
+                } else {
+                    toast.error('Error inviting artist. Please try again.');
+                }
+                return;
+            }
+            
+            const { conversationId } = await getOrCreateConversation({
+                musicianProfile: musicianProfilePayload,
+                gigData: slotGig,
+                venueProfile: venueToSend,
+                type: 'invitation',
+            });
+            
+            if (slotGig.kind === 'Ticketed Gig' || slotGig.kind === 'Open Mic') {
+                await sendGigInvitationMessage(conversationId, {
+                    senderId: user.uid,
+                    text: `${venueToSend.accountName} invited ${selectedMusicianForSlotInvite.name} to play at their gig at ${slotGig.venue.venueName} on the ${formatDate(slotGig.date)}.`,
+                });
+            } else {
+                await sendGigInvitationMessage(conversationId, {
+                    senderId: user.uid,
+                    text: `${venueToSend.accountName} invited ${selectedMusicianForSlotInvite.name} to play at their gig at ${slotGig.venue.venueName} on the ${formatDate(slotGig.date)} for ${slotGig.budget}.`,
+                });
+            }
+            
+            setShowSlotInviteModal(false);
+            setSelectedMusicianForSlotInvite(null);
+            setDeclinedSlotGigId(null);
+            toast.success(`Invite sent to ${selectedMusicianForSlotInvite.name} for Slot ${getSlotNumber(slotGig.gigId)}`);
+            refreshGigs();
+        } catch (error) {
+            console.error('Error inviting to slot:', error);
+            toast.error('Error inviting artist. Please try again.');
+        } finally {
+            setInvitingToSlot(false);
+        }
+    };
+
+    const handleSaveSoundManager = async () => {
+        if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')) {
+            toast.error('You do not have permission to update this gig.');
+            setEditingSoundManager(false);
+            setSoundManagerValue('');
+            return;
+        }
+        try {
+            await updateGigDocument({
+                gigId: gigInfo.gigId,
+                action: 'gigs.update',
+                updates: { soundManager: soundManagerValue.trim() || null }
+            });
+            
+            toast.success('Sound Manager updated');
+            setEditingSoundManager(false);
+            setSoundManagerValue('');
+            refreshGigs();
+        } catch (error) {
+            console.error('Error updating sound manager:', error);
+            toast.error('Failed to update sound manager. Please try again.');
+        }
+    };
+
+    const handleSaveNotes = async () => {
+        if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')) {
+            toast.error('You do not have permission to update this gig.');
+            setEditingNotes(false);
+            setNotesValue('');
+            return;
+        }
+        try {
+            await updateGigDocument({
+                gigId: gigInfo.gigId,
+                action: 'gigs.update',
+                updates: { notes: notesValue.trim() || null }
+            });
+            
+            toast.success('Notes updated');
+            setEditingNotes(false);
+            setNotesValue('');
+            refreshGigs();
+        } catch (error) {
+            console.error('Error updating notes:', error);
+            toast.error('Failed to update notes. Please try again.');
+        }
+    };
+
       const handleCancelGig = async () => {
         if (!gigInfo) return;
         setModalLoading(true);
@@ -593,6 +940,71 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         }
     };
 
+    // Find all related slots if this is a grouped gig
+    const allSlots = useMemo(() => {
+        if (!gigInfo || !gigs || !Array.isArray(gigInfo.gigSlots) || gigInfo.gigSlots.length === 0) {
+            return [gigInfo].filter(Boolean);
+        }
+        const slots = [gigInfo];
+        const processed = new Set([gigInfo.gigId]);
+        const queue = [...gigInfo.gigSlots];
+        
+        while (queue.length > 0) {
+            const slotId = queue.shift();
+            if (processed.has(slotId)) continue;
+            
+            const slotGig = gigs.find(g => g.gigId === slotId);
+            if (slotGig) {
+                slots.push(slotGig);
+                processed.add(slotId);
+                
+                if (Array.isArray(slotGig.gigSlots)) {
+                    slotGig.gigSlots.forEach(id => {
+                        if (!processed.has(id)) {
+                            queue.push(id);
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Sort by startTime
+        return slots.sort((a, b) => {
+            if (!a.startTime || !b.startTime) return 0;
+            const [aH, aM] = a.startTime.split(':').map(Number);
+            const [bH, bM] = b.startTime.split(':').map(Number);
+            return (aH * 60 + aM) - (bH * 60 + bM);
+        });
+    }, [gigInfo, gigs]);
+
+    // Calculate date and time display
+    const dateTimeDisplay = useMemo(() => {
+        if (!gigInfo || !gigInfo.date) return '';
+        
+        const dateObj = gigInfo.date?.toDate ? gigInfo.date.toDate() : (gigInfo.date instanceof Date ? gigInfo.date : new Date(gigInfo.date));
+        const formattedDate = format(dateObj, 'EEEE do MMMM');
+        
+        if (allSlots.length > 1) {
+            // For grouped gigs, find earliest start and latest end
+            const slotsWithTime = allSlots.filter(s => s.startTime && s.duration);
+            if (slotsWithTime.length > 0) {
+                const firstSlot = slotsWithTime[0];
+                const lastSlot = slotsWithTime[slotsWithTime.length - 1];
+                const firstStartTime = firstSlot.startTime;
+                const lastEndTime = calculateEndTime(lastSlot.startTime, lastSlot.duration);
+                return `${formattedDate} • ${firstStartTime}-${lastEndTime}`;
+            }
+        }
+        
+        // For single gigs
+        if (gigInfo.startTime && gigInfo.duration) {
+            const endTime = calculateEndTime(gigInfo.startTime, gigInfo.duration);
+            return `${formattedDate} • ${gigInfo.startTime}-${endTime}`;
+        }
+        
+        return formattedDate;
+    }, [gigInfo, allSlots]);
+
     if (loading || !gigInfo) {
         return <LoadingScreen />;
     }
@@ -622,54 +1034,202 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     return (
         <>
             <div className='head gig-applications'>
-                <div>
+                <div style={{ width: '100%'}}>
                     {!isMdUp && (
                         <button className="btn text" onClick={() => navigate(-1)} style={{ marginBottom: '1rem'}}><LeftArrowIcon /> Back</button>
                     )}
-                    <h1 className='title' style={{ fontWeight: 500 }}>
-                        Applications for "{gigInfo.gigName}"
-                    </h1>
-                    <h3>{gigInfo.startTime} {formatDate(gigInfo.date)} at {venueName}</h3>
-                    <button className="btn text" style={{ marginTop: 5 }} onClick={(e) => openInNewTab(`/gig/${gigInfo.gigId}?venueViewing=true`, e)}>Visit Gig Page <NewTabIcon /></button>
-                </div>
-                {getLocalGigDateTime(gigInfo) > now && (
-                    <div className='action-buttons'>
-                        {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
-                            ['accepted', 'confirmed', 'paid'].includes(applicant.status)
-                        ) && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
-                            <button className='btn tertiary' onClick={() => openGigPostModal(gigInfo)}>
-                                Edit Gig Details
-                            </button>
-                        )}
-                        {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
-                            ['accepted', 'confirmed', 'paid'].includes(applicant.status)
-                        ) && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') ? (
-                            <>
-                                {gigInfo.status === 'closed' ? (
-                                    <button className="btn tertiary" onClick={handleReopenGig}>
-                                        Open To Applications
-                                    </button>
-                                ) : (
-                                    <button className="btn tertiary" onClick={handleCloseGigLocal}>
-                                        Close From Applications
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                        <h1 className='title' style={{ fontWeight: 500, margin: 0 }}>
+                            {relatedSlots.length > 0 
+                                ? gigInfo.gigName.replace(/\s*\(Set \d+\)\s*$/, '')
+                                : gigInfo.gigName}
+                        </h1>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {!gigInfo.privateApplications ? (
+                                <button 
+                                    className="btn secondary"
+                                    style={{ minWidth: 150 }}
+                                    onClick={() => {
+                                        const gigLink = `${window.location.origin}/gig/${gigInfo.gigId}`;
+                                        copyToClipboard(gigLink);
+                                    }}
+                                    title="Copy gig link"
+                                >
+                                    <LinkIcon />
+                                    Gig Link
+                                </button>
+                            ) : (
+                                <button 
+                                    className="btn secondary"
+                                    style={{ minWidth: 150 }}
+                                    onClick={() => {
+                                        if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite')) {
+                                            toast.error('You do not have permission to perform this action.');
+                                            return;
+                                        }
+                                        copyToClipboard(gigInfo.privateApplicationsLink);
+                                    }}
+                                    title="Copy private link"
+                                >
+                                    <InviteIconSolid />
+                                    Invite Artist
+                                </button>
+                            )}
+                            {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                <div className="gigs-toggle-container gig-applications">
+                                    <label className="gigs-toggle-switch">
+                                        <input
+                                            type="checkbox"
+                                            checked={gigInfo.privateApplications || false}
+                                            onChange={async (e) => {
+                                                if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')) {
+                                                    toast.error('You do not have permission to update this gig.');
+                                                    return;
+                                                }
+                                                try {
+                                                    const newPrivateApplications = e.target.checked;
+                                                    await updateGigDocument({ 
+                                                        gigId: gigInfo.gigId, 
+                                                        action: 'gigs.update', 
+                                                        updates: { privateApplications: newPrivateApplications } 
+                                                    });
+                                                    toast.success(`Gig changed to ${newPrivateApplications ? 'Private' : 'Public'} Applications`);
+                                                    refreshGigs();
+                                                } catch (error) {
+                                                    console.error('Error updating private applications:', error);
+                                                    toast.error('Failed to update gig. Please try again.');
+                                                }
+                                            }}
+                                        />
+                                        <span className="gigs-toggle-slider"></span>
+                                    </label>
+                                    <span className="gigs-toggle-text">Toggle Private Applications</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <h3>{dateTimeDisplay} at {venueName}</h3>
+                    
+                    {/* Sound Manager */}
+                    <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontWeight: 500 }}>Sound Manager:</span>
+                        {editingSoundManager ? (
+                            <div style={{ position: 'relative', display: 'inline-block' }}>
+                                <textarea
+                                    value={soundManagerValue}
+                                    onChange={(e) => setSoundManagerValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSaveSoundManager();
+                                        }
+                                        if (e.key === 'Escape') {
+                                            setEditingSoundManager(false);
+                                            setSoundManagerValue(gigInfo.soundManager || '');
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        setTimeout(() => {
+                                            if (editingSoundManager) {
+                                                handleSaveSoundManager();
+                                            }
+                                        }, 200);
+                                    }}
+                                    autoFocus
+                                    className='input'
+                                    resize='none'
+                                />
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>{gigInfo.soundManager || '—'}</span>
+                                {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                    <button 
+                                        className="btn icon sound-manager-edit-btn"
+                                        onClick={() => {
+                                            setEditingSoundManager(true);
+                                            setSoundManagerValue(gigInfo.soundManager || '');
+                                        }}
+                                    >
+                                        <EditIcon />
                                     </button>
                                 )}
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Notes */}
+                    <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontWeight: 500 }}>Notes:</span>
+                        {editingNotes ? (
+                            <div style={{ position: 'relative', display: 'inline-block' }}>
+                                <textarea
+                                    value={notesValue}
+                                    onChange={(e) => setNotesValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSaveNotes();
+                                        }
+                                        if (e.key === 'Escape') {
+                                            setEditingNotes(false);
+                                            setNotesValue(gigInfo.notes || '');
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        setTimeout(() => {
+                                            if (editingNotes) {
+                                                handleSaveNotes();
+                                            }
+                                        }, 200);
+                                    }}
+                                    autoFocus
+                                    className='input'
+                                    resize='none'
+                                />
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>{gigInfo.notes || '—'}</span>
+                                {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                    <button 
+                                        className="btn icon sound-manager-edit-btn" 
+                                        onClick={() => {
+                                            setEditingNotes(true);
+                                            setNotesValue(gigInfo.notes || '');
+                                        }}
+                                    >
+                                        <EditIcon />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Action buttons in horizontal row */}
+                    {getLocalGigDateTime(gigInfo) > now && (
+                        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
+                                ['accepted', 'confirmed', 'paid'].includes(applicant.status)
+                            ) && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                <button className='btn tertiary' onClick={() => openGigPostModal(gigInfo)}>
+                                    Edit Gig Details
+                                </button>
+                            )}
+                            {!Array.isArray(gigInfo?.applicants) || !gigInfo.applicants.some(applicant => 
+                                ['accepted', 'confirmed', 'paid'].includes(applicant.status)
+                            ) && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') ? (
                                 <button className='btn danger' onClick={() => setShowDeleteConfirmationModal(true)}>
                                     Delete Gig
                                 </button>
-                            </>
-                        ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
-                            <>
+                            ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
                                 <button className='btn danger' onClick={() => setShowCancelConfirmationModal(true)}>
                                     Cancel Gig
                                 </button>
-                                {/* <button className='primary btn' onClick={() => setShowPromoteModal(true)}>
-                                    <PeopleGroupIconSolid /> Promote Gig
-                                </button> */}
-                            </>
-                        )}
-                    </div>
-                )}
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
             <div className='body gigs'>
                 {loading ? (
@@ -691,14 +1251,151 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                 <h4 style={{ marginBottom: 0 }}>Our team is looking into the dispute. We'll update you soon.</h4>
                             </div>
                         )}
+                        {/* Slot boxes for multi-slot gigs */}
+                        {relatedSlots.length > 0 && (
+                            <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                {[gigInfo, ...relatedSlots]
+                                    .filter(Boolean)
+                                    .sort((a, b) => {
+                                        if (!a.startTime || !b.startTime) return 0;
+                                        const [aH, aM] = a.startTime.split(':').map(Number);
+                                        const [bH, bM] = b.startTime.split(':').map(Number);
+                                        return (aH * 60 + aM) - (bH * 60 + bM);
+                                    })
+                                    .map((slotGig, index) => {
+                                        const slotNumber = index + 1;
+                                        const confirmedArtistId = getConfirmedArtistForSlot(slotGig);
+                                        const confirmedArtist = confirmedArtistId 
+                                            ? musicianProfiles.find(p => p.id === confirmedArtistId)
+                                            : null;
+                                        const endTime = calculateEndTime(slotGig.startTime, slotGig.duration);
+                                        
+                                        return (
+                                            <div 
+                                                key={slotGig.gigId} 
+                                                style={{ 
+                                                    padding: '1rem', 
+                                                    border: '1px solid var(--gn-grey-300)', 
+                                                    borderRadius: '0.5rem',
+                                                    minWidth: '200px',
+                                                    flex: '1 1 200px',
+                                                    position: 'relative'
+                                                }}
+                                            >
+                                                <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Slot {slotNumber}</h4>
+                                                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--gn-grey-600)' }}>
+                                                    {slotGig.startTime}{endTime ? ` - ${endTime}` : ''}
+                                                </p>
+                                                {confirmedArtistId && (
+                                                    <div className='status-box' style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+                                                        <div className='status confirmed'>
+                                                            <TickIcon />
+                                                            Confirmed
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {confirmedArtist ? (() => {
+                                                    const heroImageUrl = confirmedArtist.heroMedia.url;
+                                                    const heroBrightness = confirmedArtist.heroBrightness || 110;
+                                                    const heroPositionY = confirmedArtist.heroPositionY || 50;
+                                                    
+                                                    return (
+                                                        <div style={{ marginTop: '0.5rem' }}>
+                                                            {heroImageUrl && (
+                                                                <div 
+                                                                    style={{
+                                                                        position: 'relative',
+                                                                        width: '100%',
+                                                                        height: '200px',
+                                                                        borderRadius: '0.5rem',
+                                                                        overflow: 'hidden',
+                                                                        marginBottom: '0.5rem',
+                                                                        filter: `brightness(${heroBrightness}%)`,
+                                                                    }}
+                                                                >
+                                                                    <img
+                                                                        src={heroImageUrl}
+                                                                        alt={confirmedArtist.name}
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            height: '100%',
+                                                                            objectFit: 'cover',
+                                                                            objectPosition: `center ${heroPositionY}%`,
+                                                                        }}
+                                                                    />
+                                                                    <div
+                                                                        style={{
+                                                                            position: 'absolute',
+                                                                            bottom: 0,
+                                                                            left: 0,
+                                                                            padding: '0.75rem',
+                                                                            background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
+                                                                            width: '100%',
+                                                                        }}
+                                                                    >
+                                                                        <h4 style={{ 
+                                                                            margin: 0, 
+                                                                            color: 'white', 
+                                                                            fontSize: '1.5rem',
+                                                                            fontWeight: 600 
+                                                                        }}>
+                                                                            {confirmedArtist.name}
+                                                                        </h4>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                {confirmedArtist.techRider && confirmedArtist.techRider.isComplete && (
+                                                                    <button
+                                                                        className='btn tertiary'
+                                                                        onClick={() => {
+                                                                            setTechRiderProfile(confirmedArtist);
+                                                                            setShowTechRiderModal(true);
+                                                                        }}
+                                                                    >
+                                                                        Tech Rider
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    className='btn tertiary'
+                                                                    onClick={(e) => openInNewTab(`/artist/${confirmedArtist.id}`, e)}
+                                                                >
+                                                                    Profile
+                                                                </button>
+                                                                <button
+                                                                    className='btn tertiary'
+                                                                    onClick={() => {
+                                                                        setGigForHandbook(slotGig);
+                                                                        setShowGigHandbook(true);
+                                                                    }}
+                                                                >
+                                                                    Gig Handbook
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })() : (
+                                                    <button 
+                                                        className='btn secondary'
+                                                        style={{ marginTop: '0.5rem', width: '100%' }}
+                                                        onClick={() => navigate('/venues/dashboard/artists/find')}
+                                                    >
+                                                        Find Artist
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        )}
+                        {musicianProfiles.length > 0 && (
+                            <h4 style={{ marginBottom: '1rem', marginTop: '2rem' }}>All Gig Applications</h4>
+                        )}
                         {musicianProfiles.length > 0 ? (
                         <table className='applications-table'>
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    {isLgUp && (
-                                        <th>Genre(s)</th>
-                                    )}
                                     <th>Video</th>
                                     {isMdUp && (
                                         <th>Tech Rider</th>
@@ -709,12 +1406,20 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                             </thead>
                             <tbody>
                                 {musicianProfiles.map((profile, index) => {
-                                    const applicant = gigInfo?.applicants?.find(applicant => applicant.id === profile.id);
-                                    const sender = applicant ? applicant.sentBy : 'musician';
-                                    const status = applicant ? applicant.status : 'pending';
-                                    const gigAlreadyConfirmed = gigInfo?.applicants?.some((a) => a.status === 'confirmed');
+                                    // Find the applicant for the specific slot this row represents
+                                    const slotGigId = profile.applicationSlotGigId || gigInfo.gigId;
+                                    const slotGig = slotGigId === gigInfo.gigId 
+                                        ? gigInfo 
+                                        : relatedSlots.find(s => s.gigId === slotGigId) || gigInfo;
+                                    const applicant = slotGig?.applicants?.find(applicant => applicant.id === profile.id);
+                                    const sender = applicant ? applicant.sentBy : (profile.sentBy || 'musician');
+                                    const status = applicant ? applicant.status : (profile.status || 'pending');
+                                    const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => a.status === 'confirmed');
+                                    const slotNumber = getSlotNumber(slotGigId);
+                                    const appliedToSlotText = relatedSlots.length > 0 && slotNumber ? `Applied for Slot ${slotNumber}` : null;
+                                    
                                     return (
-                                        <tr key={index} className='applicant' onClick={(e) => openInNewTab(`/artist/${profile.id}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
+                                        <tr key={`${profile.id}-${slotGigId}-${index}`} className='applicant' onClick={(e) => openInNewTab(`/artist/${profile.id}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
                                         onMouseLeave={() => setHoveredRowId(null)}>
                                             <td className='musician-name'>
                                                 {hoveredRowId === profile.id && (
@@ -722,21 +1427,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                 )}
                                                 {profile.name}
                                             </td>
-                                            {isLgUp && (
-                                                <td className='genres'>
-                                                    {profile?.genres ? (
-                                                        <>
-                                                            {profile.genres
-                                                                .filter(genre => !genre.includes(' '))
-                                                                .map((genre, index) => (
-                                                                    <span key={index} className='genre-tag'>{genre}</span>
-                                                            ))}
-                                                        </>
-                                                    ) : (
-                                                        'N/A'
-                                                    )}
-                                                </td>
-                                            )}
                                             <td>{profile?.videos && profile?.videos.length > 0 ? (
                                                 <button className='btn small tertiary' onClick={(e) => {e.stopPropagation(); setVideoToPlay(profile.videos[0]);}} onMouseEnter={() => setHoveredRowId(null)} onMouseLeave={() => setHoveredRowId(profile.id)}>
                                                     <PlayIcon />
@@ -805,7 +1495,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                         <div className='status-box'>
                                                             <div className='status past'>
                                                                 <PermissionsIcon />
-                                                                You don't have permission to review musicians
+                                                                You don't have permission to review artists
                                                             </div>
                                                         </div>
                                                     ) : gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
@@ -826,12 +1516,20 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                 </td>
                                             ) : (
                                                 <td className='status-container' style={{
-                                                    textAlign: 'center',
                                                     minWidth: '140px',
                                                     width: '100%',
-                                                    whiteSpace: 'nowrap',
                                                     minHeight: '50px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
                                                   }}>
+                                                    {appliedToSlotText && (
+                                                        <p style={{ fontSize: '0.85rem', color: 'var(--gn-grey-600)', margin: '0 0 0.5rem 0' }}>
+                                                            {appliedToSlotText}
+                                                        </p>
+                                                    )}
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                     {(status === 'confirmed' || status === 'paid') && (
                                                         <div className='status-box'>
                                                             <div className='status confirmed'>
@@ -848,52 +1546,52 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'accepted' && (gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') && gigInfo.budget !== '£' && gigInfo.budget !== '£0' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.pay') && (
+                                                    {status === 'accepted' && (slotGig.kind !== 'Open Mic' && slotGig.kind !== 'Ticketed Gig') && slotGig.budget !== '£' && slotGig.budget !== '£0' && hasVenuePerm(venues, slotGig.venueId, 'gigs.pay') && (
                                                         loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
                                                             <LoadingSpinner />
                                                         ) : (
-                                                            <button className='btn primary' onClick={(event) => {event.stopPropagation(); handleCompletePayment(profile.id)}}>
+                                                            <button className='btn primary' onClick={(event) => {event.stopPropagation(); handleCompletePayment(profile.id, slotGigId)}}>
                                                                 Complete Payment
                                                             </button>
                                                         )
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && !gigAlreadyConfirmed && sender !== 'venue' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
+                                                    {(status === 'pending' && getLocalGigDateTime(slotGig) > now) && !applicant?.invited && !gigAlreadyConfirmed && sender !== 'venue' && hasVenuePerm(venues, slotGig.venueId, 'gigs.applications.manage') && (
                                                         <>
                                                             {eventLoading ? (
                                                                 <LoadingSpinner width={15} height={15} />
                                                             ) : (
-                                                                <>
-                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                <div className='two-buttons'>
+                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
                                                                         <TickIcon />
                                                                         Accept
                                                                     </button>
-                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
                                                                         <ErrorIcon />
                                                                         Decline
                                                                     </button>
-                                                                </>
+                                                                </div>
                                                             )}
                                                         </>
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && !applicant?.invited && gigInfo.kind === 'Open Mic' && gigAlreadyConfirmed && sender !== 'venue' && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
+                                                    {(status === 'pending' && getLocalGigDateTime(slotGig) > now) && !applicant?.invited && slotGig.kind === 'Open Mic' && gigAlreadyConfirmed && sender !== 'venue' && hasVenuePerm(venues, slotGig.venueId, 'gigs.applications.manage') && (
                                                         <>
                                                             {eventLoading ? (
                                                                 <LoadingSpinner width={15} height={15} />
                                                             ) : (
-                                                                <>
-                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                <div className='two-buttons'>
+                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
                                                                         <TickIcon />
                                                                         Accept
                                                                     </button>
-                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name)}>
+                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
                                                                         <ErrorIcon />
                                                                         Decline
                                                                     </button>
-                                                                </>
+                                                                </div>
                                                             )}
                                                         </>
                                                     )}
-                                                    {(status === 'pending' && getLocalGigDateTime(gigInfo) > now) && applicant?.invited && !gigAlreadyConfirmed && (
+                                                    {(status === 'pending' && getLocalGigDateTime(slotGig) > now) && applicant?.invited && !gigAlreadyConfirmed && (
                                                         <div className='status-box'>
                                                             <div className='status upcoming'>
                                                                 <ClockIcon />
@@ -917,7 +1615,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'pending' && gigAlreadyConfirmed && gigInfo.kind !== 'Open Mic' && (
+                                                    {status === 'pending' && gigAlreadyConfirmed && slotGig.kind !== 'Open Mic' && (
                                                         <div className='status-box'>
                                                             <div className='status declined'>
                                                                 <ErrorIcon />
@@ -925,12 +1623,33 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.budget !== '£' && gigInfo.budget !== '£0') && (gigInfo.kind !== 'Ticketed Gig' && gigInfo.kind !== 'Open Mic') && !applicant?.invited && hasVenuePerm(venues, gigInfo.venueId, 'gigs.applications.manage') && (
+                                                    {status === 'declined' && !gigAlreadyConfirmed && relatedSlots.length > 0 && hasVenuePerm(venues, slotGig.venueId, 'gigs.invite') && (
+                                                        <div className='status-box'>
+                                                            <div className='status declined'>
+                                                                <ErrorIcon />
+                                                                Declined
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {status === 'declined' && !gigAlreadyConfirmed && (slotGig.budget !== '£' && slotGig.budget !== '£0') && (slotGig.kind !== 'Ticketed Gig' && slotGig.kind !== 'Open Mic') && !applicant?.invited && hasVenuePerm(venues, slotGig.venueId, 'gigs.applications.manage') && (
                                                         <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId)}}>
                                                             Negotiate Fee
                                                         </button>
                                                     )}
-                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind === 'Ticketed Gig' || gigInfo.kind === 'Open Mic') && applicant?.invited && (
+                                                    {status === 'declined' && !gigAlreadyConfirmed && relatedSlots.length > 0 && hasVenuePerm(venues, slotGig.venueId, 'gigs.invite') && (
+                                                        <button 
+                                                            className='btn secondary' 
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setSelectedMusicianForSlotInvite(profile);
+                                                                setDeclinedSlotGigId(slotGigId);
+                                                                setShowSlotInviteModal(true);
+                                                            }}
+                                                        >
+                                                            Invite to a different slot
+                                                        </button>
+                                                    )}
+                                                    {status === 'declined' && !gigAlreadyConfirmed && relatedSlots.length === 0 && (slotGig.kind === 'Ticketed Gig' || slotGig.kind === 'Open Mic') && applicant?.invited && (
                                                         <div className='status-box'>
                                                             <div className='status declined'>
                                                                 <ErrorIcon />
@@ -938,7 +1657,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'declined' && !gigAlreadyConfirmed && (gigInfo.kind === 'Ticketed Gig' || gigInfo.kind === 'Open Mic') && !applicant?.invited && (
+                                                    {status === 'declined' && !gigAlreadyConfirmed && relatedSlots.length === 0 && (slotGig.kind === 'Ticketed Gig' || slotGig.kind === 'Open Mic') && !applicant?.invited && (
                                                         <div className='status-box'>
                                                             <div className='status declined'>
                                                                 <ErrorIcon />
@@ -970,6 +1689,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                             </div>
                                                         </div>
                                                     )}
+                                                    </div>
                                                 </td>
                                             )}
                                         </tr>
@@ -986,11 +1706,11 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                 </button>
                             )}
                         </div>
-                    ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite') && (
+                    ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite') && relatedSlots.length === 0 && (
                         <div className='no-applications'>
-                            <h4>No musicians have applied to this gig yet.</h4>
-                            <button className='btn primary' onClick={() => navigate('/venues/dashboard/musicians/find')}>
-                                Invite a Musician to Apply
+                            <h4>No artists have applied to this gig yet.</h4>
+                            <button className='btn primary' onClick={() => navigate('/venues/dashboard/artists/find')}>
+                                Find Artist
                             </button>
                         </div>
                     )}
@@ -1002,8 +1722,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     <PaymentModal 
                         savedCards={savedCards}
                         onSelectCard={handleSelectCard}
-                        onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false), setMusicianProfileId(null); setWatchPaymentIntentId(null)}}
-                        gigData={gigInfo}
+                        onClose={() => {setShowPaymentModal(false); setPaymentSuccess(false), setMusicianProfileId(null); setWatchPaymentIntentId(null); setPaymentSlotGig(null)}}
+                        gigData={paymentSlotGig || gigInfo}
                         setMakingPayment={setMakingPayment}
                         makingPayment={makingPayment}
                         setPaymentSuccess={setPaymentSuccess}
@@ -1126,6 +1846,110 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                             setTechRiderProfile(null);
                         }}
                     />
+                </Portal>
+            )}
+            {showGigHandbook && gigForHandbook && (
+                <Portal>
+                    <div className="modal" onClick={() => setShowGigHandbook(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <button 
+                                className="btn close tertiary"
+                                onClick={() => setShowGigHandbook(false)}
+                            >
+                                Close
+                            </button>
+                            <GigHandbook 
+                                setShowGigHandbook={setShowGigHandbook}
+                                gigForHandbook={gigForHandbook}
+                                musicianId={null}
+                            />
+                        </div>
+                    </div>
+                </Portal>
+            )}
+            {showSlotInviteModal && selectedMusicianForSlotInvite && (
+                <Portal>
+                    <div className="modal invite-musician" onClick={() => {
+                        setShowSlotInviteModal(false);
+                        setSelectedMusicianForSlotInvite(null);
+                    }}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <div className="modal-header-text">
+                                    <InviteIconSolid />
+                                    <h2>Invite {selectedMusicianForSlotInvite.name} to a different slot.</h2>
+                                </div>
+                            </div>
+                            <div className="gig-selection">
+                                {[gigInfo, ...relatedSlots]
+                                    .filter(Boolean)
+                                    .filter(slot => {
+                                        // Only show slots that aren't confirmed
+                                        const confirmedArtistId = getConfirmedArtistForSlot(slot);
+                                        if (confirmedArtistId) return false;
+                                        // Exclude the slot the musician was declined from
+                                        if (declinedSlotGigId && slot.gigId === declinedSlotGigId) return false;
+                                        return true;
+                                    })
+                                    .sort((a, b) => {
+                                        if (!a.startTime || !b.startTime) return 0;
+                                        const [aH, aM] = a.startTime.split(':').map(Number);
+                                        const [bH, bM] = b.startTime.split(':').map(Number);
+                                        return (aH * 60 + aM) - (bH * 60 + bM);
+                                    })
+                                    .map((slotGig, index) => {
+                                        const slotNumber = getSlotNumber(slotGig.gigId);
+                                        const endTime = calculateEndTime(slotGig.startTime, slotGig.duration);
+                                        const canInvite = hasVenuePerm(venues, slotGig.venueId, 'gigs.invite');
+                                        
+                                        if (canInvite) {
+                                            return (
+                                                <div
+                                                    className="card"
+                                                    key={slotGig.gigId}
+                                                    onClick={() => handleInviteToSlot(slotGig)}
+                                                    style={{ cursor: invitingToSlot ? 'not-allowed' : 'pointer', opacity: invitingToSlot ? 0.6 : 1 }}
+                                                >
+                                                    <div className="gig-details">
+                                                        <h4 className="text">Slot {slotNumber}</h4>
+                                                        <h5>{slotGig.venue?.venueName || venueName}</h5>
+                                                    </div>
+                                                    <p className="sub-text">
+                                                        {formatDateUtil(slotGig.date, 'short')} - {slotGig.startTime}{endTime ? `-${endTime}` : ''}
+                                                    </p>
+                                                </div>
+                                            );
+                                        }
+                                        
+                                        return (
+                                            <div className="card disabled" key={slotGig.gigId}>
+                                                <div className="gig-details">
+                                                    <h4 className="text">Slot {slotNumber}</h4>
+                                                    <h5 className="details-text">
+                                                        You don't have permission to invite artists to gigs at this venue.
+                                                    </h5>
+                                                </div>
+                                                <p className="sub-text">
+                                                    {formatDateUtil(slotGig.date, 'short')} - {slotGig.startTime}{endTime ? `-${endTime}` : ''}
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                            <div className="two-buttons">
+                                <button 
+                                    className="btn tertiary" 
+                                    onClick={() => {
+                                        setShowSlotInviteModal(false);
+                                        setSelectedMusicianForSlotInvite(null);
+                                    }}
+                                    disabled={invitingToSlot}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </Portal>
             )}
         </>

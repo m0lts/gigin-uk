@@ -396,6 +396,7 @@
     border-collapse: separate;
     border-spacing: 0;
     padding-bottom:20rem;
+    table-layout: fixed;
 }
 
 .window.venues .body.gigs table thead tr {
@@ -410,7 +411,28 @@
 .window.venues .body.gigs table th {
     padding:1rem 0.5rem;
     border-bottom:1px solid var(--gn-grey-350);
+}
 
+.window.venues .body.gigs table th#name {
+    width: 15%;
+}
+
+.window.venues .body.gigs table th.centre {
+    width: 12%;
+}
+
+.window.venues .body.gigs table th.centre:nth-last-child(2) {
+    width: 15%;
+}
+
+.window.venues .body.gigs table th:last-child {
+    width: auto;
+    min-width: 60px;
+}
+
+.window.venues .body.gigs table td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .window.venues .body.gigs table td {
@@ -438,6 +460,169 @@
     position: relative;
 }
 
+.window.venues .body.gigs table .time-and-date .date-time-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.window.venues .body.gigs table .time-and-date .time-range {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.window.venues .body.gigs table .sound-manager-cell {
+    position: relative;
+}
+
+.window.venues .body.gigs table .sound-manager-container {
+    cursor: pointer;
+}
+
+.window.venues .body.gigs table .sound-manager-container {
+    position: relative;
+    width: 100%;
+    min-height: 2rem;
+}
+
+.window.venues .body.gigs table .sound-manager-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.window.venues .body.gigs table .sound-manager-text {
+    flex: 1;
+    text-align: left;
+}
+
+.window.venues .sound-manager-edit-btn {
+    flex-shrink: 0;
+}
+
+.window.venues .sound-manager-edit-btn .icon {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    color: var(--gn-grey-700);
+}
+
+.window.venues .sound-manager-edit-btn:hover {
+    background-color: transparent !important;
+}
+
+.window.venues .body.gigs table .sound-manager-editor {
+    position: fixed;
+    z-index: 1000;
+    background-color: var(--gn-white);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    min-width: 200px;
+}
+
+.window.venues .body.gigs table .sound-manager-editor h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+}
+
+.window.venues .body.gigs table .sound-manager-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 0.5rem;
+    border: 1px solid var(--gn-grey-350);
+    border-radius: 0.25rem;
+    resize: none;
+    outline: none;
+}
+
+.window.venues .body.gigs table .sound-manager-textarea:focus {
+    outline: 2px solid var(--gn-black);
+    outline-offset: 2px;
+}
+
+.window.venues .body.gigs table .sound-manager-editor-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    justify-content: flex-end;
+}
+
+.window.venues .body.gigs table .notes-cell {
+    position: relative;
+}
+
+.window.venues .body.gigs table .notes-container {
+    position: relative;
+    width: 100%;
+    min-height: 2rem;
+    cursor: pointer;
+}
+
+.window.venues .body.gigs table .notes-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.window.venues .body.gigs table .notes-text {
+    flex: 1;
+    text-align: left;
+}
+
+.window.venues .body.gigs table .notes-edit-btn {
+    flex-shrink: 0;
+}
+
+.window.venues .body.gigs table .notes-edit-btn .icon {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    color: var(--gn-grey-700);
+}
+
+.window.venues .body.gigs table .notes-editor {
+    position: fixed;
+    z-index: 1000;
+    background-color: var(--gn-white);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    min-width: 200px;
+}
+
+.window.venues .body.gigs table .notes-editor h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+}
+
+.window.venues .body.gigs table .notes-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 0.5rem;
+    border: 1px solid var(--gn-grey-350);
+    border-radius: 0.25rem;
+    resize: none;
+    outline: none;
+}
+
+.window.venues .body.gigs table .notes-textarea:focus {
+    outline: 2px solid var(--gn-black);
+    outline-offset: 2px;
+}
+
+.window.venues .body.gigs table .notes-editor-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    justify-content: flex-end;
+}
+
 /* Visible dot */
 .window.venues .body.gigs table .time-and-date .notification-dot {
   display: inline-block;
@@ -455,8 +640,13 @@
     justify-content: space-between;
 }
 
+.window.venues .body.gigs table #options {
+    width:50px;
+}
+
 .window.venues .body.gigs table #date .icon {
     color: var(--gn-grey-600);
+    margin-left: 2rem;
 }
 
 .window.venues .body.gigs table .centre {
@@ -481,13 +671,15 @@
     color: var(--gn-orange);
 }
 
-.window.venues .body.gigs table .status-box {
+.window.venues .body.gigs table .status-box,
+.window.venues .body.gigs .status-box {
     text-align: center;
     vertical-align: middle;
 }
   
-.window.venues .body.gigs table .status {
-    font-size: 0.8rem;
+.window.venues .body.gigs table .status,
+.window.venues .body.gigs .status {
+    font-size: 0.75rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -498,7 +690,8 @@
     text-transform: capitalize;
 }
 
-.window.venues .body.gigs table .status.confirmed {
+.window.venues .body.gigs table .status.confirmed,
+.window.venues .body.gigs .status.confirmed {
     background-color: rgba(0, 239, 0, 0.1);
     color: rgb(0, 219, 0);
 }
@@ -528,37 +721,33 @@
     color: var(--gn-red);
 }
 
-.window.venues .body.gigs table .options-cell {
-    text-align: center;
-    vertical-align: middle;
-    position: relative;
-}
-
-.window.venues .body.gigs table .options-cell .btn.icon {
+.window.venues .body.gigs table .options-cell .btn.icon,
+.window.venues .body.gigs table .invite-artist-cell .btn.icon {
     background-color: var(--gn-white);
     border:1px solid var(--gn-grey-350);
     box-shadow: 0 0 4px var(--gn-shadow);
     border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     padding:4px 5px;
     transition: all 200ms linear;
 }
 
-.window.venues .body.gigs table .options-cell .btn.icon .icon {
+.window.venues .body.gigs table .options-cell .btn.icon .icon,
+.window.venues .body.gigs table .invite-artist-cell .btn.icon .icon {
     font-size: 1rem;
 }
 
-.window.venues .body.gigs table .options-cell .btn.icon:focus {
+.window.venues .body.gigs table .options-cell .btn.icon:focus,
+.window.venues .body.gigs table .invite-artist-cell .btn.icon:focus {
     outline-color: var(--gn-off-black);
 }
 
-.window.venues .body.gigs table .options-cell .btn.icon.active {
+.window.venues .body.gigs table .options-cell .btn.icon.active,
+.window.venues .body.gigs table .invite-artist-cell .btn.icon.active {
     background-color: var(--gn-grey-350);
 }
 
-.window.venues .body.gigs table .options-cell .btn.icon:hover {
+.window.venues .body.gigs table .options-cell .btn.icon:hover,
+.window.venues .body.gigs table .invite-artist-cell .btn.icon:hover {
     background-color: var(--gn-grey-350);
 }
 
@@ -822,19 +1011,27 @@
 
 .window.venues .body.gigs .applications-table th:nth-child(1),
 .window.venues .body.gigs .applications-table td:nth-child(1) {
-    width: 15%;
+    width: 20%;
 }
 
 .window.venues .body.gigs .applications-table th:nth-child(2),
 .window.venues .body.gigs .applications-table td:nth-child(2) {
-    text-overflow: ellipsis;
+    width: 10%;
+    text-align: center;
 }
 
 .window.venues .body.gigs .applications-table th:nth-child(3),
-.window.venues .body.gigs .applications-table td:nth-child(3),
+.window.venues .body.gigs .applications-table td:nth-child(3) {
+    width: 12%;
+    text-align: center;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow: visible;
+}
+
 .window.venues .body.gigs .applications-table th:nth-child(4),
 .window.venues .body.gigs .applications-table td:nth-child(4) {
-    width: 15%;
+    width: 10%;
     text-align: center;
 }
 
@@ -842,21 +1039,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow:clip;
-}
-
-.window.venues .body.gigs .applications-table .applicant .genre-tag {
-    border:1px solid var(--gn-orange);
-    padding:0.1rem 0.35rem;
-    border-radius: 5px;
-    background-color: var(--gn-offset-orange);
-    margin-right: 5px;
-    white-space: nowrap;
-    font-size: 0.8rem;
-    color: var(--gn-orange);
-}
-
-.window.venues .body.gigs .applications-table .applicant td:nth-of-type(4) {
-    width:10%;
 }
 
 .window.venues .body.gigs .applications-table td:nth-of-type(5),
@@ -956,7 +1138,6 @@
 .gigs-toggle-switch input:checked + .gigs-toggle-slider:before {
     transform: translateX(12px);
 }
-
 
 /* VENUES */
 

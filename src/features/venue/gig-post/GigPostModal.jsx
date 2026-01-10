@@ -29,6 +29,7 @@ import { removeVenueRequest } from '../../../services/client-side/venues';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { friendlyError } from '../../../services/utils/errors';
 import { inviteToGig, postMultipleGigs } from '@services/api/gigs';
+import { deleteGigsBatch } from '@services/client-side/gigs';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
   
@@ -131,6 +132,15 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
         refreshTemplates();
         refreshGigs();
     }, []);
+
+    // Initialize extraSlots from editGigData if editing a grouped gig
+    useEffect(() => {
+        if (editGigData?.extraSlots && Array.isArray(editGigData.extraSlots)) {
+            setExtraSlots(editGigData.extraSlots);
+        } else if (!editGigData) {
+            setExtraSlots([]);
+        }
+    }, [editGigData]);
 
     // Auto-select venue if user only has one venue profile
     useEffect(() => {
@@ -627,7 +637,21 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 ...base
               } = formData;
       
-              const groupIds = Array.from({ length: allSlots.length }, () => uuidv4());
+              // Use existing gig IDs if editing, otherwise create new ones
+              const existingIds = editGigData?.existingGigIds || [];
+              const groupIds = [];
+              
+              if (editGigData && existingIds.length > 0) {
+                // When editing, use existing IDs for matching slots, create new ones for extra slots
+                for (let i = 0; i < allSlots.length; i++) {
+                  groupIds.push(i < existingIds.length ? existingIds[i] : uuidv4());
+                }
+              } else {
+                // When creating new, generate all new IDs
+                for (let i = 0; i < allSlots.length; i++) {
+                  groupIds.push(uuidv4());
+                }
+              }
       
               for (let i = 0; i < allSlots.length; i++) {
                 const slot = allSlots[i];
@@ -640,7 +664,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   gigId: slotGigId,
                   date: occDate,
                   gigName: `${formData.gigName} (Set ${i + 1})`,
-                  createdAt: new Date(),
+                  createdAt: editGigData && existingIds.length > 0 ? formData.createdAt : new Date(),
                   complete: true,
                   startDateTime: getStartDateTime(occDate, slot.startTime),
                   startTime: slot.startTime,
@@ -649,7 +673,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   ...getGeoField(formData.coordinates),
                   budgetValue: slotBudgetValue === undefined ? '£' : slotBudgetValue,
                   gigSlots: groupIds.filter(id => id !== slotGigId),
-                  status: 'open',
+                  status: editGigData ? formData.status : 'open',
                   venueId: formData.venueId,
                   // ✅ Applicants rule: keep on edit, otherwise empty array (must exist)
                   ...(editGigData ? applicantsForEdit : applicantsForNew),
@@ -703,6 +727,20 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
           }
       
           const { gigIds: newGigIds } = await postMultipleGigs({ venueId: formData.venueId, gigDocuments: allGigsToPost });
+          
+          // If editing and we have fewer slots, delete the extra gigs
+          if (editGigData?.existingGigIds && editGigData.existingGigIds.length > allGigsToPost.length) {
+            const usedIds = new Set(allGigsToPost.map(g => g.gigId));
+            const gigsToDelete = editGigData.existingGigIds.filter(id => !usedIds.has(id));
+            if (gigsToDelete.length > 0) {
+              try {
+                await deleteGigsBatch(gigsToDelete);
+              } catch (error) {
+                console.error('Error deleting extra gigs:', error);
+                // Continue even if deletion fails
+              }
+            }
+          }
 
           // update local state as you already do:
           setVenueProfiles(prev => {

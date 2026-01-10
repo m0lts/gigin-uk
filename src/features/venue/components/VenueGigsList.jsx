@@ -21,7 +21,7 @@ import { createVenueRequest } from "@services/api/artists";
 import { toast } from "sonner";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 
-export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null, venueId }) => {
+export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, musicianId = null, venueId }) => {
     const { isMdUp } = useBreakpoint();
     // Always show all gigs, container will be scrollable
     const displayed = gigs ?? [];
@@ -124,6 +124,58 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
             const month = gigDate.toLocaleDateString("en-US", { month: "short" });
             const confirmed = (gig?.applicants ?? []).filter(a => a?.status === "confirmed");
             if (confirmed.length > 0) return null;
+
+            // Find the group this gig belongs to
+            const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+            
+            // Get base gig name (remove "(Set X)" suffix for grouped gigs)
+            const baseGigName = group && group.isGroup 
+              ? gig.gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '')
+              : gig.gigName;
+
+            // Calculate time range for grouped or single gigs
+            const formatTimeRange = () => {
+              if (group && group.isGroup && group.allGigs.length > 1) {
+                // For grouped gigs, find the earliest start and latest end
+                const allSlots = group.allGigs.filter(g => g.startTime && g.duration);
+                if (allSlots.length > 0) {
+                  // Sort by startTime to get first and last
+                  const sortedSlots = [...allSlots].sort((a, b) => {
+                    const [aH, aM] = a.startTime.split(':').map(Number);
+                    const [bH, bM] = b.startTime.split(':').map(Number);
+                    return (aH * 60 + aM) - (bH * 60 + bM);
+                  });
+                  
+                  const firstSlot = sortedSlots[0];
+                  const lastSlot = sortedSlots[sortedSlots.length - 1];
+                  const firstStartTime = firstSlot.startTime;
+                  
+                  // Calculate end time of last slot
+                  const [lastHour, lastMinute] = lastSlot.startTime.split(':').map(Number);
+                  const lastStartDate = new Date();
+                  lastStartDate.setHours(lastHour, lastMinute, 0, 0);
+                  const lastEndDate = new Date(lastStartDate.getTime() + lastSlot.duration * 60000);
+                  const formatTime = (date) => date.toTimeString().slice(0, 5);
+                  
+                  return `${firstStartTime}-${formatTime(lastEndDate)}`;
+                }
+              }
+              
+              // For single gigs, calculate end time
+              if (gig.startTime && gig.duration) {
+                const [startHour, startMinute] = gig.startTime.split(':').map(Number);
+                const startDate = new Date();
+                startDate.setHours(startHour, startMinute, 0, 0);
+                const endDate = new Date(startDate.getTime() + gig.duration * 60000);
+                const formatTime = (date) => date.toTimeString().slice(0, 5);
+                return `${gig.startTime}-${formatTime(endDate)}`;
+              }
+              
+              return gig.startTime || '';
+            };
+
+            const timeRange = formatTimeRange();
+
             return (
               <div key={gig.gigId} className="venue-gig" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
                   {title === 'Upcoming' ? (
@@ -157,11 +209,10 @@ export const VenueGigsList = ({ title, gigs, isVenue = false, musicianId = null,
                               <h4 className="month">{month.toUpperCase()}</h4>
                               <h2 className="day">{day}</h2>
                           </div>
-                          {isMdUp && (
-                            <div className="gig-time" style={{ display: 'flex', alignItems: 'center', margin: '0 1rem'}}>
-                              <h3>{gig.startTime}</h3>
-                            </div>
-                          )}
+                          <div className="gig-time" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: '0 1rem'}}>
+                            <h4 style={{ marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '600' }}>{baseGigName}</h4>
+                            <h3>{timeRange}</h3>
+                          </div>
                         </div>
                           <div className="gig-type">
                               {findGigIcon(gig.kind)}

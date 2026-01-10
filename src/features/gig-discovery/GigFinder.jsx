@@ -13,6 +13,7 @@ import { FilterPanel } from './FilterPanel';
 import Portal from '../shared/components/Portal';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { CloseIcon, FilterIconEmpty, FilterIconFull } from '../shared/ui/extras/Icons';
+import { toJsDate } from '../../services/utils/dates';
 
 export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, noProfileModal, setNoProfileModalClosable }) => {
 
@@ -43,6 +44,81 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
     const [clickedGigs, setClickedGigs] = useState([]);
 
     const { location: userLocation, error: locationError } = useUserLocation();
+
+    // Group gigs by their gigSlots relationship (same logic as venue dashboard)
+    const groupedGigs = useMemo(() => {
+      const processed = new Set();
+      const groups = [];
+      
+      gigs.forEach(gig => {
+        if (processed.has(gig.gigId)) return;
+        
+        // Check if this gig has gigSlots (is part of a multi-slot group)
+        const hasSlots = Array.isArray(gig.gigSlots) && gig.gigSlots.length > 0;
+        
+        if (hasSlots) {
+          // Build the complete group by collecting all related gigs
+          const groupGigs = [gig];
+          const groupIds = new Set([gig.gigId]);
+          processed.add(gig.gigId);
+          
+          // Use a queue to find all related gigs
+          const queue = [...gig.gigSlots];
+          
+          while (queue.length > 0) {
+            const slotId = queue.shift();
+            if (processed.has(slotId)) continue;
+            
+            const slotGig = gigs.find(g => g.gigId === slotId);
+            if (slotGig) {
+              groupGigs.push(slotGig);
+              groupIds.add(slotId);
+              processed.add(slotId);
+              
+              // Add any slots from this gig that we haven't seen yet
+              if (Array.isArray(slotGig.gigSlots)) {
+                slotGig.gigSlots.forEach(id => {
+                  if (!groupIds.has(id) && !processed.has(id)) {
+                    queue.push(id);
+                  }
+                });
+              }
+            }
+          }
+          
+          // Sort by startDateTime to get the first slot
+          groupGigs.sort((a, b) => {
+            const aDate = toJsDate(a.startDateTime);
+            const bDate = toJsDate(b.startDateTime);
+            if (!aDate || !bDate) return 0;
+            return aDate.getTime() - bDate.getTime();
+          });
+          
+          groups.push({
+            isGroup: true,
+            primaryGig: groupGigs[0],
+            allGigs: groupGigs,
+            gigIds: Array.from(groupIds)
+          });
+        } else {
+          // Standalone gig
+          groups.push({
+            isGroup: false,
+            primaryGig: gig,
+            allGigs: [gig],
+            gigIds: [gig.gigId]
+          });
+          processed.add(gig.gigId);
+        }
+      });
+      
+      return groups;
+    }, [gigs]);
+
+    // Extract only primary gigs for map display
+    const primaryGigsForMap = useMemo(() => {
+      return groupedGigs.map(group => group.primaryGig);
+    }, [groupedGigs]);
 
     // Note: Removed auto-show filters when active - user can toggle manually
 
@@ -180,12 +256,13 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
                     <div className={`output-container ${viewType === 'map' ? 'map-view' : 'list-view'}`}>
                     {viewType === 'map' && (
                       <MapOutput
-                        upcomingGigs={gigs}
+                        upcomingGigs={primaryGigsForMap}
                         clickedGigs={clickedGigs}
                         setClickedGigs={setClickedGigs}
                         gigMarkerDisplay={gigMarkerDisplay}
                         loading={loading}
                         userLocation={userLocation}
+                        groupedGigs={groupedGigs}
                         onSearchArea={async (center) => {
                           setLoading(true);
                           try {

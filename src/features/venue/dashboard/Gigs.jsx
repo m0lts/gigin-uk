@@ -7,7 +7,7 @@ import {
     PreviousIcon,
     SortIcon,
     TickIcon,
-CloseIcon } from '@features/shared/ui/extras/Icons';
+CloseIcon, RightArrowIcon } from '@features/shared/ui/extras/Icons';
 import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch } from '@services/client-side/gigs';
 import { v4 as uuidv4 } from 'uuid';
@@ -49,6 +49,12 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
       extraDetails: '',
     });
     const [loading, setLoading] = useState(false);
+    const [editingSoundManager, setEditingSoundManager] = useState(null);
+    const [soundManagerValue, setSoundManagerValue] = useState('');
+    const [soundManagerPosition, setSoundManagerPosition] = useState({ top: 0, left: 0 });
+    const [editingNotes, setEditingNotes] = useState(null);
+    const [notesValue, setNotesValue] = useState('');
+    const [notesPosition, setNotesPosition] = useState({ top: 0, left: 0 });
 
     const visibleRequests = useMemo(() => {
       return requests.filter(request => !request.removed);
@@ -127,9 +133,211 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
       value ? params.set(key, value) : params.delete(key);
       navigate(`?${params.toString()}`);
     };
+
+    // Function to get status display for a gig or group
+    const getStatusDisplay = (gig, group) => {
+      const dt = gig.dateObj || getLocalGigDateTime(gig);
+      const isPast = dt && dt < now;
+      
+      if (isPast) {
+        return {
+          statusClass: 'past',
+          icon: <PreviousIcon />,
+          text: 'Past',
+          subText: null
+        };
+      }
+
+      const applicants = gig.applicants || [];
+      const confirmedApplicant = applicants.some(a => a.status === 'confirmed');
+      const acceptedApplicant = applicants.some(a => a.status === 'accepted');
+      const pendingApplicants = applicants.filter(a => a.status === 'pending');
+      const pendingCount = pendingApplicants.length;
+      
+      // Check if any applicant is negotiating (has conversationId or proposedFee different from budget)
+      const isNegotiating = applicants.some(a => 
+        a.status === 'pending' && (a.conversationId || (a.proposedFee && gig.budgetValue && a.proposedFee !== gig.budgetValue))
+      ) || applicants.some(a => 
+        a.status === 'accepted' && a.conversationId
+      );
+
+      // For grouped gigs, check all slots
+      if (group && group.isGroup && group.allGigs.length > 1) {
+        const allSlots = group.allGigs;
+        const slotsWithConfirmed = allSlots.filter(slot => 
+          (slot.applicants || []).some(a => a.status === 'confirmed')
+        );
+        const confirmedSlotsCount = slotsWithConfirmed.length;
+        const totalSlots = allSlots.length;
+        const allSlotsConfirmed = confirmedSlotsCount === totalSlots;
+
+        if (allSlotsConfirmed) {
+          return {
+            statusClass: 'confirmed',
+            icon: <TickIcon />,
+            text: 'Confirmed',
+            subText: null
+          };
+        }
+
+        // Count total pending applications across all slots
+        const totalPending = allSlots.reduce((sum, slot) => 
+          sum + ((slot.applicants || []).filter(a => a.status === 'pending').length), 0
+        );
+
+        // Check if any slot is negotiating
+        const anySlotNegotiating = allSlots.some(slot => {
+          const slotApplicants = slot.applicants || [];
+          return slotApplicants.some(a => 
+            a.status === 'pending' && (a.conversationId || (a.proposedFee && slot.budgetValue && a.proposedFee !== slot.budgetValue))
+          ) || slotApplicants.some(a => 
+            a.status === 'accepted' && a.conversationId
+          );
+        });
+
+        // Check if any slot is awaiting payment
+        const anySlotAwaitingPayment = allSlots.some(slot => {
+          const slotApplicants = slot.applicants || [];
+          return slotApplicants.some(a => 
+            a.status === 'accepted' && (slot.kind !== 'Ticketed Gig' && slot.kind !== 'Open Mic')
+          );
+        });
+
+        if (anySlotAwaitingPayment) {
+          return {
+            statusClass: 'awaiting payment',
+            icon: <ExclamationIconSolid />,
+            text: 'Awaiting Payment',
+            subText: `${confirmedSlotsCount}/${totalSlots} Slots Booked`
+          };
+        }
+
+        if (anySlotNegotiating) {
+          return {
+            statusClass: 'upcoming', // Use 'upcoming' CSS class for negotiating
+            icon: <ClockIcon />,
+            text: 'Negotiating',
+            subText: `${confirmedSlotsCount}/${totalSlots} Slots Booked`
+          };
+        }
+
+        return {
+          statusClass: 'upcoming',
+          icon: <ClockIcon />,
+          text: totalPending > 0 ? `${totalPending} Pending Application${totalPending !== 1 ? 's' : ''}` : '0 Pending Applications',
+          subText: `${confirmedSlotsCount}/${totalSlots} Slots Booked`
+        };
+      }
+
+      // For single gigs
+      if (confirmedApplicant) {
+        return {
+          statusClass: 'confirmed',
+          icon: <TickIcon />,
+          text: 'Confirmed',
+          subText: null
+        };
+      }
+
+      // Check for awaiting payment (accepted but not confirmed)
+      if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) {
+        return {
+          statusClass: 'awaiting payment',
+          icon: <ExclamationIconSolid />,
+          text: 'Awaiting Payment',
+          subText: null
+        };
+      }
+
+      // Check for negotiating (pending with conversation or proposed fee, or accepted with conversation)
+      if (isNegotiating) {
+        return {
+          statusClass: 'upcoming', // Use 'upcoming' CSS class for negotiating
+          icon: <ClockIcon />,
+          text: 'Negotiating',
+          subText: null
+        };
+      }
+
+      return {
+        statusClass: 'upcoming',
+        icon: <ClockIcon />,
+        text: pendingCount > 0 ? `${pendingCount} Pending Application${pendingCount !== 1 ? 's' : ''}` : '0 Pending Applications',
+        subText: null
+      };
+    };
   
+    // Group gigs by their gigSlots relationship
+    const groupedGigs = useMemo(() => {
+      const processed = new Set();
+      const groups = [];
+      
+      normalizedGigs.forEach(gig => {
+        if (processed.has(gig.gigId)) return;
+        
+        // Check if this gig has gigSlots (is part of a multi-slot group)
+        const hasSlots = Array.isArray(gig.gigSlots) && gig.gigSlots.length > 0;
+        
+        if (hasSlots) {
+          // Build the complete group by collecting all related gigs
+          const groupGigs = [gig];
+          const groupIds = new Set([gig.gigId]);
+          processed.add(gig.gigId);
+          
+          // Use a queue to find all related gigs
+          const queue = [...gig.gigSlots];
+          
+          while (queue.length > 0) {
+            const slotId = queue.shift();
+            if (processed.has(slotId)) continue;
+            
+            const slotGig = normalizedGigs.find(g => g.gigId === slotId);
+            if (slotGig) {
+              groupGigs.push(slotGig);
+              groupIds.add(slotId);
+              processed.add(slotId);
+              
+              // Add any slots from this gig that we haven't seen yet
+              if (Array.isArray(slotGig.gigSlots)) {
+                slotGig.gigSlots.forEach(id => {
+                  if (!groupIds.has(id) && !processed.has(id)) {
+                    queue.push(id);
+                  }
+                });
+              }
+            }
+          }
+          
+          // Sort by startTime to get the first slot
+          groupGigs.sort((a, b) => {
+            if (!a.dateTime || !b.dateTime) return 0;
+            return a.dateTime - b.dateTime;
+          });
+          
+          groups.push({
+            isGroup: true,
+            primaryGig: groupGigs[0],
+            allGigs: groupGigs,
+            gigIds: Array.from(groupIds)
+          });
+        } else {
+          // Standalone gig
+          groups.push({
+            isGroup: false,
+            primaryGig: gig,
+            allGigs: [gig],
+            gigIds: [gig.gigId]
+          });
+          processed.add(gig.gigId);
+        }
+      });
+      
+      return groups;
+    }, [normalizedGigs]);
+
     const filteredGigs = useMemo(() => {
-      return normalizedGigs.filter(gig => {
+      return groupedGigs.filter(group => {
+        const gig = group.primaryGig;
         const matchesSearch = searchQuery === '' || gig.gigName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesVenue = selectedVenue === '' || gig.venueId === selectedVenue;
         const matchesDate = selectedDate === '' || gig.dateIso === selectedDate;
@@ -137,17 +345,19 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
   
         return matchesSearch && matchesVenue && matchesDate && matchesStatus;
       });
-    }, [normalizedGigs, searchQuery, selectedVenue, selectedDate, selectedStatus]);
+    }, [groupedGigs, searchQuery, selectedVenue, selectedDate, selectedStatus]);
   
     const sortedGigs = useMemo(() => {
       return filteredGigs.slice().sort((a, b) => {
-        if (a.dateTime > now && b.dateTime > now) {
-          return sortOrder === 'desc' ? b.dateTime - a.dateTime : a.dateTime - b.dateTime;
+        const aTime = a.primaryGig.dateTime;
+        const bTime = b.primaryGig.dateTime;
+        if (aTime > now && bTime > now) {
+          return sortOrder === 'desc' ? bTime - aTime : aTime - bTime;
         }
-        if (a.dateTime < now && b.dateTime < now) {
-          return sortOrder === 'desc' ? b.dateTime - a.dateTime : a.dateTime - b.dateTime;
+        if (aTime < now && bTime < now) {
+          return sortOrder === 'desc' ? bTime - aTime : aTime - bTime;
         }
-        return a.dateTime < now ? 1 : -1;
+        return aTime < now ? 1 : -1;
       });
     }, [filteredGigs, sortOrder, now]);
   
@@ -156,11 +366,50 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     };
 
     const openGigPostModal = (gig) => {
-        const convertedGig = {
-            ...gig,
-            date: gig.date ? gig.date.toDate() : null,
-        };
-        setEditGigData(convertedGig);
+        // Find the group this gig belongs to
+        const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+        
+        if (group && group.isGroup && group.allGigs.length > 1) {
+            // Package all slots together for editing
+            const sortedSlots = [...group.allGigs].sort((a, b) => {
+                if (!a.startTime || !b.startTime) return 0;
+                const [aH, aM] = a.startTime.split(':').map(Number);
+                const [bH, bM] = b.startTime.split(':').map(Number);
+                return (aH * 60 + aM) - (bH * 60 + bM);
+            });
+            
+            const primaryGig = sortedSlots[0];
+            const baseGigName = primaryGig.gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '');
+            
+            // Create extraSlots from remaining slots
+            const extraSlots = sortedSlots.slice(1).map(slot => ({
+                startTime: slot.startTime,
+                duration: slot.duration,
+            }));
+            
+            // Get budgets for each slot
+            const slotBudgets = sortedSlots.map(slot => {
+                if (slot.kind === 'Open Mic' || slot.kind === 'Ticketed Gig') return null;
+                return slot.budgetValue !== undefined ? slot.budgetValue : null;
+            });
+            
+            const convertedGig = {
+                ...primaryGig,
+                gigName: baseGigName,
+                date: primaryGig.date ? primaryGig.date.toDate() : null,
+                extraSlots: extraSlots,
+                slotBudgets: slotBudgets,
+                // Preserve existing gig IDs for editing
+                existingGigIds: sortedSlots.map(slot => slot.gigId),
+            };
+            setEditGigData(convertedGig);
+        } else {
+            const convertedGig = {
+                ...gig,
+                date: gig.date ? gig.date.toDate() : null,
+            };
+            setEditGigData(convertedGig);
+        }
         setGigPostModal(true);
     }
 
@@ -168,7 +417,19 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         if (selectedGigs.length === 0) return;
         try {
           setLoading(true);
-          await deleteGigsBatch(selectedGigs);
+          
+          // Find all groups that contain the selected gigs and get all gig IDs
+          const gigIdsToDelete = new Set();
+          selectedGigs.forEach(gigId => {
+            const group = groupedGigs.find(g => g.gigIds.includes(gigId));
+            if (group) {
+              group.gigIds.forEach(id => gigIdsToDelete.add(id));
+            } else {
+              gigIdsToDelete.add(gigId);
+            }
+          });
+          
+          await deleteGigsBatch(Array.from(gigIdsToDelete));
           toast.success('Gig Deleted.');
           setConfirmModal(false);
           setSelectedGigs([]);
@@ -189,10 +450,85 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         try {
           setLoading(true);
           const newGigIds = [];
-          for (const gigId of selectedGigs) {
-            const newId = await duplicateGig({ gigId });
-            newGigIds.push(newId);
+          
+          // Find all groups that contain the selected gigs
+          const groupsToDuplicate = new Set();
+          selectedGigs.forEach(gigId => {
+            const group = groupedGigs.find(g => g.gigIds.includes(gigId));
+            if (group) {
+              groupsToDuplicate.add(group);
+            }
+          });
+          
+          // Duplicate all gigs in each group and update gigSlots references
+          for (const group of groupsToDuplicate) {
+            // Create mapping of old gig IDs to new gig IDs
+            const idMapping = new Map();
+            const oldGigIds = group.gigIds;
+            
+            // First, duplicate all gigs and create the mapping
+            for (const oldGigId of oldGigIds) {
+              try {
+                const response = await duplicateGig({ gigId: oldGigId });
+                // The API client extracts data, so response should be { gigId: newGigId }
+                // Handle both object response and direct string response
+                const newGigId = typeof response === 'string' ? response : (response?.gigId || response);
+                if (!newGigId || typeof newGigId !== 'string') {
+                  console.error('Failed to get valid new gig ID from duplicate response:', response);
+                  continue;
+                }
+                idMapping.set(oldGigId, newGigId);
+                newGigIds.push(newGigId);
+              } catch (error) {
+                console.error(`Failed to duplicate gig ${oldGigId}:`, error);
+                throw error;
+              }
+            }
+            
+            // Small delay to ensure all gigs are fully created in Firestore
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Then, update each new gig's gigSlots array to reference the new IDs
+            for (const oldGigId of oldGigIds) {
+              const newGigId = idMapping.get(oldGigId);
+              if (!newGigId) continue;
+              
+              const originalGig = group.allGigs.find(g => g.gigId === oldGigId);
+              
+              if (originalGig && Array.isArray(originalGig.gigSlots) && originalGig.gigSlots.length > 0) {
+                // Map old gig IDs to new gig IDs
+                const newGigSlots = originalGig.gigSlots
+                  .map(oldSlotId => idMapping.get(oldSlotId))
+                  .filter(Boolean);
+                
+                // Only update if we have valid new gig slots
+                if (newGigSlots.length > 0) {
+                  try {
+                    console.log(`Updating gig ${newGigId} with gigSlots:`, newGigSlots);
+                    // Update the new gig's gigSlots array
+                    await updateGigDocument({
+                      gigId: newGigId,
+                      action: 'gigs.update',
+                      updates: { gigSlots: newGigSlots }
+                    });
+                  } catch (error) {
+                    console.error(`Failed to update gigSlots for gig ${newGigId}:`, error);
+                    console.error('Error details:', {
+                      gigId: newGigId,
+                      action: 'gigs.update',
+                      updates: { gigSlots: newGigSlots },
+                      errorMessage: error.message,
+                      errorPayload: error.payload
+                    });
+                    // Continue with other gigs even if one fails
+                  }
+                } else {
+                  console.warn(`No valid gigSlots to update for gig ${newGigId}. Original slots:`, originalGig.gigSlots, 'Mapped slots:', newGigSlots);
+                }
+              }
+            }
           }
+          
           toast.success('Gig Duplicated');
           setConfirmModal(false);
           setSelectedGigs([]);
@@ -230,24 +566,31 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         if (selectedGigs.length === 0) return;
         setLoading(true);
         try {
-            const nextGig = gigs.filter(g => g.gigId === selectedGigs[0])[0];
-            const gigId = nextGig.gigId;
-            const venueProfile = await getVenueProfileById(nextGig.venueId);
-            const isOpenMic = nextGig.kind === 'Open Mic';
-            const isTicketed = nextGig.kind === 'Ticketed Gig';
-            if (!isOpenMic && !isTicketed) {
-              const taskNames = [
-                nextGig.clearPendingFeeTaskName,
-                nextGig.automaticMessageTaskName,
-              ];
-              await cancelGigAndRefund({
-                taskNames,
-                transactionId: nextGig.paymentIntentId,
-                gigId: nextGig.gigId,
-                venueId: nextGig.venueId,
-              });
+            // Get all gig IDs in the group(s) to cancel
+            const gigIdsToCancel = new Set();
+            selectedGigs.forEach(gigId => {
+              const group = groupedGigs.find(g => g.gigIds.includes(gigId));
+              if (group) {
+                group.gigIds.forEach(id => gigIdsToCancel.add(id));
+              } else {
+                gigIdsToCancel.add(gigId);
+              }
+            });
+            
+            // Process cancellation for each gig in the group
+            const allGigsToCancel = Array.from(gigIdsToCancel).map(id => 
+              gigs.find(g => g.gigId === id)
+            ).filter(Boolean);
+            
+            if (allGigsToCancel.length === 0) {
+              setLoading(false);
+              return;
             }
-            const handleMusicianCancellation = async (musician) => {
+            
+            const primaryGig = allGigsToCancel[0];
+            const venueProfile = await getVenueProfileById(primaryGig.venueId);
+            
+            const handleMusicianCancellation = async (musician, gigData) => {
               if (!musician) {
                 console.error('Musician profile is null');
                 return;
@@ -258,47 +601,66 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                 musicianId: musician.id || musician.profileId || musician.musicianId,
                 profileId: musician.id || musician.profileId || musician.musicianId,
               };
-              const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData: nextGig, venueProfile, type: 'cancellation' });
+              const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData: gigData, venueProfile, type: 'cancellation' });
               await postCancellationMessage(
-                { conversationId, senderId: user.uid, message: `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                { conversationId, senderId: user.uid, message: `${gigData.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
                   cancellationReason
                 )}. We apologise for any inconvenience caused.`, cancellingParty: 'venue' }
               );
               const musicianId = normalizedProfile.musicianId;
-              await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId, cancellationReason });
-              await cancelledGigMusicianProfileUpdate({ musicianId, gigId });
+              await revertGigAfterCancellationVenue({ gigData: gigData, musicianId, cancellationReason });
+              await cancelledGigMusicianProfileUpdate({ musicianId, gigId: gigData.gigId });
               const cancellingParty = 'venue';
-              await logGigCancellation({ gigId, musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
+              await logGigCancellation({ gigId: gigData.gigId, musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
             };
-        
-            if (isOpenMic) {
-              const bandOrMusicianProfiles = await Promise.all(
-                nextGig.applicants
-                  .filter(app => app.status === 'confirmed')
-                  .map(async (app) => {
-                    // Try musician profile first, then artist profile
-                    let profile = await getMusicianProfileByMusicianId(app.id);
-                    if (!profile) {
-                      profile = await getArtistProfileById(app.id);
-                    }
-                    return profile;
-                  })
-              );
-              for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
-                await handleMusicianCancellation(musician);
+            
+            // Process cancellation for all gigs in the group
+            for (const gigToCancel of allGigsToCancel) {
+              const isOpenMic = gigToCancel.kind === 'Open Mic';
+              const isTicketed = gigToCancel.kind === 'Ticketed Gig';
+              
+              if (!isOpenMic && !isTicketed) {
+                const taskNames = [
+                  gigToCancel.clearPendingFeeTaskName,
+                  gigToCancel.automaticMessageTaskName,
+                ];
+                await cancelGigAndRefund({
+                  taskNames,
+                  transactionId: gigToCancel.paymentIntentId,
+                  gigId: gigToCancel.gigId,
+                  venueId: gigToCancel.venueId,
+                });
               }
-            } else {
-              const confirmedApplicant = nextGig.applicants.find(app => app.status === 'confirmed');
-              if (!confirmedApplicant) {
-                console.error("No confirmed applicant found");
-                return;
+              
+              if (isOpenMic) {
+                const bandOrMusicianProfiles = await Promise.all(
+                  (gigToCancel.applicants || [])
+                    .filter(app => app.status === 'confirmed')
+                    .map(async (app) => {
+                      // Try musician profile first, then artist profile
+                      let profile = await getMusicianProfileByMusicianId(app.id);
+                      if (!profile) {
+                        profile = await getArtistProfileById(app.id);
+                      }
+                      return profile;
+                    })
+                );
+                for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
+                  await handleMusicianCancellation(musician, gigToCancel);
+                }
+              } else {
+                const confirmedApplicant = (gigToCancel.applicants || []).find(app => app.status === 'confirmed');
+                if (confirmedApplicant) {
+                  // Try musician profile first, then artist profile
+                  let musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+                  if (!musicianProfile) {
+                    musicianProfile = await getArtistProfileById(confirmedApplicant.id);
+                  }
+                  if (musicianProfile) {
+                    await handleMusicianCancellation(musicianProfile, gigToCancel);
+                  }
+                }
               }
-              // Try musician profile first, then artist profile
-              let musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
-              if (!musicianProfile) {
-                musicianProfile = await getArtistProfileById(confirmedApplicant.id);
-              }
-              await handleMusicianCancellation(musicianProfile);
             }
             setLoading(false);
             toast.success('Gig cancellation successful.')
@@ -319,21 +681,69 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     };
 
       const handleCloneAsTemplate = async (gig) => {
-        const templateId = uuidv4();
-        const templateData = {
-          ...gig,
-          gigId: null,
-          date: null,
-          templateName: gig.gigName,
-          templateId: templateId,
-        };
-      
-        try {
-          await saveGigTemplate({ templateData: templateData });
-          toast.success('Template Saved');
-        } catch (error) {
-          console.error('Failed to save template:', error);
-          toast.error('Failed to save template');
+        // Find the group this gig belongs to
+        const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+        
+        if (group && group.isGroup && group.allGigs.length > 1) {
+          // Package all slots together for template
+          const sortedSlots = [...group.allGigs].sort((a, b) => {
+            if (!a.startTime || !b.startTime) return 0;
+            const [aH, aM] = a.startTime.split(':').map(Number);
+            const [bH, bM] = b.startTime.split(':').map(Number);
+            return (aH * 60 + aM) - (bH * 60 + bM);
+          });
+          
+          const primaryGig = sortedSlots[0];
+          const baseGigName = primaryGig.gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '');
+          
+          // Create extraSlots from remaining slots
+          const extraSlots = sortedSlots.slice(1).map(slot => ({
+            startTime: slot.startTime,
+            duration: slot.duration,
+          }));
+          
+          // Get budgets for each slot
+          const slotBudgets = sortedSlots.map(slot => {
+            if (slot.kind === 'Open Mic' || slot.kind === 'Ticketed Gig') return null;
+            return slot.budgetValue !== undefined ? slot.budgetValue : null;
+          });
+          
+          const templateId = uuidv4();
+          const templateData = {
+            ...primaryGig,
+            gigName: baseGigName,
+            gigId: null,
+            date: null,
+            templateName: baseGigName,
+            templateId: templateId,
+            extraSlots: extraSlots,
+            slotBudgets: slotBudgets,
+          };
+          
+          try {
+            await saveGigTemplate({ templateData: templateData });
+            toast.success('Template Saved');
+          } catch (error) {
+            console.error('Failed to save template:', error);
+            toast.error('Failed to save template');
+          }
+        } else {
+          const templateId = uuidv4();
+          const templateData = {
+            ...gig,
+            gigId: null,
+            date: null,
+            templateName: gig.gigName,
+            templateId: templateId,
+          };
+        
+          try {
+            await saveGigTemplate({ templateData: templateData });
+            toast.success('Template Saved');
+          } catch (error) {
+            console.error('Failed to save template:', error);
+            toast.error('Failed to save template');
+          }
         }
       };
 
@@ -374,6 +784,77 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           toast.error('Failed to copy link. Please try again.')
           console.error('Failed to copy link: ', err);
       });
+    };
+
+    const calculateEndTime = (startTime, duration) => {
+      if (!startTime || !duration) return null;
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const totalMinutes = hours * 60 + minutes + duration;
+      const endHours = Math.floor(totalMinutes / 60) % 24;
+      const endMinutes = totalMinutes % 60;
+      return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+    };
+
+    const handleSaveSoundManager = async (gigId, venueId) => {
+      if (!hasVenuePerm(venues, venueId, 'gigs.update')) {
+        toast.error('You do not have permission to update this gig.');
+        setEditingSoundManager(null);
+        setSoundManagerValue('');
+        return;
+      }
+      try {
+        // Find the group this gig belongs to
+        const group = groupedGigs.find(g => g.gigIds.includes(gigId));
+        const gigIdsToUpdate = group ? group.gigIds : [gigId];
+        
+        // Update all gigs in the group
+        await Promise.all(gigIdsToUpdate.map(id => 
+          updateGigDocument({
+            gigId: id,
+            action: 'gigs.update',
+            updates: { soundManager: soundManagerValue.trim() || null }
+          })
+        ));
+        
+        toast.success('Sound Manager updated');
+        setEditingSoundManager(null);
+        setSoundManagerValue('');
+        refreshGigs();
+      } catch (error) {
+        console.error('Error updating sound manager:', error);
+        toast.error('Failed to update sound manager. Please try again.');
+      }
+    };
+
+    const handleSaveNotes = async (gigId, venueId) => {
+      if (!hasVenuePerm(venues, venueId, 'gigs.update')) {
+        toast.error('You do not have permission to update this gig.');
+        setEditingNotes(null);
+        setNotesValue('');
+        return;
+      }
+      try {
+        // Find the group this gig belongs to
+        const group = groupedGigs.find(g => g.gigIds.includes(gigId));
+        const gigIdsToUpdate = group ? group.gigIds : [gigId];
+        
+        // Update all gigs in the group
+        await Promise.all(gigIdsToUpdate.map(id => 
+          updateGigDocument({
+            gigId: id,
+            action: 'gigs.update',
+            updates: { notes: notesValue.trim() || null }
+          })
+        ));
+        
+        toast.success('Notes updated');
+        setEditingNotes(null);
+        setNotesValue('');
+        refreshGigs();
+      } catch (error) {
+        console.error('Error updating notes:', error);
+        toast.error('Failed to update notes. Please try again.');
+      }
     };
   
     return (
@@ -528,7 +1009,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           checked={selectedGigs.length === sortedGigs.length && sortedGigs.length > 0}
                           onChange={(e) => {
                           if (e.target.checked) {
-                              setSelectedGigs(sortedGigs.map((gig) => gig.gigId));
+                              setSelectedGigs(sortedGigs.map((group) => group.primaryGig.gigId));
                           } else {
                               clearSelection();
                           }
@@ -539,40 +1020,41 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                     <th id='name'>Name</th>
                   )}
                   <th id='date'>
-                    Time and Date
+                    Date and Time
                     <button className='sort btn text' onClick={toggleSortOrder}>
                       <SortIcon />
                     </button>
                   </th>
-                  <th>Venue</th>
-                  {isMdUp && <th className='centre'>Budget</th>}
                   <th className='centre'>Status</th>
-                  {isXlUp && <th className='centre'>Applications</th>}
-                  {isMdUp && <th className='centre'>Private?</th>}
-                  <th></th>
+                  {isMdUp && <th className='centre'>Sound Manager</th>}
+                  <th className='centre'>Private Gig?</th>
+                  <th className='centre'>Invite Artist</th>
+                  {isMdUp && <th className='centre'>Notes</th>}
+                  <th id='options'></th>
                 </tr>
               </thead>
               <tbody>
                 {sortedGigs.length > 0 ? (
-                  sortedGigs.map((gig, index) => {
+                  sortedGigs.map((group, index) => {
+                    const gig = group.primaryGig;
                     const isFirstPreviousGig =
                       index > 0 &&
                       gig.dateTime < now &&
-                      sortedGigs[index - 1].dateTime >= now;
+                      sortedGigs[index - 1].primaryGig.dateTime >= now;
     
-                    const StatusIcon = {
-                      upcoming: <ClockIcon />,
-                      'awaiting payment': <ExclamationIconSolid />,
-                      confirmed: <TickIcon />,
-                      closed: <ErrorIcon />,
-                      'in dispute': <ErrorIcon />,
-                      past: <PreviousIcon />,
-                    }[gig.status];
+                    // Get status display using the new function
+                    const statusDisplay = getStatusDisplay(gig, group);
+                    
+                    // Get base gig name (remove "(Set X)" suffix for grouped gigs)
+                    const baseGigName = group.isGroup 
+                      ? gig.gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '')
+                      : gig.gigName;
+                    
                     return (
-                      <React.Fragment key={gig.gigId}>
+                      <React.Fragment key={group.primaryGig.gigId}>
                         {isFirstPreviousGig && (
                           <tr className='filler-row'>
-                            <td className='data' colSpan={9}>
+                            <td className='data' colSpan={7}>
                               <div className='flex center'>
                                 <h4>Past Gigs</h4>
                               </div>
@@ -583,7 +1065,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             if (gig.kind === 'Open Mic' && !gig.openMicApplications) {
                               openInNewTab(`/gig/${gig.gigId}`, e)
                             } else {
-                              navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } })
+                              navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: group.primaryGig } })
                             }
                           }}>
                           {/* {gig.dateTime > now ? (
@@ -598,7 +1080,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               <td></td>
                           )} */}
                           {isMdUp && (
-                            <td>{gig.gigName}</td>
+                            <td>{baseGigName}</td>
                           )}
                           <td className='time-and-date'>
                             {!isLgUp && gig?.applicants && gig?.applicants?.length && gig?.applicants.some(app => !app.viewed && app.invited !== true) ? (
@@ -606,56 +1088,148 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             ) : (
                               null
                             )}
-                            {gig.dateObj
-                              ? `${gig.dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} - ${gig.dateObj.toLocaleDateString('en-GB')}`
-                              : '—'}
+                            {gig.dateObj ? (
+                              <div className="date-time-container">
+                                <div>
+                                  {format(gig.dateObj, 'EEEE, MMMM d')}
+                                </div>
+                                {(() => {
+                                  if (group.isGroup && group.allGigs.length > 1) {
+                                    // For grouped gigs, find the earliest start and latest end
+                                    const allSlots = group.allGigs.filter(g => g.startTime && g.duration);
+                                    if (allSlots.length > 0) {
+                                      // Sort by startTime to get first and last
+                                      const sortedSlots = [...allSlots].sort((a, b) => {
+                                        const [aH, aM] = a.startTime.split(':').map(Number);
+                                        const [bH, bM] = b.startTime.split(':').map(Number);
+                                        return (aH * 60 + aM) - (bH * 60 + bM);
+                                      });
+                                      
+                                      const firstSlot = sortedSlots[0];
+                                      const lastSlot = sortedSlots[sortedSlots.length - 1];
+                                      const firstStartTime = firstSlot.startTime;
+                                      const lastEndTime = calculateEndTime(lastSlot.startTime, lastSlot.duration);
+                                      
+                                      return (
+                                        <div className="time-range">
+                                          <span>{firstStartTime}</span>
+                                          <RightArrowIcon />
+                                          <span>{lastEndTime}</span>
+                                        </div>
+                                      );
+                                    }
+                                  }
+                                  // For single gigs, show normal time range
+                                  if (gig.startTime && gig.duration) {
+                                    return (
+                                      <div className="time-range">
+                                        <span>{gig.startTime}</span>
+                                        <RightArrowIcon />
+                                        <span>{calculateEndTime(gig.startTime, gig.duration)}</span>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            ) : '—'}
                           </td>
-                          <td className='truncate'>{gig.venue.venueName}</td>
-                          {isMdUp && (
-                            <td className='centre'>
-                              {gig.kind === 'Open Mic' ? (
-                                'Open Mic'
-                              ) : gig.kind === 'Ticketed Gig' ? (
-                                'Ticketed'
-                              ) : gig?.agreedFee && (gig.agreedFee !== gig.budget) ? (
-                                gig.agreedFee
-                              ) : gig.budget === '£' || gig.budget === '£0' ? (
-                                'No Fee'
-                              ) : (
-                                gig.budget
-                              )}
-                            </td>
-                          )}
-                          <td className={`status-box ${gig.status === 'awaiting payment' || gig.status === 'in dispute' ? 'closed' : gig.status}`}>
-                            <div className={`status ${gig.status === 'awaiting payment' || gig.status === 'in dispute' ? 'closed' : gig.status}`}>
-                              {StatusIcon} {gig.status}
+                          <td className={`status-box ${statusDisplay.statusClass === 'awaiting payment' || statusDisplay.statusClass === 'in dispute' ? 'closed' : statusDisplay.statusClass}`}>
+                            <div className={`status ${statusDisplay.statusClass === 'awaiting payment' || statusDisplay.statusClass === 'in dispute' ? 'closed' : statusDisplay.statusClass}`}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {statusDisplay.icon}
+                                <span style={{ fontSize: '0.8rem' }}>{statusDisplay.text}</span>
+                              </div>
                             </div>
+                            {statusDisplay.subText && (
+                              <div style={{ fontSize: '0.85rem', marginTop: '6px', color: '#000', textAlign: 'center' }}>
+                                {statusDisplay.subText}
+                              </div>
+                            )}
                           </td>
-                          {isXlUp && (
-                            gig?.applicants && gig?.applicants?.length ? (
-                              <td className={`centre ${gig?.applicants.some(app => !app.viewed && app.invited !== true) ? 'has-new-applications' : ''}`}>
-                                {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
-                                  '-'
-                                ) : (
-                                  <>
-                                    {gig?.applicants.some(app => !app.viewed && app.invited !== true)
-                                      ? `${gig?.applicants.filter(app => !app.viewed && app.invited !== true).length} Unseen`
-                                      : gig?.applicants.length}
-                                  </>
-                                )}
-                              </td>
-                            ) : (
-                              <td className={`centre`}>
-                                {gig.kind === 'Open Mic' && !gig.openMicApplications ? (
-                                  '-'
-                                ) : (
-                                  '0'
-                                )}
-                            </td>
-                            )
-                          )}
                           {isMdUp && (
-                            <td className="centre gigs-private-apps-cell" onClick={(e) => e.stopPropagation()}>
+                            <td className='centre sound-manager-cell' onClick={(e) => e.stopPropagation()}>
+                              <div 
+                                className="sound-manager-container"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setSoundManagerPosition({ top: rect.top - 120, left: rect.left });
+                                  setEditingSoundManager(group.primaryGig.gigId);
+                                  setSoundManagerValue(gig.soundManager || '');
+                                }}
+                              >
+                                <div className="sound-manager-content">
+                                  <span className="sound-manager-text" style={{ fontSize: '0.9rem' }}>
+                                    {gig.soundManager || ''}
+                                  </span>
+                                  <button
+                                    className="btn icon sound-manager-edit-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                  >
+                                    <EditIcon />
+                                  </button>
+                                </div>
+                                {editingSoundManager === group.primaryGig.gigId && (
+                                  <div
+                                    data-sound-manager-editor
+                                    className="sound-manager-editor"
+                                    style={{
+                                      top: `${soundManagerPosition.top}px`,
+                                      left: `${soundManagerPosition.left}px`,
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <h4>Sound Manager</h4>
+                                    <textarea
+                                      className="sound-manager-textarea"
+                                      value={soundManagerValue}
+                                      onChange={(e) => setSoundManagerValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                          e.preventDefault();
+                                          handleSaveSoundManager(group.primaryGig.gigId, gig.venueId);
+                                        }
+                                        if (e.key === 'Escape') {
+                                          setEditingSoundManager(null);
+                                          setSoundManagerValue('');
+                                        }
+                                      }}
+                                      onBlur={(e) => {
+                                        // Delay to allow Save button click to register
+                                        setTimeout(() => {
+                                          if (editingSoundManager === group.primaryGig.gigId) {
+                                            handleSaveSoundManager(group.primaryGig.gigId, gig.venueId);
+                                          }
+                                        }, 200);
+                                      }}
+                                      autoFocus
+                                    />
+                                    <div className="sound-manager-editor-actions">
+                                      <button
+                                        className="btn tertiary"
+                                        onClick={() => {
+                                          setEditingSoundManager(null);
+                                          setSoundManagerValue('');
+                                        }}
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        className="btn primary"
+                                        onClick={() => handleSaveSoundManager(group.primaryGig.gigId, gig.venueId)}
+                                      >
+                                        Save
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          )}
+                          <td className="centre gigs-private-apps-cell" onClick={(e) => e.stopPropagation()}>
                                 <div className="gigs-toggle-container">
                                     <label className="gigs-toggle-switch">
                                         <input
@@ -669,11 +1243,15 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                                 }
                                                 try {
                                                     const newPrivateApplications = e.target.checked;
-                                                    await updateGigDocument({ 
-                                                        gigId: gig.gigId, 
+                                                    // Update all gigs in the group
+                                                    const gigIdsToUpdate = group.gigIds;
+                                                    await Promise.all(gigIdsToUpdate.map(id => 
+                                                      updateGigDocument({ 
+                                                        gigId: id, 
                                                         action: 'gigs.update', 
                                                         updates: { privateApplications: newPrivateApplications } 
-                                                    });
+                                                      })
+                                                    ));
                                                     toast.success(`Gig changed to ${newPrivateApplications ? 'Private' : 'Public'} Applications`);
                                                     refreshGigs();
                                                 } catch (error) {
@@ -686,31 +1264,132 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                     </label>
                                 </div>
                             </td>
+                          <td className="centre invite-artist-cell" onClick={(e) => e.stopPropagation()}>
+                              {!gig.privateApplications ? (
+                                <button 
+                                  className="btn icon" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const gigLink = `${window.location.origin}/gig/${gig.gigId}`;
+                                    copyToClipboard(gigLink);
+                                  }}
+                                  title="Copy gig link"
+                                >
+                                  <LinkIcon />
+                                </button>
+                              ) : (
+                                <button 
+                                  className="btn icon" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
+                                      toast.error('You do not have permission to perform this action.');
+                                      return;
+                                    }
+                                    copyToClipboard(gig.privateApplicationsLink);
+                                  }}
+                                  title="Copy private link"
+                                >
+                                  <InviteIconSolid />
+                                </button>
+                              )}
+                            </td>
+                          {isMdUp && (
+                            <td className='centre notes-cell' onClick={(e) => e.stopPropagation()}>
+                            <div 
+                              className="notes-container"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setNotesPosition({ top: rect.top - 120, left: rect.left });
+                                setEditingNotes(group.primaryGig.gigId);
+                                setNotesValue(gig.notes || '');
+                              }}
+                            >
+                              <div className="notes-content">
+                                <span className="notes-text" style={{ fontSize: '0.9rem' }}>
+                                  {gig.notes || ''}
+                                </span>
+                                <button
+                                  className="btn icon notes-edit-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <EditIcon />
+                                </button>
+                              </div>
+                              {editingNotes === group.primaryGig.gigId && (
+                                <div
+                                  data-notes-editor
+                                  className="notes-editor"
+                                  style={{
+                                    top: `${notesPosition.top}px`,
+                                    left: `${notesPosition.left}px`,
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <h4>Notes</h4>
+                                  <textarea
+                                    className="notes-textarea"
+                                    value={notesValue}
+                                    onChange={(e) => setNotesValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSaveNotes(group.primaryGig.gigId, gig.venueId);
+                                      }
+                                      if (e.key === 'Escape') {
+                                        setEditingNotes(null);
+                                        setNotesValue('');
+                                      }
+                                    }}
+                                    onBlur={(e) => {
+                                      // Delay to allow Save button click to register
+                                      setTimeout(() => {
+                                        if (editingNotes === group.primaryGig.gigId) {
+                                          handleSaveNotes(group.primaryGig.gigId, gig.venueId);
+                                        }
+                                      }, 200);
+                                    }}
+                                    autoFocus
+                                  />
+                                  <div className="notes-editor-actions">
+                                    <button
+                                      className="btn tertiary"
+                                      onClick={() => {
+                                        setEditingNotes(null);
+                                        setNotesValue('');
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      className="btn primary"
+                                      onClick={() => handleSaveNotes(group.primaryGig.gigId, gig.venueId)}
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            </td>
                           )}
-                          <td className="options-cell" onClick={(e) => e.stopPropagation()}>
+                          <td className="options-cell" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                  {gig.privateApplications ? (
-                                      <button className="btn icon" onClick={(e) => {
-                                          e.stopPropagation();
-                                          // Invite icon - no action yet
-                                      }}>
-                                          <InviteIconSolid />
-                                      </button>
-                                  ) : (
-                                      <button className="btn icon" onClick={(e) => {
-                                          e.stopPropagation();
-                                          const gigLink = `${window.location.origin}/gig/${gig.gigId}`;
-                                          copyToClipboard(gigLink);
-                                      }}>
-                                          <LinkIcon />
-                                      </button>
-                                  )}
-                                  <button className={`btn icon ${openOptionsGigId === gig.gigId ? 'active' : ''}`} onClick={() => toggleOptionsMenu(gig.gigId)}>
+                                  <button 
+                                    className={`btn icon ${openOptionsGigId === group.primaryGig.gigId ? 'active' : ''}`} 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleOptionsMenu(group.primaryGig.gigId);
+                                    }}
+                                  >
                                       <OptionsIcon />
                                   </button>
                               </div>
-                              {openOptionsGigId === gig.gigId && (
-                                  <div className="options-dropdown">
+                              {openOptionsGigId === group.primaryGig.gigId && (
+                                  <div className="options-dropdown" onClick={(e) => e.stopPropagation()}>
                                   <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <GigIcon /></button>
                                   {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
                                       <button onClick={() => { 
@@ -728,7 +1407,10 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                                 toast.error('You do not have permission to duplicate this gig.');
                                               }
                                               closeOptionsMenu();
-                                              setSelectedGigs([gig.gigId]);
+                                              // Get all gig IDs in the group
+                                              const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+                                              const gigIdsToDuplicate = group ? group.gigIds : [gig.gigId];
+                                              setSelectedGigs(gigIdsToDuplicate);
                                               setConfirmType('duplicate');
                                               setConfirmModal(true);
                                               setConfirmMessage('Duplicate this gig? The new gig will have no applicants.');
@@ -748,7 +1430,12 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           closeOptionsMenu();
                                           const newStatus = (gig.status === 'open' || gig.status === 'upcoming') ? 'closed' : 'open';
                                           try {
-                                              await updateGigDocument({ gigId: gig.gigId, action: 'gigs.applications.manage', updates: { status: newStatus } });
+                                              // Update all gigs in the group
+                                              const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+                                              const gigIdsToUpdate = group ? group.gigIds : [gig.gigId];
+                                              await Promise.all(gigIdsToUpdate.map(id => 
+                                                updateGigDocument({ gigId: id, action: 'gigs.applications.manage', updates: { status: newStatus } })
+                                              ));
                                               toast.success(`Gig ${newStatus === 'open' ? 'Opened for Applications' : 'Closed from Applications'}`);
                                               refreshGigs();
                                           } catch (error) {
@@ -818,7 +1505,10 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                                 toast.error('You do not have permission to delete this gig.');
                                               }
                                               closeOptionsMenu();
-                                              setSelectedGigs([gig.gigId]);
+                                              // Get all gig IDs in the group
+                                              const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+                                              const gigIdsToDelete = group ? group.gigIds : [gig.gigId];
+                                              setSelectedGigs(gigIdsToDelete);
                                               setConfirmType('delete');
                                               setConfirmModal(true);
                                               setConfirmMessage('Are you sure you want to delete this gig? This action cannot be undone.'); 
@@ -833,7 +1523,10 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                                 toast.error('You do not have permission to delete this gig.');
                                               }
                                               closeOptionsMenu();
-                                              setSelectedGigs([gig.gigId]);
+                                              // Get all gig IDs in the group
+                                              const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+                                              const gigIdsToCancel = group ? group.gigIds : [gig.gigId];
+                                              setSelectedGigs(gigIdsToCancel);
                                               setConfirmType('cancel');
                                               setConfirmModal(true);
                                               setConfirmMessage(`Are you sure you want to cancel this gig?`); 
@@ -851,7 +1544,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   })
                 ) : (
                   <tr className='no-gigs'>
-                    <td className='data' colSpan={9} style={{ padding: '0'}}>
+                    <td className='data' colSpan={7} style={{ padding: '0'}}>
                       <div className='flex' style={{ padding: '2rem 0', backgroundColor: 'var(--gn-grey-300)'}}>
                         <h4>No Gigs Available</h4>
                       </div>
