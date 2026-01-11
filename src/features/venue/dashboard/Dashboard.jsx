@@ -12,6 +12,7 @@ import { Overview } from './Overview';
 import { Finances } from './Finances';
 import { SavedArtists } from './SavedArtists';
 import { FindArtists } from './FindArtists';
+import { ArtistCRM } from './ArtistCRM';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { WelcomeModal } from '@features/artist/components/WelcomeModal';
 import { mergeAndSortConversations } from '@services/utils/filtering';
@@ -59,6 +60,8 @@ export const VenueDashboard = ({ user }) => {
     const [buildingForMusician, setBuildingForMusician] = useState(false);
     const [buildingForMusicianData, setBuildingForMusicianData] = useState(false);
     const [requestId, setRequestId] = useState(null);
+    const [showInviteMethodsModal, setShowInviteMethodsModal] = useState(false);
+    const [createdGigForInvite, setCreatedGigForInvite] = useState(null);
     const location = useLocation();
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'venue', venueProfiles), [location.pathname]);
   
@@ -150,7 +153,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
                         <Route path='my-venues/:venueId' element={<VenuePage user={user} venues={venueProfiles} setVenues={setVenueProfiles} />} />
-                        <Route path='artists' element={<SavedArtists user={user} />} />
+                        <Route path='artists' element={<ArtistCRM user={user} venues={venueProfiles} />} />
                         <Route path='artists/find' element={<FindArtists user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />
                     </Routes>
@@ -176,6 +179,10 @@ export const VenueDashboard = ({ user }) => {
                   requestId={requestId}
                   setRequestId={setRequestId}
                   setRequests={setRequests}
+                  showInviteMethodsModal={showInviteMethodsModal}
+                  setShowInviteMethodsModal={setShowInviteMethodsModal}
+                  createdGigForInvite={createdGigForInvite}
+                  setCreatedGigForInvite={setCreatedGigForInvite}
                 />
               </Portal>
             )

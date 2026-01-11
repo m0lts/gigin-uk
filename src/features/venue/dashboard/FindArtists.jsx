@@ -6,6 +6,7 @@ import Skeleton from 'react-loading-skeleton';
 import { fetchArtistsPaginated } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
 import { updateUserArrayField } from '@services/api/users';
+import { createArtistCRMEntry, isArtistSavedInCRM, removeArtistFromCRMByArtistId } from '@services/client-side/artistCRM';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 const VideoModal = ({ video, onClose }) => {
@@ -36,6 +37,7 @@ export const FindArtists = ({ user }) => {
     const [lastDocId, setLastDocId] = useState(null);
     const [hasMore, setHasMore] = useState(true);
     const [saving, setSaving] = useState(null);
+    const [savedArtistIds, setSavedArtistIds] = useState(new Set());
     
     const normalizedType = useMemo(() => {
       if (selectedType === 'DJ') return 'DJ';
@@ -88,6 +90,22 @@ export const FindArtists = ({ user }) => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [selectedType, selectedGenres, searchQuery]);
 
+      // Load saved artist IDs from CRM
+      useEffect(() => {
+        const loadSavedArtists = async () => {
+          if (!user?.uid) return;
+          try {
+            const { getArtistCRMEntries } = await import('@services/client-side/artistCRM');
+            const entries = await getArtistCRMEntries(user.uid);
+            const savedIds = new Set(entries.filter(e => e.artistId).map(e => e.artistId));
+            setSavedArtistIds(savedIds);
+          } catch (error) {
+            console.error('Error loading saved artists:', error);
+          }
+        };
+        loadSavedArtists();
+      }, [user?.uid]);
+
     const updateParam = (key, value) => {
         const newParams = new URLSearchParams(searchParams);
         if (value && value.length !== 0) {
@@ -107,10 +125,27 @@ export const FindArtists = ({ user }) => {
         if (!user?.uid || !artist?.id) return;
         setSaving(artist?.id);
         try {
-            await updateUserArrayField({ field: 'savedArtists', op: 'add', value: artist.id });
-          toast.success(`Saved ${artist.name} to your list`);
+            // Check if already saved
+            const alreadySaved = await isArtistSavedInCRM(user.uid, artist.id);
+            if (alreadySaved) {
+              toast.info(`${artist.name} is already saved.`);
+              setSaving(null);
+              return;
+            }
+            
+            // Create CRM entry
+            await createArtistCRMEntry(user.uid, {
+              artistId: artist.id,
+              name: artist.name || 'Unknown Artist',
+              notes: '',
+            });
+            
+            // Update local state
+            setSavedArtistIds(prev => new Set([...prev, artist.id]));
+            
+            toast.success(`Saved ${artist.name} to your list`);
         } catch (error) {
-          console.error('Error toggling saved artist:', error);
+          console.error('Error saving artist:', error);
           toast.error('Something went wrong. Please try again.');
         } finally {
           setSaving(null);
@@ -121,8 +156,18 @@ export const FindArtists = ({ user }) => {
         if (!user?.uid || !artist?.id) return;
         setSaving(artist?.id);
         try {
-          await updateUserArrayField({ field: 'savedArtists', op: 'remove', value: artist.id });
-          toast.success(`Removed ${artist.name} from your saved artists`);
+          const removed = await removeArtistFromCRMByArtistId(user.uid, artist.id);
+          if (removed) {
+            // Update local state
+            setSavedArtistIds(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(artist.id);
+              return newSet;
+            });
+            toast.success(`Removed ${artist.name} from your saved artists`);
+          } else {
+            toast.error('Artist not found in your saved list.');
+          }
         } catch (error) {
           console.error('Error unsaving artist:', error);
           toast.error('Failed to unsave artist. Please try again.');
@@ -237,11 +282,11 @@ export const FindArtists = ({ user }) => {
                                 <div className="musician-name-type">
                                     <h2>{name}</h2>
                                 </div>
-                                <button className="btn icon" onClick={() => user?.savedArtists?.includes(id) ? handleArtistUnsave(artist) : handleArtistSave(artist)}>
+                                <button className="btn icon" onClick={() => savedArtistIds.has(id) ? handleArtistUnsave(artist) : handleArtistSave(artist)}>
                                     {saving === id ? (
                                         <LoadingSpinner marginBottom={0} width={15} height={15} />
                                     ) : (
-                                        user?.savedArtists?.includes(id) ? <SavedIcon /> : <SaveIcon />
+                                        savedArtistIds.has(id) ? <SavedIcon /> : <SaveIcon />
                                     )}
                                 </button>
                             </div>

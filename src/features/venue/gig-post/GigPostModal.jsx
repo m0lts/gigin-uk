@@ -32,6 +32,7 @@ import { inviteToGig, postMultipleGigs } from '@services/api/gigs';
 import { deleteGigsBatch } from '@services/client-side/gigs';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { InviteMethodsModal } from '../dashboard/InviteMethodsModal';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -39,7 +40,19 @@ function formatPounds(amount) {
     return Number.isInteger(rounded) ? `£${rounded}` : `£${rounded.toFixed(2)}`;
 }
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests, showInviteMethodsModal, setShowInviteMethodsModal, createdGigForInvite, setCreatedGigForInvite }) => {
+    // Debug: Log props to verify they're being received
+    useEffect(() => {
+      if (buildingForMusician) {
+        console.log('GigPostModal props check:', {
+          hasSetCreatedGigForInvite: !!setCreatedGigForInvite,
+          hasSetShowInviteMethodsModal: !!setShowInviteMethodsModal,
+          setCreatedGigForInviteType: typeof setCreatedGigForInvite,
+          setShowInviteMethodsModalType: typeof setShowInviteMethodsModal
+        });
+      }
+    }, [buildingForMusician, setCreatedGigForInvite, setShowInviteMethodsModal]);
+    
     const [stage, setStage] = useState(incompleteGigs?.length > 0 || templates?.length > 0 ? 0 : 1);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
@@ -762,24 +775,21 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               return;
             }
             const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
-            // Try to load as legacy musicianProfile first, then fall back to artistProfiles
-            let musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
-
-            if (!musicianProfile) {
-              // Fallback: build a musicianProfile-shaped payload from the artist profile data
-              musicianProfile = {
-                musicianId: buildingForMusicianData.id,
-                id: buildingForMusicianData.id,
-                name: buildingForMusicianData.name,
-                genres: buildingForMusicianData.genres || [],
-                musicianType: buildingForMusicianData.type || 'Musician/Band',
-                musicType: buildingForMusicianData.genres || [],
-                bandProfile: buildingForMusicianData.bandProfile || false,
-                userId: buildingForMusicianData.userId,
-              };
+            
+            // Check if artist has a Gigin profile (has an id that can be found)
+            let musicianProfile = null;
+            if (buildingForMusicianData.id) {
+              musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
             }
 
-            const res = await inviteToGig({ gigId: firstGigDoc.gigId, musicianProfile });
+            if (musicianProfile && musicianProfile.userId) {
+              // Artist has a Gigin profile with userId - use existing invite flow
+              if (!musicianProfile.musicianId) {
+                // Ensure musicianId is set
+                musicianProfile.musicianId = musicianProfile.id || buildingForMusicianData.id;
+              }
+
+              const res = await inviteToGig({ gigId: firstGigDoc.gigId, musicianProfile });
             if (!res.success) {
               if (res.code === "permission-denied") {
                 toast.error("You don’t have permission to invite musicians for this venue.");
@@ -806,20 +816,64 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
               });
             }
-            if (requestId) {
-              await removeVenueRequest(requestId);
-              setRequests(prev =>
-                prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
-              );
-              setRequestId(null);
+              if (requestId) {
+                await removeVenueRequest(requestId);
+                setRequests(prev =>
+                  prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
+                );
+                setRequestId(null);
+              }
+              setBuildingForMusician(false);
+              setBuildingForMusicianData(false);
+            } else {
+              // Artist doesn't have a Gigin profile - show invite methods modal
+              // Use CRM entry data if available, otherwise use buildingForMusicianData
+              const artistData = {
+                name: buildingForMusicianData.name,
+                email: buildingForMusicianData.email || null,
+                phone: buildingForMusicianData.phone || null,
+                instagram: buildingForMusicianData.instagram || null,
+                facebook: buildingForMusicianData.facebook || null,
+                other: buildingForMusicianData.other || null,
+              };
+              
+              // Set the created gig data and show invite methods modal
+              if (setCreatedGigForInvite && setShowInviteMethodsModal) {
+                setCreatedGigForInvite({
+                  gig: firstGigDoc,
+                  artist: artistData,
+                  venue: venueToSend,
+                });
+                setShowInviteMethodsModal(true);
+                // Don't close the gig post modal yet - we'll close it after invite methods modal
+              } else {
+                // Fallback if props not available - just show success and close
+                console.error('setCreatedGigForInvite or setShowInviteMethodsModal not available', {
+                  setCreatedGigForInvite: typeof setCreatedGigForInvite,
+                  setShowInviteMethodsModal: typeof setShowInviteMethodsModal,
+                  hasSetCreatedGigForInvite: !!setCreatedGigForInvite,
+                  hasSetShowInviteMethodsModal: !!setShowInviteMethodsModal
+                });
+                resetFormData();
+                toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
+                setGigPostModal(false);
+              }
+              setBuildingForMusician(false);
+              setBuildingForMusicianData(false);
             }
-            setBuildingForMusician(false);
-            setBuildingForMusicianData(false);
           }
           await refreshGigs();
-          resetFormData();
-          toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
-          setGigPostModal(false);
+          
+          // Show success message - modal closing is handled in the buildingForMusician block above
+          // Only close here if we didn't set up the invite modal (i.e., not building for musician or musician has profile)
+          if (!buildingForMusician || (buildingForMusician && !setCreatedGigForInvite)) {
+            resetFormData();
+            toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
+            setGigPostModal(false);
+          }
+          // If we set createdGigForInvite in the buildingForMusician block, the modal will be shown
+          // and we don't close the gig post modal here - it will be closed when the invite modal closes
+          
           setLoading(false);
         } catch (error) {
           setLoading(false);
@@ -829,6 +883,25 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
       };
 
     return (
+            <>
+            {showInviteMethodsModal && createdGigForInvite && (
+              <InviteMethodsModal
+                artist={createdGigForInvite.artist}
+                gigData={createdGigForInvite.gig}
+                venue={createdGigForInvite.venue}
+                user={user}
+                onClose={() => {
+                  setShowInviteMethodsModal(false);
+                  setCreatedGigForInvite(null);
+                  setGigPostModal(false);
+                }}
+                onEmailSent={() => {
+                  setShowInviteMethodsModal(false);
+                  setCreatedGigForInvite(null);
+                  setGigPostModal(false);
+                }}
+              />
+            )}
             <div className='modal gig-post' onClick={handleModalClick}>
                 <div className='modal-content'>
                     {!loading && (
@@ -884,5 +957,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                     )}
                 </div>
             </div>
-    )
-}
+            </>
+    );
+};

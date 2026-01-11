@@ -74,7 +74,7 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
     },
     {
       path: '/venues/dashboard/artists',
-      label: 'Artists',
+      label: 'My Artists',
       icon: <MusicianIconLight />,
       iconActive: <MusicianIconSolid />,
     },

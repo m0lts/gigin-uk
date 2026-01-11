@@ -11,6 +11,7 @@ import { uploadFileToStorage, uploadFileWithProgress, deleteStoragePath } from '
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '@lib/firebase';
 import { updateUserArrayField, setPrimaryArtistProfile } from '@services/api/users';
+import { createArtistCRMEntry, isArtistSavedInCRM, removeArtistFromCRMByArtistId } from '@services/client-side/artistCRM';
 import { toast } from 'sonner';
 import { NoImageIcon, InviteIconSolid, GuitarsIcon } from '@features/shared/ui/extras/Icons';
 import { CREATION_STEP_ORDER } from './profile-components/ProfileCreationBox';
@@ -491,25 +492,51 @@ const ArtistProfileComponent = ({
   const [invitingArtist, setInvitingArtist] = useState(false);
 
   useEffect(() => {
-    if (!viewerHasVenueProfiles || !activeProfileData?.id) {
-      setArtistSaved(false);
-      return;
-    }
-    const saved = Array.isArray(user?.savedArtists)
-      ? user.savedArtists.includes(activeProfileData.id)
-      : false;
-    setArtistSaved(saved);
-  }, [viewerHasVenueProfiles, user?.savedArtists, activeProfileData?.id]);
+    const checkIfSaved = async () => {
+      if (!viewerHasVenueProfiles || !activeProfileData?.id || !user?.uid) {
+        setArtistSaved(false);
+        return;
+      }
+      try {
+        const saved = await isArtistSavedInCRM(user.uid, activeProfileData.id);
+        setArtistSaved(saved);
+      } catch (error) {
+        console.error('Error checking if artist is saved:', error);
+        setArtistSaved(false);
+      }
+    };
+    checkIfSaved();
+  }, [viewerHasVenueProfiles, user?.uid, activeProfileData?.id]);
 
   const handleToggleSaveArtist = async () => {
-    if (!viewerHasVenueProfiles || !activeProfileData?.id) return;
+    if (!viewerHasVenueProfiles || !activeProfileData?.id || !user?.uid) return;
     try {
       setSavingArtist(true);
-      const field = 'savedArtists';
-      const op = artistSaved ? 'remove' : 'add';
-      await updateUserArrayField({ field, op, value: activeProfileData.id });
-      setArtistSaved(!artistSaved);
-      toast.success(artistSaved ? 'Artist removed from saved.' : 'Artist saved.');
+      
+      if (artistSaved) {
+        // Removing artist - delete from CRM (only if it has an artistId)
+        const removed = await removeArtistFromCRMByArtistId(user.uid, activeProfileData.id);
+        if (removed) {
+          setArtistSaved(false);
+          toast.success('Artist removed from saved.');
+        } else {
+          toast.error('Artist not found in your saved list.');
+        }
+      } else {
+        // Adding artist - create CRM entry
+        try {
+          await createArtistCRMEntry(user.uid, {
+            artistId: activeProfileData.id,
+            name: activeProfileData.name || 'Unknown Artist',
+            notes: '',
+          });
+          setArtistSaved(true);
+          toast.success('Artist saved.');
+        } catch (crmError) {
+          console.error('Error creating CRM entry:', crmError);
+          toast.error('Failed to save artist. Please try again.');
+        }
+      }
     } catch (err) {
       console.error('Error toggling saved artist:', err);
       toast.error('Failed to update saved artists. Please try again.');
