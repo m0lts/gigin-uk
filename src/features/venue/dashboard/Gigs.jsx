@@ -29,6 +29,7 @@ import { saveGigTemplate } from '@services/api/venues';
 import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
+import { GigInvitesModal } from '../components/GigInvitesModal';
 
 
 export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user, refreshGigs }) => {
@@ -55,6 +56,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     const [editingNotes, setEditingNotes] = useState(null);
     const [notesValue, setNotesValue] = useState('');
     const [notesPosition, setNotesPosition] = useState({ top: 0, left: 0 });
+    const [showInvitesModal, setShowInvitesModal] = useState(false);
+    const [selectedGigForInvites, setSelectedGigForInvites] = useState(null);
 
     const visibleRequests = useMemo(() => {
       return requests.filter(request => !request.removed);
@@ -764,11 +767,18 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         navigate('/venues/dashboard/gigs?showRequests=true', { state: {
           musicianData: {
               id: request.musicianId,
-              type: request.musicianType || '',
-              plays: request.musicianPlays || '',
-              genres: request.musicianGenres || [],
               name: request.musicianName,
+              genres: request.musicianGenres || [],
+              type: request.musicianType || 'Musician/Band',
+              bandProfile: false,
+              userId: null, // Request doesn't include userId
               venueId: request.venueId,
+              // Contact info not available from request
+              email: null,
+              phone: null,
+              instagram: null,
+              facebook: null,
+              other: null,
           },
           buildingForMusician: true,
           showGigPostModal: true,
@@ -1027,8 +1037,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   </th>
                   <th className='centre'>Status</th>
                   {isMdUp && <th className='centre'>Sound Manager</th>}
-                  <th className='centre'>Private Gig?</th>
-                  <th className='centre'>Invite Artist</th>
+                  <th className='centre'>Invite Only</th>
+                  <th className='centre'>Invite Artists</th>
                   {isMdUp && <th className='centre'>Notes</th>}
                   <th id='options'></th>
                 </tr>
@@ -1054,7 +1064,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                       <React.Fragment key={group.primaryGig.gigId}>
                         {isFirstPreviousGig && (
                           <tr className='filler-row'>
-                            <td className='data' colSpan={7}>
+                            <td className='data' colSpan={8}>
                               <div className='flex center'>
                                 <h4>Past Gigs</h4>
                               </div>
@@ -1234,7 +1244,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                     <label className="gigs-toggle-switch">
                                         <input
                                             type="checkbox"
-                                            checked={gig.privateApplications || false}
+                                            checked={gig.private || false}
+                                            disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.update')}
                                             onChange={async (e) => {
                                                 e.stopPropagation();
                                                 if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
@@ -1242,20 +1253,20 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                                     return;
                                                 }
                                                 try {
-                                                    const newPrivateApplications = e.target.checked;
+                                                    const newPrivate = e.target.checked;
                                                     // Update all gigs in the group
                                                     const gigIdsToUpdate = group.gigIds;
                                                     await Promise.all(gigIdsToUpdate.map(id => 
                                                       updateGigDocument({ 
                                                         gigId: id, 
                                                         action: 'gigs.update', 
-                                                        updates: { privateApplications: newPrivateApplications } 
+                                                        updates: { private: newPrivate } 
                                                       })
                                                     ));
-                                                    toast.success(`Gig changed to ${newPrivateApplications ? 'Private' : 'Public'} Applications`);
+                                                    toast.success(`Gig changed to ${newPrivate ? 'Invite Only' : 'Public'}`);
                                                     refreshGigs();
                                                 } catch (error) {
-                                                    console.error('Error updating private applications:', error);
+                                                    console.error('Error updating invite only status:', error);
                                                     toast.error('Failed to update gig. Please try again.');
                                                 }
                                             }}
@@ -1265,7 +1276,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                 </div>
                             </td>
                           <td className="centre invite-artist-cell" onClick={(e) => e.stopPropagation()}>
-                              {!gig.privateApplications ? (
+                              {!gig.private ? (
                                 <button 
                                   className="btn icon" 
                                   onClick={(e) => {
@@ -1280,15 +1291,17 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               ) : (
                                 <button 
                                   className="btn icon" 
+                                  disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.invite')}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
                                       toast.error('You do not have permission to perform this action.');
                                       return;
                                     }
-                                    copyToClipboard(gig.privateApplicationsLink);
+                                    setSelectedGigForInvites(gig);
+                                    setShowInvitesModal(true);
                                   }}
-                                  title="Copy private link"
+                                  title={!hasVenuePerm(venues, gig.venueId, 'gigs.invite') ? 'You do not have permission to create invites' : 'Create invite link'}
                                 >
                                   <InviteIconSolid />
                                 </button>
@@ -1487,17 +1500,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                         Make Gig a Template <TemplateIcon />
                                     </button>
                                   )}
-                                  {gig.privateApplications && hasVenuePerm(venues, gig.venueId, 'gigs.invite') && (
-                                    <button onClick={() => {
-                                      if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
-                                        toast.error('You do not have permission to perform this action.');
-                                      };
-                                      closeOptionsMenu();
-                                      copyToClipboard(gig.privateApplicationsLink);
-                                      }}>
-                                        Copy Private Link <LinkIcon />
-                                    </button>
-                                  )}
+                                  {/* Private gig invite links are now managed through the Gig Invites modal */}
                                   {gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && hasVenuePerm(venues, gig.venueId, 'gigs.update') ? (
                                       <button 
                                           onClick={() => {
@@ -1544,7 +1547,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   })
                 ) : (
                   <tr className='no-gigs'>
-                    <td className='data' colSpan={7} style={{ padding: '0'}}>
+                    <td className='data' colSpan={8} style={{ padding: '0'}}>
                       <div className='flex' style={{ padding: '2rem 0', backgroundColor: 'var(--gn-grey-300)'}}>
                         <h4>No Gigs Available</h4>
                       </div>
@@ -1617,6 +1620,17 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   <LoadingModal />
                 )}
               </Portal>
+            )}
+            {showInvitesModal && selectedGigForInvites && (
+              <GigInvitesModal
+                gig={selectedGigForInvites}
+                venues={venues}
+                onClose={() => {
+                  setShowInvitesModal(false);
+                  setSelectedGigForInvites(null);
+                }}
+                refreshGigs={refreshGigs}
+              />
             )}
         </div>
       </>

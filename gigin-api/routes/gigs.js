@@ -63,6 +63,65 @@ function toAdminGeoPoint(input) {
   return null;
 }
 
+/**
+ * Validates a gig invite for private gigs
+ * @param {Object} gig - The gig document data
+ * @param {string} inviteId - The invite ID from the request
+ * @param {string} musicianId - The musician/artist profile ID applying
+ * @returns {Promise<{valid: boolean, error?: string, message?: string}>}
+ */
+async function validateGigInvite(gig, inviteId, musicianId) {
+  // If gig is not private, no validation needed
+  if (!gig.private) {
+    return { valid: true };
+  }
+
+  // If gig is private, inviteId is required
+  if (!inviteId || typeof inviteId !== "string") {
+    return { valid: false, error: "INVALID_INVITE", message: "This gig is private and requires a valid invite link." };
+  }
+
+  // Check if inviteId is in gig's inviteIds array
+  const gigInviteIds = Array.isArray(gig.inviteIds) ? gig.inviteIds : [];
+  if (!gigInviteIds.includes(inviteId)) {
+    return { valid: false, error: "INVALID_INVITE", message: "Invalid invite link." };
+  }
+
+  // Fetch the invite document
+  const inviteRef = db.doc(`gigInvites/${inviteId}`);
+  const inviteSnap = await inviteRef.get();
+  
+  if (!inviteSnap.exists) {
+    return { valid: false, error: "INVALID_INVITE", message: "Invite not found." };
+  }
+
+  const inviteData = inviteSnap.data() || {};
+
+  // Check if invite is active
+  if (!inviteData.active) {
+    return { valid: false, error: "INVALID_INVITE", message: "This invite is no longer active." };
+  }
+
+  // Check if invite has expired
+  if (inviteData.expiresAt) {
+    const expiresAt = toAdminTimestamp(inviteData.expiresAt);
+    if (expiresAt) {
+      const now = Timestamp.now();
+      if (expiresAt.toMillis() < now.toMillis()) {
+        return { valid: false, error: "INVALID_INVITE", message: "This invite has expired." };
+      }
+    }
+  }
+
+  // If invite has an artistId, it must match the musicianId
+  if (inviteData.artistId && inviteData.artistId !== musicianId) {
+    return { valid: false, error: "INVALID_INVITE", message: "This invite is for a different artist." };
+  }
+
+  // All checks passed
+  return { valid: true };
+}
+
 // POST /api/gigs/postMultipleGigs
 router.post("/postMultipleGigs", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
@@ -206,7 +265,7 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
 // POST /api/gigs/applyToGig
 router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
-  const { gigId, musicianProfile } = req.body || {};
+  const { gigId, musicianProfile, inviteId } = req.body || {};
   const musicianId = musicianProfile?.musicianId;
   if (!gigId || !musicianId) {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId and musicianProfile.musicianId required" });
@@ -223,6 +282,16 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
   const gigSnap = await gigRef.get();
   if (!gigSnap.exists) return res.json({ data: { applicants: null } });
   const gig = gigSnap.data() || {};
+
+  // Validate invite if gig is private
+  const inviteValidation = await validateGigInvite(gig, inviteId, musicianId);
+  if (!inviteValidation.valid) {
+    return res.status(403).json({ 
+      error: inviteValidation.error || "INVALID_INVITE", 
+      message: inviteValidation.message || "Invalid invite link." 
+    });
+  }
+
   const now = new Date();
   const newApplication = {
     id: musicianProfile?.musicianId,
@@ -254,8 +323,39 @@ router.post("/inviteToGig", requireAuth, asyncHandler(async (req, res) => {
   if (!venueId) return res.status(400).json({ error: "FAILED_PRECONDITION", message: "gig missing venueId" });
   await assertVenuePerm(db, caller, venueId, "gigs.invite");
 
+  // Find matching invite for this artist if gig is private
+  let matchingInviteId = null;
+  let matchingInviteExpiresAt = null;
+  if (gig.private) {
+    const inviteIds = Array.isArray(gig.inviteIds) ? gig.inviteIds : [];
+    if (inviteIds.length > 0) {
+      // Query invites to find one matching this artist
+      const invitesRef = db.collection('gigInvites');
+      const invitesQuery = invitesRef
+        .where('gigId', '==', gigId)
+        .where('artistId', '==', musicianId)
+        .where('active', '==', true)
+        .limit(1);
+      const invitesSnapshot = await invitesQuery.get();
+      if (!invitesSnapshot.empty) {
+        const inviteDoc = invitesSnapshot.docs[0];
+        matchingInviteId = inviteDoc.id;
+        matchingInviteExpiresAt = inviteDoc.data()?.expiresAt || null;
+      }
+    }
+  }
+
   const now = new Date();
-  const applicant = { id: musicianId, timestamp: now, fee: gig.budget || "£0", status: "pending", invited: true };
+  const applicant = { 
+    id: musicianId, 
+    timestamp: now, 
+    fee: gig.budget || "£0", 
+    status: "pending", 
+    invited: true, 
+    viewed: false,
+    ...(matchingInviteId ? { inviteId: matchingInviteId } : {}),
+    ...(matchingInviteExpiresAt ? { inviteExpiresAt: matchingInviteExpiresAt } : {})
+  };
   const currentApplicants = Array.isArray(gig.applicants) ? gig.applicants : [];
   const alreadyIncluded = currentApplicants.some(a => a?.id === musicianId);
   const updatedApplicants = alreadyIncluded ? currentApplicants : currentApplicants.concat(applicant);
@@ -264,8 +364,22 @@ router.post("/inviteToGig", requireAuth, asyncHandler(async (req, res) => {
     const freshGigSnap = await tx.get(gigRef);
     const freshGig = freshGigSnap.exists ? (freshGigSnap.data() || {}) : {};
     const freshApplicants = Array.isArray(freshGig.applicants) ? freshGig.applicants : [];
-    const dup = freshApplicants.some(a => a?.id === musicianId);
-    const nextApplicants = dup ? freshApplicants : freshApplicants.concat(applicant);
+    const existingApplicantIndex = freshApplicants.findIndex(a => a?.id === musicianId);
+    
+    let nextApplicants;
+    if (existingApplicantIndex >= 0) {
+      // Update existing applicant with invite info
+      nextApplicants = [...freshApplicants];
+      nextApplicants[existingApplicantIndex] = {
+        ...nextApplicants[existingApplicantIndex],
+        invited: true,
+        ...(matchingInviteId ? { inviteId: matchingInviteId } : {}),
+        ...(matchingInviteExpiresAt ? { inviteExpiresAt: matchingInviteExpiresAt } : {})
+      };
+    } else {
+      // Add new applicant
+      nextApplicants = freshApplicants.concat(applicant);
+    }
 
     // Support both legacy musicianProfiles and new artistProfiles collections
     const musicianRef = db.doc(`musicianProfiles/${musicianId}`);
@@ -382,9 +496,20 @@ router.post("/duplicateGig", requireAuth, asyncHandler(async (req, res) => {
 
 // POST /api/gigs/acceptGigOffer
 router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
-  const { gigData, musicianProfileId, nonPayableGig = false, role } = req.body || {};
+  const { gigData, musicianProfileId, nonPayableGig = false, role, inviteId } = req.body || {};
   const caller = req.auth.uid;
   if (!gigData || !musicianProfileId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigData and musicianProfileId required" });
+
+  // Validate invite if gig is private (only for musician role)
+  if (role === 'musician' && gigData.private) {
+    const inviteValidation = await validateGigInvite(gigData, inviteId, musicianProfileId);
+    if (!inviteValidation.valid) {
+      return res.status(403).json({ 
+        error: inviteValidation.error || "INVALID_INVITE", 
+        message: inviteValidation.message || "Invalid invite link." 
+      });
+    }
+  }
 
   if (role === 'venue') {
     const venueId = gigData?.venueId;
@@ -505,9 +630,20 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
 
 // POST /api/gigs/acceptGigOfferOM
 router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
-  const { gigData, musicianProfileId, role } = req.body || {};
+  const { gigData, musicianProfileId, role, inviteId } = req.body || {};
   const caller = req.auth.uid;
   if (!gigData || !musicianProfileId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigData and musicianProfileId required" });
+
+  // Validate invite if gig is private (only for musician role)
+  if (role === 'musician' && gigData.private) {
+    const inviteValidation = await validateGigInvite(gigData, inviteId, musicianProfileId);
+    if (!inviteValidation.valid) {
+      return res.status(403).json({ 
+        error: inviteValidation.error || "INVALID_INVITE", 
+        message: inviteValidation.message || "Invalid invite link." 
+      });
+    }
+  }
 
   if (role === 'venue') {
     const venueId = gigData?.venueId;
@@ -997,6 +1133,14 @@ router.post("/deleteGigAndInformation", requireAuth, asyncHandler(async (req, re
       batch.update(musicianRef, { gigApplications: updatedApplications });
     }
   }
+  // Delete all associated gig invite documents
+  const invitesSnap = await db.collection("gigInvites")
+    .where("gigId", "==", gigId)
+    .get();
+  invitesSnap.forEach((inviteDoc) => {
+    batch.delete(inviteDoc.ref);
+  });
+
   const pendingTypes = ["application", "invitation", "negotiation"];
   const cancellationText = "This gig has been deleted by the venue.";
   for (const applicant of applicants) {
@@ -1047,6 +1191,241 @@ router.post("/markApplicantsViewed", requireAuth, asyncHandler(async (req, res) 
     tx.update(gigRef, { applicants: nextApplicants, updatedAt: FieldValue.serverTimestamp() });
   });
   return res.json({ data: { ok: true } });
+}));
+
+// GET /api/gigs/invites
+router.get("/invites", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
+  const { gigId } = req.query || {};
+  if (!gigId || typeof gigId !== "string") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId required" });
+  }
+
+  const gigRef = db.doc(`gigs/${gigId}`);
+  const gigSnap = await gigRef.get();
+  if (!gigSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "gig not found" });
+  }
+  const gig = gigSnap.data() || {};
+  const venueId = gig.venueId;
+  if (!venueId) {
+    return res.status(400).json({ error: "FAILED_PRECONDITION", message: "gig missing venueId" });
+  }
+
+  // Permission: venue owner or active member with gigs.invite
+  await assertVenuePerm(db, caller, venueId, "gigs.invite");
+
+  const inviteIds = Array.isArray(gig.inviteIds) ? gig.inviteIds : [];
+  if (inviteIds.length === 0) {
+    return res.json({ data: [] });
+  }
+
+  const inviteSnaps = await Promise.all(
+    inviteIds.map(id => db.doc(`gigInvites/${id}`).get())
+  );
+  const invites = inviteSnaps
+    .filter(snap => snap.exists)
+    .map(snap => ({
+      inviteId: snap.id,
+      ...snap.data()
+    }));
+
+  return res.json({ data: invites });
+}));
+
+// POST /api/gigs/invites
+router.post("/invites", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
+  const { gigId, expiresAt, artistId, crmEntryId, artistName } = req.body || {};
+  if (!gigId || typeof gigId !== "string") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId required" });
+  }
+
+  const gigRef = db.doc(`gigs/${gigId}`);
+  const gigSnap = await gigRef.get();
+  if (!gigSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "gig not found" });
+  }
+  const gig = gigSnap.data() || {};
+  const venueId = gig.venueId;
+  if (!venueId) {
+    return res.status(400).json({ error: "FAILED_PRECONDITION", message: "gig missing venueId" });
+  }
+
+  // Permission: venue owner or active member with gigs.invite
+  await assertVenuePerm(db, caller, venueId, "gigs.invite");
+
+  const inviteId = uuidv4();
+  const now = Timestamp.fromDate(new Date());
+  const expiresAtTs = expiresAt ? Timestamp.fromDate(new Date(expiresAt)) : null;
+
+  const inviteData = {
+    gigId,
+    venueId,
+    createdAt: now,
+    expiresAt: expiresAtTs,
+    createdBy: caller,
+    active: true,
+    applicationCount: 0,
+    ...(artistId ? { artistId } : {}),
+    ...(crmEntryId ? { crmEntryId } : {}),
+    ...(artistName ? { artistName } : {})
+  };
+
+  await db.runTransaction(async (tx) => {
+    // All reads must happen before all writes
+    const freshGigSnap = await tx.get(gigRef);
+    const freshGig = freshGigSnap.exists ? (freshGigSnap.data() || {}) : {};
+    const currentInviteIds = Array.isArray(freshGig.inviteIds) ? freshGig.inviteIds : [];
+    const nextInviteIds = currentInviteIds.includes(inviteId) 
+      ? currentInviteIds 
+      : [...currentInviteIds, inviteId];
+    
+    // If artistId is provided, update/add the applicant with inviteId and expiresAt
+    let gigUpdates = { inviteIds: nextInviteIds };
+    if (artistId) {
+      const currentApplicants = Array.isArray(freshGig.applicants) ? freshGig.applicants : [];
+      const applicantIndex = currentApplicants.findIndex(a => a?.id === artistId);
+      
+      if (applicantIndex >= 0) {
+        // Update existing applicant
+        const updatedApplicants = [...currentApplicants];
+        updatedApplicants[applicantIndex] = {
+          ...updatedApplicants[applicantIndex],
+          invited: true,
+          inviteId: inviteId,
+          inviteExpiresAt: expiresAtTs
+        };
+        gigUpdates.applicants = updatedApplicants;
+      } else {
+        // Add new applicant with invite info
+        const now = Timestamp.fromDate(new Date());
+        const newApplicant = {
+          id: artistId,
+          timestamp: now,
+          fee: freshGig.budget || "£0",
+          status: "pending",
+          invited: true,
+          viewed: false,
+          inviteId: inviteId,
+          inviteExpiresAt: expiresAtTs
+        };
+        gigUpdates.applicants = [...currentApplicants, newApplicant];
+      }
+    }
+    
+    // Now do all writes
+    const inviteRef = db.doc(`gigInvites/${inviteId}`);
+    tx.set(inviteRef, inviteData);
+    tx.update(gigRef, gigUpdates);
+  });
+
+  return res.json({ data: { inviteId, ...inviteData } });
+}));
+
+// PUT /api/gigs/invites/:inviteId
+router.put("/invites/:inviteId", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
+  const { inviteId } = req.params || {};
+  const { active, expiresAt } = req.body || {};
+  if (!inviteId || typeof inviteId !== "string") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "inviteId required" });
+  }
+
+  const inviteRef = db.doc(`gigInvites/${inviteId}`);
+  const inviteSnap = await inviteRef.get();
+  if (!inviteSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "invite not found" });
+  }
+  const invite = inviteSnap.data() || {};
+  const venueId = invite.venueId;
+  if (!venueId) {
+    return res.status(400).json({ error: "FAILED_PRECONDITION", message: "invite missing venueId" });
+  }
+
+  // Permission: venue owner or active member with gigs.invite
+  await assertVenuePerm(db, caller, venueId, "gigs.invite");
+
+  const updates = {};
+  let expiresAtTs = null;
+  if (typeof active === "boolean") {
+    updates.active = active;
+  }
+  if (expiresAt !== undefined) {
+    expiresAtTs = expiresAt ? Timestamp.fromDate(new Date(expiresAt)) : null;
+    updates.expiresAt = expiresAtTs;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "No valid updates provided" });
+  }
+
+  // If invite has an artistId, sync the expiresAt in the applicant object
+  const artistId = invite.artistId;
+  if (artistId && expiresAt !== undefined) {
+    const gigRef = db.doc(`gigs/${invite.gigId}`);
+    await db.runTransaction(async (tx) => {
+      const gigSnap = await tx.get(gigRef);
+      if (gigSnap.exists) {
+        const gig = gigSnap.data() || {};
+        const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+        const applicantIndex = applicants.findIndex(a => a?.id === artistId && a?.inviteId === inviteId);
+        
+        if (applicantIndex >= 0) {
+          const updatedApplicants = [...applicants];
+          updatedApplicants[applicantIndex] = {
+            ...updatedApplicants[applicantIndex],
+            inviteExpiresAt: expiresAtTs
+          };
+          tx.update(gigRef, { applicants: updatedApplicants });
+        }
+      }
+    });
+  }
+
+  await inviteRef.update(updates);
+  const updatedSnap = await inviteRef.get();
+  return res.json({ data: { inviteId, ...updatedSnap.data() } });
+}));
+
+// DELETE /api/gigs/invites/:inviteId
+router.delete("/invites/:inviteId", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
+  const { inviteId } = req.params || {};
+  if (!inviteId || typeof inviteId !== "string") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "inviteId required" });
+  }
+
+  const inviteRef = db.doc(`gigInvites/${inviteId}`);
+  const inviteSnap = await inviteRef.get();
+  if (!inviteSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "invite not found" });
+  }
+  const invite = inviteSnap.data() || {};
+  const venueId = invite.venueId;
+  if (!venueId) {
+    return res.status(400).json({ error: "FAILED_PRECONDITION", message: "invite missing venueId" });
+  }
+
+  // Permission: venue owner or active member with gigs.invite
+  await assertVenuePerm(db, caller, venueId, "gigs.invite");
+
+  const gigId = invite.gigId;
+  if (!gigId) {
+    return res.status(400).json({ error: "FAILED_PRECONDITION", message: "invite missing gigId" });
+  }
+
+  await db.runTransaction(async (tx) => {
+    tx.delete(inviteRef);
+    const gigRef = db.doc(`gigs/${gigId}`);
+    const freshGigSnap = await tx.get(gigRef);
+    const freshGig = freshGigSnap.exists ? (freshGigSnap.data() || {}) : {};
+    const currentInviteIds = Array.isArray(freshGig.inviteIds) ? freshGig.inviteIds : [];
+    const nextInviteIds = currentInviteIds.filter(id => id !== inviteId);
+    tx.update(gigRef, { inviteIds: nextInviteIds });
+  });
+
+  return res.json({ data: { success: true } });
 }));
 
 export default router;

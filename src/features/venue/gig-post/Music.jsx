@@ -13,7 +13,7 @@ export const GigMusic = ({ formData, handleInputChange, setStage, error }) => {
     return (
         <>
             <div className='head'>
-                <h1 className='title'>Tell us what type of musician you're after...</h1>
+                <h1 className='title'>Tell us what type of artist you're after...</h1>
                 <p className='text'>Let's get the right fit for you.</p>
             </div>
             <div className='body music'>

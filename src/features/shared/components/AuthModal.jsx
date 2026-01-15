@@ -1,5 +1,5 @@
 // Dependencies
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@hooks/useAuth';
 // Components
 import { LoginForm } from '@features/shared/forms/Login';
@@ -10,12 +10,22 @@ import { ForgotPasswordForm } from '@features/shared/forms/ForgotPassword';
 import { VerifyEmailModal } from './VerifyEmailModal';
 
 
-export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
+export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, initialEmail, setInitialEmail }) => {
 
   const { login, signup, resetPassword, checkUser, continueWithGoogle } = useAuth();
-  const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
+  const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: initialEmail || '', password: '' });
   const [error, setError] = useState({ status: false, input: '', message: '' });
   const [loading, setLoading] = useState(false);
+
+  // Update email when initialEmail changes
+  useEffect(() => {
+    if (initialEmail) {
+      setCredentials(prev => ({ ...prev, email: initialEmail }));
+      if (setInitialEmail) {
+        setInitialEmail(''); // Clear after setting
+      }
+    }
+  }, [initialEmail, setInitialEmail]);
 
   const clearCredentials = () => {
     setCredentials({ name: '', phoneNumber: '', email: '', password: '' });

@@ -170,11 +170,17 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
         navigate('/venues/dashboard/gigs', { state: {
             musicianData: {
                 id: profile.id,
-                type: profile.musicianType,
-                plays: profile.musicType,
-                genres: profile.genres,
                 name: profile.name,
-                bandProfile: profile.bandProfile,
+                genres: profile.genres || [],
+                type: profile.musicianType || profile.artistType || 'Musician/Band',
+                bandProfile: profile.bandProfile || false,
+                userId: profile.userId,
+                // Contact info may not be available from musician profile
+                email: null,
+                phone: null,
+                instagram: null,
+                facebook: null,
+                other: null,
             },
             buildingForMusician: true,
             showGigPostModal: true,

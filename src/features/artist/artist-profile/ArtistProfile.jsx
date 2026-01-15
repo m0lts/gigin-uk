@@ -33,9 +33,12 @@ import { formatDate } from '@services/utils/dates';
 import { getArtistProfileMembers } from '@services/client-side/artists';
 import { sanitizeArtistPermissions } from '@services/utils/permissions';
 import Portal from '@features/shared/components/Portal';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { createGigInvite } from '@services/api/gigInvites';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
-import exampleProfileImage from '@assets/images/musician-profile-example.png';
+import exampleProfileImage from '@assets/images/artist-profile-example.png';
 import { UpdateIcon } from '../../shared/ui/extras/Icons';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 
@@ -487,6 +490,9 @@ const ArtistProfileComponent = ({
   const [artistSaved, setArtistSaved] = useState(false);
   const [savingArtist, setSavingArtist] = useState(false);
   const [inviteArtistModal, setInviteArtistModal] = useState(false);
+  const [showInviteDateStep, setShowInviteDateStep] = useState(false);
+  const [selectedExpiryDate, setSelectedExpiryDate] = useState(null);
+  const [creatingInvite, setCreatingInvite] = useState(false);
   const [usersGigs, setUsersGigs] = useState([]);
   const [selectedGig, setSelectedGig] = useState(null);
   const [invitingArtist, setInvitingArtist] = useState(false);
@@ -585,6 +591,41 @@ const ArtistProfileComponent = ({
     }
   };
 
+  const handleConfigureInvite = () => {
+    if (!selectedGig) return;
+    setShowInviteDateStep(true);
+  };
+
+  const handleGenerateInvite = async () => {
+    if (!selectedGig || !activeProfileData?.id) return;
+
+    setCreatingInvite(true);
+    try {
+      // Set time to end of day (23:59:59) if date is selected
+      let expiresAt = null;
+      if (selectedExpiryDate) {
+        const date = new Date(selectedExpiryDate);
+        date.setHours(23, 59, 59, 999);
+        expiresAt = date;
+      }
+
+      // Create the invite document with artistId and artistName
+      await createGigInvite({
+        gigId: selectedGig.gigId,
+        expiresAt: expiresAt?.toISOString() || null,
+        artistId: activeProfileData.id,
+        artistName: activeProfileData.name
+      });
+
+      // Now proceed with the existing invite logic
+      await handleSendArtistInvite(selectedGig);
+    } catch (error) {
+      console.error('Error creating invite:', error);
+      toast.error('Failed to create invite. Please try again.');
+      setCreatingInvite(false);
+    }
+  };
+
   const handleSendArtistInvite = async (gigData) => {
     if (!viewerHasVenueProfiles || !activeProfileData?.id || !gigData) return;
 
@@ -644,12 +685,16 @@ const ArtistProfileComponent = ({
       }
 
       setInviteArtistModal(false);
+      setShowInviteDateStep(false);
+      setSelectedExpiryDate(null);
+      setSelectedGig(null);
       toast.success(`Invite sent to ${activeProfileData.name}`);
     } catch (error) {
       console.error('Error while creating or fetching conversation:', error);
       toast.error('Error inviting artist. Please try again.');
     } finally {
       setInvitingArtist(false);
+      setCreatingInvite(false);
     }
   };
   const isCreationState = currentState === ArtistProfileState.CREATING;
@@ -671,10 +716,12 @@ const ArtistProfileComponent = ({
   // Handle authentication - redirect to auth if not logged in
   useEffect(() => {
     if (!authLoading && !user && setAuthModal) {
+      // Check if signup query param is present (from landing page button)
+      const shouldSignup = searchParams.get('signup') === 'true';
       setAuthModal(true);
-      setAuthType?.('login');
+      setAuthType?.(shouldSignup ? 'signup' : 'login');
     }
-  }, [authLoading, user, setAuthModal, setAuthType]);
+  }, [authLoading, user, setAuthModal, setAuthType, searchParams]);
 
   useEffect(() => {
     return () => {
@@ -4009,8 +4056,8 @@ const ArtistProfileComponent = ({
         }}
       >
 
-        {/* Header - shown when not in creation state */}
-        {!isCreationState && (
+        {/* Header - shown when not in creation state and not showing example profile to logged out user */}
+        {!isCreationState && !(currentState === ArtistProfileState.EXAMPLE_PROFILE && !user) && (
           <>
             {viewerMode ? (
               user?.venueProfiles && user.venueProfiles.length > 0 ? (
@@ -4105,105 +4152,189 @@ const ArtistProfileComponent = ({
       )}
 
       {/* Venue-side invite artist modal (viewer mode) */}
-      {viewerMode && inviteArtistModal && !invitingArtist && (
+      {viewerMode && inviteArtistModal && !invitingArtist && !creatingInvite && (
         <Portal>
-          <div className="modal invite-musician" onClick={() => setInviteArtistModal(false)}>
+          <div className={`modal ${showInviteDateStep ? 'gig-invites' : 'invite-musician'}`} onClick={() => {
+            if (!showInviteDateStep) {
+              setInviteArtistModal(false);
+              setSelectedGig(null);
+              setSelectedExpiryDate(null);
+            }
+          }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <div className="modal-header-text">
-                  <InviteIconSolid />
-                  <h2>Invite {activeProfileData?.name} to one of your available gigs.</h2>
-                </div>
-                <div className="or-separator">
-                  <span />
-                  <h6>or</h6>
-                  <span />
-                </div>
-                <button
-                  className="btn secondary"
-                  onClick={() => {
-                    setInviteArtistModal(false);
-                    navigate('/venues/dashboard/gigs', {
-                      state: {
-                        musicianData: {
-                          id: activeProfileData?.id,
-                          name: activeProfileData?.name,
-                          genres: activeProfileData?.genres || [],
-                          type: activeProfileData?.artistType || 'Musician/Band',
-                          bandProfile: false,
-                          userId: activeProfileData?.userId,
-                        },
-                        buildingForMusician: true,
-                        showGigPostModal: true,
-                      },
-                    });
-                  }}
-                >
-                  Build New Gig For Artist
-                </button>
-              </div>
-              <div className="gig-selection">
-                {usersGigs.length > 0 &&
-                  usersGigs.map((gig, index) => {
-                    const role = gig?.myMembership?.role || 'member';
-                    const perms = gig?.myMembership?.permissions || {};
-                    const canInvite = role === 'owner' || perms['gigs.invite'] === true;
+              {!showInviteDateStep ? (
+                <>
+                  <div className="modal-header">
+                    <div className="modal-header-text">
+                      <InviteIconSolid />
+                      <h2>Invite {activeProfileData?.name} to one of your available gigs.</h2>
+                    </div>
+                    <div className="or-separator">
+                      <span />
+                      <h6>or</h6>
+                      <span />
+                    </div>
+                    <button
+                      className="btn secondary"
+                      onClick={() => {
+                        setInviteArtistModal(false);
+                        navigate('/venues/dashboard/gigs', {
+                          state: {
+                            musicianData: {
+                              id: activeProfileData?.id,
+                              name: activeProfileData?.name,
+                              genres: activeProfileData?.genres || [],
+                              type: activeProfileData?.artistType || 'Musician/Band',
+                              bandProfile: false,
+                              userId: activeProfileData?.userId,
+                              // Contact info may not be available from artist profile
+                              email: null,
+                              phone: null,
+                              instagram: null,
+                              facebook: null,
+                              other: null,
+                            },
+                            buildingForMusician: true,
+                            showGigPostModal: true,
+                          },
+                        });
+                      }}
+                    >
+                      Build New Gig For Artist
+                    </button>
+                  </div>
+                  <div className="gig-selection">
+                    {usersGigs.length > 0 &&
+                      usersGigs.map((gig, index) => {
+                        const role = gig?.myMembership?.role || 'member';
+                        const perms = gig?.myMembership?.permissions || {};
+                        const canInvite = role === 'owner' || perms['gigs.invite'] === true;
 
-                    if (canInvite) {
-                      return (
-                        <div
-                          className={`card ${selectedGig === gig ? 'selected' : ''}`}
-                          key={index}
-                          onClick={() => setSelectedGig(gig)}
-                        >
-                          <div className="gig-details">
-                            <h4 className="text">{gig.gigName}</h4>
-                            <h5>{gig.venue?.venueName}</h5>
+                        if (canInvite) {
+                          return (
+                            <div
+                              className={`card ${selectedGig === gig ? 'selected' : ''}`}
+                              key={index}
+                              onClick={() => setSelectedGig(gig)}
+                            >
+                              <div className="gig-details">
+                                <h4 className="text">{gig.gigName}</h4>
+                                <h5>{gig.venue?.venueName}</h5>
+                              </div>
+                              <p className="sub-text">
+                                {formatDate(gig.date, 'short')} - {gig.startTime}
+                              </p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="card disabled" key={index}>
+                            <div className="gig-details">
+                              <h4 className="text">{gig.gigName}</h4>
+                              <h5 className="details-text">
+                                You don't have permission to invite artists to gigs at this venue.
+                              </h5>
+                            </div>
+                            <p className="sub-text">
+                              {formatDate(gig.date, 'short')} - {gig.startTime}
+                            </p>
                           </div>
-                          <p className="sub-text">
-                            {formatDate(gig.date, 'short')} - {gig.startTime}
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="card disabled" key={index}>
-                        <div className="gig-details">
-                          <h4 className="text">{gig.gigName}</h4>
-                          <h5 className="details-text">
-                            You don't have permission to invite artists to gigs at this venue.
-                          </h5>
-                        </div>
-                        <p className="sub-text">
-                          {formatDate(gig.date, 'short')} - {gig.startTime}
+                        );
+                      })}
+                  </div>
+                  <div className="two-buttons">
+                    <button className="btn tertiary" onClick={() => {
+                      setInviteArtistModal(false);
+                      setSelectedGig(null);
+                      setSelectedExpiryDate(null);
+                    }}>
+                      Cancel
+                    </button>
+                    {selectedGig && (
+                      <button
+                        className="btn primary"
+                        disabled={!selectedGig}
+                        onClick={() => {
+                          if (selectedGig.private) {
+                            handleConfigureInvite();
+                          } else {
+                            handleSendArtistInvite(selectedGig);
+                          }
+                        }}
+                      >
+                        {selectedGig.private ? 'Configure Invite' : 'Invite'}
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="modal-header">
+                    <div className="modal-header-text" style={{ width: '100%' }}>
+                      <InviteIconSolid />
+                      <h2>Configure Invite</h2>
+                    </div>
+                  </div>
+                  <div className="modal-body">
+                    <div className="stage">
+                      <div className="body date">
+                        <p style={{ marginBottom: '1rem' }}>
+                          Select a date if you want the gig to expire at a certain time.
                         </p>
+                        <div className="calendar">
+                          {selectedGig?.date && (() => {
+                            const gigDate = selectedGig.date.toDate ? selectedGig.date.toDate() : new Date(selectedGig.date);
+                            return (
+                              <DatePicker
+                                selected={selectedExpiryDate}
+                                onChange={(date) => setSelectedExpiryDate(date)}
+                                inline
+                                minDate={new Date()}
+                                maxDate={gigDate}
+                                dayClassName={(date) => {
+                                  const today = new Date().setHours(0, 0, 0, 0);
+                                  const dateTime = date.getTime();
+                                  if (dateTime < today) return 'past-date';
+                                  if (gigDate && dateTime > gigDate.getTime()) return 'past-date';
+                                  return undefined;
+                                }}
+                              />
+                            );
+                          })()}
+                        </div>
                       </div>
-                    );
-                  })}
-              </div>
-              <div className="two-buttons">
-                <button className="btn tertiary" onClick={() => setInviteArtistModal(false)}>
-                  Cancel
-                </button>
-                {selectedGig && (
-                  <button
-                    className="btn primary"
-                    disabled={!selectedGig}
-                    onClick={() => handleSendArtistInvite(selectedGig)}
-                  >
-                    Invite
-                  </button>
-                )}
-              </div>
+                    </div>
+                    <div className="two-buttons">
+                      <button
+                        className="btn secondary"
+                        onClick={() => {
+                          setShowInviteDateStep(false);
+                          setSelectedExpiryDate(null);
+                        }}
+                        disabled={creatingInvite}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="btn primary"
+                        onClick={handleGenerateInvite}
+                        disabled={creatingInvite}
+                      >
+                        {creatingInvite ? 'Creating...' : 'Generate Invite'}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </Portal>
       )}
 
-      {viewerMode && inviteArtistModal && invitingArtist && (
+      {viewerMode && inviteArtistModal && (invitingArtist || creatingInvite) && (
         <Portal>
-          <LoadingModal title="Sending Invite" />
+          <LoadingModal title={creatingInvite ? "Creating Invite" : "Sending Invite"} />
         </Portal>
       )}
 

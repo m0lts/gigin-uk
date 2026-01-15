@@ -10,8 +10,8 @@ export function updateGigDocument({ gigId, action, updates }) {
   return post('/gigs/updateGigDocument', { body: { gigId, action, updates } });
 }
 
-export function applyToGig({ gigId, musicianProfile }) {
-  return post('/gigs/applyToGig', { body: { gigId, musicianProfile } });
+export function applyToGig({ gigId, musicianProfile, inviteId }) {
+  return post('/gigs/applyToGig', { body: { gigId, musicianProfile, inviteId } });
 }
 
 export function inviteToGig({ gigId, musicianProfile }) {
@@ -26,12 +26,12 @@ export function duplicateGig({ gigId }) {
   return post('/gigs/duplicateGig', { body: { gigId } });
 }
 
-export function acceptGigOffer({ gigData, musicianProfileId, nonPayableGig = false, role }) {
-  return post('/gigs/acceptGigOffer', { body: { gigData, musicianProfileId, nonPayableGig, role } });
+export function acceptGigOffer({ gigData, musicianProfileId, nonPayableGig = false, role, inviteId }) {
+  return post('/gigs/acceptGigOffer', { body: { gigData, musicianProfileId, nonPayableGig, role, inviteId } });
 }
 
-export function acceptGigOfferOM({ gigData, musicianProfileId, role }) {
-  return post('/gigs/acceptGigOfferOM', { body: { gigData, musicianProfileId, role } });
+export function acceptGigOfferOM({ gigData, musicianProfileId, role, inviteId }) {
+  return post('/gigs/acceptGigOfferOM', { body: { gigData, musicianProfileId, role, inviteId } });
 }
 
 export function declineGigApplication({ gigData, musicianProfileId, role = 'venue' }) {

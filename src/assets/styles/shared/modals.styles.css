@@ -399,6 +399,13 @@
     gap:0;
 }
 
+.modal.configure-invite .modal-content {
+    min-height: none;
+    display: flex;
+    flex-direction: column;
+    gap:0;
+}
+
 .modal.invite-musician .modal-header {
     display: flex;
     flex-direction: column;
@@ -920,3 +927,43 @@
 .modal.primary-profile-selection .modal-content .modal-body .two-buttons {
     margin-top: 2rem;
 }
+
+
+/* CREATE GIG INVITES MODAL */
+
+.modal.gig-invites .stage .calendar {
+    width:fit-content;
+    margin: 3rem auto;
+    position: relative;
+}
+
+.modal.gig-invites .stage .calendar .react-datepicker {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+.modal.gig-invites .stage .calendar .react-datepicker__header,
+.modal.gig-invites .stage .calendar .react-datepicker__current-month,
+.modal.gig-invites .stage .calendar .react-datepicker__day-name {
+    background-color: var(--gn-grey-300);
+}
+
+.modal.gig-invites .stage .calendar .react-datepicker__day--selected,
+.modal.gig-invites .stage .calendar .react-datepicker__day--in-range,
+.modal.gig-invites .stage .calendar .react-datepicker__day--in-selecting-range {
+    background-color: var(--gn-off-black);
+    color: var(--gn-white);
+}
+
+.modal.gig-invites .stage .calendar .disable {
+    position: absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background-color: var(--gn-disabled);
+    z-index: 2;
+    border-radius: 5px;
+}
+

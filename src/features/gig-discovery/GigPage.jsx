@@ -31,7 +31,7 @@ import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication, withdrawArtistApplication, getArtistProfileMembers } from '../../services/client-side/artists';
 import { getBandMembers } from '../../services/client-side/bands';
-import { getGigById, getGigsByIds } from '../../services/client-side/gigs';
+import { getGigById, getGigsByIds, getGigInviteById } from '../../services/client-side/gigs';
 import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
@@ -49,6 +49,7 @@ import { applyToGig, negotiateGigFee, acceptGigOffer, acceptGigOfferOM } from '@
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '@services/api/messages';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { NoTextLogo } from '../shared/ui/logos/Logos';
+import { updateArtistCRMEntry } from '../../services/client-side/artistCRM';
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId } = useParams();
@@ -56,6 +57,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const {isSmUp, isMdUp, isLgUp} = useBreakpoint();
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token'); 
+    const inviteId = searchParams.get('inviteId');
     const venueVisiting = searchParams.get('venue');
     const appliedProfile = searchParams.get('appliedAs');
 
@@ -90,6 +92,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     // Permission state for artistProfile members
     const [artistProfilePerms, setArtistProfilePerms] = useState(null);
     const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
+    
+    // Invite validation state
+    const [inviteData, setInviteData] = useState(null);
+    const [inviteValidationStatus, setInviteValidationStatus] = useState(null); // 'valid' | 'invalid' | 'expired' | 'wrong-artist' | null
+    const [inviteCrmEntryId, setInviteCrmEntryId] = useState(null);
 
     // Combine gigData with otherSlots into allSlots array, sorted by startTime
     const allSlots = useMemo(() => {
@@ -222,7 +229,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const computeStatusForProfile = (gig, profile) => {
         const profileId = profile?.id || profile?.profileId || profile?.musicianId;
         const applicant = gig?.applicants?.find(a => a?.id === profileId);
-        const invited = !!(applicant && applicant.invited === true) || (gig?.privateApplications && gig.privateApplicationToken === inviteToken);
+        const invited = !!(applicant && applicant.invited === true);
         const applied = !!(applicant && applicant.invited !== true && applicant.status !== 'withdrawn');
         const accepted = !!(
             applicant &&
@@ -263,18 +270,80 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             
             let nextHasAccess = true;
             let nextInvitedToGig = false;
+            let inviteValidation = null;
+            let inviteDoc = null;
+            let crmEntryId = null;
             const defaultSelected = profiles[0] || null; // Oldest profile by createdAt
             
-            if (enrichedGig?.privateApplications) {
-              const savedToken = enrichedGig.privateApplicationToken;
-              const tokenMatches = !!inviteToken && inviteToken === savedToken;
-              const profileId = (p) => p.id || p.profileId || p.musicianId;
-              const tokenProfile = profiles.find(p => profileId(p) === inviteToken) || null;
-              if (!tokenMatches && !tokenProfile) {
+            // Validate invite if gig is private
+            if (enrichedGig?.private) {
+              // If no inviteId in URL, show invalid access
+              if (!inviteId) {
                 nextHasAccess = false;
+                inviteValidation = 'invalid';
               } else {
-                nextHasAccess = true;
-                nextInvitedToGig = true;
+                // Fetch and validate invite document
+                inviteDoc = await getGigInviteById(inviteId);
+                
+                if (!inviteDoc) {
+                  // Invite document doesn't exist
+                  nextHasAccess = false;
+                  inviteValidation = 'invalid';
+                } else {
+                  // Check if inviteId is in gig's inviteIds array
+                  const gigInviteIds = Array.isArray(enrichedGig.inviteIds) ? enrichedGig.inviteIds : [];
+                  if (!gigInviteIds.includes(inviteId)) {
+                    nextHasAccess = false;
+                    inviteValidation = 'invalid';
+                  } else if (!inviteDoc.active) {
+                    // Invite is not active
+                    nextHasAccess = false;
+                    inviteValidation = 'invalid';
+                  } else {
+                    // Check if invite has expired
+                    let isExpired = false;
+                    if (inviteDoc.expiresAt) {
+                      const expiresAt = inviteDoc.expiresAt?.toDate ? inviteDoc.expiresAt.toDate() : 
+                                       inviteDoc.expiresAt?._seconds ? new Date(inviteDoc.expiresAt._seconds * 1000) :
+                                       inviteDoc.expiresAt?.seconds ? new Date(inviteDoc.expiresAt.seconds * 1000) :
+                                       new Date(inviteDoc.expiresAt);
+                      if (isNaN(expiresAt.getTime()) || expiresAt < new Date()) {
+                        isExpired = true;
+                      }
+                    }
+                    
+                    if (isExpired) {
+                      // Invite has expired - show gig but with limited access
+                      nextHasAccess = true;
+                      inviteValidation = 'expired';
+                    } else {
+                      // Invite is valid - check artistId match if present
+                      if (inviteDoc.artistId) {
+                        const artistProfileIds = profiles.map(p => p.id || p.profileId || p.musicianId).filter(Boolean);
+                        if (!user || !artistProfileIds.includes(inviteDoc.artistId)) {
+                          // ArtistId doesn't match logged-in artist
+                          nextHasAccess = false;
+                          inviteValidation = 'wrong-artist';
+                        } else {
+                          // Valid invite with matching artistId
+                          nextHasAccess = true;
+                          inviteValidation = 'valid';
+                          nextInvitedToGig = true;
+                        }
+                      } else {
+                        // Valid invite without specific artistId
+                        nextHasAccess = true;
+                        inviteValidation = 'valid';
+                        nextInvitedToGig = true;
+                      }
+                      
+                      // Store crmEntryId if present
+                      if (inviteDoc.crmEntryId) {
+                        crmEntryId = inviteDoc.crmEntryId;
+                      }
+                    }
+                  }
+                }
               }
             }
             
@@ -322,6 +391,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setValidProfiles(profiles);
             setSelectedProfile(finalSelected);
             setHasAccessToPrivateGig(nextHasAccess);
+            setInviteValidationStatus(inviteValidation);
+            setInviteData(inviteDoc);
+            setInviteCrmEntryId(crmEntryId);
             if (nextHasAccess) {
                 setInvitedToGig(nextHasAccess)
             } else {
@@ -344,7 +416,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         };
         run();
         return () => { cancelled = true; };
-    }, [gigId, user, inviteToken]);
+    }, [gigId, user, inviteToken, inviteId]);
 
 
     useEffect(() => {
@@ -395,6 +467,32 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             cancelled = true;
         };
     }, [user?.uid, user?.artistProfiles, selectedProfile]);
+
+    // Update CRM entry when profile is created from invite
+    useEffect(() => {
+        if (!inviteCrmEntryId || !user?.uid || !user?.artistProfiles?.length) return;
+        
+        const updateCRM = async () => {
+            try {
+                // Get the most recently created profile (assuming it's the one just created)
+                const profiles = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
+                if (profiles.length === 0) return;
+                
+                // Get the newest profile (assuming last in array or by createdAt)
+                const newestProfile = profiles[profiles.length - 1];
+                const profileId = newestProfile.id || newestProfile.profileId;
+                
+                if (profileId) {
+                    await updateArtistCRMEntry(user.uid, inviteCrmEntryId, { artistId: profileId });
+                    console.log('Updated CRM entry with artist profile ID:', profileId);
+                }
+            } catch (error) {
+                console.error('Failed to update CRM entry with artist profile ID:', error);
+            }
+        };
+        
+        updateCRM();
+    }, [inviteCrmEntryId, user?.uid, user?.artistProfiles]);
 
     // Listen for active profile changes from localStorage
     useEffect(() => {
@@ -633,7 +731,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
               profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
             };
-            const { updatedApplicants } = await applyToGig({ gigId: slotGigId, musicianProfile: normalizedProfile });
+            const { updatedApplicants } = await applyToGig({ gigId: slotGigId, musicianProfile: normalizedProfile, inviteId });
             // Update the slot in allSlots
             setGigData(prev => {
                 if (prev.gigId === slotGigId) {
@@ -927,7 +1025,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             const nonPayableGig = currentSlot.kind === 'Open Mic' || currentSlot.kind === "Ticketed Gig" || currentSlot.budget === '£' || currentSlot.budget === '£0';
             let globalAgreedFee;
             if (currentSlot.kind === 'Open Mic') {
-                const { updatedApplicants } = await acceptGigOfferOM({ gigData: currentSlot, musicianProfileId: musicianId, role: 'musician' });
+                const { updatedApplicants } = await acceptGigOfferOM({ gigData: currentSlot, musicianProfileId: musicianId, role: 'musician', inviteId });
                 setGigData(prev => {
                     if (prev.gigId === slotGigId) {
                         return { ...prev, applicants: updatedApplicants, paid: true };
@@ -943,7 +1041,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     );
                 });
             } else {
-                const { updatedApplicants, agreedFee } = await acceptGigOffer({ gigData: currentSlot, musicianProfileId: musicianId, nonPayableGig, role: 'musician' });
+                const { updatedApplicants, agreedFee } = await acceptGigOffer({ gigData: currentSlot, musicianProfileId: musicianId, nonPayableGig, role: 'musician', inviteId });
                 setGigData(prev => {
                     if (prev.gigId === slotGigId) {
                         return { ...prev, applicants: updatedApplicants, agreedFee: `${agreedFee}`, paid: false };
@@ -1428,10 +1526,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     }, [currentSlot, selectedProfile, inviteToken]);
 
     const isFutureOpen = getLocalGigDateTime(currentSlot) > now && (currentSlot?.status || '').toLowerCase() !== 'closed';
-    const isPrivate = !!currentSlot?.privateApplications;
+    const isPrivate = !!currentSlot?.private;
     const invited = !!currentSlotStatus.invited;
     const applied = !!currentSlotStatus.applied;
     const accepted = !!currentSlotStatus.accepted;
+    const inviteExpired = inviteValidationStatus === 'expired';
+    const inviteInvalid = inviteValidationStatus === 'invalid' || inviteValidationStatus === 'wrong-artist';
+    const inviteValid = inviteValidationStatus === 'valid';
+    const hasValidInvite = inviteValid && hasAccessToPrivateGig;
 
     // Visibility per your spec
     const showApply =
@@ -1446,15 +1548,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     );
 
     const showAcceptInvite =
-        invited && !applied && !accepted; // private or not
+        (invited && !applied && !accepted && !inviteExpired) || (hasValidInvite && !applied && !accepted); // private or not, but not if expired
 
-    // Negotiate: show only if (not applied/accepted) OR (private AND invited)
+    // Negotiate: show only if (not applied/accepted) OR (private AND invited), but not if invite expired, and user must be logged in
     const showNegotiate =
-        (!applied && !accepted) || (isPrivate && invited);
+        ((!applied && !accepted) || (isPrivate && invited)) && !inviteExpired && !!user;
 
-    // Message: show in any case EXCEPT (private AND not invited)
+    // Message: show in any case EXCEPT (private AND not invited AND not expired), and user must be logged in
     const showMessage =
-    !(isPrivate && !invited);
+    !(isPrivate && !invited && !inviteExpired) && !!user;
 
     // Optional: hide negotiate for kinds you excluded earlier
     const kindBlocksNegotiate = currentSlot?.kind === 'Ticketed Gig' || currentSlot?.kind === 'Open Mic';
@@ -1797,15 +1899,32 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                             <div className="applying-to-gig">
                                                                 <LoadingSpinner width={20} height={20} />
                                                             </div>
+                                                        ) : inviteInvalid ? (
+                                                            // Invalid invite screen
+                                                            <div className="private-applications">
+                                                                <InviteIconSolid />
+                                                                <h5>This gig is private and requires a valid invite link to apply.</h5>
+                                                            </div>
                                                         ) : (
                                                             <>
                                                                 {showApplied && hasAccessToPrivateGig ? (
                                                                     <button className='btn primary-alt disabled' disabled>Applied To Gig</button>
                                                                 ) : accepted && hasAccessToPrivateGig ? (
                                                                     <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
-                                                                ) : showAcceptInvite && hasAccessToPrivateGig ? (
+                                                                ) : showAcceptInvite && hasAccessToPrivateGig && user ? (
                                                                         <button className={`btn primary-alt ${!canBookCurrentArtistProfile ? 'disabled' : ''}`} onClick={canBookCurrentArtistProfile ? handleAccept : undefined} disabled={!canBookCurrentArtistProfile}>
                                                                             Accept Invitation
+                                                                        </button>
+                                                                ) : showAcceptInvite && hasAccessToPrivateGig && !user ? (
+                                                                        <button 
+                                                                            className="btn primary-alt artist-profile" 
+                                                                            onClick={() => {
+                                                                                sessionStorage.setItem('redirect', `/gigs/${gigId}?inviteId=${inviteId}`);
+                                                                                setAuthModal(true);
+                                                                                setAuthType('signup');
+                                                                            }}
+                                                                        >
+                                                                            Create Artist Profile to Accept Invitation
                                                                         </button>
                                                                 ) : showApply && hasAccessToPrivateGig ? (
                                                                         <button
@@ -1852,8 +1971,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     )}
                                                                 </div>
 
+                                                                {/* Expired invite notice */}
+                                                                {inviteExpired && hasAccessToPrivateGig && (
+                                                                    <div className="status-box permissions" style={{ marginTop: '1rem' }}>
+                                                                        <WarningIcon />
+                                                                        <p>This invite has expired.</p>
+                                                                    </div>
+                                                                )}
+
                                                                 {/* Private notice (only if private AND no invite) */}
-                                                                {isPrivate && !hasAccessToPrivateGig && (
+                                                                {isPrivate && !hasAccessToPrivateGig && !inviteInvalid && (
                                                                     <div className="private-applications">
                                                                     <InviteIconSolid />
                                                                     <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
@@ -2232,15 +2359,32 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                             <div className="applying-to-gig">
                                                                 <LoadingSpinner width={20} height={20} />
                                                             </div>
+                                                        ) : inviteInvalid ? (
+                                                            // Invalid invite screen
+                                                            <div className="private-applications">
+                                                                <InviteIconSolid />
+                                                                <h5>This gig is private and requires a valid invite link to apply.</h5>
+                                                            </div>
                                                         ) : (
                                                             <>
                                                                 {showApplied && hasAccessToPrivateGig ? (
                                                                     <button className='btn primary-alt disabled' disabled>Applied To Gig</button>
                                                                 ) : accepted && hasAccessToPrivateGig ? (
                                                                     <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
-                                                                ) : showAcceptInvite && hasAccessToPrivateGig ? (
+                                                                ) : showAcceptInvite && hasAccessToPrivateGig && user ? (
                                                                         <button className='btn primary-alt' onClick={canBookCurrentArtistProfile ? handleAccept : undefined} disabled={!canBookCurrentArtistProfile}>
                                                                             Accept Invitation
+                                                                        </button>
+                                                                ) : showAcceptInvite && hasAccessToPrivateGig && !user ? (
+                                                                        <button 
+                                                                            className="btn primary-alt artist-profile" 
+                                                                            onClick={() => {
+                                                                                sessionStorage.setItem('redirect', `/gigs/${gigId}?inviteId=${inviteId}`);
+                                                                                setAuthModal(true);
+                                                                                setAuthType('signup');
+                                                                            }}
+                                                                        >
+                                                                            Create Artist Profile to Accept Invitation
                                                                         </button>
                                                                 ) : showApply && hasAccessToPrivateGig ? (
                                                                         <button className='btn primary-alt' onClick={canBookCurrentArtistProfile ? handleGigApplication : undefined} disabled={!canBookCurrentArtistProfile}>
@@ -2283,8 +2427,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     )}
                                                                 </div>
 
+                                                                {/* Expired invite notice */}
+                                                                {inviteExpired && hasAccessToPrivateGig && (
+                                                                    <div className="status-box permissions" style={{ marginTop: '1rem' }}>
+                                                                        <WarningIcon />
+                                                                        <p>This invite has expired.</p>
+                                                                    </div>
+                                                                )}
+
                                                                 {/* Private notice (only if private AND no invite) */}
-                                                                {isPrivate && !hasAccessToPrivateGig && (
+                                                                {isPrivate && !hasAccessToPrivateGig && !inviteInvalid && (
                                                                     <div className="private-applications">
                                                                     <InviteIconSolid />
                                                                     <h5>This gig is for private applications only. You must have the private application link to apply.</h5>

@@ -1168,6 +1168,11 @@
   color: var(--gn-red);
 }
 
+.artist-profile-gigs-card .body.gigs table .status.expired {
+  background-color: var(--gn-offset-red);
+  color: var(--gn-red);
+}
+
 .artist-profile-gigs-card .body.gigs table .status.not-applied {
   background-color: rgba(128, 128, 128, 0.1);
   color: gray;

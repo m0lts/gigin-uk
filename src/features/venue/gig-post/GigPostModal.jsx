@@ -28,11 +28,12 @@ import Portal from '../../shared/components/Portal';
 import { removeVenueRequest } from '../../../services/client-side/venues';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { friendlyError } from '../../../services/utils/errors';
-import { inviteToGig, postMultipleGigs } from '@services/api/gigs';
+import { inviteToGig, postMultipleGigs, updateGigDocument } from '@services/api/gigs';
 import { deleteGigsBatch } from '@services/client-side/gigs';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { InviteMethodsModal } from '../dashboard/InviteMethodsModal';
+import { createGigInvite } from '@services/api/gigInvites';
   
 function formatPounds(amount) {
     if (amount == null || isNaN(amount)) return "£0";
@@ -54,6 +55,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
     }, [buildingForMusician, setCreatedGigForInvite, setShowInviteMethodsModal]);
     
     const [stage, setStage] = useState(incompleteGigs?.length > 0 || templates?.length > 0 ? 0 : 1);
+    const [inviteExpiryDate, setInviteExpiryDate] = useState(null);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
         venueId: '',
@@ -77,7 +79,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
         duration: 0,
         budget: '£',
         extraInformation: '',
-        privateApplications: false,
+        private: buildingForMusician ? true : false,
         applicants: [],
         createdAt: new Date(),
         createdBy: user.uid,
@@ -121,7 +123,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             duration: 0,
             budget: '£',
             extraInformation: '',
-            privateApplications: false,
+            private: false,
             applicants: [],
             createdAt: new Date(),
             accountName: user.name,
@@ -192,6 +194,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             gigType: type,
             genre: genres ? genres : [],
             venueId: venueId || '',
+            private: true, // Auto-set private to true when building for musician
             venue: matchedVenue
               ? {
                   venueName: matchedVenue.name || '',
@@ -493,6 +496,8 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                         buildingForMusician={buildingForMusician}
                         buildingForMusicianData={buildingForMusicianData}
                         extraSlots={extraSlots}
+                        inviteExpiryDate={inviteExpiryDate}
+                        setInviteExpiryDate={setInviteExpiryDate}
                     />
                 );
             default:
@@ -698,9 +703,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             } else {
               const occurrenceGigId = editGigData
                 ? formData.gigId
-                : formData.privateApplications
-                  ? formData.gigId
-                  : uuidv4();
+                : uuidv4();
       
               // Build base safely; we’ll set applicants explicitly below
               const {
@@ -714,11 +717,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 ...base
               } = formData;
       
-              const privateLink =
-                base.privateApplications
-                  ? `https://www.giginmusic.com/gig/${formData.gigId}?token=${base.privateApplicationToken ?? uuidv4()}`
-                  : null;
-      
               const singleGig = {
                 ...base,
                 gigId: occurrenceGigId,
@@ -728,7 +726,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 startDateTime: getStartDateTime(occDate, base.startTime),
                 ...getGeoField(base.coordinates),
                 budgetValue: getBudgetValue(base.budget),
-                privateApplicationsLink: privateLink,
                 status: 'open',
                 venueId: formData.venueId,
                 ...(editGigData ? applicantsForEdit : applicantsForNew),
@@ -776,13 +773,81 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             }
             const venueToSend = user.venueProfiles.find(v => v.id === formData.venueId);
             
+            // Create invite document if gig is private and artist has an id
+            let createdInvite = null;
+            if (formData.private && buildingForMusicianData.id) {
+              try {
+                // Set time to end of day (23:59:59) if date is selected
+                let expiresAt = null;
+                if (inviteExpiryDate) {
+                  const date = new Date(inviteExpiryDate);
+                  date.setHours(23, 59, 59, 999);
+                  expiresAt = date;
+                }
+                // Use crmEntryId if artist doesn't have Gigin profile, otherwise use artistId
+                createdInvite = await createGigInvite({
+                  gigId: firstGigDoc.gigId,
+                  expiresAt: expiresAt?.toISOString() || null,
+                  artistId: buildingForMusicianData.crmEntryId ? null : buildingForMusicianData.id,
+                  crmEntryId: buildingForMusicianData.crmEntryId || null,
+                  artistName: buildingForMusicianData.name || null
+                });
+              } catch (error) {
+                console.error('Error creating invite document:', error);
+                toast.error('Failed to create invite document. The gig was created but you may need to create the invite manually.');
+              }
+            }
+            
+            // Always add the artist to the applicants array when building for a musician
+            if (buildingForMusicianData.id) {
+              try {
+                const now = new Date();
+                const applicant = {
+                  id: buildingForMusicianData.id,
+                  timestamp: now,
+                  fee: firstGigDoc.budget || "£0",
+                  status: "pending",
+                  invited: true,
+                  viewed: false,
+                  // Include inviteId and expiresAt if invite was created
+                  ...(createdInvite?.inviteId ? { inviteId: createdInvite.inviteId } : {}),
+                  ...(createdInvite?.expiresAt ? { inviteExpiresAt: createdInvite.expiresAt } : {})
+                };
+                
+                // Get current applicants and add the new one if not already present
+                const currentApplicants = Array.isArray(firstGigDoc.applicants) ? firstGigDoc.applicants : [];
+                const alreadyIncluded = currentApplicants.some(a => a?.id === buildingForMusicianData.id);
+                
+                if (!alreadyIncluded) {
+                  await updateGigDocument({
+                    gigId: firstGigDoc.gigId,
+                    action: 'gigs.invite',
+                    updates: {
+                      applicants: [...currentApplicants, applicant]
+                    }
+                  });
+                }
+              } catch (error) {
+                console.error('Error adding applicant to gig:', error);
+                // Don't fail the whole process if this fails
+              }
+            }
+            
             // Check if artist has a Gigin profile (has an id that can be found)
             let musicianProfile = null;
+            let hasGiginProfile = false;
             if (buildingForMusicianData.id) {
-              musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
+              try {
+                musicianProfile = await getMusicianProfileByMusicianId(buildingForMusicianData.id);
+                // Check if profile exists and has a userId (meaning they have a Gigin account)
+                hasGiginProfile = !!(musicianProfile && musicianProfile.userId);
+              } catch (error) {
+                console.error('Error fetching musician profile:', error);
+                hasGiginProfile = false;
+              }
             }
 
-            if (musicianProfile && musicianProfile.userId) {
+            if (hasGiginProfile && musicianProfile) {
               // Artist has a Gigin profile with userId - use existing invite flow
               if (!musicianProfile.musicianId) {
                 // Ensure musicianId is set
@@ -806,14 +871,12 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             if (formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic') {
               await sendGigInvitationMessage(conversationId, {
                 senderId: user.uid,
-                text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')} for ${firstGigDoc.budget}.
-                  ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
+                text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')} for ${firstGigDoc.budget}.`,
               });
             } else {
               await sendGigInvitationMessage(conversationId, {
                 senderId: user.uid,
-                text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')}.
-                  ${firstGigDoc.privateApplicationsLink ? `Follow this link to apply: ${firstGigDoc.privateApplicationsLink}` : ""}`,
+                text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')}.`,
               });
             }
               if (requestId) {
@@ -825,6 +888,9 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               }
               setBuildingForMusician(false);
               setBuildingForMusicianData(false);
+              resetFormData();
+              toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
+              setGigPostModal(false);
             } else {
               // Artist doesn't have a Gigin profile - show invite methods modal
               // Use CRM entry data if available, otherwise use buildingForMusicianData
@@ -943,7 +1009,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                                 <>
                                     <button className='btn secondary' onClick={prevStage}>Back</button>
                                     <button className='btn primary' onClick={handlePostGig}>
-                                        Create Gig{formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}
+                                        {buildingForMusician ? 'Create and Invite to Gig' : `Create Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}`}
                                     </button>
                                 </>
                                 ) : (

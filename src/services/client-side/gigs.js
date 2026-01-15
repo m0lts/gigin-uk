@@ -30,6 +30,50 @@ import { deleteGigAndInformation } from '../api/gigs';
 /*** READ OPERATIONS ***/
 
 /**
+ * Fetches a gig invite by inviteId from the gigInvites collection
+ * @param {string} inviteId - The invite document ID
+ * @returns {Promise<Object|null>} - The invite document or null if not found
+ */
+export const getGigInviteById = async (inviteId) => {
+  if (!inviteId) return null;
+  try {
+    const inviteRef = doc(firestore, 'gigInvites', inviteId);
+    const inviteSnap = await getDoc(inviteRef);
+    if (!inviteSnap.exists()) return null;
+    return { inviteId: inviteSnap.id, ...inviteSnap.data() };
+  } catch (error) {
+    console.error('[Firestore Error] getGigInviteById:', error);
+    return null;
+  }
+};
+
+/**
+ * Finds a gig invite for a specific gig and artist
+ * @param {string} gigId - The gig ID
+ * @param {string} artistId - The artist profile ID
+ * @returns {Promise<string|null>} - The invite ID or null if not found
+ */
+export const findGigInviteForArtist = async (gigId, artistId) => {
+  if (!gigId || !artistId) return null;
+  try {
+    const invitesRef = collection(firestore, 'gigInvites');
+    const q = query(
+      invitesRef,
+      where('gigId', '==', gigId),
+      where('artistId', '==', artistId),
+      where('active', '==', true)
+    );
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+    // Return the first matching invite ID
+    return querySnapshot.docs[0].id;
+  } catch (error) {
+    console.error('[Firestore Error] findGigInviteForArtist:', error);
+    return null;
+  }
+};
+
+/**
  * Fetches gigs near the specified location from Firestore using geohash range querying.
  */
 export const fetchNearbyGigs = async ({

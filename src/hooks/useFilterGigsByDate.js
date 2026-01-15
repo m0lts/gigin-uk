@@ -23,6 +23,6 @@ export const useFilterGigsByDate = (upcomingGigs, selectedDates) => {
         : upcomingGigs;
 
 
-    return filtered.filter(gig => gig.privateApplications !== true);
+    return filtered.filter(gig => !gig.private);
   }, [upcomingGigs, selectedDates]);
 };

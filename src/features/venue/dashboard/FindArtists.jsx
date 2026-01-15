@@ -184,7 +184,7 @@ export const FindArtists = ({ user }) => {
                 className='btn primary' 
                 onClick={() => navigate('/venues/dashboard/artists')}
             >
-                Saved Artists
+                My Artists
             </button>
         </div>
         <div className='body musicians'>

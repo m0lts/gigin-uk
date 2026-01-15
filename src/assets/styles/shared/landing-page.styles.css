@@ -1,6 +1,469 @@
 @import '../breakpoints.css';
 
 .landing-page {
+    width: 100%;
+    min-height: 100vh;
+}
+
+.landing-navbar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 1.5rem;
+    background-color: transparent;
+    z-index: 1000;
+}
+
+.navbar-container {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 2rem;
+}
+
+.navbar-container.constrained {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.navbar-left .logo {
+    color: var(--gn-off-black);
+    font-size: 2rem;
+    line-height: 0.1;
+}
+
+.navbar-left .logo .orange-txt {
+    color: var(--gn-orange);
+}
+
+.nav-link {
+    background: none;
+    border: none;
+    color: var(--gn-off-black);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    transition: opacity 200ms linear;
+}
+
+.nav-link:hover {
+    opacity: 0.6;
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.landing-content {
+    width: 100%;
+    padding: 0 2rem;
+}
+
+.landing-content.constrained {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Hero Section */
+.hero-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+    min-height: 75vh;
+    padding-top: 8rem;
+    padding-bottom: 2rem;
+}
+
+.hero-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.hero-left h1 {
+    font-size: 3.5rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+    line-height: 1.2;
+    margin: 0;
+}
+
+.hero-left h4 {
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--gn-grey-600);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.hero-cta {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.hero-email-input {
+    width:300px;
+    padding: 10px 7px;
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    background-color: var(--gn-white);
+    font-size: 1rem;
+    transition: all 0.1s ease-in-out;
+}
+
+.hero-email-input:focus {
+    border: 1px solid var(--gn-off-black);
+    outline: 1px solid var(--gn-off-black);
+}
+
+.hero-cta .btn.primary {
+    white-space: nowrap;
+    height:100%;
+}
+
+/* Hero Right - Heartbeat Animation */
+.hero-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+    height: 100%;
+    overflow: visible;
+    padding-right: 2rem;
+}
+
+.heartbeat-animation {
+    position: relative;
+    width: 60%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pulse-dot {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(90deg, var(--gn-orange), var(--gn-red), var(--gn-orange));
+    background-size: 200% 100%;
+    animation: heartbeatPulse 2s ease-in-out infinite, gradientMove 3s ease infinite;
+    transform-origin: center center;
+    box-shadow: 0 0 150px 80px rgba(255, 108, 75, 0.4),
+                0 0 300px 150px rgba(255, 0, 0, 0.3),
+                0 0 500px 250px rgba(255, 108, 75, 0.2);
+}
+
+@keyframes heartbeatPulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes gradientMove {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* EPK Section */
+.epk-section {
+    padding: 6rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4rem;
+}
+
+.epk-section h2 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+    margin: 0;
+    text-align: center;
+}
+
+.epk-features {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.epk-feature {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    flex: 0 0 auto;
+    position: relative;
+}
+
+.epk-icon-circle {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 1px solid var(--gn-grey-500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+}
+
+.epk-icon-circle .icon {
+    font-size: 2rem;
+    color: var(--gn-off-black);
+}
+
+.epk-feature h4 {
+    font-size: 1rem;
+    color: var(--gn-off-black);
+    margin: 0;
+    text-align: center;
+    font-weight: 500;
+}
+
+.epk-connector {
+    width: 80px;
+    height: 1px;
+    background-color: var(--gn-grey-500);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    margin: 0 -1px;
+    margin-top: -28px;
+    
+}
+
+@media (--bp-md) {
+    .hero-section {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+        padding-top: 6rem;
+        min-height: auto;
+    }
+
+    .hero-left h1 {
+        font-size: 2.5rem;
+    }
+
+    .hero-left h4 {
+        font-size: 1.1rem;
+    }
+
+    .hero-cta {
+        flex-direction: column;
+    }
+
+    .hero-cta .btn.primary {
+        width: 100%;
+    }
+
+    .pulse-dot {
+        width: 80%;
+        max-width: 400px;
+    }
+
+    .epk-section {
+        padding: 4rem 0;
+        gap: 3rem;
+    }
+
+    .epk-section h2 {
+        font-size: 2rem;
+    }
+
+    .epk-features {
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .epk-connector {
+        width: 2px;
+        height: 40px;
+        transform: rotate(90deg);
+    }
+
+    .epk-icon-circle {
+        width: 70px;
+        height: 70px;
+    }
+
+    .epk-icon-circle .icon {
+        font-size: 1.25rem;
+    }
+}
+
+/* Artist Profile Section */
+.artist-profile-section {
+    padding: 6rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    width: 100%;
+}
+
+.artist-profile-screenshot {
+    width: 100%;
+    border-radius: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.artist-profile-section h2 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+    margin: 0;
+    text-align: center;
+    max-width: 800px;
+}
+
+.artist-profile-section .btn.artist-profile {
+    margin-top: 1rem;
+}
+
+/* Pricing Section */
+.pricing-section {
+    padding: 6rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.pricing-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    width: 100%;
+    max-width: 1200px;
+}
+
+.pricing-card {
+    background: white;
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 1rem;
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.pricing-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.pricing-card h3 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+    margin: 0;
+}
+
+.pricing-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+}
+
+.pricing-features li {
+    color: var(--gn-off-black);
+    font-size: 1rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.pricing-features li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--gn-orange);
+    font-weight: 600;
+}
+
+.pricing-card .btn {
+    width: 100%;
+    margin-top: auto;
+}
+
+.pricing-card.venue-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.pricing-card.venue-card h3 {
+    margin-bottom: 1rem;
+}
+
+@media (--bp-md) {
+    .pricing-cards {
+        grid-template-columns: 1fr;
+        max-width: 500px;
+    }
+}
+
+@media (--bp-md) {
+    .artist-profile-section {
+        padding: 4rem 0;
+        gap: 1.5rem;
+    }
+
+    .artist-profile-section h2 {
+        font-size: 1.75rem;
+        padding: 0 1rem;
+    }
+
+    .artist-profile-screenshot {
+        max-width: 100%;
+        border-radius: 0.5rem;
+    }
+}
+
+/* .landing-page {
     background-color: var(--gn-grey-200);
     display: grid;
     max-width:100vw;
@@ -76,4 +539,4 @@
     .landing-page .sign-up-form {
         display: none;
     }
-}
+} */

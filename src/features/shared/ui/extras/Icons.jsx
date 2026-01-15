@@ -13,7 +13,7 @@ import { faPeopleGroup as faPeopleGroupSolid } from '@fortawesome/free-solid-svg
 import { faPeopleRoof as faPeopleRoofLight } from '@fortawesome/pro-regular-svg-icons';
 import { faPeopleRoof as faPeopleRoofSolid } from '@fortawesome/free-solid-svg-icons';
 import { faHouseWindow as faHouseWindowLight } from '@fortawesome/pro-regular-svg-icons';
-import { faHouseWindow as faHouseWindowSolid, faAddressCard as faAddressCardSolid, faMicrophoneLines, faFileMp4, faCamcorder, faFileMp3, faFilm, faCheckCircle, faArrowUpFromBracket, faUserPlus, faGear  } from '@fortawesome/pro-solid-svg-icons';
+import { faHouseWindow as faHouseWindowSolid, faAddressCard as faAddressCardSolid, faMicrophoneLines, faFileMp4, faCamcorder, faFileMp3, faFilm, faCheckCircle, faArrowUpFromBracket, faUserPlus, faGear, faAlbumCollectionCircleUser, faFileUser  } from '@fortawesome/pro-solid-svg-icons';
 import { faCalendar as faCalendarLight } from '@fortawesome/pro-regular-svg-icons';
 import { faCalendar as faCalendarSolid } from '@fortawesome/pro-solid-svg-icons';
 import { faRectanglesMixed as faGridHorizontalLight } from '@fortawesome/pro-regular-svg-icons';
@@ -935,5 +935,17 @@ export const TromboneIcon = () => {
 export const PlaybackIcon = () => {
     return (
         <FontAwesomeIcon icon={faCompactDisc} className='icon' />
+    )
+}
+
+export const AlbumCollectionIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faAlbumCollectionCircleUser} className='icon' />
+    )
+}
+
+export const FileUserIcon = () => {
+    return (
+        <FontAwesomeIcon icon={faFileUser} className='icon' />
     )
 }

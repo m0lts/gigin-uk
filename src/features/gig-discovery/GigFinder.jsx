@@ -161,7 +161,28 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
               filters,
             });
             if (!cancelled) {
-              setGigs(newGigs);
+              // Filter out private gigs unless artist is invited
+              const artistProfileIds = user?.artistProfiles?.map(profile => profile.id || profile.profileId).filter(Boolean) || [];
+              const filteredGigs = newGigs.filter(gig => {
+                // If gig is not private, show it
+                if (!gig.private) return true;
+                
+                // If gig is private and user is not logged in, hide it
+                if (!user || !artistProfileIds.length) return false;
+                
+                // If gig is private, check if artist is in applicants array with invited: true
+                const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+                const isInvited = applicants.some(applicant => 
+                  applicant?.id && 
+                  artistProfileIds.includes(applicant.id) &&
+                  applicant?.invited === true
+                );
+                
+                // Only show private gigs if artist is invited
+                return isInvited;
+              });
+              
+              setGigs(filteredGigs);
               setLastDoc(lastVisible);
               setHasMore(newGigs.length === 50);
             }
@@ -184,7 +205,7 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
         return () => {
           cancelled = true;
         };
-      }, [userLocation, filters]);
+      }, [userLocation, filters, user]);
 
     const toggleFilters = () => {
         setLoading(true);
@@ -272,7 +293,28 @@ export const GigFinder = ({ user, setAuthModal, setAuthType, setNoProfileModal, 
                               lastDoc: null,
                               filters,
                             });
-                            setGigs(newGigs);
+                            // Filter out private gigs unless artist is invited
+                            const artistProfileIds = user?.artistProfiles?.map(profile => profile.id || profile.profileId).filter(Boolean) || [];
+                            const filteredGigs = newGigs.filter(gig => {
+                              // If gig is not private, show it
+                              if (!gig.private) return true;
+                              
+                              // If gig is private and user is not logged in, hide it
+                              if (!user || !artistProfileIds.length) return false;
+                              
+                              // If gig is private, check if artist is in applicants array with invited: true
+                              const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+                              const isInvited = applicants.some(applicant => 
+                                applicant?.id && 
+                                artistProfileIds.includes(applicant.id) &&
+                                applicant?.invited === true
+                              );
+                              
+                              // Only show private gigs if artist is invited
+                              return isInvited;
+                            });
+                            
+                            setGigs(filteredGigs);
                             setLastDoc(lastVisible);
                             setHasMore(newGigs.length === 50);
                           } catch (err) {

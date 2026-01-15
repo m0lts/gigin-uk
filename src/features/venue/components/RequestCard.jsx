@@ -56,7 +56,7 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
           Remove Request
       </button>
       <button className="btn primary" onClick={() => {openBuildGigModal(request)}}>
-          Build Gig For Musician
+          Build New Gig For Artist
       </button>
       </div>
     </div>

@@ -153,6 +153,25 @@ button {
     font-size: 0.9rem;
 }
 
+/* BACK BUTTONS */
+
+.btn.back-button {
+    background-color: transparent;
+    border:none;
+    font-weight: 500;
+    padding:0;
+}
+
+.btn.back-button .icon {
+    font-size: 1rem;
+    margin-right: 0.5rem;
+}
+
+.btn.back-button:hover {
+    text-decoration: underline;
+    background-color: transparent;
+}
+
 /* QUATERNARY BUTTONS */
 
 .btn.quaternary {

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { EditIcon, NewTabIcon, InviteIconSolid, OptionsIcon, PlusIcon, TickIcon, CloseIcon, DeleteGigsIcon, DeleteGigIcon, SavedIcon, CopyIcon } from '../../shared/ui/extras/Icons';
+import { EditIcon, NewTabIcon, InviteIconSolid, OptionsIcon, PlusIcon, TickIcon, CloseIcon, DeleteGigsIcon, DeleteGigIcon, SavedIcon, CopyIcon, LeftArrowIcon } from '../../shared/ui/extras/Icons';
 import { 
   getArtistCRMEntries, 
   createArtistCRMEntry, 
@@ -24,15 +24,20 @@ import { filterInvitableGigsForMusician } from '@services/utils/filtering';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { createGigInvite } from '@services/api/gigInvites';
 
 const InviteToGigModal = ({ artist, onClose, venues, user }) => {
   const [usersGigs, setUsersGigs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
-  const [step, setStep] = useState('gig-selection'); // 'gig-selection' or 'contact-method'
+  const [step, setStep] = useState('gig-selection'); // 'gig-selection', 'invite-config', or 'contact-method'
   const [selectedGig, setSelectedGig] = useState(null);
   const [selectedContactMethod, setSelectedContactMethod] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [inviteExpiryDate, setInviteExpiryDate] = useState(null);
+  const [creatingInvite, setCreatingInvite] = useState(false);
   const navigate = useNavigate();
   useEffect(() => {
     const fetchGigs = async () => {
@@ -98,9 +103,47 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
       // Artist has a profile - go directly to invite
       handleInviteToGig(gigData);
     } else {
-      // Artist doesn't have a profile - show contact method selection
+      // Artist doesn't have a profile
       setSelectedGig(gigData);
+      // If gig is private, show invite config step first
+      if (gigData.private) {
+        setStep('invite-config');
+      } else {
+        // Public gig - go directly to contact method selection
+        setStep('contact-method');
+      }
+    }
+  };
+
+  const handleGenerateInvite = async () => {
+    if (!selectedGig || !artist) return;
+
+    setCreatingInvite(true);
+    try {
+      // Set time to end of day (23:59:59) if date is selected
+      let expiresAt = null;
+      if (inviteExpiryDate) {
+        const date = new Date(inviteExpiryDate);
+        date.setHours(23, 59, 59, 999);
+        expiresAt = date;
+      }
+
+      // Create the invite document with crmEntryId and artistName
+      await createGigInvite({
+        gigId: selectedGig.gigId,
+        expiresAt: expiresAt?.toISOString() || null,
+        crmEntryId: artist.id, // Use CRM entry ID for artists without Gigin profile
+        artistName: artist.name || null
+      });
+
+      toast.success('Invite created successfully');
+      // Proceed to contact method selection
       setStep('contact-method');
+    } catch (error) {
+      console.error('Error creating invite:', error);
+      toast.error('Failed to create invite. Please try again.');
+    } finally {
+      setCreatingInvite(false);
     }
   };
 
@@ -356,14 +399,50 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
           }
         }
       `}</style>
-      <div className="modal invite-musician" onClick={onClose}>
+      <div className={`modal ${step === 'invite-config' ? 'gig-invites' : 'invite-musician'}`} onClick={onClose}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
-            <div className="modal-header-text">
+            <div className="modal-header-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              {step === 'invite-config' && selectedGig ? (
+                  <button
+                    className="btn tertiary back-button"
+                    style={{ marginBottom: '1rem' }}
+                    onClick={() => {
+                      setStep('gig-selection');
+                      setSelectedGig(null);
+                      setInviteExpiryDate(null);
+                    }}
+                    disabled={creatingInvite}
+                  >
+                    <LeftArrowIcon />
+                    Back
+                  </button>
+              ) : step === 'contact-method' && selectedGig ? (
+                <button
+                  className="btn tertiary back-button"
+                  style={{ marginBottom: '1rem' }}
+                  onClick={() => {
+                    // If gig is private, go back to invite-config, otherwise go to gig-selection
+                    if (selectedGig?.private) {
+                      setStep('invite-config');
+                    } else {
+                      setStep('gig-selection');
+                      setSelectedGig(null);
+                    }
+                    setSelectedContactMethod(null);
+                  }}
+                  disabled={inviting}
+                >
+                  <LeftArrowIcon />
+                  Back
+                </button>
+              ) : null}
               <InviteIconSolid />
               <h2>
                 {step === 'gig-selection' 
                   ? `Invite ${artist?.name} to one of your available gigs.`
+                  : step === 'invite-config'
+                  ? `Configure Invite`
                   : `How would you like to send the invite to ${artist?.name}?`
                 }
               </h2>
@@ -408,7 +487,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
             )}
           </div>
           
-          <div className="modal-steps-container" style={{ position: 'relative', minHeight: '300px' }}>
+          <div className="modal-steps-container" style={{ position: 'relative', minHeight: '300px', maxHeight: '70vh', height: '40vh', overflowY: 'auto' }}>
             {/* Gig Selection Step */}
             <div 
               className={`modal-step ${step === 'gig-selection' ? 'active' : 'inactive'}`}
@@ -476,6 +555,77 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
               )}
             </div>
 
+            {/* Invite Configuration Step (for private gigs with no profile) */}
+            {step === 'invite-config' && selectedGig && (
+              <div 
+                className="modal-step active"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  transform: 'translateX(20px)',
+                  animation: 'slideInFromRight 0.3s ease forwards',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflowY: 'auto',
+                }}
+              >
+                <div className="modal-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+                  <div className="stage" style={{ flex: 1 }}>
+                    <div className="body date">
+                      <p style={{ marginBottom: '1rem' }}>
+                        Select a date if you want the invite to expire at a certain time.
+                      </p>
+                      <div className="calendar">
+                        {selectedGig?.date && (() => {
+                          const gigDate = selectedGig.date.toDate ? selectedGig.date.toDate() : new Date(selectedGig.date);
+                          return (
+                            <DatePicker
+                              selected={inviteExpiryDate}
+                              onChange={(date) => setInviteExpiryDate(date)}
+                              inline
+                              minDate={new Date()}
+                              maxDate={gigDate}
+                              dayClassName={(date) => {
+                                const today = new Date().setHours(0, 0, 0, 0);
+                                const dateTime = date.getTime();
+                                if (dateTime < today) return 'past-date';
+                                if (gigDate && dateTime > gigDate.getTime()) return 'past-date';
+                                return undefined;
+                              }}
+                            />
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="two-buttons" style={{ marginTop: 'auto', paddingTop: '1rem' }}>
+                    <button
+                      className="btn secondary"
+                      onClick={() => {
+                        setStep('gig-selection');
+                        setSelectedGig(null);
+                        setInviteExpiryDate(null);
+                      }}
+                      disabled={creatingInvite}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="btn primary"
+                      onClick={handleGenerateInvite}
+                      disabled={creatingInvite}
+                    >
+                      {creatingInvite ? 'Creating...' : 'Generate Invite'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Contact Method Selection Step */}
             {step === 'contact-method' && selectedGig && (
               <div 
@@ -490,19 +640,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
                   animation: 'slideInFromRight 0.3s ease forwards',
                 }}
               >
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <button
-                    className="btn tertiary"
-                    onClick={() => {
-                      setStep('gig-selection');
-                      setSelectedGig(null);
-                      setSelectedContactMethod(null);
-                    }}
-                    style={{ marginBottom: '1rem' }}
-                  >
-                    Back
-                  </button>
-                </div>
+
 
                 <div className="contact-method-selection" style={{ marginBottom: '1.5rem' }}>
                   <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 600 }}>Select contact method:</h3>

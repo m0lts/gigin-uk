@@ -374,8 +374,10 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                             onClick={(e) => {
                                                 if (gigStatus?.text.toLowerCase() === 'confirmed') {
                                                     openGigHandbook(gig)
-                                                } else if (gig.privateApplications) {
-                                                    openInNewTab(`${gig.privateApplicationsLink}`, e)
+                                                } else if (gig.private) {
+                                                    // Private gigs require invite link - this should not be accessible from here
+                                                    // If they have an invite, they should use the invite link
+                                                    openInNewTab(`/gig/${gig.gigId}`, e)
                                                 } else {
                                                     openInNewTab(`/gig/${gig.gigId}?appliedAs=${appliedProfile ? appliedProfile.profileId : null}`, e)
                                                 };

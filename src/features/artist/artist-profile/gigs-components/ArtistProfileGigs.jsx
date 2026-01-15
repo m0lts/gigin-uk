@@ -25,6 +25,7 @@ import {
   CancelIcon,
   RejectedIcon,
   CalendarIconSolid,
+  InviteIconSolid,
 } from '../../../shared/ui/extras/Icons';
 
 export const ArtistProfileGigs = () => {
@@ -160,6 +161,28 @@ export const ArtistProfileGigs = () => {
     const applicant = gig.applicants?.find((app) => app.id === focusProfileId);
     if (!applicant) return { icon: <ExclamationIcon />, text: 'Not Applied' };
     if (gig.disputeLogged) return { icon: <ExclamationIcon />, text: 'Dispute Logged' };
+    
+    // Check if invite has expired
+    if (applicant.invited && applicant.inviteExpiresAt) {
+      let expiresAtDate = null;
+      // Handle Firestore Timestamp formats
+      if (applicant.inviteExpiresAt?.toDate) {
+        expiresAtDate = applicant.inviteExpiresAt.toDate();
+      } else if (applicant.inviteExpiresAt?._seconds) {
+        expiresAtDate = new Date(applicant.inviteExpiresAt._seconds * 1000);
+      } else if (applicant.inviteExpiresAt?.seconds) {
+        expiresAtDate = new Date(applicant.inviteExpiresAt.seconds * 1000);
+      } else if (applicant.inviteExpiresAt instanceof Date) {
+        expiresAtDate = applicant.inviteExpiresAt;
+      } else if (typeof applicant.inviteExpiresAt === 'string' || typeof applicant.inviteExpiresAt === 'number') {
+        expiresAtDate = new Date(applicant.inviteExpiresAt);
+      }
+      
+      if (expiresAtDate && !isNaN(expiresAtDate.getTime()) && expiresAtDate < now) {
+        return { icon: <InviteIconSolid />, text: 'Expired' };
+      }
+    }
+    
     if (gigDate > now) {
       const status = applicant.status;
       if (status === 'confirmed') return { icon: <TickIcon />, text: 'Confirmed' };
@@ -257,6 +280,19 @@ export const ArtistProfileGigs = () => {
     setOpenOptionsGigId(null);
     setOpenOptionsGig(null);
     setDropdownPosition({ top: 0, right: 0 });
+  };
+
+  // Helper function to build gig URL with inviteId if needed
+  const buildGigUrl = (gig, applicant) => {
+    const baseUrl = `/gig/${gig.gigId}`;
+    
+    // If gig is private and artist has been invited, use inviteId from applicant object
+    if (gig.private && applicant?.invited && applicant?.inviteId) {
+      return `${baseUrl}?inviteId=${applicant.inviteId}`;
+    }
+    
+    // Fallback to appliedAs for non-private gigs or if inviteId not available
+    return `${baseUrl}?appliedAs=${applicant?.profileId || focusProfileId || ''}`;
   };
 
   const allProfiles = artistProfiles || [];
@@ -428,12 +464,10 @@ export const ArtistProfileGigs = () => {
               <div
                 className='invite-card'
                 key={gig.gigId}
-                onClick={(event) =>
-                  openInNewTab(
-                    `/gig/${gig.gigId}?appliedAs=${applicant?.profileId || ''}`,
-                    event
-                  )
-                }
+                onClick={(event) => {
+                  const url = buildGigUrl(gig, applicant);
+                  openInNewTab(url, event);
+                }}
               >
                 <p className='gig-name'>{gig.gigName}</p>
                 <p className='gig-venue'>{gig.venue?.venueName || gig.venueName}</p>
@@ -551,12 +585,8 @@ export const ArtistProfileGigs = () => {
                           )}
                           <tr
                           onClick={(event) => {
-                            openInNewTab(
-                              `/gig/${gig.gigId}?appliedAs=${
-                                appliedProfile ? appliedProfile.profileId : ''
-                              }`,
-                              event
-                            );
+                            const url = buildGigUrl(gig, applicant);
+                            openInNewTab(url, event);
                             if (isSmUp && applicant?.invited && !applicant?.viewed) {
                               markInviteAsViewed({
                                 gigId: gig.gigId,

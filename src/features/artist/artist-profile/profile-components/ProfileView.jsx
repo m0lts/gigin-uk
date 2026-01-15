@@ -1367,7 +1367,6 @@ export const ProfileView = ({
         </div>
       )}
 
-      {/* Profile creation box */}
       {(isExample || isCreatingProfile) && (
         <div className="creation-box-container">
           <ProfileCreationBox

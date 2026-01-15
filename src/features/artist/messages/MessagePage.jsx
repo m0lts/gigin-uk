@@ -182,9 +182,9 @@ export const MessagePage = () => {
                                         <button
                                             className='btn tertiary'
                                             onClick={(e) =>
-                                            gigData.privateApplications
+                                            gigData.private
                                                 ? openInNewTab(
-                                                    `/gig/${activeConversation.gigId}?token=${gigData.privateApplicationToken}`,
+                                                    `/gig/${activeConversation.gigId}`,
                                                     e
                                                 )
                                                 : openInNewTab(

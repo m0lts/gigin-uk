@@ -87,8 +87,30 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             const futureGigs = normalized
               .filter(gig => gig.startDateTimeDate && gig.startDateTimeDate > now && gig.status !== 'closed')
               .sort((a, b) => a.startDateTimeMs - b.startDateTimeMs);
-            setVenueGigs(futureGigs);
-            const confirmed = futureGigs.filter(gig =>
+            
+            // Filter out private gigs unless artist is invited
+            const artistProfileIds = user?.artistProfiles?.map(profile => profile.id || profile.profileId).filter(Boolean) || [];
+            const filteredGigs = futureGigs.filter(gig => {
+              // If gig is not private, show it
+              if (!gig.private) return true;
+              
+              // If gig is private and user is not logged in, hide it
+              if (!user || !artistProfileIds.length) return false;
+              
+              // If gig is private, check if artist is in applicants array with invited: true
+              const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+              const isInvited = applicants.some(applicant => 
+                applicant?.id && 
+                artistProfileIds.includes(applicant.id) &&
+                applicant?.invited === true
+              );
+              
+              // Only show private gigs if artist is invited
+              return isInvited;
+            });
+            
+            setVenueGigs(filteredGigs);
+            const confirmed = filteredGigs.filter(gig =>
               Array.isArray(gig.applicants) && gig.applicants.some(a => a.status === 'confirmed')
             );
             setConfirmedGigs(confirmed);
@@ -99,7 +121,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
           }
         };
         fetchVenueAndGigs();
-      }, [venueId]);
+      }, [venueId, user]);
 
     // Group gigs by their gigSlots relationship (same logic as venue dashboard and gig discovery)
     const groupedGigs = useMemo(() => {

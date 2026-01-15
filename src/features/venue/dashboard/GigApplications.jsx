@@ -50,6 +50,7 @@ import { formatDate } from '@services/utils/dates';
 import { GigHandbook } from '@features/artist/components/GigHandbook';
 import { storage } from '@lib/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
+import { GigInvitesModal } from '../components/GigInvitesModal';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const VideoModal = ({ video, onClose }) => {
@@ -143,6 +144,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const [gigForHandbook, setGigForHandbook] = useState(null);
     const [confirmedArtistProfiles, setConfirmedArtistProfiles] = useState(new Map());
     const [heroImageUrls, setHeroImageUrls] = useState(new Map());
+    const [showInvitesModal, setShowInvitesModal] = useState(false);
     const gigId = location.state?.gig?.gigId || '';
     const gigDate = location.state?.gig?.date || '';
     const venueName = location.state?.gig?.venue?.venueName || '';
@@ -1045,7 +1047,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                 : gigInfo.gigName}
                         </h1>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            {!gigInfo.privateApplications ? (
+                            {!gigInfo.private ? (
                                 <button 
                                     className="btn secondary"
                                     style={{ minWidth: 150 }}
@@ -1062,14 +1064,15 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                 <button 
                                     className="btn secondary"
                                     style={{ minWidth: 150 }}
+                                    disabled={!hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite')}
                                     onClick={() => {
                                         if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite')) {
                                             toast.error('You do not have permission to perform this action.');
                                             return;
                                         }
-                                        copyToClipboard(gigInfo.privateApplicationsLink);
+                                        setShowInvitesModal(true);
                                     }}
-                                    title="Copy private link"
+                                    title={!hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite') ? 'You do not have permission to create invites' : 'Create invite link'}
                                 >
                                     <InviteIconSolid />
                                     Invite Artist
@@ -1080,30 +1083,31 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                     <label className="gigs-toggle-switch">
                                         <input
                                             type="checkbox"
-                                            checked={gigInfo.privateApplications || false}
+                                            checked={gigInfo.private || false}
+                                            disabled={!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')}
                                             onChange={async (e) => {
                                                 if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')) {
                                                     toast.error('You do not have permission to update this gig.');
                                                     return;
                                                 }
                                                 try {
-                                                    const newPrivateApplications = e.target.checked;
+                                                    const newPrivate = e.target.checked;
                                                     await updateGigDocument({ 
                                                         gigId: gigInfo.gigId, 
                                                         action: 'gigs.update', 
-                                                        updates: { privateApplications: newPrivateApplications } 
+                                                        updates: { private: newPrivate } 
                                                     });
-                                                    toast.success(`Gig changed to ${newPrivateApplications ? 'Private' : 'Public'} Applications`);
+                                                    toast.success(`Gig changed to ${newPrivate ? 'Invite Only' : 'Public'}`);
                                                     refreshGigs();
                                                 } catch (error) {
-                                                    console.error('Error updating private applications:', error);
+                                                    console.error('Error updating invite only status:', error);
                                                     toast.error('Failed to update gig. Please try again.');
                                                 }
                                             }}
                                         />
                                         <span className="gigs-toggle-slider"></span>
                                     </label>
-                                    <span className="gigs-toggle-text">Toggle Private Applications</span>
+                                    <span className="gigs-toggle-text">Invite Only</span>
                                 </div>
                             )}
                         </div>
@@ -1951,6 +1955,16 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                         </div>
                     </div>
                 </Portal>
+            )}
+            {showInvitesModal && gigInfo && (
+                <GigInvitesModal
+                    gig={gigInfo}
+                    venues={venues}
+                    onClose={() => {
+                        setShowInvitesModal(false);
+                    }}
+                    refreshGigs={refreshGigs}
+                />
             )}
         </>
     );
