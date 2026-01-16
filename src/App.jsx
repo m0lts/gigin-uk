@@ -5,6 +5,7 @@ import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import '@assets/fonts/fonts.css'
 import '@styles/shared/buttons.styles.css'
 import { LandingPage } from '@features/landing-page/LandingPage';
+import { VenueLandingPage } from '@features/landing-page/VenueLandingPage';
 import { useEffect, useState } from 'react';
 import { MainLayout } from '@layouts/MainLayout';
 import { NoHeaderFooterLayout } from '@layouts/NoHeaderFooterLayout';
@@ -66,9 +67,6 @@ export default function App() {
       setAuthClosable(true);
     }
     if (location.pathname === ('/email-verified')) {
-      navigate('/')
-    }
-    if (location.pathname === ('/venues')) {
       navigate('/')
     }
     if (location.pathname === ('/venues/add-venue')) {
@@ -145,6 +143,7 @@ export default function App() {
 
         {/* VENUES ROUTES */}
         <Route path='/venues'>
+          <Route index element={<VenueLandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} setInitialEmail={setInitialEmail} />} />
           <Route path='add-venue/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} setAuthType={setAuthType} /></NoHeaderFooterLayout>} />
           <Route path='dashboard/*' element={<VenueDashboardProvider user={user}><VenueDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><VenueDashboard user={user} /></VenueDashboardLayout></VenueDashboardProvider>} />
           <Route path='/venues/:venueId' element={<VenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
@@ -165,7 +164,7 @@ export default function App() {
       
       {authModal && (
         <Portal>
-          <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} initialEmail={initialEmail} setInitialEmail={setInitialEmail} />
+          <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} initialEmail={initialEmail} setInitialEmail={setInitialEmail} user={user} />
         </Portal>
       )}
       {noProfileModal && (

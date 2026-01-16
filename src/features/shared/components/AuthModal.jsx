@@ -10,7 +10,7 @@ import { ForgotPasswordForm } from '@features/shared/forms/ForgotPassword';
 import { VerifyEmailModal } from './VerifyEmailModal';
 
 
-export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, initialEmail, setInitialEmail }) => {
+export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, initialEmail, setInitialEmail, user }) => {
 
   const { login, signup, resetPassword, checkUser, continueWithGoogle } = useAuth();
   const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: initialEmail || '', password: '' });
@@ -63,6 +63,7 @@ export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, s
           continueWithGoogle={continueWithGoogle}
           noProfileModal={noProfileModal}
           setNoProfileModal={setNoProfileModal}
+          user={user}
         />
       ) : authType === 'signup' ? (
         <SignupForm

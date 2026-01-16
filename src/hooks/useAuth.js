@@ -189,9 +189,10 @@ export const useAuth = () => {
       } else if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
-      } else {
-        navigate('/');
+        return;
       }
+      // Don't navigate here - let LoginForm handle redirect based on user profile type
+      // The user state will update and LoginForm's useEffect will handle the redirect
       } catch (error) {
         const msg = error?.customData?.message || error?.message || "";
         if (msg.includes("auth/email-not-verified")) {
@@ -235,9 +236,10 @@ export const useAuth = () => {
       } else if (redirect) {
         navigate(redirect);
         sessionStorage.removeItem('redirect');
-      } else {
-        navigate('/');
+        return;
       }
+      // Don't navigate here - let LoginForm handle redirect based on user profile type
+      // The user state will update and LoginForm's useEffect will handle the redirect
     } catch (error) {
       const msg = error?.customData?.message || error?.message || "";
       if (msg.includes("auth/account-not-registered")) {
@@ -311,12 +313,19 @@ const resetPassword = async (rawEmail) => {
 
   const logout = async (redirect = null) => {
     try {
+      // Check user type before signing out (user will be null after signOut)
+      const userType = user?.venueProfiles && user.venueProfiles.length > 0 ? 'venue' : 
+                      user?.artistProfiles && user.artistProfiles.length > 0 ? 'artist' : null;
+      
       await signOut(auth);
-        if (redirect) {
-          navigate(redirect, { replace: true });
-        } else {
-          navigate('/', { replace: true });
-        }
+      
+      if (redirect) {
+        navigate(redirect, { replace: true });
+      } else if (userType === 'venue') {
+        navigate('/venues', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (error) {
       console.error('Logout failed', error);
     }

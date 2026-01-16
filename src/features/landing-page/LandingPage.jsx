@@ -3,9 +3,11 @@ import { TextLogo, TextLogoLink } from '@features/shared/ui/logos/Logos';
 import '@styles/shared/landing-page.styles.css'
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useAuth } from '../../hooks/useAuth';
-import { useState } from 'react';
-import { RightArrowIcon, MicrophoneLinesIcon, AlbumCollectionIcon, FileUserIcon, CoinsIconSolid, MediaIcon } from '../shared/ui/extras/Icons';
+import { useState, useEffect, useRef } from 'react';
+import { RightArrowIcon, MicrophoneLinesIcon, AlbumCollectionIcon, FileUserIcon, CoinsIconSolid, MediaIcon, SuccessIcon } from '../shared/ui/extras/Icons';
 import ArtistProfileExample from '@assets/images/artist-profile-example.png';
+import ArtistProfileExample2 from '@assets/images/artist-profile-example2.png';
+import ArtistProfileExample3 from '@assets/images/artist-profile-example3.png';
 import { Footer } from '../shared/components/Footer';
 
 export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, setInitialEmail }) => {
@@ -13,18 +15,69 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
     const { isXlUp } = useBreakpoint();
     const { user } = useAuth();
     const [heroEmail, setHeroEmail] = useState('');
+    const [activeEpkFeature, setActiveEpkFeature] = useState('profile'); // Default to profile
+    const [isImageTransitioning, setIsImageTransitioning] = useState(false);
+    const [userInteracted, setUserInteracted] = useState(false);
+    const slideshowIntervalRef = useRef(null);
+    
+    // Map EPK features to images
+    const epkImages = {
+        profile: ArtistProfileExample,
+        gigs: ArtistProfileExample2,
+        'tech-rider': ArtistProfileExample3,
+        finances: ArtistProfileExample,
+        'media-storage': ArtistProfileExample2
+    };
+
+    // Array of features in order for slideshow
+    const epkFeatures = ['profile', 'gigs', 'tech-rider', 'finances', 'media-storage'];
+
+    const handleEpkFeatureChange = (feature) => {
+        setUserInteracted(true);
+        setIsImageTransitioning(true);
+        setActiveEpkFeature(feature);
+        setTimeout(() => {
+            setIsImageTransitioning(false);
+        }, 500); // Match animation duration
+    };
+
+    // Auto-slideshow effect
+    useEffect(() => {
+        // Only start slideshow if user hasn't interacted
+        if (!userInteracted) {
+            slideshowIntervalRef.current = setInterval(() => {
+                setActiveEpkFeature((current) => {
+                    const currentIndex = epkFeatures.indexOf(current);
+                    const nextIndex = (currentIndex + 1) % epkFeatures.length;
+                    return epkFeatures[nextIndex];
+                });
+            }, 7000); // 7 seconds
+        }
+
+        return () => {
+            if (slideshowIntervalRef.current) {
+                clearInterval(slideshowIntervalRef.current);
+            }
+        };
+    }, [userInteracted]);
 
     const handleCreateArtistProfile = () => {
         if (!user) {
-            // User not logged in - navigate to artist profile with signup flag and show signup modal
+            // User not logged in - navigate to artist profile example page (don't show auth modal)
             navigate('/artist-profile?signup=true');
-            setAuthType('signup');
-            setAuthModal(true);
         } else {
             // User is logged in - navigate normally
             navigate('/artist-profile');
         }
     };
+
+    const handleLogin = () => {
+        if (!user) {
+            setAuthType('login');
+            setAuthModal(true);
+        }
+    };
+
 
     const handleStartNow = () => {
         // Set initial email if provided, then show signup modal
@@ -59,11 +112,17 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                         </button>
                     </div>
                     <div className="navbar-right">
-                        <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}>
+                        <button className="btn tertiary" onClick={() => navigate('/venues')}>
                             I'm a Venue
                         </button>
                         <button className="btn artist-profile" onClick={handleCreateArtistProfile}>
                             Create Artist Profile
+                        </button>
+                        <h6 className="or-separator">
+                            OR
+                        </h6>
+                        <button className="btn secondary" onClick={handleLogin}>
+                            Log In
                         </button>
                     </div>
                 </div>
@@ -101,75 +160,102 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                     <h2>An Artist's EPK Solution</h2>
                     <div className="epk-features">
                         <div className="epk-feature">
-                            <div className="epk-icon-circle">
-                                <MicrophoneLinesIcon />
-                            </div>
-                            <h4>Gigs</h4>
-                        </div>
-                        <div className="epk-connector"></div>
-                        <div className="epk-feature">
-                            <div className="epk-icon-circle">
+                            <button 
+                                className={`epk-icon-circle ${activeEpkFeature === 'profile' ? 'active' : ''}`}
+                                onClick={() => handleEpkFeatureChange('profile')}
+                            >
                                 <AlbumCollectionIcon />
-                            </div>
+                            </button>
                             <h4>Profile</h4>
                         </div>
                         <div className="epk-connector"></div>
                         <div className="epk-feature">
-                            <div className="epk-icon-circle">
+                            <button 
+                                className={`epk-icon-circle ${activeEpkFeature === 'gigs' ? 'active' : ''}`}
+                                onClick={() => handleEpkFeatureChange('gigs')}
+                            >
+                                <MicrophoneLinesIcon />
+                            </button>
+                            <h4>Gigs</h4>
+                        </div>
+                        <div className="epk-connector"></div>
+                        <div className="epk-feature">
+                            <button 
+                                className={`epk-icon-circle ${activeEpkFeature === 'tech-rider' ? 'active' : ''}`}
+                                onClick={() => handleEpkFeatureChange('tech-rider')}
+                            >
                                 <FileUserIcon />
-                            </div>
+                            </button>
                             <h4>Tech Rider</h4>
                         </div>
                         <div className="epk-connector"></div>
                         <div className="epk-feature">
-                            <div className="epk-icon-circle">
+                            <button 
+                                className={`epk-icon-circle ${activeEpkFeature === 'finances' ? 'active' : ''}`}
+                                onClick={() => handleEpkFeatureChange('finances')}
+                            >
                                 <CoinsIconSolid />
-                            </div>
+                            </button>
                             <h4>Finances</h4>
                         </div>
-                        <div className="epk-connector"></div>
+                        <div className="epk-connector last-connector"></div>
                         <div className="epk-feature">
-                            <div className="epk-icon-circle">
+                            <button 
+                                className={`epk-icon-circle ${activeEpkFeature === 'media-storage' ? 'active' : ''}`}
+                                onClick={() => handleEpkFeatureChange('media-storage')}
+                            >
                                 <MediaIcon />
-                            </div>
+                            </button>
                             <h4>Media Storage</h4>
                         </div>
                     </div>
                 </section>
                 <section className="artist-profile-section">
-                    <img 
-                        src={ArtistProfileExample} 
-                        alt="Artist profile example" 
-                        className="artist-profile-screenshot"
-                    />
+                    <div className="artist-profile-image-container">
+                        <img 
+                            src={epkImages[activeEpkFeature]} 
+                            alt="Artist profile example" 
+                            className="artist-profile-screenshot"
+                            key={activeEpkFeature}
+                        />
+                    </div>
                 </section>
                 <section id="pricing-section" className="pricing-section">
+                    <h2>We have two pricing tiers to suit your needs</h2>
                     <div className="pricing-cards">
                         <div className="pricing-card">
-                            <h3>Free</h3>
+                            <h2 className="pricing-price">Free</h2>
+                            <h3>Starter</h3>
+                            <h4>Best for artists just starting out.</h4>
                             <ul className="pricing-features">
-                                <li>One artist profile</li>
-                                <li>Gig booking system</li>
-                                <li>Tech rider</li>
-                                <li>3GB media storage</li>
+                                <li className="black"><SuccessIcon /> One artist profile</li>
+                                <li className="black"><SuccessIcon /> Gig booking system</li>
+                                <li className="black"><SuccessIcon /> Tech rider</li>
+                                <li className="black"><SuccessIcon /> 3GB media storage</li>
                             </ul>
-                            <button className="btn primary">Get Started</button>
+                            <button className="btn primary" onClick={handleCreateArtistProfile}>Get Started <RightArrowIcon /></button>
                         </div>
-                        <div className="pricing-card">
-                            <h3>Pro - £8.99</h3>
+                        <div className="pricing-card pricing-card-pro">
+                            <h2 className="pricing-price">
+                                <span className="pricing-amount">£8.99</span>
+                                <span className="pricing-period"> / month</span>
+                            </h2>
+                            <h3>Gigin Pro</h3>
+                            <h4>Best for artists looking to grow their career.</h4>
                             <ul className="pricing-features">
-                                <li>Up to 3 artist profiles</li>
-                                <li>Gig booking system</li>
-                                <li>Tech rider</li>
-                                <li>5GB media storage</li>
-                                <li>Increased profile visibility</li>
+                                <li><SuccessIcon /> Up to 3 artist profiles</li>
+                                <li><SuccessIcon /> Gig booking system</li>
+                                <li><SuccessIcon /> Tech rider</li>
+                                <li><SuccessIcon /> 5GB media storage</li>
+                                <li><SuccessIcon /> Increased profile visibility</li>
                             </ul>
-                            <button className="btn primary">Get Started</button>
+                            <button className="btn secondary" onClick={() => { setAuthType('signup'); setAuthModal(true); }}>Get Started <RightArrowIcon /></button>
                         </div>
                         <div className="pricing-card venue-card">
                             <h3>Are you a venue?</h3>
-                            <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}>
-                                Get Started
+                            <h4>Take a look at our venue pricing.</h4>
+                            <button className="btn tertiary" onClick={() => navigate('/venues')}>
+                                Get Started <RightArrowIcon />
                             </button>
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 // Dependencies
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Components
 import { SeeIcon, ErrorIcon } from '@features/shared/ui/extras/Icons';
@@ -13,11 +13,36 @@ import { Link } from 'react-router-dom';
 
 
 
-export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, continueWithGoogle, noProfileModal, setNoProfileModal }) => {
+export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, continueWithGoogle, noProfileModal, setNoProfileModal, user }) => {
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
+
+  // Handle redirect after successful login based on user profile type
+  useEffect(() => {
+    if (justLoggedIn && user && !loading) {
+      // Wait a bit for user data to fully load
+      const timer = setTimeout(() => {
+        if (user.artistProfiles && user.artistProfiles.length > 0) {
+          setAuthModal(false);
+          navigate('/dashboard');
+          setJustLoggedIn(false);
+        } else if (user.venueProfiles && user.venueProfiles.length > 0) {
+          setAuthModal(false);
+          navigate('/venues/dashboard');
+          setJustLoggedIn(false);
+        } else {
+          // User logged in but no profiles - stay on landing page
+          setAuthModal(false);
+          setJustLoggedIn(false);
+        }
+      }, 500); // Small delay to ensure user data is loaded
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, justLoggedIn, loading, navigate, setAuthModal]);
 
   const handleFocus = () => {
     setPasswordFocused(true);
@@ -52,15 +77,17 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
       if (loginResponse && loginResponse.needsEmailVerify) {
         setAuthClosable(false);
         setAuthType('verify-email');
+        return;
       }
       if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
         setAuthModal(false);
         setAuthClosable(true);
         navigate('/artist-profile');
-      } else {        
-        setAuthModal(false);
-        setAuthClosable(true);
+        return;
       }
+      // Set flag to trigger redirect check in useEffect
+      setJustLoggedIn(true);
+      // Don't close modal yet - let useEffect handle redirect and close
     } catch (err) {
       switch (err.error.code) {
         case 'auth/user-not-found':
@@ -113,9 +140,9 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                       setAuthModal(false);
                       setAuthClosable(true);
                       navigate('/artist-profile');
-                    } else {        
-                      setAuthModal(false);
-                      setAuthClosable(true);
+                    } else {
+                      setJustLoggedIn(true);
+                      // Redirect will be handled by useEffect
                     }
                   } catch (err) {
                     setError({ status: true, input: '', message: err?.error?.message || 'Google sign in failed' });

@@ -714,12 +714,15 @@ const ArtistProfileComponent = ({
   }, [currentState, selectedExampleProfile, activeProfileData?.name, creationArtistName, editingName]);
 
   // Handle authentication - redirect to auth if not logged in
+  // Don't auto-show modal if signup=true (will show when user clicks button)
   useEffect(() => {
     if (!authLoading && !user && setAuthModal) {
-      // Check if signup query param is present (from landing page button)
       const shouldSignup = searchParams.get('signup') === 'true';
-      setAuthModal(true);
-      setAuthType?.(shouldSignup ? 'signup' : 'login');
+      // Only auto-show login modal if signup param is not present
+      if (!shouldSignup) {
+        setAuthModal(true);
+        setAuthType?.('login');
+      }
     }
   }, [authLoading, user, setAuthModal, setAuthType, searchParams]);
 
@@ -1498,8 +1501,10 @@ const ArtistProfileComponent = ({
 
     // Require authentication before starting the flow
     if (!user?.uid) {
+      // Check if signup query param is present (from landing page)
+      const shouldSignup = searchParams.get('signup') === 'true';
       setAuthModal?.(true);
-      setAuthType?.('login');
+      setAuthType?.(shouldSignup ? 'signup' : 'login');
       return;
     }
 

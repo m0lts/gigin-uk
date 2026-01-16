@@ -201,7 +201,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4rem;
+    gap: 2rem;
+    padding-bottom: 4rem;
 }
 
 .epk-section h2 {
@@ -240,11 +241,29 @@
     justify-content: center;
     position: relative;
     z-index: 2;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    padding: 0;
+}
+
+.epk-icon-circle:hover {
+    border-color: var(--gn-off-black);
+}
+
+.epk-icon-circle.active {
+    background-color: var(--gn-off-black);
+    border-color: var(--gn-off-black);
 }
 
 .epk-icon-circle .icon {
     font-size: 2rem;
     color: var(--gn-off-black);
+    transition: color 0.3s ease;
+}
+
+.epk-icon-circle.active .icon {
+    color: white;
 }
 
 .epk-feature h4 {
@@ -264,7 +283,10 @@
     z-index: 1;
     margin: 0 -1px;
     margin-top: -28px;
-    
+}
+
+.epk-connector.last-connector {
+    margin-right: -4px;
 }
 
 @media (--bp-md) {
@@ -328,19 +350,48 @@
 
 /* Artist Profile Section */
 .artist-profile-section {
-    padding: 6rem 0;
+    padding: 2rem 0;
+    padding-top: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2rem;
     width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.artist-profile-image-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+    overflow: hidden;
+    border-radius: 2rem;
 }
 
 .artist-profile-screenshot {
+    position: absolute;
     width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-radius: 2rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    margin-bottom: 2rem;
+    animation: slideInImage 0.5s ease;
+}
+
+@keyframes slideInImage {
+    from {
+        opacity: 0;
+        transform: translateX(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
 }
 
 .artist-profile-section h2 {
@@ -363,6 +414,16 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
+    gap: 4rem;
+}
+
+.pricing-section > h2 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+    margin: 0;
+    text-align: center;
+    max-width: 800px;
 }
 
 .pricing-cards {
@@ -380,9 +441,42 @@
     padding: 2.5rem;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     transition: box-shadow 0.3s ease, transform 0.3s ease;
+    position: relative;
+}
+
+.pricing-price {
+    align-self: flex-start;
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+}
+
+.pricing-amount {
+    font-size: 2rem;
+}
+
+.pricing-period {
+    font-size: 1.25rem;
+    font-weight: 400;
+}
+
+.pricing-card h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+    margin: 0;
+}
+
+.pricing-card h4 {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--gn-off-black);
+    margin: 0;
+    margin-bottom: 1rem;
 }
 
 .pricing-card:hover {
@@ -390,11 +484,23 @@
     transform: translateY(-2px);
 }
 
-.pricing-card h3 {
-    font-size: 2rem;
-    font-weight: 600;
-    color: var(--gn-off-black);
-    margin: 0;
+.pricing-card-pro {
+    background: linear-gradient(90deg, var(--gn-orange), var(--gn-red), var(--gn-orange));
+    background-size: 200% 100%;
+    animation: gradientMove 3s ease infinite;
+    border: 1px solid transparent;
+    color: white;
+}
+
+.pricing-card-pro .pricing-price,
+.pricing-card-pro h3,
+.pricing-card-pro h4,
+.pricing-card-pro .pricing-features li {
+    color: white;
+}
+
+.pricing-card-pro .pricing-features li .icon {
+    color: white;
 }
 
 .pricing-features {
@@ -410,16 +516,21 @@
 .pricing-features li {
     color: var(--gn-off-black);
     font-size: 1rem;
-    position: relative;
-    padding-left: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
-.pricing-features li::before {
-    content: '✓';
-    position: absolute;
-    left: 0;
-    color: var(--gn-orange);
-    font-weight: 600;
+.pricing-features li .icon {
+    color: white !important;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.pricing-features .black .icon {
+    color: black !important;
+    font-size: 1.25rem;
+    flex-shrink: 0;
 }
 
 .pricing-card .btn {
@@ -428,15 +539,36 @@
 }
 
 .pricing-card.venue-card {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
+    height: fit-content;
+    flex: 0;
+    align-self: center;
+    box-shadow: none;
+    border: none;
+    background: var(--gn-grey-300);
 }
 
-.pricing-card.venue-card h3 {
-    margin-bottom: 1rem;
+.pricing-card.venue-card:hover {
+    transform: none;
+}
+
+.pricing-card.venue-card h4 {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--gn-off-black);
+    margin: 0;
+}
+
+.pricing-card.venue-card .btn {
+    align-items: flex-start;
+    text-align: left;
+    padding: 0;
+    transition: all 200ms ease;
+}
+
+.pricing-card.venue-card .btn:hover{
+    transform: translateX(0.5rem);
+    background-color: transparent;
+    text-decoration: underline;
 }
 
 @media (--bp-md) {
