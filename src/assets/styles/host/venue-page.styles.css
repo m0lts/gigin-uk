@@ -805,6 +805,10 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
+.venue-profile-stack .venue-content-section .play-icon {
+  color: var(--gn-white);
+}
+
 .venue-profile-stack .venue-content-section.tech-rider {
   display: flex;
   flex-direction: column;

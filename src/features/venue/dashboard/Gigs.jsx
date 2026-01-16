@@ -1036,10 +1036,10 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                     </button>
                   </th>
                   <th className='centre'>Status</th>
-                  {isMdUp && <th className='centre'>Sound Manager</th>}
-                  <th className='centre'>Invite Only</th>
-                  <th className='centre'>Invite Artists</th>
-                  {isMdUp && <th className='centre'>Notes</th>}
+                  {isMdUp && <th className='centre sound-manager-column'>Sound Manager</th>}
+                  <th className='centre invite-only-column'>Invite Only?</th>
+                  <th className='centre invite-artists-column'>Invite Artists</th>
+                  {isMdUp && <th className='centre notes-column'>Notes</th>}
                   <th id='options'></th>
                 </tr>
               </thead>
@@ -1160,7 +1160,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           {isMdUp && (
                             <td className='centre sound-manager-cell' onClick={(e) => e.stopPropagation()}>
                               <div 
-                                className="sound-manager-container"
+                                className="sound-manager-box"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const rect = e.currentTarget.getBoundingClientRect();
@@ -1169,77 +1169,67 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                   setSoundManagerValue(gig.soundManager || '');
                                 }}
                               >
-                                <div className="sound-manager-content">
-                                  <span className="sound-manager-text" style={{ fontSize: '0.9rem' }}>
-                                    {gig.soundManager || ''}
-                                  </span>
-                                  <button
-                                    className="btn icon sound-manager-edit-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
+                                <span className="sound-manager-text">
+                                  {gig.soundManager || ''}
+                                </span>
+                              </div>
+                              {editingSoundManager === group.primaryGig.gigId && (
+                                <div
+                                  data-sound-manager-editor
+                                  className="sound-manager-editor"
+                                  style={{
+                                    top: `${soundManagerPosition.top}px`,
+                                    left: `${soundManagerPosition.left}px`,
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <h4>Sound Manager</h4>
+                                  <textarea
+                                    className="sound-manager-textarea"
+                                    value={soundManagerValue}
+                                    onChange={(e) => setSoundManagerValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSaveSoundManager(group.primaryGig.gigId, gig.venueId);
+                                      }
+                                      if (e.key === 'Escape') {
+                                        setEditingSoundManager(null);
+                                        setSoundManagerValue('');
+                                      }
                                     }}
-                                  >
-                                    <EditIcon />
-                                  </button>
-                                </div>
-                                {editingSoundManager === group.primaryGig.gigId && (
-                                  <div
-                                    data-sound-manager-editor
-                                    className="sound-manager-editor"
-                                    style={{
-                                      top: `${soundManagerPosition.top}px`,
-                                      left: `${soundManagerPosition.left}px`,
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <h4>Sound Manager</h4>
-                                    <textarea
-                                      className="sound-manager-textarea"
-                                      value={soundManagerValue}
-                                      onChange={(e) => setSoundManagerValue(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                          e.preventDefault();
+                                    onBlur={(e) => {
+                                      // Delay to allow Save button click to register
+                                      setTimeout(() => {
+                                        if (editingSoundManager === group.primaryGig.gigId) {
                                           handleSaveSoundManager(group.primaryGig.gigId, gig.venueId);
                                         }
-                                        if (e.key === 'Escape') {
-                                          setEditingSoundManager(null);
-                                          setSoundManagerValue('');
-                                        }
+                                      }, 200);
+                                    }}
+                                    autoFocus
+                                  />
+                                  <div className="sound-manager-editor-actions">
+                                    <button
+                                      className="btn tertiary"
+                                      onClick={() => {
+                                        setEditingSoundManager(null);
+                                        setSoundManagerValue('');
                                       }}
-                                      onBlur={(e) => {
-                                        // Delay to allow Save button click to register
-                                        setTimeout(() => {
-                                          if (editingSoundManager === group.primaryGig.gigId) {
-                                            handleSaveSoundManager(group.primaryGig.gigId, gig.venueId);
-                                          }
-                                        }, 200);
-                                      }}
-                                      autoFocus
-                                    />
-                                    <div className="sound-manager-editor-actions">
-                                      <button
-                                        className="btn tertiary"
-                                        onClick={() => {
-                                          setEditingSoundManager(null);
-                                          setSoundManagerValue('');
-                                        }}
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        className="btn primary"
-                                        onClick={() => handleSaveSoundManager(group.primaryGig.gigId, gig.venueId)}
-                                      >
-                                        Save
-                                      </button>
-                                    </div>
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      className="btn primary"
+                                      onClick={() => handleSaveSoundManager(group.primaryGig.gigId, gig.venueId)}
+                                    >
+                                      Save
+                                    </button>
                                   </div>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </td>
                           )}
-                          <td className="centre gigs-private-apps-cell" onClick={(e) => e.stopPropagation()}>
+                          <td className="centre gigs-private-apps-cell invite-only-cell" onClick={(e) => e.stopPropagation()}>
                                 <div className="gigs-toggle-container">
                                     <label className="gigs-toggle-switch">
                                         <input
@@ -1310,7 +1300,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           {isMdUp && (
                             <td className='centre notes-cell' onClick={(e) => e.stopPropagation()}>
                             <div 
-                              className="notes-container"
+                              className="notes-box"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const rect = e.currentTarget.getBoundingClientRect();
@@ -1319,75 +1309,65 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                 setNotesValue(gig.notes || '');
                               }}
                             >
-                              <div className="notes-content">
-                                <span className="notes-text" style={{ fontSize: '0.9rem' }}>
-                                  {gig.notes || ''}
-                                </span>
-                                <button
-                                  className="btn icon notes-edit-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                              <span className="notes-text">
+                                {gig.notes || ''}
+                              </span>
+                            </div>
+                            {editingNotes === group.primaryGig.gigId && (
+                              <div
+                                data-notes-editor
+                                className="notes-editor"
+                                style={{
+                                  top: `${notesPosition.top}px`,
+                                  left: `${notesPosition.left}px`,
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <h4>Notes</h4>
+                                <textarea
+                                  className="notes-textarea"
+                                  value={notesValue}
+                                  onChange={(e) => setNotesValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleSaveNotes(group.primaryGig.gigId, gig.venueId);
+                                    }
+                                    if (e.key === 'Escape') {
+                                      setEditingNotes(null);
+                                      setNotesValue('');
+                                    }
                                   }}
-                                >
-                                  <EditIcon />
-                                </button>
-                              </div>
-                              {editingNotes === group.primaryGig.gigId && (
-                                <div
-                                  data-notes-editor
-                                  className="notes-editor"
-                                  style={{
-                                    top: `${notesPosition.top}px`,
-                                    left: `${notesPosition.left}px`,
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <h4>Notes</h4>
-                                  <textarea
-                                    className="notes-textarea"
-                                    value={notesValue}
-                                    onChange={(e) => setNotesValue(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
+                                  onBlur={(e) => {
+                                    // Delay to allow Save button click to register
+                                    setTimeout(() => {
+                                      if (editingNotes === group.primaryGig.gigId) {
                                         handleSaveNotes(group.primaryGig.gigId, gig.venueId);
                                       }
-                                      if (e.key === 'Escape') {
-                                        setEditingNotes(null);
-                                        setNotesValue('');
-                                      }
+                                    }, 200);
+                                  }}
+                                  autoFocus
+                                />
+                                <div className="notes-editor-actions">
+                                  <button
+                                    className="btn tertiary"
+                                    onClick={() => {
+                                      setEditingNotes(null);
+                                      setNotesValue('');
                                     }}
-                                    onBlur={(e) => {
-                                      // Delay to allow Save button click to register
-                                      setTimeout(() => {
-                                        if (editingNotes === group.primaryGig.gigId) {
-                                          handleSaveNotes(group.primaryGig.gigId, gig.venueId);
-                                        }
-                                      }, 200);
-                                    }}
-                                    autoFocus
-                                  />
-                                  <div className="notes-editor-actions">
-                                    <button
-                                      className="btn tertiary"
-                                      onClick={() => {
-                                        setEditingNotes(null);
-                                        setNotesValue('');
-                                      }}
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      className="btn primary"
-                                      onClick={() => handleSaveNotes(group.primaryGig.gigId, gig.venueId)}
-                                    >
-                                      Save
-                                    </button>
-                                  </div>
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    className="btn primary"
+                                    onClick={() => handleSaveNotes(group.primaryGig.gigId, gig.venueId)}
+                                  >
+                                    Save
+                                  </button>
                                 </div>
-                              )}
-                            </div>
-                            </td>
+                              </div>
+                            )}
+                          </td>
                           )}
                           <td className="options-cell" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

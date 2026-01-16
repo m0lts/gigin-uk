@@ -1,6 +1,7 @@
 // Dependencies
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { auth } from '@lib/firebase';
 // Components
 import { SeeIcon, ErrorIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
@@ -13,7 +14,7 @@ import { Link } from 'react-router-dom';
 
 
 
-export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, continueWithGoogle, noProfileModal, setNoProfileModal, user }) => {
+export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, continueWithGoogle, noProfileModal, setNoProfileModal, user, justLoggedInRef }) => {
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -23,19 +24,22 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   // Handle redirect after successful login based on user profile type
   useEffect(() => {
     if (justLoggedIn && user && !loading) {
-      // Wait a bit for user data to fully load
+      // Close modal immediately if email is verified
+      const u = auth.currentUser;
+      if (u && u.emailVerified) {
+        setAuthModal(false);
+      }
+      
+      // Wait a bit for user data to fully load before redirecting
       const timer = setTimeout(() => {
         if (user.artistProfiles && user.artistProfiles.length > 0) {
-          setAuthModal(false);
-          navigate('/dashboard');
+          navigate('/artist-profile');
           setJustLoggedIn(false);
         } else if (user.venueProfiles && user.venueProfiles.length > 0) {
-          setAuthModal(false);
-          navigate('/venues/dashboard');
+          navigate('/venues/dashboard/gigs');
           setJustLoggedIn(false);
         } else {
           // User logged in but no profiles - stay on landing page
-          setAuthModal(false);
           setJustLoggedIn(false);
         }
       }, 500); // Small delay to ensure user data is loaded
@@ -87,6 +91,10 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
       }
       // Set flag to trigger redirect check in useEffect
       setJustLoggedIn(true);
+      // Mark that we just logged in to prevent App.jsx from reopening modal
+      if (justLoggedInRef) {
+        justLoggedInRef.current = true;
+      }
       // Don't close modal yet - let useEffect handle redirect and close
     } catch (err) {
       switch (err.error.code) {
@@ -142,6 +150,10 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                       navigate('/artist-profile');
                     } else {
                       setJustLoggedIn(true);
+                      // Mark that we just logged in to prevent App.jsx from reopening modal
+                      if (justLoggedInRef) {
+                        justLoggedInRef.current = true;
+                      }
                       // Redirect will be handled by useEffect
                     }
                   } catch (err) {

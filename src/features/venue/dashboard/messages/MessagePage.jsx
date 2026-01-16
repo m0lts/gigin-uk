@@ -215,9 +215,6 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
         }
       };
 
-    const handleShowArchived = () => {
-        setShowArchived(prev => !prev);
-      };
 
     return (
         <>
@@ -232,7 +229,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                         <>
                             <div className='column conversations'>
                                 <div className='filters'>
-                                    <select
+                                    {/* <select
                                         className="venue-filter"
                                         value={selectedVenueId}
                                         onChange={(e) => setSelectedVenueId(e.target.value)}
@@ -241,10 +238,21 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                         {venueProfiles.map(venue => (
                                             <option key={venue.id} value={venue.id}>{venue.name}</option>
                                         ))}
-                                    </select>
-                                    <button className="btn tertiary" onClick={handleShowArchived}>
-                                        {showArchived ? 'Inbox' : 'Archived'}
-                                    </button>
+                                    </select> */}
+                                    <div className="status-buttons">
+                                        <button 
+                                            className={`btn ${!showArchived ? 'active' : ''}`} 
+                                            onClick={() => setShowArchived(false)}
+                                        >
+                                            Inbox
+                                        </button>
+                                        <button 
+                                            className={`btn ${showArchived ? 'active' : ''}`} 
+                                            onClick={() => setShowArchived(true)}
+                                        >
+                                            Archived
+                                        </button>
+                                    </div>
                                 </div>
                                 <ul className='conversations-list'>
                                 {conversationsToDisplay.length > 0 ? (
@@ -402,9 +410,20 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                                             <option key={venue.id} value={venue.id}>{venue.name}</option>
                                         ))}
                                     </select>
-                                    <button className="btn tertiary" onClick={handleShowArchived}>
-                                        {showArchived ? 'Inbox' : 'Archived'}
-                                    </button>
+                                    <div className="status-buttons">
+                                        <button 
+                                            className={`btn ${!showArchived ? 'active' : ''}`} 
+                                            onClick={() => setShowArchived(false)}
+                                        >
+                                            Inbox
+                                        </button>
+                                        <button 
+                                            className={`btn ${showArchived ? 'active' : ''}`} 
+                                            onClick={() => setShowArchived(true)}
+                                        >
+                                            Archived
+                                        </button>
+                                    </div>
                                 </div>
                                 <ul className='conversations-list'>
                                 {conversationsToDisplay.length > 0 ? (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon, FilmIcon, PlayIcon, YoutubeIcon, TechRiderIcon, AddMember, MoreInformationIcon, TickIcon, PlusIconSolid, CloseIcon, VocalsIcon, DrumsIcon, KeysIcon, BassIcon, SaxIcon, TrumpetIcon, TromboneIcon, PlaybackIcon } from "../../../shared/ui/extras/Icons";
+import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon, FilmIcon, PlayIcon, YoutubeIcon, TechRiderIcon, AddMember, MoreInformationIcon, TickIcon, PlusIconSolid, CloseIcon, VocalsIcon, DrumsIcon, KeysIcon, BassIcon, SaxIcon, TrumpetIcon, TromboneIcon, PlaybackIcon, MusicianIconSolid } from "../../../shared/ui/extras/Icons";
 import { LoadingSpinner } from "../../../shared/ui/loading/Loading";
 import { updateArtistProfileDocument, getArtistProfileMembers } from "@services/client-side/artists";
 import { toast } from 'sonner';
@@ -1511,7 +1511,7 @@ function TracksStep({
           Upload tracks that best represent your live sound.
         </p>
         <button type="button" className="creation-hero-upload track" onClick={onPrimaryUploadClick}>
-          <VinylIcon />
+          <MusicianIconSolid />
           <span>Upload Track</span>
         </button>
         <div className="link-entries-container">
@@ -1626,7 +1626,7 @@ function TracksStep({
         className="add-track-button"
         onClick={onPrimaryUploadClick}
       >
-        <VinylIcon /> Add Another Track
+        <MusicianIconSolid /> Add Another Track
       </button>
       <div className="link-entries-container">
         <div className="link-entry-container spotify">

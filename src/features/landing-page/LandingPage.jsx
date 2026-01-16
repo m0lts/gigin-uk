@@ -13,7 +13,7 @@ import { Footer } from '../shared/components/Footer';
 export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, setInitialEmail }) => {
     const navigate = useNavigate();
     const { isXlUp } = useBreakpoint();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [heroEmail, setHeroEmail] = useState('');
     const [activeEpkFeature, setActiveEpkFeature] = useState('profile'); // Default to profile
     const [isImageTransitioning, setIsImageTransitioning] = useState(false);
@@ -75,8 +75,38 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
         if (!user) {
             setAuthType('login');
             setAuthModal(true);
+        } else {
+            // If user is logged in, redirect based on profile
+            if (hasArtistProfile) {
+                navigate('/artist-profile');
+            } else if (hasVenueProfile) {
+                navigate('/venues/dashboard/gigs');
+            }
         }
     };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    // Check if user is logged in but has no profiles
+    const hasNoProfiles = user && 
+        (!user.venueProfiles || user.venueProfiles.length === 0) && 
+        (!user.artistProfiles || user.artistProfiles.length === 0);
+    
+    const hasArtistProfile = user && user.artistProfiles && user.artistProfiles.length > 0;
+    const hasVenueProfile = user && user.venueProfiles && user.venueProfiles.length > 0;
+
+    // Auto-redirect if user has venue profile
+    useEffect(() => {
+        if (hasVenueProfile) {
+            navigate('/venues');
+        }
+    }, [hasVenueProfile, navigate]);
 
 
     const handleStartNow = () => {
@@ -112,18 +142,34 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                         </button>
                     </div>
                     <div className="navbar-right">
-                        <button className="btn tertiary" onClick={() => navigate('/venues')}>
-                            I'm a Venue
-                        </button>
-                        <button className="btn artist-profile" onClick={handleCreateArtistProfile}>
-                            Create Artist Profile
-                        </button>
-                        <h6 className="or-separator">
-                            OR
-                        </h6>
-                        <button className="btn secondary" onClick={handleLogin}>
-                            Log In
-                        </button>
+                        {!hasArtistProfile && (
+                            <button className="btn tertiary" onClick={() => navigate('/venues')}>
+                                I'm a Venue
+                            </button>
+                        )}
+                        {hasArtistProfile ? (
+                            <button className="btn artist-profile" onClick={() => navigate('/artist-profile')}>
+                                My Artist Profile
+                            </button>
+                        ) : (
+                            <button className="btn artist-profile" onClick={handleCreateArtistProfile}>
+                                Create Artist Profile
+                            </button>
+                        )}
+                        {user && (
+                            <h6 className="or-separator">
+                                OR
+                            </h6>
+                        )}
+                        {user ? (
+                            <button className="btn secondary" onClick={handleLogout}>
+                                Log Out
+                            </button>
+                        ) : (
+                            <button className="btn secondary" onClick={handleLogin}>
+                                Log In
+                            </button>
+                        )}
                     </div>
                 </div>
             </nav>
@@ -131,7 +177,7 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                 <section className="hero-section">
                     <div className="hero-left">
                         <h1>The heartbeat of grassroots live music.</h1>
-                        <h4>Venues and artists use Gigin for gig organisation and booking to start or power their music career progression, creating a more structured grassroots live music scene.</h4>
+                        <h4>Find venues and gig opportunities, and build a re-usable professional EPK in minutes, to accelerate your music career.</h4>
                         <div className="hero-cta">
                             <input
                                 type="email"
@@ -266,97 +312,3 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
     )
 }
 
-// export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
-
-//     const navigate = useNavigate();
-//     const { isMdUp } = useBreakpoint();
-
-//     const { login, signup, resetPassword, checkUser, continueWithGoogle, user } = useAuth();
-//     const [credentials, setCredentials] = useState({ name: '', phoneNumber: '', email: '', password: '' });
-//     const [error, setError] = useState({ status: false, input: '', message: '' });
-//     const [loading, setLoading] = useState(false);
-  
-//     const clearCredentials = () => {
-//       setCredentials({ name: '', phoneNumber: '', email: '', password: '' });
-//     };
-  
-//     const clearError = () => {
-//       setError({ status: false, input: '', message: '' });
-//     };
-
-//     return (
-//         <div className={`landing-page ${user ? 'user' : ''}`}>
-//             <div className={`heading`}>
-//                 <div className='welcome-hero'>
-//                     <h1>Welcome {user && 'back'} to</h1>
-//                     <TextLogoXL />
-//                 </div>
-//                 {isMdUp ? (
-//                     !user ? (
-//                         <div className="two-buttons">
-//                             <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-//                             <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}><VenueIconSolid />Create a Venue Profile</button>
-//                         </div>
-//                     ) : (
-//                         <div className="two-buttons">
-//                             {user?.musicianProfile ? (
-//                                 <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-//                             ) : user?.venueProfiles ? (
-//                                 <button className="btn tertiary" onClick={() => navigate('/venues/dashboard/gigs')}><VenueIconSolid />Go To Dashboard</button>
-//                             ) : (
-//                                 <>
-//                                     <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-//                                     {isMdUp && (
-//                                         <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}><VenueIconSolid />Create a Venue Profile</button>
-//                                     )}
-//                                 </>
-//                             )}
-//                         </div>
-//                     )
-//                 ) : (
-//                     !user ? (
-//                         <div className="two-buttons">
-//                             <button className="btn secondary" onClick={() => {setAuthModal(true); setAuthType('login')}}>Log In</button>
-//                             <button className="btn primary" onClick={() => {setAuthModal(true); setAuthType('signup')}}>Sign Up</button>
-//                         </div>
-//                     ) : (
-//                         <div className="two-buttons">
-//                             {user?.musicianProfile ? (
-//                                 <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-//                             ) : user?.venueProfiles ? (
-//                                 <button className="btn tertiary" onClick={() => navigate('/venues/dashboard/gigs')}><VenueIconSolid />Go To Dashboard</button>
-//                             ) : (
-//                                 <>
-//                                     <button className="btn tertiary" onClick={() => navigate('/find-a-gig')}><MusicianIconSolid />Find a Gig To Play</button>
-//                                     <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}><VenueIconSolid />Create a Venue Profile</button>
-//                                 </>
-//                             )}
-//                         </div>
-//                     )
-//                 )}
-//             </div>
-//             {!user && isMdUp && (
-//                 <div className='sign-up-form'>
-//                     <SignupForm
-//                         authClosable={authClosable}
-//                         setAuthClosable={setAuthClosable}
-//                         credentials={credentials}
-//                         setCredentials={setCredentials}
-//                         error={error}
-//                         setError={setError}
-//                         clearCredentials={clearCredentials}
-//                         clearError={clearError}
-//                         setAuthType={setAuthType}
-//                         signup={signup}
-//                         setAuthModal={setAuthModal}
-//                         loading={loading}
-//                         setLoading={setLoading}
-//                         checkUser={checkUser}
-//                         noProfileModal={noProfileModal}
-//                         setNoProfileModal={setNoProfileModal}
-//                     />
-//                 </div>
-//             )}
-//         </div>
-//     )
-// }

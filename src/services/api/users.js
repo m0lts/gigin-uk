@@ -39,4 +39,10 @@ export function updateStripeConnectId({ stripeConnectId, enablePayouts = true })
   return post('/users/updateStripeConnectId', { body: { stripeConnectId, enablePayouts } });
 }
 
+export function updateCRMEntryWithArtistId({ venueUserId, crmEntryId, artistId, inviteId }) {
+  return post('/users/updateCRMEntryWithArtistId', { 
+    body: { venueUserId, crmEntryId, artistId, inviteId } 
+  });
+}
+
 

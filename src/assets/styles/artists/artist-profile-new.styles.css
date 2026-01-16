@@ -5198,6 +5198,28 @@
   gap: 0.75rem;
 }
 
+.tech-rider-viewer-performers-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 400px; /* Same as stage max-width */
+}
+
+.tech-rider-viewer-performer-box {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--gn-grey-200);
+  border-radius: 6px;
+  background: var(--gn-white);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.tech-rider-viewer-performer-box:hover {
+  background: var(--gn-grey-50);
+  border-color: var(--gn-grey-300);
+}
+
 .tech-rider-viewer-performer-card {
   flex: 1 1 300px;
   min-width: 250px;

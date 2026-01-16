@@ -23,7 +23,7 @@ import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMusicianProfilesByIds, getArtistProfileMembers } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
-import { AmpIcon, BassIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon, TechRiderIcon, SaveIcon, SavedIcon, ShareIcon, EditIcon, MoreInformationIcon, InvoiceIcon } from '../../shared/ui/extras/Icons';
+import { AmpIcon, BassIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon, TechRiderIcon, SaveIcon, SavedIcon, ShareIcon, EditIcon, MoreInformationIcon, InvoiceIcon, PlayIcon, FilmIcon, CloseIcon } from '../../shared/ui/extras/Icons';
 import { TechRiderEquipmentCard } from '../../shared/ui/tech-rider/TechRiderEquipmentCard';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
@@ -61,7 +61,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [canRequestGigForSelectedProfile, setCanRequestGigForSelectedProfile] = useState(true);
     const [checkingRequestPerms, setCheckingRequestPerms] = useState(false);
     const [selectedAdditionalInfo, setSelectedAdditionalInfo] = useState(null); // 'location', 'equipment', 'website-socials'
-    const [activeContentTab, setActiveContentTab] = useState(null); // 'tech-rider', 'venue-info', null (for gigs)
+    const [activeContentTab, setActiveContentTab] = useState(null); // 'tech-rider', 'venue-info', 'venue-media', null (for gigs)
+    const [activeVideoId, setActiveVideoId] = useState(null); // Track which video is playing
     const [venueReviews, setVenueReviews] = useState([]);
     const [loadingReviews, setLoadingReviews] = useState(false);
     const [venueSaved, setVenueSaved] = useState(false);
@@ -926,11 +927,27 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         )}
                                         <button 
                                             className={`btn secondary venue-action-btn ${activeContentTab === 'venue-info' ? 'active' : ''}`}
-                                            onClick={() => setActiveContentTab(activeContentTab === 'venue-info' ? null : 'venue-info')}
+                                            onClick={() => {
+                                                setActiveContentTab(activeContentTab === 'venue-info' ? null : 'venue-info');
+                                                setActiveVideoId(null); // Close video when switching tabs
+                                            }}
                                         >
                                             <MoreInformationIcon />
                                             Venue Info
                                         </button>
+                                        {venueData?.videos && venueData.videos.length > 0 && (
+                                            <button 
+                                                className={`btn secondary venue-action-btn ${activeContentTab === 'venue-media' ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    setActiveContentTab(activeContentTab === 'venue-media' ? null : 'venue-media');
+                                                    setActiveVideoId(null); // Reset video when opening/closing tab
+                                                }}
+                                                style={{ gridColumn: 'span 2' }}
+                                            >
+                                                <FilmIcon />
+                                                Venue Media
+                                            </button>
+                                        )}
                                     </div>
 
                                     {/* Content Box - Changes based on active tab */}
@@ -1120,6 +1137,119 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                                             <InvoiceIcon />
                                                             <span>View Document</span>
                                                         </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {activeContentTab === 'venue-media' && venueData?.videos && venueData.videos.length > 0 && (
+                                        <div className="venue-content-section">
+                                            <div className="venue-media-content">
+                                                {activeVideoId ? (
+                                                    // Expanded video player
+                                                    <div className="venue-video-expanded" style={{
+                                                        position: 'relative',
+                                                        width: '100%',
+                                                        aspectRatio: '16/9',
+                                                        backgroundColor: '#000',
+                                                        borderRadius: '0.5rem',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        <button
+                                                            className="btn icon close-video"
+                                                            onClick={() => setActiveVideoId(null)}
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: '1rem',
+                                                                right: '1rem',
+                                                                zIndex: 10,
+                                                                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                                                                border: 'none',
+                                                                borderRadius: '50%',
+                                                                width: '2.5rem',
+                                                                height: '2.5rem',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                cursor: 'pointer',
+                                                                color: 'white'
+                                                            }}
+                                                        >
+                                                            <CloseIcon />
+                                                        </button>
+                                                        {(() => {
+                                                            const activeVideo = venueData.videos.find(v => v.id === activeVideoId);
+                                                            return activeVideo ? (
+                                                                <video
+                                                                    controls
+                                                                    autoPlay
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        height: '100%',
+                                                                        objectFit: 'contain',
+                                                                        backgroundColor: '#000'
+                                                                    }}
+                                                                    src={activeVideo.videoUrl}
+                                                                />
+                                                            ) : null;
+                                                        })()}
+                                                    </div>
+                                                ) : (
+                                                    // Video grid (2x2)
+                                                    <div className="venue-videos-grid" style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: 'repeat(2, 1fr)',
+                                                        gap: '1rem',
+                                                        width: '100%'
+                                                    }}>
+                                                        {venueData.videos.map((video) => (
+                                                            <div
+                                                                key={video.id}
+                                                                className="venue-video-thumbnail"
+                                                                onClick={() => setActiveVideoId(video.id)}
+                                                                style={{
+                                                                    position: 'relative',
+                                                                    aspectRatio: '16/9',
+                                                                    borderRadius: '0.5rem',
+                                                                    overflow: 'hidden',
+                                                                    cursor: 'pointer',
+                                                                    backgroundColor: 'var(--gn-grey-200)'
+                                                                }}
+                                                            >
+                                                                {video.thumbnailUrl ? (
+                                                                    <img
+                                                                        src={video.thumbnailUrl}
+                                                                        alt={video.title || 'Venue video'}
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            height: '100%',
+                                                                            objectFit: 'cover'
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <div style={{
+                                                                        width: '100%',
+                                                                        height: '100%',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        backgroundColor: 'var(--gn-grey-200)'
+                                                                    }}>
+                                                                        <FilmIcon style={{ fontSize: '3rem', color: 'var(--gn-grey-400)' }} />
+                                                                    </div>
+                                                                )}
+                                                                <div style={{
+                                                                    position: 'absolute',
+                                                                    top: '50%',
+                                                                    left: '50%',
+                                                                    transform: 'translate(-50%, -50%)',
+                                                                    pointerEvents: 'none'
+                                                                }}
+                                                                className="play-icon">
+                                                                    <PlayIcon />
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>

@@ -421,6 +421,40 @@
     width: 12%;
 }
 
+/* Column width adjustments */
+.window.venues .body.gigs table th.sound-manager-column {
+    width: 12.6%; /* Increased by 5% from 12% */
+}
+
+.window.venues .body.gigs table th.invite-only-column {
+    width: 10.8%; /* Reduced by 10% from 12% */
+}
+
+.window.venues .body.gigs table th.invite-artists-column {
+    width: 10.8%; /* Reduced by 10% from 12% */
+}
+
+.window.venues .body.gigs table th.notes-column {
+    width: 12.6%; /* Increased by 5% from 12% */
+}
+
+/* Apply same widths to corresponding td elements */
+.window.venues .body.gigs table td.sound-manager-cell {
+    width: 12.6%;
+}
+
+.window.venues .body.gigs table td.invite-only-cell {
+    width: 10.8%;
+}
+
+.window.venues .body.gigs table td.invite-artist-cell {
+    width: 10.8%;
+}
+
+.window.venues .body.gigs table td.notes-cell {
+    width: 12.6%;
+}
+
 .window.venues .body.gigs table th.centre:nth-last-child(2) {
     width: 15%;
 }
@@ -476,40 +510,31 @@
     position: relative;
 }
 
-.window.venues .body.gigs table .sound-manager-container {
-    cursor: pointer;
-}
-
-.window.venues .body.gigs table .sound-manager-container {
+.window.venues .body.gigs table .sound-manager-box {
     position: relative;
     width: 100%;
     min-height: 2rem;
-}
-
-.window.venues .body.gigs table .sound-manager-content {
+    padding: 0.5rem;
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-350);
+    border-radius: 0.25rem;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
+    transition: border-color 0.2s;
+}
+
+.window.venues .body.gigs table .sound-manager-box:hover {
+    border-color: var(--gn-grey-500);
 }
 
 .window.venues .body.gigs table .sound-manager-text {
-    flex: 1;
+    font-size: 0.9rem;
+    color: var(--gn-off-black);
     text-align: left;
-}
-
-.window.venues .sound-manager-edit-btn {
-    flex-shrink: 0;
-}
-
-.window.venues .sound-manager-edit-btn .icon {
-    flex-shrink: 0;
-    font-size: 0.8rem;
-    color: var(--gn-grey-700);
-}
-
-.window.venues .sound-manager-edit-btn:hover {
-    background-color: transparent !important;
+    width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .window.venues .body.gigs table .sound-manager-editor {
@@ -555,33 +580,31 @@
     position: relative;
 }
 
-.window.venues .body.gigs table .notes-container {
+.window.venues .body.gigs table .notes-box {
     position: relative;
     width: 100%;
     min-height: 2rem;
+    padding: 0.5rem;
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-350);
+    border-radius: 0.25rem;
     cursor: pointer;
-}
-
-.window.venues .body.gigs table .notes-content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
+    transition: border-color 0.2s;
+}
+
+.window.venues .body.gigs table .notes-box:hover {
+    border-color: var(--gn-grey-500);
 }
 
 .window.venues .body.gigs table .notes-text {
-    flex: 1;
+    font-size: 0.9rem;
+    color: var(--gn-off-black);
     text-align: left;
-}
-
-.window.venues .body.gigs table .notes-edit-btn {
-    flex-shrink: 0;
-}
-
-.window.venues .body.gigs table .notes-edit-btn .icon {
-    flex-shrink: 0;
-    font-size: 0.8rem;
-    color: var(--gn-grey-700);
+    width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .window.venues .body.gigs table .notes-editor {
@@ -979,6 +1002,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding-bottom: 1rem; /* Add padding below fixed heading for scroll spacing */
 }
 
 .window.venues .head.gig-applications h1 {
@@ -1000,6 +1024,69 @@
     min-width: 75px;
 }
 
+/* Options menu styling for gig-applications */
+.window.venues .head.gig-applications .options-cell {
+    position: relative;
+}
+
+.window.venues .head.gig-applications .options-cell .btn.icon {
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-350);
+    box-shadow: 0 0 4px var(--gn-shadow);
+    border-radius: 0.5rem;
+    flex: 0;
+    min-width: 10px;
+    transition: all 200ms linear;
+}
+
+.window.venues .head.gig-applications .options-cell .btn.icon .icon {
+    font-size: 1rem;
+}
+
+.window.venues .head.gig-applications .options-cell .btn.icon:focus {
+    outline-color: var(--gn-off-black);
+}
+
+.window.venues .head.gig-applications .options-cell .btn.icon.active,
+.window.venues .head.gig-applications .options-cell .btn.icon:hover {
+    background-color: var(--gn-grey-350);
+}
+
+.window.venues .head.gig-applications .options-cell .options-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    padding: 0.5rem 0.4rem;
+    min-width: 200px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.window.venues .head.gig-applications .options-cell .options-dropdown button {
+    background: transparent;
+    border: none;
+    text-align: left;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    font-weight: 400;
+    color: var(--gn-off-black);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.15s ease;
+}
+
+.window.venues .head.gig-applications .options-cell .options-dropdown button:hover {
+    background-color: var(--gn-grey-300);
+}
+
 .window.venues .body.gigs .no-applications {
     display: flex;
     flex-direction: column;
@@ -1016,12 +1103,17 @@
 .window.venues .body.gigs .applications-table th:nth-child(1),
 .window.venues .body.gigs .applications-table td:nth-child(1) {
     width: 20%;
+
 }
 
 .window.venues .body.gigs .applications-table th:nth-child(2),
 .window.venues .body.gigs .applications-table td:nth-child(2) {
     width: 10%;
     text-align: center;
+}
+
+.window.venues .body.gigs .applications-table td:nth-child(2) .btn .icon {
+    margin-right: 0.5rem;
 }
 
 .window.venues .body.gigs .applications-table th:nth-child(3),
@@ -1064,13 +1156,6 @@
     gap:5px;
 }
 
-.window.venues .body.gigs .applications-table .btn.small {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap:5px;
-}
-
 .window.venues .body.gigs .applications-table .musician-name .icon {
     margin-right: 5px
 }
@@ -1100,8 +1185,8 @@
 .gigs-toggle-switch {
     position: relative;
     display: inline-block;
-    width: 28px;
-    height: 16px;
+    width: 30px; /* Increased by 2px from 28px */
+    height: 18px; /* Increased by 2px from 16px */
     cursor: pointer;
 }
 
@@ -1126,8 +1211,8 @@
 .gigs-toggle-slider:before {
     position: absolute;
     content: '';
-    height: 12px;
-    width: 12px;
+    height: 14px; /* Increased by 2px from 12px */
+    width: 14px; /* Increased by 2px from 12px */
     left: 2px;
     bottom: 2px;
     background-color: var(--gn-white);
@@ -1140,7 +1225,7 @@
 }
 
 .gigs-toggle-switch input:checked + .gigs-toggle-slider:before {
-    transform: translateX(12px);
+    transform: translateX(12px); /* Maintains 2px spacing on right (toggle: 30px, slider: 14px) */
 }
 
 /* VENUES */
@@ -2049,4 +2134,3 @@
     }
     
 }
-

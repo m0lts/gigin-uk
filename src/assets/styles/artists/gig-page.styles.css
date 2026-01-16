@@ -451,6 +451,32 @@
     font-size: 1.1rem;
 }
 
+@media (--bp-lg-up) {
+    .gig-page-body .details {
+        flex-direction: row;
+        gap: 2rem;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .gig-page-body .details .detail .icon {
+        margin: 0;
+        margin-right: 0.5rem;
+    }
+
+    .gig-page-body .details .detail {
+        gap: 0;
+        margin: 0;
+    }
+
+    .gig-page-body .details .detail-title {
+        text-wrap: nowrap;
+        margin: 0;
+        padding: 0;
+    }
+
+}
+
 
 /* TIMELINE */
 

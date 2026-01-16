@@ -45,6 +45,9 @@ export const getBreadcrumbs = (
       case 'find':
         label = 'Find Artists';
         break;
+      case 'artists':
+        label = 'My Artists';
+        break;
       case 'finances':
         label = 'Finances';
         break;

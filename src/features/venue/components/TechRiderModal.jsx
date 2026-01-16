@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { 
   TechRiderIcon,
   VocalsIcon,
@@ -9,7 +10,8 @@ import {
   TromboneIcon,
   PlaybackIcon,
   GuitarsIcon,
-  WarningIcon
+  WarningIcon,
+  CloseIcon
 } from '@features/shared/ui/extras/Icons';
 import '@styles/artists/gig-page.styles.css';
 
@@ -143,9 +145,142 @@ const getInstrumentIcon = (instrument) => {
 };
 
 export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose }) => {
+  const [selectedPerformerIndex, setSelectedPerformerIndex] = useState(null);
+  const [performerPopupPosition, setPerformerPopupPosition] = useState({ top: 0, left: 0 });
+  const stageAreaRef = useRef(null);
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (selectedPerformerIndex !== null) {
+        // Only close if clicking outside the popup and not on a stage performer
+        const popup = document.querySelector('.tech-rider-performer-popup');
+        const stagePerformer = e.target.closest('.tech-rider-stage-performer-content');
+        
+        if (popup && !popup.contains(e.target) && !stagePerformer) {
+          setSelectedPerformerIndex(null);
+        }
+      }
+    };
+    if (selectedPerformerIndex !== null) {
+      // Use mousedown to catch clicks before they propagate
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [selectedPerformerIndex]);
+
   if (!techRider || !techRider.isComplete || !techRider.lineup || techRider.lineup.length === 0) {
     return null;
   }
+
+  // Helper function to get performer details for popup
+  const getPerformerDetails = (performerIndex) => {
+    const performer = techRider.lineup[performerIndex];
+    const details = techRider.performerDetails?.[performerIndex] || {};
+    const instruments = performer.instruments || [];
+    
+    const questionMap = new Map();
+    const allQuestions = [];
+    instruments.forEach((instrument) => {
+      const questions = INSTRUMENT_QUESTIONS[instrument] || [];
+      allQuestions.push(...questions.map(q => ({ ...q, instrument })));
+    });
+    
+    const dependencyOnlyKeys = new Set();
+    allQuestions.forEach(question => {
+      if (!question.notes && question.type === 'yesno' && question.key !== 'extraNotes') {
+        const isUsedAsDependency = allQuestions.some(q => q.dependsOn && q.dependsOn.key === question.key);
+        if (isUsedAsDependency) {
+          dependencyOnlyKeys.add(question.key);
+        }
+      }
+    });
+    
+    instruments.forEach((instrument) => {
+      const questions = INSTRUMENT_QUESTIONS[instrument] || [];
+      const instrumentDetails = details[instrument] || {};
+      
+      questions.forEach((question) => {
+        if (dependencyOnlyKeys.has(question.key)) {
+          return;
+        }
+        
+        if (question.dependsOn) {
+          let dependencyMet = false;
+          const dependsValue = instrumentDetails[question.dependsOn.key];
+          if (dependsValue === question.dependsOn.value) {
+            dependencyMet = true;
+          } else {
+            const existing = questionMap.get(question.key);
+            if (existing) {
+              for (const inst of existing.instruments) {
+                const instDetails = details[inst] || {};
+                if (instDetails[question.dependsOn.key] === question.dependsOn.value) {
+                  dependencyMet = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (!dependencyMet) {
+            return;
+          }
+        }
+        
+        if (!questionMap.has(question.key)) {
+          questionMap.set(question.key, {
+            ...question,
+            instruments: [instrument],
+            currentValue: instrumentDetails[question.key],
+            instrumentDetails: instrumentDetails,
+            sourceInstrument: instrument
+          });
+        } else {
+          const existing = questionMap.get(question.key);
+          existing.instruments.push(instrument);
+          if (existing.currentValue === undefined || existing.currentValue === null || existing.currentValue === '') {
+            const thisValue = instrumentDetails[question.key];
+            if (thisValue !== undefined && thisValue !== null && thisValue !== '') {
+              existing.currentValue = thisValue;
+              existing.instrumentDetails = instrumentDetails;
+              existing.sourceInstrument = instrument;
+            }
+          }
+        }
+      });
+    });
+
+    const questions = Array.from(questionMap.values()).filter(q => {
+      if (q.type === 'yesno') return q.currentValue !== undefined && q.currentValue !== null;
+      if (q.type === 'number') return q.currentValue !== undefined && q.currentValue !== null && q.currentValue !== 0;
+      if (q.type === 'text') return q.currentValue && q.currentValue.trim() !== '';
+      return false;
+    });
+
+    // Separate into needs (red) and doesn't need (grey)
+    const needsQuestions = [];
+    const doesntNeedQuestions = [];
+    
+    questions.forEach((questionData) => {
+      const question = questionData;
+      const currentValue = questionData.currentValue;
+      const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
+      
+      if (question.type === 'yesno') {
+        if (currentValue && !isBringingInstrument) {
+          needsQuestions.push(questionData);
+        } else if (!currentValue || isBringingInstrument) {
+          doesntNeedQuestions.push(questionData);
+        }
+      } else if (question.type === 'number' || question.type === 'text') {
+        needsQuestions.push(questionData);
+      }
+    });
+
+    return { needsQuestions, doesntNeedQuestions, performer, instruments };
+  };
 
   const checkTechRiderMismatches = () => {
     if (!techRider || !venueTechRider) {
@@ -328,8 +463,8 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
         <div className="additional-info-section" style={{ border: 'none', padding: 0 }}>
           <div className="section-content" style={{ padding: 0 }}>
             {/* Stage Map - View Only */}
-            <div className="tech-rider-stage-map-container view-mode">
-              <div className="tech-rider-stage-area view-mode">
+            <div className="tech-rider-stage-map-container view-mode" style={{ position: 'relative' }}>
+              <div className="tech-rider-stage-area view-mode" ref={stageAreaRef} style={{ position: 'relative' }}>
                 <h6 className="tech-rider-stage-front">Front of Stage</h6>
                 {techRider.stageArrangement?.performers?.map((performer) => {
                   const performerData = techRider.lineup[performer.lineupIndex];
@@ -345,7 +480,25 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                         transform: 'translate(-50%, -50%)'
                       }}
                     >
-                      <div className="tech-rider-stage-performer-content">
+                      <div 
+                        className="tech-rider-stage-performer-content"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (stageAreaRef.current) {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const modalContent = e.currentTarget.closest('.modal-content');
+                            const modalRect = modalContent?.getBoundingClientRect();
+                            if (modalRect) {
+                              setPerformerPopupPosition({
+                                top: rect.top,
+                                left: rect.left
+                              });
+                              setSelectedPerformerIndex(performer.lineupIndex);
+                            }
+                          }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
                         {getInstrumentIcon(primaryInstrument)}
                         <span className="tech-rider-stage-performer-name">
                           {performerData.performerName || `Performer ${performer.lineupIndex + 1}`}
@@ -357,9 +510,9 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
               </div>
             </div>
 
-            {/* Performer Requirements List */}
+            {/* Performer Requirements List - Vertical */}
             <div className="tech-rider-viewer-performers-list">
-              <div className="tech-rider-viewer-performers-grid">
+              <div className="tech-rider-viewer-performers-vertical">
                 {techRider.lineup.map((performer, index) => {
                   const details = techRider.performerDetails?.[index] || {};
                   const instruments = performer.instruments || [];
@@ -449,8 +602,34 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                     return false;
                   });
 
+                  // Separate questions into "needs" (red) and "doesn't need" (grey)
+                  const needsQuestions = [];
+                  const doesntNeedQuestions = [];
+                  
+                  questions.forEach((questionData) => {
+                    const question = questionData;
+                    const currentValue = questionData.currentValue;
+                    const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
+                    
+                    if (question.type === 'yesno') {
+                      if (currentValue && !isBringingInstrument) {
+                        needsQuestions.push(questionData);
+                      } else if (!currentValue || isBringingInstrument) {
+                        doesntNeedQuestions.push(questionData);
+                      }
+                    } else if (question.type === 'number' || question.type === 'text') {
+                      needsQuestions.push(questionData);
+                    }
+                  });
+
                   return (
-                    <div key={index} className="tech-rider-viewer-performer-card">
+                    <div 
+                      key={index} 
+                      className="tech-rider-viewer-performer-box"
+                      style={{ 
+                        position: 'relative'
+                      }}
+                    >
                       <div className="tech-rider-viewer-performer-header">
                         <span className="tech-rider-viewer-performer-name">
                           {performer.performerName || `Performer ${index + 1}`}
@@ -468,56 +647,86 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                       
                       {questions.length > 0 ? (
                         <div className="tech-rider-viewer-performer-requirements">
-                          {questions.map((questionData) => {
-                            const question = questionData;
-                            const currentValue = questionData.currentValue;
-                            const instrumentDetails = questionData.instrumentDetails;
-                            const notesValue = instrumentDetails[`${question.key}_notes`] || '';
+                          {/* Red "needs" items at top */}
+                          {needsQuestions.length > 0 && (
+                            <div style={{ marginBottom: doesntNeedQuestions.length > 0 ? '0.75rem' : '0' }}>
+                              {needsQuestions.map((questionData) => {
+                                const question = questionData;
+                                const currentValue = questionData.currentValue;
+                                const instrumentDetails = questionData.instrumentDetails;
+                                const notesValue = instrumentDetails[`${question.key}_notes`] || '';
+                                const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
 
-                            return (
-                              <div key={question.key} className="tech-rider-viewer-requirement-item">
-                                {question.type === 'yesno' && (
-                                  <span>
-                                    {(() => {
-                                      // Clean up the label - remove question mark
-                                      let label = question.label.replace('?', '').trim();
-                                      
-                                      // Normalize to "Needs" format (only if it starts with "Need " not "Needs ")
-                                      const lowerLabel = label.toLowerCase();
-                                      if (lowerLabel.startsWith('need ') && !lowerLabel.startsWith('needs ')) {
-                                        label = 'Needs ' + label.substring(5);
-                                      }
-                                      
-                                      if (currentValue) {
-                                        return <span style={{ color: 'var(--gn-red)' }}>{label}</span>;
-                                      } else {
-                                        // Convert to negative - remove "Needs " or "Need " prefix
-                                        if (lowerLabel.startsWith('needs ')) {
-                                          return "Doesn't need " + label.substring(6);
-                                        } else if (lowerLabel.startsWith('need ')) {
-                                          return "Doesn't need " + label.substring(5);
-                                        }
-                                        return "Doesn't need " + label.toLowerCase();
-                                      }
-                                    })()}
-                                    {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
-                                  </span>
-                                )}
-                                {question.type === 'number' && (
-                                  <span>
-                                    <span style={{ color: 'var(--gn-red)' }}>Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}</span>
-                                    {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
-                                  </span>
-                                )}
-                                {question.type === 'text' && (
-                                  <span>
-                                    <span style={{ color: 'var(--gn-red)' }}>{currentValue}</span>
-                                    {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
+                                return (
+                                  <div key={question.key} className="tech-rider-viewer-requirement-item">
+                                    {question.type === 'yesno' && (
+                                      <span>
+                                        {(() => {
+                                          let label = question.label.replace('?', '').trim();
+                                          const lowerLabel = label.toLowerCase();
+                                          if (lowerLabel.startsWith('need ') && !lowerLabel.startsWith('needs ')) {
+                                            label = 'Needs ' + label.substring(5);
+                                          }
+                                          if (!isBringingInstrument) {
+                                            return <span style={{ color: 'var(--gn-red)' }}>{label}</span>;
+                                          } else {
+                                            return <span>{label}</span>;
+                                          }
+                                        })()}
+                                        {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
+                                      </span>
+                                    )}
+                                    {question.type === 'number' && (
+                                      <span>
+                                        <span style={{ color: 'var(--gn-red)' }}>Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}</span>
+                                        {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
+                                      </span>
+                                    )}
+                                    {question.type === 'text' && (
+                                      <span>
+                                        <span style={{ color: 'var(--gn-red)' }}>{currentValue}</span>
+                                        {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          
+                          {/* Grey "doesn't need" items at bottom */}
+                          {doesntNeedQuestions.length > 0 && (
+                            <div style={{ paddingTop: needsQuestions.length > 0 ? '0.75rem' : '0', borderTop: needsQuestions.length > 0 ? '1px solid var(--gn-grey-300)' : 'none' }}>
+                              {doesntNeedQuestions.map((questionData) => {
+                                const question = questionData;
+                                const currentValue = questionData.currentValue;
+                                const instrumentDetails = questionData.instrumentDetails;
+                                const notesValue = instrumentDetails[`${question.key}_notes`] || '';
+
+                                return (
+                                  <div key={question.key} className="tech-rider-viewer-requirement-item" style={{ color: 'var(--gn-grey-700)' }}>
+                                    {question.type === 'yesno' && (
+                                      <span>
+                                        {(() => {
+                                          let label = question.label.replace('?', '').trim();
+                                          const lowerLabel = label.toLowerCase();
+                                          if (lowerLabel.startsWith('needs ')) {
+                                            return "Doesn't need " + label.substring(6);
+                                          } else if (lowerLabel.startsWith('need ')) {
+                                            return "Doesn't need " + label.substring(5);
+                                          } else if (lowerLabel.startsWith('bringing')) {
+                                            return label;
+                                          }
+                                          return "Doesn't need " + label.toLowerCase();
+                                        })()}
+                                        {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <p className="tech-rider-viewer-no-requirements">No specific requirements listed.</p>
@@ -539,6 +748,132 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
             </div>
           </div>
         </div>
+
+        {/* Performer Details Popup */}
+        {selectedPerformerIndex !== null && (() => {
+          const { needsQuestions, doesntNeedQuestions, performer, instruments } = getPerformerDetails(selectedPerformerIndex);
+          
+          return (
+            <div 
+              className="tech-rider-performer-popup"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'fixed',
+                top: `${performerPopupPosition.top - 10}px`,
+                left: `${performerPopupPosition.left}px`,
+                zIndex: 1001,
+                background: 'var(--gn-white)',
+                border: '1px solid var(--gn-grey-300)',
+                borderRadius: '0.5rem',
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+                padding: '1rem',
+                minWidth: '250px',
+                maxWidth: '400px',
+                transform: 'translateY(-100%)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '1rem', flex: 1 }}>
+                  {performer.performerName || `Performer ${selectedPerformerIndex + 1}`}
+                  {instruments.length > 0 && (
+                    <span style={{ color: 'var(--gn-grey-700)', fontWeight: 500, marginLeft: '0.5rem' }}>
+                      · {instruments.join(', ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {(needsQuestions.length > 0 || doesntNeedQuestions.length > 0) ? (
+                <div>
+                  {/* Red "needs" items at top */}
+                  {needsQuestions.length > 0 && (
+                    <div style={{ marginBottom: doesntNeedQuestions.length > 0 ? '0.75rem' : '0' }}>
+                      {needsQuestions.map((questionData) => {
+                        const question = questionData;
+                        const currentValue = questionData.currentValue;
+                        const instrumentDetails = questionData.instrumentDetails;
+                        const notesValue = instrumentDetails[`${question.key}_notes`] || '';
+                        const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
+
+                        return (
+                          <div key={question.key} style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                            {question.type === 'yesno' && (
+                              <span>
+                                {(() => {
+                                  let label = question.label.replace('?', '').trim();
+                                  const lowerLabel = label.toLowerCase();
+                                  if (lowerLabel.startsWith('need ') && !lowerLabel.startsWith('needs ')) {
+                                    label = 'Needs ' + label.substring(5);
+                                  }
+                                  if (!isBringingInstrument) {
+                                    return <span style={{ color: 'var(--gn-red)' }}>{label}</span>;
+                                  } else {
+                                    return <span>{label}</span>;
+                                  }
+                                })()}
+                                {notesValue && <span style={{ color: 'var(--gn-grey-600)', fontStyle: 'italic', fontSize: '0.85rem' }}> ({notesValue})</span>}
+                              </span>
+                            )}
+                            {question.type === 'number' && (
+                              <span>
+                                <span style={{ color: 'var(--gn-red)' }}>Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}</span>
+                                {notesValue && <span style={{ color: 'var(--gn-grey-600)', fontStyle: 'italic', fontSize: '0.85rem' }}> ({notesValue})</span>}
+                              </span>
+                            )}
+                            {question.type === 'text' && (
+                              <span>
+                                <span style={{ color: 'var(--gn-red)' }}>{currentValue}</span>
+                                {notesValue && <span style={{ color: 'var(--gn-grey-600)', fontStyle: 'italic', fontSize: '0.85rem' }}> ({notesValue})</span>}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {/* Grey "doesn't need" items at bottom */}
+                  {doesntNeedQuestions.length > 0 && (
+                    <div style={{ paddingTop: needsQuestions.length > 0 ? '0.75rem' : '0', borderTop: needsQuestions.length > 0 ? '1px solid var(--gn-grey-300)' : 'none' }}>
+                      {doesntNeedQuestions.map((questionData) => {
+                        const question = questionData;
+                        const currentValue = questionData.currentValue;
+                        const instrumentDetails = questionData.instrumentDetails;
+                        const notesValue = instrumentDetails[`${question.key}_notes`] || '';
+
+                        return (
+                          <div key={question.key} style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--gn-grey-700)' }}>
+                            {question.type === 'yesno' && (
+                              <span>
+                                {(() => {
+                                  let label = question.label.replace('?', '').trim();
+                                  const lowerLabel = label.toLowerCase();
+                                  if (lowerLabel.startsWith('needs ')) {
+                                    return "Doesn't need " + label.substring(6);
+                                  } else if (lowerLabel.startsWith('need ')) {
+                                    return "Doesn't need " + label.substring(5);
+                                  } else if (lowerLabel.startsWith('bringing')) {
+                                    return label;
+                                  }
+                                  return "Doesn't need " + label.toLowerCase();
+                                })()}
+                                {notesValue && <span style={{ color: 'var(--gn-grey-600)', fontStyle: 'italic', fontSize: '0.85rem' }}> ({notesValue})</span>}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p style={{ color: 'var(--gn-grey-500)', fontSize: '0.85rem', fontStyle: 'italic', margin: 0 }}>
+                  No specific requirements listed.
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

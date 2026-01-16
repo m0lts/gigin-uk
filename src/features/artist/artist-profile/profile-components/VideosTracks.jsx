@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { FilmIcon, PlayIcon, PauseIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon, YoutubeIcon, EditIcon, NoImageIcon, UpArrowIcon, DownArrowIcon, ExitIcon, CloseIcon } from '../../../shared/ui/extras/Icons';
+import { FilmIcon, PlayIcon, PauseIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon, YoutubeIcon, EditIcon, NoImageIcon, UpArrowIcon, DownArrowIcon, ExitIcon, CloseIcon, MusicianIconSolid } from '../../../shared/ui/extras/Icons';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
 /**
@@ -859,7 +859,7 @@ export const VideosTracks = ({
         {activeSection === 'tracks' ? (
           <div className="section-header">
             <div className="title">
-              <VinylIcon />
+              <MusicianIconSolid />
               <h3>Tracks</h3>
             </div>
             <div className="external-links" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -955,7 +955,7 @@ export const VideosTracks = ({
                     className="creation-hero-upload track" 
                     onClick={onTrackPrimaryUpload}
                   >
-                    <VinylIcon />
+                    <MusicianIconSolid />
                     <span>Upload Track</span>
                   </button>
                   <div className="link-entries-container">
@@ -1057,7 +1057,7 @@ export const VideosTracks = ({
                     className="add-track-button"
                     onClick={onTrackPrimaryUpload}
                   >
-                    <VinylIcon /> Add Another Track
+                    <MusicianIconSolid /> Add Another Track
                   </button>
                   <div className="link-entries-container">
                     <div className="link-entry-container spotify">

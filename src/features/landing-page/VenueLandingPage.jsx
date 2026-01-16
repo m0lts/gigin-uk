@@ -4,16 +4,38 @@ import '@styles/shared/landing-page.styles.css'
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useAuth } from '../../hooks/useAuth';
 import { Footer } from '../shared/components/Footer';
+import { useEffect } from 'react';
 
 export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, setInitialEmail }) => {
     const navigate = useNavigate();
     const { isXlUp } = useBreakpoint();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+
+    const hasArtistProfile = user && user.artistProfiles && user.artistProfiles.length > 0;
+    const hasVenueProfile = user && user.venueProfiles && user.venueProfiles.length > 0;
+    const hasNoProfiles = user && 
+        (!user.venueProfiles || user.venueProfiles.length === 0) && 
+        (!user.artistProfiles || user.artistProfiles.length === 0);
+
+    // Auto-redirect if user has artist profile
+    useEffect(() => {
+        if (hasArtistProfile) {
+            navigate('/artist-profile');
+        }
+    }, [hasArtistProfile, navigate]);
 
     const handlePricingClick = () => {
         const pricingSection = document.getElementById('pricing-section');
         if (pricingSection) {
             pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (err) {
+            console.error(err);
         }
     };
 
@@ -34,9 +56,15 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                         </button>
                     </div>
                     <div className="navbar-right">
-                        <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}>
-                            Create Venue Profile
-                        </button>
+                        {hasVenueProfile ? (
+                            <button className="btn tertiary" onClick={() => navigate('/venues/dashboard/gigs')}>
+                                Venue Dashboard
+                            </button>
+                        ) : (
+                            <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}>
+                                Create Venue Profile
+                            </button>
+                        )}
                         {!user && (
                             <>
                                 <button className="btn artist-profile" onClick={() => navigate('/')}>
@@ -45,8 +73,28 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                                 <h6 className="or-separator">
                                     OR
                                 </h6>
-                                <button className="btn secondary" onClick={() => { setAuthType('login'); setAuthModal(true); }}>
+                                <button className="btn secondary" onClick={() => { 
+                                    setAuthType('login'); 
+                                    setAuthModal(true); 
+                                }}>
                                     Log In
+                                </button>
+                            </>
+                        )}
+                        {user && (
+                            <>
+                                {!hasVenueProfile && !hasArtistProfile && (
+                                    <>
+                                        <button className="btn artist-profile" onClick={() => navigate('/')}>
+                                            I'm an Artist
+                                        </button>
+                                        <h6 className="or-separator">
+                                            OR
+                                        </h6>
+                                    </>
+                                )}
+                                <button className="btn secondary" onClick={handleLogout}>
+                                    Log Out
                                 </button>
                             </>
                         )}

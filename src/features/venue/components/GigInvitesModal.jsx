@@ -116,7 +116,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
             });
             const inviteId = response?.inviteId;
             if (inviteId) {
-                const inviteLink = `${window.location.origin}/gig/${gig.gigId}?invite=${inviteId}`;
+                const inviteLink = `${window.location.origin}/gig/${gig.gigId}?inviteId=${inviteId}`;
                 navigator.clipboard.writeText(inviteLink).then(() => {
                     toast.success('Invite created and link copied to clipboard');
                 }).catch(() => {
@@ -220,7 +220,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
     };
 
     const copyInviteLink = (inviteId) => {
-        const link = `${window.location.origin}/gig/${gig.gigId}?invite=${inviteId}`;
+        const link = `${window.location.origin}/gig/${gig.gigId}?inviteId=${inviteId}`;
         navigator.clipboard.writeText(link).then(() => {
             toast.success('Invite link copied to clipboard');
         }).catch((err) => {
@@ -232,7 +232,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
     return (
         <Portal>
             <div className="modal gig-invites" onClick={onClose}>
-                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
                     <button className="btn tertiary close" onClick={onClose}>
                         Close
                     </button>

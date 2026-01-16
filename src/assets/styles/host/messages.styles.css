@@ -100,6 +100,37 @@
     outline:1px solid var(--gn-off-black);
 }
 
+.body.messages .filters .status-buttons {
+    width:fit-content;
+    display: flex;
+    align-items: center;
+    gap:2px;
+    background-color: var(--gn-grey-300);
+    padding:3px;
+    border-radius: 0.5rem;
+}
+
+.body.messages .filters .status-buttons .btn {
+    background-color: transparent;
+    border:none;
+    padding:5px 10px;
+    font-weight: 400;
+    border-radius: 5px;
+    color: var(--gn-grey-700);
+    box-shadow: none;
+    transition: all 200ms ease-in-out;
+}
+
+.body.messages .filters .status-buttons .btn.active {
+    background-color: var(--gn-white);
+    color: var(--gn-black);
+    box-shadow: 0 0 5px var(--gn-grey-400);
+}
+
+.body.messages .filters .status-buttons .btn:hover {
+    background-color: var(--gn-grey-350);
+}
+
 .body.messages .column.conversations .conversations-list {
     list-style-type: none;
     display: flex;

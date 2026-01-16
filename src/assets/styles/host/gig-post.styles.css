@@ -220,6 +220,56 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    margin-top: 1rem;
+}
+
+.gig-post .stage .body.date.timings {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.gig-post .stage .body.date.timings .date-time-section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.gig-post .stage .body.date.timings .timings-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    max-width: 500px;
+    padding-top:1rem;
+}
+
+.gig-post .stage .body.date.timings .timings-section .gig-slots {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 400px;
+    flex-wrap: nowrap;
+    overflow-x: scroll;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+@media (--bp-md) {
+    .gig-post .stage .body.date.timings {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .gig-post .stage .body.date.timings .timings-section {
+        max-width: 100%;
+        width: 100%;
+        align-items: center;
+    }
 }
 
 .gig-post .stage .body.date .past-date {
@@ -292,6 +342,11 @@
     width:fit-content;
     margin: 0 auto;
     position: relative;
+    flex-shrink: 0;
+}
+
+.gig-post .stage .body.date.timings .calendar {
+    margin: 0;
 }
 
 .gig-post .stage .calendar .react-datepicker {

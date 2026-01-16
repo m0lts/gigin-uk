@@ -1,9 +1,97 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CameraIcon, DeleteGigIcon } from '../../shared/ui/extras/Icons';
+import { CameraIcon, DeleteGigIcon, FilmIcon, PlayIcon } from '../../shared/ui/extras/Icons';
+import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 
 const MAX_IMAGES = 1;
 const IMAGE_MIME = /^image\//i;
+const VIDEO_MIME = /^video\//i;
+const MAX_VIDEO_STORAGE_BYTES = 100 * 1024 * 1024; // 100MB
+
+// Helper function to generate video thumbnail
+const generateVideoThumbnail = (file) => {
+  if (typeof document === "undefined") {
+    return Promise.resolve({ file: null, previewUrl: null });
+  }
+
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    const objectUrl = URL.createObjectURL(file);
+    video.src = objectUrl;
+
+    const cleanup = () => {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    const handleError = (err) => {
+      cleanup();
+      if (err instanceof Error) {
+        reject(err);
+      } else {
+        reject(new Error("Unable to generate video thumbnail"));
+      }
+    };
+
+    video.addEventListener("error", handleError);
+    video.addEventListener("loadeddata", () => {
+      try {
+        const targetTime = Math.min(1, video.duration ? Math.max(0, video.duration * 0.1) : 0.5);
+        video.currentTime = targetTime || 0;
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+    video.addEventListener("seeked", () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const width = video.videoWidth || 1280;
+        const height = video.videoHeight || 720;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              cleanup();
+              reject(new Error("Failed to capture video frame"));
+              return;
+            }
+            const thumbnailFile = new File([blob], `${file.name.replace(/\.[^/.]+$/, "") || "video"}-thumbnail.png`, {
+              type: "image/png",
+              lastModified: Date.now(),
+            });
+            const previewUrl = URL.createObjectURL(blob);
+            cleanup();
+            resolve({ file: thumbnailFile, previewUrl });
+          },
+          "image/png",
+          0.92
+        );
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
+    });
+  });
+};
+
+// Helper function to format file size
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes <= 0) return '0B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, index);
+  const formatted = value >= 10 ? value.toFixed(0) : value.toFixed(1);
+  return `${formatted}${units[index]}`;
+};
 
 const prepareIncomingFiles = (fileList, currentCount, setStepError) => {
   const incoming = Array.from(fileList).filter(f => IMAGE_MIME.test(f.type));
@@ -194,6 +282,8 @@ const DraggableImage = ({
 export const Photos = ({ formData, handleInputChange, stepError, setStepError }) => {
     const navigate = useNavigate();
     const [images, setImages] = useState(formData.photos || []);
+    const [videos, setVideos] = useState(formData.videos || []);
+    const [generatingThumbnails, setGeneratingThumbnails] = useState(new Set());
     
     // Initialize primaryImage from formData.photos
     const getInitialPrimaryImage = () => {
@@ -219,6 +309,19 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
     const [primaryImage, setPrimaryImage] = useState(getInitialPrimaryImage());
     const [isRepositioning, setIsRepositioning] = useState(false);
     const [isBlurring, setIsBlurring] = useState(false);
+    
+    // Calculate video storage usage
+    const videoStorageUsage = useMemo(() => {
+        return videos.reduce((total, video) => {
+            // For new videos, use file size; for existing videos, use stored size bytes
+            const videoSize = video.videoFile?.size || video.videoSizeBytes || 0;
+            const thumbnailSize = video.thumbnailFile?.size || video.thumbnailSizeBytes || 0;
+            return total + videoSize + thumbnailSize;
+        }, 0);
+    }, [videos]);
+    
+    const isOverStorageLimit = videoStorageUsage > MAX_VIDEO_STORAGE_BYTES;
+    const storagePercent = (videoStorageUsage / MAX_VIDEO_STORAGE_BYTES) * 100;
 
     const updatePrimaryOffset = (newOffset /* -50..0 from your drag */) => {
       setPrimaryImage((prev) => ({ ...prev, offsetY: newOffset }));
@@ -337,6 +440,95 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
     const removeImage = (index) => {
         setImages([]);
     };
+    
+    // Handle video file selection
+    const handleVideoChange = async (event) => {
+        const files = Array.from(event.target.files || []);
+        if (files.length === 0) return;
+        
+        const videoFiles = files.filter(f => VIDEO_MIME.test(f.type));
+        if (videoFiles.length === 0) {
+            setStepError?.('Only video files are allowed.');
+            return;
+        }
+        
+        // Check storage limit for new videos
+        const newVideosSize = videoFiles.reduce((total, file) => total + file.size, 0);
+        if (videoStorageUsage + newVideosSize > MAX_VIDEO_STORAGE_BYTES) {
+            setStepError?.(`Total video storage cannot exceed ${formatFileSize(MAX_VIDEO_STORAGE_BYTES)}. Current usage: ${formatFileSize(videoStorageUsage)}`);
+            return;
+        }
+        
+        // Process each video file
+        for (const videoFile of videoFiles) {
+            const videoId = `video-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            setGeneratingThumbnails(prev => new Set(prev).add(videoId));
+            
+            try {
+                const { file: thumbnailFile, previewUrl: thumbnailPreviewUrl } = await generateVideoThumbnail(videoFile);
+                
+                const newVideo = {
+                    id: videoId,
+                    title: videoFile.name.replace(/\.[^/.]+$/, "") || 'Untitled Video',
+                    videoFile: videoFile,
+                    videoSizeBytes: videoFile.size,
+                    thumbnailFile: thumbnailFile,
+                    thumbnailSizeBytes: thumbnailFile?.size || 0,
+                    thumbnailPreviewUrl: thumbnailPreviewUrl,
+                    isThumbnailGenerating: false,
+                };
+                
+                setVideos(prev => [...prev, newVideo]);
+            } catch (error) {
+                console.error('Failed to generate thumbnail:', error);
+                setStepError?.('Failed to generate video thumbnail. Please try again.');
+            } finally {
+                setGeneratingThumbnails(prev => {
+                    const next = new Set(prev);
+                    next.delete(videoId);
+                    return next;
+                });
+            }
+        }
+        
+        // Reset input
+        if (event.target) {
+            event.target.value = '';
+        }
+    };
+    
+    const removeVideo = (videoId) => {
+        setVideos(prev => {
+            const updated = prev.filter(v => v.id !== videoId);
+            // Clean up object URLs
+            const removed = prev.find(v => v.id === videoId);
+            if (removed?.thumbnailPreviewUrl) {
+                URL.revokeObjectURL(removed.thumbnailPreviewUrl);
+            }
+            return updated;
+        });
+    };
+    
+    // Sync videos to formData - use ref to prevent infinite loops
+    const lastSyncedVideosRef = useRef(null);
+    useEffect(() => {
+        // Only sync if videos actually changed (compare by length and IDs)
+        const videosChanged = 
+            lastSyncedVideosRef.current === null ||
+            lastSyncedVideosRef.current.length !== videos.length ||
+            videos.some((video, index) => {
+                const lastVideo = lastSyncedVideosRef.current[index];
+                return !lastVideo || lastVideo.id !== video.id || 
+                       lastVideo.videoFile !== video.videoFile ||
+                       lastVideo.thumbnailFile !== video.thumbnailFile;
+            });
+        
+        if (videosChanged) {
+            lastSyncedVideosRef.current = videos;
+            handleInputChange('videos', videos);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [videos]);
 
     useEffect(() => {
         if (formData.type === '') {
@@ -353,10 +545,11 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
         if (!hasInitializedRef.current && images.length === 0) {
             if (formData.photos && formData.photos.length > 0) {
                 setImages(formData.photos);
-                hasInitializedRef.current = true;
-            } else {
-                hasInitializedRef.current = true; // Mark as initialized even if no photos
             }
+            if (formData.videos && formData.videos.length > 0) {
+                setVideos(formData.videos);
+            }
+            hasInitializedRef.current = true;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
@@ -443,6 +636,201 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                             </>
                         )}
                     </div>
+                    
+                    {/* Video Upload Section - Only show after image is uploaded */}
+                    {images.length > 0 && (
+                        <div className="upload-videos-section">
+                                <h6 className='input-label'>Videos (Optional)</h6>
+                                
+                                {/* Storage Usage Bar */}
+                                {videos.length > 0 && (
+                                    <div className="storage-usage" style={{ 
+                                        marginBottom: '1rem',
+                                        padding: '0.75rem',
+                                        backgroundColor: 'var(--gn-grey-100)',
+                                        borderRadius: '0.5rem'
+                                    }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between', 
+                                            marginBottom: '0.5rem',
+                                            fontSize: '0.875rem'
+                                        }}>
+                                            <span style={{ fontWeight: 500 }}>Video Storage Usage</span>
+                                            <span style={{ 
+                                                color: isOverStorageLimit ? 'var(--gn-red)' : 'inherit',
+                                                fontWeight: 500
+                                            }}>
+                                                {formatFileSize(videoStorageUsage)} / {formatFileSize(MAX_VIDEO_STORAGE_BYTES)}
+                                            </span>
+                                        </div>
+                                        <div style={{
+                                            width: '100%',
+                                            height: '8px',
+                                            backgroundColor: 'var(--gn-grey-300)',
+                                            borderRadius: '4px',
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                width: `${Math.min(storagePercent, 100)}%`,
+                                                height: '100%',
+                                                backgroundColor: isOverStorageLimit ? 'var(--gn-red)' : 'var(--gn-orange)',
+                                                transition: 'width 0.2s ease'
+                                            }} />
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* Video Upload Button */}
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <input
+                                        type='file'
+                                        accept="video/*"
+                                        onChange={handleVideoChange}
+                                        onClick={() => setStepError(null)}
+                                        style={{ display: 'none' }}
+                                        id='videoInput'
+                                        multiple
+                                    />
+                                    <label
+                                        htmlFor="videoInput"
+                                        className="upload-label"
+                                        style={{ 
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            cursor: isOverStorageLimit ? 'not-allowed' : 'pointer',
+                                            opacity: isOverStorageLimit ? 0.6 : 1,
+                                            pointerEvents: isOverStorageLimit ? 'none' : 'auto',
+                                            padding: '1rem',
+                                            width: 'fit-content',
+                                            border: '1px solid var(--gn-grey-350)',
+                                            borderRadius: '0.5rem',
+                                            boxShadow: '0 0 5px var(--gn-shadow)'
+                                        }}
+                                    >
+                                        <FilmIcon style={{ fontSize: '1.5rem' }} />
+                                        <div className="text"><h4>Click here to upload {videos.length === 0 ? 'a video' : 'another video'}.</h4></div>
+                                    </label>
+                                </div>
+                                
+                                {/* Videos List */}
+                                {videos.length > 0 && (
+                                    <div className="videos-list" style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                                        gap: '1rem',
+                                        marginTop: '1rem'
+                                    }}>
+                                        {videos.map((video) => {
+                                            const isGenerating = generatingThumbnails.has(video.id);
+                                            return (
+                                                <div key={video.id} style={{
+                                                    position: 'relative',
+                                                    borderRadius: '0.5rem',
+                                                    overflow: 'hidden',
+                                                    backgroundColor: 'var(--gn-grey-100)'
+                                                }}>
+                                                    {isGenerating ? (
+                                                        <div style={{
+                                                            aspectRatio: '16/9',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '0.5rem',
+                                                            padding: '1rem'
+                                                        }}>
+                                                            <LoadingSpinner />
+                                                            <p style={{ fontSize: '0.75rem', color: 'var(--gn-grey-600)' }}>
+                                                                Generating thumbnail...
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            {video.thumbnailPreviewUrl || video.thumbnailUrl ? (
+                                                                <img 
+                                                                    src={video.thumbnailPreviewUrl || video.thumbnailUrl} 
+                                                                    alt={video.title}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        aspectRatio: '16/9',
+                                                                        objectFit: 'cover',
+                                                                        display: 'block'
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <div style={{
+                                                                    aspectRatio: '16/9',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    backgroundColor: 'var(--gn-grey-200)'
+                                                                }}>
+                                                                    <FilmIcon style={{ fontSize: '2rem', color: 'var(--gn-grey-400)' }} />
+                                                                </div>
+                                                            )}
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                top: '50%',
+                                                                left: '50%',
+                                                                transform: 'translate(-50%, -50%)',
+                                                                pointerEvents: 'none'
+                                                            }}>
+                                                                <PlayIcon style={{ fontSize: '2rem', color: 'white', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    <div style={{
+                                                        padding: '0.75rem',
+                                                        backgroundColor: 'white'
+                                                    }}>
+                                                        <p style={{
+                                                            margin: 0,
+                                                            fontSize: '0.875rem',
+                                                            fontWeight: 500,
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
+                                                            {video.title}
+                                                        </p>
+                                                        <p style={{
+                                                            margin: '0.25rem 0 0 0',
+                                                            fontSize: '0.75rem',
+                                                            color: 'var(--gn-grey-600)'
+                                                        }}>
+                                                            {formatFileSize((video.videoSizeBytes || 0) + (video.thumbnailSizeBytes || 0))}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        className="btn icon remove"
+                                                        onClick={() => removeVideo(video.id)}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: '0.5rem',
+                                                            right: '0.5rem',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                                                            border: 'none',
+                                                            borderRadius: '50%',
+                                                            width: '2rem',
+                                                            height: '2rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer',
+                                                            color: 'white'
+                                                        }}
+                                                    >
+                                                        <DeleteGigIcon />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                        </div>
+                    )}
                 </div>
                 <div className='stage-controls'>
                     <button className='btn secondary' onClick={() => navigate(-1)}>

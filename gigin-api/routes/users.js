@@ -379,4 +379,108 @@ router.delete("/deleteUserDocument", requireAuth, asyncHandler(async (req, res) 
   return res.json({ data: { success: true, uid } });
 }));
 
+// POST /api/users/updateCRMEntryWithArtistId (auth required)
+// Updates a venue's CRM entry with an artist profile ID when an artist signs up through an invite
+router.post("/updateCRMEntryWithArtistId", requireAuth, asyncHandler(async (req, res) => {
+  const callerUid = req.auth.uid;
+  const { venueUserId, crmEntryId, artistId, inviteId } = req.body || {};
+  
+  if (!venueUserId || !crmEntryId || !artistId) {
+    return res.status(400).json({ 
+      error: "INVALID_ARGUMENT", 
+      message: "venueUserId, crmEntryId, and artistId are required" 
+    });
+  }
+
+  try {
+    // Verify the CRM entry exists
+    const crmEntryRef = db.doc(`users/${venueUserId}/artistCRM/${crmEntryId}`);
+    const crmEntrySnap = await crmEntryRef.get();
+    
+    if (!crmEntrySnap.exists) {
+      return res.status(404).json({ 
+        error: "NOT_FOUND", 
+        message: "CRM entry not found" 
+      });
+    }
+
+    // If inviteId is provided, verify it matches the CRM entry for additional security
+    if (inviteId) {
+      const inviteRef = db.doc(`gigInvites/${inviteId}`);
+      const inviteSnap = await inviteRef.get();
+      
+      if (inviteSnap.exists) {
+        const inviteData = inviteSnap.data() || {};
+        // Verify the invite's crmEntryId matches
+        if (inviteData.crmEntryId !== crmEntryId) {
+          return res.status(400).json({ 
+            error: "INVALID_ARGUMENT", 
+            message: "Invite does not match CRM entry" 
+          });
+        }
+        // Verify the invite was created by the venue user
+        if (inviteData.createdBy !== venueUserId) {
+          return res.status(403).json({ 
+            error: "PERMISSION_DENIED", 
+            message: "Invite does not belong to this venue" 
+          });
+        }
+      }
+    }
+
+    // Verify the artist profile exists and belongs to the caller
+    const artistRef = db.doc(`artistProfiles/${artistId}`);
+    const artistSnap = await artistRef.get();
+    
+    if (!artistSnap.exists) {
+      return res.status(404).json({ 
+        error: "NOT_FOUND", 
+        message: "Artist profile not found" 
+      });
+    }
+
+    const artistData = artistSnap.data() || {};
+    // Verify the artist profile belongs to the caller (check userId or members)
+    const userRef = db.doc(`users/${callerUid}`);
+    const userSnap = await userRef.get();
+    
+    if (userSnap.exists) {
+      const userData = userSnap.data() || {};
+      const userArtistProfiles = Array.isArray(userData.artistProfiles) ? userData.artistProfiles : [];
+      if (!userArtistProfiles.includes(artistId)) {
+        // Check if user is a member of the artist profile
+        const memberRef = db.doc(`artistProfiles/${artistId}/members/${callerUid}`);
+        const memberSnap = await memberRef.get();
+        if (!memberSnap.exists || memberSnap.data()?.status !== 'active') {
+          return res.status(403).json({ 
+            error: "PERMISSION_DENIED", 
+            message: "You do not have permission to link this artist profile" 
+          });
+        }
+      }
+    }
+
+    // Update the CRM entry with the artist profile ID
+    await crmEntryRef.update({
+      artistId: artistId,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res.json({ data: { success: true } });
+  } catch (error) {
+    console.error("updateCRMEntryWithArtistId error:", error);
+    const code = error.code || error.message || "INTERNAL";
+    if (code === "permission-denied" || code === "PERMISSION_DENIED") {
+      return res.status(403).json({ 
+        error: "PERMISSION_DENIED", 
+        message: "You do not have permission to update this CRM entry." 
+      });
+    }
+    return res.status(500).json({ 
+      error: "INTERNAL", 
+      message: "Failed to update CRM entry." 
+    });
+  }
+}));
+
 export default router;

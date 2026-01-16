@@ -149,6 +149,7 @@ export const GigDate = ({ formData, handleInputChange, error, setError, extraSlo
                         <span className='slider round'></span>
                     </label>
                 </div> */}
+                <div className='date-time-section'>
                 <div className='calendar'>
                     {formData.dateUndecided && <div className='disable'></div>}
                     <DatePicker
@@ -163,7 +164,7 @@ export const GigDate = ({ formData, handleInputChange, error, setError, extraSlo
                 </div>
 
                 {/* Gig Timings Section */}
-                <div className="timings-section" style={{ marginTop: '1rem' }}>
+                <div className="timings-section">
                     <div className="gig-slots">
                         {allSlots.map((slot, index) => (
                             <div key={index} className="gig-slot">
@@ -221,23 +222,24 @@ export const GigDate = ({ formData, handleInputChange, error, setError, extraSlo
                             Add Gig Slot
                         </button>
                     )}
-                    <div className="extra-timings" style={{ marginTop: '1.5rem' }}>
-                        <div className="input-group">
-                            <label className="label">Load In Time</label>
-                            <input
-                                type="time"
-                                value={formData.loadInTime || ''}
-                                onChange={(e) => handleInputChange({ loadInTime: e.target.value })}
-                            />
-                        </div>
-                        <div className="input-group">
-                            <label className="label">Sound Check Time</label>
-                            <input
-                                type="time"
-                                value={formData.soundCheckTime || ''}
-                                onChange={(e) => handleInputChange({ soundCheckTime: e.target.value })}
-                            />
-                        </div>
+                </div>
+                </div>
+                <div className="extra-timings" style={{ marginTop: '1.5rem' }}>
+                    <div className="input-group">
+                        <label className="label">Load In Time</label>
+                        <input
+                            type="time"
+                            value={formData.loadInTime || ''}
+                            onChange={(e) => handleInputChange({ loadInTime: e.target.value })}
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label className="label">Sound Check Time</label>
+                        <input
+                            type="time"
+                            value={formData.soundCheckTime || ''}
+                            onChange={(e) => handleInputChange({ soundCheckTime: e.target.value })}
+                        />
                     </div>
                 </div>
 

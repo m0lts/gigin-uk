@@ -6,7 +6,7 @@ import '@assets/fonts/fonts.css'
 import '@styles/shared/buttons.styles.css'
 import { LandingPage } from '@features/landing-page/LandingPage';
 import { VenueLandingPage } from '@features/landing-page/VenueLandingPage';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MainLayout } from '@layouts/MainLayout';
 import { NoHeaderFooterLayout } from '@layouts/NoHeaderFooterLayout';
 import { VenueBuilder } from '@features/venue/builder/VenueBuilder';
@@ -59,6 +59,7 @@ export default function App() {
   const [noProfileModalClosable, setNoProfileModalClosable] = useState(false);
   const [initialEmail, setInitialEmail] = useState('');
   const newUser =  sessionStorage.getItem('newUser');
+  const justLoggedInRef = useRef(false);
 
   useEffect(() => {
     if (location.pathname.includes('dashboard') || location.pathname.includes('venue-builder') || location.pathname.includes('create-profile')) {
@@ -107,14 +108,29 @@ export default function App() {
   
   useEffect(() => {
     const u = auth.currentUser;
-    if (!u) return;
-    if (!u.emailVerified) {
+    if (!u) {
+      justLoggedInRef.current = false;
+      return;
+    }
+    // Only show verify email modal if:
+    // 1. Email is not verified
+    // 2. Modal is not already open (to prevent reopening after login)
+    // 3. We didn't just log in (to prevent reopening immediately after successful login)
+    // This prevents reopening the modal immediately after successful login
+    if (!u.emailVerified && !authModal && !justLoggedInRef.current) {
       setAuthType('verify-email');
       setAuthModal(true);
       setAuthClosable(false);
       return;
     }
-  }, [user]);
+    // Reset the flag after a short delay to allow normal email verification checks
+    if (justLoggedInRef.current) {
+      const timer = setTimeout(() => {
+        justLoggedInRef.current = false;
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, authModal]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -164,7 +180,7 @@ export default function App() {
       
       {authModal && (
         <Portal>
-          <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} initialEmail={initialEmail} setInitialEmail={setInitialEmail} user={user} />
+          <AuthModal setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} initialEmail={initialEmail} setInitialEmail={setInitialEmail} user={user} justLoggedInRef={justLoggedInRef} />
         </Portal>
       )}
       {noProfileModal && (

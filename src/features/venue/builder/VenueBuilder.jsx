@@ -11,7 +11,7 @@ import { UploadingProfile } from './UploadingProfile';
 import { arrayUnion, arrayRemove, GeoPoint, deleteField } from 'firebase/firestore';
 import { createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
 import { BuildingIcon, ErrorIcon, MobileIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
-import { uploadImageArrayWithFallback, uploadFileWithFallback } from '../../../services/storage';
+import { uploadImageArrayWithFallback, uploadFileWithFallback, uploadFileWithProgress } from '../../../services/storage';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
 import { Links } from './Links';
@@ -68,6 +68,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             }
         },
         photos: [],
+        videos: [],
         extraInformation: '',
         description: '',
         accountName: user ? user.name : '',
@@ -143,6 +144,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                     }
                 },
                 photos: photos || [],
+                videos: venue.videos || [],
                 extraInformation: venue.extraInformation || '',
                 description: venue.description || '',
                 completed: venue.completed || false,
@@ -225,6 +227,54 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 imageUrls = [];
             }
             
+            // Upload videos if they exist
+            let videoUrls = [];
+            if (formData.videos && formData.videos.length > 0) {
+                const videosFolder = `venues/${formData.venueId}/videos`;
+                const videoUploadPromises = formData.videos.map(async (video) => {
+                    // If video already has URLs (from previous save), preserve them
+                    if (video.videoUrl && video.thumbnailUrl) {
+                        return {
+                            id: video.id,
+                            title: video.title || 'Untitled Video',
+                            videoUrl: video.videoUrl,
+                            thumbnailUrl: video.thumbnailUrl,
+                            videoSizeBytes: video.videoSizeBytes || 0,
+                            thumbnailSizeBytes: video.thumbnailSizeBytes || 0,
+                        };
+                    }
+                    
+                    // Upload video file
+                    let videoUrl = '';
+                    if (video.videoFile instanceof File) {
+                        const extension = video.videoFile.name?.split('.').pop() || 'mp4';
+                        const filename = `video-${video.id}-${Date.now()}.${extension}`;
+                        const storagePath = `${videosFolder}/${filename}`;
+                        videoUrl = await uploadFileWithProgress(video.videoFile, storagePath, () => {});
+                    }
+                    
+                    // Upload thumbnail file
+                    let thumbnailUrl = '';
+                    if (video.thumbnailFile instanceof File) {
+                        const extension = video.thumbnailFile.name?.split('.').pop() || 'png';
+                        const filename = `thumbnail-${video.id}-${Date.now()}.${extension}`;
+                        const storagePath = `${videosFolder}/thumbnails/${filename}`;
+                        thumbnailUrl = await uploadFileWithProgress(video.thumbnailFile, storagePath, () => {});
+                    }
+                    
+                    return {
+                        id: video.id,
+                        title: video.title || 'Untitled Video',
+                        videoUrl: videoUrl,
+                        thumbnailUrl: thumbnailUrl,
+                        videoSizeBytes: video.videoSizeBytes || 0,
+                        thumbnailSizeBytes: video.thumbnailSizeBytes || 0,
+                    };
+                });
+                
+                videoUrls = await Promise.all(videoUploadPromises);
+            }
+            
             // Upload document files if they exist
             const documentsFolder = `venues/${formData.venueId}/documents`;
             const [termsAndConditionsUrl, prsUrl, otherDocumentsUrl] = await Promise.all([
@@ -236,6 +286,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             const updatedFormData = {
                 ...formData,
                 photos: imageUrls,
+                videos: videoUrls,
                 primaryImageOffsetY: formData.photos[0]?.offsetY || formData.primaryImageOffsetY,
                 primaryImageBlur: formData.photos[0]?.blur || formData.primaryImageBlur || 0,
                 termsAndConditions: termsAndConditionsUrl,
@@ -379,6 +430,56 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             
             // Debug log to verify photos are being set
             console.log('Saving venue with photos:', updatedFormData.photos);
+            
+            // Upload videos if they exist
+            let videoUrls = [];
+            if (formData.videos && formData.videos.length > 0) {
+                const videosFolder = `venues/${formData.venueId}/videos`;
+                const videoUploadPromises = formData.videos.map(async (video) => {
+                    // If video already has URLs (from previous save), preserve them
+                    if (video.videoUrl && video.thumbnailUrl) {
+                        return {
+                            id: video.id,
+                            title: video.title || 'Untitled Video',
+                            videoUrl: video.videoUrl,
+                            thumbnailUrl: video.thumbnailUrl,
+                            videoSizeBytes: video.videoSizeBytes || 0,
+                            thumbnailSizeBytes: video.thumbnailSizeBytes || 0,
+                        };
+                    }
+                    
+                    // Upload video file
+                    let videoUrl = '';
+                    if (video.videoFile instanceof File) {
+                        const extension = video.videoFile.name?.split('.').pop() || 'mp4';
+                        const filename = `video-${video.id}-${Date.now()}.${extension}`;
+                        const storagePath = `${videosFolder}/${filename}`;
+                        videoUrl = await uploadFileWithProgress(video.videoFile, storagePath, () => {});
+                    }
+                    
+                    // Upload thumbnail file
+                    let thumbnailUrl = '';
+                    if (video.thumbnailFile instanceof File) {
+                        const extension = video.thumbnailFile.name?.split('.').pop() || 'png';
+                        const filename = `thumbnail-${video.id}-${Date.now()}.${extension}`;
+                        const storagePath = `${videosFolder}/thumbnails/${filename}`;
+                        thumbnailUrl = await uploadFileWithProgress(video.thumbnailFile, storagePath, () => {});
+                    }
+                    
+                    return {
+                        id: video.id,
+                        title: video.title || 'Untitled Video',
+                        videoUrl: videoUrl,
+                        thumbnailUrl: thumbnailUrl,
+                        videoSizeBytes: video.videoSizeBytes || 0,
+                        thumbnailSizeBytes: video.thumbnailSizeBytes || 0,
+                    };
+                });
+                
+                videoUrls = await Promise.all(videoUploadPromises);
+            }
+            
+            updatedFormData.videos = videoUrls;
             
             // Upload document files if they exist
             const documentsFolder = `venues/${formData.venueId}/documents`;

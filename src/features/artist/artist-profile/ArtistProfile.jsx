@@ -1730,17 +1730,29 @@ const ArtistProfileComponent = ({
         switchingProfileTimeoutRef.current = null;
       }
       
-      // Store the new profile ID in localStorage and navigate to it
+      // Store the new profile ID in localStorage
       setStoredActiveProfileId(creationProfileId);
       // Update the previous profile ID ref to prevent switching detection
       previousActiveProfileIdRef.current = creationProfileId;
-      navigate(`/artist-profile/${creationProfileId}`, { replace: true });
       
-      // Directly transition to dashboard - don't wait for useEffect
-      setIsCreatingProfile(false);
-      setCurrentState(ArtistProfileState.DASHBOARD);
-      setDashboardView(DashboardView.PROFILE);
-      setSearchParams({});
+      // Check for redirect URL in sessionStorage
+      const redirectUrl = sessionStorage.getItem('artistProfileRedirectUrl');
+      if (redirectUrl) {
+        // Clear the redirect URL from sessionStorage
+        sessionStorage.removeItem('artistProfileRedirectUrl');
+        // Clear creating profile state before redirecting
+        setIsCreatingProfile(false);
+        // Navigate to the redirect URL
+        navigate(redirectUrl, { replace: true });
+      } else {
+        // Default navigation to profile page
+        navigate(`/artist-profile/${creationProfileId}`, { replace: true });
+        // Directly transition to dashboard - don't wait for useEffect
+        setIsCreatingProfile(false);
+        setCurrentState(ArtistProfileState.DASHBOARD);
+        setDashboardView(DashboardView.PROFILE);
+        setSearchParams({});
+      }
       
       // Show profile completion modal after navigation and state updates complete
       setTimeout(() => {
@@ -3633,19 +3645,31 @@ const ArtistProfileComponent = ({
         switchingProfileTimeoutRef.current = null;
       }
       
-      // Store the new profile ID in localStorage and navigate to it
+      // Store the new profile ID in localStorage
       if (creationProfileId) {
         setStoredActiveProfileId(creationProfileId);
         // Update the previous profile ID ref to prevent switching detection
         previousActiveProfileIdRef.current = creationProfileId;
-        navigate(`/artist-profile/${creationProfileId}`, { replace: true });
+        
+        // Check for redirect URL in sessionStorage
+        const redirectUrl = sessionStorage.getItem('artistProfileRedirectUrl');
+        if (redirectUrl) {
+          // Clear the redirect URL from sessionStorage
+          sessionStorage.removeItem('artistProfileRedirectUrl');
+          // Clear creating profile state before redirecting
+          setIsCreatingProfile(false);
+          // Navigate to the redirect URL
+          navigate(redirectUrl, { replace: true });
+        } else {
+          // Default navigation to profile page
+          navigate(`/artist-profile/${creationProfileId}`, { replace: true });
+          // Directly transition to dashboard - don't wait for useEffect
+          setIsCreatingProfile(false);
+          setCurrentState(ArtistProfileState.DASHBOARD);
+          setDashboardView(DashboardView.PROFILE);
+          setSearchParams({});
+        }
       }
-      
-      // Directly transition to dashboard - don't wait for useEffect
-      setIsCreatingProfile(false);
-      setCurrentState(ArtistProfileState.DASHBOARD);
-      setDashboardView(DashboardView.PROFILE);
-      setSearchParams({});
       
       // Show profile completion modal after navigation and state updates complete
       setTimeout(() => {

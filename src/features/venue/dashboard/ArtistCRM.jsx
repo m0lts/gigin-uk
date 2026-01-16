@@ -7,7 +7,8 @@ import {
   createArtistCRMEntry, 
   updateArtistCRMEntry, 
   deleteArtistCRMEntry,
-  migrateSavedArtistsToCRM 
+  migrateSavedArtistsToCRM,
+  isArtistSavedInCRM
 } from '@services/client-side/artistCRM';
 import { getArtistProfileById } from '@services/client-side/artists';
 import { openInNewTab } from '@services/utils/misc';
@@ -20,7 +21,7 @@ import { getVenueProfileById, fetchMyVenueMembership } from '@services/client-si
 import { sendGigInviteEmail } from '@services/client-side/emails';
 import { useVenueDashboard } from '@context/VenueDashboardContext';
 import { hasVenuePerm } from '@services/utils/permissions';
-import { filterInvitableGigsForMusician } from '@services/utils/filtering';
+import { filterInvitableGigsForMusician, getLocalGigDateTime } from '@services/utils/filtering';
 import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
@@ -38,6 +39,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [inviteExpiryDate, setInviteExpiryDate] = useState(null);
   const [creatingInvite, setCreatingInvite] = useState(false);
+  const [createdInviteId, setCreatedInviteId] = useState(null);
   const navigate = useNavigate();
   useEffect(() => {
     const fetchGigs = async () => {
@@ -98,20 +100,17 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
   const handleGigSelection = (gigData) => {
     if (!gigData || !artist) return;
     
-    // Check if artist has a Gigin profile
-    if (artist.artistId) {
-      // Artist has a profile - go directly to invite
+    setSelectedGig(gigData);
+    
+    // If gig is private, show invite config step first (for both artists with and without profiles)
+    if (gigData.private) {
+      setStep('invite-config');
+    } else if (artist.artistId) {
+      // Artist has a profile and gig is public - go directly to invite
       handleInviteToGig(gigData);
     } else {
-      // Artist doesn't have a profile
-      setSelectedGig(gigData);
-      // If gig is private, show invite config step first
-      if (gigData.private) {
-        setStep('invite-config');
-      } else {
-        // Public gig - go directly to contact method selection
-        setStep('contact-method');
-      }
+      // Artist doesn't have a profile and gig is public - go to contact method selection
+      setStep('contact-method');
     }
   };
 
@@ -128,17 +127,39 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
         expiresAt = date;
       }
 
-      // Create the invite document with crmEntryId and artistName
-      await createGigInvite({
+      // Create the invite document
+      // Use artistId if artist has a Gigin profile, otherwise use crmEntryId
+      const invitePayload = {
         gigId: selectedGig.gigId,
         expiresAt: expiresAt?.toISOString() || null,
-        crmEntryId: artist.id, // Use CRM entry ID for artists without Gigin profile
         artistName: artist.name || null
-      });
+      };
+
+      if (artist.artistId) {
+        // Artist has a Gigin profile - use artistId
+        invitePayload.artistId = artist.artistId;
+      } else {
+        // Artist doesn't have a profile - use CRM entry ID
+        invitePayload.crmEntryId = artist.id;
+      }
+
+      const response = await createGigInvite(invitePayload);
+
+      // Capture the inviteId from the response
+      const inviteId = response?.data?.inviteId || response?.inviteId;
+      if (inviteId) {
+        setCreatedInviteId(inviteId);
+      }
 
       toast.success('Invite created successfully');
-      // Proceed to contact method selection
-      setStep('contact-method');
+      
+      // If artist has a profile, proceed directly to sending the invite
+      // Otherwise, go to contact method selection
+      if (artist.artistId) {
+        await handleInviteToGig(selectedGig);
+      } else {
+        setStep('contact-method');
+      }
     } catch (error) {
       console.error('Error creating invite:', error);
       toast.error('Failed to create invite. Please try again.');
@@ -197,19 +218,32 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
           type: 'invitation',
         });
 
+        // Generate the gig link (include inviteId for private gigs)
+        const gigLink = generateGigLink(gigData, createdInviteId);
+        
         if (gigData.kind === 'Ticketed Gig' || gigData.kind === 'Open Mic') {
+          const messageText = gigData.private
+            ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
+                gigData.date
+              )}. View the gig: ${gigLink}`
+            : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
+                gigData.date
+              )}.`;
           await sendGigInvitationMessage(conversationId, {
             senderId: user.uid,
-            text: `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
-              gigData.date
-            )}.`,
+            text: messageText,
           });
         } else {
+          const messageText = gigData.private
+            ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
+                gigData.date
+              )} for ${gigData.budget}. View the gig: ${gigLink}`
+            : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
+                gigData.date
+              )} for ${gigData.budget}.`;
           await sendGigInvitationMessage(conversationId, {
             senderId: user.uid,
-            text: `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
-              gigData.date
-            )} for ${gigData.budget}.`,
+            text: messageText,
           });
         }
 
@@ -226,7 +260,8 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
             return;
           }
 
-          const gigLink = `${window.location.origin}/gig/${gigData.gigId}`;
+          // Use the created inviteId if available (for private gigs)
+          const gigLink = generateGigLink(gigData, createdInviteId);
           const formattedDate = formatDate(gigData.date, 'short');
           
           await sendGigInviteEmail({
@@ -252,13 +287,18 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
     }
   };
 
-  const generateGigLink = (gigData) => {
-    return `${window.location.origin}/gig/${gigData.gigId}`;
+  const generateGigLink = (gigData, inviteId = null) => {
+    const baseLink = `${window.location.origin}/gig/${gigData.gigId}`;
+    // If it's a private gig and we have an inviteId, include it in the URL
+    if (gigData.private && inviteId) {
+      return `${baseLink}?inviteId=${inviteId}`;
+    }
+    return baseLink;
   };
 
-  const generateInviteMessage = (gigData, venueToSend) => {
+  const generateInviteMessage = (gigData, venueToSend, inviteId = null) => {
     const formattedDate = formatDate(gigData.date, 'short');
-    const gigLink = generateGigLink(gigData);
+    const gigLink = generateGigLink(gigData, inviteId);
     const venueName = gigData.venue?.venueName || venueToSend.name;
     const userName = user.name || venueToSend.accountName;
     
@@ -267,7 +307,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
 
   const getPlatformLink = (contactMethod, gigData) => {
     const venueToSend = venues.find(v => v.venueId === gigData.venueId);
-    const message = generateInviteMessage(gigData, venueToSend);
+    const message = generateInviteMessage(gigData, venueToSend, createdInviteId);
     const encodedMessage = encodeURIComponent(message);
     
     switch(contactMethod) {
@@ -319,7 +359,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
   };
 
   const handleCopyLink = async (gigData) => {
-    const link = generateGigLink(gigData);
+    const link = generateGigLink(gigData, createdInviteId);
     try {
       await navigator.clipboard.writeText(link);
       setCopiedLink(true);
@@ -333,7 +373,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
 
   const handleCopyMessage = async (gigData) => {
     const venueToSend = venues.find(v => v.venueId === gigData.venueId);
-    const message = generateInviteMessage(gigData, venueToSend);
+    const message = generateInviteMessage(gigData, venueToSend, createdInviteId);
     try {
       await navigator.clipboard.writeText(message);
       toast.success('Message copied to clipboard!');
@@ -377,30 +417,8 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
 
   return (
     <Portal>
-      <style>{`
-        @keyframes slideInFromRight {
-          from {
-            opacity: 0;
-            transform: translateX(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        @keyframes slideOutToLeft {
-          from {
-            opacity: 1;
-            transform: translateX(0);
-          }
-          to {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-        }
-      `}</style>
       <div className={`modal ${step === 'invite-config' ? 'gig-invites' : 'invite-musician'}`} onClick={onClose}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <div className="modal-header-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               {step === 'invite-config' && selectedGig ? (
@@ -411,6 +429,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
                       setStep('gig-selection');
                       setSelectedGig(null);
                       setInviteExpiryDate(null);
+                      setCreatedInviteId(null);
                     }}
                     disabled={creatingInvite}
                   >
@@ -421,17 +440,19 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
                 <button
                   className="btn tertiary back-button"
                   style={{ marginBottom: '1rem' }}
-                  onClick={() => {
-                    // If gig is private, go back to invite-config, otherwise go to gig-selection
-                    if (selectedGig?.private) {
-                      setStep('invite-config');
-                    } else {
-                      setStep('gig-selection');
-                      setSelectedGig(null);
-                    }
-                    setSelectedContactMethod(null);
-                  }}
-                  disabled={inviting}
+                    onClick={() => {
+                      // If gig is private, go back to invite-config, otherwise go to gig-selection
+                      if (selectedGig?.private) {
+                        setStep('invite-config');
+                        // Keep createdInviteId when going back to invite-config (same gig)
+                      } else {
+                        setStep('gig-selection');
+                        setSelectedGig(null);
+                        setCreatedInviteId(null);
+                      }
+                      setSelectedContactMethod(null);
+                    }}
+                    disabled={inviting}
                 >
                   <LeftArrowIcon />
                   Back
@@ -487,94 +508,71 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
             )}
           </div>
           
-          <div className="modal-steps-container" style={{ position: 'relative', minHeight: '300px', maxHeight: '70vh', height: '40vh', overflowY: 'auto' }}>
+          <div className="modal-steps-container">
             {/* Gig Selection Step */}
-            <div 
-              className={`modal-step ${step === 'gig-selection' ? 'active' : 'inactive'}`}
-              style={{
-                position: step === 'gig-selection' ? 'relative' : 'absolute',
-                width: '100%',
-                opacity: step === 'gig-selection' ? 1 : 0,
-                transform: step === 'gig-selection' ? 'translateX(0)' : 'translateX(-20px)',
-                pointerEvents: step === 'gig-selection' ? 'auto' : 'none',
-                transition: 'opacity 0.3s ease, transform 0.3s ease',
-              }}
-            >
-              {loading ? (
-                <LoadingSpinner />
-              ) : usersGigs.length === 0 ? (
-                <p>You have no upcoming gigs available.</p>
-              ) : (
-                <>
-                  <div className="gig-selection">
-                    {usersGigs.map((gig, index) => {
-                      const canInvite = canInviteForGig(gig);
-                      if (canInvite) {
+            {step === 'gig-selection' && (
+              <div className="modal-step">
+                {loading ? (
+                  <LoadingSpinner />
+                ) : usersGigs.length === 0 ? (
+                  <p>You have no upcoming gigs available.</p>
+                ) : (
+                  <>
+                    <div className="gig-selection">
+                      {usersGigs.map((gig, index) => {
+                        const canInvite = canInviteForGig(gig);
+                        if (canInvite) {
+                          return (
+                            <div
+                              className="card"
+                              key={index}
+                              onClick={() => handleGigSelection(gig)}
+                              style={{ cursor: inviting ? 'not-allowed' : 'pointer', opacity: inviting ? 0.6 : 1 }}
+                            >
+                              <div className="gig-details">
+                                <h4 className="text">{gig.gigName}</h4>
+                                <h5>{gig.venue?.venueName}</h5>
+                              </div>
+                              <p className="sub-text">
+                                {formatDate(gig.date, 'short')} - {gig.startTime}
+                              </p>
+                            </div>
+                          );
+                        }
                         return (
-                          <div
-                            className="card"
-                            key={index}
-                            onClick={() => handleGigSelection(gig)}
-                            style={{ cursor: inviting ? 'not-allowed' : 'pointer', opacity: inviting ? 0.6 : 1 }}
-                          >
+                          <div className="card disabled" key={index}>
                             <div className="gig-details">
                               <h4 className="text">{gig.gigName}</h4>
-                              <h5>{gig.venue?.venueName}</h5>
+                              <h5 className="details-text">
+                                You don't have permission to invite artists to gigs at this venue.
+                              </h5>
                             </div>
                             <p className="sub-text">
                               {formatDate(gig.date, 'short')} - {gig.startTime}
                             </p>
                           </div>
                         );
-                      }
-                      return (
-                        <div className="card disabled" key={index}>
-                          <div className="gig-details">
-                            <h4 className="text">{gig.gigName}</h4>
-                            <h5 className="details-text">
-                              You don't have permission to invite artists to gigs at this venue.
-                            </h5>
-                          </div>
-                          <p className="sub-text">
-                            {formatDate(gig.date, 'short')} - {gig.startTime}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="two-buttons">
-                    <button 
-                      className="btn tertiary" 
-                      onClick={onClose}
-                      disabled={inviting}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+                      })}
+                    </div>
+                    <div className="two-buttons">
+                      <button 
+                        className="btn tertiary" 
+                        onClick={onClose}
+                        disabled={inviting}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Invite Configuration Step (for private gigs with no profile) */}
             {step === 'invite-config' && selectedGig && (
-              <div 
-                className="modal-step active"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  opacity: 0,
-                  transform: 'translateX(20px)',
-                  animation: 'slideInFromRight 0.3s ease forwards',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  overflowY: 'auto',
-                }}
-              >
-                <div className="modal-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-                  <div className="stage" style={{ flex: 1 }}>
+              <div className="modal-step">
+                <div className="modal-body">
+                  <div className="stage">
                     <div className="body date">
                       <p style={{ marginBottom: '1rem' }}>
                         Select a date if you want the invite to expire at a certain time.
@@ -602,13 +600,14 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
                       </div>
                     </div>
                   </div>
-                  <div className="two-buttons" style={{ marginTop: 'auto', paddingTop: '1rem' }}>
+                  <div className="two-buttons" style={{ marginTop: '1rem' }}>
                     <button
                       className="btn secondary"
                       onClick={() => {
                         setStep('gig-selection');
                         setSelectedGig(null);
                         setInviteExpiryDate(null);
+                        setCreatedInviteId(null);
                       }}
                       disabled={creatingInvite}
                     >
@@ -628,20 +627,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
 
             {/* Contact Method Selection Step */}
             {step === 'contact-method' && selectedGig && (
-              <div 
-                className="modal-step active"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  opacity: 0,
-                  transform: 'translateX(20px)',
-                  animation: 'slideInFromRight 0.3s ease forwards',
-                }}
-              >
-
-
+              <div className="modal-step">
                 <div className="contact-method-selection" style={{ marginBottom: '1.5rem' }}>
                   <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 600 }}>Select contact method:</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -678,37 +664,11 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
                     backgroundColor: 'var(--gn-grey-250)', 
                     borderRadius: '0.5rem',
                     marginBottom: '1rem'
-                  }}>
+                  }}>                    
                     <div style={{ marginBottom: '1rem' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600 }}>
-                        Gig Link:
-                      </label>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          className="input"
-                          value={generateGigLink(selectedGig)}
-                          readOnly
-                          style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.85rem' }}
-                        />
-                        <button
-                          className="btn secondary"
-                          onClick={() => handleCopyLink(selectedGig)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                        >
-                          <CopyIcon />
-                          {copiedLink ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div style={{ marginBottom: '1rem' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600 }}>
-                        Message to send:
-                      </label>
                       <textarea
                         className="input"
-                        value={generateInviteMessage(selectedGig, venues.find(v => v.venueId === selectedGig.venueId))}
+                        value={generateInviteMessage(selectedGig, venues.find(v => v.venueId === selectedGig.venueId), createdInviteId)}
                         readOnly
                         rows={3}
                         style={{ width: '100%', fontSize: '0.85rem', marginBottom: '0.5rem', resize: 'none' }}
@@ -765,6 +725,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
                       setStep('gig-selection');
                       setSelectedGig(null);
                       setSelectedContactMethod(null);
+                      setCreatedInviteId(null);
                     }}
                     disabled={inviting}
                   >
@@ -785,6 +746,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
 export const ArtistCRM = ({ user, venues }) => {
   const navigate = useNavigate();
   const { isMdUp } = useBreakpoint();
+  const { gigs } = useVenueDashboard();
   const [crmEntries, setCrmEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingNotes, setEditingNotes] = useState(null);
@@ -813,6 +775,10 @@ export const ArtistCRM = ({ user, venues }) => {
   const [savingNew, setSavingNew] = useState(false);
   const [addArtistPosition, setAddArtistPosition] = useState({ top: 0, left: 0 });
   const [profileFilter, setProfileFilter] = useState('all'); // 'all', 'withProfile', 'withoutProfile'
+  const [viewMode, setViewMode] = useState('saved'); // 'saved' or 'previouslyBooked'
+  const [previouslyBookedArtists, setPreviouslyBookedArtists] = useState([]);
+  const [previouslyBookedProfiles, setPreviouslyBookedProfiles] = useState({});
+  const [loadingPreviouslyBooked, setLoadingPreviouslyBooked] = useState(false);
 
   // Filter entries based on profile filter
   const filteredEntries = useMemo(() => {
@@ -821,6 +787,86 @@ export const ArtistCRM = ({ user, venues }) => {
     if (profileFilter === 'withoutProfile') return crmEntries.filter(entry => !entry.artistId);
     return crmEntries;
   }, [crmEntries, profileFilter]);
+
+  // Extract previously booked artists from confirmed gigs
+  useEffect(() => {
+    const fetchPreviouslyBookedArtists = async () => {
+      if (viewMode !== 'previouslyBooked' || !gigs?.length) {
+        setPreviouslyBookedArtists([]);
+        setPreviouslyBookedProfiles({});
+        return;
+      }
+
+      setLoadingPreviouslyBooked(true);
+      try {
+        const now = new Date();
+        const confirmedGigs = gigs.filter(gig => {
+          const gigDate = getLocalGigDateTime(gig);
+          // Include past and present gigs with confirmed applicants
+          return gigDate && gig.applicants?.some(a => a.status === 'confirmed');
+        });
+
+        // Extract unique artist IDs from confirmed applicants
+        const uniqueArtistIds = new Set();
+        const artistIdToMusicianId = new Map();
+        
+        confirmedGigs.forEach(gig => {
+          const confirmedApplicants = gig.applicants?.filter(a => a.status === 'confirmed') || [];
+          confirmedApplicants.forEach(applicant => {
+            const artistId = applicant.id || applicant.musicianId;
+            if (artistId) {
+              uniqueArtistIds.add(artistId);
+              if (applicant.musicianId) {
+                artistIdToMusicianId.set(artistId, applicant.musicianId);
+              }
+            }
+          });
+        });
+
+        // Filter out artists already in CRM
+        const savedArtistIds = new Set(crmEntries.map(entry => entry.artistId).filter(Boolean));
+        const artistIdsToFetch = Array.from(uniqueArtistIds).filter(id => !savedArtistIds.has(id));
+
+        // Fetch all artist profiles in parallel
+        const profilePromises = artistIdsToFetch.map(async (artistId) => {
+          try {
+            const profile = await getArtistProfileById(artistId);
+            return { artistId, profile };
+          } catch (error) {
+            console.error(`Error fetching profile for ${artistId}:`, error);
+            return { artistId, profile: null };
+          }
+        });
+
+        const profileResults = await Promise.all(profilePromises);
+        
+        // Build the artist list and profile map
+        const bookedArtists = [];
+        const profileMap = {};
+        
+        profileResults.forEach(({ artistId, profile }) => {
+          if (profile) {
+            bookedArtists.push({
+              id: artistId,
+              name: profile.name || 'Unknown Artist',
+              musicianId: artistIdToMusicianId.get(artistId),
+            });
+            profileMap[artistId] = profile;
+          }
+        });
+
+        setPreviouslyBookedArtists(bookedArtists);
+        setPreviouslyBookedProfiles(profileMap);
+      } catch (error) {
+        console.error('Error fetching previously booked artists:', error);
+        toast.error('Error loading previously booked artists. Please try again.');
+      } finally {
+        setLoadingPreviouslyBooked(false);
+      }
+    };
+
+    fetchPreviouslyBookedArtists();
+  }, [viewMode, gigs, crmEntries]);
 
   useEffect(() => {
     const fetchCRMData = async () => {
@@ -1065,6 +1111,75 @@ export const ArtistCRM = ({ user, venues }) => {
     }
   };
 
+  const handleSavePreviouslyBookedArtist = async (artist) => {
+    if (!user?.uid || !artist?.id) return;
+
+    try {
+      // Check if already saved
+      const alreadySaved = await isArtistSavedInCRM(user.uid, artist.id);
+      if (alreadySaved) {
+        toast.info(`${artist.name || 'Artist'} is already saved.`);
+        // Refresh the list and remove from previously booked
+        const entries = await getArtistCRMEntries(user.uid);
+        setCrmEntries(entries);
+        
+        // Find the existing entry and ensure its profile is loaded
+        const existingEntry = entries.find(entry => entry.artistId === artist.id);
+        if (existingEntry && existingEntry.artistId && !artistProfiles[existingEntry.id]) {
+          try {
+            const profile = previouslyBookedProfiles[artist.id] || await getArtistProfileById(existingEntry.artistId);
+            if (profile) {
+              setArtistProfiles(prev => ({
+                ...prev,
+                [existingEntry.id]: profile
+              }));
+            }
+          } catch (error) {
+            console.error(`Error fetching profile for ${existingEntry.artistId}:`, error);
+          }
+        }
+        
+        setPreviouslyBookedArtists(prev => prev.filter(a => a.id !== artist.id));
+        return;
+      }
+      
+      // Create CRM entry
+      await createArtistCRMEntry(user.uid, {
+        artistId: artist.id,
+        name: artist.name || 'Unknown Artist',
+        notes: '',
+      });
+      
+      toast.success(`Saved ${artist.name || 'Artist'} to your list`);
+      // Refresh the list
+      const entries = await getArtistCRMEntries(user.uid);
+      setCrmEntries(entries);
+      
+      // Find the newly created entry and fetch/add its profile
+      const newEntry = entries.find(entry => entry.artistId === artist.id);
+      if (newEntry && newEntry.artistId) {
+        try {
+          // Use the profile we already have from previouslyBookedProfiles, or fetch it
+          const profile = previouslyBookedProfiles[artist.id] || await getArtistProfileById(newEntry.artistId);
+          if (profile) {
+            setArtistProfiles(prev => ({
+              ...prev,
+              [newEntry.id]: profile
+            }));
+          }
+        } catch (error) {
+          console.error(`Error fetching profile for ${newEntry.artistId}:`, error);
+        }
+      }
+      
+      // Remove from previously booked list
+      setPreviouslyBookedArtists(prev => prev.filter(a => a.id !== artist.id));
+    } catch (error) {
+      console.error('Error saving artist:', error);
+      toast.error('Failed to save artist. Please try again.');
+    }
+  };
+
   return (
     <>
       <div className='head'>
@@ -1084,38 +1199,55 @@ export const ArtistCRM = ({ user, venues }) => {
         ) : (
           <>
             <div className='filters'>
+              {viewMode === 'saved' && (
+                <div className="status-buttons">
+                  <button 
+                    className={`btn ${profileFilter === 'all' ? 'active' : ''}`} 
+                    onClick={() => setProfileFilter('all')}
+                  >
+                    All
+                  </button>
+                  <button 
+                    className={`btn ${profileFilter === 'withProfile' ? 'active' : ''}`} 
+                    onClick={() => setProfileFilter('withProfile')}
+                  >
+                    With Gigin Profile
+                  </button>
+                  <button 
+                    className={`btn ${profileFilter === 'withoutProfile' ? 'active' : ''}`} 
+                    onClick={() => setProfileFilter('withoutProfile')}
+                  >
+                    Without Gigin Profile
+                  </button>
+                </div>
+              )}
               <div className="status-buttons">
                 <button 
-                  className={`btn ${profileFilter === 'all' ? 'active' : ''}`} 
-                  onClick={() => setProfileFilter('all')}
+                  className={`btn ${viewMode === 'saved' ? 'active' : ''}`} 
+                  onClick={() => setViewMode('saved')}
                 >
-                  All
+                  Saved Artists
                 </button>
                 <button 
-                  className={`btn ${profileFilter === 'withProfile' ? 'active' : ''}`} 
-                  onClick={() => setProfileFilter('withProfile')}
+                  className={`btn ${viewMode === 'previouslyBooked' ? 'active' : ''}`} 
+                  onClick={() => setViewMode('previouslyBooked')}
                 >
-                  With Gigin Profile
-                </button>
-                <button 
-                  className={`btn ${profileFilter === 'withoutProfile' ? 'active' : ''}`} 
-                  onClick={() => setProfileFilter('withoutProfile')}
-                >
-                  Without Gigin Profile
+                  Previously Booked
                 </button>
               </div>
             </div>
-            <table>
-            <thead>
-              <tr>
-                <th id='name' style={{ width: isMdUp ? '18%' : '25%' }}>Artist Name</th>
-                <th className='centre' style={{ width: isMdUp ? '22%' : '35%' }}>View Profile/Contact</th>
-                <th className='centre' style={{ width: isMdUp ? '12%' : '20%' }}>Invite to Gig</th>
-                {isMdUp && <th className='centre' style={{ width: '35%' }}>Notes</th>}
-                <th id='options' style={{ width: '5%' }}></th>
-              </tr>
-            </thead>
-            <tbody>
+            {viewMode === 'saved' ? (
+              <table>
+              <thead>
+                <tr>
+                  <th id='name' style={{ width: isMdUp ? '18%' : '50%' }}>Artist Name</th>
+                  {isMdUp && <th className='centre' style={{ width: '22%' }}>View Profile/Contact</th>}
+                  <th className='centre' style={{ width: isMdUp ? '12%' : '40%' }}>Invite to Gig</th>
+                  {isMdUp && <th className='centre' style={{ width: '35%' }}>Notes</th>}
+                  <th id='options' style={{ width: isMdUp ? '5%' : '10%' }}></th>
+                </tr>
+              </thead>
+              <tbody>
               {filteredEntries.map((entry) => {
                 const artistProfile = artistProfiles[entry.id];
                 const hasProfile = !!entry.artistId && !!artistProfile;
@@ -1130,86 +1262,66 @@ export const ArtistCRM = ({ user, venues }) => {
                         </span>
                       ) : (
                         // Artist without profile - editable
-                        <div 
-                          className="notes-container"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setNamePosition({ top: rect.top - 120, left: rect.left });
-                            setEditingName(entry.id);
-                            setNameValue(entry.name || '');
+                        <span className="notes-text" style={{ fontSize: '0.9rem' }}>
+                          {entry.name || ''}
+                        </span>
+                      )}
+                      {editingName === entry.id && (
+                        <div
+                          data-name-editor
+                          className="notes-editor"
+                          style={{
+                            top: `${namePosition.top}px`,
+                            left: `${namePosition.left}px`,
                           }}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="notes-content">
-                            <span className="notes-text" style={{ fontSize: '0.9rem' }}>
-                              {entry.name || ''}
-                            </span>
+                          <h4>Artist Name</h4>
+                          <input
+                            type="text"
+                            className="input"
+                            value={nameValue}
+                            onChange={(e) => setNameValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSaveName(entry.id);
+                              }
+                              if (e.key === 'Escape') {
+                                setEditingName(null);
+                                setNameValue('');
+                              }
+                            }}
+                            onBlur={(e) => {
+                              setTimeout(() => {
+                                if (editingName === entry.id) {
+                                  handleSaveName(entry.id);
+                                }
+                              }, 200);
+                            }}
+                            autoFocus
+                          />
+                          <div className="notes-editor-actions">
                             <button
-                              className="btn icon notes-edit-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
+                              className="btn tertiary"
+                              onClick={() => {
+                                setEditingName(null);
+                                setNameValue('');
                               }}
                             >
-                              <EditIcon />
+                              Cancel
+                            </button>
+                            <button
+                              className="btn primary"
+                              onClick={() => handleSaveName(entry.id)}
+                            >
+                              Save
                             </button>
                           </div>
-                          {editingName === entry.id && (
-                            <div
-                              data-name-editor
-                              className="notes-editor"
-                              style={{
-                                top: `${namePosition.top}px`,
-                                left: `${namePosition.left}px`,
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <h4>Artist Name</h4>
-                              <input
-                                type="text"
-                                className="input"
-                                value={nameValue}
-                                onChange={(e) => setNameValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleSaveName(entry.id);
-                                  }
-                                  if (e.key === 'Escape') {
-                                    setEditingName(null);
-                                    setNameValue('');
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  setTimeout(() => {
-                                    if (editingName === entry.id) {
-                                      handleSaveName(entry.id);
-                                    }
-                                  }, 200);
-                                }}
-                                autoFocus
-                              />
-                              <div className="notes-editor-actions">
-                                <button
-                                  className="btn tertiary"
-                                  onClick={() => {
-                                    setEditingName(null);
-                                    setNameValue('');
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  className="btn primary"
-                                  onClick={() => handleSaveName(entry.id)}
-                                >
-                                  Save
-                                </button>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )}
                     </td>
+                    {isMdUp && (
                     <td className='centre contact-cell' onClick={(e) => e.stopPropagation()}>
                       {hasProfile ? (
                         <button
@@ -1224,19 +1336,6 @@ export const ArtistCRM = ({ user, venues }) => {
                       ) : (
                         <div 
                           className="notes-container"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setContactPosition({ top: rect.top - 120, left: rect.left });
-                            setEditingContact(entry.id);
-                            setContactValue({ 
-                              email: entry.email || '', 
-                              phone: entry.phone || '',
-                              instagram: entry.instagram || '',
-                              facebook: entry.facebook || '',
-                              other: entry.other || '',
-                            });
-                          }}
                           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                         >
                           <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', alignItems: 'center', justifyContent: 'center' }}>
@@ -1260,9 +1359,9 @@ export const ArtistCRM = ({ user, venues }) => {
                                 const getContactStyle = (type) => {
                                   switch(type) {
                                     case 'email':
-                                      return { backgroundColor: 'rgba(42, 217, 33, 0.1)', color: 'var(--gn-green)' };
-                                    case 'phone':
                                       return { backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' };
+                                    case 'phone':
+                                      return { backgroundColor: 'rgba(42, 217, 33, 0.1)', color: 'var(--gn-green)' };
                                     case 'instagram':
                                       return { backgroundColor: 'var(--gn-instagram-orange-offset)', color: 'var(--gn-instagram-orange)' };
                                     case 'facebook':
@@ -1301,8 +1400,20 @@ export const ArtistCRM = ({ user, venues }) => {
                             className="btn icon notes-edit-btn"
                             onClick={(e) => {
                               e.stopPropagation();
+                              const rect = e.currentTarget.closest('.contact-cell')?.getBoundingClientRect();
+                              if (rect) {
+                                setContactPosition({ top: rect.top - 120, left: rect.left });
+                                setEditingContact(entry.id);
+                                setContactValue({ 
+                                  email: entry.email || '', 
+                                  phone: entry.phone || '',
+                                  instagram: entry.instagram || '',
+                                  facebook: entry.facebook || '',
+                                  other: entry.other || '',
+                                });
+                              }
                             }}
-                            style={{ marginLeft: '0.5rem', flexShrink: 0 }}
+                            style={{ marginLeft: '0.5rem', flexShrink: 0, fontSize: '0.875rem', color: 'var(--gn-grey-700)' }}
                           >
                             <EditIcon />
                           </button>
@@ -1387,8 +1498,9 @@ export const ArtistCRM = ({ user, venues }) => {
                             </div>
                           )}
                         </div>
-                      )}
-                    </td>
+                        )}
+                      </td>
+                    )}
                     <td className="centre" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="btn tertiary"
@@ -1404,7 +1516,7 @@ export const ArtistCRM = ({ user, venues }) => {
                       {isMdUp && (
                       <td className='centre notes-cell' onClick={(e) => e.stopPropagation()}>
                         <div 
-                          className="notes-container"
+                          className="notes-box"
                           onClick={(e) => {
                             e.stopPropagation();
                             const rect = e.currentTarget.getBoundingClientRect();
@@ -1413,73 +1525,63 @@ export const ArtistCRM = ({ user, venues }) => {
                             setNotesValue(entry.notes || '');
                           }}
                         >
-                          <div className="notes-content">
-                            <span className="notes-text" style={{ fontSize: '0.9rem' }}>
-                              {entry.notes || ''}
-                            </span>
-                            <button
-                              className="btn icon notes-edit-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
+                          <span className="notes-text">
+                            {entry.notes || ''}
+                          </span>
+                        </div>
+                        {editingNotes === entry.id && (
+                          <div
+                            data-notes-editor
+                            className="notes-editor"
+                            style={{
+                              top: `${notesPosition.top}px`,
+                              left: `${notesPosition.left}px`,
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <h4>Notes</h4>
+                            <textarea
+                              className="notes-textarea"
+                              value={notesValue}
+                              onChange={(e) => setNotesValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveNotes(entry.id);
+                                }
+                                if (e.key === 'Escape') {
+                                  setEditingNotes(null);
+                                  setNotesValue('');
+                                }
                               }}
-                            >
-                              <EditIcon />
-                            </button>
-                          </div>
-                          {editingNotes === entry.id && (
-                            <div
-                              data-notes-editor
-                              className="notes-editor"
-                              style={{
-                                top: `${notesPosition.top}px`,
-                                left: `${notesPosition.left}px`,
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <h4>Notes</h4>
-                              <textarea
-                                className="notes-textarea"
-                                value={notesValue}
-                                onChange={(e) => setNotesValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
+                              onBlur={(e) => {
+                                setTimeout(() => {
+                                  if (editingNotes === entry.id) {
                                     handleSaveNotes(entry.id);
                                   }
-                                  if (e.key === 'Escape') {
-                                    setEditingNotes(null);
-                                    setNotesValue('');
-                                  }
+                                }, 200);
+                              }}
+                              autoFocus
+                            />
+                            <div className="notes-editor-actions">
+                              <button
+                                className="btn tertiary"
+                                onClick={() => {
+                                  setEditingNotes(null);
+                                  setNotesValue('');
                                 }}
-                                onBlur={(e) => {
-                                  setTimeout(() => {
-                                    if (editingNotes === entry.id) {
-                                      handleSaveNotes(entry.id);
-                                    }
-                                  }, 200);
-                                }}
-                                autoFocus
-                              />
-                              <div className="notes-editor-actions">
-                                <button
-                                  className="btn tertiary"
-                                  onClick={() => {
-                                    setEditingNotes(null);
-                                    setNotesValue('');
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  className="btn primary"
-                                  onClick={() => handleSaveNotes(entry.id)}
-                                >
-                                  Save
-                                </button>
-                              </div>
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                className="btn primary"
+                                onClick={() => handleSaveNotes(entry.id)}
+                              >
+                                Save
+                              </button>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </td>
                     )}
                     <td className="options-cell" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
@@ -1496,6 +1598,21 @@ export const ArtistCRM = ({ user, venues }) => {
                       </div>
                       {openOptionsId === entry.id && (
                         <div className="options-dropdown crm" onClick={(e) => e.stopPropagation()}>
+                          {!hasProfile && (
+                            <button onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenOptionsId(null);
+                              const rect = e.currentTarget.closest('tr')?.querySelector('.name-cell')?.getBoundingClientRect();
+                              if (rect) {
+                                setNamePosition({ top: rect.top - 120, left: rect.left });
+                                setEditingName(entry.id);
+                                setNameValue(entry.name || '');
+                              }
+                            }}>
+                              Edit Name
+                              <EditIcon />
+                            </button>
+                          )}
                           <button onClick={() => {
                             setOpenOptionsId(null);
                             handleDeleteEntry(entry.id);
@@ -1510,7 +1627,8 @@ export const ArtistCRM = ({ user, venues }) => {
                   );
                 })}
 
-              {/* Add Artist Row - Always at bottom */}
+              {/* Add Artist Row - Only for saved artists view */}
+              {viewMode === 'saved' && (
               <tr className="add-artist-row">
                 <td className='name-cell' onClick={(e) => e.stopPropagation()}>
                   <div 
@@ -1557,66 +1675,6 @@ export const ArtistCRM = ({ user, venues }) => {
                             autoFocus
                           />
                         </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Email</label>
-                          <input
-                            type="email"
-                            className="input"
-                            placeholder="artist@example.com"
-                            value={newEntryData.email}
-                            onChange={(e) => setNewEntryData(prev => ({ ...prev, email: e.target.value }))}
-                          />
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Phone</label>
-                          <input
-                            type="tel"
-                            className="input"
-                            placeholder="+44 123 456 7890"
-                            value={newEntryData.phone}
-                            onChange={(e) => setNewEntryData(prev => ({ ...prev, phone: e.target.value }))}
-                          />
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Instagram</label>
-                          <input
-                            type="text"
-                            className="input"
-                            placeholder="@username or URL"
-                            value={newEntryData.instagram}
-                            onChange={(e) => setNewEntryData(prev => ({ ...prev, instagram: e.target.value }))}
-                          />
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Facebook</label>
-                          <input
-                            type="text"
-                            className="input"
-                            placeholder="URL or username"
-                            value={newEntryData.facebook}
-                            onChange={(e) => setNewEntryData(prev => ({ ...prev, facebook: e.target.value }))}
-                          />
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Other</label>
-                          <input
-                            type="text"
-                            className="input"
-                            placeholder="Other contact method"
-                            value={newEntryData.other}
-                            onChange={(e) => setNewEntryData(prev => ({ ...prev, other: e.target.value }))}
-                          />
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Notes</label>
-                          <textarea
-                            className="notes-textarea"
-                            placeholder="Add notes about this artist..."
-                            value={newEntryData.notes}
-                            onChange={(e) => setNewEntryData(prev => ({ ...prev, notes: e.target.value }))}
-                            rows={4}
-                          />
-                        </div>
                         <div className="notes-editor-actions">
                           <button
                             className="btn tertiary"
@@ -1644,8 +1702,100 @@ export const ArtistCRM = ({ user, venues }) => {
                 )}
                 <td className="options-cell"></td>
               </tr>
+              )}
             </tbody>
             </table>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th id='name' style={{ width: isMdUp ? '25%' : '40%' }}>Artist Name</th>
+                    {isMdUp && <th className='centre' style={{ width: '25%' }}>View Profile</th>}
+                    <th className='centre' style={{ width: isMdUp ? '20%' : '30%' }}>Invite to Gig</th>
+                    <th className='centre' style={{ width: isMdUp ? '30%' : '30%' }}>Save Artist</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingPreviouslyBooked ? (
+                    <tr>
+                      <td colSpan={isMdUp ? 4 : 3} style={{ textAlign: 'center', padding: '2rem' }}>
+                        <LoadingSpinner />
+                      </td>
+                    </tr>
+                  ) : previouslyBookedArtists.length === 0 ? (
+                    <tr>
+                      <td colSpan={isMdUp ? 4 : 3} style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                        No previously booked artists found.
+                      </td>
+                    </tr>
+                  ) : (
+                    previouslyBookedArtists.map((artist) => {
+                      const profile = previouslyBookedProfiles[artist.id];
+                      const hasProfile = !!profile;
+                      const artistName = artist.name || profile?.name || 'Unknown Artist';
+                      
+                      return (
+                        <tr key={artist.id}>
+                          <td className='name-cell' onClick={(e) => e.stopPropagation()}>
+                            <span style={{ fontSize: '0.9rem' }}>
+                              {artistName}
+                            </span>
+                          </td>
+                          {isMdUp && (
+                            <td className='centre' onClick={(e) => e.stopPropagation()}>
+                              {hasProfile ? (
+                                <button
+                                  className="btn tertiary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openInNewTab(`/artist/${encodeURIComponent(artist.id)}`, e);
+                                  }}
+                                >
+                                  View Artist
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: '0.9rem', color: '#666' }}>
+                                  No profile
+                                </span>
+                              )}
+                            </td>
+                          )}
+                          <td className="centre" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="btn tertiary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Create a temporary entry object for the invite modal
+                                const tempEntry = {
+                                  id: `temp-${artist.id}`,
+                                  name: artistName,
+                                  artistId: artist.id,
+                                };
+                                setSelectedArtist(tempEntry);
+                                setShowInviteGigModal(true);
+                              }}
+                            >
+                              Invite
+                            </button>
+                          </td>
+                          <td className='centre' onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="btn tertiary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSavePreviouslyBookedArtist(artist);
+                              }}
+                            >
+                              Save Artist
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            )}
           </>
         )}
       </div>

@@ -393,7 +393,6 @@
 /* INVITE MUSICIAN TO GIG MODAL */
 
 .modal.invite-musician .modal-content {
-    min-height: 75vh;
     display: flex;
     flex-direction: column;
     gap:0;
@@ -742,10 +741,48 @@
 }
 
 .modal.add-staff .modal-content .modal-body .permissions-list {
+    
+}
+
+/* EDIT GIG TIME MODAL - GIG NAME INPUT */
+.modal-content .body.budget {
+    margin: 1rem 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap:2px;
+    justify-content: center;
+}
+
+.modal-content .body.budget .input-group {
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.modal-content .body.budget .input-group input {
+    font-size: 5rem;
+    font-weight: var(--gn-semi-bold);
+    background-color: transparent;
+    max-width: 100%;
+    text-align: center;
+    border: none;
+    width: 100%;
+}
+
+.modal-content .body.budget .input-group input:focus {
+    outline: none;
+}
+
+.modal-content .body.budget .input-group input::placeholder {
+    color: var(--gn-grey-400);
+}
+
+@media (--bp-md) {
+    .modal-content .body.budget .input-group input {
+        font-size: 2.5rem;
+    }
 }
 
 .modal.add-staff .modal-content .modal-body .permissions-list .permission {

@@ -54,7 +54,12 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
       }
     }, [buildingForMusician, setCreatedGigForInvite, setShowInviteMethodsModal]);
     
-    const [stage, setStage] = useState(incompleteGigs?.length > 0 || templates?.length > 0 ? 0 : 1);
+    const [stage, setStage] = useState(() => {
+        if (editGigData) {
+            return 9; // Start at review stage when editing
+        }
+        return incompleteGigs?.length > 0 || templates?.length > 0 ? 0 : 1;
+    });
     const [inviteExpiryDate, setInviteExpiryDate] = useState(null);
     const [formData, setFormData] = useState(editGigData ? editGigData : {
         gigId: uuidv4(),
