@@ -132,10 +132,12 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
     const [techRiderProfile, setTechRiderProfile] = useState(null);
     const [editingSoundManager, setEditingSoundManager] = useState(false);
     const [soundManagerValue, setSoundManagerValue] = useState('');
-    const [soundManagerPosition, setSoundManagerPosition] = useState({ top: 0, left: 0 });
+    const [savingSoundManager, setSavingSoundManager] = useState(false);
+    const soundManagerTextareaRef = useRef(null);
     const [editingNotes, setEditingNotes] = useState(false);
     const [notesValue, setNotesValue] = useState('');
-    const [notesPosition, setNotesPosition] = useState({ top: 0, left: 0 });
+    const [savingNotes, setSavingNotes] = useState(false);
+    const notesTextareaRef = useRef(null);
     const [relatedSlots, setRelatedSlots] = useState([]);
     const [showSlotInviteModal, setShowSlotInviteModal] = useState(false);
     const [selectedMusicianForSlotInvite, setSelectedMusicianForSlotInvite] = useState(null);
@@ -174,8 +176,12 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         const activeGig = gigs.find(gig => gig.gigId === gigId);
         setGigInfo(activeGig);
         if (activeGig) {
-            setSoundManagerValue(activeGig.soundManager || '');
-            setNotesValue(activeGig.notes || '');
+            if (!editingSoundManager) {
+                setSoundManagerValue(activeGig.soundManager || '');
+            }
+            if (!editingNotes) {
+                setNotesValue(activeGig.notes || '');
+            }
             
             // Fetch related slots if this gig has gigSlots
             if (Array.isArray(activeGig.gigSlots) && activeGig.gigSlots.length > 0) {
@@ -197,7 +203,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 setRelatedSlots([]);
             }
         }
-    }, [gigId, gigs]);
+    }, [gigId, gigs, editingSoundManager, editingNotes]);
 
     const markedRef = useRef(new Set()); // gigIds we’ve already marked this session
 
@@ -886,9 +892,10 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')) {
             toast.error('You do not have permission to update this gig.');
             setEditingSoundManager(false);
-            setSoundManagerValue('');
+            setSoundManagerValue(gigInfo.soundManager || '');
             return;
         }
+        setSavingSoundManager(true);
         try {
             await updateGigDocument({
                 gigId: gigInfo.gigId,
@@ -896,13 +903,17 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 updates: { soundManager: soundManagerValue.trim() || null }
             });
             
-            toast.success('Sound Manager updated');
             setEditingSoundManager(false);
-            setSoundManagerValue('');
+            if (soundManagerTextareaRef.current) {
+                soundManagerTextareaRef.current.blur();
+            }
             refreshGigs();
         } catch (error) {
             console.error('Error updating sound manager:', error);
             toast.error('Failed to update sound manager. Please try again.');
+            setSoundManagerValue(gigInfo.soundManager || '');
+        } finally {
+            setSavingSoundManager(false);
         }
     };
 
@@ -910,9 +921,10 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         if (!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')) {
             toast.error('You do not have permission to update this gig.');
             setEditingNotes(false);
-            setNotesValue('');
+            setNotesValue(gigInfo.notes || '');
             return;
         }
+        setSavingNotes(true);
         try {
             await updateGigDocument({
                 gigId: gigInfo.gigId,
@@ -920,13 +932,17 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 updates: { notes: notesValue.trim() || null }
             });
             
-            toast.success('Notes updated');
             setEditingNotes(false);
-            setNotesValue('');
+            if (notesTextareaRef.current) {
+                notesTextareaRef.current.blur();
+            }
             refreshGigs();
         } catch (error) {
             console.error('Error updating notes:', error);
             toast.error('Failed to update notes. Please try again.');
+            setNotesValue(gigInfo.notes || '');
+        } finally {
+            setSavingNotes(false);
         }
     };
 
@@ -1269,11 +1285,11 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     {/* Monetary Status */}
                     <div style={{ marginTop: '0.5rem' }}>
                         {gigInfo.kind === 'Ticketed Gig' ? (
-                            <h4>Ticketed Gig</h4>
+                            <h3>Ticketed Gig</h3>
                         ) : gigInfo.kind === 'Open Mic' ? (
-                            <h4>Open Mic</h4>
+                            <h3>Open Mic</h3>
                         ) : (
-                            <h4>
+                            <h3>
                                 {(() => {
                                     const budget = gigInfo.budget || '';
                                     if (budget === '£0' || budget === '£') {
@@ -1286,104 +1302,140 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                     }
                                     return '—';
                                 })()}
-                            </h4>
+                            </h3>
                         )}
                     </div>
                     
                     {/* Sound Manager */}
-                    <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontWeight: 500 }}>Sound Manager:</span>
-                        {editingSoundManager ? (
-                            <div style={{ position: 'relative', display: 'inline-block' }}>
-                                <textarea
-                                    value={soundManagerValue}
-                                    onChange={(e) => setSoundManagerValue(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleSaveSoundManager();
-                                        }
-                                        if (e.key === 'Escape') {
+                    <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                        <span style={{ fontWeight: 500, flexShrink: 0 }}>Sound Manager:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                            <textarea
+                                ref={soundManagerTextareaRef}
+                                value={soundManagerValue}
+                                onChange={(e) => setSoundManagerValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSaveSoundManager();
+                                    }
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.outline = '2px solid #000000';
+                                    e.target.style.outlineOffset = '-1px';
+                                    if (hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')) {
+                                        setEditingSoundManager(true);
+                                    } else {
+                                        toast.error('You do not have permission to update this gig.');
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.outline = 'none';
+                                    // Reset value if user clicks away without saving
+                                    // Use setTimeout to allow save button click to register first
+                                    setTimeout(() => {
+                                        if (editingSoundManager && !savingSoundManager) {
+                                            setSoundManagerValue(gigInfo.soundManager || '');
                                             setEditingSoundManager(false);
-                                            setSoundManagerValue(gigInfo.soundManager || '');
                                         }
+                                    }, 50);
+                                }}
+                                disabled={!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')}
+                                rows={1}
+                                style={{
+                                    width: '25%',
+                                    minWidth: '200px',
+                                    padding: '0.5rem',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #e6e6e6',
+                                    borderRadius: '0.5rem',
+                                    resize: 'none',
+                                    outline: 'none',
+                                }}
+                            />
+                            {editingSoundManager && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                <button
+                                    className="btn primary"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleSaveSoundManager();
                                     }}
-                                    onBlur={() => {
-                                        setTimeout(() => {
-                                            if (editingSoundManager) {
-                                                handleSaveSoundManager();
-                                            }
-                                        }, 200);
+                                    onMouseDown={(e) => {
+                                        // Prevent blur from firing before click
+                                        e.preventDefault();
                                     }}
-                                    autoFocus
-                                    className='input'
-                                    resize='none'
-                                />
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span>{gigInfo.soundManager || '—'}</span>
-                                {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
-                                    <button 
-                                        className="btn icon sound-manager-edit-btn"
-                                        onClick={() => {
-                                            setEditingSoundManager(true);
-                                            setSoundManagerValue(gigInfo.soundManager || '');
-                                        }}
-                                    >
-                                        <EditIcon />
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                                >
+                                    Save
+                                </button>
+                            )}
+                        </div>
                     </div>
                     
                     {/* Notes */}
-                    <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontWeight: 500 }}>Notes:</span>
-                        {editingNotes ? (
-                            <div style={{ position: 'relative', display: 'inline-block' }}>
-                                <textarea
-                                    value={notesValue}
-                                    onChange={(e) => setNotesValue(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleSaveNotes();
-                                        }
-                                        if (e.key === 'Escape') {
+                    <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                        <span style={{ fontWeight: 500, flexShrink: 0 }}>Notes:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                            <textarea
+                                ref={notesTextareaRef}
+                                value={notesValue}
+                                onChange={(e) => setNotesValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSaveNotes();
+                                    }
+                                }}
+                                disabled={!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')}
+                                rows={1}
+                                style={{
+                                    width: '50%',
+                                    minWidth: '300px',
+                                    padding: '0.5rem',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #e6e6e6',
+                                    borderRadius: '0.5rem',
+                                    resize: 'none',
+                                    outline: 'none',
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.outline = '2px solid #000000';
+                                    e.target.style.outlineOffset = '-1px';
+                                    if (hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')) {
+                                        setEditingNotes(true);
+                                    } else {
+                                        toast.error('You do not have permission to update this gig.');
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.outline = 'none';
+                                    // Reset value if user clicks away without saving
+                                    // Use setTimeout to allow save button click to register first
+                                    setTimeout(() => {
+                                        if (editingNotes && !savingNotes) {
+                                            setNotesValue(gigInfo.notes || '');
                                             setEditingNotes(false);
-                                            setNotesValue(gigInfo.notes || '');
                                         }
+                                    }, 50);
+                                }}
+                            />
+                            {editingNotes && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                <button
+                                    className="btn primary"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleSaveNotes();
                                     }}
-                                    onBlur={() => {
-                                        setTimeout(() => {
-                                            if (editingNotes) {
-                                                handleSaveNotes();
-                                            }
-                                        }, 200);
+                                    onMouseDown={(e) => {
+                                        // Prevent blur from firing before click
+                                        e.preventDefault();
                                     }}
-                                    autoFocus
-                                    className='input'
-                                    resize='none'
-                                />
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span>{gigInfo.notes || '—'}</span>
-                                {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
-                                    <button 
-                                        className="btn icon sound-manager-edit-btn" 
-                                        onClick={() => {
-                                            setEditingNotes(true);
-                                            setNotesValue(gigInfo.notes || '');
-                                        }}
-                                    >
-                                        <EditIcon />
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                                >
+                                    Save
+                                </button>
+                            )}
+                        </div>
                     </div>
                     
                 </div>

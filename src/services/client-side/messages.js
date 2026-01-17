@@ -76,6 +76,33 @@ export const sendGigInvitationMessage = async (conversationId, { senderId, text 
   }
 };
 
+/**
+ * @deprecated Use sendGigAcceptanceAnnouncement from @services/api/messages instead.
+ * This client-side function is blocked by Firestore security rules and has been moved to the API.
+ */
+// export const sendGigAcceptanceAnnouncement = async (conversationId, { senderId, text, nonPayableGig = false }) => {
+//   try {
+//     const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+//     await addDoc(messagesRef, {
+//       senderId,
+//       text,
+//       type: 'announcement',
+//       status: nonPayableGig ? 'gig confirmed' : 'awaiting payment',
+//       timestamp: Timestamp.now(),
+//     });
+//     
+//     // Update conversation last message
+//     const convRef = doc(firestore, 'conversations', conversationId);
+//     await updateDoc(convRef, {
+//       lastMessage: text,
+//       lastMessageTimestamp: Timestamp.now(),
+//       lastMessageSenderId: senderId,
+//     });
+//   } catch (error) {
+//     console.error('[Firestore Error] sendGigAcceptanceAnnouncement:', error);
+//   }
+// };
+
 
 /*** READ OPERATIONS ***/
 

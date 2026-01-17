@@ -94,17 +94,20 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
                                 )
                             )}
                             {allSlots.length === 1 ? (
-                                <div className='input-group'>
-                                    <input
-                                    type='text'
-                                    name='budget'
-                                    id='budget'
-                                    ref={budgetInputRef}
-                                    onChange={handleBudgetChange}
-                                    value={formData.budget || '£'}
-                                    autoComplete="off"
-                                    />
-                                </div>
+                                <>
+                                    <div className='input-group'>
+                                        <input
+                                        type='text'
+                                        name='budget'
+                                        id='budget'
+                                        ref={budgetInputRef}
+                                        onChange={handleBudgetChange}
+                                        value={formData.budget || '£'}
+                                        autoComplete="off"
+                                        />
+                                    </div>
+                                    <button className="btn secondary" onClick={() => handleBudgetChange({ target: { value: '£0' } })}>No Fee</button>
+                                </>
                                 ) : (
                                 <div className="slots-container">
                                     <div className='slot-budgets'>

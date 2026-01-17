@@ -184,10 +184,16 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
+            
+            // Find the artist's applicant entry to get inviteId
+            const applicants = Array.isArray(gigData.applicants) ? gigData.applicants : [];
+            const artistApplicant = applicants.find(a => a?.id === musicianProfileId);
+            const inviteId = artistApplicant?.inviteId || null;
+            
             let globalAgreedFee;
             if (gigData.kind === 'Open Mic') {
             const { updatedApplicants } = assertOk(
-                await acceptGigOfferOM({ gigData, musicianProfileId, role: 'musician' }),
+                await acceptGigOfferOM({ gigData, musicianProfileId, role: 'musician', inviteId }),
                     'acceptGigOfferOM'
                 );
                 if (!Array.isArray(updatedApplicants)) {
@@ -201,7 +207,7 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 }));
             } else {
                 const { updatedApplicants, agreedFee } = assertOk(
-                    await acceptGigOffer({ gigData, musicianProfileId, nonPayableGig, role: 'musician' }),
+                    await acceptGigOffer({ gigData, musicianProfileId, nonPayableGig, role: 'musician', inviteId }),
                     'acceptGigOffer'
                   );
                 if (!Array.isArray(updatedApplicants)) {
@@ -252,8 +258,14 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             if (!ensureFuture()) return toast.error('Gig is in the past.');
             setEventLoading(true);
             const nonPayableGig = gigData.kind === 'Open Mic' || gigData.kind === "Ticketed Gig" || gigData.budget === '£' || gigData.budget === '£0';
+            
+            // Find the artist's applicant entry to get inviteId
+            const applicants = Array.isArray(gigData.applicants) ? gigData.applicants : [];
+            const artistApplicant = applicants.find(a => a?.id === musicianProfileId);
+            const inviteId = artistApplicant?.inviteId || null;
+            
             const { updatedApplicants, agreedFee } = assertOk(
-                await acceptGigOffer({ gigData, musicianProfileId, nonPayableGig, role: 'musician' }),
+                await acceptGigOffer({ gigData, musicianProfileId, nonPayableGig, role: 'musician', inviteId }),
                 'acceptGigOffer'
               );
             if (!Array.isArray(updatedApplicants)) {

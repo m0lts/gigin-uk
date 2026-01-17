@@ -826,7 +826,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           })
         ));
         
-        toast.success('Sound Manager updated');
         setEditingSoundManager(null);
         setSoundManagerValue('');
         refreshGigs();
@@ -857,7 +856,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           })
         ));
         
-        toast.success('Notes updated');
         setEditingNotes(null);
         setNotesValue('');
         refreshGigs();

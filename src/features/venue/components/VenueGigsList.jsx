@@ -227,7 +227,7 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
     
                 {title !== "Upcoming" && !isVenue ? (
                   <button
-                    className="btn primary-alt"
+                    className="btn artist-profile"
                     onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}
                   >
                     Apply

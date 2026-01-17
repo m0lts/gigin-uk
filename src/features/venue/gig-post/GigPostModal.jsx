@@ -42,17 +42,6 @@ function formatPounds(amount) {
 }
 
 export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests, showInviteMethodsModal, setShowInviteMethodsModal, createdGigForInvite, setCreatedGigForInvite }) => {
-    // Debug: Log props to verify they're being received
-    useEffect(() => {
-      if (buildingForMusician) {
-        console.log('GigPostModal props check:', {
-          hasSetCreatedGigForInvite: !!setCreatedGigForInvite,
-          hasSetShowInviteMethodsModal: !!setShowInviteMethodsModal,
-          setCreatedGigForInviteType: typeof setCreatedGigForInvite,
-          setShowInviteMethodsModalType: typeof setShowInviteMethodsModal
-        });
-      }
-    }, [buildingForMusician, setCreatedGigForInvite, setShowInviteMethodsModal]);
     
     const [stage, setStage] = useState(() => {
         if (editGigData) {
@@ -526,6 +515,69 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
         }
     };
 
+    const getOccurrenceCount = () => {
+        if (!formData.date) return 1;
+        
+        const repeatEnabled =
+            !!formData.repeatData &&
+            formData.repeatData.repeat &&
+            formData.repeatData.repeat !== "no";
+        
+        if (!repeatEnabled) return 1;
+        
+        const MAX_OCCURRENCES = 10;
+        const startDate = new Date(formData.date);
+        const repeatType = formData.repeatData?.repeat;
+        const endAfterRaw = formData.repeatData?.endAfter;
+        const endAfter = Number.isFinite(parseInt(endAfterRaw, 10))
+            ? Math.max(1, Math.min(MAX_OCCURRENCES, parseInt(endAfterRaw, 10)))
+            : undefined;
+        const endDate = formData.repeatData?.endDate
+            ? new Date(formData.repeatData.endDate)
+            : null;
+        
+        const addByRepeat = (date, index) => {
+            const d = new Date(date);
+            switch (repeatType) {
+                case "daily":
+                    d.setDate(d.getDate() + index);
+                    return d;
+                case "weekly":
+                    d.setDate(d.getDate() + 7 * index);
+                    return d;
+                case "fortnightly":
+                    d.setDate(d.getDate() + 14 * index);
+                    return d;
+                case "monthly":
+                    d.setMonth(d.getMonth() + index);
+                    return d;
+                default:
+                    return d;
+            }
+        };
+        
+        const occ = [];
+        const maxByEnd = endAfter || (endDate ? MAX_OCCURRENCES : MAX_OCCURRENCES);
+        for (let i = 0; i < maxByEnd; i++) {
+            const next = addByRepeat(startDate, i);
+            if (endDate && next > endDate) break;
+            occ.push(next);
+        }
+        
+        return occ.length || 1;
+    };
+
+    const getButtonText = () => {
+        if (editGigData) {
+            return 'Save Edits';
+        }
+        if (buildingForMusician) {
+            return 'Create and Invite to Gig';
+        }
+        const occurrenceCount = getOccurrenceCount();
+        return occurrenceCount > 1 ? 'Create Gigs' : 'Create Gig';
+    };
+
     const getStartDateTime = (date, time) => {
         if (!date || !time) return null;
       
@@ -894,7 +946,11 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               setBuildingForMusician(false);
               setBuildingForMusicianData(false);
               resetFormData();
-              toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
+              const isRepeat = formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no";
+              const message = editGigData 
+                ? `Gig edited successfully.`
+                : `Gig${isRepeat ? 's' : ''} created successfully.`;
+              toast.success(message);
               setGigPostModal(false);
             } else {
               // Artist doesn't have a Gigin profile - show invite methods modal
@@ -926,7 +982,11 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                   hasSetShowInviteMethodsModal: !!setShowInviteMethodsModal
                 });
                 resetFormData();
-                toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
+                const isRepeat = formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no";
+                const message = editGigData 
+                  ? `Gig edited successfully.`
+                  : `Gig${isRepeat ? 's' : ''} created successfully.`;
+                toast.success(message);
                 setGigPostModal(false);
               }
               setBuildingForMusician(false);
@@ -939,7 +999,11 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
           // Only close here if we didn't set up the invite modal (i.e., not building for musician or musician has profile)
           if (!buildingForMusician || (buildingForMusician && !setCreatedGigForInvite)) {
             resetFormData();
-            toast.success(`Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''} Posted Successfully.`);
+            const isRepeat = formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no";
+            const message = editGigData 
+              ? `Gig edited successfully.`
+              : `Gig${isRepeat ? 's' : ''} created successfully.`;
+            toast.success(message);
             setGigPostModal(false);
           }
           // If we set createdGigForInvite in the buildingForMusician block, the modal will be shown
@@ -976,8 +1040,18 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             <div className='modal gig-post' onClick={handleModalClick}>
                 <div className='modal-content'>
                     {!loading && (
-                      <button className='btn tertiary close-modal' onClick={() => {setGigPostModal(false); resetFormData()}}>
-                          Cancel
+                      <button 
+                        className='btn tertiary close-modal' 
+                        onClick={() => {
+                          if (editGigData && stage !== 9) {
+                            handlePostGig();
+                          } else {
+                            setGigPostModal(false); 
+                            resetFormData();
+                          }
+                        }}
+                      >
+                          {editGigData && stage !== 9 ? 'Save and Exit' : 'Cancel'}
                       </button>
                     )}
                     <div className='stage'>
@@ -1014,7 +1088,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                                 <>
                                     <button className='btn secondary' onClick={prevStage}>Back</button>
                                     <button className='btn primary' onClick={handlePostGig}>
-                                        {buildingForMusician ? 'Create and Invite to Gig' : `Create Gig${formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no" ? 's' : ''}`}
+                                        {getButtonText()}
                                     </button>
                                 </>
                                 ) : (

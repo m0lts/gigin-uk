@@ -1121,7 +1121,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
             {getIcon()}
             <h3>{getTitle()}</h3>
           </div>
-          {canEdit && isOwner && (
+          {/* {canEdit && isOwner && (
             <button
               className="btn primary add-member-btn"
               onClick={handleAddMemberClick}
@@ -1129,7 +1129,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
               <AddMember />
               Add Member
             </button>
-          )}
+          )} */}
         </div>
         <div className="section-content">
           {loadingMembers ? (
@@ -1585,6 +1585,11 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                     const instrumentDetails = details[instrument] || {};
                     
                     questions.forEach((question) => {
+                      // Don't add "singing?" question if performer has Vocals in their instruments
+                      if (question.key === 'singing' && instruments.includes('Vocals')) {
+                        return;
+                      }
+                      
                       // Skip dependency-only questions
                       if (dependencyOnlyKeys.has(question.key)) {
                         return;
@@ -1636,11 +1641,31 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                   });
 
                   const questions = Array.from(questionMap.values()).filter(q => {
+                    // Don't show "singing?" question if performer has Vocals in their instruments
+                    if (q.key === 'singing' && instruments.includes('Vocals')) {
+                      return false;
+                    }
                     // Only show questions that have answers and are not dependency-only
                     if (q.type === 'yesno') return q.currentValue !== undefined && q.currentValue !== null;
                     if (q.type === 'number') return q.currentValue !== undefined && q.currentValue !== null && q.currentValue !== 0;
                     if (q.type === 'text') return q.currentValue && q.currentValue.trim() !== '';
                     return false;
+                  });
+
+                  // Sort questions: red items (needs) first, then non-red items
+                  const sortedQuestions = [...questions].sort((a, b) => {
+                    // bringingKeyboard false should be treated as red (needs keyboard provided)
+                    const aIsBringingKeyboardFalse = a.key === 'bringingKeyboard' && !a.currentValue;
+                    const bIsBringingKeyboardFalse = b.key === 'bringingKeyboard' && !b.currentValue;
+                    const aIsRed = a.type === 'yesno' && a.currentValue && a.key !== 'bringingInstrument' && a.key !== 'bringingKeyboard';
+                    const bIsRed = b.type === 'yesno' && b.currentValue && b.key !== 'bringingInstrument' && b.key !== 'bringingKeyboard';
+                    const aIsNumber = a.type === 'number';
+                    const bIsNumber = b.type === 'number';
+                    
+                    // Red items (needs) come first, including bringingKeyboard false
+                    if ((aIsRed || aIsNumber || aIsBringingKeyboardFalse) && !(bIsRed || bIsNumber || bIsBringingKeyboardFalse)) return -1;
+                    if (!(aIsRed || aIsNumber || aIsBringingKeyboardFalse) && (bIsRed || bIsNumber || bIsBringingKeyboardFalse)) return 1;
+                    return 0;
                   });
 
                   return (
@@ -1660,19 +1685,27 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                         </span>
                       </div>
                       
-                      {questions.length > 0 ? (
+                      {sortedQuestions.length > 0 ? (
                         <div className="tech-rider-viewer-performer-requirements">
-                          {questions.map((questionData) => {
+                          {sortedQuestions.map((questionData) => {
                             const question = questionData;
                             const currentValue = questionData.currentValue;
                             const instrumentDetails = questionData.instrumentDetails;
                             const notesValue = instrumentDetails[`${question.key}_notes`] || '';
+                            const isBringingInstrument = question.key === 'bringingInstrument';
+                            const isBringingKeyboard = question.key === 'bringingKeyboard';
+                            const isBringingKeyboardFalse = isBringingKeyboard && !currentValue;
 
                             return (
                               <div key={question.key} className="tech-rider-viewer-requirement-item">
                                 {question.type === 'yesno' && (
                                   <span>
                                     {(() => {
+                                      // Special handling for bringingKeyboard when false
+                                      if (isBringingKeyboardFalse) {
+                                        return <span style={{ color: 'var(--gn-red)' }}>Needs keyboard provided</span>;
+                                      }
+                                      
                                       // Clean up the label - remove question mark
                                       let label = question.label.replace('?', '').trim();
                                       
@@ -1683,6 +1716,10 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                                       }
                                       
                                       if (currentValue) {
+                                        // Don't apply red color to "Bringing instrument" or "Bringing keyboard"
+                                        if (isBringingInstrument || isBringingKeyboard) {
+                                          return <span>{label}</span>;
+                                        }
                                         return <span style={{ color: 'var(--gn-red)' }}>{label}</span>;
                                       } else {
                                         // Convert to negative - remove "Needs " or "Need " prefix
@@ -1830,7 +1867,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                             onChange={(e) => handleUpdateInstrument(index, 0, e.target.value)}
                             disabled={!canEdit}
                           >
-                            <option value="">Select instrument</option>
+                            <option value="">Select</option>
                             {INSTRUMENT_TYPES.map((inst) => (
                               <option key={inst} value={inst}>
                                 {inst}
@@ -1888,7 +1925,7 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                           onClick={() => handleRemovePerformer(index)}
                           title="Remove performer"
                         >
-                          Remove
+                          <CloseIcon />
                         </button>
                       </div>
                     )}
@@ -1951,6 +1988,11 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                       const instrumentDetails = details[instrument] || {};
                       
                       questions.forEach((question) => {
+                        // Don't add "singing?" question if performer has Vocals in their instruments
+                        if (question.key === 'singing' && instruments.includes('Vocals')) {
+                          return;
+                        }
+                        
                         // Check if question should be shown based on dependencies
                         // For dependencies, check if ANY applicable instrument has the dependency met
                         if (question.dependsOn) {

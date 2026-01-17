@@ -13,7 +13,6 @@ import {
 import { getArtistProfileById } from '@services/client-side/artists';
 import { openInNewTab } from '@services/utils/misc';
 import { inviteToGig } from '@services/api/gigs';
-import { getGigsByIds } from '@services/client-side/gigs';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '@services/client-side/messages';
 import { formatDate } from '@services/utils/dates';
@@ -29,7 +28,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { createGigInvite } from '@services/api/gigInvites';
 
-const InviteToGigModal = ({ artist, onClose, venues, user }) => {
+const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
   const [usersGigs, setUsersGigs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
@@ -42,30 +41,25 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
   const [createdInviteId, setCreatedInviteId] = useState(null);
   const navigate = useNavigate();
   useEffect(() => {
-    const fetchGigs = async () => {
-      if (!venues?.length) return;
+    const processGigs = async () => {
+      if (!venues?.length || !gigs?.length) {
+        if (!gigs?.length) {
+          toast.error('You have no upcoming gigs to invite this artist to.');
+        }
+        setLoading(false);
+        return;
+      }
       
       setLoading(true);
       try {
-        const venueProfiles = venues || [];
-        const gigIds = venueProfiles.flatMap(venueProfile => venueProfile.gigs || []);
-        
-        if (gigIds.length === 0) {
-          toast.error('You have no upcoming gigs to invite this artist to.');
-          setLoading(false);
-          return;
-        }
-
-        const fetchedGigs = await getGigsByIds(gigIds);
-        
         // Filter gigs based on whether artist has a profile
         let availableGigs;
         if (artist?.artistId) {
-          availableGigs = filterInvitableGigsForMusician(fetchedGigs, artist.artistId);
+          availableGigs = filterInvitableGigsForMusician(gigs, artist.artistId);
         } else {
-          // For artists without profiles, show all future open gigs
+          // For artists without profiles, show all future open gigs (both public and private)
           const now = new Date();
-          availableGigs = fetchedGigs.filter(gig => {
+          availableGigs = gigs.filter(gig => {
             const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
             return gigDate > now && gig.status === 'open';
           });
@@ -73,7 +67,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
 
         // Add membership info for permission checking
         const venuesWithMembership = await Promise.all(
-          (venueProfiles || []).map(v => fetchMyVenueMembership(v, user.uid))
+          (venues || []).map(v => fetchMyVenueMembership(v, user.uid))
         );
         const membershipByVenueId = Object.fromEntries(
           venuesWithMembership
@@ -87,15 +81,15 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
 
         setUsersGigs(gigsWithMembership);
       } catch (error) {
-        console.error('Error fetching gigs:', error);
+        console.error('Error processing gigs:', error);
         toast.error('Error loading gigs. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchGigs();
-  }, [artist, venues, user?.uid]);
+    processGigs();
+  }, [artist, venues, user?.uid, gigs]);
 
   const handleGigSelection = (gigData) => {
     if (!gigData || !artist) return;
@@ -103,6 +97,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
     setSelectedGig(gigData);
     
     // If gig is private, show invite config step first (for both artists with and without profiles)
+    // Private gigs require an invite document to be created
     if (gigData.private) {
       setStep('invite-config');
     } else if (artist.artistId) {
@@ -110,6 +105,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
       handleInviteToGig(gigData);
     } else {
       // Artist doesn't have a profile and gig is public - go to contact method selection
+      // Public gigs don't need invite documents, so we skip invite-config and go straight to contact method
       setStep('contact-method');
     }
   };
@@ -289,7 +285,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user }) => {
 
   const generateGigLink = (gigData, inviteId = null) => {
     const baseLink = `${window.location.origin}/gig/${gigData.gigId}`;
-    // If it's a private gig and we have an inviteId, include it in the URL
+    // Only include inviteId for private gigs - public gigs don't need invite documents
     if (gigData.private && inviteId) {
       return `${baseLink}?inviteId=${inviteId}`;
     }
@@ -951,7 +947,6 @@ export const ArtistCRM = ({ user, venues }) => {
           ? { ...entry, notes: notesValue.trim() }
           : entry
       ));
-      toast.success('Notes updated');
       setEditingNotes(null);
       setNotesValue('');
     } catch (error) {
@@ -972,7 +967,6 @@ export const ArtistCRM = ({ user, venues }) => {
           ? { ...entry, name: nameValue.trim() }
           : entry
       ));
-      toast.success('Artist name updated');
       setEditingName(null);
       setNameValue('');
     } catch (error) {
@@ -1809,6 +1803,7 @@ export const ArtistCRM = ({ user, venues }) => {
           }}
           venues={venues}
           user={user}
+          gigs={gigs}
           crmEntries={crmEntries}
         />
       )}

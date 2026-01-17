@@ -23,7 +23,7 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { updateMusicianGigApplications, updateArtistGigApplications } from '@services/client-side/artists';
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
-import { sendGigApplicationMessage, sendNegotiationMessage } from '@services/client-side/messages';
+import { sendGigApplicationMessage, sendNegotiationMessage, sendGigInvitationMessage } from '@services/client-side/messages';
 import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
 import { validateMusicianUser } from '@services/utils/validation';
 import { useMapbox } from '@hooks/useMapbox';
@@ -46,7 +46,7 @@ import Portal from '../shared/components/Portal';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
 import { sanitizeArtistPermissions } from '@services/utils/permissions';
 import { applyToGig, negotiateGigFee, acceptGigOffer, acceptGigOfferOM } from '@services/api/gigs';
-import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage } from '@services/api/messages';
+import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, sendGigAcceptanceAnnouncement } from '@services/api/messages';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { NoTextLogo } from '../shared/ui/logos/Logos';
 import { updateCRMEntryWithArtistId } from '../../services/api/users';
@@ -495,7 +495,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                         artistId: profileId,
                         inviteId: inviteId || null, // Pass inviteId for validation if available
                     });
-                    console.log('Updated CRM entry with artist profile ID:', profileId);
                 }
             } catch (error) {
                 console.error('Failed to update CRM entry with artist profile ID:', error);
@@ -1076,22 +1075,46 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               profileId: musicianId,
             };
             const venueProfile = await getVenueProfileById(currentSlot.venueId);
+            
+            // Check if artist is in applicants array - if not, we need to create conversation and send message
+            const applicants = Array.isArray(currentSlot.applicants) ? currentSlot.applicants : [];
+            const isInApplicants = applicants.some(a => a?.id === musicianId);
+            
+            // Get or create conversation
             const { conversationId } = await getOrCreateConversation({
               musicianProfile: normalizedProfile,
               gigData: currentSlot,
               venueProfile,
               type: 'invitation',
             });
-            const applicationMessage = await getMostRecentMessage(conversationId, 'invitation');
-            if (applicationMessage?.id) {
-              await sendGigAcceptedMessage({
+            
+            // If artist wasn't in applicants (invite via link), send a new announcement message
+            // Otherwise, try to find existing invitation message
+            if (!isInApplicants) {
+              // Send an announcement message indicating the invitation was accepted
+              const venueName = venueProfile?.venueName || 'the venue';
+              const messageText = nonPayableGig
+                ? `${normalizedProfile.name} has accepted the invitation to play at ${venueName} on ${formatDate(currentSlot.startDateTime)}.`
+                : `${normalizedProfile.name} has accepted the invitation to play at ${venueName} on ${formatDate(currentSlot.startDateTime)} for ${currentSlot.budget}.`;
+              await sendGigAcceptanceAnnouncement({
                 conversationId,
-                originalMessageId: applicationMessage.id,
                 senderId: user.uid,
-                agreedFee: currentSlot.budget,
-                userRole: 'musician',
+                text: messageText,
                 nonPayableGig,
               });
+            } else {
+              // Normal flow: find existing invitation message and send accepted message
+              const applicationMessage = await getMostRecentMessage(conversationId, 'invitation');
+              if (applicationMessage?.id) {
+                await sendGigAcceptedMessage({
+                  conversationId,
+                  originalMessageId: applicationMessage.id,
+                  senderId: user.uid,
+                  agreedFee: currentSlot.budget,
+                  userRole: 'musician',
+                  nonPayableGig,
+                });
+              }
             }
             const venueEmail = venueProfile.email;
             const musicianName = normalizedProfile.name;
@@ -1919,16 +1942,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         ) : (
                                                             <>
                                                                 {showApplied && hasAccessToPrivateGig ? (
-                                                                    <button className='btn primary-alt disabled' disabled>Applied To Gig</button>
+                                                                    <button className='btn artist-profile disabled' disabled>Applied To Gig</button>
                                                                 ) : accepted && hasAccessToPrivateGig ? (
-                                                                    <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
+                                                                    <button className='btn artist-profile disabled' disabled>Invitation Accepted</button>
                                                                 ) : showAcceptInvite && hasAccessToPrivateGig && user && user.artistProfiles?.length > 0 && selectedProfile.isComplete ? (
-                                                                        <button className={`btn primary-alt ${!canBookCurrentArtistProfile ? 'disabled' : ''}`} onClick={canBookCurrentArtistProfile ? handleAccept : undefined} disabled={!canBookCurrentArtistProfile}>
+                                                                        <button className={`btn artist-profile ${!canBookCurrentArtistProfile ? 'disabled' : ''}`} onClick={canBookCurrentArtistProfile ? handleAccept : undefined} disabled={!canBookCurrentArtistProfile}>
                                                                             Accept Invitation
                                                                         </button>
                                                                 ) : showAcceptInvite && hasAccessToPrivateGig ? (
                                                                         <button 
-                                                                            className="btn primary-alt artist-profile" 
+                                                                            className="btn artist-profile" 
                                                                             onClick={() => {
                                                                                 if (!user) {
                                                                                     sessionStorage.setItem('redirect', `/artist-profile`);
@@ -1942,9 +1965,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                         >
                                                                             Create Artist Profile to Accept Invitation
                                                                         </button>
+                                                                ) : showApply && hasAccessToPrivateGig && user && user.artistProfiles?.length > 0 && !selectedProfile.isComplete ? (
+                                                                        <button className='btn artist-profile' onClick={() => navigate(`/artist-profile`)}>
+                                                                            Complete Artist Profile to Apply
+                                                                        </button>
                                                                 ) : showApply && hasAccessToPrivateGig ? (
                                                                         <button
-                                                                            className={`btn primary-alt ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
+                                                                            className={`btn artist-profile ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
                                                                             onClick={canBookCurrentArtistProfile ? handleGigApplication : undefined}
                                                                             disabled={!canBookCurrentArtistProfile}
                                                                         >
@@ -1976,7 +2003,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     )}
 
                                                                     {/* Message */}
-                                                                    {showMessage && hasAccessToPrivateGig && (
+                                                                    {showMessage && hasAccessToPrivateGig && user && user.artistProfiles?.length > 0 && selectedProfile.isComplete && (
                                                                     <button
                                                                         className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
                                                                         onClick={canBookCurrentArtistProfile ? handleMessage : undefined}
@@ -2384,16 +2411,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         ) : (
                                                             <>
                                                                 {showApplied && hasAccessToPrivateGig ? (
-                                                                    <button className='btn primary-alt disabled' disabled>Applied To Gig</button>
+                                                                    <button className='btn artist-profile disabled' disabled>Applied To Gig</button>
                                                                 ) : accepted && hasAccessToPrivateGig ? (
-                                                                    <button className='btn primary-alt disabled' disabled>Invitation Accepted</button>
+                                                                    <button className='btn artist-profile disabled' disabled>Invitation Accepted</button>
                                                                 ) : showAcceptInvite && hasAccessToPrivateGig && user && user.artistProfiles?.length > 0 && selectedProfile.isComplete ? (
-                                                                        <button className='btn primary-alt' onClick={canBookCurrentArtistProfile ? handleAccept : undefined} disabled={!canBookCurrentArtistProfile}>
+                                                                        <button className='btn artist-profile' onClick={canBookCurrentArtistProfile ? handleAccept : undefined} disabled={!canBookCurrentArtistProfile}>
                                                                             Accept Invitation
                                                                         </button>
                                                                 ) : showAcceptInvite && hasAccessToPrivateGig ? (
                                                                         <button 
-                                                                            className="btn primary-alt artist-profile" 
+                                                                            className="btn artist-profile" 
                                                                             onClick={() => {
                                                                                 if (!user) {
                                                                                     sessionStorage.setItem('redirect', `/artist-profile`);
@@ -2407,8 +2434,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                         >
                                                                             Create Artist Profile to Accept Invitation
                                                                         </button>
+                                                                ) : showApply && hasAccessToPrivateGig && user && user.artistProfiles?.length > 0 && !selectedProfile.isComplete ? (
+                                                                        <button className='btn artist-profile' onClick={() => navigate(`/artist-profile`)}>
+                                                                            Complete Artist Profile to Apply
+                                                                        </button>
                                                                 ) : showApply && hasAccessToPrivateGig ? (
-                                                                        <button className='btn primary-alt' onClick={canBookCurrentArtistProfile ? handleGigApplication : undefined} disabled={!canBookCurrentArtistProfile}>
+                                                                        <button className='btn artist-profile' onClick={canBookCurrentArtistProfile ? handleGigApplication : undefined} disabled={!canBookCurrentArtistProfile}>
                                                                             Apply To Gig
                                                                         </button>
                                                                 ) : null}
@@ -2437,7 +2468,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     )}
 
                                                                     {/* Message */}
-                                                                    {showMessage && hasAccessToPrivateGig && (
+                                                                    {showMessage && hasAccessToPrivateGig && user && user.artistProfiles?.length > 0 && selectedProfile.isComplete && (
                                                                     <button
                                                                         className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
                                                                         onClick={canBookCurrentArtistProfile ? handleMessage : undefined}

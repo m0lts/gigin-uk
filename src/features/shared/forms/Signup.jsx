@@ -149,13 +149,15 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
   };
 
   return (
-    <div className="modal-padding auth" onClick={(e) => e.stopPropagation()}>
+    <div className={`modal-padding auth ${loading ? 'loading' : ''}`} onClick={(e) => e.stopPropagation()}>
       <div className='modal-content auth scrollable'>
+        {!loading && (
         <div className='head'>
           <NoTextLogo />
           <h1>Welcome to Gigin</h1>
           <p>Sign up to create your account. Then create a venue or musician profile.</p>
         </div>
+        )}
         <form className='auth-form' onSubmit={handleSignup}>
           {!loading && (
             <>
@@ -193,86 +195,87 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                 <h6>OR</h6>
                 <span className="line" />
               </div>
-            </>
-          )}
-          <div className='input-group'>
-            <label htmlFor='name'>Name</label>
-            <input
-              type='text'
-              id='name'
-              name='name'
-              value={credentials.name}
-              onChange={(e) => { handleChange(e); clearError(); }}
-              placeholder='Your Name'
-              className={`input ${loading ? 'disabled' : ''}`}
-              required
-              disabled={loading}
-            />
-          </div>
-          <div className='input-group'>
-            <label htmlFor='email'>Email</label>
-            <input
-              type='text'
-              id='email'
-              name='email'
-              value={credentials.email}
-              onChange={(e) => { handleChange(e); clearError(); }}
-              placeholder='e.g. johnsmith@gigin.com'
-              required
-              className={`${error.input.includes('email') && 'error'} ${loading ? 'disabled' : ''}`}
-              disabled={loading}
-            />
-          </div>
-          {/* <div className="input-group">
-            <PhoneField
-              initialCountry="GB"
-              value={credentials.phoneNumber}
-              disabled={loading}
-              onChange={(e164) => {
-                setCredentials(prev => ({ ...prev, phoneNumber: e164 }));
-                if (error.input === 'phoneNumber') clearError();
-              }}
-              error={error}
-              loading={loading}
-            />
-            {(error.input.includes('phoneNumber') && error.message !== '*Phone number already in use.') && (
-              <p className="error-msg">* Please enter a valid phone number</p>
-            )}
-          </div> */}
-          <div className='input-group'>
-            <label htmlFor='password'>
-              Password
-              <button className='btn text' type='button' onClick={togglePasswordInfo}>
-                <QuestionCircleIcon />
-              </button>
-            </label>
-            <div className={`password ${passwordFocused ? 'focused' : ''} ${loading ? 'disabled' : ''}`}>
+              <div className='input-group'>
+                <label htmlFor='name'>Name</label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  name='password'
-                  id='password'
-                  value={credentials.password}
-                  onChange={(e) => { handleChange(e); clearError(); setShowPasswordInfo(false) }}
-                  placeholder='Password'
+                  type='text'
+                  id='name'
+                  name='name'
+                  value={credentials.name}
+                  onChange={(e) => { handleChange(e); clearError(); }}
+                  placeholder='Your Name'
+                  className={`input ${loading ? 'disabled' : ''}`}
                   required
-                  className={`${error.input === 'password' && 'error'} ${loading ? 'disabled' : ''}`}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
                   disabled={loading}
                 />
-                <button type='button' className='btn tertiary' onClick={toggleShowPassword}>
-                  <SeeIcon />
-                </button>
               </div>
-            {showPasswordInfo && <p className='password-info'>
-              Password must be at least 6 characters long, include an uppercase character, a lowercase character, a number, and a special character.
-            </p>}
-          </div>
+              <div className='input-group'>
+                <label htmlFor='email'>Email</label>
+                <input
+                  type='text'
+                  id='email'
+                  name='email'
+                  value={credentials.email}
+                  onChange={(e) => { handleChange(e); clearError(); }}
+                  placeholder='e.g. johnsmith@gigin.com'
+                  required
+                  className={`${error.input.includes('email') && 'error'} ${loading ? 'disabled' : ''}`}
+                  disabled={loading}
+                />
+              </div>
+              {/* <div className="input-group">
+                <PhoneField
+                  initialCountry="GB"
+                  value={credentials.phoneNumber}
+                  disabled={loading}
+                  onChange={(e164) => {
+                    setCredentials(prev => ({ ...prev, phoneNumber: e164 }));
+                    if (error.input === 'phoneNumber') clearError();
+                  }}
+                  error={error}
+                  loading={loading}
+                />
+                {(error.input.includes('phoneNumber') && error.message !== '*Phone number already in use.') && (
+                  <p className="error-msg">* Please enter a valid phone number</p>
+                )}
+              </div> */}
+              <div className='input-group'>
+                <label htmlFor='password'>
+                  Password
+                  <button className='btn text' type='button' onClick={togglePasswordInfo}>
+                    <QuestionCircleIcon />
+                  </button>
+                </label>
+                <div className={`password ${passwordFocused ? 'focused' : ''} ${loading ? 'disabled' : ''}`}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name='password'
+                      id='password'
+                      value={credentials.password}
+                      onChange={(e) => { handleChange(e); clearError(); setShowPasswordInfo(false) }}
+                      placeholder='Password'
+                      required
+                      className={`${error.input === 'password' && 'error'} ${loading ? 'disabled' : ''}`}
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
+                      disabled={loading}
+                    />
+                    <button type='button' className='btn tertiary' onClick={toggleShowPassword}>
+                      <SeeIcon />
+                    </button>
+                  </div>
+                {showPasswordInfo && <p className='password-info'>
+                  Password must be at least 6 characters long, include an uppercase character, a lowercase character, a number, and a special character.
+                </p>}
+              </div>
+            </>
+          )}
           {error.status && (
             <div className='error-box'>
               <p className='error-msg'>{error.message}</p>
             </div>
           )}
+          {!loading && (
           <div className='tick-boxes'>
             <div className='input-group'>
               <label>
@@ -307,8 +310,9 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
               </label>
             </div>
           </div>
+          )}
           {loading ? (
-            <LoadingSpinner marginTop={'1.25rem'} />
+            <LoadingSpinner />
           ) : (
               <button
                 type='submit'
@@ -325,10 +329,12 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           </button>
         )}
       </div>
+      {!loading && (
       <div className="change-auth-type">
         <h4 className='change-auth-type-text'>Already have an account? </h4>
         <button className='btn text' type='button' disabled={loading} onClick={() => { setAuthType('login'); clearCredentials(); clearError(); }}>Login</button>
       </div>
+      )}
     </div>
   );
 };

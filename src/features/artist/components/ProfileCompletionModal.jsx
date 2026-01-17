@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
-import { GuitarsIcon, CopyIcon } from '../../shared/ui/extras/Icons';
+import { GuitarsIcon, CopyIcon, CelebrateIcon, RightArrowIcon } from '../../shared/ui/extras/Icons';
 
 /**
  * ProfileCompletionModal
@@ -43,6 +43,7 @@ export const ProfileCompletionModal = ({ onClose, profileId, shouldShow = false 
       setIsVisible(false);
       return;
     }
+    
     const storageKey = `profile-completion-modal-shown-${profileId}`;
     const hasBeenShown = localStorage.getItem(storageKey);
     
@@ -60,86 +61,51 @@ export const ProfileCompletionModal = ({ onClose, profileId, shouldShow = false 
   if (!isVisible) return null;
 
   return (
-    <div className='modal profile-completion' onClick={onClose}>
-      <div className='modal-content profile-completion' onClick={(e) => e.stopPropagation()}>
+    <>
+      <div className='modal profile-completion' onClick={onClose}>
+        <div className='modal-content' onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <GuitarsIcon />
-          <h2>Profile Complete!</h2>
+          <CelebrateIcon />
+          <h2>Artist Profile Complete!</h2>
         </div>
         <button className='btn close tertiary' onClick={onClose}>
           Close
         </button>
         <div className="modal-body">
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '1rem',
-            textAlign: 'center',
-            padding: '1rem 0'
-          }}>
-            <p style={{ fontSize: '1rem', color: 'var(--gn-grey-700)' }}>
-              We recommend putting this link in your instagram bio so bookers can find all the information you have added here. 
-            </p>
-            
-            {/* Profile Link */}
-            {profileLink && (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '0.75rem',
-                alignItems: 'center',
-                marginTop: '0.5rem'
-              }}>
-                <p style={{ 
-                  fontSize: '0.9rem', 
-                  color: 'var(--gn-grey-600)',
-                  wordBreak: 'break-all',
-                  textAlign: 'center',
-                  padding: '0.75rem',
-                  backgroundColor: 'var(--gn-grey-100)',
-                  borderRadius: '0.5rem',
-                  width: '100%',
-                  maxWidth: '400px'
-                }}>
-                  {profileLink}
-                </p>
-                <button 
-                  className='btn secondary' 
-                  onClick={handleCopyLink}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                  <CopyIcon />
-                  Copy Link
-                </button>
-              </div>
-            )}
-
+          <h4>Let's get sharing this awesome profile with the world!</h4>
+          <br />
+          <p>Here's the link to your artist profile. We recommend putting this link in your Instagram bio, Linktree, or any other social media profile so bookers can find all the information you have added here.</p>
+          <br />
+          {/* Profile Link */}
+          {profileLink && (
+            <div>
+              <p className='artist-profile-link'>
+                {profileLink}
+              </p>
+              <button 
+                className='btn artist-profile' 
+                onClick={handleCopyLink}
+              >
+                <CopyIcon />
+                Copy Link
+              </button>
+            </div>
+          )}
+          <div className="or-separator">
+            <span />
+            <h6>or</h6>
+            <span />
           </div>
-        </div>
-
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1rem',
-          marginTop: '1.5rem' 
-        }}>
-          <p style={{ fontSize: '1rem', color: 'var(--gn-grey-700)', textAlign: 'center' }}>
-            Get in touch with venues now to book a gig
-          </p>
-          <button 
-            className='btn primary' 
-            onClick={() => {
-              navigate('/find-venues');
-              onClose();
-            }}
-            style={{ minWidth: '200px' }}
-          >
-            Find a Venue
+          <button className='btn tertiary' onClick={() => {
+            navigate('/find-venues');
+            onClose();
+          }}>
+            Search for Gigs Now <RightArrowIcon />
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

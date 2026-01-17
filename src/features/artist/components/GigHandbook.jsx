@@ -330,9 +330,9 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
                         <button className='btn tertiary' onClick={(e) => openInNewTab(`/gig/${gigForHandbook.gigId}`, e)}>
                             Gig Page <NewTabIcon />
                         </button>
-                        <button className='btn primary' onClick={() => setShowPromoteModal(true)}>
+                        {/* <button className='btn primary' onClick={() => setShowPromoteModal(true)}>
                             <PeopleGroupIcon /> Promote
-                        </button>
+                        </button> */}
                         {canCancelGigForProfile && (
                         <button className='btn danger' onClick={() => handleGigCancelation()}>
                             Cancel Gig

@@ -69,7 +69,7 @@ const getBrightnessOverlayStyle = (value = BRIGHTNESS_DEFAULT) => {
   return { opacity, backgroundColor };
 };
 
-const MEDIA_STORAGE_LIMIT_BYTES = 3 * 1024 * 1024 * 1024; // 3GB cap for basic tier
+const MEDIA_STORAGE_LIMIT_BYTES = 100 * 1024 * 1024; // 100MB cap for basic tier
 
 const getTrackMediaBytes = (track = {}) => {
   if (!track) return 0;
@@ -258,9 +258,6 @@ const ArtistProfileComponent = ({
   const previousActiveProfileIdRef = useRef(null); // Track previous profile ID to detect switches
   const [isSwitchingProfile, setIsSwitchingProfile] = useState(false); // Track if we're switching profiles
   const switchingProfileTimeoutRef = useRef(null); // Store timeout ID for profile switching
-  const [showPrimaryProfileModal, setShowPrimaryProfileModal] = useState(false); // Modal for selecting primary profile
-  const [selectedPrimaryProfile, setSelectedPrimaryProfile] = useState(null); // Selected profile for primary
-  const [settingPrimary, setSettingPrimary] = useState(false); // Loading state for setting primary
   const [showUpdateModal, setShowUpdateModal] = useState(false); // Modal for new profile updates
   const [updatingProfile, setUpdatingProfile] = useState(false); // Loading state for updating profile
 
@@ -767,9 +764,9 @@ const ArtistProfileComponent = ({
     
     // If ?create=true is in URL, navigate to base path first (to clear old profileId), then trigger creation
     if (shouldCreate && !isCreatingProfile && !initializingArtistProfile && !createFromUrlRef.current) {
-      // Prevent creating multiple profiles
-      if (artistProfiles && artistProfiles.length > 0) {
-        toast.error('You already have an artist profile. Multiple profiles are not currently supported.');
+      // Allow up to 2 profiles per user
+      if (artistProfiles && artistProfiles.length >= 2) {
+        toast.error('You can only have up to 2 artist profiles.');
         // Remove ?create=true from URL
         setSearchParams({}, { replace: true });
         return;
@@ -1614,10 +1611,10 @@ const ArtistProfileComponent = ({
       return;
     }
 
-    // Prevent creating multiple profiles - check if user already has any artist profile
+    // Allow up to 2 profiles per user
     // (This check is after the draft resume check, so drafts can still be resumed)
-    if (artistProfiles && artistProfiles.length > 0) {
-      toast.error('You already have an artist profile. Multiple profiles are not currently supported.');
+    if (artistProfiles && artistProfiles.length >= 2) {
+      toast.error('You can only have up to 2 artist profiles.');
       return;
     }
 
@@ -3580,6 +3577,15 @@ const ArtistProfileComponent = ({
         updates.heroMedia = { url: heroUrl, storagePath };
       }
 
+      // If we're on the tech-rider step, save the incomplete tech rider data
+      if (creationStep === 'tech-rider' && window.__techRiderSave) {
+        try {
+          await window.__techRiderSave(null, false); // Save without showing success notification
+        } catch (error) {
+          // Continue with profile save even if tech rider save fails
+        }
+      }
+
       await updateArtistProfileDocument(creationProfileId, updates);
       toast.success('Progress saved');
       resetCreationState();
@@ -3615,6 +3621,22 @@ const ArtistProfileComponent = ({
 
     if (videoUploadStatus === 'uploading') {
       setShowVideoUploadModal(true);
+      return;
+    }
+
+    // If we're on the tech-rider step, save the incomplete tech rider data
+    if (creationStep === 'tech-rider' && window.__techRiderSave) {
+      setSavingDraft(true);
+      try {
+        await window.__techRiderSave(null, false); // Save without showing success notification
+      } catch (error) {
+        toast.error('Failed to save tech rider. Your progress may not be saved.');
+      } finally {
+        setSavingDraft(false);
+      }
+      // After saving tech rider, continue with normal exit flow
+      resetCreationState();
+      navigate('/find-a-gig');
       return;
     }
 
@@ -3752,8 +3774,8 @@ const ArtistProfileComponent = ({
             onVideosChange={handleVideosChange}
             tracksUploadStatus={tracksUploadStatus}
             tracksUploadProgress={tracksUploadProgress}
-            videoUploadStatus={videoUploadStatus}
-            videoUploadProgress={videoUploadProgress}
+            videosUploadStatus={videoUploadStatus}
+            videosUploadProgress={videoUploadProgress}
             scrollContainerRef={stateBoxRef}
             onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
             profileId={activeProfileData?.profileId || activeProfileData?.id}
@@ -3842,8 +3864,8 @@ const ArtistProfileComponent = ({
             onVideosChange={handleVideosChange}
             tracksUploadStatus={tracksUploadStatus}
             tracksUploadProgress={tracksUploadProgress}
-            videoUploadStatus={videoUploadStatus}
-            videoUploadProgress={videoUploadProgress}
+            videosUploadStatus={videoUploadStatus}
+            videosUploadProgress={videoUploadProgress}
             onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
           />
         );
@@ -3903,8 +3925,8 @@ const ArtistProfileComponent = ({
             onVideosChange={handleVideosChange}
             tracksUploadStatus={tracksUploadStatus}
             tracksUploadProgress={tracksUploadProgress}
-            videoUploadStatus={videoUploadStatus}
-            videoUploadProgress={videoUploadProgress}
+            videosUploadStatus={videoUploadStatus}
+            videosUploadProgress={videoUploadProgress}
             scrollContainerRef={stateBoxRef}
             onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
           />
@@ -3922,21 +3944,6 @@ const ArtistProfileComponent = ({
     }
   };
 
-  // Check if user needs to set primary profile (multiple profiles, no primary set, in dashboard)
-  useEffect(() => {
-    if (viewerMode || authLoading || !user) return;
-    if (currentState !== ArtistProfileState.DASHBOARD) return;
-    
-    const hasMultipleProfiles = artistProfiles.length > 1;
-    const hasNoPrimary = !user.primaryProfileSet;
-    
-    if (hasMultipleProfiles && hasNoPrimary) {
-      setShowPrimaryProfileModal(true);
-    } else {
-      setShowPrimaryProfileModal(false);
-    }
-  }, [currentState, artistProfiles.length, user?.primaryProfileSet, viewerMode, authLoading, user]);
-
   // Check if user needs to see the update modal (newProfileUpdate field is true)
   useEffect(() => {
     if (viewerMode || authLoading || !user) return;
@@ -3948,34 +3955,6 @@ const ArtistProfileComponent = ({
       setShowUpdateModal(true);
     }
   }, [activeProfileData?.newProfileUpdate, currentState, viewerMode, authLoading, user, activeProfileData?.id, activeProfileData?.profileId]);
-
-  // Handle setting primary profile
-  const handleSetPrimaryProfile = async () => {
-    if (!selectedPrimaryProfile) return;
-    
-    const profileId = selectedPrimaryProfile.id || selectedPrimaryProfile.profileId;
-    if (!profileId) {
-      toast.error('Invalid profile selected');
-      return;
-    }
-
-    setSettingPrimary(true);
-    try {
-      await setPrimaryArtistProfile({ artistProfileId: profileId });
-      toast.success(`${selectedPrimaryProfile.name} set as primary profile`);
-      setShowPrimaryProfileModal(false);
-      // Reload to get updated user data
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to set primary profile:', error);
-      const errorMessage = error?.payload?.error?.message || 
-                           error?.message || 
-                           'Failed to set primary profile. Please try again.';
-      toast.error(errorMessage);
-    } finally {
-      setSettingPrimary(false);
-    }
-  };
 
   // Handle closing the update modal and updating the profile
   const handleCloseUpdateModal = async () => {
@@ -4002,7 +3981,7 @@ const ArtistProfileComponent = ({
   if (authLoading || (isSwitchingProfile && !isCreatingProfile && currentState === ArtistProfileState.DASHBOARD && !justCompletedProfileRef.current)) {
     return (
       <div className="artist-profile-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingScreen />
+        <LoadingScreen text={`Changing active profile`} />
       </div>
     );
   }
@@ -4367,64 +4346,6 @@ const ArtistProfileComponent = ({
         </Portal>
       )}
 
-      {/* Primary Profile Selection Modal - Non-closable */}
-      {showPrimaryProfileModal && (
-        <Portal>
-          <div className="modal primary-profile-selection" style={{ pointerEvents: 'auto' }}>
-            {/* No onClick handler on outer div - modal is non-closable */}
-            <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <GuitarsIcon />
-                <h2>Select Your Primary Artist Profile</h2>
-                <p>You have multiple artist profiles. Please select one as your primary profile. This can only be set once.</p>
-              </div>
-              <div className="modal-body">
-                <div className='artist-profile-list'>
-                  {artistProfiles.map((profile) => {
-                    const profileId = profile.id || profile.profileId;
-                    const isSelected = selectedPrimaryProfile?.id === profileId || selectedPrimaryProfile?.profileId === profileId;
-                    
-                    return (
-                      <div
-                        key={profileId}
-                        className={`artist-profile-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => setSelectedPrimaryProfile(profile)}
-                      >
-                        {profile.heroMedia?.url && (
-                          <figure className='artist-profile-image'>
-                            <img 
-                              src={profile.heroMedia.url} 
-                              alt={profile.name}
-                            />
-                          </figure>
-                        )}
-                        <div className='artist-profile-details'>
-                          <h3 className='artist-profile-name'>{typeof profile.name === 'string' ? profile.name : String(profile.name || "")}</h3>
-                          {profile.bio && typeof profile.bio === 'string' && profile.bio.trim() && (
-                            <p className='artist-profile-bio'>
-                              {profile.bio.length > 100 ? `${profile.bio.substring(0, 100)}...` : profile.bio}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="two-buttons">
-                  <button
-                    className="btn primary"
-                    disabled={!selectedPrimaryProfile || settingPrimary}
-                    onClick={handleSetPrimaryProfile}
-                  >
-                    {settingPrimary ? 'Setting Primary...' : 'Set as Primary'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
-
       {/* Profile Update Modal - Shows when newProfileUpdate is true */}
       {showUpdateModal && (
         <Portal>
@@ -4455,14 +4376,15 @@ const ArtistProfileComponent = ({
       )}
 
       {/* Profile Completion Modal - Shows once when profile is completed */}
-      {completedProfileId && (
+      {/* TODO: Remove test mode - always showing for testing */}
+      {(completedProfileId || true) && (
         <ProfileCompletionModal
           onClose={() => {
             setShowProfileCompletionModal(false);
             setCompletedProfileId(null);
           }}
-          profileId={completedProfileId}
-          shouldShow={showProfileCompletionModal}
+          profileId={completedProfileId || 'test-profile-id'}
+          shouldShow={showProfileCompletionModal || true}
         />
       )}
     </div>

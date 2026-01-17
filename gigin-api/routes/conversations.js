@@ -148,6 +148,7 @@ router.post("/getOrCreateConversation", requireAuth, asyncHandler(async (req, re
     gigDate: gigData.date || null,
     gigId,
     artistName: musicianProfile.name || null,
+    artistImage: musicianProfile?.heroMedia?.url || null,
     lastMessage,
     lastMessageTimestamp: now,
     lastMessageSenderId: "system",

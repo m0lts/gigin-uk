@@ -216,7 +216,12 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
     const handleCancelEdit = () => {
         setSelectedExpiryDate(null);
         setEditingInviteId(null);
-        setShowCreateForm(false);
+        // If there are no invites, close the modal instead of showing empty list
+        if (invites.length === 0) {
+            onClose();
+        } else {
+            setShowCreateForm(false);
+        }
     };
 
     const copyInviteLink = (inviteId) => {

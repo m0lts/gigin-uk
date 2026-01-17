@@ -253,6 +253,10 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
     });
 
     const questions = Array.from(questionMap.values()).filter(q => {
+      // Don't show "singing?" question if performer has Vocals in their instruments
+      if (q.key === 'singing' && instruments.includes('Vocals')) {
+        return false;
+      }
       if (q.type === 'yesno') return q.currentValue !== undefined && q.currentValue !== null;
       if (q.type === 'number') return q.currentValue !== undefined && q.currentValue !== null && q.currentValue !== 0;
       if (q.type === 'text') return q.currentValue && q.currentValue.trim() !== '';
@@ -269,7 +273,10 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
       const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
       
       if (question.type === 'yesno') {
-        if (currentValue && !isBringingInstrument) {
+        // Special handling for bringingKeyboard: if false, it means they need keyboard provided
+        if (question.key === 'bringingKeyboard' && !currentValue) {
+          needsQuestions.push(questionData);
+        } else if (currentValue && !isBringingInstrument) {
           needsQuestions.push(questionData);
         } else if (!currentValue || isBringingInstrument) {
           doesntNeedQuestions.push(questionData);
@@ -413,11 +420,24 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
   const formatTechRiderWarningText = (mismatches) => {
     if (mismatches.length === 0) return '';
     
+    // Check if any mismatch is microphone-related
+    const isMicrophoneMismatch = (mismatch) => {
+      const cleaned = mismatch.split('(')[0].trim().toLowerCase();
+      return cleaned.includes('vocal mics') || cleaned.includes('microphone') || cleaned.includes('mic');
+    };
+    
+    const hasMicrophoneMismatch = mismatches.some(isMicrophoneMismatch);
+    
+    // If only microphones are missing, use special format
+    if (hasMicrophoneMismatch && mismatches.length === 1) {
+      return 'You do not have enough microphones available for use.';
+    }
+    
     const equipmentNames = mismatches.map(mismatch => {
       const cleaned = mismatch.split('(')[0].trim().toLowerCase();
       if (cleaned.includes('pa system')) return 'a PA system';
       if (cleaned.includes('mixing console')) return 'a mixing console';
-      if (cleaned.includes('vocal mics')) return 'microphones';
+      if (cleaned.includes('vocal mics') || cleaned.includes('microphone') || cleaned.includes('mic')) return 'enough microphones';
       if (cleaned.includes('di boxes')) return 'DI boxes';
       if (cleaned.includes('drum kit')) return 'a drum kit';
       if (cleaned.includes('bass amp')) return 'a bass amp';
@@ -454,7 +474,7 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
         </div>
         
         {warningText && (
-          <div className="tech-rider-warning" style={{ marginTop: 0, marginBottom: '1.5rem' }}>
+          <div className="tech-rider-warning" style={{ marginTop: 0, marginBottom: '1.5rem', maxWidth: '400px' }}>
             <WarningIcon />
             <p>{warningText}</p>
           </div>
@@ -595,6 +615,10 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                   });
 
                   const questions = Array.from(questionMap.values()).filter(q => {
+                    // Don't show "singing?" question if performer has Vocals in their instruments
+                    if (q.key === 'singing' && instruments.includes('Vocals')) {
+                      return false;
+                    }
                     // Only show questions that have answers
                     if (q.type === 'yesno') return q.currentValue !== undefined && q.currentValue !== null;
                     if (q.type === 'number') return q.currentValue !== undefined && q.currentValue !== null && q.currentValue !== 0;
@@ -612,7 +636,10 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                     const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
                     
                     if (question.type === 'yesno') {
-                      if (currentValue && !isBringingInstrument) {
+                      // Special handling for bringingKeyboard: if false, it means they need keyboard provided
+                      if (question.key === 'bringingKeyboard' && !currentValue) {
+                        needsQuestions.push(questionData);
+                      } else if (currentValue && !isBringingInstrument) {
                         needsQuestions.push(questionData);
                       } else if (!currentValue || isBringingInstrument) {
                         doesntNeedQuestions.push(questionData);
@@ -656,12 +683,17 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                                 const instrumentDetails = questionData.instrumentDetails;
                                 const notesValue = instrumentDetails[`${question.key}_notes`] || '';
                                 const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
+                                const isBringingKeyboardFalse = question.key === 'bringingKeyboard' && !currentValue;
 
                                 return (
                                   <div key={question.key} className="tech-rider-viewer-requirement-item">
                                     {question.type === 'yesno' && (
                                       <span>
                                         {(() => {
+                                          // Special handling for bringingKeyboard when false
+                                          if (isBringingKeyboardFalse) {
+                                            return <span style={{ color: 'var(--gn-red)' }}>Needs keyboard provided</span>;
+                                          }
                                           let label = question.label.replace('?', '').trim();
                                           const lowerLabel = label.toLowerCase();
                                           if (lowerLabel.startsWith('need ') && !lowerLabel.startsWith('needs ')) {
@@ -794,12 +826,17 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                         const instrumentDetails = questionData.instrumentDetails;
                         const notesValue = instrumentDetails[`${question.key}_notes`] || '';
                         const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
+                        const isBringingKeyboardFalse = question.key === 'bringingKeyboard' && !currentValue;
 
                         return (
                           <div key={question.key} style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                             {question.type === 'yesno' && (
                               <span>
                                 {(() => {
+                                  // Special handling for bringingKeyboard when false
+                                  if (isBringingKeyboardFalse) {
+                                    return <span style={{ color: 'var(--gn-red)' }}>Needs keyboard provided</span>;
+                                  }
                                   let label = question.label.replace('?', '').trim();
                                   const lowerLabel = label.toLowerCase();
                                   if (lowerLabel.startsWith('need ') && !lowerLabel.startsWith('needs ')) {
@@ -853,6 +890,10 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                                   } else if (lowerLabel.startsWith('need ')) {
                                     return "Doesn't need " + label.substring(5);
                                   } else if (lowerLabel.startsWith('bringing')) {
+                                    // If bringing keyboard is false, show "Needs keyboard provided"
+                                    if (question.key === 'bringingKeyboard' && !currentValue) {
+                                      return "Needs keyboard provided";
+                                    }
                                     return label;
                                   }
                                   return "Doesn't need " + label.toLowerCase();

@@ -15,6 +15,11 @@ export async function sendGigAcceptedMessage({ conversationId, originalMessageId
   return data;
 }
 
+export async function sendGigAcceptanceAnnouncement({ conversationId, senderId, text, nonPayableGig = false }) {
+  const data = await post('/messages/sendGigAcceptanceAnnouncement', { body: { conversationId, senderId, text, nonPayableGig } });
+  return data;
+}
+
 export async function postCancellationMessage({ conversationId, senderId, message, cancellingParty }) {
   const data = await post('/messages/postCancellationMessage', { body: { conversationId, senderId, message, cancellingParty } });
   return data;

@@ -538,8 +538,47 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   }
 
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
+  const isInApplicants = applicants.some(a => a?.id === musicianProfileId);
+  
+  // If artist is not in applicants array (e.g., invite via link), add them first
+  let applicantsToProcess = applicants;
+  if (!isInApplicants) {
+    const now = Timestamp.fromDate(new Date());
+    
+    // Get artist profile to get the name
+    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+    const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);
+    const [artistSnap, musicianSnap] = await Promise.all([artistRef.get(), musicianRef.get()]);
+    
+    const artistName = artistSnap.exists ? (artistSnap.data()?.name || null) : (musicianSnap.exists ? (musicianSnap.data()?.name || null) : null);
+    
+    const newApplicant = {
+      id: musicianProfileId,
+      timestamp: now,
+      fee: gigData.budget || "£0",
+      status: "confirmed",
+      invited: true,
+      viewed: true,
+      ...(inviteId ? { inviteId } : {})
+    };
+    applicantsToProcess = [...applicants, newApplicant];
+    
+    // Add to artist's gigApplications array
+    const gigApplicationEntry = {
+      gigId: gigData.gigId,
+      profileId: musicianProfileId,
+      ...(artistName ? { name: artistName } : {})
+    };
+    
+    if (artistSnap.exists) {
+      await artistRef.update({ gigApplications: FieldValue.arrayUnion(gigApplicationEntry) });
+    } else if (musicianSnap.exists) {
+      await musicianRef.update({ gigApplications: FieldValue.arrayUnion(gigApplicationEntry) });
+    }
+  }
+  
   let agreedFee = null;
-  const updatedApplicants = applicants.map((applicant) => {
+  const updatedApplicants = applicantsToProcess.map((applicant) => {
     if (applicant.id === musicianProfileId) {
       agreedFee = applicant.fee;
       return { ...applicant, status: nonPayableGig ? "confirmed" : "accepted" };
@@ -672,7 +711,46 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
   }
 
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
-  const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "confirmed" } : { ...a });
+  const isInApplicants = applicants.some(a => a?.id === musicianProfileId);
+  
+  // If artist is not in applicants array (e.g., invite via link), add them first
+  let applicantsToProcess = applicants;
+  if (!isInApplicants) {
+    const now = Timestamp.fromDate(new Date());
+    
+    // Get artist profile to get the name
+    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+    const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);
+    const [artistSnap, musicianSnap] = await Promise.all([artistRef.get(), musicianRef.get()]);
+    
+    const artistName = artistSnap.exists ? (artistSnap.data()?.name || null) : (musicianSnap.exists ? (musicianSnap.data()?.name || null) : null);
+    
+    const newApplicant = {
+      id: musicianProfileId,
+      timestamp: now,
+      fee: gigData.budget || "£0",
+      status: "confirmed",
+      invited: true,
+      viewed: true,
+      ...(inviteId ? { inviteId } : {})
+    };
+    applicantsToProcess = [...applicants, newApplicant];
+    
+    // Add to artist's gigApplications array
+    const gigApplicationEntry = {
+      gigId: gigData.gigId,
+      profileId: musicianProfileId,
+      ...(artistName ? { name: artistName } : {})
+    };
+    
+    if (artistSnap.exists) {
+      await artistRef.update({ gigApplications: FieldValue.arrayUnion(gigApplicationEntry) });
+    } else if (musicianSnap.exists) {
+      await musicianRef.update({ gigApplications: FieldValue.arrayUnion(gigApplicationEntry) });
+    }
+  }
+  
+  const updatedApplicants = applicantsToProcess.map((a) => a.id === musicianProfileId ? { ...a, status: "confirmed" } : { ...a });
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
   await gigRef.update({ applicants: updatedApplicants, paid: true, status: "open" });
   const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);

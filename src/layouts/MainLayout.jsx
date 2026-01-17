@@ -5,7 +5,7 @@ import { Header as CommonHeader} from '@features/shared/components/Header'
 import '@styles/shared/layouts.styles.css'
 
 export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout, setNoProfileModal, noProfileModal, setNoProfileModalClosable }) => {
-
+    console.log(user)
     return (
         <section className='layout-main'>
             {!user ? (
@@ -25,7 +25,7 @@ export const MainLayout = ({ children, setAuthModal, setAuthType, user, logout, 
                     setNoProfileModalClosable={setNoProfileModalClosable}
 
                 />
-            ) : (user && user.musicianProfile) ? (
+            ) : (user && user.artistProfiles && user.artistProfiles.length > 0) ? (
                 <MusicianHeader
                     setAuthModal={setAuthModal}
                     setAuthType={setAuthType}

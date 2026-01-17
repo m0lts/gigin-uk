@@ -36,7 +36,7 @@ export const AdditionalDetails = ({ formData, handleInputChange, stepError, setS
                     <p className='stage-copy'>Add any extra information that will help musicians understand the vibe, layout, or unique qualities of your space.</p>
                 </div>
                 <div className='input-group large-text'>
-                    <label htmlFor='description' className='input-label'>Bio</label>
+                    <label htmlFor='description' className='input-label'>Bio <span className='required' style={{ color: 'var(--gn-red)' }}>*</span></label>
                     <div className="creation-bio-textarea-container">
                         <textarea
                             className={`creation-bio-textarea ${stepError && fieldError === 'description' ? 'error' : ''}`}

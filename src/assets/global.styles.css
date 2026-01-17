@@ -156,3 +156,35 @@ p, a, span, label, input, button, select, option, textarea, li {
     justify-content: center;
     gap:0.5rem;
 }
+
+.pro-badge {
+    background-color: var(--gn-orange);
+    color: var(--gn-white);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    width: fit-content;
+    outline: 2px solid var(--gn-white);
+    outline-offset: -5px;
+}
+
+.pro-badge.white {
+    background-color: var(--gn-white);
+    color: var(--gn-orange);
+    outline: 2px solid var(--gn-orange);
+    outline-offset: -5px;
+    width: fit-content;
+}
+
+.pro-badge.white span {
+    color: var(--gn-red);
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.pro-badge span {
+    color: var(--gn-white);
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}

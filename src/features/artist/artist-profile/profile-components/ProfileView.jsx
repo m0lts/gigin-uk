@@ -623,7 +623,7 @@ export const ProfileView = ({
   const trackCoverInputRef = useRef(null);
   const videoFileInputRef = useRef(null);
   const pendingCoverTrackIdRef = useRef(null);
-  const { isMdUp } = useBreakpoint();
+  const { isMdUp, isLgUp, isXlUp } = useBreakpoint();
   const editHeroContainerRef = useRef(null);
   const editNameContainerRef = useRef(null);
   const venueActionsContainerRef = useRef(null);
@@ -1156,24 +1156,21 @@ export const ProfileView = ({
       {!isCreatingProfile && !isExample && (
         <div className="additional-info-buttons-container">
           <button
-            className={`btn additional-info-btn ${selectedAdditionalInfo === 'tech-rider' ? 'active' : ''}`}
+            className={`btn additional-info-btn ${selectedAdditionalInfo === 'tech-rider' ? 'active' : ''} ${!isXlUp ? 'small' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'tech-rider' ? null : 'tech-rider')}
           >
-            {isMdUp && <TechRiderIcon />}
             Tech Rider
           </button>
           <button
-            className={`btn additional-info-btn ${selectedAdditionalInfo === 'members' ? 'active' : ''}`}
+            className={`btn additional-info-btn ${selectedAdditionalInfo === 'members' ? 'active' : ''} ${!isXlUp ? 'small' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'members' ? null : 'members')}
           >
-            {isMdUp && <PeopleGroupIconSolid />}
             Members
           </button>
           <button
-            className={`btn additional-info-btn ${selectedAdditionalInfo === 'about' ? 'active' : ''}`}
+            className={`btn additional-info-btn ${selectedAdditionalInfo === 'about' ? 'active' : ''} ${!isXlUp ? 'small' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'about' ? null : 'about')}
           >
-            {isMdUp && <MoreInformationIcon />}
             About
           </button>
         </div>

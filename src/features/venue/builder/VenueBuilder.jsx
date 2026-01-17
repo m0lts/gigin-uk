@@ -106,8 +106,6 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 }
                 return url;
             });
-            console.log('Loading venue - original photos:', venue.photos);
-            console.log('Loading venue - converted photos:', photos);
             setFormData({
                 venueId: venue.venueId || uuidv4(),
                 type: venue.type || '',

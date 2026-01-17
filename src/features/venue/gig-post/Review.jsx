@@ -42,7 +42,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
     }, [repeatData])
 
     const formatMusic = (genres) => {
-        if (!genres.length) return 'No Preferences';
+        if (!genres.length) return 'No Genre Preference';
         if (genres.length === 1) return `${genres[0]}`;
         if (genres.length === 2) return `${genres[0]} and ${genres[1]}`;
         return `${genres.slice(0, -1).join(', ')} and ${genres[genres.length - 1]}`;
@@ -214,13 +214,13 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                         </div>
                         <div className='review-box'>
                             <h4 className='value'>{formData.startTime}</h4>
-                            <button className='btn text' onClick={() => setStage(6)}>
+                            <button className='btn text' onClick={() => setStage(2)}>
                                 <EditIcon />
                             </button>
                         </div>
                         <div className='review-box'>
                             <h4 className='value'>{formatDuration(formData.duration)}</h4>
-                            <button className='btn text' onClick={() => setStage(6)}>
+                            <button className='btn text' onClick={() => setStage(2)}>
                                 <EditIcon />
                             </button>
                         </div>

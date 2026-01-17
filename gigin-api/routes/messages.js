@@ -122,6 +122,45 @@ router.post("/sendGigAcceptedMessage", requireAuth, asyncHandler(async (req, res
   return res.json({ data: { timestamp: ts.toMillis() } });
 }));
 
+// POST /api/messages/sendGigAcceptanceAnnouncement
+router.post("/sendGigAcceptanceAnnouncement", requireAuth, asyncHandler(async (req, res) => {
+  const {
+    conversationId,
+    senderId,
+    text,
+    nonPayableGig = false,
+  } = req.body || {};
+  
+  if (!conversationId || !senderId || !text) {
+    return res.status(400).json({ 
+      error: "INVALID_ARGUMENT", 
+      message: "conversationId, senderId, and text are required." 
+    });
+  }
+  
+  const ts = Timestamp.now();
+  const messagesRef = db
+    .collection("conversations")
+    .doc(conversationId)
+    .collection("messages");
+  await messagesRef.add({
+    senderId,
+    text,
+    timestamp: ts,
+    type: "announcement",
+    status: nonPayableGig ? "gig confirmed" : "awaiting payment",
+  });
+  
+  const convRef = db.doc(`conversations/${conversationId}`);
+  await convRef.update({
+    lastMessage: text,
+    lastMessageTimestamp: ts,
+    lastMessageSenderId: senderId,
+  });
+  
+  return res.json({ data: { timestamp: ts.toMillis() } });
+}));
+
 // POST /api/messages/postCancellationMessage
 router.post("/postCancellationMessage", requireAuth, asyncHandler(async (req, res) => {
   const { conversationId, senderId, message, cancellingParty } = req.body || {};

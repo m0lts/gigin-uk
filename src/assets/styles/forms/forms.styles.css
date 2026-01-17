@@ -77,8 +77,7 @@ input:-webkit-autofill {
 .form .input-group textarea.disabled,
 .auth-form .input-group input.disabled,
 .auth-form .input-group .password.disabled,
-.auth-form .input-group select.disabled
-.auth-form .password.disabled {
+.auth-form .input-group select.disabled {
     background-color: var(--gn-grey-300);
 }
 
@@ -96,9 +95,14 @@ input:-webkit-autofill {
 
 .auth-form .password {
     transition: border 0.3s;
+    background-color: var(--gn-grey-200);
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    padding: 10px 5px;
 }
 
-.auth-form .password.focused {
+.auth-form .password.focused,
+.auth-form .input-group .password.focused {
     border: 2px solid var(--gn-off-black);
 }
 
@@ -127,6 +131,10 @@ input:-webkit-autofill {
     display: flex;
     justify-content: space-between;
     width:100%;
+    background-color: var(--white);
+    border: 1px solid var(--gn-grey-400);
+    border-radius: 5px;
+    padding: 10px 5px;
 }
 
 .auth-form .input-group .password input {
@@ -134,6 +142,7 @@ input:-webkit-autofill {
     border:none;
     border-radius: 0;
     width:90%;
+    background-color: var(--gn-white);
 }
 
 .auth-form .input-group .password input:focus {
@@ -151,10 +160,6 @@ input:-webkit-autofill {
 
 .auth-form .input-group .password .btn:hover {
     background-color: transparent;
-}
-
-.auth-form .input-group .password .disabled {
-    background-color: var(--gn-grey-300) !important;
 }
 
 .auth-form .phone-row {

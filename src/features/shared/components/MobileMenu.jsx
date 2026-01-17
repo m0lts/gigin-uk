@@ -211,6 +211,21 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 </>
                             );
                         })()}
+                        {user.artistProfiles && user.artistProfiles.length === 1 && (
+                            <>
+                                <button 
+                                    className="btn artist-profile item no-margin"
+                                    style= {{width: '100%'}}
+                                    onClick={() => {
+                                        navigate('/artist-profile?create=true');
+                                        setMobileOpen(false);
+                                    }}
+                                >
+                                    Create Another Profile
+                                    <GuitarsIcon />
+                                </button>
+                            </>
+                        )}
                         {!isLgUp && (
                             <Link className='link item no-margin' to={'/find-a-gig'}>
                                 Find a Gig

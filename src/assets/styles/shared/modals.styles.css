@@ -51,6 +51,11 @@
     background-color: var(--gn-grey-300);
 }
 
+.modal-padding.loading {
+    padding-bottom: 1rem;
+    background-color: transparent;
+}
+
 .modal-padding .bottom-text {
     display: flex;
     align-items: center;
@@ -1004,3 +1009,43 @@
     border-radius: 5px;
 }
 
+/* ARTIST PROFILE COMPLETION MODAL */
+.modal.profile-completion .modal-content {
+    max-width: 300px;
+}
+
+.modal.profile-completion .modal-content .artist-profile-link {
+    font-size: 0.9rem;
+    color: var(--gn-grey-700);
+    word-break: break-all;
+    text-align: center;
+    padding: 0.75rem;
+    background-color: var(--gn-grey-300);
+    border-radius: 0.5rem;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 1rem;
+}
+
+.modal.profile-completion .modal-content .modal-body .btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:0.5rem;
+}
+
+.modal.profile-completion .modal-content .or-separator {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:1rem;
+    margin: 1rem 0;
+}
+
+.modal.profile-completion .modal-content .or-separator span {
+    width: 100%;
+    height: 1px;
+    background-color: var(--gn-grey-300);
+}

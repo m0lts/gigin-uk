@@ -1650,6 +1650,10 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+.additional-info-btn.small {
+  padding: 0.75rem 0.5rem;
+}
+
 .additional-info-btn:hover {
   background-color: var(--gn-grey-300);
   border-color: transparent;
@@ -4646,22 +4650,25 @@
 }
 
 .tech-rider-performer-content {
+  position: relative;
   display: flex;
   gap: 1rem;
   align-items: space-between;
 }
 
 .tech-rider-performer-name-field {
-  width: 200px;
+  max-width: 200px;
+  width: 50%;
 }
 
 .tech-rider-performer-name-label {
-  font-size: 0.85rem;
-  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
 }
 
 .tech-rider-performer-name-input {
   font-size: 0.9rem;
+  width: 100%;
+  padding: 0.5rem;
 }
 
 .tech-rider-instruments-container {
@@ -4678,12 +4685,12 @@
 }
 
 .tech-rider-instrument-label {
-  font-size: 0.85rem;
-  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
 }
 
 .tech-rider-instrument-select {
   font-size: 0.9rem;
+  padding: 0.4rem 0.5rem;
 }
 
 .tech-rider-remove-instrument-btn {
@@ -4712,14 +4719,20 @@
 
 
 .tech-rider-remove-performer-wrapper {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: 0.25rem;
+  position: absolute;
+  top: -0.8rem;
+  right: -0.8rem;
 }
 
 .tech-rider-remove-performer-btn {
   align-self: center;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.tech-rider-remove-performer-btn .icon {
+  font-size: 1rem !important;
+  color: var(--gn-red);
 }
 
 .tech-rider-stage-nav {
@@ -5093,7 +5106,42 @@
 
 /* Dark mode for tech rider */
 .dark-mode .tech-rider-performer-row {
+  border-color: var(--gn-off-black);
+  background-color: var(--gn-black);
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-performer-row .icon {
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-performer-row .icon:hover {
+  background-color: transparent;
+}
+
+/* Dark mode for tech rider input fields */
+.dark-mode .tech-rider-performer-name-input,
+.dark-mode .tech-rider-number-input,
+.dark-mode .tech-rider-instrument-select,
+.dark-mode .tech-rider-notes-textarea,
+.dark-mode .tech-rider-notes-textarea-inline,
+.dark-mode .tech-rider-extra-notes-textarea,
+.dark-mode .tech-rider-extra-notes-stage-textarea {
+  background-color: var(--gn-black);
   border-color: var(--gn-grey-700);
+  color: var(--gn-white);
+}
+
+.dark-mode .tech-rider-performer-name-input:focus,
+.dark-mode .tech-rider-number-input:focus,
+.dark-mode .tech-rider-instrument-select:focus,
+.dark-mode .tech-rider-notes-textarea:focus,
+.dark-mode .tech-rider-notes-textarea-inline:focus,
+.dark-mode .tech-rider-extra-notes-textarea:focus,
+.dark-mode .tech-rider-extra-notes-stage-textarea:focus {
+  outline: 1px solid var(--gn-white);
+  outline-offset: -1px;
+  border-color: var(--gn-white);
 }
 
 
@@ -5209,7 +5257,7 @@
 .tech-rider-viewer-performer-box {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid var(--gn-grey-200);
+  border: 1px solid var(--gn-grey-350);
   border-radius: 6px;
   background: var(--gn-white);
   transition: background-color 0.2s, border-color 0.2s;

@@ -66,9 +66,6 @@ export const VenueDashboard = ({ user }) => {
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'venue', venueProfiles), [location.pathname]);
   
     useEffect(() => {
-      if (location.state?.newUser && user?.venueProfiles?.length === 1) {
-        setShowWelcomeModal(true);
-      };
       if (location.state?.showGigPostModal) setGigPostModal(true);
       if (location.state?.buildingForMusician) setBuildingForMusician(true);
       if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);

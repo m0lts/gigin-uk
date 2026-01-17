@@ -29,7 +29,7 @@ const handleLinkClick = (e, url) => {
   }
 };
 
-const MEDIA_STORAGE_LIMIT_BYTES = 3 * 1024 * 1024 * 1024; // 3GB
+const MEDIA_STORAGE_LIMIT_BYTES = 100 * 1024 * 1024; // 100MB
 
 const formatFileSize = (bytes) => {
   if (!bytes || bytes <= 0) return '0B';
@@ -531,18 +531,21 @@ export const VideosTracks = ({
   const prevTracksLengthRef = useRef(tracks.length);
 
   // Switch to tracks when tracks are first uploaded, switch back to videos when all tracks are removed
+  // But only if profile is not complete (not editable) - if profile is complete, allow staying on tracks even when empty
   useEffect(() => {
     const prevLength = prevTracksLengthRef.current;
     const currentLength = tracks.length;
 
     if (prevLength === 0 && currentLength > 0) {
       setActiveSection('tracks');
-    } else if (currentLength === 0 && activeSection === 'tracks') {
+    } else if (currentLength === 0 && activeSection === 'tracks' && !isEditable) {
+      // Only switch back to videos if profile is not complete (not editable)
+      // This allows users to view the empty tracks section when profile is complete
       setActiveSection('videos');
     }
 
     prevTracksLengthRef.current = currentLength;
-  }, [tracks.length, activeSection]);
+  }, [tracks.length, activeSection, isEditable]);
 
   useEffect(() => {
     if (activeSection === 'videos') {
@@ -814,8 +817,8 @@ export const VideosTracks = ({
                       video.thumbnail ||
                       video.thumbnailUrl ||
                       null;
-                    // Check if video is uploading (has file but no uploaded URL yet)
-                    const isUploading = !!(video.videoFile && !video.uploadedVideoUrl);
+                    // Check if video is uploading (only when uploads are actually in progress)
+                    const isUploading = videosUploadStatus === 'uploading' && !!(video.videoFile && !video.uploadedVideoUrl);
                     
                     return (
                       <div key={videoKey} className="video-thumbnail">
@@ -917,7 +920,7 @@ export const VideosTracks = ({
             </div>
           </div>
         ) : (
-          tracks.length > 0 && (
+          (tracks.length > 0 || isEditable) && (
             <div 
               className="section-header" 
               onClick={() => setActiveSection('tracks')}
@@ -1197,56 +1200,68 @@ export const VideosTracks = ({
                   </div>
                 </div>
               ) : (
-                <div className="tracks-list playable">
-                  {trackDataset.map((track, index) => {
-                    const trackKey = getTrackIdentifier(track, index);
-                    const cover = resolveTrackCover(track);
-                    // Check if track is uploading (has audioFile but no uploaded URL yet)
-                    const isUploading = !!(track.audioFile && !track.uploadedAudioUrl);
-                    
-                    return (
-                      <div key={trackKey} className="track-item playable">
-                        <div className="track-thumbnail">
-                          {isUploading ? (
-                            <div className="track-thumbnail-placeholder uploading">
-                              <LoadingSpinner />
-                            </div>
-                          ) : cover ? (
-                            <img src={cover} alt={track.title || 'Track'} />
-                          ) : (
-                            <div className="track-thumbnail-placeholder">
-                              <TrackIcon />
-                            </div>
+                trackDataset.length > 0 ? (
+                  <div className="tracks-list playable">
+                    {trackDataset.map((track, index) => {
+                      const trackKey = getTrackIdentifier(track, index);
+                      const cover = resolveTrackCover(track);
+                      // Check if track is uploading (only when uploads are actually in progress)
+                      const isUploading = tracksUploadStatus === 'uploading' && !!(track.audioFile && !track.uploadedAudioUrl);
+                      
+                      return (
+                        <div key={trackKey} className="track-item playable">
+                          <div className="track-thumbnail">
+                            {isUploading ? (
+                              <div className="track-thumbnail-placeholder uploading">
+                                <LoadingSpinner />
+                              </div>
+                            ) : cover ? (
+                              <img src={cover} alt={track.title || 'Track'} />
+                            ) : (
+                              <div className="track-thumbnail-placeholder">
+                                <TrackIcon />
+                              </div>
+                            )}
+                          </div>
+                          <div className="track-info">
+                            {isUploading ? (
+                              <>
+                              <h4>Uploading Track...</h4>
+                              <p style={{ fontSize: '0.875rem', color: 'var(--gn-grey-600)' }}>Don't leave this page...</p>
+                              </>
+                            ) : (
+                              <>
+                                <h4>{track.title || `Track ${index + 1}`}</h4>
+                                {track.artist && <p>{track.artist}</p>}
+                              </>
+                            )}
+                          </div>
+                          {!isUploading && (
+                            <button
+                              type="button"
+                              className="btn icon play-track"
+                              onClick={() => handleTrackPlayRequest(trackKey)}
+                              disabled={!allowPlayback}
+                              aria-label={`Play ${track.title || `track ${index + 1}`}`}
+                            >
+                              <PlayIcon />
+                            </button>
                           )}
                         </div>
-                        <div className="track-info">
-                          {isUploading ? (
-                            <>
-                            <h4>Uploading Track...</h4>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--gn-grey-600)' }}>Don't leave this page...</p>
-                            </>
-                          ) : (
-                            <>
-                              <h4>{track.title || `Track ${index + 1}`}</h4>
-                              {track.artist && <p>{track.artist}</p>}
-                            </>
-                          )}
-                        </div>
-                        {!isUploading && (
-                          <button
-                            type="button"
-                            className="btn icon play-track"
-                            onClick={() => handleTrackPlayRequest(trackKey)}
-                            disabled={!allowPlayback}
-                            aria-label={`Play ${track.title || `track ${index + 1}`}`}
-                          >
-                            <PlayIcon />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    padding: '2rem',
+                    color: 'var(--gn-grey-600)'
+                  }}>
+                    <p>No tracks have been uploaded</p>
+                  </div>
+                )
               )}
             </>
           )}

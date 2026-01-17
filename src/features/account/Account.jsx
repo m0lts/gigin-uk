@@ -106,6 +106,8 @@ export const Account = () => {
     const payoutsRef = useRef(null);
 
     const [showPayoutHelp, setShowPayoutHelp] = useState(false);
+    const [emailMessagesEnabled, setEmailMessagesEnabled] = useState(user?.emailMessages !== false);
+    const [updatingEmailMessages, setUpdatingEmailMessages] = useState(false);
 
     const handleCopy = async (value) => {
         try {
@@ -127,6 +129,10 @@ export const Account = () => {
     useEffect(() => {
         setVenueList(user?.venueProfiles || []);
     }, [user]);
+
+    useEffect(() => {
+        setEmailMessagesEnabled(user?.emailMessages !== false);
+    }, [user?.emailMessages]);
 
     // Keep connectedAccountId in sync with user doc
     useEffect(() => {
@@ -342,6 +348,23 @@ export const Account = () => {
             toast.error('Failed to update password.');
         } finally {
             setEventLoading(false);
+        }
+    };
+
+    const handleEmailMessagesToggle = async () => {
+        setUpdatingEmailMessages(true);
+        try {
+            const newValue = !emailMessagesEnabled;
+            await updateUserDocument(auth.currentUser.uid, {
+                emailMessages: newValue,
+            });
+            setEmailMessagesEnabled(newValue);
+            toast.success(newValue ? 'Email notifications enabled' : 'Email notifications disabled');
+        } catch (error) {
+            console.error('Error updating email notifications:', error);
+            toast.error('Failed to update email notification settings.');
+        } finally {
+            setUpdatingEmailMessages(false);
         }
     };
 
@@ -746,6 +769,28 @@ export const Account = () => {
                             <button className='btn primary' onClick={() => setShowPasswordModal(true)}>
                                 Change Password
                             </button>
+                        </div>
+                    </div>
+                    <div className='password-settings'>
+                        <h3>Email Notifications:</h3>
+                        <div className='data-highlight'>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                <h4>Receive email notifications when you receive messages</h4>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <label className="gigs-toggle-switch" style={{ cursor: updatingEmailMessages ? 'not-allowed' : 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={emailMessagesEnabled}
+                                            onChange={handleEmailMessagesToggle}
+                                            disabled={updatingEmailMessages}
+                                        />
+                                        <span className="gigs-toggle-slider"></span>
+                                    </label>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--gn-off-black)' }}>
+                                        {emailMessagesEnabled ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div className='delete-settings'>

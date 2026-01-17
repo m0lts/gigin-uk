@@ -127,12 +127,14 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   };
 
   return (
-    <div className='modal-padding auth' onClick={(e) => e.stopPropagation()}>
+    <div className={`modal-padding auth ${loading ? 'loading' : ''}`} onClick={(e) => e.stopPropagation()}>
     <div className='modal-content auth scrollable'>
-      <div className='head'>
-        <NoTextLogo />
-        <h1>Welcome Back</h1>
-      </div>
+      {!loading && (
+        <div className='head'>
+          <NoTextLogo />
+          <h1>Welcome Back</h1>
+        </div>
+      )}
         <form className='auth-form' onSubmit={handleLogin}>
           {!loading && (
             <>
@@ -174,49 +176,50 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                 <h6>OR</h6>
                 <span className="line" />
               </div>
+              <div className='input-group'>
+                <label htmlFor='email'>Email</label>
+                <input
+                  type='text'
+                  name='email'
+                  value={credentials.email}
+                  onChange={(e) => { handleChange(e); clearError(); }}
+                  placeholder='e.g. johnsmith@gigin.com'
+                  required
+                  className={`${error.input === 'email' && 'error'}`}
+                />
+              </div>
+              <div className='input-group'>
+                <label htmlFor='password'>
+                  Password <button type='button' className='fp-link btn text' onClick={() => setAuthType('forgot-password')} tabIndex='-1'>Forgot password?</button>
+                </label>
+                <div className={`password ${passwordFocused ? 'focused' : ''} ${loading ? 'disabled' : ''}`}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name='password'
+                    id='password'
+                    value={credentials.password}
+                    onChange={(e) => { handleChange(e); clearError(); }}
+                    placeholder='Password'
+                    disabled={loading}
+                    required
+                    className={`${error.input === 'password' && 'error'}`}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                  <button type='button' className='btn tertiary' onClick={toggleShowPassword}>
+                    <SeeIcon />
+                  </button>
+                </div>
+              </div>
             </>
           )}
-          <div className='input-group'>
-            <label htmlFor='email'>Email</label>
-            <input
-              type='text'
-              name='email'
-              value={credentials.email}
-              onChange={(e) => { handleChange(e); clearError(); }}
-              placeholder='e.g. johnsmith@gigin.com'
-              required
-              className={`${error.input === 'email' && 'error'}`}
-            />
-          </div>
-          <div className='input-group'>
-            <label htmlFor='password'>
-              Password <button type='button' className='fp-link btn text' onClick={() => setAuthType('forgot-password')} tabIndex='-1'>Forgot password?</button>
-            </label>
-            <div className={`password ${passwordFocused ? 'focused' : ''}`}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name='password'
-                id='password'
-                value={credentials.password}
-                onChange={(e) => { handleChange(e); clearError(); }}
-                placeholder='Password'
-                required
-                className={`${error.input === 'password' && 'error'}`}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
-              <button type='button' className='btn tertiary' onClick={toggleShowPassword}>
-                <SeeIcon />
-              </button>
-            </div>
-          </div>
           {error.status && (
             <div className='error-box'>
               <p className='error-msg'>{error.message}</p>
             </div>
           )}
           {loading ? (
-            <LoadingSpinner marginTop={'1.2rem'} />
+            <LoadingSpinner />
           ) : (
             <>
               <button
@@ -235,10 +238,12 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
         </button>
       )}
     </div>
+    {!loading && (
     <div className="change-auth-type">
         <h4 className='change-auth-type-text'>Don't have an account? </h4>
         <button className='btn text' type='button' disabled={loading} onClick={() => { setAuthType('signup'); clearCredentials(); clearError(); }}>Sign Up</button>
-      </div>
+    </div>
+    )}
     </div>
   );
 };

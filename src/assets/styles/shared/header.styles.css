@@ -501,6 +501,81 @@
     color: var(--gn-orange);
 }
 
+.header.musician .active-profile.clickable {
+    cursor: pointer;
+}
+
+.header.musician .active-profile .title-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header.musician .active-profile .chevron-icon .icon {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+}
+
+.header.musician .active-profile .chevron-icon.open .icon {
+    transform: rotate(180deg);
+}
+
+.header.musician .profile-dropdown {
+    position: absolute;
+    top: 100%;
+    left: -0.5rem;
+    right: 0;
+    margin-top: 1rem;
+    background-color: var(--gn-white);
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 4px 12px var(--gn-shadow);
+    z-index: 1000;
+    min-width: 200px;
+}
+
+.header.musician .profile-dropdown-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+}
+
+
+.header.musician .profile-dropdown-item:not(.active):hover {
+    background-color: var(--gn-grey-300);
+}
+
+.header.musician .profile-dropdown-item.active:hover {
+    cursor:not-allowed;
+}
+
+.header.musician .profile-dropdown-item .profile-name {
+    flex: 1;
+    color: var(--gn-off-black);
+}
+
+.header.musician .profile-dropdown-item.active .profile-name {
+    color: var(--gn-orange);
+}
+
+.header.musician .profile-dropdown-item .profile-name.unnamed {
+    color: var(--gn-grey-500);
+}
+
+.header.musician .profile-dropdown-item .active-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gn-orange);
+    text-transform: uppercase;
+}
+
 @media (--bp-md) {
     .header.musician {
         padding: 0 1rem;

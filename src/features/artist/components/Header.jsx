@@ -23,7 +23,7 @@ import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth';
 import { useState, useEffect, useMemo } from 'react'
 import { listenToUserConversations } from '@services/client-side/conversations';
-import { CloseIcon, FeedbackIcon, HamburgerMenuIcon } from '../../shared/ui/extras/Icons';
+import { CloseIcon, FeedbackIcon, HamburgerMenuIcon, DownChevronIcon } from '../../shared/ui/extras/Icons';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { MobileMenu } from '../../shared/components/MobileMenu';
 import Portal from '../../shared/components/Portal';
@@ -41,6 +41,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
     const { profileId: urlProfileId } = useParams();
     const [accountMenu, setAccountMenu] = useState(false);
     const [newMessages, setNewMessages] = useState(false);
+    const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     // Track localStorage changes to force re-render when active profile changes
     const [activeProfileIdFromStorage, setActiveProfileIdFromStorage] = useState(() => {
         if (!user?.uid) return null;
@@ -162,6 +163,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
 
     window.addEventListener('click', () => {
         setAccountMenu(false);
+        setShowProfileDropdown(false);
     });
 
     useEffect(() => {
@@ -359,9 +361,82 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                 <div className="right">
                                     {activeProfile?.isComplete ? (
                                         <>
-                                            <div className="active-profile">
-                                                <h6 className="subtitle">Active Profile:</h6>
-                                                <h4 className="title">{activeProfile?.name}</h4>
+                                            <div 
+                                                className={`active-profile ${user?.artistProfiles && user.artistProfiles.length > 1 ? 'clickable' : ''}`}
+                                                style={{ position: 'relative' }}
+                                                onClick={(e) => {
+                                                    if (user?.artistProfiles && user.artistProfiles.length > 1) {
+                                                        e.stopPropagation();
+                                                        setShowProfileDropdown(!showProfileDropdown);
+                                                    }
+                                                }}
+                                            >
+                                                <div className="title-container">
+                                                    <div className="title-container-inner">
+                                                        <h6 className="subtitle">Active Profile:</h6>
+                                                        <h4 className="title">{activeProfile?.name}</h4>
+                                                    </div>
+                                                    {user?.artistProfiles && user.artistProfiles.length > 1 && (
+                                                        <div className={`chevron-icon ${showProfileDropdown ? 'open' : ''}`}>
+                                                            <DownChevronIcon  />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {showProfileDropdown && user?.artistProfiles && user.artistProfiles.length > 1 && (
+                                                    <div 
+                                                        className="profile-dropdown"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {user.artistProfiles.map((artistProfile) => {
+                                                            const profileId = artistProfile.id || artistProfile.profileId;
+                                                            const isActive = profileId === (activeProfile?.id || activeProfile?.profileId);
+                                                            const isIncomplete = artistProfile.isComplete === false;
+                                                            const isDraft = artistProfile.status === 'draft';
+                                                            const shouldShowCreationFlow = isIncomplete || isDraft;
+                                                            const hasName = artistProfile.name && typeof artistProfile.name === 'string' && artistProfile.name.trim();
+                                                            
+                                                            return (
+                                                                <div
+                                                                    key={profileId}
+                                                                    className={`profile-dropdown-item ${isActive ? 'active' : ''}`}
+                                                                    onClick={() => {
+                                                                        if (shouldShowCreationFlow) {
+                                                                            navigate(`/artist-profile/${profileId}`);
+                                                                            setShowProfileDropdown(false);
+                                                                        } else {
+                                                                            if (user?.uid && profileId !== (activeProfile?.id || activeProfile?.profileId)) {
+                                                                                try {
+                                                                                    localStorage.setItem(`activeArtistProfileId_${user.uid}`, profileId);
+                                                                                    window.dispatchEvent(new Event('activeProfileChanged'));
+                                                                                    toast.info(`Switched to ${hasName ? artistProfile.name : 'artist profile'}`);
+                                                                                    setShowProfileDropdown(false);
+                                                                                    
+                                                                                    if (location.pathname.includes('/artist-profile')) {
+                                                                                        navigate(`/artist-profile/${profileId}`, { replace: true });
+                                                                                    }
+                                                                                } catch (e) {
+                                                                                    console.error('Failed to update active profile:', e);
+                                                                                    toast.error('Failed to switch profile');
+                                                                                }
+                                                                            } else {
+                                                                                setShowProfileDropdown(false);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <span className={`profile-name ${!hasName ? 'unnamed' : ''}`}>
+                                                                        {hasName ? artistProfile.name : 'Unnamed Profile'}
+                                                                    </span>
+                                                                    {isActive && (
+                                                                        <span className="active-badge">
+                                                                            Active
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
                                             <button className='btn text-no-underline' onClick={() => navigate(`/artist-profile/${activeProfile.id || activeProfile.profileId}`)}>
                                                 <GuitarsIcon />
