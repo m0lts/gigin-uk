@@ -150,22 +150,22 @@ export const QuestionCircleIcon = () => {
 }
 export const LeftChevronIcon = () => {
     return (
-        <FontAwesomeIcon icon={faChevronLeft} className='icon' />
+        <FontAwesomeIcon icon={faChevronLeft} className='icon' style={{ fontSize: '0.85rem' }} />
     )
 }
 export const RightChevronIcon = () => {
     return (
-        <FontAwesomeIcon icon={faChevronRight} className='icon' />
+        <FontAwesomeIcon icon={faChevronRight} className='icon' style={{ fontSize: '0.85rem' }} />
     )
 }
 export const DownChevronIcon = () => {
     return (
-        <FontAwesomeIcon icon={faChevronDown} className='icon' />
+        <FontAwesomeIcon icon={faChevronDown} className='icon' style={{ fontSize: '0.85rem' }} />
     )
 }
 export const UpChevronIcon = () => {
     return (
-        <FontAwesomeIcon icon={faChevronUp} className='icon' />
+        <FontAwesomeIcon icon={faChevronUp} className='icon' style={{ fontSize: '0.85rem' }} />
     )
 }
 export const ExitIcon = () => {

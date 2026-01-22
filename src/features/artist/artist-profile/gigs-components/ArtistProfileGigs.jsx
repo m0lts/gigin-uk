@@ -26,6 +26,10 @@ import {
   RejectedIcon,
   CalendarIconSolid,
   InviteIconSolid,
+  DownArrowIcon,
+  UpArrowIcon,
+  DownChevronIcon,
+  UpChevronIcon,
 } from '../../../shared/ui/extras/Icons';
 
 export const ArtistProfileGigs = () => {
@@ -51,6 +55,8 @@ export const ArtistProfileGigs = () => {
   const [showGigHandbook, setShowGigHandbook] = useState(false);
   const [gigForHandbook, setGigForHandbook] = useState(null);
   const optionsButtonRefs = useRef({});
+  const [isNextGigCollapsed, setIsNextGigCollapsed] = useState(false);
+  const [isInvitationsCollapsed, setIsInvitationsCollapsed] = useState(false);
 
   // Artist profile permissions for the focused profile
   const [artistProfilePerms, setArtistProfilePerms] = useState(null);
@@ -408,89 +414,108 @@ export const ArtistProfileGigs = () => {
     );
     return (
       <section className='artist-profile-gigs-section next-gig'>
-        <div className='section-header'>
+        <div className='section-header' style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 className='sub-heading'>Next Gig</h3>
+          <button 
+            className='btn text' 
+            onClick={() => setIsNextGigCollapsed(!isNextGigCollapsed)}
+            style={{ padding: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}
+          >
+            {isNextGigCollapsed ? 'Show' : 'Hide'}
+            {isNextGigCollapsed ? <DownChevronIcon /> : <UpChevronIcon />}
+          </button>
         </div>
-        <div className='next-gig-card'>
-          <div className='next-gig-primary'>
-            <p className='gig-name'>{nextConfirmedGig.gigName}</p>
-            <p className='gig-venue'>{nextConfirmedGig.venue?.venueName || nextConfirmedGig.venueName}</p>
-            <p className='gig-date'>
-              {nextConfirmedGig.startDateTime?.toDate?.().toLocaleDateString('en-GB', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-              })}{' '}
-              ·{' '}
-              {nextConfirmedGig.startDateTime?.toDate?.().toLocaleTimeString('en-GB', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-              })}
-            </p>
-          </div>
-          <div className='next-gig-secondary'>
-            <div className='status confirmed'>
-              <TickIcon /> Confirmed
+        {!isNextGigCollapsed && (
+          <div className='next-gig-card' style={{ backgroundImage: `url(${nextConfirmedGig.venue?.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            <div className='next-gig-primary'>
+              <p className='gig-name'>{nextConfirmedGig.gigName}</p>
+              <p className='gig-venue'>{nextConfirmedGig.venue?.venueName || nextConfirmedGig.venueName}</p>
+              <p className='gig-date'>
+                {nextConfirmedGig.startDateTime?.toDate?.().toLocaleDateString('en-GB', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}{' '}
+                ·{' '}
+                {nextConfirmedGig.startDateTime?.toDate?.().toLocaleTimeString('en-GB', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                })}
+              </p>
             </div>
-            <button
-              className='btn secondary'
-              onClick={() => {
-                setGigForHandbook(nextConfirmedGig);
-                setShowGigHandbook(true);
-              }}
-            >
-              View details
-            </button>
+            <div className='next-gig-secondary'>
+              <button
+                className='btn primary'
+                onClick={() => {
+                  setGigForHandbook(nextConfirmedGig);
+                  setShowGigHandbook(true);
+                }}
+              >
+                View Details
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </section>
     );
   };
 
   const InvitationsSection = () => (
     <section className='artist-profile-gigs-section invitations'>
-      <div className='section-header'>
+      <div className='section-header' style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div className='title'>
           <h3 className='sub-heading'>Gig Invitations</h3>
         </div>
+        <button 
+          className='btn text' 
+          onClick={() => setIsInvitationsCollapsed(!isInvitationsCollapsed)}
+          style={{ padding: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}
+        >
+          {isInvitationsCollapsed ? 'Show' : 'Hide'}
+          {isInvitationsCollapsed ? <DownChevronIcon /> : <UpChevronIcon />}
+        </button>
       </div>
-      {gigInvitations.length ? (
-        <div className='invites-row'>
-          {gigInvitations.map((gig) => {
-            const applicant = gig.applicants?.find((app) => app.id === focusProfileId);
-            const gigStatus = getGigStatus(gig);
-            return (
-              <div
-                className='invite-card'
-                key={gig.gigId}
-                onClick={(event) => {
-                  const url = buildGigUrl(gig, applicant);
-                  openInNewTab(url, event);
-                }}
-              >
-                <p className='gig-name'>{gig.gigName}</p>
-                <p className='gig-venue'>{gig.venue?.venueName || gig.venueName}</p>
-                <p className='gig-date'>
-                  {gig.startDateTime?.toDate?.().toLocaleDateString('en-GB', {
-                    day: '2-digit',
-                    month: 'short',
-                  })}
-                </p>
-                <div className='status respond'>
-                  {gigStatus?.icon} Awaiting your response
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className='invites-empty'>
-          <p>No invitations at the moment.</p>
-          <button className='btn primary' onClick={() => navigate('/find-venues')}>
-            Find Venues
-          </button>
-        </div>
+      {!isInvitationsCollapsed && (
+        <>
+          {gigInvitations.length ? (
+            <div className='invites-row'>
+              {gigInvitations.map((gig) => {
+                const applicant = gig.applicants?.find((app) => app.id === focusProfileId);
+                const gigStatus = getGigStatus(gig);
+                return (
+                  <div
+                    className='invite-card'
+                    key={gig.gigId}
+                    onClick={(event) => {
+                      const url = buildGigUrl(gig, applicant);
+                      openInNewTab(url, event);
+                    }}
+                  >
+                    <p className='gig-name'>{gig.gigName}</p>
+                    <p className='gig-venue'>{gig.venue?.venueName || gig.venueName}</p>
+                    <p className='gig-date'>
+                      {gig.startDateTime?.toDate?.().toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                      })}
+                    </p>
+                    <div className='status respond'>
+                      {gigStatus?.icon} Awaiting your response
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className='invites-empty'>
+              <p>No invitations at the moment.</p>
+              <button className='btn primary' onClick={() => navigate('/find-venues')}>
+                Find Venues
+              </button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );

@@ -1379,7 +1379,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
     };
 
-    const renderTechRider = () => {
+    const [showAllEquipment, setShowAllEquipment] = useState(false);
+
+    const renderTechRider = (showSeeMoreButton = false) => {
         if (!venueProfile?.techRider) {
             return <p>The venue has not listed any tech rider information.</p>;
         }
@@ -1483,55 +1485,33 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             );
         }
 
+        const displayedEquipment = showAllEquipment ? equipmentItems : equipmentItems.slice(0, 3);
+        const hasMoreEquipment = equipmentItems.length > 3;
+        const hasNotes = soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes;
+        const shouldShowSeeMore = (hasMoreEquipment || hasNotes) && !showAllEquipment;
+
         return (
             <>
                 <div className="tech-rider-grid" style={{ marginTop: '1rem', alignItems: 'flex-start' }}>
-                    {equipmentItems}
+                    {displayedEquipment}
                 </div>
+                {shouldShowSeeMore && (
+                    <button 
+                        className="btn text" 
+                        onClick={() => setShowAllEquipment(true)}
+                        style={{ marginTop: '1rem' }}
+                    >
+                        See more
+                    </button>
+                )}
                 
-                {/* Other Note Fields */}
-                {(soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes) && (
+                {/* Other Note Fields - only show when "See more" is clicked */}
+                {showAllEquipment && hasNotes && (
                     <div className="tech-rider-notes-section">
-                        {houseRules?.volumeLevel && (
-                            <div>
-                                <h6>Volume Level</h6>
-                                <p>{houseRules.volumeLevel.charAt(0).toUpperCase() + houseRules.volumeLevel.slice(1)}</p>
-                            </div>
-                        )}
-                        {houseRules?.noiseCurfew && (
-                            <div>
-                                <h6>Noise Curfew</h6>
-                                <p>{houseRules.noiseCurfew}</p>
-                            </div>
-                        )}
-                        {houseRules?.volumeNotes && (
-                            <div>
-                                <h6>Volume Notes</h6>
-                                <p>{houseRules.volumeNotes}</p>
-                            </div>
-                        )}
-                        {soundSystem?.monitoring && (
-                            <div>
-                                <h6>Monitoring</h6>
-                                <p>{soundSystem.monitoring}</p>
-                            </div>
-                        )}
                         {soundSystem?.cables && (
                             <div>
                                 <h6>Cables</h6>
                                 <p>{soundSystem.cables}</p>
-                            </div>
-                        )}
-                        {backline?.other && (
-                            <div>
-                                <h6>Other Backline</h6>
-                                <p>{backline.other}</p>
-                            </div>
-                        )}
-                        {backline?.stageSize && (
-                            <div>
-                                <h6>Stage Size</h6>
-                                <p>{backline.stageSize}</p>
                             </div>
                         )}
                         {houseRules?.powerAccess && (
@@ -1540,13 +1520,58 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 <p>{houseRules.powerAccess}</p>
                             </div>
                         )}
+                        {backline?.stageSize && (
+                            <div>
+                                <h6>Stage Size</h6>
+                                <p>{backline.stageSize}</p>
+                            </div>
+                        )}
+                        {soundSystem?.monitoring && (
+                            <div>
+                                <h6>Monitoring Notes</h6>
+                                <p>{soundSystem.monitoring}</p>
+                            </div>
+                        )}
+                        {backline?.other && (
+                            <div>
+                                <h6>Other backline Notes</h6>
+                                <p>{backline.other}</p>
+                            </div>
+                        )}
+                        {houseRules?.volumeLevel && (
+                            <div>
+                                <h6>Volume level</h6>
+                                <p>{houseRules.volumeLevel.charAt(0).toUpperCase() + houseRules.volumeLevel.slice(1)}</p>
+                            </div>
+                        )}
+                        {houseRules?.volumeNotes && (
+                            <div>
+                                <h6>volume notes</h6>
+                                <p>{houseRules.volumeNotes}</p>
+                            </div>
+                        )}
+                        {houseRules?.noiseCurfew && (
+                            <div>
+                                <h6>noise curfew</h6>
+                                <p>{houseRules.noiseCurfew}</p>
+                            </div>
+                        )}
                         {houseRules?.houseRules && (
                             <div>
-                                <h6>House Rules</h6>
+                                <h6>house rules</h6>
                                 <p>{houseRules.houseRules}</p>
                             </div>
                         )}
                     </div>
+                )}
+                {showAllEquipment && (hasMoreEquipment || hasNotes) && (
+                    <button 
+                        className="btn text" 
+                        onClick={() => setShowAllEquipment(false)}
+                        style={{ marginTop: '1rem' }}
+                    >
+                        See less
+                    </button>
                 )}
             </>
         );
@@ -1671,7 +1696,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         <h5>Gig Posted By: {gigData.accountName}</h5>
                                         <p>A trusted Gigin member</p>
                                     </div>
-                                    <div className='details'>
+                                    {/* <div className='details'>
                                         <div className="detail">
                                             {gigData.gigType === 'Musician/Band' ? (
                                                 <GuitarsIcon />
@@ -1721,7 +1746,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </p>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> */}
                                     {gigData.technicalInformation !== '' && (
                                         <div className='equipment'>
                                             <h4 className="subtitle">Gig Description</h4>
@@ -1768,7 +1793,23 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         )}
                                     </div>
                                     <div className='equipment'>
-                                        <h4>{venueProfile?.name || gigData.venue.venueName}'s Tech Rider</h4>
+                                        {(() => {
+                                            const equipmentCount = venueProfile?.techRider ? 
+                                                (venueProfile.techRider.soundSystem?.pa ? 1 : 0) +
+                                                (venueProfile.techRider.soundSystem?.mixingConsole ? 1 : 0) +
+                                                (venueProfile.techRider.soundSystem?.vocalMics ? 1 : 0) +
+                                                (venueProfile.techRider.soundSystem?.diBoxes ? 1 : 0) +
+                                                (venueProfile.techRider.backline?.drumKit ? 1 : 0) +
+                                                (venueProfile.techRider.backline?.bassAmp ? 1 : 0) +
+                                                (venueProfile.techRider.backline?.guitarAmp ? 1 : 0) +
+                                                (venueProfile.techRider.backline?.keyboard ? 1 : 0) : 0;
+                                            return (
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                                    <h4>{venueProfile?.name || gigData.venue.venueName}'s Tech Spec</h4>
+                                                    
+                                                </div>
+                                            );
+                                        })()}
                                         {renderTechRider()}
                                     </div>
                                     {venueProfile?.description && (
@@ -2214,7 +2255,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 </div>
                                 <div className="section">
                                     <div className='equipment'>
-                                        <h4>{venueProfile?.name || gigData.venue.venueName}'s Tech Rider</h4>
+                                        <h4>{venueProfile?.name || gigData.venue.venueName}'s Tech Spec</h4>
                                         {renderTechRider()}
                                     </div>
                                 </div>

@@ -1,178 +1,68 @@
-.modal .gig-handbook {
-    min-width:55vw;
-    max-width: 60vw;
-    min-height: fit-content;
-    display: flex;
-    flex-direction: column;
+.modal.gig-handbook .modal-content {
+    width: 300px;
+    height:60vh;
+    overflow-y: scroll;
 }
 
-@media (max-width: 1268px) {
-    .modal .gig-handbook {
-        min-width: 90vw;
-        max-width: 95vw;
-    }
-}
-
-/* HEAD */
-
-.modal .gig-handbook .head {
-    width:100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-radius: 1rem;
-    padding: 1rem !important;
-}
-
-.modal .gig-handbook .head .venue-info {
-    display: flex;
-    align-items: center;
-    gap:1rem;
-}
-
-.modal .gig-handbook .head .venue-info .venue-img-cont {
-    width: 100px;
-    height: 100px;
-    overflow: hidden;
-    border-radius: 50%;
-    box-shadow: 0px 4px 5px var(--gn-grey-400);
-}
-
-.modal .gig-handbook .head .venue-info .venue-img-cont .venue-img {
-    width:100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.modal .gig-handbook .head .venue-info .names-div h2 {
-    margin-bottom: 5px;
-}
-
-.modal .gig-handbook .head .musician-actions {
-    display: flex;
-    flex-direction: column;
-    gap:5px;
-}
-
-
-/* BODY */
-
-.modal .gig-handbook .body {
-    width:100%;
-    max-width:100%;
-    padding: 0;
-    overflow: auto;
-}
-
-.modal .gig-handbook .body::-webkit-scrollbar {
+.modal.gig-handbook .modal-content::-webkit-scrollbar {
     display: none;
 }
 
 /* For Firefox */
-.modal .gig-handbook .body {
+.modal.gig-handbook .modal-content {
     scrollbar-width: none; /* Hides scrollbar */
 }
 
-.modal .gig-handbook .body .primary-info .info-cont {
-    width:90%;
+.modal.gig-handbook .modal-content .primary-info .info-cont {
+    width:100%;
     margin: 0 auto;
     display: grid;
     grid-template-columns: 50% 50%;
     margin-bottom: 10px;
 }
 
-.modal .gig-handbook .body .primary-info .info-cont h3 {
+.modal.gig-handbook .modal-content .primary-info .info-cont h3 {
     font-size: 1.1rem;
     font-weight: 500;
 }
 
-.modal .gig-handbook .body .primary-info .info-cont .subject {
+.modal.gig-handbook .modal-content .primary-info .info-cont .subject {
     color: var(--gn-grey-600);
 }
 
-.modal .gig-handbook .body .secondary-info {
-    display: grid;
-    grid-template-columns: 60% auto;
-    grid-template-rows: repeat(2, 1fr);
-    gap: 25px;
-    margin-top: 25px;
-    padding:1rem;
-}
 
-.modal .gig-handbook .body .secondary-info .map {
-    grid-column: 1 / 2;
-    grid-row: 1 / 3;
-    background-color: var(--gn-grey-100);
-    border-radius: 1rem;
-    overflow: hidden;
-    box-shadow: 0 0 10px var(--gn-shadow);
-    border:1px solid var(--gn-grey-350);
-    padding: 1rem 1.5rem;
-}
-
-.modal .gig-handbook .body .secondary-info .title-and-link {
+.modal.gig-handbook .modal-content .map .title-and-link {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin: 10px 0;
 }
 
-.modal .gig-handbook .body .secondary-info .title-and-link .btn {
+.modal.gig-handbook .modal-content .map .title-and-link .btn {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 0.5rem;
 }
 
-.modal .gig-handbook .body .secondary-info .map-container {
+.modal.gig-handbook .modal-content .map-container {
     height: 250px;
     width: 100%;
     border-radius: 1rem;
     margin: 10px 0;
 }
 
-.modal .gig-handbook .body .secondary-info .info-box {
-    background-color: var(--gn-grey-100);
-    border-radius: 1rem;
-    overflow: hidden;
-    box-shadow: 0 0 10px var(--gn-shadow);
-    border:1px solid var(--gn-grey-350);
-    padding: 1rem 1.5rem;
-    width:100%;
-    height: 100%;
-    overflow: auto;
-}
-
-.modal .gig-handbook .body .secondary-info .extra-information {
-    grid-column: 2 / 3;
-    grid-row-start: 2;
-    grid-row-end: 3;
-    overflow: auto;
-}
-
-.modal .gig-handbook .body .secondary-info .extra-information.full {
-    grid-row-start: 1;
-    grid-row-end: 3;
-}
-
-.modal .gig-handbook .body .secondary-info .info-box.fee-clearance .fee-clearance-details {
-    padding: 1rem 0;
-}
-
-.modal .gig-handbook .body .secondary-info .info-box.fee-clearance .fee-clearance-details .date {
-    font-size: 3rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-.modal .gig-handbook .body .secondary-info .info-box.fee-clearance .fee-clearance-details .month {
-    font-size: 1.25rem;
-    font-weight: 500;
-    text-align: center;
+.modal.gig-handbook .modal-content .musician-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 /* Cancellations */
 
-.modal .modal-content.confirmation-modal .head {
+.modal.gig-handbook .modal-content.confirmation-modal .head {
     background-color: transparent;
     display: flex;
     flex-direction: column;
@@ -181,13 +71,13 @@
     margin-bottom: 1rem;
 }
 
-.modal .modal-content.confirmation-modal .body {
+.modal.gig-handbook .modal-content.confirmation-modal .body {
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.modal .modal-content.confirmation-modal select {
+.modal.gig-handbook .modal-content.confirmation-modal select {
     font-weight: 400;
     border-color: var(--gn-grey-400);
     border-radius: 5px;
@@ -197,7 +87,7 @@
     transition: outline 200ms linear, border 200ms linear;
 }
 
-.modal .modal-content.confirmation-modal select:focus {
+.modal.gig-handbook .modal-content.confirmation-modal select:focus {
     outline-color: var(--gn-black);
     border-color: transparent;
 }

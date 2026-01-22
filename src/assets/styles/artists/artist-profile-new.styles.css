@@ -922,6 +922,7 @@
 
 .artist-profile-gigs-section .section-header {
   margin-bottom: 0;
+  margin-top: 0.5rem;
 }
 
 .next-gig-card {
@@ -935,15 +936,20 @@
 }
 
 .next-gig-card .next-gig-primary .gig-name {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
+  margin-bottom: 1rem;
+  color: var(--gn-white);
+  text-shadow: 0 0 10px var(--gn-off-black);
 }
 
 .next-gig-card .next-gig-primary .gig-venue,
 .next-gig-card .next-gig-primary .gig-date {
-  margin: 0.2rem 0;
-  color: var(--gn-grey-700);
+  margin: 0.25rem 0;
+  color: var(--gn-white);
+  font-weight: 500;
+  text-shadow: 0 0 10px var(--gn-off-black);
 }
 
 .next-gig-card .next-gig-secondary {
@@ -951,6 +957,8 @@
   flex-direction: column;
   gap: 0.5rem;
   align-items: flex-end;
+  justify-content: flex-end;
+  height: 100%;
 }
 
 .next-gig-card .status {

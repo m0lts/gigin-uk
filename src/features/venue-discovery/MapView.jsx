@@ -55,7 +55,7 @@ export const MapOutput = ({ venues, loading, userLocation, onSearchArea, user, c
       container: mapContainerRef.current,
       style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
       center: centerLngLat,
-      zoom: 10,
+      zoom: 12,
     });
 
     map.on('load', () => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import '@styles/shared/modals.styles.css'
 import '@styles/artists/gig-handbook.styles.css'
+import '@styles/artists/gig-page.styles.css'
 import { NewTabIcon, PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { useAuth } from '@hooks/useAuth';
@@ -20,6 +21,9 @@ import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { getArtistProfileMembers } from '@services/client-side/artists';
 import { sanitizeArtistPermissions } from '@services/utils/permissions';
 import { toast } from 'sonner';
+import { getGigsByIds, getGigById } from '@services/client-side/gigs';
+import { TechRiderEquipmentCard } from '@features/shared/ui/tech-rider/TechRiderEquipmentCard';
+import { GigIcon } from '../../shared/ui/extras/Icons';
 
 
 export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) => {
@@ -35,6 +39,9 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
 
     const [artistProfilePerms, setArtistProfilePerms] = useState(null);
     const [loadingArtistPerms, setLoadingArtistPerms] = useState(false);
+    const [otherSlots, setOtherSlots] = useState([]);
+    const [venueProfile, setVenueProfile] = useState(null);
+    const [showAllEquipment, setShowAllEquipment] = useState(false);
 
     useMapbox({
         containerRef: mapContainerRef,
@@ -88,6 +95,50 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
             cancelled = true;
         };
     }, [user?.uid, user?.artistProfiles, musicianId]);
+
+    // Fetch venue profile and other slots
+    useEffect(() => {
+        let cancelled = false;
+        const fetchData = async () => {
+            try {
+                // Fetch venue profile
+                if (gigForHandbook?.venueId) {
+                    const venue = await getVenueProfileById(gigForHandbook.venueId);
+                    if (!cancelled) setVenueProfile(venue);
+                }
+
+                // Fetch full gig document to get otherSlots
+                if (gigForHandbook?.gigId) {
+                    const fullGig = await getGigById(gigForHandbook.gigId);
+                    if (!cancelled && fullGig) {
+                        // Check both the full gig document and the gigForHandbook for otherSlots
+                        const otherSlotsIds = fullGig.gigSlots || gigForHandbook.otherSlots;
+                        if (Array.isArray(otherSlotsIds) && otherSlotsIds.length > 0) {
+                            const slots = await getGigsByIds(otherSlotsIds);
+                            if (!cancelled) {
+                                const validSlots = slots.filter(slot => slot !== null && slot !== undefined);
+                                setOtherSlots(validSlots.sort((a, b) => a.startDateTime - b.startDateTime));
+                            }
+                        } else {
+                            // Debug: log if otherSlotsIds is not found or empty
+                            console.log('No otherSlots found:', { 
+                                fullGigOtherSlots: fullGig.otherSlots, 
+                                gigForHandbookOtherSlots: gigForHandbook.otherSlots,
+                                gigId: gigForHandbook.gigId 
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching venue profile or other slots:', error);
+            }
+        };
+
+        fetchData();
+        return () => {
+            cancelled = true;
+        };
+    }, [gigForHandbook?.venueId, gigForHandbook?.gigId]);
 
     const canCancelGigForProfile = (() => {
         if (!musicianId) return true;
@@ -259,9 +310,205 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
         setAskCancellationReason(false);
     };
 
+    const renderTechRider = () => {
+        if (!venueProfile?.techRider) {
+            return <p>The venue has not listed any tech rider information.</p>;
+        }
+
+        const { soundSystem, backline, houseRules } = venueProfile.techRider;
+        const equipmentItems = [];
+
+        // PA
+        if (soundSystem?.pa) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="pa"
+                    equipmentName="PA"
+                    available={soundSystem.pa.available}
+                    notes={soundSystem.pa.notes}
+                />
+            );
+        }
+
+        // Mixing Console
+        if (soundSystem?.mixingConsole) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="mixingConsole"
+                    equipmentName="Mixing Console"
+                    available={soundSystem.mixingConsole.available}
+                    notes={soundSystem.mixingConsole.notes}
+                />
+            );
+        }
+
+        // Vocal Mics
+        if (soundSystem?.vocalMics) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="vocalMics"
+                    equipmentName="Vocal Mics"
+                    count={soundSystem.vocalMics.count}
+                    notes={soundSystem.vocalMics.notes}
+                />
+            );
+        }
+
+        // DI Boxes
+        if (soundSystem?.diBoxes) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="diBoxes"
+                    equipmentName="DI Boxes"
+                    count={soundSystem.diBoxes.count}
+                    notes={soundSystem.diBoxes.notes}
+                />
+            );
+        }
+
+        // Drum Kit
+        if (backline?.drumKit) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="drumKit"
+                    equipmentName="Drum Kit"
+                    available={backline.drumKit.available}
+                    notes={backline.drumKit.notes}
+                />
+            );
+        }
+
+        // Bass Amp
+        if (backline?.bassAmp) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="bassAmp"
+                    equipmentName="Bass Amp"
+                    available={backline.bassAmp.available}
+                    notes={backline.bassAmp.notes}
+                />
+            );
+        }
+
+        // Guitar Amp
+        if (backline?.guitarAmp) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="guitarAmp"
+                    equipmentName="Guitar Amp"
+                    available={backline.guitarAmp.available}
+                    notes={backline.guitarAmp.notes}
+                />
+            );
+        }
+
+        // Keyboard
+        if (backline?.keyboard) {
+            equipmentItems.push(
+                <TechRiderEquipmentCard
+                    key="keyboard"
+                    equipmentName="Keyboard"
+                    available={backline.keyboard.available}
+                    notes={backline.keyboard.notes}
+                />
+            );
+        }
+
+        const displayedEquipment = showAllEquipment ? equipmentItems : equipmentItems.slice(0, 3);
+        const hasMoreEquipment = equipmentItems.length > 3;
+        const hasNotes = soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes;
+        const shouldShowSeeMore = (hasMoreEquipment || hasNotes) && !showAllEquipment;
+
+        return (
+            <>
+                <div className="tech-rider-grid" style={{ marginTop: '1rem', alignItems: 'flex-start' }}>
+                    {displayedEquipment}
+                </div>
+                {shouldShowSeeMore && (
+                    <button 
+                        className="btn text" 
+                        onClick={() => setShowAllEquipment(true)}
+                        style={{ marginTop: '1rem' }}
+                    >
+                        See more
+                    </button>
+                )}
+                
+                {/* Other Note Fields - only show when "See more" is clicked */}
+                {showAllEquipment && hasNotes && (
+                    <div className="tech-rider-notes-section">
+                        {soundSystem?.cables && (
+                            <div>
+                                <h6>Cables</h6>
+                                <p>{soundSystem.cables}</p>
+                            </div>
+                        )}
+                        {houseRules?.powerAccess && (
+                            <div>
+                                <h6>Power Access</h6>
+                                <p>{houseRules.powerAccess}</p>
+                            </div>
+                        )}
+                        {backline?.stageSize && (
+                            <div>
+                                <h6>Stage Size</h6>
+                                <p>{backline.stageSize}</p>
+                            </div>
+                        )}
+                        {soundSystem?.monitoring && (
+                            <div>
+                                <h6>Monitoring Notes</h6>
+                                <p>{soundSystem.monitoring}</p>
+                            </div>
+                        )}
+                        {backline?.other && (
+                            <div>
+                                <h6>Other backline Notes</h6>
+                                <p>{backline.other}</p>
+                            </div>
+                        )}
+                        {houseRules?.volumeLevel && (
+                            <div>
+                                <h6>Volume level</h6>
+                                <p>{houseRules.volumeLevel.charAt(0).toUpperCase() + houseRules.volumeLevel.slice(1)}</p>
+                            </div>
+                        )}
+                        {houseRules?.volumeNotes && (
+                            <div>
+                                <h6>volume notes</h6>
+                                <p>{houseRules.volumeNotes}</p>
+                            </div>
+                        )}
+                        {houseRules?.noiseCurfew && (
+                            <div>
+                                <h6>noise curfew</h6>
+                                <p>{houseRules.noiseCurfew}</p>
+                            </div>
+                        )}
+                        {houseRules?.houseRules && (
+                            <div>
+                                <h6>house rules</h6>
+                                <p>{houseRules.houseRules}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {showAllEquipment && (hasMoreEquipment || hasNotes) && (
+                    <button 
+                        className="btn text" 
+                        onClick={() => setShowAllEquipment(false)}
+                        style={{ marginTop: '1rem' }}
+                    >
+                        See less
+                    </button>
+                )}
+            </>
+        );
+    };
+
 
     return (
-        <div className='modal' onClick={handleModalClick}>
+        <div className='modal gig-handbook' onClick={handleModalClick}>
             {showConfirmation ? (
                 <div className='modal-content confirmation-modal' onClick={(e) => e.stopPropagation()}>
                     {loading ? (
@@ -315,20 +562,73 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
                     )}
                 </div>
             ) : (
-                <div className='modal-content gig-handbook' onClick={(e) => e.stopPropagation()}>
-                <div className='head'>
-                    <div className='venue-info'>
-                        <figure className='venue-img-cont'>
-                            <img src={gigForHandbook.venue.photo} alt={gigForHandbook.venue.venueName} className='venue-img' />
-                        </figure>
-                        <div className='names-div'>
-                            <h2>{gigForHandbook.venue.venueName}</h2>
-                            <h6>Hosted By: {gigForHandbook.accountName}</h6>
-                        </div>
+                <>
+                <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <GigIcon />
+                        <h2>Gig Handbook</h2>
+                        <button className='btn close tertiary' onClick={() => {setShowGigHandbook(false)}}>
+                            Close
+                        </button>
                     </div>
+                    <div className='primary-info'>
+                        <div className='info-cont'>
+                            <h3 className='subject'>Date and Time</h3>
+                            <h3 className='text'>{formatDate(gigForHandbook.date)} {formatDurationSpan(gigForHandbook.startTime, gigForHandbook.duration)}</h3>
+                        </div>
+                        <div className='info-cont'>
+                            <h3 className='subject'>Type of Gig</h3>
+                            <h3 className='text'>{gigForHandbook.kind}</h3>
+                        </div>
+                        {gigForHandbook.kind !== 'Ticketed Gig' && gigForHandbook.kind !== 'Open Mic' && (
+                            <div className='info-cont'>
+                                <h3 className='subject'>Agreed Fee</h3>
+                                <h3 className='text'>{gigForHandbook.agreedFee === '£' ? 'No Fee' : gigForHandbook.agreedFee}</h3>
+                            </div>
+                        )}
+                        {otherSlots.length > 0 && (
+                            <div className='info-cont'>
+                                <h3 className='subject'>Other Slots</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {otherSlots.map((slot, index) => (
+                                        <h3 className='text' key={slot?.id || index}>
+                                            {slot?.startTime && formatDurationSpan(slot.startTime, slot.duration)}
+                                        </h3>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {/* <div className='info-cont'>
+                            <h3 className='subject'>Requested Genres</h3>
+                            <h3 className='text'>{formatGenres(gigForHandbook.genre)}</h3>
+                        </div> */}
+                    </div>
+                    <div className='map'>
+                        <div className='title-and-link'>
+                            <h3>Location</h3>
+                            <button className='btn text' onClick={() => openGoogleMaps(gigForHandbook.venue.address, gigForHandbook.coordinates)}>
+                                Maps
+                                <NewTabIcon />
+                            </button>
+                        </div>
+                        <div
+                            ref={mapContainerRef}
+                            className="map-container"
+                            />
+                        <h4>{gigForHandbook.venue.address}</h4>
+                    </div>
+                    {venueProfile && (
+                        <div className='equipment' style={{ marginTop: '1.5rem' }}>
+                            <h3>{venueProfile?.name || gigForHandbook.venue.venueName}'s Tech Spec</h3>
+                            {renderTechRider()}
+                        </div>
+                    )}
                     <div className='musician-actions'>
                         <button className='btn tertiary' onClick={(e) => openInNewTab(`/gig/${gigForHandbook.gigId}`, e)}>
                             Gig Page <NewTabIcon />
+                        </button>
+                        <button className='btn tertiary' onClick={(e) => openInNewTab(`/artist/${musicianId}?tab=tech-rider`, e)}>
+                            My Tech Rider
                         </button>
                         {/* <button className='btn primary' onClick={() => setShowPromoteModal(true)}>
                             <PeopleGroupIcon /> Promote
@@ -339,67 +639,13 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
                         </button>
                         )}
                     </div>
-                </div>
-                <div className='body'>
-                    <div className='primary-info'>
-                        <div className='info-cont'>
-                            <h3 className='subject'>Date and Time</h3>
-                            <h3 className='text'>{formatDate(gigForHandbook.date)} {formatDurationSpan(gigForHandbook.startTime, gigForHandbook.duration)}</h3>
-                        </div>
-                        <div className='info-cont'>
-                            <h3 className='subject'>Type of Gig</h3>
-                            <h3 className='text'>{gigForHandbook.kind}</h3>
-                        </div>
-                        <div className='info-cont'>
-                            <h3 className='subject'>Agreed Fee</h3>
-                            <h3 className='text'>{gigForHandbook.agreedFee === '£' ? 'No Fee' : gigForHandbook.agreedFee}</h3>
-                        </div>
-                        <div className='info-cont'>
-                            <h3 className='subject'>Requested Genres</h3>
-                            <h3 className='text'>{formatGenres(gigForHandbook.genre)}</h3>
-                        </div>
-                    </div>
-                    <div className='secondary-info'>
-                        <div className='map'>
-                            <div className='title-and-link'>
-                                <h3>Location</h3>
-                                <button className='btn text' onClick={() => openGoogleMaps(gigForHandbook.venue.address, gigForHandbook.coordinates)}>
-                                    Maps
-                                    <NewTabIcon />
-                                </button>
-                            </div>
-                            <h4>{gigForHandbook.venue.address}</h4>
-                            <div
-                                ref={mapContainerRef}
-                                className="map-container"
-                            />
-                        </div>
-                        
-                        {gigForHandbook.disputeClearingTime && (() => {
-                            const { day, month, year, time } = splitDateAndTime(gigForHandbook.disputeClearingTime);
-                            return (
-                                <div className='info-box fee-clearance'>
-                                <h3>Fee Clearance Date</h3>
-                                <div className='fee-clearance-details'>
-                                    <div className='date'>{day}<span className='ordinal-suffix'>{getOrdinalSuffix(day)}</span></div>
-                                    <div className='month'>{month} {year}, {time}</div>
-                                </div>
-                                </div>
-                            );
-                        })()}
-
-                        <div className={`info-box extra-information ${!gigForHandbook.disputeClearingTime ? 'full' : ''}`}>
-                            <h3>Extra Information</h3>
-                            <p>{gigForHandbook.extraInformation === '' ? 'No extra information.' : gigForHandbook.extraInformation}</p>
-                        </div>
-                    </div>
-                </div>
-                {(!loading) && (
-                    <button className='btn close tertiary' onClick={() => {setShowGigHandbook(false)}}>
-                        Close
-                    </button>
-                )}
+                    {/* {(!loading) && (
+                        <button className='btn close tertiary' onClick={() => {setShowGigHandbook(false)}}>
+                            Close
+                        </button>
+                    )} */}
             </div>
+            </>
             )}
             {showPromoteModal && (
                 <PromoteModal setShowSocialsModal={setShowPromoteModal} musicianId={musicianId} />
