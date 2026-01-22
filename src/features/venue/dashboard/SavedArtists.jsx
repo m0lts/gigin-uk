@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { getArtistProfileById } from '@services/client-side/artists';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
-import { ErrorIcon, NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { ErrorIcon, NewTabIcon, ImageIcon, PlayIcon, SaveIcon, SavedIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import { updateUserArrayField } from '@services/api/users';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
@@ -161,7 +161,7 @@ export const SavedArtists = ({ user }) => {
                                     </figure>
                                 ) : (
                                     <div className="profile-picture-only empty">
-                                        <NoImageIcon />
+                                        <ImageIcon />
                                         <h4>No Artist Image</h4>
                                     </div>
                                 )}

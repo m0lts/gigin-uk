@@ -6,7 +6,7 @@ import { ProfileCreationBox, CREATION_STEP_ORDER } from './ProfileCreationBox';
 import { AdditionalInfoSection } from './AdditionalInfoSection';
 import { useScrollFade } from '@hooks/useScrollFade';
 import { useBreakpoint } from '@hooks/useBreakpoint';
-import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, NoImageIcon, LightModeIcon, EditIcon, InviteIconSolid, SavedIcon, SaveIcon, ShareIcon } from '../../../shared/ui/extras/Icons';
+import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, ImageIcon, LightModeIcon, EditIcon, InviteIconSolid, SavedIcon, SaveIcon, ShareIcon } from '../../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
@@ -1018,7 +1018,7 @@ export const ProfileView = ({
               onClick={handleShareProfile}
             >
               <ShareIcon />
-              Share Profile
+              Copy Profile Link
             </button>
           </div>
         )}
@@ -1161,12 +1161,12 @@ export const ProfileView = ({
           >
             Tech Rider
           </button>
-          <button
+          {/* <button
             className={`btn additional-info-btn ${selectedAdditionalInfo === 'members' ? 'active' : ''} ${!isXlUp ? 'small' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'members' ? null : 'members')}
           >
             Members
-          </button>
+          </button> */}
           <button
             className={`btn additional-info-btn ${selectedAdditionalInfo === 'about' ? 'active' : ''} ${!isXlUp ? 'small' : ''}`}
             onClick={() => setSelectedAdditionalInfo(selectedAdditionalInfo === 'about' ? null : 'about')}
@@ -1195,7 +1195,7 @@ export const ProfileView = ({
               <h3 style={{ marginBottom: '1rem' }}>Edit Background Image</h3>
               {!editHeroImage ? (
                 <button type="button" className="creation-hero-upload" onClick={handleHeroImageSelect}>
-                  <NoImageIcon className="upload-icon" />
+                  <ImageIcon className="upload-icon" />
                   <span>Choose Image</span>
                 </button>
               ) : (

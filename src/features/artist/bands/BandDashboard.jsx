@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
-import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, NoImageIcon, StarIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { DeleteGigIcon, DeleteIcon, DoorIcon, EditIcon, ImageIcon, StarIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { deleteBand, leaveBand } from '@services/api/bands';
@@ -91,7 +91,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
                   <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
               ) : (
                   <div className="background-image empty">
-                      <NoImageIcon />
+                      <ImageIcon />
                       <h4>No Band Image</h4>
                   </div>
               )}
@@ -164,7 +164,7 @@ export const BandDashboard = ({ user, bandProfiles, musicianProfile }) => {
                   <img src={bandProfile?.picture} alt={bandProfile.name} className='background-image' />
               ) : (
                   <div className="background-image empty">
-                      <NoImageIcon />
+                      <ImageIcon />
                       <h4>No Band Image</h4>
                   </div>
               )}

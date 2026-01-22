@@ -116,7 +116,7 @@ export const ReviewModal = ({ gigData, inheritedProfile = null, onClose, reviewe
                 const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData, venueProfile, type: 'dispute' });
                 await sendDisputeMessage({ conversationId, venueName: gigData.venue.venueName });
                 await sendEmail({
-                    to: 'hq.gigin@gmail.com',
+                    to: 'toby@giginmusic.com',
                     subject: 'Dispute Logged',
                     text: `A dispute has been logged for the gig on ${formatDate(gigData.date)}.`,
                     html: `<p>A dispute has been logged for the gig on ${formatDate(gigData.date)}.</p>`,

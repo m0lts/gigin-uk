@@ -113,7 +113,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             </>
                         )}
                         <div className='break' />
-                        <a className='link item no-margin' href='mailto:hq.gigin@gmail.com'>
+                        <a className='link item no-margin' href='mailto:toby@giginmusic.com'>
                             Contact Us
                             <TicketIcon />
                         </a>
@@ -316,7 +316,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                         {!isXlUp && (
                             <div className='break' />
                         )}
-                        <a className='link item no-margin' href='mailto:hq.gigin@gmail.com'>
+                        <a className='link item no-margin' href='mailto:toby@giginmusic.com'>
                             Contact Us
                             <TicketIcon />
                         </a>
@@ -350,7 +350,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                         {!isXlUp && (
                             <div className='break' />
                         )}
-                        <a className='link item no-margin' href='mailto:hq.gigin@gmail.com'>
+                        <a className='link item no-margin' href='mailto:toby@giginmusic.com'>
                             Contact Us
                             <TicketIcon />
                         </a>

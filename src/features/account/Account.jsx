@@ -799,7 +799,7 @@ export const Account = () => {
                             <h4>Please get in touch with us if you'd like to delete your account.</h4>
                             <button
                                 className='btn danger'
-                                onClick={() => window.location.href = 'mailto:hq.gigin@gmail.com?subject=Account%20Deletion%20Request'}
+                                onClick={() => window.location.href = 'mailto:toby@giginmusic.com?subject=Account%20Deletion%20Request'}
                             >
                                 Contact Us
                             </button>

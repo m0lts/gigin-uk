@@ -2,7 +2,7 @@ import { useState } from 'react';
 import '@styles/artists/artist-profile.styles.css'
 import { ProfileForm } from './profile-form/ProfileForm';
 import { MusicianProfile } from '../components/MusicianProfile';
-import { NoImageIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
+import { ImageIcon, VerifiedIcon } from '../../shared/ui/extras/Icons';
 import { useLocation } from 'react-router-dom';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
@@ -27,7 +27,7 @@ export const Profile = ({ musicianProfile, user }) => {
                     <img src={musicianProfile?.picture} alt={musicianProfile.name} className='background-image' />
                 ) : (
                     <div className="background-image empty">
-                        <NoImageIcon />
+                        <ImageIcon />
                         <h4>No Artist Image</h4>
                     </div>
                 )}

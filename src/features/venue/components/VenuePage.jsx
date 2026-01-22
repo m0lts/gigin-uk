@@ -945,7 +945,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                                 style={{ gridColumn: 'span 2' }}
                                             >
                                                 <FilmIcon />
-                                                Venue Media
+                                                See Gig Videos
                                             </button>
                                         )}
                                     </div>

@@ -45,7 +45,7 @@ export const Footer = () => {
                     </Link>
                     <li style={{ margin: isMdUp ? '0 15px' : '5px 0' }}>
                         <a 
-                            href='mailto:hq.gigin@gmail.com' 
+                            href='mailto:toby@giginmusic.com' 
                             style={{ textDecoration: 'none', color: '#333' }}
                         >
                             Contact Us

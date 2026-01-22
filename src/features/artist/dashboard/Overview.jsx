@@ -8,7 +8,7 @@ import {
     PeopleGroupIcon } from '@features/shared/ui/extras/Icons';
 import { GigHandbook } from '@features/artist/components/GigHandbook';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
-import { MapIcon, NextGigIcon, NoImageIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { MapIcon, NextGigIcon, ImageIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { formatDate } from '../../../services/utils/dates';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
@@ -161,7 +161,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                                         <img src={musicianProfile.picture} alt={musicianProfile.name} />
                                     ) : (
                                         <div className="background-image empty">
-                                            <NoImageIcon />
+                                            <ImageIcon />
                                             <h4>No Artist Image</h4>
                                         </div>
                                     )}

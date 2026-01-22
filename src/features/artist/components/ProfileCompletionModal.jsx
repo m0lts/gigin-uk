@@ -100,7 +100,7 @@ export const ProfileCompletionModal = ({ onClose, profileId, shouldShow = false 
             navigate('/find-venues');
             onClose();
           }}>
-            Search for Gigs Now <RightArrowIcon />
+            Search for Venues Now <RightArrowIcon />
           </button>
         </div>
         </div>

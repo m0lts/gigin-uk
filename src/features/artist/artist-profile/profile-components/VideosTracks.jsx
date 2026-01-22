@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { FilmIcon, PlayIcon, PauseIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon, YoutubeIcon, EditIcon, NoImageIcon, UpArrowIcon, DownArrowIcon, ExitIcon, CloseIcon, MusicianIconSolid } from '../../../shared/ui/extras/Icons';
+import { FilmIcon, PlayIcon, PauseIcon, VinylIcon, TrackIcon, SpotifyIcon, SoundcloudIcon, YoutubeIcon, EditIcon, ImageIcon, UpArrowIcon, DownArrowIcon, ExitIcon, CloseIcon, MusicianIconSolid } from '../../../shared/ui/extras/Icons';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
 /**
@@ -38,6 +38,18 @@ const formatFileSize = (bytes) => {
   const value = bytes / Math.pow(1024, index);
   const formatted = value >= 10 ? value.toFixed(0) : value.toFixed(1);
   return `${formatted}${units[index]}`;
+};
+
+const formatVideoDuration = (seconds) => {
+  if (!seconds || seconds <= 0) return null;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 };
 
 const getTrackMediaBytes = (track = {}) => {
@@ -820,6 +832,8 @@ export const VideosTracks = ({
                     // Check if video is uploading (only when uploads are actually in progress)
                     const isUploading = videosUploadStatus === 'uploading' && !!(video.videoFile && !video.uploadedVideoUrl);
                     
+                    const videoDuration = formatVideoDuration(video.duration);
+                    
                     return (
                       <div key={videoKey} className="video-thumbnail">
                         {isUploading ? (
@@ -833,15 +847,27 @@ export const VideosTracks = ({
                           <div className="video-placeholder">Video {index + 1}</div>
                         )}
                         {!isUploading && (
-                          <button
-                            type="button"
-                            className="play-icon-button"
-                            onClick={() => handleVideoPlayRequest(videoKey)}
-                            disabled={!allowPlayback}
-                            aria-label={`Play ${video.title || `video ${index + 1}`}`}
-                          >
-                            <PlayIcon />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              className="play-icon-button"
+                              onClick={() => handleVideoPlayRequest(videoKey)}
+                              disabled={!allowPlayback}
+                              aria-label={`Play ${video.title || `video ${index + 1}`}`}
+                            >
+                              <PlayIcon />
+                            </button>
+                            {(video.title || videoDuration) && (
+                              <div className="video-thumbnail-overlay">
+                                {video.title && (
+                                  <span className="video-thumbnail-title">{video.title}</span>
+                                )}
+                                {videoDuration && (
+                                  <span className="video-thumbnail-duration">{videoDuration}</span>
+                                )}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     );
@@ -1005,7 +1031,7 @@ export const VideosTracks = ({
                             />
                           ) : (
                             <>
-                              <NoImageIcon className="upload-icon" />
+                              <ImageIcon className="upload-icon" />
                               <span>Add Image</span>
                             </>
                           )}

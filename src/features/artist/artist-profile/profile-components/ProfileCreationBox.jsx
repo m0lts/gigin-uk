@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, NoImageIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon, FilmIcon, PlayIcon, YoutubeIcon, TechRiderIcon, AddMember, MoreInformationIcon, TickIcon, PlusIconSolid, CloseIcon, VocalsIcon, DrumsIcon, KeysIcon, BassIcon, SaxIcon, TrumpetIcon, TromboneIcon, PlaybackIcon, MusicianIconSolid } from "../../../shared/ui/extras/Icons";
+import { GuitarsIcon, RightArrowIcon, LeftChevronIcon, LightModeIcon, LeftArrowIcon, MicrophoneLinesIcon, EditIcon, UpArrowIcon, DownArrowIcon, TrackIcon, VinylIcon, SpotifyIcon, SoundcloudIcon, WebsiteIcon, InstagramIcon, FilmIcon, PlayIcon, YoutubeIcon, TechRiderIcon, AddMember, MoreInformationIcon, TickIcon, PlusIconSolid, CloseIcon, VocalsIcon, DrumsIcon, KeysIcon, BassIcon, SaxIcon, TrumpetIcon, TromboneIcon, PlaybackIcon, MusicianIconSolid, ImageIcon } from "../../../shared/ui/extras/Icons";
 import { LoadingSpinner } from "../../../shared/ui/loading/Loading";
 import { updateArtistProfileDocument, getArtistProfileMembers } from "@services/client-side/artists";
 import { toast } from 'sonner';
@@ -358,6 +358,8 @@ export const ProfileCreationBox = ({
   const trackCoverInputRef = useRef(null);
   const pendingCoverTrackIdRef = useRef(null);
   const videoFileInputRef = useRef(null);
+  const lastVideoIdRef = useRef(null);
+  const lastTrackIdRef = useRef(null);
   const containerRef = useRef(null);
   const tracksSyncedRef = useRef(false);
   const videosSyncedRef = useRef(false);
@@ -788,8 +790,11 @@ export const ProfileCreationBox = ({
     if (!file) return;
     const previewUrl = URL.createObjectURL(file);
     const audioSizeBytes = file.size ?? 0;
+    const trackId = createTrackId();
+    // Store the track ID to auto-focus its input after it's added
+    lastTrackIdRef.current = trackId;
     const newTrack = {
-      id: createTrackId(),
+      id: trackId,
       title: `Track ${tracks.length + 1}`,
       artist: artistName || "",
       audioFile: file,
@@ -889,6 +894,8 @@ export const ProfileCreationBox = ({
     const videoId = createVideoId();
     const previewUrl = URL.createObjectURL(file);
     const videoSizeBytes = file.size ?? 0;
+    // Store the video ID to auto-focus its input after it's added
+    lastVideoIdRef.current = videoId;
     setVideos((prev) => [
       ...prev,
       {
@@ -1050,6 +1057,7 @@ export const ProfileCreationBox = ({
           trackUsageBytes={trackUsageBytes}
           totalUsageBytes={totalMediaUsageBytes}
           storageLimitBytes={MEDIA_STORAGE_LIMIT_BYTES}
+          lastTrackIdRef={lastTrackIdRef}
           />
         );
       case "videos":
@@ -1069,6 +1077,7 @@ export const ProfileCreationBox = ({
           videoUsageBytes={videoUsageBytes}
           totalUsageBytes={totalMediaUsageBytes}
           storageLimitBytes={MEDIA_STORAGE_LIMIT_BYTES}
+          lastVideoIdRef={lastVideoIdRef}
           />
         );
       case "tech-rider":
@@ -1114,7 +1123,7 @@ export const ProfileCreationBox = ({
     
     switch (techRiderStage) {
       case 1:
-        return "Let's create your tech rider. Add any people that perform with you.";
+        return "Let’s create your tech rider. Add all musicians in the band.";
       case 2: {
         const currentIndex = currentPerformerIndexRef.current || 0;
         const currentPerformer = lineup[currentIndex];
@@ -1131,7 +1140,7 @@ export const ProfileCreationBox = ({
       case 4:
         return "Drag the performer(s) to their usual position on stage.";
       case 5:
-        return "Add performers to this artist profile.";
+        return "Finally, give us an idea of where you have performed previously.";
       default:
         return "Share your technical requirements with venues.";
     }
@@ -1324,7 +1333,7 @@ function HeroImageStep({
       <>
         <p className="creation-step-question">Upload your hero image. The best image you can find of you!</p>
         <button type="button" className="creation-hero-upload" onClick={onHeroImageSelect}>
-          <NoImageIcon className="upload-icon" />
+          <ImageIcon className="upload-icon" />
           <span>Choose Image</span>
         </button>
       </>
@@ -1475,6 +1484,7 @@ function TracksStep({
   trackUsageBytes = 0,
   totalUsageBytes = 0,
   storageLimitBytes = MEDIA_STORAGE_LIMIT_BYTES,
+  lastTrackIdRef,
 }) {
   const trackInputRefs = useRef(new Map());
   
@@ -1491,6 +1501,25 @@ function TracksStep({
       ref.current.focus();
     }
   };
+
+  // Auto-focus track input when a new track is added
+  useEffect(() => {
+    if (lastTrackIdRef?.current && tracks.length > 0) {
+      const trackId = lastTrackIdRef.current;
+      // Small delay to ensure the input is rendered and ref is set
+      const timeoutId = setTimeout(() => {
+        const ref = trackInputRefs.current.get(trackId);
+        if (ref?.current) {
+          ref.current.focus();
+        }
+        if (lastTrackIdRef) {
+          lastTrackIdRef.current = null;
+        }
+      }, 150);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [tracks, lastTrackIdRef]);
   const usageBar = (
     <StorageUsageBar
       usedBytes={totalUsageBytes}
@@ -1587,8 +1616,8 @@ function TracksStep({
                 />
               ) : (
                 <>
-                  <NoImageIcon className="upload-icon" />
-                  <span>Add Image</span>
+                  <ImageIcon className="upload-icon" />
+                  <span>Add Image</span>  
                 </>
               )}
             </button>
@@ -1607,13 +1636,6 @@ function TracksStep({
                   value={track.title}
                   onChange={(e) => onTrackTitleChange(track.id, e.target.value)}
                   placeholder="Track title"
-                />
-                <EditIcon 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    focusTrackInput(track.id);
-                  }}
-                  style={{ cursor: 'pointer' }}
                 />
               </div>
               <p>{artistName}</p>
@@ -1697,6 +1719,7 @@ function VideosStep({
   videoUsageBytes = 0,
   totalUsageBytes = 0,
   storageLimitBytes = MEDIA_STORAGE_LIMIT_BYTES,
+  lastVideoIdRef,
 }) {
   const videoInputRefs = useRef(new Map());
   
@@ -1713,6 +1736,25 @@ function VideosStep({
       ref.current.focus();
     }
   };
+
+  // Auto-focus video input when a new video is added
+  useEffect(() => {
+    if (lastVideoIdRef?.current && videos.length > 0) {
+      const videoId = lastVideoIdRef.current;
+      // Small delay to ensure the input is rendered and ref is set
+      const timeoutId = setTimeout(() => {
+        const ref = videoInputRefs.current.get(videoId);
+        if (ref?.current) {
+          ref.current.focus();
+        }
+        if (lastVideoIdRef) {
+          lastVideoIdRef.current = null;
+        }
+      }, 150);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [videos, lastVideoIdRef]);
   const usageBar = (
     <StorageUsageBar
       usedBytes={totalUsageBytes}
@@ -1810,13 +1852,6 @@ function VideosStep({
                     value={video.title}
                     onChange={(e) => onVideoTitleChange(video.id, e.target.value)}
                     placeholder="Video title"
-                  />
-                  <EditIcon 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      focusVideoInput(video.id);
-                    }}
-                    style={{ cursor: 'pointer' }}
                   />
                 </div>
                 <p>{artistName || "Your Artist Name"}</p>
@@ -2361,13 +2396,45 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
   const [performerInviteEmails, setPerformerInviteEmails] = useState({});
   const [sendingInviteForPerformer, setSendingInviteForPerformer] = useState(null);
   const [members, setMembers] = useState([]);
+  const [previousVenues, setPreviousVenues] = useState(profileData?.previousVenues || '');
   const techRiderDataRef = useRef(techRiderData);
   const techRiderStageRef = useRef(techRiderStage);
+  const accountHolderInputRef = useRef(null);
   
   // Keep refs in sync with state
   useEffect(() => {
     techRiderDataRef.current = techRiderData;
   }, [techRiderData]);
+  
+  // Helper function to check if a performer is the account holder
+  const isAccountHolder = useCallback((performer, index) => {
+    if (!user?.email) return false;
+    const userEmail = user.email.toLowerCase();
+    const performerName = performer.performerName?.toLowerCase() || '';
+    
+    // Check if performer name/email matches user's email exactly
+    if (performerName === userEmail) return true;
+    
+    // Check if performer is a member and their email matches
+    if (performer.isMember) {
+      // Check if we can find the member in the members list and match by email
+      const member = members.find(m => 
+        (m.userEmail?.toLowerCase() === userEmail) || 
+        (m.userId === performer.performerId || m.id === performer.memberId)
+      );
+      if (member) return true;
+      
+      // Fallback: if it's the first member in the lineup, assume it's the account holder
+      const memberIndices = techRiderData.lineup
+        .map((p, idx) => p.isMember ? idx : -1)
+        .filter(idx => idx !== -1);
+      if (memberIndices.length > 0 && memberIndices[0] === index) {
+        return true;
+      }
+    }
+    
+    return false;
+  }, [user?.email, members, techRiderData.lineup]);
   
   useEffect(() => {
     techRiderStageRef.current = techRiderStage;
@@ -2401,7 +2468,11 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
         onTechRiderStageChange(existingTechRider.lastStage);
       }
     }
-  }, [profileData?.techRider, onTechRiderStageChange]);
+    // Load previousVenues from profileData if available
+    if (profileData?.previousVenues !== undefined) {
+      setPreviousVenues(profileData.previousVenues || '');
+    }
+  }, [profileData?.techRider, profileData?.previousVenues, onTechRiderStageChange]);
 
   // Auto-populate lineup from members when tech rider is first opened
   useEffect(() => {
@@ -2419,13 +2490,20 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
           if (prev.lineup.length > 0) return prev; // Don't overwrite if already populated
           if (membersList.length === 0) return prev; // No members to populate from
           
-          const lineupFromMembers = membersList.map(member => ({
-            performerId: member.userId || member.id,
-            performerName: member.userName || member.userEmail || 'Unknown',
-            instruments: [],
-            isMember: true,
-            memberId: member.id
-          }));
+          const lineupFromMembers = membersList.map(member => {
+            // Check if this member is the account holder
+            const isAccountHolderMember = user?.email && 
+              (member.userEmail?.toLowerCase() === user.email.toLowerCase() ||
+               member.userId === user.uid);
+            
+            return {
+              performerId: member.userId || member.id,
+              performerName: isAccountHolderMember ? '' : (member.userName || member.userEmail || 'Unknown'),
+              instruments: [],
+              isMember: true,
+              memberId: member.id
+            };
+          });
           const detailsFromMembers = membersList.map(() => ({}));
           
           return {
@@ -2441,6 +2519,20 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
     
     fetchAndPopulate();
   }, [creationProfileId, profileData?.techRider?.lineup?.length]);
+
+  // Auto-focus account holder's name input when reaching stage 1
+  useEffect(() => {
+    if (techRiderStage === 1 && techRiderData.lineup.length > 0 && accountHolderInputRef.current) {
+      // Small delay to ensure the input is rendered
+      const timeoutId = setTimeout(() => {
+        if (accountHolderInputRef.current) {
+          accountHolderInputRef.current.focus();
+        }
+      }, 150);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [techRiderStage, techRiderData.lineup.length]);
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -2714,7 +2806,8 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
       };
 
       await updateArtistProfileDocument(creationProfileId, {
-        techRider: techRiderPayload
+        techRider: techRiderPayload,
+        previousVenues: previousVenues || null
       });
 
       // Update state if we used override data
@@ -2736,7 +2829,7 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
     } finally {
       setSavingTechRider(false);
     }
-  }, [creationProfileId, savingTechRider, onTechRiderDataChange]);
+  }, [creationProfileId, savingTechRider, onTechRiderDataChange, previousVenues]);
 
   // Expose handleFinishAndSave for parent to call
   const handleFinishAndSave = useCallback(async () => {
@@ -2881,17 +2974,20 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
         {/* Stage 1: Lineup */}
         {techRiderStage === 1 && (
           <div className="tech-rider-stage">
-            {techRiderData.lineup.map((performer, index) => (
+            {techRiderData.lineup.map((performer, index) => {
+              const isAccountHolderPerformer = isAccountHolder(performer, index);
+              return (
               <div key={index} className="tech-rider-performer-row">
                 <div className="tech-rider-performer-content">
                   <div className="tech-rider-performer-name-field">
-                    <label className="label tech-rider-performer-name-label">Performer Name</label>
+                    <label className="label tech-rider-performer-name-label">Name</label>
                     <input
+                      ref={isAccountHolderPerformer ? accountHolderInputRef : null}
                       type="text"
                       className="input tech-rider-performer-name-input"
                       value={performer.performerName}
                       onChange={(e) => handleUpdatePerformer(index, { performerName: e.target.value })}
-                      disabled={performer.isMember}
+                      disabled={performer.isMember && !isAccountHolderPerformer}
                       placeholder="Enter performer name or email"
                     />
                   </div>
@@ -2905,7 +3001,7 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
                           value={(performer.instruments && performer.instruments[0]) || ''}
                           onChange={(e) => handleUpdateInstrument(index, 0, e.target.value)}
                         >
-                          <option value="">Select instrument</option>
+                          <option value="">Select</option>
                           {INSTRUMENT_TYPES.map((inst) => (
                             <option key={inst} value={inst}>
                               {inst}
@@ -2914,11 +3010,11 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
                         </select>
                       </div>
                       <button
-                        className="btn icon tech-rider-add-instrument-btn"
+                        className="btn primary small tech-rider-add-instrument-btn"
                         onClick={() => handleAddInstrument(index)}
                         title="Add another instrument"
                       >
-                        <PlusIconSolid />
+                        Add Instrument
                       </button>
                     </div>
                     
@@ -2939,11 +3035,11 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
                           </select>
                         </div>
                         <button
-                          className="btn icon tech-rider-remove-instrument-btn"
+                          className="btn primary small tech-rider-remove-instrument-btn"
                           onClick={() => handleRemoveInstrument(index, instIndex + 1)}
                           title="Remove instrument"
                         >
-                          <CloseIcon />
+                          Remove
                         </button>
                       </div>
                     ))}
@@ -2962,7 +3058,8 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
 
             <button
               className="btn secondary tech-rider-add-performer-btn"
@@ -3291,18 +3388,16 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
           </div>
         )}
 
-        {/* Stage 5: Add Members */}
+        {/* Stage 5: Previous Venues */}
         {techRiderStage === 5 && (
           <div className="tech-rider-stage">
-            <p style={{ 
-              fontSize: '1rem', 
-              color: 'var(--gn-grey-600)', 
-              textAlign: 'center',
-              padding: '2rem 1rem',
-              lineHeight: '1.6'
-            }}>
-              Soon you'll be able to add your band members to this artist profile for simple band management.
-            </p>
+            <textarea
+              className="input tech-rider-extra-notes-stage-textarea"
+              value={previousVenues}
+              onChange={(e) => setPreviousVenues(e.target.value)}
+              placeholder="List any venues you have previously performed at..."
+              rows={8}
+            />
           </div>
         )}
 

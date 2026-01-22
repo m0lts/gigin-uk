@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { openInNewTab } from '@services/utils/misc';
-import { NewTabIcon, NoImageIcon, PlayIcon, SaveIcon, SavedIcon, SearchIcon, StarIcon } from '../../shared/ui/extras/Icons';
+import { NewTabIcon, ImageIcon, PlayIcon, SaveIcon, SavedIcon, SearchIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import Skeleton from 'react-loading-skeleton';
 import { fetchArtistsPaginated } from '../../../services/client-side/artists';
 import { toast } from 'sonner';
@@ -272,7 +272,7 @@ export const FindArtists = ({ user }) => {
                                     </figure>
                                 ) : (
                                     <div className="profile-picture-only empty">
-                                        <NoImageIcon />
+                                        <ImageIcon />
                                         <h4>No Artist Image</h4>
                                     </div>
                                 )}

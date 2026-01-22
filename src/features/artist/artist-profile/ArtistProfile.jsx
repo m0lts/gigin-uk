@@ -13,7 +13,7 @@ import { storage } from '@lib/firebase';
 import { updateUserArrayField, setPrimaryArtistProfile } from '@services/api/users';
 import { createArtistCRMEntry, isArtistSavedInCRM, removeArtistFromCRMByArtistId } from '@services/client-side/artistCRM';
 import { toast } from 'sonner';
-import { NoImageIcon, InviteIconSolid, GuitarsIcon } from '@features/shared/ui/extras/Icons';
+import { ImageIcon, InviteIconSolid, GuitarsIcon } from '@features/shared/ui/extras/Icons';
 import { CREATION_STEP_ORDER } from './profile-components/ProfileCreationBox';
 import { LoadingModal } from '@features/shared/ui/loading/LoadingModal';
 import { Header as MusicianHeader } from '../components/Header';
@@ -4041,7 +4041,7 @@ const ArtistProfileComponent = ({
         {showCreationPlaceholder && (
           <div className="artist-profile-background placeholder-layer fade-in">
             <div className="artist-profile-background-placeholder">
-              <NoImageIcon />
+              <ImageIcon />
             </div>
           </div>
         )}

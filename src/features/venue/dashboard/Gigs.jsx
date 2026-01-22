@@ -1024,20 +1024,20 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           }}
                       />
                   </th> */}
-                  {isMdUp && (
-                    <th id='name'>Name</th>
-                  )}
                   <th id='date'>
                     Date and Time
                     <button className='sort btn text' onClick={toggleSortOrder}>
                       <SortIcon />
                     </button>
                   </th>
-                  <th className='centre'>Status</th>
+                  {isMdUp && (
+                    <th id='name'>Gig Name</th>
+                  )}
                   {isMdUp && <th className='centre sound-manager-column'>Sound Manager</th>}
+                  {isMdUp && <th className='centre notes-column'>Notes</th>}
                   <th className='centre invite-only-column'>Invite Only?</th>
                   <th className='centre invite-artists-column'>Invite Artists</th>
-                  {isMdUp && <th className='centre notes-column'>Notes</th>}
+                  <th className='centre'>Status</th>
                   <th id='options'></th>
                 </tr>
               </thead>
@@ -1087,9 +1087,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           ) : (
                               <td></td>
                           )} */}
-                          {isMdUp && (
-                            <td>{baseGigName}</td>
-                          )}
                           <td className='time-and-date'>
                             {!isLgUp && gig?.applicants && gig?.applicants?.length && gig?.applicants.some(app => !app.viewed && app.invited !== true) ? (
                               <span className="notification-dot" />
@@ -1142,19 +1139,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               </div>
                             ) : '—'}
                           </td>
-                          <td className={`status-box ${statusDisplay.statusClass === 'awaiting payment' || statusDisplay.statusClass === 'in dispute' ? 'closed' : statusDisplay.statusClass}`}>
-                            <div className={`status ${statusDisplay.statusClass === 'awaiting payment' || statusDisplay.statusClass === 'in dispute' ? 'closed' : statusDisplay.statusClass}`}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {statusDisplay.icon}
-                                <span style={{ fontSize: '0.8rem' }}>{statusDisplay.text}</span>
-                              </div>
-                            </div>
-                            {statusDisplay.subText && (
-                              <div style={{ fontSize: '0.85rem', marginTop: '6px', color: '#000', textAlign: 'center' }}>
-                                {statusDisplay.subText}
-                              </div>
-                            )}
-                          </td>
+                          {isMdUp && (
+                            <td>{baseGigName}</td>
+                          )}
                           {isMdUp && (
                             <td className='centre sound-manager-cell' onClick={(e) => e.stopPropagation()}>
                               <div 
@@ -1227,74 +1214,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                               )}
                             </td>
                           )}
-                          <td className="centre gigs-private-apps-cell invite-only-cell" onClick={(e) => e.stopPropagation()}>
-                                <div className="gigs-toggle-container">
-                                    <label className="gigs-toggle-switch">
-                                        <input
-                                            type="checkbox"
-                                            checked={gig.private || false}
-                                            disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.update')}
-                                            onChange={async (e) => {
-                                                e.stopPropagation();
-                                                if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
-                                                    toast.error('You do not have permission to update this gig.');
-                                                    return;
-                                                }
-                                                try {
-                                                    const newPrivate = e.target.checked;
-                                                    // Update all gigs in the group
-                                                    const gigIdsToUpdate = group.gigIds;
-                                                    await Promise.all(gigIdsToUpdate.map(id => 
-                                                      updateGigDocument({ 
-                                                        gigId: id, 
-                                                        action: 'gigs.update', 
-                                                        updates: { private: newPrivate } 
-                                                      })
-                                                    ));
-                                                    toast.success(`Gig changed to ${newPrivate ? 'Invite Only' : 'Public'}`);
-                                                    refreshGigs();
-                                                } catch (error) {
-                                                    console.error('Error updating invite only status:', error);
-                                                    toast.error('Failed to update gig. Please try again.');
-                                                }
-                                            }}
-                                        />
-                                        <span className="gigs-toggle-slider"></span>
-                                    </label>
-                                </div>
-                            </td>
-                          <td className="centre invite-artist-cell" onClick={(e) => e.stopPropagation()}>
-                              {!gig.private ? (
-                                <button 
-                                  className="btn icon" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const gigLink = `${window.location.origin}/gig/${gig.gigId}`;
-                                    copyToClipboard(gigLink);
-                                  }}
-                                  title="Copy gig link"
-                                >
-                                  <LinkIcon />
-                                </button>
-                              ) : (
-                                <button 
-                                  className="btn icon" 
-                                  disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.invite')}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
-                                      toast.error('You do not have permission to perform this action.');
-                                      return;
-                                    }
-                                    setSelectedGigForInvites(gig);
-                                    setShowInvitesModal(true);
-                                  }}
-                                  title={!hasVenuePerm(venues, gig.venueId, 'gigs.invite') ? 'You do not have permission to create invites' : 'Create invite link'}
-                                >
-                                  <InviteIconSolid />
-                                </button>
-                              )}
-                            </td>
                           {isMdUp && (
                             <td className='centre notes-cell' onClick={(e) => e.stopPropagation()}>
                             <div 
@@ -1367,6 +1286,87 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             )}
                           </td>
                           )}
+                          <td className="centre gigs-private-apps-cell invite-only-cell" onClick={(e) => e.stopPropagation()}>
+                                <div className="gigs-toggle-container">
+                                    <label className="gigs-toggle-switch">
+                                        <input
+                                            type="checkbox"
+                                            checked={gig.private || false}
+                                            disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.update')}
+                                            onChange={async (e) => {
+                                                e.stopPropagation();
+                                                if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                                    toast.error('You do not have permission to update this gig.');
+                                                    return;
+                                                }
+                                                try {
+                                                    const newPrivate = e.target.checked;
+                                                    // Update all gigs in the group
+                                                    const gigIdsToUpdate = group.gigIds;
+                                                    await Promise.all(gigIdsToUpdate.map(id => 
+                                                      updateGigDocument({ 
+                                                        gigId: id, 
+                                                        action: 'gigs.update', 
+                                                        updates: { private: newPrivate } 
+                                                      })
+                                                    ));
+                                                    toast.success(`Gig changed to ${newPrivate ? 'Invite Only' : 'Public'}`);
+                                                    refreshGigs();
+                                                } catch (error) {
+                                                    console.error('Error updating invite only status:', error);
+                                                    toast.error('Failed to update gig. Please try again.');
+                                                }
+                                            }}
+                                        />
+                                        <span className="gigs-toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </td>
+                          <td className="centre invite-artist-cell" onClick={(e) => e.stopPropagation()}>
+                              {!gig.private ? (
+                                <button 
+                                  className="btn icon" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const gigLink = `${window.location.origin}/gig/${gig.gigId}`;
+                                    copyToClipboard(gigLink);
+                                  }}
+                                  title="Copy gig link"
+                                >
+                                  <LinkIcon />
+                                </button>
+                              ) : (
+                                <button 
+                                  className="btn icon" 
+                                  disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.invite')}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
+                                      toast.error('You do not have permission to perform this action.');
+                                      return;
+                                    }
+                                    setSelectedGigForInvites(gig);
+                                    setShowInvitesModal(true);
+                                  }}
+                                  title={!hasVenuePerm(venues, gig.venueId, 'gigs.invite') ? 'You do not have permission to create invites' : 'Create invite link'}
+                                >
+                                  <InviteIconSolid />
+                                </button>
+                              )}
+                            </td>
+                          <td className={`status-box ${statusDisplay.statusClass === 'awaiting payment' || statusDisplay.statusClass === 'in dispute' ? 'closed' : statusDisplay.statusClass}`}>
+                            <div className={`status ${statusDisplay.statusClass === 'awaiting payment' || statusDisplay.statusClass === 'in dispute' ? 'closed' : statusDisplay.statusClass}`}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {statusDisplay.icon}
+                                <span style={{ fontSize: '0.8rem' }}>{statusDisplay.text}</span>
+                              </div>
+                            </div>
+                            {statusDisplay.subText && (
+                              <div style={{ fontSize: '0.85rem', marginTop: '6px', color: '#000', textAlign: 'center' }}>
+                                {statusDisplay.subText}
+                              </div>
+                            )}
+                          </td>
                           <td className="options-cell" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                   <button 

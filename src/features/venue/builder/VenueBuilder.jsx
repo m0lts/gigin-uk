@@ -158,7 +158,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     }, [venue])
 
     const [uploadingProfile, setUploadingProfile] = useState(false);
-    const [uploadText, setUploadText] = useState(`Adding ${formData?.name} To The Gigin Map`);
+    const [uploadText, setUploadText] = useState(`Creating your Dashboard and Venue Page`);
     const [progress, setProgress] = useState(1);
     const [completeSavedProfileModal, setCompleteSavedProfileModal] = useState(false);
     const [savedProfile, setSavedProfile] = useState();
@@ -204,7 +204,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     };
 
     const handleSubmit = async () => {
-        setUploadText(`Adding ${formData?.name} To The Gigin Map`);
+        setUploadText(`Creating your Dashboard and Venue Page`);
         setUploadingProfile(true);
         try {
             // Validate and upload images

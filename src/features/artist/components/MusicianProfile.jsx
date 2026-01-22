@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import '@styles/artists/artist-profile.styles.css'
 import { OverviewTab } from '@features/artist/profile/OverviewTab';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { EmptyIcon, InviteIconSolid, NoImageIcon, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
+import { EmptyIcon, InviteIconSolid, ImageIcon, PlayIcon, PlayVideoIcon, SaveIcon, SavedIcon, TrackIcon, VerifiedIcon, VideoIcon } from '../../shared/ui/extras/Icons';
 import { AboutTab } from '../profile/AboutTab';
 import { getGigsByIds, } from '../../../services/client-side/gigs';
 import { getMusicianProfileByMusicianId, updateMusicianProfile } from '../../../services/client-side/artists';
@@ -363,7 +363,7 @@ return (
                       <img src={profile?.picture} alt={profile.name} className='background-image' />
                   ) : (
                       <div className="background-image empty">
-                          <NoImageIcon />
+                          <ImageIcon />
                           <h4>No Artist Image</h4>
                       </div>
                   )}
@@ -417,7 +417,7 @@ return (
                       <img src={profile?.picture} alt={profile.name} className='background-image' />
                   ) : (
                       <div className="background-image empty">
-                          <NoImageIcon />
+                          <ImageIcon />
                           <h4>No Artist Image</h4>
                       </div>
                   )}

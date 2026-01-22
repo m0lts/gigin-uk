@@ -1325,7 +1325,7 @@ export const ArtistCRM = ({ user, venues }) => {
                             openInNewTab(`/artist/${encodeURIComponent(entry.artistId)}`, e);
                           }}
                         >
-                          View Artist
+                          View Profile
                         </button>
                       ) : (
                         <div 
@@ -1745,7 +1745,7 @@ export const ArtistCRM = ({ user, venues }) => {
                                     openInNewTab(`/artist/${encodeURIComponent(artist.id)}`, e);
                                   }}
                                 >
-                                  View Artist
+                                  View Profile
                                 </button>
                               ) : (
                                 <span style={{ fontSize: '0.9rem', color: '#666' }}>

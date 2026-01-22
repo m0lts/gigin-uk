@@ -43,7 +43,7 @@ export const TermsAndConditions = () => {
           registered in England and Wales.
         </p>
         <p><strong>Registered office:</strong> The Old Rectory, Rectory Lane, Kingston, Cambridge, CB23 2NL.</p>
-        <p><strong>Contact email:</strong> hq.gigin@gmail.com</p>
+        <p><strong>Contact email:</strong> toby@giginmusic.com</p>
       </section>
 
       <section id="users-eligibility" className="legals-section">
@@ -193,7 +193,7 @@ export const TermsAndConditions = () => {
         <address className="legals-address">
           <strong>Gigin Ltd</strong><br />
           The Old Rectory, Rectory Lane, Kingston, Cambridge, CB23 2NL<br />
-          Email: <a href="mailto:hq.gigin@gmail.com">hq.gigin@gmail.com</a>
+          Email: <a href="mailto:toby@giginmusic.com">toby@giginmusic.com</a>
         </address>
       </section>
 

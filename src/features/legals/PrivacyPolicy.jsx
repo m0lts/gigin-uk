@@ -18,7 +18,7 @@ export const PrivacyPolicy = () => {
           Registered office: The Old Rectory, Rectory Lane, Kingston, Cambridge,
           CB23 2NL. <br />
           Contact email:{' '}
-          <a href="mailto:hq.gigin@gmail.com">hq.gigin@gmail.com</a>
+          <a href="mailto:toby@giginmusic.com">toby@giginmusic.com</a>
         </p>
         <p>We are the “data controller” of your personal information.</p>
       </div>
@@ -94,7 +94,7 @@ export const PrivacyPolicy = () => {
         </ul>
         <p>
           To exercise any of these rights, email us at{' '}
-          <a href="mailto:hq.gigin@gmail.com">hq.gigin@gmail.com</a>. We will respond within
+          <a href="mailto:toby@giginmusic.com">toby@giginmusic.com</a>. We will respond within
           30 days.
         </p>
       </div>
@@ -135,7 +135,7 @@ export const PrivacyPolicy = () => {
         <p className="legals-address">
           <strong>Gigin Ltd</strong> <br />
           The Old Rectory, Rectory Lane, Kingston, Cambridge, CB23 2NL <br />
-          Email: <a href="mailto:hq.gigin@gmail.com">hq.gigin@gmail.com</a>
+          Email: <a href="mailto:toby@giginmusic.com">toby@giginmusic.com</a>
         </p>
       </div>
     </div>

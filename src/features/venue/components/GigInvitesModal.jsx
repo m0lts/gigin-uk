@@ -243,7 +243,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
                     </button>
                     <div className="modal-header">
                         <InviteIconSolid />
-                        <h2>Gig Invites</h2>
+                        <h2>Manage This Gig’s Invites</h2>
                     </div>
 
                     {loading ? (
