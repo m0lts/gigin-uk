@@ -913,6 +913,61 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
+.window.venues .body.gigs .musician-requests .request-card .request-card-content {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.window.venues .body.gigs .musician-requests .request-card .request-card-left {
+    flex:1;
+}
+
+.window.venues .body.gigs .musician-requests .request-card .request-card-right {
+    width: fit-content;
+    padding-left: 2rem;
+    border-left: 1px solid var(--gn-grey-300);
+}
+
+.window.venues .body.gigs .musician-requests .request-card .request-dates-list {
+    display: flex;
+    gap: 1rem;
+    width:fit-content;
+}
+
+.window.venues .body.gigs .musician-requests .request-card .request-date-box {
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background-color: var(--gn-grey-200);
+}
+
+.window.venues .body.gigs .musician-requests .request-card .request-date-info {
+    text-align: center;
+}
+
+.window.venues .body.gigs .musician-requests .request-card .request-date-day {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+    margin: 0;
+    margin-bottom: 0.25rem;
+}
+
+.window.venues .body.gigs .musician-requests .request-card .request-date-date {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--gn-off-black);
+    margin: 0;
+    margin-bottom: 0.25rem;
+}
+
+.window.venues .body.gigs .musician-requests .request-card .request-date-year {
+    font-size: 0.85rem;
+    color: var(--gn-grey-600);
+    margin: 0;
+}
+
 .window.venues .body.gigs .musician-requests .request-card .top-banner {
     display: flex;
     align-items: center;
@@ -933,17 +988,10 @@
     align-items: center;
     gap: 1rem;
     margin-bottom: 0.75rem;
-    border:1px solid var(--gn-grey-300);
-    padding: 0.5rem 1rem;
+    padding: 0;
     border-radius: 1rem;
-    box-shadow: 1px 1px 4px var(--gn-shadow);
     background-color: transparent;
-    transition: background-color 200ms linear;
-    cursor: pointer;
-}
-
-.window.venues .body.gigs .musician-requests .musician-info:hover {
-    background-color: var(--gn-grey-300);
+    transition: text-decoration 200ms linear;
 }
   
 .window.venues .body.gigs .musician-requests .avatar {
@@ -965,7 +1013,7 @@
 .window.venues .body.gigs .musician-requests .request-actions {
     display: flex;
     gap: 1rem;
-    justify-content: flex-end;
+    margin-top: 2rem;
 }
 
 /* GIG APPLICATIONS */
@@ -1242,8 +1290,7 @@
 }
 
 .window.venues .body.venues .venue-card {
-    min-width: 325px;
-    max-width: 350px;
+    width: 325px;
     height:fit-content;
     box-sizing: border-box;
     min-height: 250px;

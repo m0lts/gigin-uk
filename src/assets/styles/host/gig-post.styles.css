@@ -104,7 +104,7 @@
 }
 
 .gig-post .stage .card.small:hover {
-    border-color: var(--gn-orange);
+    border-color: var(--gn-off-black);
 }
 
 .gig-post .stage .card.small.selected {
@@ -366,6 +366,11 @@
 .gig-post .stage .calendar .react-datepicker__day--in-selecting-range {
     background-color: var(--gn-off-black);
     color: var(--gn-white);
+}
+
+.gig-post .stage .calendar .react-datepicker__day--today {
+    background-color: transparent;
+    color: inherit;
 }
 
 .gig-post .stage .calendar .disable {

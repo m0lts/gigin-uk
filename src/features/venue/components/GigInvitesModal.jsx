@@ -7,6 +7,13 @@ import { format } from 'date-fns';
 import { getGigInvites, createGigInvite, updateGigInvite } from '../../../services/api/gigInvites';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import Portal from '../../shared/components/Portal';
+import { getArtistCRMEntries } from '../../../services/client-side/artistCRM';
+import { getArtistProfileById } from '../../../services/client-side/artists';
+import { inviteToGig } from '../../../services/api/gigs';
+import { getOrCreateConversation } from '../../../services/api/conversations';
+import { sendGigInvitationMessage } from '../../../services/client-side/messages';
+import { formatDate } from '../../../services/utils/dates';
+import { sendGigInviteEmail } from '../../../services/client-side/emails';
 
 const getOrdinalSuffix = (day) => {
     if (day > 3 && day < 21) return 'th';
@@ -68,14 +75,21 @@ const formatShortDate = (date) => {
     }
 };
 
-export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
+export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs, user, fromGigsTable = false }) => {
     const [invites, setInvites] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [selectedExpiryDate, setSelectedExpiryDate] = useState(null);
+    const [hasExpiryDate, setHasExpiryDate] = useState(false);
     const [editingInviteId, setEditingInviteId] = useState(null);
     const [creating, setCreating] = useState(false);
     const [updating, setUpdating] = useState(false);
+    const [showCRMArtists, setShowCRMArtists] = useState(false);
+    const [crmArtists, setCrmArtists] = useState([]);
+    const [loadingCRMArtists, setLoadingCRMArtists] = useState(false);
+    const [createdInviteId, setCreatedInviteId] = useState(null);
+    const [createdInviteExpiresAt, setCreatedInviteExpiresAt] = useState(null);
+    const [invitingArtist, setInvitingArtist] = useState(false);
 
     // Get gig date as a Date object for maxDate
     const gigDate = gig?.date ? (gig.date.toDate ? gig.date.toDate() : new Date(gig.date)) : null;
@@ -103,9 +117,9 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
         if (!gig?.gigId) return;
         setCreating(true);
         try {
-            // Set time to end of day (23:59:59) if date is selected
+            // Set time to end of day (23:59:59) if date is selected and toggle is enabled
             let expiresAt = null;
-            if (selectedExpiryDate) {
+            if (hasExpiryDate && selectedExpiryDate) {
                 const date = new Date(selectedExpiryDate);
                 date.setHours(23, 59, 59, 999);
                 expiresAt = date;
@@ -115,6 +129,9 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
                 expiresAt: expiresAt?.toISOString() || null
             });
             const inviteId = response?.inviteId;
+            setCreatedInviteId(inviteId);
+            setCreatedInviteExpiresAt(expiresAt);
+            
             if (inviteId) {
                 const inviteLink = `${window.location.origin}/gig/${gig.gigId}?inviteId=${inviteId}`;
                 navigator.clipboard.writeText(inviteLink).then(() => {
@@ -126,9 +143,17 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
                 toast.success('Invite created successfully');
             }
             setSelectedExpiryDate(null);
+            setHasExpiryDate(false);
             setShowCreateForm(false);
-            await loadInvites();
-            refreshGigs();
+            
+            // If from Gigs table, show CRM artist selection
+            if (fromGigsTable && user) {
+                await loadCRMArtists();
+                setShowCRMArtists(true);
+            } else {
+                await loadInvites();
+                refreshGigs();
+            }
         } catch (error) {
             console.error('Error creating invite:', error);
             toast.error('Failed to create invite');
@@ -170,11 +195,14 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
             // Validate the date before setting it
             if (expiryDate && !isNaN(expiryDate.getTime())) {
                 setSelectedExpiryDate(expiryDate);
+                setHasExpiryDate(true);
             } else {
                 setSelectedExpiryDate(null);
+                setHasExpiryDate(false);
             }
         } else {
             setSelectedExpiryDate(null);
+            setHasExpiryDate(false);
         }
         setEditingInviteId(invite.inviteId);
         setShowCreateForm(true);
@@ -191,7 +219,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
         setUpdating(true);
         try {
             let expiresAt = null;
-            if (selectedExpiryDate) {
+            if (hasExpiryDate && selectedExpiryDate) {
                 const date = new Date(selectedExpiryDate);
                 date.setHours(23, 59, 59, 999);
                 expiresAt = date.toISOString();
@@ -202,6 +230,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
             });
             toast.success('Invite updated successfully');
             setSelectedExpiryDate(null);
+            setHasExpiryDate(false);
             setEditingInviteId(null);
             setShowCreateForm(false);
             await loadInvites();
@@ -215,6 +244,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
 
     const handleCancelEdit = () => {
         setSelectedExpiryDate(null);
+        setHasExpiryDate(false);
         setEditingInviteId(null);
         // If there are no invites, close the modal instead of showing empty list
         if (invites.length === 0) {
@@ -234,6 +264,152 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
         });
     };
 
+    const loadCRMArtists = async () => {
+        if (!user?.uid) return;
+        setLoadingCRMArtists(true);
+        try {
+            const entries = await getArtistCRMEntries(user.uid);
+            setCrmArtists(entries || []);
+        } catch (error) {
+            console.error('Error loading CRM artists:', error);
+            toast.error('Failed to load artists');
+        } finally {
+            setLoadingCRMArtists(false);
+        }
+    };
+
+    const handleInviteCRMArtist = async (artist) => {
+        if (!gig || !artist || !venues) return;
+        
+        setInvitingArtist(true);
+        try {
+            const venueToSend = venues.find(v => v.venueId === gig.venueId);
+            if (!venueToSend) {
+                toast.error('Venue not found.');
+                return;
+            }
+
+            // Check if artist has a Gigin profile
+            if (artist.artistId) {
+                // Artist has a profile - use existing flow
+                const artistProfile = await getArtistProfileById(artist.artistId);
+                if (!artistProfile) {
+                    toast.error('Artist profile not found.');
+                    return;
+                }
+
+                const musicianProfilePayload = {
+                    musicianId: artistProfile.id,
+                    id: artistProfile.id,
+                    name: artistProfile.name,
+                    genres: artistProfile.genres || [],
+                    musicianType: 'Musician/Band',
+                    musicType: artistProfile.genres || [],
+                    bandProfile: false,
+                    userId: artistProfile.userId,
+                };
+
+                const res = await inviteToGig({ gigId: gig.gigId, musicianProfile: musicianProfilePayload });
+                if (!res.success) {
+                    if (res.code === 'permission-denied') {
+                        toast.error('You don\'t have permission to invite artists for this venue.');
+                    } else if (res.code === 'failed-precondition') {
+                        toast.error('This gig is missing required venue info.');
+                    } else {
+                        toast.error('Error inviting artist. Please try again.');
+                    }
+                    return;
+                }
+
+                const { conversationId } = await getOrCreateConversation({
+                    musicianProfile: musicianProfilePayload,
+                    gigData: gig,
+                    venueProfile: venueToSend,
+                    type: 'invitation',
+                });
+
+                // Generate the gig link (include inviteId for private gigs)
+                const gigLink = gig.private && createdInviteId 
+                    ? `${window.location.origin}/gig/${gig.gigId}?inviteId=${createdInviteId}`
+                    : `${window.location.origin}/gig/${gig.gigId}`;
+                
+                // Format expiry date if it exists
+                const expiryText = createdInviteExpiresAt 
+                    ? ` This invite expires on ${formatDate(new Date(createdInviteExpiresAt), 'short')}.`
+                    : '';
+                
+                if (gig.kind === 'Ticketed Gig' || gig.kind === 'Open Mic') {
+                    const messageText = gig.private
+                        ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gig.venue?.venueName} on the ${formatDate(
+                            gig.date
+                          )}.${expiryText}.`
+                        : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gig.venue?.venueName} on the ${formatDate(
+                            gig.date
+                          )}.${expiryText}`;
+                    await sendGigInvitationMessage(conversationId, {
+                        senderId: user.uid,
+                        text: messageText,
+                    });
+                } else {
+                    const messageText = gig.private
+                        ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gig.venue?.venueName} on the ${formatDate(
+                            gig.date
+                          )} for ${gig.budget}.${expiryText}.`
+                        : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gig.venue?.venueName} on the ${formatDate(
+                            gig.date
+                          )} for ${gig.budget}.${expiryText}`;
+                    await sendGigInvitationMessage(conversationId, {
+                        senderId: user.uid,
+                        text: messageText,
+                    });
+                }
+
+                toast.success(`Invite sent to ${artistProfile.name}`);
+            } else {
+                // Artist doesn't have a profile - send email if available
+                const artistEmail = artist.email;
+                
+                if (!artistEmail || !artistEmail.trim()) {
+                    toast.error('This artist doesn\'t have an email address. Please add one in the CRM.');
+                    return;
+                }
+
+                const gigLink = gig.private && createdInviteId 
+                    ? `${window.location.origin}/gig/${gig.gigId}?inviteId=${createdInviteId}`
+                    : `${window.location.origin}/gig/${gig.gigId}`;
+                const formattedDate = formatDate(gig.date, 'short');
+                
+                // Format expiry date if it exists
+                let formattedExpiryDate = null;
+                if (createdInviteExpiresAt) {
+                    const expiryDate = new Date(createdInviteExpiresAt);
+                    formattedExpiryDate = formatDate(expiryDate, 'short');
+                }
+                
+                await sendGigInviteEmail({
+                    to: artistEmail.trim(),
+                    userName: user.name || venueToSend.accountName,
+                    venueName: gig.venue?.venueName || venueToSend.name,
+                    date: formattedDate,
+                    gigLink: gigLink,
+                    expiresAt: formattedExpiryDate,
+                });
+
+                toast.success(`Invitation email sent to ${artist.name}`);
+            }
+            
+            // After inviting, reload invites and refresh gigs
+            await loadInvites();
+            refreshGigs();
+            setShowCRMArtists(false);
+        } catch (error) {
+            console.error('Error inviting artist:', error);
+            toast.error('Error inviting artist. Please try again.');
+        } finally {
+            setInvitingArtist(false);
+        }
+    };
+
     return (
         <Portal>
             <div className="modal gig-invites" onClick={onClose}>
@@ -250,29 +426,114 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
                         <div style={{ padding: '2rem' }}>
                             <LoadingSpinner />
                         </div>
+                    ) : showCRMArtists ? (
+                        <div className="modal-body">
+                            <div className="stage">
+                                <div className="body">
+                                    <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 600 }}>
+                                        Send this invite to any of your artists?
+                                    </h3>
+                                    {loadingCRMArtists ? (
+                                        <LoadingSpinner />
+                                    ) : crmArtists.length === 0 ? (
+                                        <p style={{ color: 'var(--gn-grey-600)', marginBottom: '1rem' }}>
+                                            You don't have any artists in your CRM yet.
+                                        </p>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                                            {crmArtists.map((artist) => (
+                                                <button
+                                                    key={artist.id}
+                                                    className="btn secondary"
+                                                    onClick={() => handleInviteCRMArtist(artist)}
+                                                    disabled={invitingArtist}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        padding: '0.75rem 1rem',
+                                                        textAlign: 'left',
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                        <span style={{ fontWeight: 600 }}>{artist.name || 'Unknown Artist'}</span>
+                                                    </div>
+                                                    <InviteIconSolid />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="two-buttons">
+                                <button
+                                    className="btn secondary"
+                                    onClick={async () => {
+                                        setShowCRMArtists(false);
+                                        await loadInvites();
+                                        refreshGigs();
+                                    }}
+                                    disabled={invitingArtist}
+                                >
+                                    Skip
+                                </button>
+                                <button
+                                    className="btn primary"
+                                    onClick={async () => {
+                                        setShowCRMArtists(false);
+                                        await loadInvites();
+                                        refreshGigs();
+                                    }}
+                                    disabled={invitingArtist}
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
                     ) : showCreateForm ? (
                         <div className="modal-body">
                             <div className="stage">
                                 <div className="body date">
-                                    <p style={{ marginBottom: '1rem' }}>
-                                        Select a date if you want the gig to expire at a certain time.
-                                    </p>
-                                    <div className="calendar">
-                                        <DatePicker
-                                            selected={selectedExpiryDate}
-                                            onChange={(date) => setSelectedExpiryDate(date)}
-                                            inline
-                                            minDate={new Date()}
-                                            maxDate={gigDate || undefined}
-                                            dayClassName={(date) => {
-                                                const today = new Date().setHours(0, 0, 0, 0);
-                                                const dateTime = date.getTime();
-                                                if (dateTime < today) return 'past-date';
-                                                if (gigDate && dateTime > gigDate.getTime()) return 'past-date';
-                                                return undefined;
-                                            }}
-                                        />
+                                    <div className='review-extra-option'>
+                                        <div className='toggle-container'>
+                                            <label htmlFor='set-expiry-date' className='label'>Set Expiry Date?</label>
+                                            <label className='switch'>
+                                                <input
+                                                    type='checkbox'
+                                                    id='set-expiry-date'
+                                                    checked={hasExpiryDate || false}
+                                                    onChange={(e) => {
+                                                        setHasExpiryDate(e.target.checked);
+                                                        if (!e.target.checked) {
+                                                            setSelectedExpiryDate(null);
+                                                        }
+                                                    }}
+                                                />
+                                                <span className='slider round'></span>
+                                            </label>
+                                        </div>
+                                        <p className='text' style={{ maxWidth: '300px' }}>
+                                            Artists won't be able to apply using this invite after a date specified by you
+                                        </p>
                                     </div>
+                                    {hasExpiryDate && (
+                                        <div className="calendar" style={{ marginTop: '1.5rem' }}>
+                                            <DatePicker
+                                                selected={selectedExpiryDate}
+                                                onChange={(date) => setSelectedExpiryDate(date)}
+                                                inline
+                                                minDate={new Date()}
+                                                maxDate={gigDate || undefined}
+                                                dayClassName={(date) => {
+                                                    const today = new Date().setHours(0, 0, 0, 0);
+                                                    const dateTime = date.getTime();
+                                                    if (dateTime < today) return 'past-date';
+                                                    if (gigDate && dateTime > gigDate.getTime()) return 'past-date';
+                                                    return undefined;
+                                                }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="two-buttons">
@@ -333,7 +594,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
                                                                     marginBottom: '0.5rem',
                                                                     fontWeight: 600
                                                                 }}>
-                                                                    {invite.artistName}
+                                                                    Sent to: {invite.artistName}
                                                                 </h4>
                                                             )}
                                                             {invite.expiresAt ? (
@@ -399,6 +660,7 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs }) => {
                                 onClick={() => {
                                     setEditingInviteId(null);
                                     setSelectedExpiryDate(null);
+                                    setHasExpiryDate(false);
                                     setShowCreateForm(true);
                                 }}
                                 style={{ width: '100%' }}

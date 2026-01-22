@@ -25,7 +25,7 @@ import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '../../../services/client-side/messages';
 import { formatDate } from '../../../services/utils/dates';
 import Portal from '../../shared/components/Portal';
-import { removeVenueRequest } from '../../../services/client-side/venues';
+import { removeVenueRequest, removePreferredDateFromRequest } from '../../../services/client-side/venues';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { friendlyError } from '../../../services/utils/errors';
 import { inviteToGig, postMultipleGigs, updateGigDocument } from '@services/api/gigs';
@@ -41,7 +41,7 @@ function formatPounds(amount) {
     return Number.isInteger(rounded) ? `£${rounded}` : `£${rounded.toFixed(2)}`;
 }
 
-export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests, showInviteMethodsModal, setShowInviteMethodsModal, createdGigForInvite, setCreatedGigForInvite }) => {
+export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles, templates, incompleteGigs, editGigData, buildingForMusician, buildingForMusicianData, user, setBuildingForMusician, setBuildingForMusicianData, setEditGigData, refreshTemplates, refreshGigs, requestId, setRequestId, setRequests, showInviteMethodsModal, setShowInviteMethodsModal, createdGigForInvite, setCreatedGigForInvite, preferredDate, setPreferredDate }) => {
     
     const [stage, setStage] = useState(() => {
         if (editGigData) {
@@ -189,18 +189,27 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             genre: genres ? genres : [],
             venueId: venueId || '',
             private: true, // Auto-set private to true when building for musician
+            date: preferredDate || prev.date, // Set date if preferredDate is provided
             venue: matchedVenue
               ? {
                   venueName: matchedVenue.name || '',
                   address: matchedVenue.address || '',
                   photo: matchedVenue.photos[0] || '',
+                  userId: user.uid,
+                  type: matchedVenue.type,
                 }
               : prev.venue,
+            coordinates: matchedVenue?.coordinates || prev.coordinates,
           }));
       
-          setStage(1);
+          // If venue is set and date is provided, move to next stage
+          if (matchedVenue && preferredDate) {
+            setStage(2); // Move to date stage (or next appropriate stage)
+          } else {
+            setStage(1);
+          }
         }
-      }, [buildingForMusician, buildingForMusicianData, venueProfiles]);
+      }, [buildingForMusician, buildingForMusicianData, venueProfiles, preferredDate, user.uid]);
 
     const handleInputChange = (updates) => {
         setFormData((prevFormData) => ({
@@ -250,7 +259,12 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 if (!valid) {
                     setError(timingError);
                 } else {
-                    setStage(prevStage => prevStage + 1);
+                    // If a template was selected, skip to review stage (stage 9)
+                    if (formData.templateId) {
+                        setStage(9);
+                    } else {
+                        setStage(prevStage => prevStage + 1);
+                    }
                 }
             } else {
                 setError('Please select a date for the gig.');
@@ -292,12 +306,19 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             return;
         }
     
+        // Stage 6: Genre (commented out - moved to ExtraDetails)
+        // if (stage === 6) {
+        //     if (formData.noMusicPreference || (Array.isArray(formData.genre) && formData.genre.length > 0)) {
+        //         setStage(prevStage => prevStage + 1);
+        //     } else {
+        //         setError('Please select at least one genre or click no specifics.');
+        //     }
+        //     return;
+        // }
+    
         if (stage === 6) {
-            if (formData.noMusicPreference || (Array.isArray(formData.genre) && formData.genre.length > 0)) {
-                setStage(prevStage => prevStage + 1);
-            } else {
-                setError('Please select at least one genre or click no specifics.');
-            }
+            // ExtraDetails stage (gig description) - no validation needed, just move to next
+            setStage(prevStage => prevStage + 1);
             return;
         }
     
@@ -307,14 +328,14 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 setError("Please select whether you'd like the musicians to apply.");
               }
                else {
-                setStage(prev => prev + 1);
+                setStage(9); // Go directly to review (stage 9) - stage 8 removed
               }
               return;
             }
 
             if (formData.kind === 'Ticketed Gig') {
               if (formData.ticketedGigUnderstood) {
-                setStage(prev => prev + 1);
+                setStage(9); // Go directly to review (stage 9) - stage 8 removed
               } else {
                 setError("You must click 'I understand' to post a ticketed gig.");
               }
@@ -322,7 +343,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             }
           
             if (hasAllSlotBudgets(formData, extraSlots)) {
-              setStage(prev => prev + 1);
+              setStage(9); // Go directly to review (stage 9) - stage 8 removed
             } else {
               const totalSlots = 1 + (extraSlots?.length || 0);
               setError(
@@ -334,16 +355,16 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             return;
           }
 
-        if (stage === 8) {
-            setStage(prevStage => prevStage + 1);
-        }
+        // Stage 8 removed - ExtraDetails moved to stage 6
 
     };
     
     const prevStage = () => {
-        if (stage === 7 && buildingForMusician && buildingForMusicianData?.genres) {
-            setStage(prevStage => prevStage - 2);
-        } else if (stage === 6 && buildingForMusician && buildingForMusicianData?.type) {
+        // Updated for removed genre stage - ExtraDetails is now at stage 6
+        if (stage === 9) {
+            // Go back to Budget stage (7) from Review, skipping removed stage 8
+            setStage(7);
+        } else if (stage === 7 && buildingForMusician && buildingForMusicianData?.type) {
             setStage(prevStage => prevStage - 2);
         } else {
             setStage(prevStage => prevStage - 1);
@@ -363,6 +384,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                             setFormData={setFormData}
                             resetFormData={resetFormData}
                             setExtraSlots={setExtraSlots}
+                            setStage={setStage}
                         />
                     );
                 } else {
@@ -426,18 +448,26 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                         setError={setError}
                     />
                 );
+            // case 6: Genre stage (commented out)
+            //     if (buildingForMusician && buildingForMusicianData?.genres) {
+            //         setStage(7);
+            //         return null;
+            //     }
+            //     return (
+            //         <GigGenre
+            //             formData={formData}
+            //             handleInputChange={handleInputChange}
+            //             setStage={setStage}
+            //             error={error}
+            //             setError={setError}
+            //         />
+            //     );
             case 6:
-                if (buildingForMusician && buildingForMusicianData?.genres) {
-                    setStage(7);
-                    return null;
-                }
+                // ExtraDetails (gig description) moved here from stage 8
                 return (
-                    <GigGenre
+                    <GigExtraDetails
                         formData={formData}
                         handleInputChange={handleInputChange}
-                        setStage={setStage}
-                        error={error}
-                        setError={setError}
                     />
                 );
             case 7:
@@ -472,13 +502,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                         />
                     );
                 }
-            case 8:
-                return (
-                    <GigExtraDetails
-                        formData={formData}
-                        handleInputChange={handleInputChange}
-                    />
-                );
+            // case 8: ExtraDetails moved to stage 6
             case 9:
                 return (
                     <GigReview
@@ -878,7 +902,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 if (!alreadyIncluded) {
                   await updateGigDocument({
                     gigId: firstGigDoc.gigId,
-                    action: 'gigs.invite',
+                    action: 'gigs.update',
                     updates: {
                       applicants: [...currentApplicants, applicant]
                     }
@@ -936,22 +960,6 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
                 text: `${venueToSend.accountName} has invited ${musicianProfile.name} to play at their gig at ${formData.venue.venueName} on the ${formatDate(firstGigDoc.date, 'long')}.`,
               });
             }
-              if (requestId) {
-                await removeVenueRequest(requestId);
-                setRequests(prev =>
-                  prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
-                );
-                setRequestId(null);
-              }
-              setBuildingForMusician(false);
-              setBuildingForMusicianData(false);
-              resetFormData();
-              const isRepeat = formData?.repeatData?.repeat && formData?.repeatData?.repeat !== "no";
-              const message = editGigData 
-                ? `Gig edited successfully.`
-                : `Gig${isRepeat ? 's' : ''} created successfully.`;
-              toast.success(message);
-              setGigPostModal(false);
             } else {
               // Artist doesn't have a Gigin profile - show invite methods modal
               // Use CRM entry data if available, otherwise use buildingForMusicianData
@@ -991,6 +999,74 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
               }
               setBuildingForMusician(false);
               setBuildingForMusicianData(false);
+            }
+            
+            // Remove preferred date from request if one was used (runs for all cases)
+            if (requestId && preferredDate) {
+              try {
+                // Optimistically update local state first
+                setRequests(prev =>
+                  prev.map(req => {
+                    if (req.id !== requestId) return req;
+                    const preferredDates = req.preferredDates || [];
+                    if (!Array.isArray(preferredDates) || preferredDates.length === 0) return req;
+                    
+                    // Normalize the date to compare - use date components for reliable comparison
+                    const targetDate = preferredDate instanceof Date 
+                      ? new Date(preferredDate) 
+                      : new Date(preferredDate);
+                    if (isNaN(targetDate.getTime())) return req;
+                    
+                    // Get target date components (using local date to avoid timezone issues)
+                    const targetYear = targetDate.getFullYear();
+                    const targetMonth = targetDate.getMonth();
+                    const targetDay = targetDate.getDate();
+                    
+                    // Filter out the matching date
+                    const updatedDates = preferredDates.filter(dateItem => {
+                      let date;
+                      if (dateItem.toDate && typeof dateItem.toDate === 'function') {
+                        date = dateItem.toDate();
+                      } else if (dateItem._seconds || dateItem.seconds) {
+                        const seconds = dateItem._seconds || dateItem.seconds;
+                        const nanoseconds = dateItem._nanoseconds || dateItem.nanoseconds || 0;
+                        date = new Date(seconds * 1000 + nanoseconds / 1000000);
+                      } else {
+                        date = new Date(dateItem);
+                      }
+                      if (isNaN(date.getTime())) return true;
+                      // Compare by date components (year, month, day) to avoid timezone issues
+                      const dateYear = date.getFullYear();
+                      const dateMonth = date.getMonth();
+                      const dateDay = date.getDate();
+                      return !(dateYear === targetYear && dateMonth === targetMonth && dateDay === targetDay); // Keep dates that don't match
+                    });
+                    
+                    return {
+                      ...req,
+                      preferredDates: updatedDates.length > 0 ? updatedDates : null
+                    };
+                  })
+                );
+                
+                // Then update the backend
+                await removePreferredDateFromRequest(requestId, preferredDate);
+                setPreferredDate(null);
+              } catch (error) {
+                console.error('Error removing preferred date from request:', error);
+                toast.error('Failed to remove preferred date from request');
+              }
+            } else if (requestId && buildingForMusician) {
+              // If no preferredDate but requestId exists and building for musician, remove the entire request (old behavior)
+              try {
+                await removeVenueRequest(requestId);
+                setRequests(prev =>
+                  prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
+                );
+                setRequestId(null);
+              } catch (error) {
+                console.error('Error removing request:', error);
+              }
             }
           }
           await refreshGigs();

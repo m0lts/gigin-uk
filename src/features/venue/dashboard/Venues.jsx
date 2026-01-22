@@ -1,13 +1,17 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VenueIconSolid } from '@icons';
 import { getCityFromAddress } from '@services/utils/misc';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { VenuePage } from './VenuePage';
 
-export const Venues = ({ venues}) => {
+export const Venues = ({ venues, user, setVenues }) => {
     const navigate = useNavigate();
     const { isMdUp } = useBreakpoint();
+    const [selectedVenueId, setSelectedVenueId] = useState(null);
+    
     const handleOpenVenuePage = (venueProfile) => {
-        navigate(`/venues/dashboard/my-venues/${venueProfile.venueId}`);
+        setSelectedVenueId(venueProfile.venueId);
     }
 
     return (
@@ -48,6 +52,16 @@ export const Venues = ({ venues}) => {
                     </div>
                 )}
             </div>
+            
+            {selectedVenueId && (
+                <VenuePage 
+                    user={user}
+                    venues={venues}
+                    setVenues={setVenues}
+                    venueId={selectedVenueId}
+                    onClose={() => setSelectedVenueId(null)}
+                />
+            )}
         </>
     )
 }

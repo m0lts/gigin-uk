@@ -315,6 +315,107 @@
     padding:0.5rem;
 }
 
+.modal.musician-request .calendar {
+    width:fit-content;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal.musician-request .calendar .react-datepicker {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+.modal.musician-request .calendar .react-datepicker__header,
+.modal.musician-request .calendar .react-datepicker__current-month,
+.modal.musician-request .calendar .react-datepicker__day-name {
+    background-color: var(--gn-grey-300);
+}
+
+.modal.musician-request .calendar .react-datepicker__day--selected,
+.modal.musician-request .calendar .react-datepicker__day--in-range,
+.modal.musician-request .calendar .react-datepicker__day--in-selecting-range {
+    background-color: var(--gn-off-black);
+    color: var(--gn-white);
+}
+
+.modal.musician-request .calendar .react-datepicker__day.selected-date {
+    background-color: var(--gn-off-black) !important;
+    color: var(--gn-white) !important;
+    border-radius: 5px;
+}
+
+.modal.musician-request .calendar .react-datepicker__day.past-date {
+    color: #ccc !important;
+    pointer-events: none;
+}
+
+.modal.musician-request .review-extra-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.modal.musician-request .toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 300;
+}
+
+.modal.musician-request .toggle-container label {
+    font-weight: 500;
+}
+
+.modal.musician-request .switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+}
+
+.modal.musician-request .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.modal.musician-request .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--gn-grey-500);
+    transition: 0.2s;
+    border-radius: 22px;
+}
+
+.modal.musician-request .slider:before {
+    position: absolute;
+    content: '';
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--gn-white);
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+.modal.musician-request input:checked + .slider {
+    background-color: var(--gn-off-black);
+}
+
+.modal.musician-request input:checked + .slider:before {
+    transform: translateX(18px);
+}
+
 /* VENUE DASHBOARD VERSION */
 .window.venues .venue-page .venue-page-body {
     padding: 1rem 2%;

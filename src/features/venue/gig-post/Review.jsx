@@ -308,7 +308,7 @@ export const GigReview = ({ formData, handleInputChange, setStage, buildingForMu
                                     {formData.private && (
                                         <div style={{ marginTop: '1.5rem' }}>
                                             <p style={{ marginBottom: '1rem' }}>
-                                                Select a date if you want the invite to expire at a certain time.
+                                                Select a date if you want the invite to expire on a specific date.
                                             </p>
                                             <div className="calendar">
                                                 {gigDate && (

@@ -557,6 +557,22 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         }
     };
 
+    const handleDeclineAndInviteToSlot = async (musicianId, event, proposedFee, musicianEmail, musicianName, slotGigId, profile) => {
+        event.stopPropagation();
+        try {
+            // First, decline the application
+            await handleReject(musicianId, event, proposedFee, musicianEmail, musicianName, slotGigId);
+            
+            // Then open the slot invite modal
+            setSelectedMusicianForSlotInvite(profile);
+            setDeclinedSlotGigId(slotGigId);
+            setShowSlotInviteModal(true);
+        } catch (error) {
+            console.error('Error declining and opening invite modal:', error);
+            // Error is already handled in handleReject, so we don't need to show another toast
+        }
+    };
+
     const sendToConversation = async (userId) => {
         const conversations = await getConversationsByParticipantAndGigId(gigInfo.gigId, userId)
         const conversationId = conversations[0].id;
@@ -711,6 +727,8 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             const convertedGig = {
                 ...gig,
                 date: dateOnly,
+                // Set existingGigIds for single-slot gigs so we can add slots to the same gig
+                existingGigIds: [gig.gigId],
             };
             setEditGigData(convertedGig);
         }
@@ -873,6 +891,33 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     senderId: user.uid,
                     text: `${venueToSend.accountName} invited ${selectedMusicianForSlotInvite.name} to play at their gig at ${slotGig.venue.venueName} on the ${formatDate(slotGig.date)} for ${slotGig.budget}.`,
                 });
+            }
+            
+            // Remove the declined application from the table if it exists
+            // Only remove if the artist was declined from a slot and successfully invited to a different one
+            if (declinedSlotGigId && selectedMusicianForSlotInvite?.id && declinedSlotGigId !== slotGig.gigId) {
+                const declinedSlot = declinedSlotGigId === gigInfo.gigId 
+                    ? gigInfo 
+                    : relatedSlots.find(s => s.gigId === declinedSlotGigId);
+                
+                if (declinedSlot) {
+                    const updatedApplicants = (declinedSlot.applicants || []).filter(
+                        app => !(app.id === selectedMusicianForSlotInvite.id && app.status === 'declined')
+                    );
+                    
+                    if (declinedSlotGigId === gigInfo.gigId) {
+                        setGigInfo(prev => ({
+                            ...prev,
+                            applicants: updatedApplicants
+                        }));
+                    } else {
+                        setRelatedSlots(prev => prev.map(slot => 
+                            slot.gigId === declinedSlotGigId 
+                                ? { ...slot, applicants: updatedApplicants }
+                                : slot
+                        ));
+                    }
+                }
             }
             
             setShowSlotInviteModal(false);
@@ -1588,6 +1633,113 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                     })}
                             </div>
                         )}
+                        {/* Confirmed artist box for single-slot gigs */}
+                        {relatedSlots.length === 0 && (() => {
+                            const confirmedArtistId = getConfirmedArtistForSlot(gigInfo);
+                            const confirmedArtist = confirmedArtistId 
+                                ? musicianProfiles.find(p => p.id === confirmedArtistId)
+                                : null;
+                            const endTime = calculateEndTime(gigInfo.startTime, gigInfo.duration);
+                            
+                            if (!confirmedArtist) return null;
+                            
+                            return (
+                                <div style={{ marginBottom: '2rem' }}>
+                                    <div 
+                                        style={{ 
+                                            padding: '1rem', 
+                                            border: '1px solid var(--gn-grey-300)', 
+                                            borderRadius: '0.5rem',
+                                            minWidth: '200px',
+                                            maxWidth: '400px',
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        <h4 style={{ margin: '0 0 0.5rem 0' }}>
+                                            {gigInfo.startTime}{endTime ? ` - ${endTime}` : ''}
+                                        </h4>
+                                        <div className='status-box' style={{ position: 'absolute', top: '0.75rem', right: '1rem' }}>
+                                            <div className='status confirmed'>
+                                                <TickIcon />
+                                                Confirmed
+                                            </div>
+                                        </div>
+                                        {(() => {
+                                            const heroImageUrl = confirmedArtist.heroMedia?.url;
+                                            const heroBrightness = confirmedArtist.heroBrightness || 110;
+                                            const heroPositionY = confirmedArtist.heroPositionY || 50;
+                                            
+                                            return (
+                                                <div style={{ marginTop: '1rem' }}>
+                                                    {heroImageUrl && (
+                                                        <div 
+                                                            style={{
+                                                                position: 'relative',
+                                                                width: '100%',
+                                                                height: '200px',
+                                                                borderRadius: '0.5rem',
+                                                                overflow: 'hidden',
+                                                                marginBottom: '0.5rem',
+                                                                filter: `brightness(${heroBrightness}%)`,
+                                                            }}
+                                                        >
+                                                            <img
+                                                                src={heroImageUrl}
+                                                                alt={confirmedArtist.name}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    height: '100%',
+                                                                    objectFit: 'cover',
+                                                                    objectPosition: `center ${heroPositionY}%`,
+                                                                }}
+                                                            />
+                                                            <div
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    bottom: 0,
+                                                                    left: 0,
+                                                                    padding: '0.75rem',
+                                                                    background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
+                                                                    width: '100%',
+                                                                }}
+                                                            >
+                                                                <h4 style={{ 
+                                                                    margin: 0, 
+                                                                    color: 'white', 
+                                                                    fontSize: '1.5rem',
+                                                                    fontWeight: 600 
+                                                                }}>
+                                                                    {confirmedArtist.name}
+                                                                </h4>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                        {confirmedArtist.techRider && confirmedArtist.techRider.isComplete && (
+                                                            <button
+                                                                className='btn tertiary'
+                                                                onClick={() => {
+                                                                    setTechRiderProfile(confirmedArtist);
+                                                                    setShowTechRiderModal(true);
+                                                                }}
+                                                            >
+                                                                Tech Rider
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            className='btn tertiary'
+                                                            onClick={(e) => openInNewTab(`/artist/${confirmedArtist.id}`, e)}
+                                                        >
+                                                            Profile
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                         {musicianProfiles.length > 0 && (
                             <h4 style={{ marginBottom: '1rem', marginTop: '2rem' }}>All Gig Applications</h4>
                         )}
@@ -1605,7 +1757,30 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                 </tr>
                             </thead>
                             <tbody>
-                                {musicianProfiles.map((profile, index) => {
+                                {musicianProfiles
+                                    .filter((profile) => {
+                                        // Filter out declined applications if the artist has been invited to a different slot
+                                        const slotGigId = profile.applicationSlotGigId || gigInfo.gigId;
+                                        const slotGig = slotGigId === gigInfo.gigId 
+                                            ? gigInfo 
+                                            : relatedSlots.find(s => s.gigId === slotGigId) || gigInfo;
+                                        const applicant = slotGig?.applicants?.find(applicant => applicant.id === profile.id);
+                                        const status = applicant ? applicant.status : (profile.status || 'pending');
+                                        
+                                        // If this is a declined application, check if artist has been invited to a different slot
+                                        if (status === 'declined') {
+                                            const allSlots = [gigInfo, ...relatedSlots].filter(Boolean);
+                                            const hasInviteOnOtherSlot = allSlots.some(slot => {
+                                                if (slot.gigId === slotGigId) return false; // Same slot
+                                                const otherApplicant = slot.applicants?.find(app => app.id === profile.id);
+                                                return otherApplicant && (otherApplicant.invited || otherApplicant.status === 'pending' && otherApplicant.sentBy === 'venue');
+                                            });
+                                            // Hide declined application if artist has been invited to a different slot
+                                            return !hasInviteOnOtherSlot;
+                                        }
+                                        return true;
+                                    })
+                                    .map((profile, index) => {
                                     // Find the applicant for the specific slot this row represents
                                     const slotGigId = profile.applicationSlotGigId || gigInfo.gigId;
                                     const slotGig = slotGigId === gigInfo.gigId 
@@ -1764,11 +1939,11 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                                 <LoadingSpinner width={15} height={15} />
                                                             ) : (
                                                                 <div className='two-buttons'>
-                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
+                                                                    <button className='btn accept small' style={{ display: 'flex', alignItems: 'center', gap: '5px'}} onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
                                                                         <TickIcon />
                                                                         Accept
                                                                     </button>
-                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
+                                                                    <button className='btn decline small' style={{ display: 'flex', alignItems: 'center', gap: '5px'}} onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
                                                                         <ErrorIcon />
                                                                         Decline
                                                                     </button>
@@ -1782,11 +1957,11 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                                 <LoadingSpinner width={15} height={15} />
                                                             ) : (
                                                                 <div className='two-buttons'>
-                                                                    <button className='btn accept small' onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
+                                                                    <button className='btn accept small' style={{ display: 'flex', alignItems: 'center', gap: '5px'}} onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
                                                                         <TickIcon />
                                                                         Accept
                                                                     </button>
-                                                                    <button className='btn decline small' onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
+                                                                    <button className='btn decline small' style={{ display: 'flex', alignItems: 'center', gap: '5px'}} onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId)}>
                                                                         <ErrorIcon />
                                                                         Decline
                                                                     </button>
@@ -1835,13 +2010,22 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                                                         </div>
                                                     )}
                                                     {status === 'declined' && !gigAlreadyConfirmed && (slotGig.budget !== '£' && slotGig.budget !== '£0') && (slotGig.kind !== 'Ticketed Gig' && slotGig.kind !== 'Open Mic') && !applicant?.invited && hasVenuePerm(venues, slotGig.venueId, 'gigs.applications.manage') && (
-                                                        <button className='btn primary' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId)}}>
+                                                        <button className='btn primary small' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId)}}>
                                                             Negotiate Fee
+                                                        </button>
+                                                    )}
+                                                    {status !== 'declined' && status !== 'withdrawn' && status !== 'confirmed' && !applicant?.invited && !gigAlreadyConfirmed && relatedSlots.length > 0 && hasVenuePerm(venues, slotGig.venueId, 'gigs.invite') && (
+                                                        <button 
+                                                            className='btn secondary small' 
+                                                            onClick={(event) => handleDeclineAndInviteToSlot(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGigId, profile)}
+                                                            disabled={eventLoading}
+                                                        >
+                                                            Invite to a different slot
                                                         </button>
                                                     )}
                                                     {status === 'declined' && !gigAlreadyConfirmed && relatedSlots.length > 0 && hasVenuePerm(venues, slotGig.venueId, 'gigs.invite') && (
                                                         <button 
-                                                            className='btn secondary' 
+                                                            className='btn secondary small' 
                                                             onClick={(event) => {
                                                                 event.stopPropagation();
                                                                 setSelectedMusicianForSlotInvite(profile);

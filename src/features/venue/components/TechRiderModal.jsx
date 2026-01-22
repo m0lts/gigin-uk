@@ -14,6 +14,7 @@ import {
   CloseIcon
 } from '@features/shared/ui/extras/Icons';
 import '@styles/artists/gig-page.styles.css';
+import { MoreInformationIcon } from '../../shared/ui/extras/Icons';
 
 // Instrument-specific question configurations (for tech rider display)
 const INSTRUMENT_QUESTIONS = {
@@ -462,7 +463,7 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
 
   return (
     <div className='modal tech-rider-modal' onClick={onClose}>
-      <div className='modal-content' onClick={(e) => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
+      <div className='modal-content scrollable' onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', maxHeight: '90vh', overflow: 'auto' }}>
         <button className='btn tertiary close' onClick={onClose} style={{ padding: '0.5rem' }}>
           Close
         </button>
@@ -519,6 +520,9 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                         }}
                         style={{ cursor: 'pointer' }}
                       >
+                        <div className="info-icon">
+                          <MoreInformationIcon />
+                        </div>
                         {getInstrumentIcon(primaryInstrument)}
                         <span className="tech-rider-stage-performer-name">
                           {performerData.performerName || `Performer ${performer.lineupIndex + 1}`}

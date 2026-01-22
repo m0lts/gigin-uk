@@ -39,6 +39,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
   const [inviteExpiryDate, setInviteExpiryDate] = useState(null);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [createdInviteId, setCreatedInviteId] = useState(null);
+  const [createdInviteExpiresAt, setCreatedInviteExpiresAt] = useState(null);
   const navigate = useNavigate();
   useEffect(() => {
     const processGigs = async () => {
@@ -146,6 +147,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
       if (inviteId) {
         setCreatedInviteId(inviteId);
       }
+      setCreatedInviteExpiresAt(expiresAt);
 
       toast.success('Invite created successfully');
       
@@ -217,14 +219,19 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
         // Generate the gig link (include inviteId for private gigs)
         const gigLink = generateGigLink(gigData, createdInviteId);
         
+        // Format expiry date if it exists
+        const expiryText = createdInviteExpiresAt 
+            ? ` This invite expires on ${formatDate(new Date(createdInviteExpiresAt), 'short')}.`
+            : '';
+        
         if (gigData.kind === 'Ticketed Gig' || gigData.kind === 'Open Mic') {
           const messageText = gigData.private
             ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
                 gigData.date
-              )}. View the gig: ${gigLink}`
+              )}.${expiryText}.`
             : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
                 gigData.date
-              )}.`;
+              )}.${expiryText}`;
           await sendGigInvitationMessage(conversationId, {
             senderId: user.uid,
             text: messageText,
@@ -233,10 +240,10 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
           const messageText = gigData.private
             ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
                 gigData.date
-              )} for ${gigData.budget}. View the gig: ${gigLink}`
+              )} for ${gigData.budget}.${expiryText}.`
             : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
                 gigData.date
-              )} for ${gigData.budget}.`;
+              )} for ${gigData.budget}.${expiryText}`;
           await sendGigInvitationMessage(conversationId, {
             senderId: user.uid,
             text: messageText,
@@ -260,12 +267,19 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
           const gigLink = generateGigLink(gigData, createdInviteId);
           const formattedDate = formatDate(gigData.date, 'short');
           
+          // Format expiry date if it exists
+          let formattedExpiryDate = null;
+          if (createdInviteExpiresAt) {
+            formattedExpiryDate = formatDate(new Date(createdInviteExpiresAt), 'short');
+          }
+          
           await sendGigInviteEmail({
             to: artistEmail.trim(),
             userName: user.name || venueToSend.accountName,
             venueName: gigData.venue?.venueName || venueToSend.name,
             date: formattedDate,
             gigLink: gigLink,
+            expiresAt: formattedExpiryDate,
           });
 
           toast.success(`Invitation email sent to ${artist.name}`);
@@ -298,7 +312,12 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
     const venueName = gigData.venue?.venueName || venueToSend.name;
     const userName = user.name || venueToSend.accountName;
     
-    return `${userName} has invited you to play at their gig at ${venueName} on ${formattedDate}. Check it out on Gigin: ${gigLink}`;
+    // Format expiry date if it exists
+    const expiryText = createdInviteExpiresAt 
+        ? ` This invite expires on ${formatDate(new Date(createdInviteExpiresAt), 'short')}.`
+        : '';
+    
+    return `${userName} has invited you to play at their gig at ${venueName} on ${formattedDate}.${expiryText} Check it out on Gigin: ${gigLink}`;
   };
 
   const getPlatformLink = (contactMethod, gigData) => {
@@ -1634,7 +1653,7 @@ export const ArtistCRM = ({ user, venues }) => {
                     style={{ cursor: 'pointer' }}
                   >
                     <div className="notes-content">
-                      <span className="notes-text" style={{ fontSize: '0.9rem', color: '#999' }}>
+                      <span className="notes-text" style={{ fontSize: '1rem', fontWeight: '500' }}>
                         Add New Artist
                       </span>
                       <button

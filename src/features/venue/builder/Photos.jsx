@@ -637,9 +637,8 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                         )}
                     </div>
                     
-                    {/* Video Upload Section - Only show after image is uploaded */}
-                    {images.length > 0 && (
-                        <div className="upload-videos-section">
+                    {/* Video Upload Section */}
+                    <div className="upload-videos-section">
                                 <h6 className='input-label'>Videos (Optional)</h6>
                                 
                                 {/* Storage Usage Bar */}
@@ -830,7 +829,6 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                                     </div>
                                 )}
                         </div>
-                    )}
                 </div>
                 <div className='stage-controls'>
                     <button className='btn secondary' onClick={() => navigate(-1)}>

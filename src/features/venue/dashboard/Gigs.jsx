@@ -410,6 +410,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
             const convertedGig = {
                 ...gig,
                 date: gig.date ? gig.date.toDate() : null,
+                // Set existingGigIds for single-slot gigs so we can add slots to the same gig
+                existingGigIds: [gig.gigId],
             };
             setEditGigData(convertedGig);
         }
@@ -1286,74 +1288,88 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             )}
                           </td>
                           )}
-                          <td className="centre gigs-private-apps-cell invite-only-cell" onClick={(e) => e.stopPropagation()}>
-                                <div className="gigs-toggle-container">
-                                    <label className="gigs-toggle-switch">
-                                        <input
-                                            type="checkbox"
-                                            checked={gig.private || false}
-                                            disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.update')}
-                                            onChange={async (e) => {
-                                                e.stopPropagation();
-                                                if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
-                                                    toast.error('You do not have permission to update this gig.');
-                                                    return;
-                                                }
-                                                try {
-                                                    const newPrivate = e.target.checked;
-                                                    // Update all gigs in the group
-                                                    const gigIdsToUpdate = group.gigIds;
-                                                    await Promise.all(gigIdsToUpdate.map(id => 
-                                                      updateGigDocument({ 
-                                                        gigId: id, 
-                                                        action: 'gigs.update', 
-                                                        updates: { private: newPrivate } 
-                                                      })
-                                                    ));
-                                                    toast.success(`Gig changed to ${newPrivate ? 'Invite Only' : 'Public'}`);
-                                                    refreshGigs();
-                                                } catch (error) {
-                                                    console.error('Error updating invite only status:', error);
-                                                    toast.error('Failed to update gig. Please try again.');
-                                                }
-                                            }}
-                                        />
-                                        <span className="gigs-toggle-slider"></span>
-                                    </label>
-                                </div>
-                            </td>
-                          <td className="centre invite-artist-cell" onClick={(e) => e.stopPropagation()}>
-                              {!gig.private ? (
-                                <button 
-                                  className="btn icon" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const gigLink = `${window.location.origin}/gig/${gig.gigId}`;
-                                    copyToClipboard(gigLink);
-                                  }}
-                                  title="Copy gig link"
-                                >
-                                  <LinkIcon />
-                                </button>
-                              ) : (
-                                <button 
-                                  className="btn icon" 
-                                  disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.invite')}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
-                                      toast.error('You do not have permission to perform this action.');
-                                      return;
-                                    }
-                                    setSelectedGigForInvites(gig);
-                                    setShowInvitesModal(true);
-                                  }}
-                                  title={!hasVenuePerm(venues, gig.venueId, 'gigs.invite') ? 'You do not have permission to create invites' : 'Create invite link'}
-                                >
-                                  <InviteIconSolid />
-                                </button>
-                              )}
-                            </td>
+                          {gig.dateTime > now && (
+                            <>
+                              <td className="centre gigs-private-apps-cell invite-only-cell" onClick={(e) => e.stopPropagation()}>
+                                    <div className="gigs-toggle-container">
+                                        <label className="gigs-toggle-switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={gig.private || false}
+                                                disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.update')}
+                                                onChange={async (e) => {
+                                                    e.stopPropagation();
+                                                    if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                                        toast.error('You do not have permission to update this gig.');
+                                                        return;
+                                                    }
+                                                    try {
+                                                        const newPrivate = e.target.checked;
+                                                        // Update all gigs in the group
+                                                        const gigIdsToUpdate = group.gigIds;
+                                                        await Promise.all(gigIdsToUpdate.map(id => 
+                                                          updateGigDocument({ 
+                                                            gigId: id, 
+                                                            action: 'gigs.update', 
+                                                            updates: { private: newPrivate } 
+                                                          })
+                                                        ));
+                                                        toast.success(`Gig changed to ${newPrivate ? 'Invite Only' : 'Public'}`);
+                                                        refreshGigs();
+                                                    } catch (error) {
+                                                        console.error('Error updating invite only status:', error);
+                                                        toast.error('Failed to update gig. Please try again.');
+                                                    }
+                                                }}
+                                            />
+                                            <span className="gigs-toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </td>
+                              <td className="centre invite-artist-cell" onClick={(e) => e.stopPropagation()}>
+                                  {statusDisplay.statusClass !== 'confirmed' && (
+                                    <>
+                                      {!gig.private ? (
+                                        <button 
+                                          className="btn icon" 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const gigLink = `${window.location.origin}/gig/${gig.gigId}`;
+                                            copyToClipboard(gigLink);
+                                          }}
+                                          title="Copy gig link"
+                                        >
+                                          <LinkIcon />
+                                        </button>
+                                      ) : (
+                                        <button 
+                                          className="btn icon" 
+                                          disabled={!hasVenuePerm(venues, gig.venueId, 'gigs.invite')}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!hasVenuePerm(venues, gig.venueId, 'gigs.invite')) {
+                                              toast.error('You do not have permission to perform this action.');
+                                              return;
+                                            }
+                                            setSelectedGigForInvites(gig);
+                                            setShowInvitesModal(true);
+                                          }}
+                                          title={!hasVenuePerm(venues, gig.venueId, 'gigs.invite') ? 'You do not have permission to create invites' : 'Create invite link'}
+                                        >
+                                          <InviteIconSolid />
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </td>
+                            </>
+                          )}
+                          {gig.dateTime <= now && (
+                            <>
+                              <td className="centre gigs-private-apps-cell invite-only-cell"></td>
+                              <td className="centre invite-artist-cell"></td>
+                            </>
+                          )}
                           <td className={`status-box ${statusDisplay.statusClass === 'awaiting payment' || statusDisplay.statusClass === 'in dispute' ? 'closed' : statusDisplay.statusClass}`}>
                             <div className={`status ${statusDisplay.statusClass === 'awaiting payment' || statusDisplay.statusClass === 'in dispute' ? 'closed' : statusDisplay.statusClass}`}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1608,6 +1624,8 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   setSelectedGigForInvites(null);
                 }}
                 refreshGigs={refreshGigs}
+                user={user}
+                fromGigsTable={true}
               />
             )}
         </div>

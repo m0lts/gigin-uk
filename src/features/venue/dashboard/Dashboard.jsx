@@ -1,4 +1,4 @@
-import { Route, Routes, useLocation, Link } from 'react-router-dom'
+import { Route, Routes, useLocation, Link, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import React, { useState, useEffect, useMemo } from 'react'
 import { GigPostModal } from '../gig-post/GigPostModal';
@@ -24,7 +24,6 @@ import { getUnreviewedPastGigs } from '../../../services/utils/filtering';
 import { MessagePage } from './messages/MessagePage';
 import { listenToUserConversations } from '@services/client-side/conversations';
 import Portal from '../../shared/components/Portal';
-import { VenuePage } from './VenuePage';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { Header } from '../components/Header';
@@ -60,17 +59,32 @@ export const VenueDashboard = ({ user }) => {
     const [buildingForMusician, setBuildingForMusician] = useState(false);
     const [buildingForMusicianData, setBuildingForMusicianData] = useState(false);
     const [requestId, setRequestId] = useState(null);
+    const [preferredDate, setPreferredDate] = useState(null);
     const [showInviteMethodsModal, setShowInviteMethodsModal] = useState(false);
     const [createdGigForInvite, setCreatedGigForInvite] = useState(null);
     const location = useLocation();
+    const navigate = useNavigate();
     const breadcrumbs = useMemo(() => getBreadcrumbs(location.pathname, 'venue', venueProfiles), [location.pathname]);
   
     useEffect(() => {
-      if (location.state?.showGigPostModal) setGigPostModal(true);
-      if (location.state?.buildingForMusician) setBuildingForMusician(true);
-      if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
-      if (location.state?.requestId) setRequestId(location.state?.requestId);
-    }, [location]);
+      // Only process location.state if it exists and has relevant data
+      if (location.state && (location.state.showGigPostModal || location.state.buildingForMusician || location.state.musicianData || location.state.requestId || location.state.preferredDate)) {
+        if (location.state?.showGigPostModal) setGigPostModal(true);
+        if (location.state?.buildingForMusician) setBuildingForMusician(true);
+        if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
+        if (location.state?.requestId) setRequestId(location.state?.requestId);
+        if (location.state?.preferredDate) {
+          // Convert to Date object if it's a string (serialized from location.state)
+          const date = location.state.preferredDate instanceof Date 
+            ? location.state.preferredDate 
+            : new Date(location.state.preferredDate);
+          setPreferredDate(date);
+        }
+        
+        // Clear the location.state after reading it to prevent it from persisting on refresh
+        navigate(location.pathname + location.search, { replace: true, state: null });
+      }
+    }, [location, navigate]);
   
     useEffect(() => {
       if (!gigs?.length) return;
@@ -148,8 +162,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route index path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} />} />
                         <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} venues={venueProfiles} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} />} />
-                        <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} />} />
-                        <Route path='my-venues/:venueId' element={<VenuePage user={user} venues={venueProfiles} setVenues={setVenueProfiles} />} />
+                        <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} setVenues={setVenueProfiles} />} />
                         <Route path='artists' element={<ArtistCRM user={user} venues={venueProfiles} />} />
                         <Route path='artists/find' element={<FindArtists user={user} />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />
@@ -176,10 +189,14 @@ export const VenueDashboard = ({ user }) => {
                   requestId={requestId}
                   setRequestId={setRequestId}
                   setRequests={setRequests}
+                  preferredDate={preferredDate}
+                  setPreferredDate={setPreferredDate}
                   showInviteMethodsModal={showInviteMethodsModal}
                   setShowInviteMethodsModal={setShowInviteMethodsModal}
                   createdGigForInvite={createdGigForInvite}
                   setCreatedGigForInvite={setCreatedGigForInvite}
+                  preferredDate={preferredDate}
+                  setPreferredDate={setPreferredDate}
                 />
               </Portal>
             )

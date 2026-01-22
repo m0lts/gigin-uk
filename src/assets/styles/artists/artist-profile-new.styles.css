@@ -305,8 +305,23 @@
   margin-bottom: 1rem;
 }
 
+.profile-card.buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
 .profile-card.venue-viewer-actions-card {
   margin-left: 0;
+}
+
+.profile-card .btn.artist-profile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
 }
 
 .profile-card .btn.secondary {
@@ -4957,6 +4972,7 @@
 }
 
 .tech-rider-stage-performer-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4971,6 +4987,21 @@
   max-width: 100%;
   position: relative;
   transition: outline-color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+}
+
+.tech-rider-stage-performer-content:hover .info-icon {
+  opacity: 0.75;
+}
+
+.tech-rider-stage-performer-content .info-icon {
+  position: absolute;
+  top: -0.2rem;
+  right: 0.4rem;
+}
+
+.tech-rider-stage-performer-content .info-icon .icon {
+  font-size: 0.75rem;
+  color: var(--gn-off-black);
 }
 
 .tech-rider-stage-performer-content .icon {

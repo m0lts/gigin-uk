@@ -1665,9 +1665,10 @@ export const sendArtistInviteEmail = async ({ to, artistProfile, link }) => {
  * @param {string} params.gigLink - Absolute URL to view the gig on Gigin.
  * @returns {Promise<void>}
  */
-export const sendGigInviteEmail = async ({ to, userName, venueName, date, gigLink }) => {
+export const sendGigInviteEmail = async ({ to, userName, venueName, date, gigLink, expiresAt }) => {
+  const expiryText = expiresAt ? ` This invite expires on ${expiresAt}.` : '';
   const subject = `${userName} has invited you to play at ${venueName}`;
-  const text = `${userName} has invited you to play at their gig at ${venueName} on ${date}. Check it out on Gigin: ${gigLink}`;
+  const text = `${userName} has invited you to play at their gig at ${venueName} on ${date}.${expiryText} Check it out on Gigin: ${gigLink}`;
 
   const baseStyles = {
     bodyBg: "#f9f9f9",
@@ -1748,10 +1749,17 @@ export const sendGigInviteEmail = async ({ to, userName, venueName, date, gigLin
     </table>
   `;
 
+  const expiryParagraph = expiresAt 
+    ? `<p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
+        This invite expires on <strong>${expiresAt}</strong>.
+      </p>`
+    : '';
+
   const inner = `
     <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
       <strong>${userName}</strong> has invited you to play at their gig at <strong>${venueName}</strong> on <strong>${date}</strong>.
     </p>
+    ${expiryParagraph}
     <p style="margin:0 0 16px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text}">
       <a href="${gigLink}" style="color:#111827;text-decoration:underline;">Click here to check it out on Gigin</a>
     </p>

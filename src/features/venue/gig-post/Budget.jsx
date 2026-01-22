@@ -123,6 +123,13 @@ export const GigBudget = ({ formData, handleInputChange, error, extraSlots, setE
                                                 onChange={(e) => setSlotBudget(i, e.target.value)}
                                                 autoComplete="off"
                                             />
+                                            <button 
+                                                className="btn secondary" 
+                                                onClick={() => setSlotBudget(i, '£0')}
+                                                style={{ marginTop: '0.5rem' }}
+                                            >
+                                                No Fee
+                                            </button>
                                         </div>
                                         ))}
                                         {/* (Optional) Show total */}

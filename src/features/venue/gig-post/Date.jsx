@@ -164,85 +164,91 @@ export const GigDate = ({ formData, handleInputChange, error, setError, extraSlo
                 </div>
 
                 {/* Gig Timings Section */}
-                <div className="timings-section">
-                    <div className="gig-slots">
-                        {allSlots.map((slot, index) => (
-                            <div key={index} className="gig-slot">
-                                {allSlots.length > 1 && (
-                                    <h4>{index === 0 ? 'Slot 1' : `Slot ${index + 1}`}</h4>
-                                )}
-        
-                                <div className="input-group">
-                                    <label className="label">Start Time</label>
-                                    <input
-                                        type="time"
-                                        value={slot.startTime}
-                                        min={index > 0
-                                            ? addMinutesToTime(allSlots[index - 1].startTime, allSlots[index - 1].duration)
-                                            : undefined
-                                        }
-                                        onChange={(e) => handleStartTimeChange(index, e.target.value)}
-                                    />
-                                </div>
-        
-                                <div className="input-group">
-                                    <label className="label">Duration</label>
-                                    <div className="duration-inputs">
-                                        <select
-                                            value={getHours(slot.duration)}
-                                            onChange={(e) => handleDurationChange(index, e.target.value, getMinutes(slot.duration))}
-                                        >
-                                            {[...Array(6).keys()].map(h => (
-                                                <option key={h} value={h}>{h}</option>
-                                            ))}
-                                        </select>
-                                        <span className="unit">hr</span>
-                                        <select
-                                            value={getMinutes(slot.duration)}
-                                            onChange={(e) => handleDurationChange(index, getHours(slot.duration), e.target.value)}
-                                        >
-                                            {[0, 15, 30, 45].map(m => (
-                                                <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>
-                                            ))}
-                                        </select>
-                                        <span className="unit">mins</span>
+                {selectedDate && (
+                    <>
+                        <div className="timings-section">
+                            <div className="gig-slots">
+                                {allSlots.map((slot, index) => (
+                                    <div key={index} className="gig-slot">
+                                        {allSlots.length > 1 && (
+                                            <h4>{index === 0 ? 'Slot 1' : `Slot ${index + 1}`}</h4>
+                                        )}
+            
+                                        <div className="input-group">
+                                            <label className="label">Start Time</label>
+                                            <input
+                                                type="time"
+                                                value={slot.startTime}
+                                                min={index > 0
+                                                    ? addMinutesToTime(allSlots[index - 1].startTime, allSlots[index - 1].duration)
+                                                    : undefined
+                                                }
+                                                onChange={(e) => handleStartTimeChange(index, e.target.value)}
+                                            />
+                                        </div>
+            
+                                        <div className="input-group">
+                                            <label className="label">Duration</label>
+                                            <div className="duration-inputs">
+                                                <select
+                                                    value={getHours(slot.duration)}
+                                                    onChange={(e) => handleDurationChange(index, e.target.value, getMinutes(slot.duration))}
+                                                >
+                                                    {[...Array(6).keys()].map(h => (
+                                                        <option key={h} value={h}>{h}</option>
+                                                    ))}
+                                                </select>
+                                                <span className="unit">hr</span>
+                                                <select
+                                                    value={getMinutes(slot.duration)}
+                                                    onChange={(e) => handleDurationChange(index, getHours(slot.duration), e.target.value)}
+                                                >
+                                                    {[0, 15, 30, 45].map(m => (
+                                                        <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>
+                                                    ))}
+                                                </select>
+                                                <span className="unit">mins</span>
+                                            </div>
+                                        </div>
+            
+                                        {index !== 0 && (
+                                            <button className="btn small tertiary" onClick={() => removeGigSlot(index - 1)}>
+                                                Remove Slot
+                                            </button>
+                                        )}
                                     </div>
-                                </div>
-        
-                                {index !== 0 && (
-                                    <button className="btn small tertiary" onClick={() => removeGigSlot(index - 1)}>
-                                        Remove Slot
-                                    </button>
-                                )}
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                    {formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic' && (
-                        <button type="button" className="btn primary" onClick={addGigSlot} style={{ marginTop: '1rem' }}>
-                            Add Gig Slot
-                        </button>
-                    )}
-                </div>
-                </div>
-                <div className="extra-timings" style={{ marginTop: '1.5rem' }}>
-                    <div className="input-group">
-                        <label className="label">Load In Time</label>
-                        <input
-                            type="time"
-                            value={formData.loadInTime || ''}
-                            onChange={(e) => handleInputChange({ loadInTime: e.target.value })}
-                        />
-                    </div>
-                    <div className="input-group">
-                        <label className="label">Sound Check Time</label>
-                        <input
-                            type="time"
-                            value={formData.soundCheckTime || ''}
-                            onChange={(e) => handleInputChange({ soundCheckTime: e.target.value })}
-                        />
-                    </div>
+                            {formData.kind !== 'Ticketed Gig' && formData.kind !== 'Open Mic' && (
+                                <button type="button" className="btn primary" onClick={addGigSlot} style={{ marginTop: '1rem' }}>
+                                    Add Gig Slot
+                                </button>
+                            )}
+                        </div>
+                    </>
+                )}
                 </div>
 
+                {selectedDate && (
+                    <div className="extra-timings" style={{ marginTop: '1.5rem' }}>
+                        <div className="input-group">
+                            <label className="label">Load In Time</label>
+                            <input
+                                type="time"
+                                value={formData.loadInTime || ''}
+                                onChange={(e) => handleInputChange({ loadInTime: e.target.value })}
+                            />
+                        </div>
+                        <div className="input-group">
+                            <label className="label">Sound Check Time</label>
+                            <input
+                                type="time"
+                                value={formData.soundCheckTime || ''}
+                                onChange={(e) => handleInputChange({ soundCheckTime: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                )}
                 {error && (
                     <div className="error-cont">
                         <p className="error-message">{error}</p>

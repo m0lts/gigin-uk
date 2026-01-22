@@ -6,7 +6,7 @@ import { ProfileCreationBox, CREATION_STEP_ORDER } from './ProfileCreationBox';
 import { AdditionalInfoSection } from './AdditionalInfoSection';
 import { useScrollFade } from '@hooks/useScrollFade';
 import { useBreakpoint } from '@hooks/useBreakpoint';
-import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, ImageIcon, LightModeIcon, EditIcon, InviteIconSolid, SavedIcon, SaveIcon, ShareIcon } from '../../../shared/ui/extras/Icons';
+import { AddMember, MoreInformationIcon, PeopleGroupIconSolid, TechRiderIcon, ImageIcon, LightModeIcon, EditIcon, InviteIconSolid, SavedIcon, SaveIcon, ShareIcon, SuccessIcon } from '../../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '../../../shared/ui/loading/Loading';
 
@@ -158,6 +158,9 @@ export const ProfileView = ({
   onTracksSave = null,
   onVideosSave = null,
   canEdit = true,
+  setAuthModal = null,
+  setAuthType = null,
+  user = null,
 }) => {
   // Randomly select an example profile once when component mounts (only for example profiles)
   const exampleData = useMemo(() => {
@@ -925,6 +928,12 @@ export const ProfileView = ({
   // We detect this by the presence of the handler props injected via profileData.
   const showVenueViewerActions =
     !!profileData?.onInviteArtist || !!profileData?.onToggleSaveArtist;
+  
+  // Check if we're in viewer mode (not the profile owner)
+  const isViewerMode = !canEdit && !isCreatingProfile && !isExample;
+  
+  // Show Book button only to non-logged-in viewers
+  const shouldShowBookButton = isViewerMode && !user && setAuthModal && setAuthType;
 
   // Get the profile ID for sharing
   const artistProfileId = profileId || profileData?.profileId || profileData?.id;
@@ -1000,26 +1009,44 @@ export const ProfileView = ({
           </div>
         )}
 
-        {/* Share Profile Button - shown above bio for profile owners only */}
-        {!isCreatingProfile && !isExample && artistProfileId && !showVenueViewerActions && (
+        {/* Share Profile Button and Book Button - shown above bio */}
+        {!isCreatingProfile && !isExample && artistProfileId && (
           <div
-            className="profile-card"
+            className="profile-card buttons-container"
             aria-hidden={!shouldShowBio}
             style={{
               opacity: bioOpacity,
               transform: `scale(${bioScale})`,
               transformOrigin: 'top center',
               transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+              display: 'flex',
+              gap: '0.5rem',
             }}
           >
-            <button
-              type="button"
-              className="btn secondary"
-              onClick={handleShareProfile}
-            >
-              <ShareIcon />
-              Copy Profile Link
-            </button>
+            {shouldShowBookButton && (
+              <button
+                type="button"
+                className="btn artist-profile"
+                onClick={() => {
+                  if (setAuthModal) {
+                    setAuthModal(true);
+                    setAuthType?.('signup');
+                  }
+                }}
+              >
+                Book Artist
+              </button>
+            )}
+            {!showVenueViewerActions && (
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={handleShareProfile}
+              >
+                <ShareIcon />
+                Copy Profile Link
+              </button>
+            )}
           </div>
         )}
 

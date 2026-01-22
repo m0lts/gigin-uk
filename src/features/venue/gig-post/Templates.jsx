@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { toJsDate } from '../../../services/utils/dates';
 
-export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetFormData, setExtraSlots }) => {
+export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetFormData, setExtraSlots, setStage }) => {
 
     const [selectedCard, setSelectedCard] = useState();
 
@@ -31,10 +31,15 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetForm
                 ...templateData,
                 gigId: id,
                 id: id,
+                templateId: templateId,
                 createdAt: new Date(),
             }));
             applyGigSlots(templateData.gigSlots);
             setSelectedCard(templateId);
+            // Automatically advance to date selection stage when template is selected
+            if (setStage) {
+                setStage(2);
+            }
         }
     };
 
@@ -54,6 +59,10 @@ export const GigTemplates = ({ templates, incompleteGigs, setFormData, resetForm
               }));
             applyGigSlots(gigData.gigSlots);
             setSelectedCard(gigId);
+            // Automatically advance to date selection stage when incomplete gig is selected
+            if (setStage) {
+                setStage(2);
+            }
         }
     };
 

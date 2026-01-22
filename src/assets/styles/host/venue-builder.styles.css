@@ -1,15 +1,14 @@
 
 .venue-builder {
-    background-image: url('../../images/blurry-bckgrd.svg');
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
+    background: linear-gradient(90deg, var(--gn-orange), #fea38d, var(--gn-orange));
+    background-size: 200% 100%;
     height: 100vh;
     padding: 1rem 2rem 1rem 1rem;
     display: grid;
     grid-template-columns: 30% 70%;
     gap: 1rem;
 }
+
 
 .venue-builder.upload-screen {
     height:100vh;
@@ -842,8 +841,10 @@
 
 .venue-builder .stage.extra-details .creation-bio-textarea {
     width: 100%;
-    min-height: 60px;
-    max-height: 60px;
+    height: 125px !important;
+    min-height: 125px !important;
+    max-height: 125px !important;
+    box-sizing: border-box;
     border-radius: 1rem;
     border: 1px solid var(--gn-grey-400);
     padding: 1rem;
@@ -897,6 +898,7 @@
     font-size: 1rem;
     width: 100%;
     text-align: left;
+    max-width: 150px;
 }
 
 .venue-builder .stage.extra-details .file-upload-label:hover {

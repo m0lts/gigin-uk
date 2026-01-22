@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Header as VenueHeader } from '@features/venue/components/Header';
+import { useNavigate } from 'react-router-dom';
 import '@styles/host/venue-page.styles.css';
 import { 
     ClubIcon,
@@ -32,9 +31,8 @@ import { deleteVenueData, fetchVenueMembersWithUsers } from '@services/api/venue
 import { deleteReview } from '@services/api/reviews';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
-export const VenuePage = ({ user, venues, setVenues }) => {
+export const VenuePage = ({ user, venues, setVenues, venueId, onClose }) => {
     const navigate = useNavigate();
-    const { venueId } = useParams();
     const {isSmUp} = useBreakpoint();
     const [venueData, setVenueData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -46,10 +44,6 @@ export const VenuePage = ({ user, venues, setVenues }) => {
     const [deleting, setDeleting] = useState(false);
     const [showAddStaffModal, setShowAddStaffModal] = useState(false);
     const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-
-    useEffect(() => {
-        if (!user) navigate('/');
-    }, [user]);
 
     useEffect(() => {
         if (!venueId) return;
@@ -138,8 +132,8 @@ export const VenuePage = ({ user, venues, setVenues }) => {
             await deleteFolderFromStorage(`venues/${venueId}`);
             await deleteVenueData({ venueId });
             toast.success('Venue Deleted');
-            navigate('/venues/dashboard/my-venues', { replace: true });
             setVenues(prevVenues => prevVenues.filter(venue => venue.venueId !== venueId));
+            if (onClose) onClose();
         } catch (error) {
             console.error('An error occurred while deleting the venue:', error);
             toast.error('Failed to delete venue. Please try again.')
@@ -190,179 +184,68 @@ export const VenuePage = ({ user, venues, setVenues }) => {
 
     if (loading) {
         return (
-            <LoadingScreen />
+            <Portal>
+                <div className='modal' onClick={onClose}>
+                    <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                        <LoadingScreen />
+                    </div>
+                </div>
+            </Portal>
         )
     }
 
     return (
-        <div className='venue-page'>
-            <section className='venue-page-body'>
-                {/* <div className='venue-page-hero'>
-                    <img
-                        src={venueData?.photos[0]}
-                        alt={venueData?.name}
-                        className='background-image'
-                        style={{
-                            objectPosition: `50% ${50 - percentFromTop}%`,
-                            transition: 'object-position 0.3s ease-out',
-                        }}
-                    />
-                    <div className="primary-information">
-                        {venueData?.verified && (
-                            <div className="verified-tag">
-                                <VerifiedIcon />
-                                <p>Verified Venue</p>
-                            </div>
-                        )}
-                        <h1 className="venue-name">
-                            {venueData?.name}
-                            <span className='orange-dot'>.</span>
-                        </h1>
-                        <h4 className="number-of-gigs">
-                            {venueData?.gigs?.length} Gigs Posted
-                        </h4>
-                    </div>
-                </div>
-                <div className="venue-page-information" style={{ width: `95%`, margin: '0 auto'}}>
-                    {isSmUp && (
-                        <div className="venue-page-details">
-                            <div className="section bio">
-                                <h2>Bio</h2>
-                                <p>{venueData?.description}</p>
-                            </div>
-                            <div className="section secondary-information">
-                                <div className="info-box location">
-                                    <h2>Location</h2>
-                                    <MapSection venueData={venueData} />
-                                    <h5>{venueData?.address}</h5>
-                                    <button className="btn tertiary" onClick={() => openGoogleMaps(venueData.address, venueData.coordinates)}>
-                                        Get Directions <NewTabIcon />
-                                    </button>
-                                </div>
-                                <div className="info-box equipment">
-                                    <div className="info-box-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                                        <h2>Equipment at {venueData.name}</h2>
-                                        <button className="btn text" onClick={() => setExpanded(!expanded)}>
-                                            {expanded ? 'Hide' : 'Show'}
-                                        </button>
-                                    </div>
-                                    {expanded && venueData.type === 'Public Establishment' && (
-                                        venueData.equipment.map((e) => (
-                                            <span className="equipment-item" key={e}>
-                                                {formatEquipmentIcon(e)}
-                                                {e}
-                                            </span>
-                                        ))
-                                    )}
-                                </div>
-                                {venueData?.website && (
-                                    <div className="info-box website">
-                                        <h2>Website</h2>
-                                        <a
-                                            href={venueData.website.startsWith('http') ? venueData.website : `https://${venueData.website}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <p>{venueData.website}</p>
-                                        </a>
-                                    </div>
-                                )}
-                                {(venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '' || venueData?.socialMedia?.facebook !== '') && (
-                                    <div className="info-box socials">
-                                        <h2>Socials</h2>
-                                        <div className="socials-buttons">
-                                            {venueData?.socialMedia?.facebook && (
-                                                <a href={ensureProtocol(venueData.socialMedia.facebook)} target='_blank' rel='noreferrer'>
-                                                    <FacebookIcon />
-                                                </a>
-                                            )}
-                                            {venueData?.socialMedia?.instagram && (
-                                                <a href={ensureProtocol(venueData.socialMedia.instagram)} target='_blank' rel='noreferrer'>
-                                                    <InstagramIcon />
-                                                </a>
-                                            )}
-                                            {venueData?.socialMedia?.twitter && (
-                                                <a href={ensureProtocol(venueData.socialMedia.twitter)} target='_blank' rel='noreferrer'>
-                                                    <TwitterIcon />
-                                                </a>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                            </div>
-                            {venueData?.photos?.length > 1 ? (
-                                <div className="section photos">
-                                    <h2>Photos</h2>
-                                    <div className="photos-collage">
-                                    {venueData.photos.map((photo, index) => (
-                                        <figure className="collage-item" key={photo}>
-                                        <img
-                                            src={photo}
-                                            alt={venueData.name}
-                                            loading="lazy"
-                                            decoding="async"
-                                        />
-                                        </figure>
-                                    ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="section photos empty">
-                                    <h2>Photos</h2>
-                                    <p>No photos uploaded.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    )} */}
-                    <div className="venue-page-settings">
-                        {!isSmUp && (
-                            <button className="btn text" onClick={() => navigate(-1)} style={{marginTop: '1rem'}}>
-                                <LeftArrowIcon /> Back
-                            </button>
-                        )}
+        <Portal>
+            <div className='modal venue-settings' onClick={onClose}>
+                <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <SettingsIcon />
                         <h2>Venue Settings</h2>
-                        <ul className="settings-list">
-                            <li className="settings-item">
-                                <button className="btn secondary" onClick={() => copyToClipboard(venueData.id)}>
+                    </div>
+                    <button className='btn close tertiary' onClick={onClose}>
+                        Close
+                    </button>
+                    <div className='modal-body'>
+                        <ul className="settings-list" style={{ marginTop: '1rem', listStyle: 'none', width: '100%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <li className="settings-item" >
+                                <button className="btn secondary" onClick={() => copyToClipboard(venueData.id)} style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                                     Share Venue Link
                                     <ShareIcon />
                                 </button>
                             </li>
-                            <li className="settings-item">
-                                <button className="btn secondary" onClick={(e) => openInNewTab(`/venues/${venueData.id}?venueViewing=true`, e)}>
-                                    See What Musicians See
+                            <li className="settings-item" >
+                                <button className="btn secondary" onClick={(e) => openInNewTab(`/venues/${venueData.id}?venueViewing=true`, e)} style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                    View Venue Page
                                     <NewTabIcon />
                                 </button>
                             </li>
                             {hasVenuePerm(venues, venueId, 'venue.update') && (
-                                <li className="settings-item">
-                                    <button className="btn secondary" onClick={() => handleEditVenue(venueData)}>
+                                <li className="settings-item" >
+                                    <button className="btn secondary" onClick={() => handleEditVenue(venueData)} style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                                         Edit Venue Profile
                                         <EditIcon />
                                     </button>
                                 </li>
                             )}
                             {hasVenuePerm(venues, venueId, 'members.invite') && (
-                                <li className="settings-item">
-                                    <button className="btn secondary" onClick={() => setShowAddStaffModal(true)}>
+                                <li className="settings-item" >
+                                    <button className="btn secondary" onClick={() => setShowAddStaffModal(true)} style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                                         Add Staff to Venue
                                         <AddMember />
                                     </button>
                                 </li>
                             )}
                             {hasVenuePerm(venues, venueId, 'members.update') && (
-                                <li className="settings-item">
-                                    <button className="btn secondary" onClick={() => setShowPermissionsModal(true)}>
+                                <li className="settings-item" >
+                                    <button className="btn secondary" onClick={() => setShowPermissionsModal(true)} style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                                         Manage Staff Members
                                         <SettingsIcon />
                                     </button>
                                 </li>
                             )}
                             {hasVenuePerm(venues, venueId, 'owner') && (
-                                <li className="settings-item">
-                                    <button className="btn danger" onClick={() => handleDeleteVenue(venueData)}>
+                                <li className="settings-item" >
+                                    <button className="btn danger" onClick={() => handleDeleteVenue(venueData)} style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                                         Delete Venue
                                         <DeleteGigIcon />
                                     </button>
@@ -370,14 +253,15 @@ export const VenuePage = ({ user, venues, setVenues }) => {
                             )}
                         </ul>
                     </div>
-                {fullscreenImage && (
-                    <div className='fullscreen-overlay' onClick={closeFullscreen}>
-                        <span className='arrow left' onClick={showPrevImage}>&#8249;</span>
-                        <img src={fullscreenImage} alt='Fullscreen' />
-                        <span className='arrow right' onClick={showNextImage}>&#8250;</span>
-                    </div>
-                )}
-            </section>
+                    {fullscreenImage && (
+                        <div className='fullscreen-overlay' onClick={closeFullscreen}>
+                            <span className='arrow left' onClick={showPrevImage}>&#8249;</span>
+                            <img src={fullscreenImage} alt='Fullscreen' />
+                            <span className='arrow right' onClick={showNextImage}>&#8250;</span>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {showAddStaffModal && (
                 <Portal>
@@ -412,7 +296,6 @@ export const VenuePage = ({ user, venues, setVenues }) => {
             {deleting && (
                 <LoadingModal title={'Deleting Venue'} text={'This may take a minute or two...'} />
             )}
-
-        </div>
+        </Portal>
     );
 };

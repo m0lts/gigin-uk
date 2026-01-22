@@ -8,6 +8,15 @@ import { useEffect, useState } from 'react';
 import { RightArrowIcon, HamburgerMenuIcon, CloseIcon } from '../shared/ui/extras/Icons';
 import ArtistProfileExample from '@assets/images/artist-profile-example.png';
 import Portal from '../shared/components/Portal';
+import { TextLogoVenueLandingPage } from '../shared/ui/logos/Logos';
+import Top1 from '@assets/images/landing_page/venue/top_1.png';
+import Top2 from '@assets/images/landing_page/venue/top_2.png';
+import Top3 from '@assets/images/landing_page/venue/top_3.png';
+import Messages from '@assets/images/landing_page/venue/messages.png';
+import Crm from '@assets/images/landing_page/venue/crm.png';
+import FindArtists from '@assets/images/landing_page/venue/find_artists.png';
+import ArtistProfile from '@assets/images/landing_page/venue/artist_profile.png';
+import ArtistTr from '@assets/images/landing_page/venue/artist_tr.png';
 
 
 export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, setInitialEmail }) => {
@@ -22,12 +31,19 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
         (!user.venueProfiles || user.venueProfiles.length === 0) && 
         (!user.artistProfiles || user.artistProfiles.length === 0);
 
-    // Auto-redirect if user has artist profile
+    // Auto-redirect if user has venue profile
     useEffect(() => {
-        if (hasArtistProfile) {
+        if (hasVenueProfile) {
+            navigate('/venues/dashboard/gigs');
+        }
+    }, [hasVenueProfile, navigate]);
+
+    // Auto-redirect if user has artist profile (and no venue profile)
+    useEffect(() => {
+        if (hasArtistProfile && !hasVenueProfile) {
             navigate('/artist-profile');
         }
-    }, [hasArtistProfile, navigate]);
+    }, [hasArtistProfile, hasVenueProfile, navigate]);
 
     const handlePricingClick = () => {
         const pricingSection = document.getElementById('pricing-section');
@@ -49,37 +65,28 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
             <nav className="landing-navbar">
                 <div className={`navbar-container ${isXlUp ? 'constrained' : ''}`}>
                     <div className="navbar-left">
-                        <TextLogo />
-                        {isMdUp && (
-                            <>
-                                <button className="nav-link" onClick={() => navigate('/find-a-gig')}>
-                                    Find Gig
-                                </button>
-                                <button className="nav-link" onClick={() => navigate('/find-venues')}>
-                                    Find Venue
-                                </button>
-                                <button className="nav-link" onClick={handlePricingClick}>
-                                    Pricing
-                                </button>
-                            </>
-                        )}
+                        <TextLogoVenueLandingPage />
                     </div>
                     {isMdUp ? (
                         <div className="navbar-right">
                             {hasVenueProfile ? (
-                                <button className="btn tertiary" onClick={() => navigate('/venues/dashboard/gigs')}>
+                                <button className="btn artist-profile" onClick={() => navigate('/venues/dashboard/gigs')}>
                                     Venue Dashboard
                                 </button>
                             ) : (
-                                <button className="btn tertiary" onClick={() => navigate('/venues/add-venue')}>
-                                    Create Venue Profile
-                                </button>
+                                <>
+                                    {!user && (
+                                        <button className="btn tertiary" onClick={() => navigate('/')}>
+                                            I'm an Artist
+                                        </button>
+                                    )}
+                                    <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')}>
+                                        Create Venue Profile
+                                    </button>
+                                </>
                             )}
                             {!user && (
                                 <>
-                                    <button className="btn artist-profile" onClick={() => navigate('/')}>
-                                        I'm an Artist
-                                    </button>
                                     <h6 className="or-separator">
                                         OR
                                     </h6>
@@ -98,11 +105,11 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                                             <button className="btn artist-profile" onClick={() => navigate('/')}>
                                                 I'm an Artist
                                             </button>
-                                            <h6 className="or-separator">
-                                                OR
-                                            </h6>
                                         </>
                                     )}
+                                    <h6 className="or-separator">
+                                        OR
+                                    </h6>
                                     <button className="btn secondary" onClick={handleLogout}>
                                         Log Out
                                     </button>
@@ -191,91 +198,108 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                 <section className="hero-section venue">
                     {!isMdUp && (
                         <div className="hero-right-mobile">
-                            <div className="hero-image-placeholder">
-                                <img src={ArtistProfileExample} alt="Venue management" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '1rem' }} />
+                            <div className="hero-image-stack">
+                                <div className="hero-image-placeholder stack-item stack-item-1">
+                                    <img src={Top1} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
+                                </div>
+                                <div className="hero-image-placeholder stack-item stack-item-2">
+                                    <img src={Top2} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
+                                </div>
+                                <div className="hero-image-placeholder stack-item stack-item-3">
+                                    <img src={Top3} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
+                                </div>
                             </div>
                         </div>
                     )}
                     <div className="hero-left">
-                        <h1>Frustrated with organising live music?</h1>
-                        <h4>We make gig organisation simple and easy. Keep everything in one place - from creating gigs and inviting musicians to managing your artist relationships and venue profile. All the tools you need, all in one platform.</h4>
+                        <h1>Run your live music with clarity and control.</h1>
+                        <h4>Save time and stress by giving your live music bookings a dedicated home.</h4>
                         <div className="hero-cta">
-                            <button className="btn primary" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                Add Your Venue <RightArrowIcon />
+                            <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                Get Started for Free <RightArrowIcon />
                             </button>
+                            <span className="small-text">(Set-up time: 5 Minutes)</span>
                         </div>
                     </div>
                     {isMdUp && (
                         <div className="hero-right">
-                            <div className="hero-image-placeholder">
-                                <img src={ArtistProfileExample} alt="Venue management" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '1rem' }} />
+                            <div className="hero-image-stack">
+                                <div className="hero-image-placeholder stack-item stack-item-1">
+                                    <img src={Top1} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
+                                </div>
+                                <div className="hero-image-placeholder stack-item stack-item-2">
+                                    <img src={Top2} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
+                                </div>
+                                <div className="hero-image-placeholder stack-item stack-item-3">
+                                    <img src={Top3} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
+                                </div>
                             </div>
                         </div>
                     )}
                 </section>
 
-                <section className="venue-features-section">
-                    <h2 className="venue-features-title">Everything you need to manage live music</h2>
-                    <div className="venue-feature-item">
-                        <div className="venue-feature-content">
-                            <h2>Create Gigs</h2>
-                            <p>Post your gig opportunities in minutes. Set dates, times, fees, and requirements all in one place. Reach talented musicians who are actively looking for gigs.</p>
+                <section className="venue-profile-section">
+                    <h2>Your Venue Profile.</h2>
+                    <h4>One place for artists to find out what they need.</h4>
+                    <img src={Top1} alt="Venue profile" />
+                    <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        Make My Profile <RightArrowIcon />
+                    </button>
+                </section>
+
+                <section className="product-demonstration-section">
+                    <h2>Get gigs out of your inbox.</h2>
+                    <h4>Clarity for you and your team on your Dashboard.</h4>
+                    <div className="product-demonstration-images">
+                        <img src={Top2} alt="Product demo 1" />
+                        <img src={Messages} alt="Product demo 2" />
+                    </div>
+                    <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        Get Started <RightArrowIcon />
+                    </button>
+                </section>
+
+                <section className="product-demonstration-section">
+                    <h2>Keep your network in one place</h2>
+                    <h4>Add artists, put their contact info, and send gig invites with one click.</h4>
+                    <div className="product-demonstration-images">
+                        <img src={Crm} alt="Demo 1" />
+                    </div>
+                </section>
+
+                <section className="product-demonstration-section">
+                    <h2>... Or Find Artists already on Gigin</h2>
+                    <div className="product-demonstration-images">
+                    <img src={FindArtists} alt="Demo 2" />
+                    </div>
+                </section>
+
+                <section className="image-text-section">
+                    <div className="image-text-item">
+                        <div className="image-text-image">
+                            <img src={ArtistProfile} alt="Feature" />
                         </div>
-                        <div className="venue-feature-image">
-                            <img src={ArtistProfileExample} alt="Create gigs" />
+                        <div className="image-text-content">
+                            <h4>Where they put down all the information you need. <br /> <br />Including Videos, Tracks, links to their social medias...</h4>
                         </div>
                     </div>
-
-                    <div className="venue-feature-item venue-feature-reverse">
-                        <div className="venue-feature-content">
-                            <h2>Invite Musicians</h2>
-                            <p>Directly invite artists to your gigs or let them discover and apply. Manage all applications in one streamlined interface, making it easy to find the perfect match for your venue.</p>
+                    <div className="image-text-item image-text-item-reverse">
+                        <div className="image-text-image">
+                            <img src={ArtistTr} alt="Feature" />
                         </div>
-                        <div className="venue-feature-image">
-                            <img src={ArtistProfileExample} alt="Invite musicians" />
-                        </div>
-                    </div>
-
-                    <div className="venue-feature-item">
-                        <div className="venue-feature-content">
-                            <h2>Artist CRM</h2>
-                            <p>Build and maintain relationships with your favorite artists. Track past performances, manage communications, and keep all your artist information organized in one central hub.</p>
-                        </div>
-                        <div className="venue-feature-image">
-                            <img src={ArtistProfileExample} alt="Artist CRM" />
-                        </div>
-                    </div>
-
-                    <div className="venue-feature-item venue-feature-reverse">
-                        <div className="venue-feature-content">
-                            <h2>Venue Profile</h2>
-                            <p>Showcase your venue with photos, location, capacity, and equipment details. Let musicians discover what makes your venue special and attract the right talent.</p>
-                        </div>
-                        <div className="venue-feature-image">
-                            <img src={ArtistProfileExample} alt="Venue profile" />
-                        </div>
-                    </div>
-
-                    <div className="venue-feature-item">
-                        <div className="venue-feature-content">
-                            <h2>Add Staff Members</h2>
-                            <p>Collaborate with your team. Add staff members with different permission levels so everyone can help manage gigs, applications, and venue operations efficiently.</p>
-                        </div>
-                        <div className="venue-feature-image">
-                            <img src={ArtistProfileExample} alt="Add staff members" />
+                        <div className="image-text-content">
+                            <h4>and Tech Riders, to ensure nothing is missed on the night.</h4>
                         </div>
                     </div>
                 </section>
 
-                <section id="pricing-section" className="venue-pricing-section">
-                    <h2>Pricing</h2>
-                    <div className="venue-pricing-card">
-                        <h3>Early Access</h3>
-                        <p>We are currently not charging during Early Access. Join now to start using Gigin for free!</p>
-                        <button className="btn primary" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                            Get Started <RightArrowIcon />
-                        </button>
-                    </div>
+                <section className="venue-pricing-section">
+                    <h2>Our Early-Access Offer</h2>
+                    <h4>Get started now for free.</h4>
+                    <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        Get Started <RightArrowIcon />
+                    </button>
+                    <span className="small-text">(Set-up time: 5 Minutes)</span>
                 </section>
             </div>
             <Footer />

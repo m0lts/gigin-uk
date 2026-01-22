@@ -413,6 +413,88 @@ export const removeVenueRequest = async (requestId) => {
   }
 };
 
+/**
+ * Removes a preferred date from a venue request.
+ * @param {string} requestId - The Firestore document ID of the request.
+ * @param {Date} dateToRemove - The date to remove from preferredDates.
+ * @returns {Promise<void>}
+ */
+export const removePreferredDateFromRequest = async (requestId, dateToRemove) => {
+  try {
+    if (!requestId) throw new Error('Invalid request ID');
+    if (!dateToRemove) throw new Error('Date is required');
+    
+    const requestRef = doc(firestore, 'venueRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    
+    if (!requestSnap.exists()) {
+      throw new Error('Request not found');
+    }
+    
+    const requestData = requestSnap.data();
+    const preferredDates = requestData.preferredDates || [];
+    
+    if (!Array.isArray(preferredDates) || preferredDates.length === 0) {
+      return; // No dates to remove
+    }
+    
+    // Normalize the date to compare (remove time, compare by date only)
+    // Handle both Date objects and serialized date strings
+    const targetDate = dateToRemove instanceof Date 
+      ? new Date(dateToRemove) 
+      : new Date(dateToRemove);
+    if (isNaN(targetDate.getTime())) {
+      throw new Error('Invalid date provided');
+    }
+    
+    // Get target date components for comparison (using local date to avoid timezone issues)
+    const targetYear = targetDate.getFullYear();
+    const targetMonth = targetDate.getMonth();
+    const targetDay = targetDate.getDate();
+    
+    // Filter out the matching date - preserve original Timestamp objects
+    const updatedDates = preferredDates.filter(dateItem => {
+      let date;
+      // Handle Firestore Timestamp
+      if (dateItem.toDate && typeof dateItem.toDate === 'function') {
+        date = dateItem.toDate();
+      } else if (dateItem._seconds || dateItem.seconds) {
+        const seconds = dateItem._seconds || dateItem.seconds;
+        const nanoseconds = dateItem._nanoseconds || dateItem.nanoseconds || 0;
+        date = new Date(seconds * 1000 + nanoseconds / 1000000);
+      } else {
+        date = new Date(dateItem);
+      }
+      
+      if (isNaN(date.getTime())) return true; // Keep invalid dates
+      
+      // Compare by date components (year, month, day) to avoid timezone issues
+      const dateYear = date.getFullYear();
+      const dateMonth = date.getMonth();
+      const dateDay = date.getDate();
+      const matches = dateYear === targetYear && dateMonth === targetMonth && dateDay === targetDay;
+      // Return false (filter out) if dates match, true (keep) if they don't
+      return !matches;
+    });
+    
+    // Update the request with the filtered dates - preserve Timestamp objects
+    const updateData = {
+      updatedAt: serverTimestamp()
+    };
+    
+    if (updatedDates.length > 0) {
+      updateData.preferredDates = updatedDates; // Keep original Timestamp objects
+    } else {
+      updateData.preferredDates = null;
+    }
+    
+    await updateDoc(requestRef, updateData);
+  } catch (error) {
+    console.error('[Firestore Error] removePreferredDateFromRequest:', error);
+    throw error;
+  }
+};
+
 /*** DELETE OPERATIONS ***/
 
 /**

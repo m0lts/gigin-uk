@@ -7,6 +7,26 @@ export const TextLogo = () => {
         <h1 className='logo' style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>gigin<span className='orange-txt'>.</span></h1>
     )
 }
+export const TextLogoArtistLandingPage = () => {
+    return (
+        <h1 className='logo' style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+            <Link className='link' to={'/'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+                gigin<span className='orange-txt'>.</span>
+                <span className='user-type orange-txt' style={{ fontWeight: 700, marginLeft: 0 }}>ARTISTS</span>
+            </Link>
+        </h1>
+    )
+}
+export const TextLogoVenueLandingPage = () => {
+    return (
+        <h1 className='logo' style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+            <Link className='link' to={'/venues'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+                gigin<span className='orange-txt'>.</span>
+                <span className='user-type orange-txt' style={{ fontWeight: 700, marginLeft: 0 }}>VENUES</span>
+            </Link>
+        </h1>
+    )
+}
 export const TextLogoMed = () => {
     return (
         <h1 className='logo-med' style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>gigin<span className='orange-txt'>.</span></h1>

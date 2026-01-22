@@ -712,7 +712,9 @@ const ArtistProfileComponent = ({
 
   // Handle authentication - redirect to auth if not logged in
   // Don't auto-show modal if signup=true (will show when user clicks button)
+  // Don't auto-show modal in viewer mode (viewing profiles doesn't require login)
   useEffect(() => {
+    if (viewerMode) return; // Don't show auth modal in viewer mode
     if (!authLoading && !user && setAuthModal) {
       const shouldSignup = searchParams.get('signup') === 'true';
       // Only auto-show login modal if signup param is not present
@@ -721,7 +723,7 @@ const ArtistProfileComponent = ({
         setAuthType?.('login');
       }
     }
-  }, [authLoading, user, setAuthModal, setAuthType, searchParams]);
+  }, [authLoading, user, setAuthModal, setAuthType, searchParams, viewerMode]);
 
   useEffect(() => {
     return () => {
@@ -3799,6 +3801,9 @@ const ArtistProfileComponent = ({
             onTracksSave={canEdit ? handleTracksSave : null}
             onVideosSave={canEdit ? handleVideosSave : null}
             canEdit={canEdit}
+            setAuthModal={setAuthModal}
+            setAuthType={setAuthType}
+            user={user}
           />
         );
       case DashboardView.GIGS:
@@ -3867,6 +3872,9 @@ const ArtistProfileComponent = ({
             videosUploadStatus={videoUploadStatus}
             videosUploadProgress={videoUploadProgress}
             onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
+            setAuthModal={setAuthModal}
+            setAuthType={setAuthType}
+            user={user}
           />
         );
       
@@ -3929,6 +3937,9 @@ const ArtistProfileComponent = ({
             videosUploadProgress={videoUploadProgress}
             scrollContainerRef={stateBoxRef}
             onSaveAndExit={handleSaveAndExitFromAdditionalInfo}
+            setAuthModal={setAuthModal}
+            setAuthType={setAuthType}
+            user={user}
           />
         );
       

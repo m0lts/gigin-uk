@@ -228,6 +228,7 @@ router.post("/createVenueRequest", requireAuth, asyncHandler(async (req, res) =>
     musicianType,
     musicianPlays,
     message,
+    preferredDates,
     createdAt,
     viewed = false,
   } = req.body || {};
@@ -246,6 +247,24 @@ router.post("/createVenueRequest", requireAuth, asyncHandler(async (req, res) =>
     await assertArtistPerm(db, caller, musicianId, "gigs.book");
   }
 
+  // Convert preferredDates from ISO strings to Firestore Timestamps
+  let preferredDatesTimestamps = null;
+  if (preferredDates && Array.isArray(preferredDates) && preferredDates.length > 0) {
+    preferredDatesTimestamps = preferredDates.map(dateStr => {
+      try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return null;
+        return admin.firestore.Timestamp.fromDate(date);
+      } catch (error) {
+        console.error('Error converting preferred date:', error);
+        return null;
+      }
+    }).filter(Boolean); // Remove any null values
+    if (preferredDatesTimestamps.length === 0) {
+      preferredDatesTimestamps = null;
+    }
+  }
+
   const payload = {
     venueId,
     musicianId,
@@ -255,6 +274,7 @@ router.post("/createVenueRequest", requireAuth, asyncHandler(async (req, res) =>
     musicianType: musicianType || null,
     musicianPlays: musicianPlays || null,
     message: message || "",
+    preferredDates: preferredDatesTimestamps,
     createdAt: createdAt ? new Date(createdAt) : new Date(),
     viewed: !!viewed,
   };

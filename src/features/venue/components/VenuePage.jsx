@@ -37,6 +37,8 @@ import { createVenueRequest } from '@services/api/artists';
 import { updateUserArrayField } from '@services/api/users';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const { venueId } = useParams();
@@ -60,6 +62,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [selectedProfile, setSelectedProfile] = useState(null);
     const [canRequestGigForSelectedProfile, setCanRequestGigForSelectedProfile] = useState(true);
     const [checkingRequestPerms, setCheckingRequestPerms] = useState(false);
+    const [hasPreferredDates, setHasPreferredDates] = useState(false);
+    const [selectedDates, setSelectedDates] = useState([]);
     const [selectedAdditionalInfo, setSelectedAdditionalInfo] = useState(null); // 'location', 'equipment', 'website-socials'
     const [activeContentTab, setActiveContentTab] = useState(null); // 'tech-rider', 'venue-info', 'venue-media', null (for gigs)
     const [activeVideoId, setActiveVideoId] = useState(null); // Track which video is playing
@@ -458,6 +462,11 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             return;
           }
 
+          // Convert selected dates to ISO strings for storage
+          const preferredDates = hasPreferredDates && selectedDates.length > 0
+            ? selectedDates.map(date => date.toISOString())
+            : null;
+
           await createVenueRequest({
             venueId: venueData.id,
             musicianId: profile.musicianId,
@@ -467,11 +476,14 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             musicianType: profile.musicianType || null,
             musicianPlays: profile.musicType || null,
             message: requestMessage,
+            preferredDates: preferredDates,
             createdAt: new Date(),
             viewed: false,
           });
           toast.success('Request sent to venue!');
           setRequestMessage('');
+          setHasPreferredDates(false);
+          setSelectedDates([]);
           setShowRequestModal(false);
         } catch (err) {
           console.error('Error sending request:', err);
@@ -542,6 +554,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 }));
                 setMusicianProfiles(normalized);
 
+                // Auto-select the active profile (first one or the one from URL param)
                 const paramId = musicianId;
                 if (paramId) {
                     const match = normalized.find(
@@ -560,6 +573,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 const allIds = [...user.bands, musicianId];
                 const profiles = await getMusicianProfilesByIds(allIds);
                 setMusicianProfiles(profiles);
+                // Auto-select first profile
+                setSelectedProfile(profiles[0] || null);
                 setLoadingRequest(false);
             } else {
                 setSelectedProfile(user?.musicianProfile || null);
@@ -875,7 +890,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                             onClick={() => setActiveContentTab(activeContentTab === 'tech-rider' ? null : 'tech-rider')}
                                         >
                                             <TechRiderIcon />
-                                            Tech Rider
+                                            Tech Spec
                                         </button>
                                         {!venueViewing ? (
                                             <>
@@ -1390,9 +1405,19 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                     </Portal>
                 ) : (
                     <Portal>
-                        <div className="modal musician-request" onClick={() => setShowRequestModal(false)}>
-                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                                <button className='btn close tertiary' onClick={() => setShowRequestModal(false)}>
+                        <div className="modal musician-request" onClick={() => {
+                            setShowRequestModal(false);
+                            setRequestMessage('');
+                            setHasPreferredDates(false);
+                            setSelectedDates([]);
+                        }}>
+                            <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
+                                <button className='btn close tertiary' onClick={() => {
+                                    setShowRequestModal(false);
+                                    setRequestMessage('');
+                                    setHasPreferredDates(false);
+                                    setSelectedDates([]);
+                                }}>
                                     Close
                                 </button>
                                 <div className="modal-header">
@@ -1401,24 +1426,74 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     <p>Send a gig request to the venue. If they accept your request, they'll build a gig for you and you'll automatically be invited.</p>
                                 </div>
                                 <div className="modal-body form">
-                                    {musicianProfiles.length > 0 && (
-                                        <div className="input-group">
-                                            <select
-                                            value={selectedProfile?.id || ""}
-                                            onChange={(e) => {
-                                                const profileId = e.target.value;
-                                                const profile = musicianProfiles.find(p => p.id === profileId);
-                                                setSelectedProfile(profile || null);
-                                            }}
-                                            className='select'
-                                            >
-                                            <option value="">-- Select a profile --</option>
-                                            {musicianProfiles.map((profile) => (
-                                                <option key={profile.id} value={profile.id}>
-                                                {profile.name}
-                                                </option>
-                                            ))}
-                                            </select>
+                                    <div className='review-extra-option' style={{ margin: '0 auto'}}>
+                                        <div className='toggle-container'>
+                                            <label htmlFor='ask-dates' className='label'>Ask to play on certain dates?</label>
+                                            <label className='switch'>
+                                                <input
+                                                    type='checkbox'
+                                                    id='ask-dates'
+                                                    checked={hasPreferredDates || false}
+                                                    onChange={(e) => {
+                                                        setHasPreferredDates(e.target.checked);
+                                                        if (!e.target.checked) {
+                                                            setSelectedDates([]);
+                                                        }
+                                                    }}
+                                                />
+                                                <span className='slider round'></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {hasPreferredDates && (
+                                        <div className="calendar" style={{ marginBottom: '0.5rem' }}>
+                                            <DatePicker
+                                                selected={null}
+                                                onChange={(date) => {
+                                                    if (!date) return;
+                                                    // Toggle date selection
+                                                    const dateStr = date.toISOString().split('T')[0];
+                                                    setSelectedDates(prev => {
+                                                        const exists = prev.some(d => d.toISOString().split('T')[0] === dateStr);
+                                                        if (exists) {
+                                                            return prev.filter(d => d.toISOString().split('T')[0] !== dateStr);
+                                                        } else {
+                                                            return [...prev, date].sort((a, b) => a.getTime() - b.getTime());
+                                                        }
+                                                    });
+                                                }}
+                                                inline
+                                                minDate={new Date()}
+                                                dayClassName={(date) => {
+                                                    const today = new Date().setHours(0, 0, 0, 0);
+                                                    const dateTime = date.getTime();
+                                                    if (dateTime < today) return 'past-date';
+                                                    const dateStr = date.toISOString().split('T')[0];
+                                                    const isSelected = selectedDates.some(d => d.toISOString().split('T')[0] === dateStr);
+                                                    return isSelected ? 'selected-date' : undefined;
+                                                }}
+                                            />
+                                            {selectedDates.length > 0 && (
+                                                <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'var(--gn-grey-200)', borderRadius: '0.5rem' }}>
+                                                    <p style={{ marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Selected Dates:</p>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                        {selectedDates.map((date, idx) => (
+                                                            <span 
+                                                                key={idx}
+                                                                style={{ 
+                                                                    padding: '0.25rem 0.75rem', 
+                                                                    backgroundColor: 'white', 
+                                                                    borderRadius: '0.25rem',
+                                                                    fontSize: '0.85rem',
+                                                                    border: '1px solid var(--gn-grey-300)'
+                                                                }}
+                                                            >
+                                                                {date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                     <textarea
@@ -1429,7 +1504,12 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         onChange={(e) => setRequestMessage(e.target.value)}
                                     />
                                     <div className="two-buttons">
-                                        <button className="btn tertiary" onClick={() => setShowRequestModal(false)}>
+                                        <button className="btn tertiary" onClick={() => {
+                                            setShowRequestModal(false);
+                                            setRequestMessage('');
+                                            setHasPreferredDates(false);
+                                            setSelectedDates([]);
+                                        }}>
                                             Cancel
                                         </button>
                                         <button

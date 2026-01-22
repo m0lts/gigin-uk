@@ -332,7 +332,8 @@ button {
 }
 
 .btn.accept.small {
-    padding:2px 5px;
+    padding:2px 5px !important;
+    font-size: 0.875rem;
 }
 
 .btn.accept:hover {
@@ -351,7 +352,8 @@ button {
 }
 
 .btn.decline.small {
-    padding:2px 5px;
+    padding:2px 5px !important;
+    font-size: 0.875rem;
 }
 
 .btn.decline:hover {
