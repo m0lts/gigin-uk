@@ -4387,15 +4387,14 @@ const ArtistProfileComponent = ({
       )}
 
       {/* Profile Completion Modal - Shows once when profile is completed */}
-      {/* TODO: Remove test mode - always showing for testing */}
-      {(completedProfileId || true) && (
+      {!viewerMode && completedProfileId && (
         <ProfileCompletionModal
           onClose={() => {
             setShowProfileCompletionModal(false);
             setCompletedProfileId(null);
           }}
-          profileId={completedProfileId || 'test-profile-id'}
-          shouldShow={showProfileCompletionModal || true}
+          profileId={completedProfileId}
+          shouldShow={showProfileCompletionModal}
         />
       )}
     </div>
