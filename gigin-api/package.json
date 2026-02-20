@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "dev": "export GCLOUD_PROJECT=giginltd-dev export NODE_ENV=development export PORT=8080 node --watch server.js",
+    "dev": "env GCLOUD_PROJECT=giginltd-dev NODE_ENV=development PORT=8080 node --watch server.js",
     "dev:emulator": "USE_EMULATORS=true FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 node --watch server.js",
     "lint": "eslint ."
   },
