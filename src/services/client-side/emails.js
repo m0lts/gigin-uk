@@ -1774,6 +1774,64 @@ export const sendGigInviteEmail = async ({ to, userName, venueName, date, gigLin
   });
 };
 
+/**
+ * Sends an email to a guest requester (non–signed-in user who requested a gig) asking them to sign up to Gigin.
+ * Used when a venue clicks "Request more information" on a guest request.
+ *
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address.
+ * @param {string} params.recipientName - Name of the person who made the request.
+ * @param {string} params.venueName - Name of the venue.
+ */
+export const sendVenueRequestSignupEmail = async ({ to, recipientName, venueName }) => {
+  const signupUrl = typeof window !== 'undefined' ? `${window.location.origin}/?signup=true` : 'https://giginmusic.com/?signup=true';
+  const subject = `${venueName} would like you to join Gigin`;
+  const text = `Hi${recipientName ? ` ${recipientName}` : ''},\n\n${venueName} has seen your gig request and would like you to sign up to Gigin so they can work with you on gigs.\n\nSign up here: ${signupUrl}\n\nThanks,\nThe Gigin team`;
+
+  const baseStyles = {
+    bodyBg: "#f9f9f9",
+    cardBg: "#ffffff",
+    text: "#333333",
+    muted: "#6b7280",
+    accent: "#111827",
+    border: "#e5e7eb",
+    btnBg: "#111827",
+    btnText: "#ffffff",
+  };
+
+  const html = `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="background:${baseStyles.bodyBg};padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;background:${baseStyles.cardBg};border:1px solid ${baseStyles.border};border-radius:16px;">
+            <tr>
+              <td style="padding:28px 28px 16px 28px;">
+                <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text};">
+                  Hi${recipientName ? ` ${recipientName}` : ''},
+                </p>
+                <p style="margin:0 0 12px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text};">
+                  <strong>${venueName}</strong> has seen your gig request and would like you to sign up to Gigin so they can work with you on gigs.
+                </p>
+                <p style="margin:0 0 20px 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:22px;color:${baseStyles.text};">
+                  <a href="${signupUrl}" style="display:inline-block;background:${baseStyles.btnBg};color:${baseStyles.btnText};text-decoration:none;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;padding:12px 18px;border-radius:10px;">Sign up to Gigin</a>
+                </p>
+                <p style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:${baseStyles.muted};">
+                  Thanks,<br>The Gigin team
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const mailRef = collection(firestore, "mail");
+  await addDoc(mailRef, {
+    to: to.trim().toLowerCase(),
+    message: { subject, text, html },
+  });
+};
 
 /**
  * Sends a styled testimonial request email.

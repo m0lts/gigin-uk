@@ -263,8 +263,8 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
             return;
           }
 
-          // Use the created inviteId if available (for private gigs)
-          const gigLink = generateGigLink(gigData, createdInviteId);
+          // Use the created inviteId if available (for private gigs); include email so signup can prefill
+          const gigLink = generateGigLink(gigData, createdInviteId, artistEmail);
           const formattedDate = formatDate(gigData.date, 'short');
           
           // Format expiry date if it exists
@@ -297,13 +297,13 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
     }
   };
 
-  const generateGigLink = (gigData, inviteId = null) => {
+  const generateGigLink = (gigData, inviteId = null, email = null) => {
     const baseLink = `${window.location.origin}/gig/${gigData.gigId}`;
-    // Only include inviteId for private gigs - public gigs don't need invite documents
-    if (gigData.private && inviteId) {
-      return `${baseLink}?inviteId=${inviteId}`;
-    }
-    return baseLink;
+    const params = new URLSearchParams();
+    if (gigData.private && inviteId) params.set('inviteId', inviteId);
+    if (email && String(email).trim()) params.set('email', String(email).trim());
+    const qs = params.toString();
+    return qs ? `${baseLink}?${qs}` : baseLink;
   };
 
   const generateInviteMessage = (gigData, venueToSend, inviteId = null) => {

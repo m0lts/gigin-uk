@@ -39,3 +39,10 @@ export function updateArtistMemberPermissions({ artistProfileId, memberId, permi
 export function createVenueRequest(requestData) {
   return post('/venues/createVenueRequest', { body: requestData });
 }
+
+export function createGuestVenueRequest({ venueId, requesterName, requesterEmail, message, preferredDates }) {
+  return post('/venues/createGuestVenueRequest', {
+    body: { venueId, requesterName, requesterEmail, message, preferredDates },
+    auth: false,
+  });
+}

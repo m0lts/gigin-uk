@@ -1,12 +1,16 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { markRequestAsViewed } from '@services/client-side/venues';
 import { openInNewTab } from '../../../services/utils/misc';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { sendVenueRequestSignupEmail } from '@services/client-side/emails';
 
 export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, venues }) => {
   const ref = useRef();
   const navigate = useNavigate();
+  const [sendingSignupEmail, setSendingSignupEmail] = useState(false);
+  const isGuestRequest = !request.musicianId && request.requesterEmail;
 
   const handleView = useCallback(async (entry) => {
     if (entry.isIntersecting && !request.viewed) {
@@ -36,14 +40,14 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
     navigate('/venues/dashboard/gigs?showRequests=true', { 
       state: {
         musicianData: {
-          id: request.musicianId,
+          id: request.musicianId || null,
           name: request.musicianName,
           genres: request.musicianGenres || [],
           type: request.musicianType || 'Musician/Band',
           bandProfile: false,
           userId: null,
           venueId: request.venueId,
-          email: null,
+          email: request.requesterEmail || null,
           phone: null,
           instagram: null,
           facebook: null,
@@ -56,6 +60,24 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
         preferredDate: date, // Pass the date
       }
     });
+  };
+
+  const handleRequestMoreInfo = async () => {
+    if (!request.requesterEmail?.trim() || !venue?.name) return;
+    try {
+      setSendingSignupEmail(true);
+      await sendVenueRequestSignupEmail({
+        to: request.requesterEmail.trim(),
+        recipientName: request.musicianName || null,
+        venueName: venue.name,
+      });
+      toast.success(`Email sent to ${request.musicianName || request.requesterEmail}`);
+    } catch (err) {
+      console.error('Failed to send signup request email:', err);
+      toast.error('Failed to send email. Please try again.');
+    } finally {
+      setSendingSignupEmail(false);
+    }
   };
 
   const parseDate = (dateStr) => {
@@ -90,9 +112,11 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
                 <p className="timestamp">{new Date(request.createdAt.toDate()).toLocaleString()}</p>
               </div>
             </div>
-            <button className="btn tertiary" onClick={(e) => openInNewTab(`/${request.musicianId}`, e)}>
-              View Profile
-            </button>
+            {request.musicianId && (
+              <button className="btn tertiary" onClick={(e) => openInNewTab(`/${request.musicianId}`, e)}>
+                View Profile
+              </button>
+            )}
           </div>
           {request.message && (
             <div className="request-message">
@@ -107,6 +131,15 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
             <button className="btn danger" onClick={() => handleRemoveRequest(request.id)}>
               Remove Request
             </button>
+            {isGuestRequest && (
+              <button
+                className="btn secondary"
+                onClick={handleRequestMoreInfo}
+                disabled={sendingSignupEmail}
+              >
+                {sendingSignupEmail ? 'Sending…' : 'Request more information'}
+              </button>
+            )}
             <button className="btn artist-profile" onClick={() => {openBuildGigModal(request)}}>
               Create Gig For Artist
             </button>

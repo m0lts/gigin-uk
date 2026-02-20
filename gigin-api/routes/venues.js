@@ -216,6 +216,71 @@ router.post("/updateVenueMemberPermissions", requireAuth, asyncHandler(async (re
 
 }));
 
+// POST /api/venues/createGuestVenueRequest (no auth – for non–signed-in users requesting a gig)
+router.post("/createGuestVenueRequest", asyncHandler(async (req, res) => {
+  const {
+    venueId,
+    requesterName,
+    requesterEmail,
+    message,
+    preferredDates,
+  } = req.body || {};
+
+  if (!venueId || !requesterName || !requesterEmail) {
+    return res.status(400).json({
+      error: "INVALID_ARGUMENT",
+      message: "venueId, requesterName and requesterEmail are required",
+    });
+  }
+
+  const trimmedName = String(requesterName).trim();
+  const trimmedEmail = String(requesterEmail).trim().toLowerCase();
+  if (!trimmedName || !trimmedEmail) {
+    return res.status(400).json({
+      error: "INVALID_ARGUMENT",
+      message: "requesterName and requesterEmail cannot be empty",
+    });
+  }
+
+  const venueRef = db.doc(`venueProfiles/${venueId}`);
+  const venueSnap = await venueRef.get();
+  if (!venueSnap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Venue not found" });
+  }
+
+  let preferredDatesTimestamps = null;
+  if (preferredDates && Array.isArray(preferredDates) && preferredDates.length > 0) {
+    preferredDatesTimestamps = preferredDates.map((dateStr) => {
+      try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return null;
+        return admin.firestore.Timestamp.fromDate(date);
+      } catch (err) {
+        return null;
+      }
+    }).filter(Boolean);
+    if (preferredDatesTimestamps.length === 0) preferredDatesTimestamps = null;
+  }
+
+  const payload = {
+    venueId,
+    musicianId: null,
+    musicianName: trimmedName,
+    musicianImage: "",
+    musicianGenres: [],
+    musicianType: null,
+    musicianPlays: null,
+    requesterEmail: trimmedEmail,
+    message: message ? String(message).trim() : "",
+    preferredDates: preferredDatesTimestamps,
+    createdAt: new Date(),
+    viewed: false,
+  };
+
+  const docRef = await db.collection("venueRequests").add(payload);
+  return res.json({ data: { requestId: docRef.id } });
+}));
+
 // POST /api/venues/createVenueRequest (auth)
 router.post("/createVenueRequest", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;

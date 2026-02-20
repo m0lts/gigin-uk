@@ -768,15 +768,14 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
       const openBuildGigModal = (request) => {
         navigate('/venues/dashboard/gigs?showRequests=true', { state: {
           musicianData: {
-              id: request.musicianId,
+              id: request.musicianId || null,
               name: request.musicianName,
               genres: request.musicianGenres || [],
               type: request.musicianType || 'Musician/Band',
               bandProfile: false,
-              userId: null, // Request doesn't include userId
+              userId: null,
               venueId: request.venueId,
-              // Contact info not available from request
-              email: null,
+              email: request.requesterEmail || null,
               phone: null,
               instagram: null,
               facebook: null,

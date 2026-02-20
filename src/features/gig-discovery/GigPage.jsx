@@ -51,13 +51,14 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { NoTextLogo } from '../shared/ui/logos/Logos';
 import { updateCRMEntryWithArtistId } from '../../services/api/users';
 
-export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
+export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId } = useParams();
     const navigate = useNavigate();
     const {isSmUp, isMdUp, isLgUp} = useBreakpoint();
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token'); 
     const inviteId = searchParams.get('inviteId');
+    const inviteEmail = searchParams.get('email');
     const venueVisiting = searchParams.get('venue');
     const appliedProfile = searchParams.get('appliedAs');
 
@@ -1975,10 +1976,25 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                 <LoadingSpinner width={20} height={20} />
                                                             </div>
                                                         ) : inviteInvalid ? (
-                                                            // Invalid invite screen
+                                                            // Invalid invite screen – show CTA to sign up so they can accept the invitation
                                                             <div className="private-applications">
                                                                 <InviteIconSolid />
                                                                 <h5>This gig is private and requires a valid invite link to apply.</h5>
+                                                                {!user && setAuthModal && setAuthType && (
+                                                                    <button
+                                                                        className="btn artist-profile"
+                                                                        style={{ marginTop: '1rem' }}
+                                                                        onClick={() => {
+                                                                            const redirect = `/gig/${gigId}${inviteId ? `?inviteId=${inviteId}` : ''}${inviteEmail ? (inviteId ? '&' : '?') + `email=${encodeURIComponent(inviteEmail)}` : ''}`;
+                                                                            sessionStorage.setItem('redirect', redirect);
+                                                                            if (inviteEmail && setInitialEmail) setInitialEmail(decodeURIComponent(inviteEmail));
+                                                                            setAuthModal(true);
+                                                                            setAuthType('signup');
+                                                                        }}
+                                                                    >
+                                                                        Sign up to accept your gig invitation
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         ) : (
                                                             <>
@@ -1996,6 +2012,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                             onClick={() => {
                                                                                 if (!user) {
                                                                                     sessionStorage.setItem('redirect', `/artist-profile`);
+                                                                                    if (inviteEmail && setInitialEmail) setInitialEmail(decodeURIComponent(inviteEmail));
                                                                                     setAuthModal(true);
                                                                                     setAuthType('signup');
                                                                                 } else {
@@ -2068,6 +2085,21 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     <div className="private-applications">
                                                                     <InviteIconSolid />
                                                                     <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
+                                                                    {!user && setAuthModal && setAuthType && (
+                                                                        <button
+                                                                            className="btn artist-profile"
+                                                                            style={{ marginTop: '1rem' }}
+                                                                            onClick={() => {
+                                                                                const redirect = `/gig/${gigId}${inviteId ? `?inviteId=${inviteId}` : ''}${inviteEmail ? (inviteId ? '&' : '?') + `email=${encodeURIComponent(inviteEmail)}` : ''}`;
+                                                                                sessionStorage.setItem('redirect', redirect);
+                                                                                if (inviteEmail && setInitialEmail) setInitialEmail(decodeURIComponent(inviteEmail));
+                                                                                setAuthModal(true);
+                                                                                setAuthType('signup');
+                                                                            }}
+                                                                        >
+                                                                            Sign up to accept your gig invitation
+                                                                        </button>
+                                                                    )}
                                                                     </div>
                                                                 )}
 
@@ -2444,10 +2476,25 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                 <LoadingSpinner width={20} height={20} />
                                                             </div>
                                                         ) : inviteInvalid ? (
-                                                            // Invalid invite screen
+                                                            // Invalid invite screen – show CTA to sign up so they can accept the invitation
                                                             <div className="private-applications">
                                                                 <InviteIconSolid />
                                                                 <h5>This gig is private and requires a valid invite link to apply.</h5>
+                                                                {!user && setAuthModal && setAuthType && (
+                                                                    <button
+                                                                        className="btn artist-profile"
+                                                                        style={{ marginTop: '1rem' }}
+                                                                        onClick={() => {
+                                                                            const redirect = `/gig/${gigId}${inviteId ? `?inviteId=${inviteId}` : ''}${inviteEmail ? (inviteId ? '&' : '?') + `email=${encodeURIComponent(inviteEmail)}` : ''}`;
+                                                                            sessionStorage.setItem('redirect', redirect);
+                                                                            if (inviteEmail && setInitialEmail) setInitialEmail(decodeURIComponent(inviteEmail));
+                                                                            setAuthModal(true);
+                                                                            setAuthType('signup');
+                                                                        }}
+                                                                    >
+                                                                        Sign up to accept your gig invitation
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         ) : (
                                                             <>
@@ -2465,6 +2512,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                             onClick={() => {
                                                                                 if (!user) {
                                                                                     sessionStorage.setItem('redirect', `/artist-profile`);
+                                                                                    if (inviteEmail && setInitialEmail) setInitialEmail(decodeURIComponent(inviteEmail));
                                                                                     setAuthModal(true);
                                                                                     setAuthType('signup');
                                                                                 } else {
@@ -2533,6 +2581,21 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                     <div className="private-applications">
                                                                     <InviteIconSolid />
                                                                     <h5>This gig is for private applications only. You must have the private application link to apply.</h5>
+                                                                    {!user && setAuthModal && setAuthType && (
+                                                                        <button
+                                                                            className="btn artist-profile"
+                                                                            style={{ marginTop: '1rem' }}
+                                                                            onClick={() => {
+                                                                                const redirect = `/gig/${gigId}${inviteId ? `?inviteId=${inviteId}` : ''}${inviteEmail ? (inviteId ? '&' : '?') + `email=${encodeURIComponent(inviteEmail)}` : ''}`;
+                                                                                sessionStorage.setItem('redirect', redirect);
+                                                                                if (inviteEmail && setInitialEmail) setInitialEmail(decodeURIComponent(inviteEmail));
+                                                                                setAuthModal(true);
+                                                                                setAuthType('signup');
+                                                                            }}
+                                                                        >
+                                                                            Sign up to accept your gig invitation
+                                                                        </button>
+                                                                    )}
                                                                     </div>
                                                                 )}
 

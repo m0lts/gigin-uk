@@ -374,9 +374,11 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs, user, fromG
                     return;
                 }
 
-                const gigLink = gig.private && createdInviteId 
-                    ? `${window.location.origin}/gig/${gig.gigId}?inviteId=${createdInviteId}`
-                    : `${window.location.origin}/gig/${gig.gigId}`;
+                const base = `${window.location.origin}/gig/${gig.gigId}`;
+                const params = new URLSearchParams();
+                if (gig.private && createdInviteId) params.set('inviteId', createdInviteId);
+                if (artistEmail?.trim()) params.set('email', artistEmail.trim());
+                const gigLink = params.toString() ? `${base}?${params.toString()}` : base;
                 const formattedDate = formatDate(gig.date, 'short');
                 
                 // Format expiry date if it exists

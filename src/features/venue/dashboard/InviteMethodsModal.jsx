@@ -21,7 +21,11 @@ export const InviteMethodsModal = ({ artist, gigData, venue, user, onClose, onEm
   };
 
   const generateGigLink = () => {
-    return `${window.location.origin}/gig/${gigData.gigId}`;
+    const base = `${window.location.origin}/gig/${gigData.gigId}`;
+    if (artist?.email?.trim()) {
+      return `${base}?email=${encodeURIComponent(artist.email.trim())}`;
+    }
+    return base;
   };
 
   const generateInviteMessage = () => {

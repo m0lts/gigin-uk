@@ -33,7 +33,7 @@ import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { toJsDate } from '../../../services/utils/dates';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { sanitizeArtistPermissions } from '../../../services/utils/permissions';
-import { createVenueRequest } from '@services/api/artists';
+import { createVenueRequest, createGuestVenueRequest } from '@services/api/artists';
 import { updateUserArrayField } from '@services/api/users';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
@@ -64,6 +64,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [checkingRequestPerms, setCheckingRequestPerms] = useState(false);
     const [hasPreferredDates, setHasPreferredDates] = useState(false);
     const [selectedDates, setSelectedDates] = useState([]);
+    const [requesterName, setRequesterName] = useState('');
+    const [requesterEmail, setRequesterEmail] = useState('');
     const [selectedAdditionalInfo, setSelectedAdditionalInfo] = useState(null); // 'location', 'equipment', 'website-socials'
     const [activeContentTab, setActiveContentTab] = useState(null); // 'tech-rider', 'venue-info', 'venue-media', null (for gigs)
     const [activeVideoId, setActiveVideoId] = useState(null); // Track which video is playing
@@ -493,6 +495,49 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         }
     };
 
+    const handleGuestRequest = async () => {
+        const name = requesterName?.trim();
+        const email = requesterEmail?.trim().toLowerCase();
+        if (!name) {
+            toast.error('Please enter your name.');
+            return;
+        }
+        if (!email) {
+            toast.error('Please enter your email address.');
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.error('Please enter a valid email address.');
+            return;
+        }
+        try {
+            setLoadingRequest(true);
+            const preferredDates = hasPreferredDates && selectedDates.length > 0
+                ? selectedDates.map(date => date.toISOString())
+                : null;
+            await createGuestVenueRequest({
+                venueId: venueData.id,
+                requesterName: name,
+                requesterEmail: email,
+                message: requestMessage || undefined,
+                preferredDates: preferredDates || undefined,
+            });
+            toast.success('Request sent to venue!');
+            setRequestMessage('');
+            setHasPreferredDates(false);
+            setSelectedDates([]);
+            setRequesterName('');
+            setRequesterEmail('');
+            setShowRequestModal(false);
+        } catch (err) {
+            console.error('Error sending request:', err);
+            toast.error(err?.message || 'Failed to send request. Please try again.');
+        } finally {
+            setLoadingRequest(false);
+        }
+    };
+
     const copyToClipboard = (venueId) => {
         navigator.clipboard.writeText(`https://giginmusic.com/venues/${venueId}`).then(() => {
             toast.success('Link copied to clipboard');
@@ -804,9 +849,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 return;
             }
         } else if (!user) {
-            sessionStorage.setItem('redirect', `venues/${venueId}`);
-            setAuthModal(true);
-            setAuthType('login');
+            setShowRequestModal(true);
             return;
         } else {
             return;
@@ -1303,9 +1346,17 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         {venueData?.name}
                                         <span className='orange-dot'>.</span>
                                     </h1>
-                                    {(musicianId && !venueViewing) ? (
+                                    {!venueViewing ? (
                                         <div className="action-buttons">
-                                            <button className="btn secondary" onClick={() => {setLoadingRequest(true); setShowRequestModal(true); handleFetchMusicianProfiles()}}>
+                                            <button className="btn secondary" onClick={() => {
+                                                if (user) {
+                                                    setLoadingRequest(true);
+                                                    setShowRequestModal(true);
+                                                    handleFetchMusicianProfiles();
+                                                } else {
+                                                    setShowRequestModal(true);
+                                                }
+                                            }}>
                                                 Request a Gig
                                             </button>
                                         </div>
@@ -1410,6 +1461,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                             setRequestMessage('');
                             setHasPreferredDates(false);
                             setSelectedDates([]);
+                            setRequesterName('');
+                            setRequesterEmail('');
                         }}>
                             <div className="modal-content scrollable" onClick={(e) => e.stopPropagation()}>
                                 <button className='btn close tertiary' onClick={() => {
@@ -1417,15 +1470,41 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     setRequestMessage('');
                                     setHasPreferredDates(false);
                                     setSelectedDates([]);
+                                    setRequesterName('');
+                                    setRequesterEmail('');
                                 }}>
                                     Close
                                 </button>
                                 <div className="modal-header">
                                     <RequestIcon />
                                     <h2>Request to perform at {venueData.name}</h2>
-                                    <p>Send a gig request to the venue. If they accept your request, they'll build a gig for you and you'll automatically be invited.</p>
+                                    <p>{user ? "Send a gig request to the venue. If they accept your request, they'll build a gig for you and you'll automatically be invited." : "Send a gig request to the venue. If they accept, they can create a gig and send you the details by email."}</p>
                                 </div>
                                 <div className="modal-body form">
+                                    {!user && (
+                                        <>
+                                            <label htmlFor="guest-name" className="label">Your name</label>
+                                            <input
+                                                id="guest-name"
+                                                type="text"
+                                                className="input"
+                                                placeholder="Your name"
+                                                value={requesterName}
+                                                onChange={(e) => setRequesterName(e.target.value)}
+                                                style={{ marginBottom: '1rem' }}
+                                            />
+                                            <label htmlFor="guest-email" className="label">Your email</label>
+                                            <input
+                                                id="guest-email"
+                                                type="email"
+                                                className="input"
+                                                placeholder="your@email.com"
+                                                value={requesterEmail}
+                                                onChange={(e) => setRequesterEmail(e.target.value)}
+                                                style={{ marginBottom: '1rem' }}
+                                            />
+                                        </>
+                                    )}
                                     <div className='review-extra-option' style={{ margin: '0 auto'}}>
                                         <div className='toggle-container'>
                                             <label htmlFor='ask-dates' className='label'>Ask to play on certain dates?</label>
@@ -1509,9 +1588,12 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                             setRequestMessage('');
                                             setHasPreferredDates(false);
                                             setSelectedDates([]);
+                                            setRequesterName('');
+                                            setRequesterEmail('');
                                         }}>
                                             Cancel
                                         </button>
+                                        {user ? (
                                         <button
                                             className={`btn primary ${!canRequestGigForSelectedProfile ? 'disabled' : ''}`}
                                             onClick={() => handleMusicianRequest(selectedProfile)}
@@ -1519,8 +1601,17 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         >
                                             Request To Play Here
                                         </button>
+                                        ) : (
+                                        <button
+                                            className="btn primary"
+                                            onClick={handleGuestRequest}
+                                            disabled={loadingRequest || !requesterName?.trim() || !requesterEmail?.trim()}
+                                        >
+                                            Request To Play Here
+                                        </button>
+                                        )}
                                     </div>
-                                    {!canRequestGigForSelectedProfile && (
+                                    {user && !canRequestGigForSelectedProfile && (
                                         <div
                                             className="status-box"
                                             style={{ marginTop: '0.75rem' }}
