@@ -42,6 +42,7 @@ import { JoinArtistPage } from './features/artist/components/JoinArtist';
 import { EmailActionHandler } from './features/shared/components/EmailActionHandler';
 import { VenueDashboardProvider } from './context/VenueDashboardContext';
 import { ArtistDashboardProvider } from './context/ArtistDashboardContext';
+import { AdminDashboard } from './features/admin/AdminDashboard';
 
 
 
@@ -175,7 +176,8 @@ export default function App() {
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
         <Route path="/auth/email-verified" element={<EmailActionHandler user={user} />} />
-        
+        <Route path="/admin" element={<AdminDashboard />} />
+
       </Routes>
       
       {authModal && (
