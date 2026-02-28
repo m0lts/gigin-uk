@@ -18,6 +18,8 @@ import reviewsRoutes from "./routes/reviews.js";
 import tasksRoutes from "./routes/tasks.js";
 import billingRoutes from "./routes/billing.js";
 import bandsRoutes from "./routes/bands.js";
+import calendarRoutes from "./routes/calendar.js";
+import venueHireOpportunitiesRoutes from "./routes/venueHireOpportunities.js";
 // Initialize Firebase Admin (must be done before importing routes that use it)
 initializeAdmin();
 
@@ -113,9 +115,10 @@ app.use(cors({
 }));
 
 // Rate limiting - protect against DDoS and brute force
+// 200/15min allows dashboard load (venues, gigs, billing) + book/create gig without hitting limit
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 200, // Limit each IP to 200 requests per windowMs
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   message: "Too many requests from this IP, please try again later.",
@@ -165,6 +168,8 @@ app.use("/api/reviews", reviewsRoutes);
 app.use("/api/tasks", tasksRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/bands", bandsRoutes);
+app.use("/api/calendar", calendarRoutes);
+app.use("/api/venueHireOpportunities", venueHireOpportunitiesRoutes);
 
 // 404 handler (must come after all routes)
 app.use((req, res) => {

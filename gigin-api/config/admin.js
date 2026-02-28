@@ -68,18 +68,16 @@ export function initializeAdmin() {
       }
 
       // Initialize Firebase Admin
-      // In Cloud Run, this automatically uses the service account of the deployed project
-      // Locally, it uses Application Default Credentials (from gcloud auth application-default login)
-      // When emulator env vars are set, Admin SDK automatically connects to emulators
-      // When using emulators, we explicitly set the project ID to match token audience
+      // - GOOGLE_APPLICATION_CREDENTIALS: path to service account key JSON (recommended for local dev)
+      // - Otherwise: Application Default Credentials (gcloud auth application-default login, or Cloud Run)
+      const credsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      const credential = credsPath
+        ? admin.credential.cert(credsPath)
+        : admin.credential.applicationDefault();
+
       const appOptions = projectIdToUse
-        ? {
-            projectId: projectIdToUse,
-            credential: admin.credential.applicationDefault(),
-          }
-        : {
-            credential: admin.credential.applicationDefault(),
-          };
+        ? { projectId: projectIdToUse, credential }
+        : { credential };
 
       admin.initializeApp(appOptions);
 
@@ -94,10 +92,10 @@ export function initializeAdmin() {
     } catch (error) {
       console.error("Failed to initialize Firebase Admin:", error);
       console.error(
-        "Ensure you have:\n" +
-        "1. Set GCLOUD_PROJECT or GOOGLE_CLOUD_PROJECT environment variable\n" +
-        "2. Run 'gcloud auth application-default login' (for local development)\n" +
-        "3. Or ensure Cloud Run has proper service account permissions"
+        "Ensure you have one of:\n" +
+        "1. Set GOOGLE_APPLICATION_CREDENTIALS to the path of your service account key JSON (Firebase Console > Project Settings > Service Accounts)\n" +
+        "2. Run 'gcloud auth application-default login' and set GCLOUD_PROJECT or GOOGLE_CLOUD_PROJECT\n" +
+        "3. On Cloud Run, the default service account is used automatically"
       );
       throw error;
     }

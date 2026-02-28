@@ -14,13 +14,25 @@ const labelFor = (g) =>
   ? g.kind
   : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
 
+const getGigCoordinates = (gig) => {
+  const coords = gig.coordinates;
+  if (Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+    return [coords[0], coords[1]];
+  }
+  const gp = gig.geopoint;
+  if (gp && typeof gp === 'object') {
+    const lat = gp.latitude ?? gp._latitude ?? gp._lat;
+    const lng = gp.longitude ?? gp._longitude ?? gp._long;
+    if (typeof lat === 'number' && typeof lng === 'number') return [lng, lat];
+  }
+  return null;
+};
+
 const toFeatureCollection = (list) => {
   const features = (list || [])
     .map((gig) => {
-      const coordinates = gig.coordinates;
-      if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
-        return null;
-      }
+      const coordinates = getGigCoordinates(gig);
+      if (!coordinates) return null;
       return {
         type: 'Feature',
         properties: {
@@ -44,6 +56,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
   const navigate = useNavigate();
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+  const [mapSourceReady, setMapSourceReady] = useState(false);
   const { isMdUp } = useBreakpoint();
   const sourceId = 'gigs';
   const latestGigsRef = useRef(upcomingGigs);
@@ -202,6 +215,12 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
         map.on('click', 'unclustered-hit', handleUnclusteredClick);
         map.on('click', 'unclustered-point', handleUnclusteredClick);
         map.on('click', 'unclustered-point-label', handleUnclusteredClick);
+
+        setMapSourceReady(true);
+        const source = map.getSource(sourceId);
+        if (source && source.setData) {
+          source.setData(toFeatureCollection(latestGigsRef.current));
+        }
   
         map.on('click', 'clusters', (e) => {
           const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
@@ -244,7 +263,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
       });
   
       mapRef.current = map;
-      return () => { map.remove(); mapRef.current = null; };
+      return () => { map.remove(); mapRef.current = null; setMapSourceReady(false); };
   }, []);
 
   useEffect(() => {
@@ -253,15 +272,13 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
   }, [userLocation]);
   
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapSourceReady) return;
     const src = mapRef.current.getSource(sourceId);
     if (src) {
       const featureCollection = toFeatureCollection(upcomingGigs);
       src.setData(featureCollection);
-    } else {
-      console.warn('Map source not found:', sourceId);
     }
-  }, [upcomingGigs]);
+  }, [upcomingGigs, mapSourceReady]);
   
 
   function formatGigRange(gigStartTime, duration) {
@@ -357,11 +374,13 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
                 </button>
                 {isMdUp ? (
                   <div className="preview-gig-item-venue">
-                    <figure className="preview-gig-img">
-                      <img src={gig.venue.photo} alt={gig.venue.venueName} />
-                    </figure>
+                    {gig.venue?.photo && (
+                      <figure className="preview-gig-img">
+                        <img src={gig.venue.photo} alt={gig.venue.venueName ?? 'Venue'} />
+                      </figure>
+                    )}
                     <div className="preview-gig-info">
-                      <h3>{gig.venue.venueName?.trim()}</h3>
+                      <h3>{gig.venue?.venueName?.trim() || gig.gigName || 'Gig'}</h3>
                       <p>{formatDate(gig.date)}</p>
                       <p>{formatGigRangeForGroup(gig)}</p>
                     </div>
@@ -369,7 +388,7 @@ export const MapOutput = ({ upcomingGigs, loading, clickedGigs, setClickedGigs, 
                 ) : (
                   <div className="preview-gig-item-venue">
                     <div className="preview-gig-info">
-                      <h3>{gig.venue.venueName?.trim()}</h3>
+                      <h3>{gig.venue?.venueName?.trim() || gig.gigName || 'Gig'}</h3>
                       <p>{formatDate(gig.date)}, {formatGigRangeForGroup(gig)}</p>
                     </div>
                   </div>

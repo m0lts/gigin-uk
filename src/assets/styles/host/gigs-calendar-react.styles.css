@@ -1,0 +1,959 @@
+/* React calendar – match custom calendar look (no tile, month view) */
+
+.gigs-calendar-react {
+  padding: 1rem 0;
+  padding-right: 17px; /* Reserve space for scrollbar so layout doesn't shift (e.g. March vs February) */
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.gigs-calendar-react .react-calendar {
+  width: 100%;
+  max-width: 100%;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  line-height: 1.125em;
+}
+
+/* Navigation – fixed total width so month name (June, March, etc.) never shifts layout */
+.gigs-calendar-react .react-calendar__navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: auto;
+  margin-bottom: 1rem;
+  width: 336px;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.gigs-calendar-react .react-calendar__navigation__arrow {
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  padding: 0;
+  background: transparent !important;
+  font-size: 2.15rem;
+  color: var(--gn-off-black, #1a1a1a);
+}
+
+.gigs-calendar-react .react-calendar__navigation__arrow:hover {
+  color: var(--gn-grey-700, #555);
+}
+
+.gigs-calendar-react .react-calendar__navigation__label {
+  flex: 0 0 220px;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  font-weight: 600;
+  font-size: 1.65rem !important;
+  text-align: center;
+  padding: 0;
+  background: transparent !important;
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.gigs-calendar-react .react-calendar__navigation__label__labelText {
+  font-size: 1.65rem !important;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gigs-calendar-react .react-calendar__navigation__prev2-button,
+.gigs-calendar-react .react-calendar__navigation__next2-button {
+  display: none;
+}
+
+/* Weekdays – small, grey, with dividers (no gap so vertical lines connect to day grid) */
+.gigs-calendar-react .react-calendar__month-view__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.4rem;
+  font-weight: 600;
+  color: var(--gn-grey-600, #666);
+  margin-bottom: 0;
+}
+
+.gigs-calendar-react .react-calendar__month-view__weekdays__weekday {
+  padding: 0.5rem 0.25rem;
+  border-right: 1px solid var(--gn-grey-400, #e0e0e0);
+  font-size: 0.4rem;
+}
+
+.gigs-calendar-react .react-calendar__month-view__weekdays__weekday:last-child {
+  border-right: none;
+}
+
+.gigs-calendar-react .react-calendar__month-view__weekdays__weekday--weekend {
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react .react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none;
+}
+
+/* Month view days grid */
+.gigs-calendar-react .react-calendar__month-view__days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.gigs-calendar-react .react-calendar__month-view__days > button {
+  margin-left: 0;
+  margin-inline-start: 0;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day {
+  min-height: 90px;
+  padding: 0.35rem;
+  background: transparent;
+  border-right: 1px solid var(--gn-grey-400, #e0e0e0);
+  border-bottom: 1px solid var(--gn-grey-400, #e0e0e0);
+  position: relative;
+  text-align: left;
+  pointer-events: none; /* day cell itself does nothing on click */
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day:nth-child(-n+7) {
+  border-top: 1px solid var(--gn-grey-400, #e0e0e0);
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day:nth-child(7n) {
+  border-right: none;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day--neighboringMonth {
+  color: var(--gn-grey-500, #999);
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day--weekend {
+  color: var(--gn-off-black, #1a1a1a);
+}
+
+/* Adjacent month dates stay grey even when they fall on a weekend */
+.gigs-calendar-react .react-calendar__month-view__days__day--neighboringMonth.react-calendar__month-view__days__day--weekend {
+  color: var(--gn-grey-500, #999);
+}
+
+/* Day number top left */
+.gigs-calendar-react .react-calendar__month-view__days__day abbr {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* Gigs list in day cell (below day number, above bottom); equal inset each side */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gigs {
+  position: absolute;
+  top: 2.5rem;
+  left: 0.35rem;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  pointer-events: auto; /* gig pills remain clickable */
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gigs--has-nav {
+  top: 2.4rem;
+}
+
+/* Multi-gig nav: 1/2 fixed in centre, chevrons on either side */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-nav {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 4.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  pointer-events: auto;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-nav-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gn-grey-600, #666);
+  pointer-events: none;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-nav-btn {
+  position: absolute;
+  margin: 0;
+  padding: 0 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--gn-grey-600, #666);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-nav-btn--prev {
+  left: 0;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-nav-btn--next {
+  right: 0;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-nav-btn:hover {
+  color: var(--gn-off-black, #1a1a1a);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.1rem;
+  font-size: 0.58rem;
+  line-height: 1.25;
+  padding: 0.4rem 0.5rem;
+  min-height: 2.6em;
+  border-radius: 6px;
+  background-color: var(--gn-offset-orange);
+  color: var(--gn-orange);
+  border: 1px solid rgba(255, 108, 75, 0.25);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Line 1: primary, bold — artist name / "X Artists" / "Looking for artist"; ellipsis if too long */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-title {
+  font-weight: 700;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Line 2: slightly smaller than line 1 so "20:00 • Unbooked" fits without ellipsis; lighter weight */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-meta {
+  font-size: 0.95rem;
+  font-weight: 400;
+  opacity: 0.9;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Past unbooked: single line (time • Unbooked) only, vertically centred in pill */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig--past-unbooked {
+  justify-content: center;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-meta--only {
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig--deletable {
+  padding-right: 1.6em;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-delete {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  margin: 0;
+  padding: 0;
+  width: 1.4em;
+  height: 1.4em;
+  min-width: 1.4em;
+  min-height: 1.4em;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1.4em;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig--deletable .gigs-calendar-react__day-gig-delete {
+  color: var(--gn-red, #c53030);
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig--deletable:hover .gigs-calendar-react__day-gig-delete {
+  opacity: 0.75;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig-delete:hover {
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig--clickable {
+  cursor: pointer;
+}
+
+/* Confirmed artist gigs: green pill */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig--confirmed {
+  background-color: var(--gn-offset-green, rgba(34, 139, 34, 0.12));
+  color: var(--gn-green, #228b22);
+  border-color: rgba(34, 139, 34, 0.35);
+}
+
+/* Past gigs: grey pill (overrides confirmed for past) */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-gig--past {
+  background-color: var(--gn-grey-300, #e0e0e0);
+  color: var(--gn-grey-700, #555);
+  border-color: var(--gn-grey-400, #ccc);
+}
+
+/* Today: solid orange circle, white number */
+.gigs-calendar-react .react-calendar__month-view__days__day.react-calendar__tile--now abbr {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75em;
+  height: 1.75em;
+  border-radius: 50%;
+  background-color: var(--gn-orange);
+  color: var(--gn-white);
+  font-weight: 600;
+}
+
+/* Remove default hover/active tile background */
+.gigs-calendar-react .react-calendar__tile:enabled:hover,
+.gigs-calendar-react .react-calendar__tile:enabled:focus {
+  background-color: transparent;
+}
+
+.gigs-calendar-react .react-calendar__tile--now:enabled:hover,
+.gigs-calendar-react .react-calendar__tile--now:enabled:focus {
+  background: transparent;
+}
+
+/* + button (tileContent) – top right, visible on hover, optically centered */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-add-wrap {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  pointer-events: none;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-add {
+  pointer-events: auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: none;
+  background: #f0f0f0;
+  color: #606060;
+  font-size: 0;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Plus sign via ::before so we can nudge it into the visual centre of the circle */
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-add::before {
+  content: '+';
+  font-size: 1.35rem;
+  color: #606060;
+  line-height: 1;
+  transform: translate(0.25px, -0.5px);
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day:hover .gigs-calendar-react__day-add {
+  opacity: 1;
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-add:hover {
+  background: #e8e8e8;
+  color: #505050;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.gigs-calendar-react .react-calendar__month-view__days__day .gigs-calendar-react__day-add:hover::before {
+  color: #505050;
+}
+
+/* Gig detail modal (calendar popup) */
+.gigs-calendar-react__gig-detail-modal .modal-content {
+  max-width: 420px;
+}
+
+.gigs-calendar-react__gig-detail-title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+}
+
+.gigs-calendar-react__gig-detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.gigs-calendar-react__gig-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.gigs-calendar-react__gig-detail-label {
+  font-weight: 600;
+  min-width: 6rem;
+  color: var(--gn-grey-700, #555);
+}
+
+.gigs-calendar-react__gig-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.gigs-calendar-react__gig-detail-actions .btn.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.gigs-calendar-react__gig-detail-section {
+  margin-bottom: 1rem;
+}
+
+.gigs-calendar-react__gig-detail-section-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gn-grey-700, #555);
+}
+
+.gigs-calendar-react__gig-detail-datetime {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  color: var(--gn-grey-600, #555);
+}
+
+.gigs-calendar-react__gig-detail-value {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.gigs-calendar-react__gig-detail-box {
+  padding: 0.5rem 0.6rem;
+  background: var(--gn-grey-200, #f0f0f0);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  min-height: 2.5rem;
+  position: relative;
+  cursor: default;
+}
+
+.gigs-calendar-react__gig-detail-box--editable {
+  cursor: pointer;
+}
+
+.gigs-calendar-react__gig-detail-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gn-grey-600, #666);
+  margin-top: 0.25rem;
+}
+
+.gigs-calendar-react__gig-detail-edit textarea {
+  width: 100%;
+  resize: vertical;
+  margin-bottom: 0.5rem;
+}
+
+.gigs-calendar-react__gig-detail-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gigs-calendar-react__gig-detail-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gigs-calendar-react__gig-detail-link {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--gn-grey-700, #555);
+  word-break: break-all;
+}
+
+.gigs-calendar-react__gig-detail-invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Confirmed venue hire popup */
+.gigs-calendar-react__venue-hire-modal .modal-content {
+  max-width: 420px;
+}
+
+.gigs-calendar-react__venue-hire-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.35rem;
+}
+
+.gigs-calendar-react__venue-hire-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  position: relative;
+}
+
+.gigs-calendar-react__venue-hire-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gn-grey-600, #666);
+  cursor: pointer;
+}
+
+.gigs-calendar-react__venue-hire-more-btn:hover {
+  background: var(--gn-grey-200, #eee);
+  color: var(--gn-off-black, #111);
+}
+
+.gigs-calendar-react__venue-hire-options-btn {
+  width: auto;
+  min-width: 2rem;
+  padding: 0.35rem 0.5rem;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.gigs-calendar-react__venue-hire-more-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.25rem;
+  min-width: 10rem;
+  padding: 0.35rem 0;
+  background: var(--gn-white, #fff);
+  border: 1px solid var(--gn-grey-200, #eee);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+}
+
+.gigs-calendar-react__venue-hire-more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  color: var(--gn-off-black, #111);
+}
+
+.gigs-calendar-react__venue-hire-more-menu-item:hover {
+  background: var(--gn-grey-100, #f5f5f5);
+}
+
+.gigs-calendar-react__venue-hire-more-menu-item--danger {
+  color: var(--gn-error, #c00);
+}
+
+.gigs-calendar-react__venue-hire-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.gigs-calendar-react__venue-hire-status-pill {
+  flex-shrink: 0;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.gigs-calendar-react__venue-hire-status-pill--confirmed {
+  background: var(--gn-success-bg, #e8f5e9);
+  color: var(--gn-success, #2e7d32);
+}
+
+.gigs-calendar-react__venue-hire-status-pill--ready {
+  background: var(--gn-warning-bg, #fff8e1);
+  color: var(--gn-warning, #f57c00);
+}
+
+.gigs-calendar-react__venue-hire-status-pill--available {
+  background: var(--gn-offset-orange, rgba(255, 108, 75, 0.12));
+  color: var(--gn-orange, #ff6c4b);
+  border: 1px solid rgba(255, 108, 75, 0.25);
+}
+
+.gigs-calendar-react__venue-hire-body-actions {
+  margin-top: 0.25rem;
+}
+
+.gigs-calendar-react__venue-hire-invite-btn {
+  margin: 0;
+}
+
+.gigs-calendar-react__venue-hire-datetime {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react__venue-hire-section {
+  margin-bottom: 0.9rem;
+}
+
+.gigs-calendar-react__venue-hire-section-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--gn-grey-600, #666);
+  text-transform: none;
+}
+
+.gigs-calendar-react__venue-hire-booked-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gigs-calendar-react__venue-hire-booked-row .gigs-calendar-react__venue-hire-booked-name {
+  margin: 0;
+}
+
+.gigs-calendar-react__venue-hire-booked-name {
+  margin: 0 0 0.15rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gn-off-black, #111);
+}
+
+.gigs-calendar-react__venue-hire-booked-via {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react__venue-hire-deposit-status {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react__venue-hire-booked-actions {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.gigs-calendar-react__venue-hire-edit-input {
+  width: 100%;
+  max-width: 16rem;
+  margin-bottom: 0.25rem;
+}
+
+.gigs-calendar-react__venue-hire-activity {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react__venue-hire-performers-empty {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react__venue-hire-performers-list {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--gn-off-black, #111);
+}
+
+.gigs-calendar-react__venue-hire-performers-more {
+  font-weight: 500;
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react__venue-hire-add-performers-btn {
+  margin-top: 0.25rem;
+}
+
+/* Key details: 2-column definition grid */
+.gigs-calendar-react__venue-hire-details-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1.25rem;
+  margin: 0;
+  align-items: baseline;
+}
+
+.gigs-calendar-react__venue-hire-detail-label {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react__venue-hire-detail-value {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gn-off-black, #111);
+  text-align: right;
+  justify-self: end;
+}
+
+.gigs-calendar-react__venue-hire-description-preview {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--gn-grey-700, #555);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.gigs-calendar-react__venue-hire-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.15rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gn-grey-150, #f0f0f0);
+}
+
+.gigs-calendar-react__venue-hire-open-booking-btn {
+  min-width: 10rem;
+}
+
+.gigs-calendar-react__artist-booking-visibility {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9375rem;
+}
+
+.gigs-calendar-react__artist-booking-visibility-option {
+  font-size: 0.875rem;
+  color: var(--gn-grey-500, #737373);
+}
+
+.gigs-calendar-react__artist-booking-visibility-option--active {
+  color: var(--gn-grey-800, #262626);
+  font-weight: 500;
+}
+
+.gigs-calendar-react__artist-booking-visibility-toggle.gigs-toggle-container {
+  width: auto;
+  justify-content: flex-start;
+}
+
+.gigs-calendar-react__venue-hire-cancel-btn {
+  background: transparent !important;
+  color: var(--gn-error, #c00) !important;
+  border: 1px solid var(--gn-error, #c00) !important;
+  font-weight: 500;
+}
+
+.gigs-calendar-react__venue-hire-cancel-btn:hover {
+  background: rgba(204, 0, 0, 0.06) !important;
+  color: var(--gn-error, #c00) !important;
+  border-color: var(--gn-error, #c00) !important;
+}
+
+.gigs-calendar-react__venue-hire-cancel-notify {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+/* Add performers modal */
+.gigs-calendar-react__add-performers-modal .modal-content {
+  max-width: 380px;
+}
+
+.gigs-calendar-react__add-performers-modal h3 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.gigs-calendar-react__add-performers-muted {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--gn-grey-600, #666);
+}
+
+.gigs-calendar-react__add-performers-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gigs-calendar-react__add-performers-list li {
+  margin: 0;
+}
+
+.gigs-calendar-react__add-performers-list-btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.gigs-calendar-react__add-performers-list-btn--selected {
+  background: var(--gn-grey-200, #e8e8e8);
+  font-weight: 600;
+  border-color: var(--gn-grey-500, #555);
+  box-shadow: inset 0 0 0 2px var(--gn-grey-400, #999);
+}
+
+.gigs-calendar-react__add-performers-new-btn {
+  margin-bottom: 0.5rem;
+}
+
+.gigs-calendar-react__add-performers-search-wrap {
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.gigs-calendar-react__add-performers-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gigs-calendar-react__add-performers-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--gn-off-white, #fff);
+  border: 1px solid var(--gn-grey-300, #ddd);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  padding: 0.25rem 0;
+}
+
+.gigs-calendar-react__add-performers-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: var(--gn-off-black, #1a1a1a);
+}
+
+.gigs-calendar-react__add-performers-dropdown-item:hover {
+  background: var(--gn-grey-100, #f5f5f5);
+}
+
+.gigs-calendar-react__add-performers-dropdown-item--selected {
+  background: var(--gn-grey-200, #eee);
+  font-weight: 500;
+}
+
+.gigs-calendar-react__add-performers-dropdown-item:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.gigs-calendar-react__add-performers-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.gigs-calendar-react__add-performers-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--gn-grey-600, #666);
+  margin: 0;
+}
+
+.gigs-calendar-react__add-performers-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

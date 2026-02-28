@@ -236,6 +236,13 @@ export const FindArtists = ({ user }) => {
                         aria-label='Search artists'
                     />
                 </div>
+                <button
+                    type="button"
+                    className="btn secondary find-artists-nearby-btn"
+                    onClick={() => navigate('/venues/dashboard/artists/find/nearby-lineups')}
+                >
+                    See who venues near me are booking
+                </button>
             </div>
             {!loading ? (
                 <div className='saved-musicians'>

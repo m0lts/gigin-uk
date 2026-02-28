@@ -1,20 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTable, faWifi } from '@fortawesome/pro-solid-svg-icons';
 import { 
     ClockIcon,
     DotIcon,
     PreviousIcon,
-    SortIcon,
     TickIcon,
 CloseIcon, RightArrowIcon } from '@features/shared/ui/extras/Icons';
 import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch } from '@services/client-side/gigs';
+import { deleteVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { openInNewTab } from '../../../services/utils/misc';
-import { RequestCard } from '../components/RequestCard';
-import { getVenueProfileById, removeVenueRequest } from '../../../services/client-side/venues';
+import { getVenueProfileById } from '../../../services/client-side/venues';
 import Portal from '../../shared/components/Portal';
 import { LoadingModal } from '../../shared/ui/loading/LoadingModal';
 import { cancelGigAndRefund } from '@services/api/payments';
@@ -30,9 +31,21 @@ import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
 import { GigInvitesModal } from '../components/GigInvitesModal';
+import { GigsCalendarReact } from './GigsCalendarReact';
+import { getCalendarFeedUrl } from '@services/api/calendar';
 
 
-export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, setRequests, user, refreshGigs }) => {
+function getLocalHireDateTime(hire) {
+  const v = hire?.date ?? hire?.startDateTime;
+  if (!v) return null;
+  if (typeof v?.toDate === 'function') return v.toDate();
+  if (Number.isFinite(v?.seconds)) return new Date(v.seconds * 1000);
+  if (typeof v === 'string') { const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+  if (typeof v === 'number') return new Date(v);
+  return null;
+}
+
+export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModal, setEditGigData, setShowAddGigsModal, setAddGigsEditData, setAddGigsInitialDateIso, requests, setRequests, user, refreshGigs }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const {isMdUp, isLgUp, isXlUp} = useBreakpoint();
@@ -44,7 +57,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmType, setConfirmType] = useState('');
     const [openOptionsGigId, setOpenOptionsGigId] = useState(null);
-    const [showMusicianRequests, setShowMusicianRequests] = useState(false);
+    const [gigsView, setGigsView] = useState('react'); // 'table' | 'react' (react = calendar view)
     const [cancellationReason, setCancellationReason] = useState({
       reason: '',
       extraDetails: '',
@@ -58,10 +71,9 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     const [notesPosition, setNotesPosition] = useState({ top: 0, left: 0 });
     const [showInvitesModal, setShowInvitesModal] = useState(false);
     const [selectedGigForInvites, setSelectedGigForInvites] = useState(null);
-
-    const visibleRequests = useMemo(() => {
-      return requests.filter(request => !request.removed);
-    }, [requests]);
+    const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+    const [calendarFeedUrl, setCalendarFeedUrl] = useState(null);
+    const [subscribeLoading, setSubscribeLoading] = useState(false);
 
     const toggleOptionsMenu = (gigId) => {
         setOpenOptionsGigId(prev => (prev === gigId ? null : gigId));
@@ -95,39 +107,65 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
     const selectedVenue = searchParams.get('venue') || '';
     const selectedDate = searchParams.get('date') || '';
     const selectedStatus = searchParams.get('status') || 'all';
-    const showRequests = searchParams.get('showRequests') === 'true';
-
-    useEffect(() => {
-      if (showRequests) setShowMusicianRequests(true);
-    }, [showRequests])
   
     const now = useMemo(() => new Date(), []);
   
     const normalizedGigs = useMemo(() => {
-      return gigs.map(gig => {
-        const dt = getLocalGigDateTime(gig);
+      return gigs
+        .filter((gig) => gig.kind !== 'Venue Rental' && gig.bookingMode !== 'rental')
+        .map(gig => {
+          const dt = getLocalGigDateTime(gig);
+          const isoDate = dt ? dt.toISOString().split('T')[0] : null;
+          const confirmedApplicant = gig.applicants?.some(a => a.status === 'confirmed');
+          const acceptedApplicant = gig.applicants?.some(a => a.status === 'accepted');
+          const inDispute = gig?.disputeLogged;
+          let status = 'past';
+          if (dt && dt > now) {
+            if (confirmedApplicant) status = 'confirmed';
+            else if (acceptedApplicant) status = 'awaiting payment';
+            else if (gig.status === 'open') status = 'upcoming';
+            else status = 'closed';
+          } else if (dt && dt < now) {
+            if (!!inDispute) status = 'in dispute';
+          }
+          return {
+            ...gig,
+            dateObj: dt,
+            dateIso: isoDate,
+            dateTime: dt,
+            status,
+          };
+        });
+    }, [gigs, now]);
+
+    const normalizedHireOpportunities = useMemo(() => {
+      return (venueHireOpportunities || []).map((h) => {
+        const dt = getLocalHireDateTime(h);
         const isoDate = dt ? dt.toISOString().split('T')[0] : null;
-        const confirmedApplicant = gig.applicants?.some(a => a.status === 'confirmed');
-        const acceptedApplicant = gig.applicants?.some(a => a.status === 'accepted');
-        const inDispute = gig?.disputeLogged;
+        const hireStatus = h.status ?? 'available';
         let status = 'past';
         if (dt && dt > now) {
-          if (confirmedApplicant) status = 'confirmed';
-          else if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) status = 'awaiting payment';
-          else if (gig.status === 'open') status = 'upcoming';
-          else status = 'closed';
-        } else if (dt && dt < now) {
-          if (!!inDispute) status = 'in dispute';
+          status = hireStatus === 'confirmed' ? 'confirmed' : hireStatus === 'pending' ? 'upcoming' : 'upcoming';
         }
         return {
-          ...gig,
+          ...h,
+          itemType: 'venue_hire',
+          hireSpaceId: h.id ?? h.hireSpaceId,
+          gigId: h.id ?? h.hireSpaceId,
+          gigName: 'For Hire',
           dateObj: dt,
           dateIso: isoDate,
           dateTime: dt,
           status,
+          startTime: h.startTime ?? '',
+          renterName: h.hirerName ?? null,
+          rentalAccessFrom: h.accessFrom ?? h.startTime,
+          rentalHardCurfew: h.curfew ?? h.endTime,
+          private: !!h.private,
+          venueId: h.venueId,
         };
       });
-    }, [gigs, now]);
+    }, [venueHireOpportunities, now]);
   
     const handleSearchChange = (e) => setSearchQuery(e.target.value);
   
@@ -202,7 +240,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         const anySlotAwaitingPayment = allSlots.some(slot => {
           const slotApplicants = slot.applicants || [];
           return slotApplicants.some(a => 
-            a.status === 'accepted' && (slot.kind !== 'Ticketed Gig' && slot.kind !== 'Open Mic')
+            a.status === 'accepted'
           );
         });
 
@@ -243,7 +281,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
       }
 
       // Check for awaiting payment (accepted but not confirmed)
-      if (acceptedApplicant && (gig.kind !== 'Ticketed Gig' && gig.kind !== 'Open Mic')) {
+      if (acceptedApplicant) {
         return {
           statusClass: 'awaiting payment',
           icon: <ExclamationIconSolid />,
@@ -270,7 +308,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
       };
     };
   
-    // Group gigs by their gigSlots relationship
+    // Group gigs by their gigSlots relationship; then append venue hire opportunity groups
     const groupedGigs = useMemo(() => {
       const processed = new Set();
       const groups = [];
@@ -278,65 +316,50 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
       normalizedGigs.forEach(gig => {
         if (processed.has(gig.gigId)) return;
         
-        // Check if this gig has gigSlots (is part of a multi-slot group)
         const hasSlots = Array.isArray(gig.gigSlots) && gig.gigSlots.length > 0;
         
         if (hasSlots) {
-          // Build the complete group by collecting all related gigs
           const groupGigs = [gig];
           const groupIds = new Set([gig.gigId]);
           processed.add(gig.gigId);
-          
-          // Use a queue to find all related gigs
           const queue = [...gig.gigSlots];
           
           while (queue.length > 0) {
             const slotId = queue.shift();
             if (processed.has(slotId)) continue;
-            
             const slotGig = normalizedGigs.find(g => g.gigId === slotId);
             if (slotGig) {
               groupGigs.push(slotGig);
               groupIds.add(slotId);
               processed.add(slotId);
-              
-              // Add any slots from this gig that we haven't seen yet
               if (Array.isArray(slotGig.gigSlots)) {
                 slotGig.gigSlots.forEach(id => {
-                  if (!groupIds.has(id) && !processed.has(id)) {
-                    queue.push(id);
-                  }
+                  if (!groupIds.has(id) && !processed.has(id)) queue.push(id);
                 });
               }
             }
           }
-          
-          // Sort by startTime to get the first slot
-          groupGigs.sort((a, b) => {
-            if (!a.dateTime || !b.dateTime) return 0;
-            return a.dateTime - b.dateTime;
-          });
-          
-          groups.push({
-            isGroup: true,
-            primaryGig: groupGigs[0],
-            allGigs: groupGigs,
-            gigIds: Array.from(groupIds)
-          });
+          groupGigs.sort((a, b) => (a.dateTime && b.dateTime ? a.dateTime - b.dateTime : 0));
+          groups.push({ isGroup: true, primaryGig: groupGigs[0], allGigs: groupGigs, gigIds: Array.from(groupIds) });
         } else {
-          // Standalone gig
-          groups.push({
-            isGroup: false,
-            primaryGig: gig,
-            allGigs: [gig],
-            gigIds: [gig.gigId]
-          });
+          groups.push({ isGroup: false, primaryGig: gig, allGigs: [gig], gigIds: [gig.gigId] });
           processed.add(gig.gigId);
         }
       });
+
+      normalizedHireOpportunities.forEach((hire) => {
+        const id = hire.hireSpaceId ?? hire.gigId;
+        groups.push({
+          isGroup: false,
+          primaryGig: hire,
+          allGigs: [hire],
+          gigIds: [id],
+          itemType: 'venue_hire',
+        });
+      });
       
       return groups;
-    }, [normalizedGigs]);
+    }, [normalizedGigs, normalizedHireOpportunities]);
 
     const filteredGigs = useMemo(() => {
       return groupedGigs.filter(group => {
@@ -392,7 +415,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
             
             // Get budgets for each slot
             const slotBudgets = sortedSlots.map(slot => {
-                if (slot.kind === 'Open Mic' || slot.kind === 'Ticketed Gig') return null;
                 return slot.budgetValue !== undefined ? slot.budgetValue : null;
             });
             
@@ -621,49 +643,24 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
             
             // Process cancellation for all gigs in the group
             for (const gigToCancel of allGigsToCancel) {
-              const isOpenMic = gigToCancel.kind === 'Open Mic';
-              const isTicketed = gigToCancel.kind === 'Ticketed Gig';
-              
-              if (!isOpenMic && !isTicketed) {
-                const taskNames = [
-                  gigToCancel.clearPendingFeeTaskName,
-                  gigToCancel.automaticMessageTaskName,
-                ];
-                await cancelGigAndRefund({
-                  taskNames,
-                  transactionId: gigToCancel.paymentIntentId,
-                  gigId: gigToCancel.gigId,
-                  venueId: gigToCancel.venueId,
-                });
-              }
-              
-              if (isOpenMic) {
-                const bandOrMusicianProfiles = await Promise.all(
-                  (gigToCancel.applicants || [])
-                    .filter(app => app.status === 'confirmed')
-                    .map(async (app) => {
-                      // Try musician profile first, then artist profile
-                      let profile = await getMusicianProfileByMusicianId(app.id);
-                      if (!profile) {
-                        profile = await getArtistProfileById(app.id);
-                      }
-                      return profile;
-                    })
-                );
-                for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
-                  await handleMusicianCancellation(musician, gigToCancel);
+              const taskNames = [
+                gigToCancel.clearPendingFeeTaskName,
+                gigToCancel.automaticMessageTaskName,
+              ];
+              await cancelGigAndRefund({
+                taskNames,
+                transactionId: gigToCancel.paymentIntentId,
+                gigId: gigToCancel.gigId,
+                venueId: gigToCancel.venueId,
+              });
+              const confirmedApplicant = (gigToCancel.applicants || []).find(app => app.status === 'confirmed');
+              if (confirmedApplicant) {
+                let musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+                if (!musicianProfile) {
+                  musicianProfile = await getArtistProfileById(confirmedApplicant.id);
                 }
-              } else {
-                const confirmedApplicant = (gigToCancel.applicants || []).find(app => app.status === 'confirmed');
-                if (confirmedApplicant) {
-                  // Try musician profile first, then artist profile
-                  let musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
-                  if (!musicianProfile) {
-                    musicianProfile = await getArtistProfileById(confirmedApplicant.id);
-                  }
-                  if (musicianProfile) {
-                    await handleMusicianCancellation(musicianProfile, gigToCancel);
-                  }
+                if (musicianProfile) {
+                  await handleMusicianCancellation(musicianProfile, gigToCancel);
                 }
               }
             }
@@ -709,7 +706,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           
           // Get budgets for each slot
           const slotBudgets = sortedSlots.map(slot => {
-            if (slot.kind === 'Open Mic' || slot.kind === 'Ticketed Gig') return null;
             return slot.budgetValue !== undefined ? slot.budgetValue : null;
           });
           
@@ -751,43 +747,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
           }
         }
       };
-
-      const handleRemoveRequest = async (requestId) => {
-        try {
-          await removeVenueRequest(requestId);
-          setRequests(prev => 
-            prev.map(req => req.id === requestId ? { ...req, removed: true } : req)
-          );
-          toast.success('Request removed.');
-        } catch (err) {
-          console.error('Error removing request:', err);
-          toast.error('Failed to remove request');
-        }
-      };
-      
-      const openBuildGigModal = (request) => {
-        navigate('/venues/dashboard/gigs?showRequests=true', { state: {
-          musicianData: {
-              id: request.musicianId,
-              name: request.musicianName,
-              genres: request.musicianGenres || [],
-              type: request.musicianType || 'Musician/Band',
-              bandProfile: false,
-              userId: null, // Request doesn't include userId
-              venueId: request.venueId,
-              // Contact info not available from request
-              email: null,
-              phone: null,
-              instagram: null,
-              facebook: null,
-              other: null,
-          },
-          buildingForMusician: true,
-          showGigPostModal: true,
-          skipTemplate: true,
-          requestId: request.id,
-      }})
-    };
 
     const copyToClipboard = (link) => {
       navigator.clipboard.writeText(`${link}`).then(() => {
@@ -866,24 +825,84 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
         toast.error('Failed to update notes. Please try again.');
       }
     };
+
+    const handleSubscribeClick = async () => {
+      setShowSubscribeModal(true);
+      if (!calendarFeedUrl && venues?.length) {
+        setSubscribeLoading(true);
+        try {
+          const res = await getCalendarFeedUrl({
+            venueIds: venues.map((v) => v.venueId).filter(Boolean),
+          });
+          setCalendarFeedUrl(res?.feedUrl ?? null);
+        } catch (err) {
+          console.error('Failed to get calendar feed URL:', err);
+          toast.error('Failed to load calendar link.');
+        } finally {
+          setSubscribeLoading(false);
+        }
+      }
+    };
   
     return (
       <>
         <div className='head gigs'>
-          <div className="title requests">
-            <h1 className='title'>Gigs{showMusicianRequests ? ' - Musician Requests' : ''}</h1>
-            <button
-              className="btn secondary"
-              onClick={() => {
-                const next = !showMusicianRequests;
-                setShowMusicianRequests(next);
-                updateUrlParams('showRequests', next ? 'true' : '');
-              }}
-            >
-              {showMusicianRequests ? 'Hide' : 'Show'} Musician Requests
-            </button>
+          <div className="title requests title-container">
+            <div className='title-and-view-switcher'>
+              <h1 className='title'>My Gigs</h1>
+              <div className='gigs-view-switcher'>
+                <button
+                  type='button'
+                  className={`gigs-view-btn ${gigsView === 'react' ? 'active' : ''}`}
+                  onClick={() => setGigsView('react')}
+                  aria-pressed={gigsView === 'react'}
+                >
+                  <CalendarIconSolid />
+                  <span>Calendar</span>
+                </button>
+                <button
+                  type='button'
+                  className={`gigs-view-btn ${gigsView === 'table' ? 'active' : ''}`}
+                  onClick={() => setGigsView('table')}
+                  aria-pressed={gigsView === 'table'}
+                >
+                  <FontAwesomeIcon icon={faTable} className='icon' />
+                  <span>Table</span>
+                </button>
+              </div>
+            </div>
+            {gigsView === 'react' && (
+              <button
+                type="button"
+                className="btn tertiary"
+                onClick={handleSubscribeClick}
+              >
+                <FontAwesomeIcon icon={faWifi} className="icon" style={{ marginRight: '0.35rem' }} />
+                Subscribe to calendar
+              </button>
+            )}
+            <div className="gigs-head-create-buttons">
+              {gigsView === 'react' && (
+                <button
+                  type="button"
+                  className="btn primary gigs-react-add-booking-btn"
+                  onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setShowAddGigsModal(true); }}
+                >
+                  Add Event
+                </button>
+              )}
+              {/* Create Gig button commented out – using Add/Book a Gig instead
+              <button
+                type="button"
+                className="btn primary gigs-create-gig-btn"
+                onClick={() => setGigPostModal(true)}
+              >
+                Create Gig
+              </button>
+              */}
+            </div>
           </div>
-          {!showMusicianRequests && (
+          {gigsView === 'table' && (
             <>
             <div className='filters'>
               <div className="status-buttons">
@@ -968,6 +987,50 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
               </>
               )}
           </div>
+        {gigsView === 'react' ? (
+          <div className='body gigs gigs-calendar-body gigs-calendar-react-body'>
+            <GigsCalendarReact
+              gigs={filteredGigs}
+              venues={venues}
+              user={user}
+              refreshGigs={refreshGigs}
+              copyToClipboard={copyToClipboard}
+              setAddGigsEditData={setAddGigsEditData}
+              setShowAddGigsModal={setShowAddGigsModal}
+              setShowInvitesModal={setShowInvitesModal}
+              setSelectedGigForInvites={setSelectedGigForInvites}
+              onAddGigForDate={(dateIso) => {
+                setAddGigsEditData(null);
+                setAddGigsInitialDateIso(dateIso);
+                setShowAddGigsModal(true);
+              }}
+              onDeleteGigs={async (gigIds) => {
+                if (!gigIds?.length) return;
+                try {
+                  await deleteGigsBatch(Array.from(gigIds));
+                  toast.success('Gig deleted.');
+                  refreshGigs();
+                } catch (err) {
+                  console.error('Failed to delete gig:', err);
+                  toast.error('Failed to delete gig. Please try again.');
+                }
+              }}
+              onDeleteHireOpportunities={async (hireIds) => {
+                if (!hireIds?.length) return;
+                try {
+                  for (const id of hireIds) {
+                    await deleteVenueHireOpportunity(id);
+                  }
+                  toast.success('Venue hire opportunity removed.');
+                  refreshGigs();
+                } catch (err) {
+                  console.error('Failed to delete venue hire:', err);
+                  toast.error('Failed to remove. Please try again.');
+                }
+              }}
+            />
+          </div>
+        ) : (
         <div className='body gigs'>
             {/* {selectedGigs.length > 0 && (
                 <div className="gig-action-bar">
@@ -1009,8 +1072,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                     <button className="btn icon" onClick={clearSelection}><ErrorIcon /></button>
                 </div>
             )} */}
-          {!showMusicianRequests ? (
-            <table>
+          <table>
               <thead>
                 <tr>
                   {/* <th>
@@ -1028,9 +1090,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                   </th> */}
                   <th id='date'>
                     Date and Time
-                    <button className='sort btn text' onClick={toggleSortOrder}>
-                      <SortIcon />
-                    </button>
                   </th>
                   {isMdUp && (
                     <th id='name'>Gig Name</th>
@@ -1072,11 +1131,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                           </tr>
                         )}
                         <tr onClick={(e) => {
-                            if (gig.kind === 'Open Mic' && !gig.openMicApplications) {
-                              openInNewTab(`/gig/${gig.gigId}`, e)
-                            } else {
-                              navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: group.primaryGig } })
-                            }
+                            navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: group.primaryGig } })
                           }}>
                           {/* {gig.dateTime > now ? (
                               <td onClick={(e) => e.stopPropagation()}>
@@ -1098,7 +1153,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             {gig.dateObj ? (
                               <div className="date-time-container">
                                 <div>
-                                  {format(gig.dateObj, 'EEEE, MMMM d')}
+                                  {format(gig.dateObj, 'EEEE, MMM d')}
                                 </div>
                                 {(() => {
                                   if (group.isGroup && group.allGigs.length > 1) {
@@ -1119,9 +1174,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                       
                                       return (
                                         <div className="time-range">
-                                          <span>{firstStartTime}</span>
-                                          <RightArrowIcon />
-                                          <span>{lastEndTime}</span>
+                                          {firstStartTime} - {lastEndTime}
                                         </div>
                                       );
                                     }
@@ -1130,9 +1183,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                   if (gig.startTime && gig.duration) {
                                     return (
                                       <div className="time-range">
-                                        <span>{gig.startTime}</span>
-                                        <RightArrowIcon />
-                                        <span>{calculateEndTime(gig.startTime, gig.duration)}</span>
+                                        {gig.startTime} - {calculateEndTime(gig.startTime, gig.duration)}
                                       </div>
                                     );
                                   }
@@ -1427,7 +1478,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           <DuplicateGigIcon />
                                       </button>
                                   )}
-                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && gig.kind !== 'Open Mic') && hasVenuePerm(venues, gig.venueId, 'gigs.update') ? (
+                                  {(gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment') && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
                                       <button
                                       onClick={async () => {
                                           if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
@@ -1437,7 +1488,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                           closeOptionsMenu();
                                           const newStatus = (gig.status === 'open' || gig.status === 'upcoming') ? 'closed' : 'open';
                                           try {
-                                              // Update all gigs in the group
                                               const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
                                               const gigIdsToUpdate = group ? group.gigIds : [gig.gigId];
                                               await Promise.all(gigIdsToUpdate.map(id => 
@@ -1456,30 +1506,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                                               <CloseIcon />
                                               ) : (
                                               <TickIcon />
-                                          )}
-                                      </button>
-                                  ) : (gig.dateTime > now && gig.status !== 'confirmed' && gig.kind === 'Open Mic') && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
-                                    <button
-                                      onClick={async () => {
-                                          if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
-                                            toast.error('You do not have permission to edit this gig.');
-                                          }
-                                          closeOptionsMenu();
-                                          const newStatus = gig.openMicApplications ? false : true;
-                                          try {
-                                              await updateGigDocument({ gigId: gig.gigId, action: 'gigs.update', updates: { openMicApplications: newStatus, limitApplications: false } });
-                                              toast.success(`Open mic night ${(newStatus) ? 'opened for applications.' : 'changed to turn up and play.'}`);
-                                          } catch (error) {
-                                              console.error('Error updating status:', error);
-                                              toast.error('Failed to update open mic applications.');
-                                          }
-                                      }}
-                                      >
-                                          {gig.openMicApplications ? 'Change to Turn Up and Play' : 'Change to Applications Required'}
-                                          {gig.openMicApplications ? (
-                                              <MicrophoneIconSolid />
-                                              ) : (
-                                              <ShieldIcon />
                                           )}
                                       </button>
                                   )}
@@ -1550,19 +1576,6 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                 )}
               </tbody>
             </table>
-          ) : (
-            visibleRequests.length > 0 ? (
-              <div className="musician-requests">
-                {visibleRequests.map((request) => (
-                  <RequestCard key={request.id} request={request} handleRemoveRequest={handleRemoveRequest} openBuildGigModal={openBuildGigModal} venues={venues} />
-                ))}
-              </div>
-            ) : (
-              <div className="musician-requests">
-                <h4 style={{ textAlign: 'center', marginTop: '5rem'}}>No Requests</h4>
-            </div>
-            )
-          )}
             {confirmModal && (
               <Portal>
                 {!loading ? (
@@ -1603,7 +1616,7 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
                             {confirmType === 'delete' ? (
                                 <button className="btn danger" onClick={handleDeleteSelected}>Delete</button>
                             ) : confirmType === 'cancel' ? (
-                                <button className="btn danger" onClick={handleCancelSelected}>Cancel</button>
+                                <button className="btn danger" onClick={handleCancelSelected}>Confirm</button>
                             ) : (
                               <button className="btn primary" onClick={handleDuplicateSelected}>Duplicate</button>
                             )}
@@ -1629,6 +1642,65 @@ export const Gigs = ({ gigs, venues, setGigPostModal, setEditGigData, requests, 
               />
             )}
         </div>
+        )}
+        {/* Modals below render for both table and calendar view so Add/Book a Gig / Subscribe work on calendar page */}
+        {showSubscribeModal && (
+          <Portal>
+            <div
+              className="modal cancel-gig"
+              onClick={() => setShowSubscribeModal(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="subscribe-calendar-title"
+            >
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <h3 id="subscribe-calendar-title">Subscribe to your gigs calendar</h3>
+                <p className="gigs-subscribe-intro">
+                  Add your Gigin gigs to Google Calendar, Apple Calendar, or Outlook. They will stay in sync when you add or change gigs.
+                </p>
+                {subscribeLoading ? (
+                  <p>Loading your calendar link…</p>
+                ) : calendarFeedUrl ? (
+                  <>
+                    <div className="gigs-subscribe-url-row">
+                      <input
+                        type="text"
+                        readOnly
+                        value={calendarFeedUrl}
+                        className="input gigs-subscribe-url-input"
+                        onClick={(e) => e.target.select()}
+                      />
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => {
+                          copyToClipboard(calendarFeedUrl);
+                        }}
+                      >
+                        Copy link
+                      </button>
+                    </div>
+                    <div className="gigs-subscribe-instructions">
+                      <h4>Google Calendar</h4>
+                      <p>Other calendars → Add by URL → paste the link above → Add calendar.</p>
+                      <h4>Apple Calendar</h4>
+                      <p>File → New Calendar Subscription → paste the link above.</p>
+                      <h4>Outlook</h4>
+                      <p>Add calendar → Subscribe from web → paste the link above.</p>
+                    </div>
+                  </>
+                ) : (
+                  <p>No venues found. Add a venue to get a calendar link.</p>
+                )}
+                <div className="two-buttons" style={{ marginTop: '1rem' }}>
+                  <button type="button" className="btn tertiary" onClick={() => setShowSubscribeModal(false)}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
+        )}
       </>
     );
   };

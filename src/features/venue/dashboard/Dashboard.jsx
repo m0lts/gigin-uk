@@ -2,16 +2,18 @@ import { Route, Routes, useLocation, Link, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import React, { useState, useEffect, useMemo } from 'react'
 import { GigPostModal } from '../gig-post/GigPostModal';
+import { AddGigsModal } from './AddGigsModal';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { Gigs } from './Gigs';
 import '@styles/host/host-dashboard.styles.css'
 import { Venues } from './Venues';
-import { GigApplications } from './GigApplications';
+import { VenueGigPageShell } from '../gigs/pages/VenueGigPageShell';
 import { Overview } from './Overview';
 import { Finances } from './Finances';
 import { SavedArtists } from './SavedArtists';
 import { FindArtists } from './FindArtists';
+import { NearbyLineups } from './NearbyLineups';
 import { ArtistCRM } from './ArtistCRM';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { WelcomeModal } from '@features/artist/components/WelcomeModal';
@@ -35,6 +37,7 @@ export const VenueDashboard = ({ user }) => {
       setVenueProfiles,
       gigs,
       incompleteGigs,
+      venueHireOpportunities,
       templates,
       requests,
       setRequests,
@@ -49,6 +52,9 @@ export const VenueDashboard = ({ user }) => {
   
     const [gigPostModal, setGigPostModal] = useState(false);
     const [editGigData, setEditGigData] = useState();
+    const [showAddGigsModal, setShowAddGigsModal] = useState(false);
+    const [addGigsEditData, setAddGigsEditData] = useState(null);
+    const [addGigsInitialDateIso, setAddGigsInitialDateIso] = useState(null);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [revisitingModal, setRevisitingModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -126,7 +132,6 @@ export const VenueDashboard = ({ user }) => {
             {loading && <LoadingScreen />}
             {isMdUp && (
               <Sidebar
-                setGigPostModal={setGigPostModal}
                 user={user}
                 newMessages={newMessages}
                 setShowWelcomeModal={setShowWelcomeModal}
@@ -159,12 +164,13 @@ export const VenueDashboard = ({ user }) => {
                 <div className="output">
                     <Routes>
                         {/* <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} /> */}
-                        <Route index path='gigs' element={<Gigs gigs={gigs} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} />} />
-                        <Route path='gigs/gig-applications' element={<GigApplications setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} gigs={gigs} venues={venueProfiles} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
-                        <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} />} />
+                        <Route index path='gigs' element={<Gigs gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsInitialDateIso={setAddGigsInitialDateIso} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} />} />
+                        <Route path='gigs/gig-applications' element={<VenueGigPageShell setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} gigs={gigs} venues={venueProfiles} user={user} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
+                        <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} requests={requests} setRequests={setRequests} setGigPostModal={setGigPostModal} setBuildingForMusician={setBuildingForMusician} setBuildingForMusicianData={setBuildingForMusicianData} setRequestId={setRequestId} setPreferredDate={setPreferredDate} refreshGigs={refreshGigs} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} setVenues={setVenueProfiles} />} />
                         <Route path='artists' element={<ArtistCRM user={user} venues={venueProfiles} />} />
                         <Route path='artists/find' element={<FindArtists user={user} />} />
+                        <Route path='artists/find/nearby-lineups' element={<NearbyLineups />} />
                         <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />
                     </Routes>
                 </div>
@@ -195,12 +201,24 @@ export const VenueDashboard = ({ user }) => {
                   setShowInviteMethodsModal={setShowInviteMethodsModal}
                   createdGigForInvite={createdGigForInvite}
                   setCreatedGigForInvite={setCreatedGigForInvite}
-                  preferredDate={preferredDate}
-                  setPreferredDate={setPreferredDate}
                 />
               </Portal>
             )
             }
+            {showAddGigsModal && (
+              <AddGigsModal
+                onClose={() => {
+                  setShowAddGigsModal(false);
+                  setAddGigsEditData(null);
+                  setAddGigsInitialDateIso(null);
+                }}
+                venues={venueProfiles}
+                user={user}
+                refreshGigs={refreshGigs}
+                initialDateIso={addGigsInitialDateIso}
+                editGigData={addGigsEditData}
+              />
+            )}
             {showReviewModal && gigToReview && hasVenuePerm(venueProfiles, gigToReview.venueId, 'reviews.create') && (
               <Portal>
                 <ReviewModal

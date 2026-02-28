@@ -633,6 +633,49 @@
     justify-content: space-between;
 }
 
+.window.musicians .head.gigs .gigs-view-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.window.musicians .head.gigs .gigs-view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border: none;
+    border-radius: 9999px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    background: transparent;
+    color: var(--gn-grey-600);
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.window.musicians .head.gigs .gigs-view-btn .icon {
+    font-size: 0.95em;
+}
+
+.window.musicians .head.gigs .gigs-view-btn:hover {
+    color: var(--gn-grey-800);
+}
+
+.window.musicians .head.gigs .gigs-view-btn.active {
+    background-color: var(--gn-off-black, #1a1a1a);
+    color: var(--gn-white);
+}
+
+.window.musicians .head.gigs .gigs-view-btn.active:hover {
+    background-color: var(--gn-black, #000);
+    color: var(--gn-white);
+}
+
+.window.musicians .body.gigs.musician.gigs-calendar-placeholder {
+    min-height: 200px;
+}
+
 .window.musicians .gigs .filters {
     display: flex;
     justify-content: flex-start;

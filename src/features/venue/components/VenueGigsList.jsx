@@ -5,7 +5,6 @@ import {
     ClubIcon,
     FacebookIcon,
     GuitarsIcon,
-    HouseIconLight,
     InstagramIcon,
     InviteIcon,
     MicrophoneIcon,
@@ -77,9 +76,24 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
         case "Open Mic": return <MicrophoneIconSolid />;
         case "Live Music": return <CashIcon />;
         case "Wedding": return <WeddingIcon />;
+        case "Venue Rental": return null;
         default: return <BackgroundMusicIcon />;
       }
     };
+
+    // For Gig Vacancies on the venue profile, hide the box entirely if there are no actual vacancies
+    const gigsForList =
+      title === 'Gig Vacancies'
+        ? displayed.filter((gig) => {
+            const confirmed = (gig?.applicants ?? []).filter((a) => a?.status === 'confirmed');
+            const isHired = confirmed.length > 0 || (gig?.renterName && String(gig.renterName).trim());
+            return confirmed.length === 0 && !isHired;
+          })
+        : displayed;
+
+    if (title === 'Gig Vacancies' && gigsForList.length === 0) {
+      return null;
+    }
 
     const handleMusicianRequest = async () => {
       try {
@@ -117,13 +131,14 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
         </div>
         
         <div className="gigs-list-container">
-        {displayed.length > 0 ? (
-          displayed?.map((gig) => {
+        {gigsForList.length > 0 ? (
+          gigsForList.map((gig) => {
             const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
             const day = gigDate.toLocaleDateString("en-US", { day: "2-digit" });
             const month = gigDate.toLocaleDateString("en-US", { month: "short" });
             const confirmed = (gig?.applicants ?? []).filter(a => a?.status === "confirmed");
-            if (confirmed.length > 0) return null;
+            const isHired = confirmed.length > 0 || (gig?.renterName && String(gig.renterName).trim());
+            if (title !== 'Gig Vacancies' && isHired) return null;
 
             // Find the group this gig belongs to
             const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
@@ -218,6 +233,8 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
                               {findGigIcon(gig.kind)}
                               {gig.kind === 'Ticketed Gig' || gig.kind === 'Open Mic' ? (
                                 <h4>{gig.kind}</h4>
+                              ) : gig.kind === 'Venue Rental' ? (
+                                <h4>Hire Price: {(gig.budget === '£' || gig.budget === 'No Fee' || gig.budget === '£0') ? 'No Fee' : gig.budget}</h4>
                               ) : (
                                 <h4>{(gig.budget === '£' || gig.budget === 'No Fee' || gig.budget === '£0') ? 'No Fee' : gig.budget}</h4>
                               )}

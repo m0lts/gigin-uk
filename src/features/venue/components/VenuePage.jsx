@@ -202,6 +202,16 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const primaryGigsForDisplay = useMemo(() => {
       return groupedGigs.map(group => group.primaryGig);
     }, [groupedGigs]);
+
+    // Determine if there are any genuine gig vacancies (for the Gig Vacancies box)
+    const hasGigVacancies = useMemo(() => {
+      if (!primaryGigsForDisplay?.length) return false;
+      return primaryGigsForDisplay.some((gig) => {
+        const confirmed = (gig?.applicants ?? []).filter((a) => a?.status === 'confirmed');
+        const isHired = confirmed.length > 0 || (gig?.renterName && String(gig.renterName).trim());
+        return confirmed.length === 0 && !isHired;
+      });
+    }, [primaryGigsForDisplay]);
     useEffect(() => {
         if (!venueViewing) return;
         const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
@@ -1270,7 +1280,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                             </div>
                                         </div>
                                     )}
-                                    {!activeContentTab && venueGigs && venueGigs.length > 0 && (
+                                    {!activeContentTab && venueGigs && venueGigs.length > 0 && hasGigVacancies && (
                                         <div className="venue-gigs-section">
                                             <VenueGigsList title={'Gig Vacancies'} gigs={primaryGigsForDisplay} groupedGigs={groupedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
                                         </div>
@@ -1320,9 +1330,11 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         </div>
                                     )}
                                 </div>
-                                <div className="section venue-page-gigs">
-                                    <VenueGigsList title={'Gig Vacancies'} gigs={primaryGigsForDisplay} groupedGigs={groupedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
-                                </div>
+                                {primaryGigsForDisplay?.length > 0 && hasGigVacancies && (
+                                    <div className="section venue-page-gigs">
+                                        <VenueGigsList title={'Gig Vacancies'} gigs={primaryGigsForDisplay} groupedGigs={groupedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                    </div>
+                                )}
                                 {venueData?.description && (
                                     <div className="section">
                                         <h4 className='subtitle'>Bio</h4>

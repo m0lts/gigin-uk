@@ -16,15 +16,17 @@ import {
 } from '@features/shared/ui/extras/Icons';
 import { TextLogoMed } from '../../shared/ui/logos/Logos';
 import { useAuth } from '@hooks/useAuth';
+import { useVenueDashboard } from '@context/VenueDashboardContext';
 import '@assets/fonts/fonts.css';
-import { CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, DotIcon, FeedbackIcon, GigIcon, HouseIconSolid, MailboxEmptyIconSolid, MailboxFullIconSolid, MusicianIconLight, MusicianIconSolid, UpChevronIcon, VenueIconLight, VenueIconSolid } from '../../shared/ui/extras/Icons';
+import { CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, DotIcon, FeedbackIcon, GigIcon, HouseIconSolid, LeftChevronIcon, MailboxEmptyIconSolid, MailboxFullIconSolid, MusicianIconLight, MusicianIconSolid, RightChevronIcon, UpChevronIcon, VenueIconLight, VenueIconSolid } from '../../shared/ui/extras/Icons';
 import { FeedbackBox } from './FeedbackBox';
 import { toast } from 'sonner';
 
-export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModal, setRevisitingModal }) => {
+export const Sidebar = ({ user, newMessages, setShowWelcomeModal, setRevisitingModal }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
+  const { sidebarCollapsed, setSidebarCollapsed } = useVenueDashboard();
   const pathname = useMemo(() => location.pathname, [location.pathname]);
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -87,16 +89,23 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
   ];
 
   return (
-    <div className='sidebar'>
-      <div className='logo'>
-        <TextLogoMed />
-        <div className="beta-box">
-          <p>BETA</p>
+    <div className={`sidebar${sidebarCollapsed ? ' sidebar--collapsed' : ''}`}>
+      <div className='sidebar__header'>
+        <div className='logo'>
+          {sidebarCollapsed ? (
+            <a href="/venues/dashboard/gigs" className="sidebar__logo-link" aria-label="Gigin">
+              <img src="/icons/favicon.svg" alt="Gigin" className="sidebar__favicon" />
+            </a>
+          ) : (
+            <>
+              <TextLogoMed />
+              <div className="beta-box">
+                <p>BETA</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
-      <button className='btn primary' onClick={() => setGigPostModal(true)}>
-        Create Gig <GigIcon />
-      </button>
       <ul className="menu">
         {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {
           const isActive = exact ? pathname === path : pathname.includes(path);
@@ -105,32 +114,56 @@ export const Sidebar = ({ setGigPostModal, user, newMessages, setShowWelcomeModa
               key={path}
               className={`menu-item${isActive ? ' active' : ''}`}
               onClick={() => navigate(path)}
+              title={sidebarCollapsed ? label : undefined}
             >
               <span className="body">
-                {isActive ? iconActive : icon} {label}
+                {isActive ? iconActive : icon}
+                {!sidebarCollapsed && ` ${label}`}
               </span>
-              {notification ? 
+              {notification && !sidebarCollapsed ?
               <span className='notification'><DotIcon /></span>
-               : null}
+               : notification ? <span className='notification notification--dot'><DotIcon /></span> : null}
             </li>
           );
         })}
       </ul>
-      <ul className={`account-dropdown ${showDropdown ? 'open' : ''}`} onClick={() => setShowDropdown(!showDropdown)}>
-        <li className='account-dropdown-item exempt'>
+      <button
+        type="button"
+        className="sidebar__collapse-btn sidebar__collapse-btn--nav"
+        onClick={() => setSidebarCollapsed((c) => !c)}
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {sidebarCollapsed ? <RightChevronIcon /> : <LeftChevronIcon />}
+        {!sidebarCollapsed && 'Collapse sidebar'}
+      </button>
+      <div className="sidebar__spacer" aria-hidden="true" />
+      <ul
+        className={`account-dropdown ${showDropdown ? 'open' : ''}`}
+        onClick={() => {
+          if (sidebarCollapsed) {
+            setSidebarCollapsed(false);
+            setShowDropdown(true);
+          } else {
+            setShowDropdown(!showDropdown);
+          }
+        }}
+      >
+        <li className='account-dropdown-item exempt' title={sidebarCollapsed ? 'Account' : undefined}>
           <div className='account-info'>
-            <h6>Venue Dashboard</h6>
+            {!sidebarCollapsed && <h6>Venue Dashboard</h6>}
             <div className='user-container'>
               <UserIcon />
-              <div className='user-details'>
-                <h4>{user?.name}</h4>
-                <p>
-                  {user?.email}
-                </p>
-              </div>
+              {!sidebarCollapsed && (
+                <div className='user-details'>
+                  <h4>{user?.name}</h4>
+                  <p>
+                    {user?.email}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-          {showDropdown ? <UpChevronIcon /> : <DownChevronIcon />}
+          {!sidebarCollapsed && (showDropdown ? <UpChevronIcon /> : <DownChevronIcon />)}
         </li>
         {showDropdown && (
           <>

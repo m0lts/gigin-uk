@@ -481,13 +481,19 @@
 /* TIMELINE */
 
 .gig-page-body .timeline-cont {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    margin: 2rem 0;
-    overflow-x: hidden;
+    margin: 2rem auto;
+    padding: 0;
+    column-gap: 4rem;
     border-bottom: 1px solid var(--gn-grey-500);
+}
+
+.gig-page-body .timeline-notes {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--gn-grey-700);
 }
 
 .gig-page-body .timeline-event {
@@ -495,7 +501,7 @@
     flex-direction: column;
     align-items: center;
     position: relative;
-    flex: 1;
+    flex: 0 0 auto;
 }
 
 .gig-page-body .timeline-time {
@@ -675,6 +681,41 @@
 }
 .gig-page-body .extra-info .info:last-of-type {
     margin-top: 1rem;
+}
+
+/* VENUE DOCUMENTS */
+
+.gig-page-body .venue-documents {
+    margin-top: 1.5rem;
+}
+
+.gig-page-body .venue-documents .info {
+    margin-top: 0.5rem;
+}
+
+.gig-page-body .venue-documents .info h6 {
+    margin-bottom: 0.25rem;
+}
+
+.gig-page-body .venue-documents .info .text {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.gig-page-body .venue-documents .info .text p {
+    margin: 0;
+}
+
+.gig-page-body .venue-documents .venue-doc-btn {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.gig-page-body .venue-documents .venue-doc-btn span {
+    text-decoration: none;
 }
 
 /* SOCAILS */

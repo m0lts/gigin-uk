@@ -46,9 +46,9 @@ export const FilterPanel = ({ filters, setFilters, pendingFilters, setPendingFil
             </div>
           </div>
   
-          {/* Gig Type */}
+          {/* Event Type */}
           <div className="input-group">
-            <label className="label">Gig Type</label>
+            <label className="label">Event Type</label>
             <select
               value={pendingFilters.kind}
               onChange={(e) => setPendingFilters(prev => ({ ...prev, kind: e.target.value }))}

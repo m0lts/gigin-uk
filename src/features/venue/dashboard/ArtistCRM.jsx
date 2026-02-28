@@ -224,31 +224,18 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
             ? ` This invite expires on ${formatDate(new Date(createdInviteExpiresAt), 'short')}.`
             : '';
         
-        if (gigData.kind === 'Ticketed Gig' || gigData.kind === 'Open Mic') {
-          const messageText = gigData.private
-            ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
-                gigData.date
-              )}.${expiryText}.`
-            : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
-                gigData.date
-              )}.${expiryText}`;
-          await sendGigInvitationMessage(conversationId, {
-            senderId: user.uid,
-            text: messageText,
-          });
-        } else {
-          const messageText = gigData.private
-            ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
-                gigData.date
-              )} for ${gigData.budget}.${expiryText}.`
-            : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
-                gigData.date
-              )} for ${gigData.budget}.${expiryText}`;
-          await sendGigInvitationMessage(conversationId, {
-            senderId: user.uid,
-            text: messageText,
-          });
-        }
+        const hasFee = gigData.budget && gigData.budget !== '£' && gigData.budget !== '£0';
+        const messageText = gigData.private
+          ? `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
+              gigData.date
+            )}${hasFee ? ` for ${gigData.budget}` : ''}.${expiryText}.`
+          : `${venueToSend.accountName} invited ${artistProfile.name} to play at their gig at ${gigData.venue?.venueName} on the ${formatDate(
+              gigData.date
+            )}${hasFee ? ` for ${gigData.budget}` : ''}.${expiryText}`;
+        await sendGigInvitationMessage(conversationId, {
+          senderId: user.uid,
+          text: messageText,
+        });
 
         toast.success(`Invite sent to ${artistProfile.name}`);
         onClose();

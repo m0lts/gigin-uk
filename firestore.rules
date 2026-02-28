@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Firestore Security Rules
+// Add or merge these with your existing rules in Firebase Console if you already have Firestore rules there.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Venue hire opportunities: allow authenticated users to read/write documents.
+    // Tighten in production (e.g. restrict by venueId / membership) if needed.
+    match /venueHireOpportunities/{docId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

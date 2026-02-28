@@ -5,11 +5,16 @@ This guide explains how to run the application locally using Firebase Emulators,
 ## Prerequisites
 
 1. **Node.js 22+** installed
-2. **Firebase CLI** installed globally:
+2. **Font Awesome Pro (npm)** – The app uses Font Awesome Pro icons. Get the npm token from your team (or from [Font Awesome](https://fontawesome.com/kits) if you have a Pro account). Then install dependencies with the token set:
+   ```bash
+   FONTAWESOME_NPM_AUTH_TOKEN=your_token_here npm install
+   ```
+   To avoid typing it every time, add to a local `.env` (gitignored) and run `export $(grep -v '^#' .env | xargs)` before `npm install`, or add the export to your shell profile.
+3. **Firebase CLI** installed globally:
    ```bash
    npm install -g firebase-tools
    ```
-3. **Google Cloud SDK** (for API server authentication):
+4. **Google Cloud SDK** (for API server authentication):
    ```bash
    gcloud auth application-default login
    ```

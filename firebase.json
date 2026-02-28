@@ -19,7 +19,7 @@
     }
   },
   "storage": {
-    "rules": "storage.rules"
+    "rules": "storage.rules"},"firestore":{"rules":"firestore.rules"
   },
   "emulators": {
     "auth": {

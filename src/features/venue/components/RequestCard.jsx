@@ -4,7 +4,7 @@ import { markRequestAsViewed } from '@services/client-side/venues';
 import { openInNewTab } from '../../../services/utils/misc';
 import { format } from 'date-fns';
 
-export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, venues }) => {
+export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, openBuildGigModalWithDate, venues }) => {
   const ref = useRef();
   const navigate = useNavigate();
 
@@ -33,6 +33,10 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, v
   const venue = venues.find(v => v.venueId === request.venueId);
 
   const handleAcceptDateRequest = (date) => {
+    if (openBuildGigModalWithDate) {
+      openBuildGigModalWithDate(request, date);
+      return;
+    }
     navigate('/venues/dashboard/gigs?showRequests=true', { 
       state: {
         musicianData: {

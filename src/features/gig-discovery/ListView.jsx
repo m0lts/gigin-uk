@@ -29,20 +29,26 @@ export const ListView = ({ upcomingGigs, location }) => {
                 <div className='gigs-list'>
                     {upcomingGigs.map((gig) => {
                         const distance = location 
-                        ? calculateDistance(location.latitude, location.longitude, gig.coordinates[1], gig.coordinates[0])
+                        ? calculateDistance(location.latitude, location.longitude, gig.coordinates?.[1], gig.coordinates?.[0])
                         : null;
+                        const venueName = gig.venue?.venueName ?? gig.gigName ?? 'Gig';
+                        const venuePhoto = gig.venue?.photo;
                         return (
                             <div key={gig.gigId} className='gig-item' onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
                                 <div className='gig-img'>
-                                    <img src={gig.venue.photo} alt={`${gig.venue.venueName} Photo`} />
+                                    {venuePhoto ? (
+                                        <img src={venuePhoto} alt={`${venueName} Photo`} />
+                                    ) : (
+                                        <div className='gig-img-placeholder' aria-hidden />
+                                    )}
                                 </div>
                                 <div className='gig-info'>
                                     <span className='venue-and-location'>
-                                        <h4 className='venue-name'>{gig.venue.venueName}</h4>
+                                        <h4 className='venue-name'>{venueName}</h4>
                                         {(distance !== null && !isNaN(distance)) ? (
                                             <p className='venue-distance'>{distance.toFixed(1)} <LocationPinIcon /></p>
                                         ) : (
-                                            <p className='venue-distance'>{getCityFromAddress(gig.venue.address)}</p>
+                                            <p className='venue-distance'>{getCityFromAddress(gig.venue?.address)}</p>
                                         )}
                                     </span>
                                     <p className='text'>{gig.kind}</p>

@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   loadEnv(mode, process.cwd(), '');
   return {
     server: {
+      port: 5175,
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
       },

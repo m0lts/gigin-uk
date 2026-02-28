@@ -39,7 +39,6 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
 
     useEffect(() => {
         const fetchConfirmedOpenMicMusicians = async () => {
-          if (nextGig.kind !== 'Open Mic') return;
             setLoadingMusicians(true);
           const confirmedApplicants = nextGig.applicants?.filter(app => app.status === 'confirmed');
           if (!confirmedApplicants?.length) return;
@@ -97,21 +96,16 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
         try {
             const gigId = nextGig.gigId;
             const venueProfile = await getVenueProfileById(nextGig.venueId);
-            const isOpenMic = nextGig.kind === 'Open Mic';
-            const isTicketed = nextGig.kind === 'Ticketed Gig';
-
-            if (!isOpenMic && !isTicketed) {
-                const taskNames = [
-                    nextGig.clearPendingFeeTaskName,
-                    nextGig.automaticMessageTaskName,
-                ];
-                await cancelGigAndRefund({
-                    taskNames,
-                    transactionId: nextGig.paymentIntentId,
-                    gigId: nextGig.gigId,
-                    venueId: nextGig.venueId,
-                });
-            }
+            const taskNames = [
+                nextGig.clearPendingFeeTaskName,
+                nextGig.automaticMessageTaskName,
+            ];
+            await cancelGigAndRefund({
+                taskNames,
+                transactionId: nextGig.paymentIntentId,
+                gigId: nextGig.gigId,
+                venueId: nextGig.venueId,
+            });
             const handleMusicianCancellation = async (musician) => {
                 const { conversationId } = await getOrCreateConversation({ musicianProfile: musician, gigData: nextGig, venueProfile, type: 'cancellation' });
                 await postCancellationMessage(
@@ -124,19 +118,7 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 const cancellingParty = 'venue';
                 await logGigCancellation({ gigId, musicianId: musician.musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
               };
-          
-              if (isOpenMic) {
-                const bandOrMusicianProfiles = await Promise.all(
-                  nextGig.applicants
-                    .filter(app => app.status === 'confirmed')
-                    .map(app => getMusicianProfileByMusicianId(app.id))
-                );
-                for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
-                  await handleMusicianCancellation(musician);
-                }
-            } else {
-                await handleMusicianCancellation(musicianProfile);
-            }
+            await handleMusicianCancellation(musicianProfile);
             
             setLoading(false);
             setNextGigModal(false);

@@ -11,7 +11,7 @@ export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user
     const { loading } = useAuth();
     const navigate = useNavigate();
     const { isMdUp } = useBreakpoint();
-    const { loading: dashboardLoading } = useVenueDashboard();
+    const { loading: dashboardLoading, sidebarCollapsed } = useVenueDashboard();
 
     useEffect(() => {
         if (!loading && !user) {
@@ -31,7 +31,7 @@ export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user
     return (
         <>
             {!isMdUp && !dashboardLoading && <Header setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} />}
-            <section className="dashboard">
+            <section className={`dashboard${sidebarCollapsed ? ' dashboard--sidebar-collapsed' : ''}`}>
                 { children }
             </section>
         </>

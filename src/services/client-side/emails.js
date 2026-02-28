@@ -408,6 +408,7 @@ export const sendGigAcceptedEmail = async ({
   isNegotiated = false,
   nonPayableGig = false,
 }) => {
+  const venueName = gigData.venue?.venueName ?? venueProfile?.name ?? 'the venue';
   const jSDate = toJsDate(gigData.startDateTime);
   const formattedDate = jSDate.toLocaleDateString('en-UK', {
     day: 'numeric',
@@ -430,11 +431,11 @@ export const sendGigAcceptedEmail = async ({
 
   const textMap = {
     musician: isNegotiated
-      ? `${musicianName} ${verb} accepted your negotiated fee for the gig at ${gigData.venue.venueName} on ${formattedDate}.`
-      : `${musicianName} ${verb} accepted your invitation for the gig at ${gigData.venue.venueName} on ${formattedDate}.`,
+      ? `${musicianName} ${verb} accepted your negotiated fee for the gig at ${venueName} on ${formattedDate}.`
+      : `${musicianName} ${verb} accepted your invitation for the gig at ${venueName} on ${formattedDate}.`,
     venue: isNegotiated
-      ? `Congratulations! Your negotiation for the gig at ${gigData.venue.venueName} on ${formattedDate} has been accepted.`
-      : `Congratulations! Your application for the gig at ${gigData.venue.venueName} on ${formattedDate} has been accepted.`,
+      ? `Congratulations! Your negotiation for the gig at ${venueName} on ${formattedDate} has been accepted.`
+      : `Congratulations! Your application for the gig at ${venueName} on ${formattedDate} has been accepted.`,
   };
 
   // === Styled Email Shell (same as your finalized template) ===
@@ -530,7 +531,7 @@ export const sendGigAcceptedEmail = async ({
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
       style="font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;color:${baseStyles.text};margin:0 0 16px 0;">
       <tr>
-        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Gig:</strong> ${gigData.venue.venueName}</td>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Gig:</strong> ${venueName}</td>
       </tr>
       <tr>
         <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${formattedDate}</td>
@@ -561,7 +562,7 @@ export const sendGigAcceptedEmail = async ({
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
       style="font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;color:${baseStyles.text};margin:0 0 16px 0;">
       <tr>
-        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Gig:</strong> ${gigData.venue.venueName}</td>
+        <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Gig:</strong> ${venueName}</td>
       </tr>
       <tr>
         <td style="padding:8px 0;border-top:1px solid ${baseStyles.border};"><strong>Date:</strong> ${formattedDate}</td>

@@ -43,7 +43,7 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
     return (
         <>
             <div className='head'>
-                <h1 className='title'>What kind of gig is it?</h1>
+                <h1 className='title'>What type of event is it?</h1>
             </div>
             <div className='body privacy'>
                 {/* <div className='selections'>
@@ -79,7 +79,7 @@ export const GigPrivacy = ({ formData, handleInputChange, error, setError }) => 
                         </div>
                     ))}
                 </div>
-                {error && error !== 'Please select both a gig kind and a privacy setting.' && (
+                {error && error !== 'Please select both an event type and a privacy setting.' && (
                     <div className="error-cont" style={{ width: 'fit-content', margin: '1rem auto' }}>
                         <p className="error-message">{error}</p>
                     </div>

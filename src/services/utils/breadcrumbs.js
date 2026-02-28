@@ -45,6 +45,9 @@ export const getBreadcrumbs = (
       case 'find':
         label = 'Find Artists';
         break;
+      case 'nearby-lineups':
+        label = "Who's playing nearby";
+        break;
       case 'artists':
         label = 'My Artists';
         break;

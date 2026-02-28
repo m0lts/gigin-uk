@@ -290,7 +290,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             //     setError('Please select a privacy setting.');
             // } else
             if (formData.kind === '') {
-                setError('Please select a type of gig.');
+                setError('Please select an event type.');
             } else {
                 setStage(prevStage => prevStage + 1);
             }
@@ -301,7 +301,7 @@ export const GigPostModal = ({ setGigPostModal, venueProfiles, setVenueProfiles,
             if (formData.gigType !== '') {
                 setStage(prevStage => prevStage + 1);
             } else {
-                setError('Please select a gig type.');
+                setError('Please select an event type.');
             }
             return;
         }

@@ -26,6 +26,7 @@ import {
   distanceBetween,
 } from 'geofire-common';
 import { deleteGigAndInformation } from '../api/gigs';
+import { getVenueProfileById } from './venues';
 
 /*** READ OPERATIONS ***/
 
@@ -178,14 +179,46 @@ export const fetchNearbyGigs = async ({
       })
       .sort((a, b) => toMillis(a.startDateTime) - toMillis(b.startDateTime))
       .slice(0, limitCount)
-      .map(gig => ({
-        ...gig,
-        budget: gig.budget === '£' ? 'No Fee' : gig.budget
-      }));
+      .map(gig => {
+        const gp = gig.geopoint;
+        const lat = gp?.latitude ?? gp?._latitude ?? gp?._lat;
+        const lng = gp?.longitude ?? gp?._longitude ?? gp?._long;
+        const coordinates = (typeof lng === 'number' && typeof lat === 'number') ? [lng, lat] : gig.coordinates;
+        return {
+          ...gig,
+          budget: gig.budget === '£' ? 'No Fee' : gig.budget,
+          ...(coordinates && { coordinates }),
+        };
+      });
+
+    const venueIdsToEnrich = [...new Set(
+      gigs
+        .filter(g => g.venueId && !g.venue?.photo)
+        .map(g => g.venueId)
+    )];
+    const venueMap = new Map();
+    await Promise.all(
+      venueIdsToEnrich.map(async (venueId) => {
+        const v = await getVenueProfileById(venueId);
+        if (v) {
+          venueMap.set(venueId, {
+            venueName: v.name ?? v.venueName ?? '',
+            address: v.address ?? '',
+            photo: Array.isArray(v.photos) && v.photos.length > 0 ? v.photos[0] : null,
+          });
+        }
+      })
+    );
+    const enrichedGigs = gigs.map(gig => {
+      if (gig.venue?.photo) return gig;
+      const venue = gig.venueId ? venueMap.get(gig.venueId) : null;
+      if (!venue) return gig;
+      return { ...gig, venue: { ...gig.venue, ...venue } };
+    });
 
     const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
 
-    return { gigs, lastVisible };
+    return { gigs: enrichedGigs, lastVisible };
   } catch (error) {
     console.error('[Firestore Error] fetchNearbyGigs:', error);
     return { gigs: [], lastVisible: null };

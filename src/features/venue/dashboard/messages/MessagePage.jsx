@@ -10,6 +10,9 @@ import {
 import { MessageThread } from './MessageThread';
 import { ConversationItem } from './ConversationItem';
 import { GigInformation } from './GigInformation';
+import { RequestCard } from '@features/venue/components/RequestCard';
+import { removeVenueRequest } from '@services/client-side/venues';
+import { toast } from 'sonner';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
     updateConversationLastViewed,
@@ -55,7 +58,7 @@ function getVenueIdFromConversation(conv) {
     return sender && sender === myUid;
   }
 
-export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles, customerDetails, refreshStripe }) => {
+export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles, customerDetails, refreshStripe, requests = [], setRequests, setGigPostModal, setBuildingForMusician, setBuildingForMusicianData, setRequestId, setPreferredDate, refreshGigs }) => {
     const navigate = useNavigate();
     const {isSmUp, isMdUp, isLgUp} = useBreakpoint();
     const [gigData, setGigData] = useState();
@@ -70,7 +73,63 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     const [showTechRiderModal, setShowTechRiderModal] = useState(false);
     const [artistProfile, setArtistProfile] = useState(null);
     const [loadingTechRider, setLoadingTechRider] = useState(false);
+    const [showMusicianRequests, setShowMusicianRequests] = useState(false);
     const menuRef = useRef();
+
+    const visibleRequests = useMemo(() => requests.filter(r => !r.removed), [requests]);
+
+    const handleRemoveRequest = async (requestIdToRemove) => {
+        try {
+            await removeVenueRequest(requestIdToRemove);
+            setRequests(prev => prev.map(req => req.id === requestIdToRemove ? { ...req, removed: true } : req));
+            toast.success('Request removed.');
+        } catch (err) {
+            console.error('Error removing request:', err);
+            toast.error('Failed to remove request');
+        }
+    };
+
+    const openBuildGigModal = (request) => {
+        setBuildingForMusician(true);
+        setBuildingForMusicianData({
+            id: request.musicianId,
+            name: request.musicianName,
+            genres: request.musicianGenres || [],
+            type: request.musicianType || 'Musician/Band',
+            bandProfile: false,
+            userId: null,
+            venueId: request.venueId,
+            email: null,
+            phone: null,
+            instagram: null,
+            facebook: null,
+            other: null,
+        });
+        setRequestId(request.id);
+        setPreferredDate(null);
+        setGigPostModal(true);
+    };
+
+    const openBuildGigModalWithDate = (request, date) => {
+        setBuildingForMusician(true);
+        setBuildingForMusicianData({
+            id: request.musicianId,
+            name: request.musicianName,
+            genres: request.musicianGenres || [],
+            type: request.musicianType || 'Musician/Band',
+            bandProfile: false,
+            userId: null,
+            venueId: request.venueId,
+            email: null,
+            phone: null,
+            instagram: null,
+            facebook: null,
+            other: null,
+        });
+        setRequestId(request.id);
+        setPreferredDate(date);
+        setGigPostModal(true);
+    };
 
 
     const conversationsToDisplay = useMemo(() => {
@@ -219,10 +278,40 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     return (
         <>
             {isMdUp && (
-                <div className="head">
-                    <h1 className="title">Messages</h1>
+                <div className="head messages-head">
+                    <h1 className="title">Messages{showMusicianRequests ? ' – Musician Requests' : ''}</h1>
+                    <button
+                        type="button"
+                        className="btn secondary"
+                        onClick={() => setShowMusicianRequests(prev => !prev)}
+                    >
+                        {showMusicianRequests ? 'Hide' : 'Show'} Musician Requests
+                    </button>
                 </div>
             )}
+            {showMusicianRequests && (
+                <div className="body gigs">
+                    {visibleRequests.length > 0 ? (
+                        <div className="musician-requests">
+                            {visibleRequests.map((request) => (
+                                <RequestCard
+                                    key={request.id}
+                                    request={request}
+                                    handleRemoveRequest={handleRemoveRequest}
+                                    openBuildGigModal={openBuildGigModal}
+                                    openBuildGigModalWithDate={openBuildGigModalWithDate}
+                                    venues={venueProfiles}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="musician-requests">
+                            <h4 style={{ textAlign: 'center', marginTop: '5rem' }}>No Requests</h4>
+                        </div>
+                    )}
+                </div>
+            )}
+            {!showMusicianRequests && (
             <div className="body messages">
                 {conversations.length > 0 ? (
                     isLgUp ? (
@@ -611,6 +700,7 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
                     </Portal>
                 )}
             </div>
+            )}
         </>
     )
 }

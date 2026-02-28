@@ -6,7 +6,6 @@ import {
     PreviousIcon,
     SortIcon,
     TickIcon,
-    CalendarIconSolid,
     RejectedIcon } from '@features/shared/ui/extras/Icons';
 import { GigHandbook } from '@features/artist/components/GigHandbook';
 import { openInNewTab } from '../../../services/utils/misc';

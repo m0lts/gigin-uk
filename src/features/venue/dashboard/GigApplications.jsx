@@ -68,13 +68,31 @@ const VideoModal = ({ video, onClose }) => {
     );
 };
 
-export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues, refreshStripe, customerDetails, refreshGigs }) => {
+export const GigApplications = ({
+    setGigPostModal,
+    setEditGigData,
+    gigs,
+    venues,
+    refreshStripe,
+    customerDetails,
+    refreshGigs,
+    rawGig,
+    setGigInfo: setGigInfoFromParent,
+    skipHeader,
+    copyToClipboard: copyToClipboardProp,
+    showInvitesModalFromParent,
+    setShowInvitesModalFromParent,
+}) => {
 
     const {isMdUp, isLgUp} = useBreakpoint();
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useAuth();
     const now = useMemo(() => new Date(), []);
+
+    const [internalGigInfo, setInternalGigInfo] = useState(null);
+    const gigInfo = rawGig !== undefined && rawGig !== null ? rawGig : internalGigInfo;
+    const setGigInfoState = typeof setGigInfoFromParent === 'function' ? setGigInfoFromParent : setInternalGigInfo;
 
     // Helper function to fetch profile (artist or musician) by ID
     const getProfileById = async (profileId) => {
@@ -104,7 +122,6 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
       return null;
     };
     const [videoToPlay, setVideoToPlay] = useState(null);
-    const [gigInfo, setGigInfo] = useState(null);
     const [musicianProfiles, setMusicianProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalLoading, setModalLoading] = useState(false);
@@ -164,17 +181,18 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             window.removeEventListener('click', handleClickOutside);
         };
     }, [showOptionsMenu]);
-    const [showInvitesModal, setShowInvitesModal] = useState(false);
+    const [showInvitesModalInternal, setShowInvitesModalInternal] = useState(false);
+    const showInvitesModal = (skipHeader && showInvitesModalFromParent !== undefined) ? showInvitesModalFromParent : showInvitesModalInternal;
+    const setShowInvitesModal = (skipHeader && typeof setShowInvitesModalFromParent === 'function') ? setShowInvitesModalFromParent : setShowInvitesModalInternal;
     const [showEditTimeModal, setShowEditTimeModal] = useState(false);
     const [editTimeModalMode, setEditTimeModalMode] = useState('both'); // 'name', 'timings', or 'both'
-    const gigId = location.state?.gig?.gigId || '';
-    const gigDate = location.state?.gig?.date || '';
-    const venueName = location.state?.gig?.venue?.venueName || '';
+    const gigId = (rawGig ?? internalGigInfo)?.gigId || location.state?.gig?.gigId || '';
+    const venueName = gigInfo?.venue?.venueName || location.state?.gig?.venue?.venueName || '';
 
     useEffect(() => {
         if (!gigId || !gigs) return;
         const activeGig = gigs.find(gig => gig.gigId === gigId);
-        setGigInfo(activeGig);
+        if (rawGig == null) setInternalGigInfo(activeGig);
         if (activeGig) {
             if (!editingSoundManager) {
                 setSoundManagerValue(activeGig.soundManager || '');
@@ -378,7 +396,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 
                 // Update the target gig
                 if (targetGig.gigId === gigInfo.gigId) {
-                    setGigInfo((prevGigInfo) => ({
+                    setGigInfoState((prevGigInfo) => ({
                         ...prevGigInfo,
                         applicants: updatedApplicants,
                         paid: true,
@@ -407,7 +425,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 
                 // Update the target gig
                 if (targetGig.gigId === gigInfo.gigId) {
-                    setGigInfo((prevGigInfo) => ({
+                    setGigInfoState((prevGigInfo) => ({
                         ...prevGigInfo,
                         applicants: updatedApplicants,
                         agreedFee: `${agreedFee}`,
@@ -517,7 +535,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
             
             // Update the target gig
             if (targetGig.gigId === gigInfo.gigId) {
-                setGigInfo((prevGigInfo) => ({
+                setGigInfoState((prevGigInfo) => ({
                     ...prevGigInfo,
                     applicants: updatedApplicants,
                 }));
@@ -616,7 +634,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                 const piId = result?.paymentIntent?.id;
                 if (piId) setWatchPaymentIntentId(piId);
                 setPaymentSuccess(true);
-                setGigInfo(prev => ({
+                setGigInfoState(prev => ({
                     ...prev,
                     applicants: prev.applicants.map(applicant =>
                         applicant.id === musicianProfileId
@@ -635,7 +653,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                   return;
                 }
                 setPaymentSuccess(true);
-                setGigInfo(prev => ({
+                setGigInfoState(prev => ({
                     ...prev,
                     applicants: prev.applicants.map(applicant =>
                         applicant.id === musicianProfileId
@@ -796,14 +814,14 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
         }
     }
 
-    const copyToClipboard = (link) => {
+    const copyToClipboard = copyToClipboardProp ?? ((link) => {
         navigator.clipboard.writeText(`${link}`).then(() => {
             toast.success(`Copied Gig Link: ${link}`);
         }).catch((err) => {
-            toast.error('Failed to copy link. Please try again.')
+            toast.error('Failed to copy link. Please try again.');
             console.error('Failed to copy link: ', err);
         });
-    };
+    });
 
     const calculateEndTime = (startTime, duration) => {
         if (!startTime || !duration) return null;
@@ -906,7 +924,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     );
                     
                     if (declinedSlotGigId === gigInfo.gigId) {
-                        setGigInfo(prev => ({
+                        setGigInfoState(prev => ({
                             ...prev,
                             applicants: updatedApplicants
                         }));
@@ -1172,6 +1190,7 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
 
     return (
         <>
+            {!skipHeader && (
             <div className='head gig-applications'>
                 <div style={{ width: '100%'}}>
                     {!isMdUp && (
@@ -1485,11 +1504,67 @@ export const GigApplications = ({ setGigPostModal, setEditGigData, gigs, venues,
                     
                 </div>
             </div>
+            )}
             <div className='body gigs'>
                 {loading ? (
                     <LoadingSpinner />
                 ) : (
                     <>
+                        {skipHeader && (
+                            <div className="venue-gig-internal-notes" style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid var(--gn-grey-300)', borderRadius: '8px', background: 'var(--gn-off-white)' }}>
+                                <h4 style={{ margin: '0 0 0.75rem 0', fontWeight: 600, fontSize: '1rem' }}>Internal notes</h4>
+                                <div style={{ marginBottom: '0.75rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--gn-grey-600)', marginBottom: '0.25rem' }}>Sound manager (optional)</label>
+                                    <textarea
+                                        ref={soundManagerTextareaRef}
+                                        value={soundManagerValue}
+                                        onChange={(e) => setSoundManagerValue(e.target.value)}
+                                        onBlur={(e) => {
+                                            e.target.style.outline = 'none';
+                                            setTimeout(() => {
+                                                if (editingSoundManager && !savingSoundManager) {
+                                                    setSoundManagerValue(gigInfo.soundManager || '');
+                                                    setEditingSoundManager(false);
+                                                }
+                                            }, 50);
+                                        }}
+                                        onFocus={() => hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && setEditingSoundManager(true)}
+                                        disabled={!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')}
+                                        rows={1}
+                                        className="input"
+                                        style={{ width: '100%', maxWidth: '400px', resize: 'none' }}
+                                    />
+                                    {editingSoundManager && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                        <button type="button" className="btn primary" style={{ marginTop: '0.35rem' }} onClick={handleSaveSoundManager} onMouseDown={(e) => e.preventDefault()}>Save</button>
+                                    )}
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--gn-grey-600)', marginBottom: '0.25rem' }}>Notes</label>
+                                    <textarea
+                                        ref={notesTextareaRef}
+                                        value={notesValue}
+                                        onChange={(e) => setNotesValue(e.target.value)}
+                                        onBlur={(e) => {
+                                            e.target.style.outline = 'none';
+                                            setTimeout(() => {
+                                                if (editingNotes && !savingNotes) {
+                                                    setNotesValue(gigInfo.notes || '');
+                                                    setEditingNotes(false);
+                                                }
+                                            }, 50);
+                                        }}
+                                        onFocus={() => hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && setEditingNotes(true)}
+                                        disabled={!hasVenuePerm(venues, gigInfo.venueId, 'gigs.update')}
+                                        rows={3}
+                                        className="input"
+                                        style={{ width: '100%', maxWidth: '100%', resize: 'vertical' }}
+                                    />
+                                    {editingNotes && hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
+                                        <button type="button" className="btn primary" style={{ marginTop: '0.35rem' }} onClick={handleSaveNotes} onMouseDown={(e) => e.preventDefault()}>Save</button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         {showDispute && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') && (
                             <div className='dispute-box'>
                                 <h3>Not happy with how the gig went?</h3>
